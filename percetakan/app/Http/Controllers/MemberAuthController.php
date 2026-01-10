@@ -897,94 +897,79 @@ public function checkTopupStatus(Request $request)
 public function bankAccountInquiry(Request $request)
 {
     // --- [LOG 1] START PROCESS ---
-    Log::info('[DANA BANK INQUIRY] Memulai validasi rekening bank...', [
-        'affiliate_id' => $request->affiliate_id,
+    Log::info('[DANA BANK INQUIRY] Memulai validasi rekening...', [
         'bank_code' => $request->bank_code,
         'account_no' => $request->account_no,
         'amount' => $request->amount
     ]);
 
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
-    if (!$aff) return back()->with('error', 'Affiliate tidak ditemukan.');
-
-    // Sanitasi Nomor HP Merchant (Format 628xxx)
-    // $merchantPhone = preg_replace('/[^0-9]/', '', config('services.dana.merchant_phone'));
-
+    
+    // DATA WAJIB DARI PORTAL SANDBOX ANDA
+    $merchantAccount = "20070000000474167738"; 
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/emoney/bank-account-inquiry.htm';
     $partnerRef = 'BNK' . time() . Str::random(5);
-    $customerNumber = preg_replace('/[^0-9]/', '', $aff->whatsapp);
-    if (substr($customerNumber, 0, 1) === '0') $customerNumber = '62' . substr($customerNumber, 1);
 
     // --- [BODY] SESUAI DOKUMEN SNAP ---
     $body = [
-        "partnerReferenceNo" => $partnerRef, // Unique per trx
-        "customerNumber"     => $customerNumber, // Nomor HP Bisnis
-        "beneficiaryAccountNumber" => $request->account_no, // Rekening Tujuan
+        "partnerReferenceNo" => $partnerRef, // Harus unik
+        "customerNumber"     => $merchantAccount, // Pakai Account Number Portal
+        "beneficiaryAccountNumber" => $request->account_no, // Rekening tujuan
         "amount" => [
-            "value"    => number_format((float)$request->amount, 2, '.', ''), // Include cents
-            "currency" => "IDR"
+            "value"    => number_format((float)$request->amount, 2, '.', ''), // Contoh: 10000.00
+            "currency" => "IDR" //
         ],
         "additionalInfo" => [
-            "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE", // Required
-            "chargeTarget"           => "MERCHANT", // Target biaya
-            "beneficiaryBankCode"    => $request->bank_code, // Kode Bank (002, 008, dll)
-            "beneficiaryAccountName" => $request->account_name ?? "", // Nama untuk validasi
+            "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE", //
+            "chargeTarget"           => "MERCHANT", //
+            "beneficiaryBankCode"    => $request->bank_code, //
+            "beneficiaryAccountName" => $request->account_name ?? "", //
             "accountType"            => "SETTLEMENT_ACCOUNT" //
         ]
     ];
 
-    // --- [SECURITY] SIGNATURE ---
+    // --- [SECURITY] SIGNATURE GENERATION ---
     $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
     $hashedBody = strtolower(hash('sha256', $jsonBody));
     $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
     $signature = $this->generateSignature($stringToSign);
 
     $headers = [
-        'Content-Type'   => 'application/json', // Required
-        'Authorization'  => 'Bearer ' . $aff->dana_access_token,
-        'X-TIMESTAMP'    => $timestamp, // Required
-        'X-SIGNATURE'    => $signature, // Required
-        'X-PARTNER-ID'   => config('services.dana.x_partner_id'), // Required
-        'X-EXTERNAL-ID'  => (string) time() . Str::random(6), // Required
-        'X-IP-ADDRESS'   => $request->ip(), // IPv4 format
-        'CHANNEL-ID'     => '95221' // Required
+        'Content-Type'   => 'application/json', //
+        'Authorization'  => 'Bearer ' . $aff->dana_access_token, //
+        'X-TIMESTAMP'    => $timestamp, //
+        'X-SIGNATURE'    => $signature, //
+        'X-PARTNER-ID'   => config('services.dana.x_partner_id'), //
+        'X-EXTERNAL-ID'  => (string) time() . Str::random(6), //
+        'CHANNEL-ID'     => '95221' //
     ];
 
     try {
-        // --- [LOG 2] SENDING REQUEST ---
-        Log::info('[DANA BANK INQUIRY] Mengirim Request ke DANA API', ['body' => $body]);
+        Log::info('[DANA BANK INQUIRY] Sending Request...', ['body' => $body]);
 
-        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')
+            ->post('https://api.sandbox.dana.id' . $path);
+        
         $result = $response->json();
-
-        // --- [LOG 3] RESPONSE RECEIVED ---
-        Log::info('[DANA BANK INQUIRY] Respon Diterima', ['result' => $result]);
+        Log::info('[DANA BANK INQUIRY] Response Received', ['result' => $result]);
 
         $resCode = $result['responseCode'] ?? '5004201';
 
-        // --- [DATABASE] LOG KE TRANSAKSI ---
-        DB::table('dana_transactions')->insert([
-            'affiliate_id' => $aff->id,
-            'type' => 'BANK_INQUIRY',
-            'reference_no' => $partnerRef,
-            'phone' => $request->account_no,
-            'amount' => $request->amount,
-            'status' => ($resCode == '2004200') ? 'SUCCESS' : 'FAILED',
-            'response_payload' => json_encode($result),
-            'created_at' => now()
-        ]);
-
         if ($resCode == '2004200') {
-            // Sukses: Tampilkan Nama Pemilik Rekening
-            return back()->with('success', '✅ Rekening Valid: ' . $result['beneficiaryAccountName'] . ' (' . $result['beneficiaryBankName'] . ')');
-        } else {
-            // Gagal: Sesuai Response Code List
-            return back()->with('error', '❌ Gagal Validasi: ' . ($result['responseMessage'] ?? 'Cek info rekening'));
-        }
+            // BERHASIL: Ambil nama pemilik rekening dari DANA
+            return back()->with('success', '✅ Rekening Valid: ' . $result['beneficiaryAccountName']);
+        } 
+        
+        // ERROR HANDLING SESUAI TABEL
+        $errorMsg = $result['responseMessage'] ?? 'Terjadi kesalahan';
+        if ($resCode == '4034218') $errorMsg = "Akun Merchant Belum Aktif (Hubungi DANA)";
+        if ($resCode == '4044211') $errorMsg = "Nomor Rekening atau Kode Bank Salah";
+
+        return back()->with('error', '❌ ' . $errorMsg);
 
     } catch (\Exception $e) {
-        Log::error('[DANA BANK INQUIRY] Exception!', ['msg' => $e->getMessage()]);
+        Log::error('[DANA BANK INQUIRY] System Error', ['msg' => $e->getMessage()]);
         return back()->with('error', 'Sistem Error: ' . $e->getMessage());
     }
 }
