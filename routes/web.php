@@ -413,12 +413,20 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix
     // API DANA
 
     // Routes Merchant DANA
-    Route::get('/merchant/create-shop', [DashboardController::class, 'createShopForm'])->name('merchant.create');
-    Route::post('/merchant/create-shop', [DashboardController::class, 'storeShop'])->name('merchant.store');
-    Route::get('/merchant/shops', [DashboardController::class, 'indexShop'])->name('customer.merchant.index');
+    // === ROUTE KHUSUS MERCHANT DANA ===
+    Route::prefix('merchant')->name('merchant.')->group(function() {
+        // 1. Halaman List Toko (Index)
+        Route::get('/', [DashboardController::class, 'indexShop'])->name('index');
+        
+        // 2. Halaman Form Tambah Toko (Create)
+        Route::get('/create', [DashboardController::class, 'createShopForm'])->name('create');
+        
+        // 3. Proses Simpan ke API (Store)
+        Route::post('/store', [DashboardController::class, 'storeShop'])->name('store');
+    });
 
 
-    }); // Penutup Prefix Customer Shared
+}); // Penutup Prefix Customer Shared
 
 // Invoice (Sering diakses lintas role)
 Route::get('/invoice/{invoice}', [CustomerCheckoutController::class, 'invoice'])->middleware('auth')->name('checkout.invoice');
