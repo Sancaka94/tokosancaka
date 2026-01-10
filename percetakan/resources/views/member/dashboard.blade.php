@@ -208,6 +208,77 @@
         </div>
     </div>
 
+    {{-- RIWAYAT TRANSAKSI SALDO & TOPUP --}}
+    <div class="mt-8 mb-10">
+        <div class="flex justify-between items-center mb-4 px-1">
+            <h3 class="font-bold text-slate-700 text-sm italic uppercase tracking-tighter">Riwayat Transaksi Saldo</h3>
+            <span class="text-[9px] bg-slate-100 text-slate-500 px-2 py-1 rounded-lg font-bold">10 Terakhir</span>
+        </div>
+
+        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/50 border-b border-slate-100">
+                            <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Detail</th>
+                            <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Nominal</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        @forelse($transactions as $trx)
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-3">
+                                    {{-- Icon logic berdasarkan tipe --}}
+                                    @if($trx->type == 'TOPUP' || $trx->type == 'DISBURSEMENT')
+                                        <div class="w-8 h-8 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center text-xs shadow-sm">
+                                            <i class="fas fa-arrow-up"></i>
+                                        </div>
+                                    @else
+                                        <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center text-xs shadow-sm">
+                                            <i class="fas fa-arrow-down"></i>
+                                        </div>
+                                    @endif
+                                    
+                                    <div>
+                                        <p class="text-[11px] font-bold text-slate-700 leading-tight">
+                                            {{ $trx->type == 'TOPUP' ? 'Pencairan Profit' : ($trx->type == 'INQUIRY' ? 'Verifikasi Akun' : 'Komisi Masuk') }}
+                                        </p>
+                                        <p class="text-[9px] text-slate-400 mt-0.5 font-medium italic">
+                                            {{ \Carbon\Carbon::parse($trx->created_at)->translatedFormat('d M Y, H:i') }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                @if($trx->type == 'TOPUP' || $trx->type == 'DISBURSEMENT')
+                                    <p class="text-xs font-black text-rose-600">- Rp {{ number_format($trx->amount, 0, ',', '.') }}</p>
+                                @else
+                                    <p class="text-xs font-black text-emerald-600">+ Rp {{ number_format($trx->amount, 0, ',', '.') }}</p>
+                                @endif
+                                
+                                {{-- Status Badge --}}
+                                <span class="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-md 
+                                    {{ $trx->status == 'SUCCESS' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' }}">
+                                    {{ $trx->status }}
+                                </span>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="2" class="px-4 py-10 text-center">
+                                <img src="https://tokosancaka.com/storage/logo/empty-box.png" class="h-12 mx-auto mb-2 opacity-20" alt="Empty">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Belum ada aktivitas saldo</p>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <p class="text-[9px] text-slate-400 mt-3 px-1 italic text-center">Data ini disinkronkan langsung dengan sistem core DANA Sancaka.</p>
+    </div>
+
     {{-- MODAL PENCAIRAN SALDO --}}
     <div id="topupModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
