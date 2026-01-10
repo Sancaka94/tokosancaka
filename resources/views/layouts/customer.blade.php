@@ -44,28 +44,26 @@
 
 <body class="bg-gray-100 text-gray-800">
 
-    {{-- ✅ DIUBAH: Mengubah container utama menjadi flex dengan tinggi layar penuh (h-screen) --}}
-    <div x-data="{ sidebarOpen: false, isNotificationsMenuOpen: false, isProfileMenuOpen: false }" class="flex">
-        <!-- Sidebar -->
-        @include('layouts.partials.customer.sidebar')
+    {{-- ✅ DIUBAH: Tambahkan h-screen dan overflow-hidden di wrapper utama agar body tidak scroll --}}
+        <div x-data="{ sidebarOpen: false, isNotificationsMenuOpen: false, isProfileMenuOpen: false }" class="flex h-screen overflow-hidden">
+            
+            @include('layouts.partials.customer.sidebar')
 
-        <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Topbar -->
-            @include('layouts.partials.customer.topbar')
+            <div class="flex-1 flex flex-col overflow-hidden">
+                @include('layouts.partials.customer.topbar')
 
-            <!-- Main content -->
-            <main class="flex-1 overflow-x-hidden bg-gray-100">
-                <div class="container mx-auto px-6 py-8 h-screen overflow-y-auto">
-                    {{-- ✅ DIUBAH: Menambahkan wrapper konten dengan padding --}}
-                    @yield('content')
-                </div>
-            </main>
-
-            <!-- Footer -->
-            @include('layouts.partials.customer.footer')
-
+                {{-- ✅ DIUBAH: Pindahkan overflow-y-auto ke sini agar scrollbar ada di area utama saja --}}
+                <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
+                    
+                    {{-- ✅ DIUBAH: Hapus 'h-screen' dan 'overflow-y-auto' dari sini --}}
+                    <div class="container mx-auto px-6 py-8">
+                        @yield('content')
+                    </div>
+                    
+                    @include('layouts.partials.customer.footer')
+                </main>
+            </div>
         </div>
-    </div>
     
     
    {{-- ================================================================= --}}
