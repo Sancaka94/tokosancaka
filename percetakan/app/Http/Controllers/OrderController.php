@@ -1494,4 +1494,48 @@ public function handleDanaCallback(Request $request)
         }
     }
 
+    public function bulkDestroy(Request $request)
+{
+    $ids = $request->ids;
+    if (!$ids || count($ids) == 0) {
+        return redirect()->back()->with('error', 'Tidak ada data yang dipilih.');
+    }
+
+    Log::info("================ START BULK DESTROY ================");
+    Log::info("LOG LOG: Memulai hapus masal untuk ID: " . implode(',', $ids));
+
+    DB::beginTransaction();
+    try {
+        $orders = Order::whereIn('id', $ids)->with(['items', 'attachments'])->get();
+
+        foreach ($orders as $order) {
+            // 1. Kembalikan Stok (Hanya jika belum selesai)
+            if (in_array($order->status, ['pending', 'processing'])) {
+                foreach ($order->items as $item) {
+                    Product::where('id', $item->product_id)->increment('stock', $item->quantity);
+                }
+            }
+
+            // 2. Hapus File Lampiran
+            foreach ($order->attachments as $attachment) {
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($attachment->file_path)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($attachment->file_path);
+                }
+            }
+        }
+
+        // 3. Hapus Database
+        Order::whereIn('id', $ids)->delete();
+
+        DB::commit();
+        Log::info("LOG LOG: Bulk delete berhasil. " . count($ids) . " data dihapus.");
+
+        return redirect()->route('orders.index')->with('success', count($ids) . ' pesanan berhasil dihapus permanen.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error("LOG LOG: Bulk delete GAGAL. Pesan: " . $e->getMessage());
+        return redirect()->back()->with('error', 'Gagal menghapus data: ' . $e->getMessage());
+    }
+}
+
 }
