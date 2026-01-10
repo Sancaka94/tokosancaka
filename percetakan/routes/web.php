@@ -130,9 +130,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/affiliate/sync-balance', [AffiliateController::class, 'syncBalance'])->name('affiliate.sync');
 
     // Rute CURL ORDER
+    
+    Route::delete('/orders/bulk-delete', [OrderController::class, 'bulkDestroy'])->name('orders.bulkDestroy');
+    
     Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('orders.destroy');
 
-    Route::delete('/orders/bulk-delete', [OrderController::class, 'bulkDestroy'])->name('orders.bulkDestroy');
+    
 
     // Daftar Produk & Form Tambah
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
