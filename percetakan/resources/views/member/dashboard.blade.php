@@ -251,57 +251,92 @@
         </form>
 
         {{-- Tabel Riwayat --}}
-        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-50/50 border-b border-slate-100">
-                            <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Aktivitas</th>
-                            <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Nominal</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-50">
-                        @forelse($transactions as $trx)
-                        <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-4 py-3">
-                                <div class="flex items-center gap-3">
-                                    @php
-                                        $isOut = in_array($trx->type, ['TOPUP', 'DISBURSEMENT']);
-                                        $iconClass = $isOut ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500';
-                                        $icon = $isOut ? 'fa-arrow-up' : 'fa-arrow-down';
-                                    @endphp
-                                    <div class="w-8 h-8 rounded-full {{ $iconClass }} flex items-center justify-center text-xs shadow-sm">
-                                        <i class="fas {{ $icon }}"></i>
-                                    </div>
-                                    <div>
-                                        <p class="text-[11px] font-bold text-slate-700 leading-tight">
-                                            {{ $isOut ? 'Pencairan Profit' : 'Komisi Masuk' }}
-                                        </p>
-                                        <p class="text-[9px] text-slate-400 mt-0.5 italic">
-                                            {{ \Carbon\Carbon::parse($trx->created_at)->translatedFormat('d M Y, H:i') }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-4 py-3 text-right">
-                                <p class="text-xs font-black {{ $isOut ? 'text-rose-600' : 'text-emerald-600' }}">
-                                    {{ $isOut ? '-' : '+' }} Rp {{ number_format($trx->amount, 0, ',', '.') }}
-                                </p>
-                                <span class="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-md {{ $trx->status == 'SUCCESS' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' }}">
-                                    {{ $trx->status }}
-                                </span>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="2" class="px-4 py-10 text-center">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tidak ada data ditemukan</p>
-                            </td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+        {{-- TABEL DATA RIWAYAT TRANSAKSI SESUAI DATABASE --}}
+        <div class="mt-8 mb-10">
+            <div class="flex justify-between items-center mb-4 px-1">
+                <h3 class="font-bold text-slate-700 text-sm italic uppercase tracking-tighter">Database Transaction Log</h3>
+                <div class="flex gap-2">
+                    <a href="#" class="p-2 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition" title="Export PDF">
+                        <i class="fas fa-file-pdf"></i>
+                    </a>
+                    <a href="#" class="p-2 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200 transition" title="Export Excel">
+                        <i class="fas fa-file-excel"></i>
+                    </a>
+                </div>
             </div>
+
+            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse min-w-[800px]">
+                        <thead>
+                            <tr class="bg-slate-50/50 border-b border-slate-100">
+                                <th class="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Waktu Transaksi</th>
+                                <th class="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Reference No</th>
+                                <th class="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Tipe</th>
+                                <th class="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Nominal</th>
+                                <th class="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            @forelse($transactions as $trx)
+                            <tr class="hover:bg-slate-50 transition-colors">
+                                {{-- Kolom created_at --}}
+                                <td class="px-4 py-4">
+                                    <p class="text-[10px] font-bold text-slate-700">
+                                        {{ \Carbon\Carbon::parse($trx->created_at)->translatedFormat('d/m/Y') }}
+                                    </p>
+                                    <p class="text-[9px] text-slate-400 italic">
+                                        {{ \Carbon\Carbon::parse($trx->created_at)->format('H:i:s') }} WIB
+                                    </p>
+                                </td>
+
+                                {{-- Kolom reference_no --}}
+                                <td class="px-4 py-4">
+                                    <code class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-600 font-mono">
+                                        {{ $trx->reference_no }}
+                                    </code>
+                                </td>
+
+                                {{-- Kolom type --}}
+                                <td class="px-4 py-4">
+                                    @php
+                                        $isDebit = in_array($trx->type, ['TOPUP', 'DISBURSEMENT']);
+                                    @endphp
+                                    <span class="text-[9px] font-black px-2 py-1 rounded-full border {{ $isDebit ? 'border-rose-200 text-rose-600 bg-rose-50' : 'border-emerald-200 text-emerald-600 bg-emerald-50' }}">
+                                        {{ $trx->type }}
+                                    </span>
+                                </td>
+
+                                {{-- Kolom amount --}}
+                                <td class="px-4 py-4 text-right">
+                                    <p class="text-xs font-black {{ $isDebit ? 'text-rose-600' : 'text-emerald-600' }}">
+                                        {{ $isDebit ? '-' : '+' }} Rp {{ number_format($trx->amount, 0, ',', '.') }}
+                                    </p>
+                                </td>
+
+                                {{-- Kolom status --}}
+                                <td class="px-4 py-4 text-center">
+                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-black uppercase {{ $trx->status == 'SUCCESS' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white' }}">
+                                        <i class="fas {{ $trx->status == 'SUCCESS' ? 'fa-check-circle' : 'fa-times-circle' }}"></i>
+                                        {{ $trx->status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="5" class="px-4 py-10 text-center text-slate-400 uppercase text-[10px] font-black">
+                                    <i class="fas fa-folder-open mb-2 text-2xl block opacity-20"></i>
+                                    Tidak ada log transaksi ditemukan
+                                </td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="text-[9px] text-slate-400 mt-4 px-1 italic text-right">
+                * Data ditarik otomatis dari tabel <b>dana_transactions</b>.
+            </p>
         </div>
     </div>
 
