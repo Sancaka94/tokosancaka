@@ -685,14 +685,14 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
             "currency" => "IDR"
         ],
         "transactionDate" => $timestamp,
-        "sessionId"       => (string) Str::limit(Session::getId(), 25, ''),
+        "sessionId"       => (string) Str::uuid(),
         "categoryId"      => "6",
         "notes"           => "Topup Sancaka",
         "additionalInfo"  => [
             "accountType"  => "NAME_DEPOSIT",
             "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
-            "chargeTarget" => "MERCHANT",
-            "fundType" => "AGENT_TOPUP_FOR_USER_SETTLE" // WAJIB
+            "chargeTarget" => "MERCHANT"
+            //"fundType" => "AGENT_TOPUP_FOR_USER_SETTLE" // WAJIB
         ]
     ];
 
@@ -713,8 +713,6 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
             'timestamp' => $timestamp,
             'signature' => $signature
         ]);
-
-   
 
         $signature = $danaService->generateSignature('POST', $path, $body, $timestamp);
 
