@@ -676,6 +676,13 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
         $cleanPhone = '62' . $cleanPhone;
     }
 
+        // 1. Ambil Session ID asli dan bersihkan karakter spesial (hanya angka & huruf)
+    $cleanSession = preg_replace('/[^a-zA-Z0-9]/', '', Session::getId());
+
+    // 2. Pastikan panjangnya tepat 13 karakter
+    // Jika kurang dari 13, akan ditambah karakter acak. Jika lebih, akan dipotong.
+    $finalSession = Str::limit(str_pad($cleanSession, 13, Str::random(13)), 13, '');
+
     Log::info('[DANA TOPUP] Phone Fixed', ['original' => $rawPhone, 'fixed' => $cleanPhone]);
     
     $timestamp = now('Asia/Jakarta')->toIso8601String();
@@ -697,7 +704,7 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
             "currency" => "IDR"
         ],
         "transactionDate" => $timestamp,
-        "sessionId"       => (string) Str::uuid(),
+        "sessionId"       => $finalSession,
         "categoryId"      => "6",
         "notes"           => "Topup Sancaka",
         "additionalInfo"  => [
