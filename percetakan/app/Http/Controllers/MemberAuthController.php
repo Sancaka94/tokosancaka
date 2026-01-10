@@ -714,29 +714,15 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
             'signature' => $signature
         ]);
 
-        // --- KODE DD UNTUK DEBUGGING REQUEST ---
-dd([
-    'URL_TARGET' => $baseUrl . $path,
-    'METHOD' => 'POST',
-    'HEADERS_SENT' => $headers,
-    'BODY_RAW' => $body,
-    'BODY_JSON_ENCODED' => $jsonPayload, // Ini yang benar-benar dikirim ke DANA
-    'SIGNATURE_COMPONENTS' => [
-        'path' => $path,
-        'timestamp' => $timestamp,
-        'hashedBody' => strtolower(hash('sha256', $jsonPayload)),
-        'stringToSign' => "POST:" . $path . ":" . strtolower(hash('sha256', $jsonPayload)) . ":" . $timestamp
-    ],
-    'CHECKLIST_DANA_REQUIREMENTS' => [
-        'customerNumber_format' => $body['customerNumber'], // Harus 628...
-        'amount_value_format' => $body['amount']['value'], // Harus .00
-        'feeAmount_exists' => isset($body['feeAmount']), // Harus ada
-        'sessionId_length' => strlen($body['sessionId']), // Maks 25
-        'fundType' => $body['additionalInfo']['fundType'] ?? 'MISSING' // Wajib ada
-    ]
-]);
+   
 
-        $response = Http::withHeaders([
+        $signature = $danaService->generateSignature('POST', $path, $body, $timestamp);
+
+        // 1. Definisikan Payload JSON (Gunakan UNESCAPED agar hash signature sinkron)
+        $jsonPayload = json_encode($body, JSON_UNESCAPED_SLASHES);
+
+        // 2. Definisikan Headers sesuai Request Headers dokumentasi
+        $headers = [
             'Content-Type'   => 'application/json',
             'Authorization'  => 'Bearer ' . $aff->dana_access_token,
             'X-TIMESTAMP'    => $timestamp,
@@ -747,10 +733,24 @@ dd([
             'X-IP-ADDRESS'   => $request->ip() ?? '127.0.0.1',
             'X-DEVICE-ID'    => 'SANCAKA-POS-01',
             'CHANNEL-ID'     => '95221'
-        ])->withBody(json_encode($body, JSON_UNESCAPED_SLASHES), 'application/json')
-          ->post($baseUrl . $path);
+        ];
+
+        // 3. BARU JALANKAN DD UNTUK CEK SEMUA DATA
+        dd([
+            'URL_TARGET' => $baseUrl . $path,
+            'HEADERS_SENT' => $headers,
+            'BODY_RAW' => $body,
+            'BODY_JSON_ENCODED' => $jsonPayload,
+            'CHECKLIST_DANA_REQUIREMENTS' => [
+                'customerNumber_format' => $body['customerNumber'], // Harus 628...
+                'amount_value_format'   => $body['amount']['value'],   // Harus .00
+                'feeAmount_exists'      => isset($body['feeAmount']),   // Harus ada
+                'fundType'              => $body['additionalInfo']['fundType'] ?? 'MISSING' // Wajib
+            ]
+        ]);
 
         $result = $response->json();
+
         $resCode = $result['responseCode'] ?? '5003801';
 
         Log::info('[DANA TOPUP] Response Mentah:', $result); // LOG LOG tetap ada
