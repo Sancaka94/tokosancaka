@@ -392,13 +392,25 @@ public function index()
 
             // [FIX MISSING PARAMS: USER_PROFILING]
             // Kita gabungkan input dari form dengan parameter wajib DANA yang kurang
-            $rawExtInfo = $request->input('extInfo', []);
+            /*$rawExtInfo = $request->input('extInfo', []);
             $fixedExtInfo = array_merge($rawExtInfo, [
                 'USER_PROFILING' => 'B2C',            // Wajib: Business to Consumer
                 'AVG_TICKET'     => '10000-50000',    // Wajib: Rata-rata transaksi
                 'OMZET'          => '100JT-500JT'     // Wajib: Omzet rata-rata
             ]);
-
+            */
+            // Versi Final FIXED EXT INFO
+            $fixedExtInfo = $request->input('extInfo', []);
+            if (!isset($fixedExtInfo['USER_PROFILING'])) {
+                $fixedExtInfo['USER_PROFILING'] = 'B2C';
+            }
+            if (!isset($fixedExtInfo['AVG_TICKET'])) {
+                $fixedExtInfo['AVG_TICKET'] = '10000-50000';
+            }
+            if (!isset($fixedExtInfo['OMZET'])) {
+                $fixedExtInfo['OMZET'] = '100JT-500JT';
+            }
+            
             // --- 5. DB UPDATE/INSERT ---
             $dbData = [
                 'user_id' => auth()->id(),
