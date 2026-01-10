@@ -694,7 +694,7 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     // Menyertakan feeAmount karena statusnya Required di dokumen terbaru
     $body = [
         "partnerReferenceNo" => $partnerRef,
-        "customerNumber"     => "620000000000",
+        "customerNumber"     => $cleanPhone,
         "amount" => [
             "value"    => $valStr,
             "currency" => "IDR"
@@ -708,7 +708,7 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
         "categoryId"      => "6",
         "notes"           => "Topup Sancaka",
         "additionalInfo"  => [
-            "extendInfo"         => json_encode(["memo" => "topup order memo"]), // Format JSON String
+            "extendInfo"         => "topup_order_memo", // Format JSON String
             "accountType"        => "NAME_DEPOSIT",
             "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE", // Required
             "externalDivisionId" => "", // Kosongkan jika bukan sub-merchant
