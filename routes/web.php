@@ -406,7 +406,15 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix
     Route::get('/seller/register', [SellerRegisterController::class, 'create'])->name('seller.register.form');
     Route::post('/seller/register', [SellerRegisterController::class, 'store'])->name('seller.register.submit');
     Route::get('customer/seller/register', [SellerRegisterController::class, 'create'])->name('customer.seller.register.form'); // Alias
-});
+
+    // API DANA
+
+    // Routes Merchant DANA
+    Route::get('/merchant/create-shop', [DashboardController::class, 'createShopForm'])->name('merchant.create');
+    Route::post('/merchant/create-shop', [DashboardController::class, 'storeShop'])->name('merchant.store');
+
+
+    }); // Penutup Prefix Customer Shared
 
 // Invoice (Sering diakses lintas role)
 Route::get('/invoice/{invoice}', [CustomerCheckoutController::class, 'invoice'])->middleware('auth')->name('checkout.invoice');
