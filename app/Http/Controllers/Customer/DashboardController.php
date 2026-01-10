@@ -294,17 +294,17 @@ public function index()
         return view('customer.merchant.create-shop');
     }
 
-    public function storeShop(Request $request, DanaSignatureService $danaService)
+    public function storeShop(Request $request)
     {
-        // [LOG 1] MULAI PROSES
+        // [LOG 1] START REQUEST
         Log::info('[DANA CREATE SHOP] 1. Memulai Proses', ['user_id' => auth()->id()]);
 
-        // 1. VALIDASI DATA
+        // 1. VALIDASI
         $request->validate([
             'merchantId' => 'required',
             'mainName' => 'required|string|max:255',
             'externalShopId' => 'required',
-            'shop_logo' => 'required|image|mimes:png|max:2048', // Wajib PNG
+            'shop_logo' => 'required|image|mimes:png|max:2048',
             'business_doc_file' => 'required|mimes:pdf,jpg,jpeg,png|max:2048',
             'lat' => 'required', 'ln' => 'required',
             'shopAddress.province' => 'required', 'shopAddress.city' => 'required',
@@ -318,28 +318,26 @@ public function index()
             $logoPath = $request->file('shop_logo')->store('public/uploads/dana/logos');
             $docPath  = $request->file('business_doc_file')->store('public/uploads/dana/docs');
 
-            // Konversi ke Base64 (Syarat DANA)
             $base64Logo = base64_encode(file_get_contents($request->file('shop_logo')->getRealPath()));
             $base64Doc  = base64_encode(file_get_contents($request->file('business_doc_file')->getRealPath()));
 
             // --- 3. CONFIG & DEFAULTS ---
-            // Gunakan x_partner_id sesuai config Anda
             $clientId     = config('services.dana.x_partner_id'); 
             $clientSecret = config('services.dana.client_secret');
             $baseUrl      = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
             $baseUrl      = rtrim($baseUrl, '/');
 
-            // Fallback ID jika config kosong (cegah error null)
-            if (empty($clientId)) $clientId = '2014000014442'; 
+            // Fallback
+            if (empty($clientId)) $clientId = '2014000014442';
 
             $reqTime  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $reqMsgId = (string) Str::uuid();
 
-            // Default Values untuk field optional
+            // Fix Defaults
             $shopOwning  = $request->shopOwning ?? 'DIRECT_OWNED';
             $shopBizType = $request->shopBizType ?? 'ONLINE';
 
-            // Fix Tax Address (copy dari shop address jika kosong)
+            // Fix Tax Address
             $rawTax = $request->input('taxAddress', []);
             $fixTaxAddress = [
                 "country"     => "Indonesia",
@@ -352,7 +350,7 @@ public function index()
                 "subDistrict" => "-"
             ];
 
-            // --- 4. SIMPAN KE DATABASE (UPDATE OR INSERT) ---
+            // --- 4. DB UPDATE/INSERT ---
             $dbData = [
                 'user_id' => auth()->id(),
                 'merchant_id' => $request->merchantId,
@@ -398,8 +396,8 @@ public function index()
                 Log::info("[DANA DB] Data Inserted. ID: $shopIdLocal");
             }
 
-            // --- 5. SUSUN ARRAY DATA (BELUM JADI JSON) ---
-            $requestData = [
+            // --- 5. SUSUN REQUEST OBJECT (Sama seperti MemberAuthController) ---
+            $requestObj = [
                 "head" => [
                     "version"      => "2.0",
                     "function"     => "dana.merchant.shop.createShop",
@@ -415,7 +413,7 @@ public function index()
                     "parentDivisionId" => $request->parentDivisionId,
                     "shopParentType"   => $request->shopParentType,
                     "mainName"         => $request->mainName,
-                    "shopAddress"      => $request->shopAddress, // Array dari form
+                    "shopAddress"      => $request->shopAddress, 
                     "shopDesc"         => $request->shopDesc ?? '-',
                     "externalShopId"   => $request->externalShopId,
                     "logoUrlMap"       => [ "PC_LOGO" => $base64Logo ],
@@ -452,37 +450,42 @@ public function index()
                 ]
             ];
 
-            // --- 6. SIGNATURE (PAKAI SERVICE BARU) ---
-            $endpointPath = '/dana/merchant/shop/createShop.htm';
+            // --- 6. SIGNATURE LOGIC (COPY DARI MemberAuthController) ---
             
-            // Service akan handle json_encode UNESCAPED dan SHA256
-            $signatureString = $danaService->generateSignature('POST', $endpointPath, $requestData, $reqTime);
+            $path = '/dana/merchant/shop/createShop.htm';
             
-            Log::info('[DANA SIGN] Signature Generated: ' . substr($signatureString, 0, 20) . '...');
+            // A. Encode Object Request
+            $jsonRequest = json_encode($requestObj, JSON_UNESCAPED_SLASHES);
+            
+            // B. Hash SHA256 Lowercase
+            $hashedBody = strtolower(hash('sha256', $jsonRequest));
+            
+            // C. Compose String to Sign
+            $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $reqTime;
+            
+            // D. Generate Signature (Private Method di bawah)
+            $signature = $this->generateSignature($stringToSign);
 
-            // --- 7. FINAL PAYLOAD & REQUEST (MANUAL ENCODE) ---
-            // Kita harus kirim string JSON yang formatnya SAMA PERSIS dengan yang di-sign oleh service
-            $finalPayloadArray = [
-                "request"   => $requestData,
-                "signature" => $signatureString
-            ];
+            Log::info('[DANA SIGN] StringToSign: ' . $stringToSign);
+            Log::info('[DANA SIGN] Result: ' . substr($signature, 0, 20) . '...');
 
-            // [PENTING] Encode manual agar tidak ada escape slash (\/)
-            $finalJsonString = json_encode($finalPayloadArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            // --- 7. FINAL PAYLOAD (MANUAL CONCAT) ---
+            // Kita gabungkan string secara manual agar 'request' tidak ter-encode ulang
+            $finalJsonString = '{"request":' . $jsonRequest . ',"signature":"' . $signature . '"}';
 
-            Log::info('[DANA HTTP] Sending Request...');
+            // --- 8. SEND REQUEST ---
+            Log::info('[DANA HTTP] Sending Request to: ' . $baseUrl . $path);
 
-            // Kirim STRING MENTAH ($finalJsonString) menggunakan withBody
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
-            ])->withBody($finalJsonString, 'application/json')
-              ->post($baseUrl . $endpointPath);
+            ])->withBody($finalJsonString, 'application/json') // Kirim String Mentah
+              ->post($baseUrl . $path);
 
             $result = $response->json();
             Log::info('[DANA HTTP] Response Received:', ['result' => $result]);
 
-            // --- 8. HANDLE RESPONSE ---
+            // --- 9. HANDLING RESPON ---
             $danaResultInfo = $result['response']['body']['resultInfo'] ?? [];
             $danaStatus     = $danaResultInfo['resultStatus'] ?? 'F';
             $danaMsg        = $danaResultInfo['resultMsg'] ?? 'Unknown Error';
@@ -513,6 +516,35 @@ public function index()
             Log::error('[DANA ERROR] Exception', ['msg' => $e->getMessage(), 'line' => $e->getLine()]);
             return back()->withInput()->with('error', 'Sistem Error: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * PRIVATE HELPER SIGNATURE (Sama persis dengan MemberAuthController)
+     */
+    private function generateSignature($stringToSign) 
+    {
+        $privateKeyStr = config('services.dana.private_key');
+        
+        // Handle jika key berupa path file atau string langsung
+        if (file_exists($privateKeyStr)) {
+            $privateKeyContent = file_get_contents($privateKeyStr);
+        } else {
+            $privateKeyContent = $privateKeyStr;
+        }
+
+        // Format PEM jika perlu (agar openssl bisa baca)
+        if (!Str::contains($privateKeyContent, 'BEGIN PRIVATE KEY')) {
+            $privateKeyContent = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($privateKeyContent, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
+        }
+
+        $binarySignature = "";
+        
+        // Sign menggunakan OpenSSL
+        if (!openssl_sign($stringToSign, $binarySignature, $privateKeyContent, OPENSSL_ALGO_SHA256)) {
+            throw new \Exception("Gagal generate signature OpenSSL.");
+        }
+        
+        return base64_encode($binarySignature);
     }
 }
 
