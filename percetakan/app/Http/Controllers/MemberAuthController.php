@@ -656,8 +656,8 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     $tglDaftar = date('Ymd', strtotime($aff->created_at)); // Contoh: 20260104
 
     // 2. Susun Customer ID (ID-HP-TglDaftar)
-    // Contoh Hasil: 11-085745808809-20260104
-    $customId = $affId . '-' . $whatsapp . '-' . $tglDaftar;
+    // Contoh Hasil: 1108574580880920260104
+    $customId = $affId . $whatsapp . $tglDaftar;
 
     // 3. Pastikan tidak lebih dari 32 karakter (Aturan DANA)
     $customId = substr($customId, 0, 32);
@@ -694,7 +694,7 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     // Menyertakan feeAmount karena statusnya Required di dokumen terbaru
     $body = [
         "partnerReferenceNo" => $partnerRef,
-        "customerNumber"     => $cleanPhone,
+        "customerNumber"     => "620000000000",
         "amount" => [
             "value"    => $valStr,
             "currency" => "IDR"
@@ -708,7 +708,7 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
         "categoryId"      => "6",
         "notes"           => "Topup Sancaka",
         "additionalInfo"  => [
-            "extendInfo"         => "topup_order_memo", // Format JSON String
+            "extendInfo"         => json_encode(["memo" => "topup order memo"]), // Format JSON String
             "accountType"        => "NAME_DEPOSIT",
             "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE", // Required
             "externalDivisionId" => "", // Kosongkan jika bukan sub-merchant
