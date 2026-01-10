@@ -75,7 +75,6 @@
                         {{-- KOLOM 3: EKSPEDISI --}}
                         <td class="px-6 py-4 align-top">
                             @if($order->shipping_cost > 0 || $order->courier_service)
-                                {{-- LOGIKA LOGO EKSPEDISI --}}
                                 @php
                                     $kurir = strtolower($order->courier_service);
                                     $logo = null;
@@ -119,7 +118,6 @@
                         <td class="px-6 py-4 align-top text-right">
                             <div class="flex flex-col gap-1 items-end">
                                 <div class="font-black text-slate-800 text-sm">
-                                    {{-- Hitung Ulang agar Akurat --}}
                                     @php $totalReal = $order->total_price - $order->discount_amount + $order->shipping_cost; @endphp
                                     Rp {{ number_format($totalReal, 0, ',', '.') }}
                                 </div>
@@ -162,9 +160,19 @@
 
                         {{-- KOLOM 6: AKSI --}}
                         <td class="px-6 py-4 align-top text-center">
-                            <a href="{{ route('orders.show', $order->id) }}" class="inline-flex items-center justify-center w-8 h-8 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition shadow-sm" title="Lihat Detail">
-                                <i class="fas fa-eye"></i>
-                            </a>
+                            <div class="flex items-center justify-center gap-2">
+                                <a href="{{ route('orders.show', $order->id) }}" class="inline-flex items-center justify-center w-8 h-8 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition shadow-sm" title="Lihat Detail">
+                                    <i class="fas fa-eye text-xs"></i>
+                                </a>
+
+                                <form action="{{ route('orders.destroy', $order->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus pesanan ini secara permanen?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="inline-flex items-center justify-center w-8 h-8 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-red-600 hover:border-red-300 hover:bg-red-50 transition shadow-sm" title="Hapus Permanen">
+                                        <i class="fas fa-trash-alt text-xs"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     @empty
