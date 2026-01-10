@@ -180,10 +180,29 @@ Route::prefix('member')->name('member.')->group(function () {
         Route::put('/settings/update', [\App\Http\Controllers\MemberProfileController::class, 'update'])->name('settings.update');
         Route::put('/settings/pin', [\App\Http\Controllers\MemberProfileController::class, 'updatePin'])->name('settings.update-pin');
     
-        Route::post('/dana/check-status', [MemberAuthController::class, 'checkTopupStatus'])->name('dana.checkStatus');
+        //Route::post('/dana/check-status', [MemberAuthController::class, 'checkTopupStatus'])->name('dana.checkStatus');
 
-        Route::post('/dana/bank-inquiry', [MemberAuthController::class, 'bankAccountInquiry'])->name('dana.bankInquiry');
+        //Route::post('/dana/bank-inquiry', [MemberAuthController::class, 'bankAccountInquiry'])->name('dana.bankInquiry');
+    
+        // Grup Khusus Fitur DANA Disbursement
+    Route::prefix('dana')->name('dana.')->group(function () {
+        
+        // --- FITUR DISBURSEMENT TO BANK ---
+        // Rute untuk validasi rekening bank (Inquiry)
+        Route::post('/bank-inquiry', [MemberAuthController::class, 'bankAccountInquiry'])->name('bankInquiry');
+        
+        // --- FITUR MONITORING SALDO MERCHANT ---
+        // Rute untuk cek saldo deposit merchant (Open API v2.0)
+        Route::post('/check-merchant-balance', [MemberAuthController::class, 'checkMerchantBalance'])->name('checkMerchantBalance');
+
+        // --- FITUR PENGECEKAN STATUS ---
+        // Rute untuk sinkronisasi status transaksi secara manual
+        Route::post('/check-status', [MemberAuthController::class, 'checkTopupStatus'])->name('checkStatus');
+
     });
+
+        });
+
 });
 
 // Diletakkan di dalam middleware auth:member agar aman
