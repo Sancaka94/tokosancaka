@@ -736,7 +736,7 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
         ];
 
         // 3. BARU JALANKAN DD UNTUK CEK SEMUA DATA
-        dd([
+        /*dd([
             'URL_TARGET' => $baseUrl . $path,
             'HEADERS_SENT' => $headers,
             'BODY_RAW' => $body,
@@ -747,7 +747,10 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
                 'feeAmount_exists'      => isset($body['feeAmount']),   // Harus ada
                 'fundType'              => $body['additionalInfo']['fundType'] ?? 'MISSING' // Wajib
             ]
-        ]);
+        ]);*/
+        $response = Http::withHeaders($headers)
+            ->withBody($jsonPayload, 'application/json')
+            ->post($baseUrl . $path);
 
         $result = $response->json();
 
