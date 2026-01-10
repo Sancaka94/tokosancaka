@@ -182,7 +182,7 @@ Route::prefix('member')->name('member.')->group(function () {
     
         Route::post('/dana/check-status', [MemberAuthController::class, 'checkTopupStatus'])->name('dana.checkStatus');
 
-        Route::post('/dana/bank-inquiry', [MemberAuthController::class, 'bankAccountInquiry'])->name('bankInquiry');
+        Route::post('/dana/bank-inquiry', [MemberAuthController::class, 'bankAccountInquiry'])->name('dana.bankInquiry');
     });
 });
 
