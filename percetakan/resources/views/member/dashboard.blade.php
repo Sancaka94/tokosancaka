@@ -435,11 +435,40 @@
             <div class="mb-4">
                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Pilih Bank Tujuan</label>
                 <select name="bank_code" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 transition">
-                    <option value="002">BRI</option>
-                    <option value="008">MANDIRI</option>
-                    <option value="009">BNI</option>
-                    <option value="014">BCA</option>
-                    <option value="427">BANK SYARIAH INDONESIA (BSI)</option>
+                    <option value="" disabled selected>-- Pilih Bank Tujuan --</option>
+                    
+                    <optgroup label="Bank Terpopuler">
+                        <option value="014">Bank BCA</option>
+                        <option value="008">Bank Mandiri</option>
+                        <option value="002">Bank BRI</option>
+                        <option value="009">Bank BNI</option>
+                        <option value="427">Bank Syariah Indonesia (BSI)</option>
+                    </optgroup>
+
+                    <optgroup label="Bank Nasional & Swasta">
+                        <option value="022">Bank CIMB Niaga</option>
+                        <option value="147">Bank Muamalat</option>
+                        <option value="213">Bank BTPN / JENIUS</option>
+                        <option value="200">Bank Tabungan Negara (BTN)</option>
+                        <option value="013">Permata Bank</option>
+                        <option value="011">Bank Danamon</option>
+                        <option value="426">Bank Mega</option>
+                        <option value="153">Bank Sinarmas</option>
+                        <option value="028">Bank OCBC NISP</option>
+                    </optgroup>
+
+                    <optgroup label="Bank Pembangunan Daerah (BPD)">
+                        <option value="110">Bank BJB</option>
+                        <option value="111">Bank DKI</option>
+                        <option value="114">Bank Jatim</option>
+                        <option value="113">Bank Jateng</option>
+                        <option value="112">BPD DIY</option>
+                        <option value="118">Bank Nagari</option>
+                        <option value="129">BPD Bali</option>
+                        <option value="132">Bank Papua</option>
+                    </optgroup>
+                    
+                    {{-- Anda bisa menambahkan sisa bank lainnya di sini menggunakan loop jika data disimpan di database --}}
                 </select>
             </div>
 
