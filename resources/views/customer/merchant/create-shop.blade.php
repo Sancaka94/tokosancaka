@@ -311,12 +311,22 @@
                             value="{{ old('ownerAddress.address1', auth()->user()->address_detail) }}"
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
+                    
+                    {{-- Tambahkan ini di CARD 4 (Owner), setelah Provinsi/Kota --}}
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kecamatan</label>
+                        <input type="text" name="ownerAddress[area]" required
+                            value="{{ old('ownerAddress.area', auth()->user()->district) }}"
+                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                    </div>
+                    
                     <div class="sm:col-span-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kota</label>
                         <input type="text" name="ownerAddress[city]" required
                             value="{{ old('ownerAddress.city', auth()->user()->regency) }}"
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
+                    
                     <div class="sm:col-span-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Provinsi</label>
                         <input type="text" name="ownerAddress[province]" required
