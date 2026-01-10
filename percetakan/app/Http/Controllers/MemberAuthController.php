@@ -651,8 +651,19 @@ public function customerTopup(Request $request)
     }
 
     // --- [LOG 2] SANITASI NOMOR & NOMINAL ---
+    // 1. Hapus karakter selain angka (spasi, strip, +, dll hilang)
     $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
-    if (substr($cleanPhone, 0, 1) === '0') { $cleanPhone = '62' . substr($cleanPhone, 1); }
+
+    // 2. Normalisasi awalan agar selalu 62
+    if (substr($cleanPhone, 0, 2) === '62') {
+        // Jika input sudah 628xxxxx -> Biarkan, sudah benar
+    } elseif (substr($cleanPhone, 0, 1) === '0') {
+        // Jika input 08xxxxx -> Hapus '0' depan, ganti '62'
+        $cleanPhone = '62' . substr($cleanPhone, 1);
+    } elseif (substr($cleanPhone, 0, 1) === '8') {
+        // Jika input 8xxxxx -> Tambahkan '62' di depan
+        $cleanPhone = '62' . $cleanPhone;
+    }
     
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $partnerRef = (string) time() . Str::random(8); // Sesuai partnerReferenceNo di dokumen
