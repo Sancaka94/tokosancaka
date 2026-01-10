@@ -16,7 +16,7 @@
             </p>
         </div>
         <div class="mt-4 flex md:mt-0 md:ml-4">
-            <a href="{{ route('customer.dashboard') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <a href="{{ route('customer.merchant.index') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                 <i class="fas fa-arrow-left mr-2"></i> Kembali
             </a>
         </div>
@@ -63,13 +63,14 @@
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Merchant ID <span class="text-red-500">*</span></label>
                         {{-- Ini ID default/sistem, tidak diambil dari DB user --}}
-                        <input type="text" name="merchantId" value="216620080014040009735" readonly 
+                        <input type="text" value="{{ config('services.dana.merchant_id') }}" readonly 
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md bg-gray-100 cursor-not-allowed px-3 py-2 border">
+                        <input type="hidden" name="merchantId" value="{{ config('services.dana.merchant_id') }}">
                     </div>
 
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Parent Division ID</label>
-                        <input type="text" name="parentDivisionId" value="216620080014040009735" readonly 
+                        <input type="text" name="parentDivisionId" value="{{ config('services.dana.merchant_id') }}" readonly 
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md bg-gray-100 cursor-not-allowed px-3 py-2 border">
                     </div>
 
@@ -95,16 +96,29 @@
                     </div>
 
                     {{-- DROPDOWNS --}}
-                    <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Struktur</label>
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kepemilikan</label>
+                        <select name="shopOwning" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
+                            <option value="DIRECT_OWNED">Milik Sendiri</option>
+                            <option value="FRANCHISED">Waralaba</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Bisnis</label>
+                        <select name="shopBizType" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
+                            <option value="ONLINE">Online</option>
+                            <option value="OFFLINE">Offline</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Struktur</label>
                         <select name="shopParentType" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
                             <option value="MERCHANT">MERCHANT</option>
                             <option value="DIVISION">DIVISION</option>
                         </select>
                     </div>
-
-                    <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Ukuran Usaha</label>
+                    <div class="sm:col-span-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ukuran</label>
                         <select name="sizeType" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
                             <option value="UMI">UMI (Mikro)</option>
                             <option value="UKE">UKE (Kecil)</option>
@@ -142,16 +156,30 @@
 
                     {{-- ALAMAT: Ambil dari Auth address_detail, province, regency --}}
                     <div class="sm:col-span-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap 1 <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap 1 (Jalan) <span class="text-red-500">*</span></label>
                         <input type="text" name="shopAddress[address1]" placeholder="Jalan, Nomor Gedung" required
                             value="{{ old('shopAddress.address1', auth()->user()->address_detail) }}"
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap 2</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap 2 (RT/RW/Patokan)</label>
                         <input type="text" name="shopAddress[address2]" placeholder="RT/RW, Patokan"
-                            value="{{ old('shopAddress.address2', (auth()->user()->village ? 'Desa '.auth()->user()->village : '') . (auth()->user()->district ? ', Kec. '.auth()->user()->district : '')) }}"
+                            value="{{ old('shopAddress.address2', '-') }}"
+                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                    </div>
+
+                    <div class="sm:col-span-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kelurahan (Sub District) <span class="text-red-500">*</span></label>
+                        <input type="text" name="shopAddress[subDistrict]" required
+                            value="{{ old('shopAddress.subDistrict', auth()->user()->village ?? '-') }}"
+                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                    </div>
+
+                    <div class="sm:col-span-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kecamatan <span class="text-red-500">*</span></label>
+                        <input type="text" name="shopAddress[area]" required
+                            value="{{ old('shopAddress.area', auth()->user()->district) }}"
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
@@ -170,13 +198,6 @@
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Kecamatan <span class="text-red-500">*</span></label>
-                        <input type="text" name="shopAddress[area]" required
-                            value="{{ old('shopAddress.area', auth()->user()->district) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
-                    </div>
-
-                    <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kode Pos <span class="text-red-500">*</span></label>
                         <input type="text" name="shopAddress[postcode]" maxlength="5" required
                             value="{{ old('shopAddress.postcode', auth()->user()->postal_code) }}"
@@ -184,7 +205,6 @@
                     </div>
                     
                     <input type="hidden" name="shopAddress[country]" value="Indonesia">
-                    <input type="hidden" name="shopAddress[subDistrict]" value="{{ auth()->user()->village ?? '-' }}">
                 </div>
             </div>
         </div>
@@ -318,54 +338,54 @@
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
-                    <div class="sm:col-span-1">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipe ID</label>
-                        <select name="ownerIdType" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
-                            <option value="KTP">KTP</option>
-                            <option value="SIM">SIM</option>
-                        </select>
-                    </div>
-
-                    <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor ID</label>
-                        <input type="text" name="ownerIdNo" required placeholder="NIK KTP"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
-                    </div>
-
                     {{-- ALAMAT OWNER: Disamakan dengan alamat toko (Auth) --}}
                     <div class="sm:col-span-6 mt-2">
                         <h4 class="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide border-b pb-1">Alamat Domisili Pemilik</h4>
                     </div>
 
-                    <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap</label>
+                    <div class="sm:col-span-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap (Jalan)</label>
                         <input type="text" name="ownerAddress[address1]" required
                             value="{{ old('ownerAddress.address1', auth()->user()->address_detail) }}"
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
                     
                     {{-- Tambahkan ini di CARD 4 (Owner), setelah Provinsi/Kota --}}
-                    <div class="sm:col-span-2">
+                    <div class="sm:col-span-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Detail Lain (RT/RW)</label>
+                        <input type="text" name="ownerAddress[address2]" required
+                            value="{{ old('ownerAddress.address2', '-') }}"
+                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                    </div>
+
+                    <div class="sm:col-span-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kelurahan (Sub District)</label>
+                        <input type="text" name="ownerAddress[subDistrict]" required
+                            value="{{ old('ownerAddress.subDistrict', auth()->user()->village ?? '-') }}"
+                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                    </div>
+
+                    <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kecamatan</label>
                         <input type="text" name="ownerAddress[area]" required
                             value="{{ old('ownerAddress.area', auth()->user()->district) }}"
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
                     
-                    <div class="sm:col-span-1">
+                    <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kota</label>
                         <input type="text" name="ownerAddress[city]" required
                             value="{{ old('ownerAddress.city', auth()->user()->regency) }}"
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
                     
-                    <div class="sm:col-span-1">
+                    <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Provinsi</label>
                         <input type="text" name="ownerAddress[province]" required
                             value="{{ old('ownerAddress.province', auth()->user()->province) }}"
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
-                    <div class="sm:col-span-1">
+                    <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kode Pos</label>
                         <input type="text" name="ownerAddress[postcode]" required
                             value="{{ old('ownerAddress.postcode', auth()->user()->postal_code) }}"
@@ -376,21 +396,13 @@
             </div>
         </div>
 
-        {{-- CARD 5: LEGALITAS (Manual Input) --}}
+        {{-- CARD 5: LEGALITAS & DOKUMEN (LOGIKA LENGKAP) --}}
         <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
                 <h3 class="text-lg leading-6 font-medium text-gray-900">5. Legalitas & Pajak</h3>
             </div>
             <div class="px-6 py-6 bg-white">
                 <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                    <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Badan Usaha</label>
-                        <select name="businessEntity" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
-                            <option value="individu">Perorangan</option>
-                            <option value="pt">PT</option>
-                        </select>
-                    </div>
-
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Brand Name</label>
                         <input type="text" name="brandName" required
@@ -404,18 +416,48 @@
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
-                    <div class="sm:col-span-3">
+                    <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">NPWP (Optional)</label>
                         <input type="text" name="taxNo" value="0000000000000000" required
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
-                    <div class="sm:col-span-3">
+                    <div class="sm:col-span-6">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Alamat NPWP</label>
                         <input type="text" name="taxAddress[address1]" placeholder="Jalan" required
                             value="{{ old('taxAddress.address1', auth()->user()->address_detail) }}"
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
+
+                    <div class="sm:col-span-6 border-t mt-4 pt-4"><h4 class="text-sm font-bold text-gray-900 uppercase">Dokumen Identitas / Bisnis</h4></div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Badan Usaha</label>
+                        <select name="businessEntity" id="businessEntity" onchange="adjustDocType()" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
+                            <option value="individu">Perorangan</option>
+                            <option value="pt">PT</option>
+                            <option value="cv">CV</option>
+                            <option value="yayasan">Yayasan</option>
+                            <option value="usaha_dagang">Usaha Dagang</option>
+                            <option value="koperasi">Koperasi</option>
+                        </select>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Dokumen</label>
+                        <select name="docType" id="docType" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm"></select>
+                        <input type="hidden" id="oldDocType" value="{{ old('docType', 'KTP') }}">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Dokumen</label>
+                        <input type="text" name="docId" required placeholder="NIK / NIB"
+                            value="{{ old('docId') }}"
+                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                    </div>
+                    
+                    {{-- Hidden: ownerIdType akan diset sama dengan docType di controller/js --}}
+                    <input type="hidden" name="ownerIdType" id="hiddenOwnerIdType" value="KTP">
                 </div>
             </div>
         </div>
@@ -484,4 +526,49 @@
 
     </form>
 </div>
+
+{{-- SCRIPT LOGIKA DOKUMEN --}}
+<script>
+    function adjustDocType() {
+        var entity = document.getElementById("businessEntity").value;
+        var docSelect = document.getElementById("docType");
+        var oldVal = document.getElementById("oldDocType").value;
+        var hiddenIdType = document.getElementById("hiddenOwnerIdType");
+
+        docSelect.innerHTML = "";
+        var options = [];
+
+        if (entity === "individu") {
+            options = [
+                {val: "KTP", text: "KTP (Kartu Tanda Penduduk)"},
+                {val: "SIM", text: "SIM (Surat Izin Mengemudi)"},
+                {val: "PASSPORT", text: "PASSPORT"}
+            ];
+        } else {
+            options = [
+                {val: "NIB", text: "NIB (Nomor Induk Berusaha)"},
+                {val: "SIUP", text: "SIUP (Surat Izin Usaha)"}
+            ];
+        }
+
+        options.forEach(function(opt) {
+            var option = document.createElement("option");
+            option.value = opt.val;
+            option.text = opt.text;
+            if(opt.val === oldVal) option.selected = true;
+            docSelect.appendChild(option);
+        });
+        
+        // Update hidden input saat dropdown berubah
+        if(docSelect.value) hiddenIdType.value = docSelect.value;
+        
+        docSelect.onchange = function() {
+            hiddenIdType.value = this.value;
+        };
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        adjustDocType();
+    });
+</script>
 @endsection
