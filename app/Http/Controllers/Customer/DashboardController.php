@@ -296,8 +296,7 @@ public function index()
 
     public function storeShop(Request $request)
     {
-        // [LOG 1] START REQUEST
-        Log::info('[DANA CREATE SHOP] 1. Memulai Proses', ['user_id' => auth()->id()]);
+        Log::info('[DANA CREATE SHOP] 1. Start Process (Merchant API v2.0)', ['user_id' => auth()->id()]);
 
         // 1. VALIDASI
         $request->validate([
@@ -314,30 +313,27 @@ public function index()
 
         try {
             // [LOG 2] FILE PROCESSING
-            Log::info('[DANA CREATE SHOP] 2. Memproses File Upload...');
             $logoPath = $request->file('shop_logo')->store('public/uploads/dana/logos');
             $docPath  = $request->file('business_doc_file')->store('public/uploads/dana/docs');
 
             $base64Logo = base64_encode(file_get_contents($request->file('shop_logo')->getRealPath()));
             $base64Doc  = base64_encode(file_get_contents($request->file('business_doc_file')->getRealPath()));
 
-            // --- 3. CONFIG & DEFAULTS ---
+            // --- 3. CONFIG ---
             $clientId     = config('services.dana.x_partner_id'); 
             $clientSecret = config('services.dana.client_secret');
             $baseUrl      = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
             $baseUrl      = rtrim($baseUrl, '/');
 
-            // Fallback
             if (empty($clientId)) $clientId = '2014000014442';
 
             $reqTime  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $reqMsgId = (string) Str::uuid();
 
-            // Fix Defaults
+            // Defaults & Fixes
             $shopOwning  = $request->shopOwning ?? 'DIRECT_OWNED';
             $shopBizType = $request->shopBizType ?? 'ONLINE';
 
-            // Fix Tax Address
             $rawTax = $request->input('taxAddress', []);
             $fixTaxAddress = [
                 "country"     => "Indonesia",
@@ -350,7 +346,7 @@ public function index()
                 "subDistrict" => "-"
             ];
 
-            // --- 4. DB UPDATE/INSERT ---
+            // --- 4. DB INSERT/UPDATE ---
             $dbData = [
                 'user_id' => auth()->id(),
                 'merchant_id' => $request->merchantId,
@@ -388,15 +384,15 @@ public function index()
             if ($existingShop) {
                 DB::table('dana_shops')->where('id', $existingShop->id)->update($dbData);
                 $shopIdLocal = $existingShop->id;
-                Log::info("[DANA DB] Data Updated. ID: $shopIdLocal");
             } else {
                 $dbData['external_shop_id'] = $request->externalShopId;
                 $dbData['created_at'] = now();
                 $shopIdLocal = DB::table('dana_shops')->insertGetId($dbData);
-                Log::info("[DANA DB] Data Inserted. ID: $shopIdLocal");
             }
 
-            // --- 5. SUSUN REQUEST OBJECT (Sama seperti MemberAuthController) ---
+            Log::info("[DANA DB] ID: $shopIdLocal Saved.");
+
+            // --- 5. DATA REQUEST OBJECT ---
             $requestObj = [
                 "head" => [
                     "version"      => "2.0",
@@ -450,42 +446,42 @@ public function index()
                 ]
             ];
 
-            // --- 6. SIGNATURE LOGIC (COPY DARI MemberAuthController) ---
+            // --- 6. SIGNATURE GENERATION (PERBAIKAN UTAMA) ---
             
-            $path = '/dana/merchant/shop/createShop.htm';
+            // 1. Kunci String JSON (Hanya object request)
+            // Ini sesuai logika checkMerchantBalance di MemberAuthController
+            $jsonRequestString = json_encode($requestObj, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             
-            // A. Encode Object Request
-            $jsonRequest = json_encode($requestObj, JSON_UNESCAPED_SLASHES);
-            
-            // B. Hash SHA256 Lowercase
-            $hashedBody = strtolower(hash('sha256', $jsonRequest));
-            
-            // C. Compose String to Sign
-            $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $reqTime;
-            
-            // D. Generate Signature (Private Method di bawah)
-            $signature = $this->generateSignature($stringToSign);
+            // 2. String to Sign = JSON MENTAH (Tanpa POST:PATH:HASH...)
+            // Untuk Merchant API v2.0, kita sign langsung JSON-nya
+            $stringToSign = $jsonRequestString;
 
-            Log::info('[DANA SIGN] StringToSign: ' . $stringToSign);
-            Log::info('[DANA SIGN] Result: ' . substr($signature, 0, 20) . '...');
+            Log::info('[DANA SIGN] StringToSign (V2.0): ' . substr($stringToSign, 0, 50) . '...');
 
-            // --- 7. FINAL PAYLOAD (MANUAL CONCAT) ---
-            // Kita gabungkan string secara manual agar 'request' tidak ter-encode ulang
-            $finalJsonString = '{"request":' . $jsonRequest . ',"signature":"' . $signature . '"}';
+            // 3. Generate Signature
+            $signatureString = $this->generateSignature($stringToSign);
+            
+            Log::info('[DANA SIGN] Result: ' . substr($signatureString, 0, 20) . '...');
+
+            // --- 7. FINAL PAYLOAD ---
+            // Gabung manual agar JSON yang dikirim = JSON yang disign
+            $finalJsonString = '{"request":' . $jsonRequestString . ',"signature":"' . $signatureString . '"}';
+
+            $endpointPath = '/dana/merchant/shop/createShop.htm';
 
             // --- 8. SEND REQUEST ---
-            Log::info('[DANA HTTP] Sending Request to: ' . $baseUrl . $path);
+            Log::info('[DANA HTTP] Sending...');
 
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
-            ])->withBody($finalJsonString, 'application/json') // Kirim String Mentah
-              ->post($baseUrl . $path);
+            ])->withBody($finalJsonString, 'application/json')
+              ->post($baseUrl . $endpointPath);
 
             $result = $response->json();
             Log::info('[DANA HTTP] Response Received:', ['result' => $result]);
 
-            // --- 9. HANDLING RESPON ---
+            // --- 9. HANDLE RESPONSE ---
             $danaResultInfo = $result['response']['body']['resultInfo'] ?? [];
             $danaStatus     = $danaResultInfo['resultStatus'] ?? 'F';
             $danaMsg        = $danaResultInfo['resultMsg'] ?? 'Unknown Error';
@@ -519,27 +515,25 @@ public function index()
     }
 
     /**
-     * PRIVATE HELPER SIGNATURE (Sama persis dengan MemberAuthController)
+     * PRIVATE HELPER: RSA SIGNATURE
      */
     private function generateSignature($stringToSign) 
     {
         $privateKeyStr = config('services.dana.private_key');
         
-        // Handle jika key berupa path file atau string langsung
         if (file_exists($privateKeyStr)) {
             $privateKeyContent = file_get_contents($privateKeyStr);
         } else {
             $privateKeyContent = $privateKeyStr;
         }
 
-        // Format PEM jika perlu (agar openssl bisa baca)
         if (!Str::contains($privateKeyContent, 'BEGIN PRIVATE KEY')) {
             $privateKeyContent = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($privateKeyContent, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
         }
 
         $binarySignature = "";
         
-        // Sign menggunakan OpenSSL
+        // Gunakan OPENSSL_ALGO_SHA256
         if (!openssl_sign($stringToSign, $binarySignature, $privateKeyContent, OPENSSL_ALGO_SHA256)) {
             throw new \Exception("Gagal generate signature OpenSSL.");
         }
