@@ -59,7 +59,7 @@
                 Rp {{ number_format($merchantBalance ?? 0, 0, ',', '.') }}
             </h3>
             {{-- Perbaikan Rute: Pastikan menggunakan member.dana.checkMerchantBalance --}}
-            <form action="{{ route('member.dana.checkMerchantBalance') }}" method="POST" class="mt-2">
+            <form action="{{ route('dana.checkMerchantBalance') }}" method="POST" class="mt-2">
                 @csrf
                 <input type="hidden" name="affiliate_id" value="11">
                 <button type="submit" class="text-[9px] font-black text-blue-600 uppercase flex items-center gap-1 hover:text-blue-800 transition">
