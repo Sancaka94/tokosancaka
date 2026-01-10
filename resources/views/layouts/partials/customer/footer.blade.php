@@ -1,5 +1,5 @@
 {{-- ✅ DIPINDAHKAN: Footer sekarang menjadi bagian dari kolom konten utama --}}
-            <footer class="bg-white text-gray-600 body-font border-t border-gray-200">
+
                 <div class="container px-5 py-4 mx-auto flex items-center sm:flex-row flex-col">
                     <a class="flex title-font font-medium items-center md:justify-start justify-center text-gray-900">
                          <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Logo Sancaka Express" class="w-8 h-8">
@@ -28,4 +28,4 @@
                         </a>
                     </span>
                 </div>
-            </footer>
+            
