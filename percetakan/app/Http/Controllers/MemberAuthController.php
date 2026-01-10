@@ -656,8 +656,8 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     $tglDaftar = date('Ymd', strtotime($aff->created_at)); // Contoh: 20260104
 
     // 2. Susun Customer ID (ID-HP-TglDaftar)
-    // Contoh Hasil: 1108574580880920260104
-    $customId = $affId . $whatsapp . $tglDaftar;
+    // Contoh Hasil: 11-085745808809-20260104
+    $customId = $affId . "-" . $whatsapp . "-" . $tglDaftar;
 
     // 3. Pastikan tidak lebih dari 32 karakter (Aturan DANA)
     $customId = substr($customId, 0, 32);
@@ -693,30 +693,31 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     // --- [BODY: HARUS SESUAI DOKUMEN BOS] ---
     // Menyertakan feeAmount karena statusnya Required di dokumen terbaru
     $body = [
-        "partnerReferenceNo" => $partnerRef,
-        "customerNumber"     => "620000000000",
-        "amount" => [
-            "value"    => $valStr,
-            "currency" => "IDR"
+    "partnerReferenceNo" => $partnerRef, //
+    "customerNumber"     => "620000000000", // Wajib literal
+    "amount" => [
+        "value"    => number_format((float)$request->amount, 2, '.', ''), // Wajib .00
+        "currency" => "IDR"
+    ],
+    "feeAmount" => [
+        "value"    => "0.00", // Wajib ada
+        "currency" => "IDR"
+    ],
+    "transactionDate" => $timestamp,
+    "sessionId"       => $finalSession, // 13 Karakter
+    "categoryId"      => "6",
+    "notes"           => "Topup Sancaka Aff " . $aff->id,
+    "additionalInfo"  => [
+        "extendInfo"  => [
+            "memo" => "topup order memo" // Kirim sebagai array
         ],
-        "feeAmount" => [
-            "value"    => "0.00",
-            "currency" => "IDR"
-        ],
-        "transactionDate" => $timestamp,
-        "sessionId"       => $finalSession,
-        "categoryId"      => "6",
-        "notes"           => "Topup Sancaka",
-        "additionalInfo"  => [
-            "extendInfo"         => json_encode(["memo" => "topup order memo"]), // Format JSON String
-            "accountType"        => "NAME_DEPOSIT",
-            "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE", // Required
-            "externalDivisionId" => "", // Kosongkan jika bukan sub-merchant
-            "chargeTarget"       => "MERCHANT", // Gunakan MERCHANT sesuai profil Anda
-            // Customer ID hasil gabungan ID, No HP, dan Tgl Daftar
-            "customerId"         => $customId
-        ]
-    ];
+        "accountType" => "NAME_DEPOSIT",
+        "fundType"    => "AGENT_TOPUP_FOR_USER_SETTLE", // Required
+        "chargeTarget"=> "MERCHANT",
+        // Gunakan pemisah agar terbaca sebagai string valid
+        "customerId"  => $customId
+    ]
+];
 
     try {
         // --- [LOG 3] SIGNATURE 1 PINTU ---
