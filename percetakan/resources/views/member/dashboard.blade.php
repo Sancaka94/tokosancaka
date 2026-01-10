@@ -66,6 +66,25 @@
                 </button>
             </div>
 
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="bg-amber-500 p-2 rounded-lg text-white">
+                        <i class="fas fa-vault"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-amber-800 uppercase leading-none">Saldo Deposit Sancaka (Merchant)</p>
+                        <p class="text-lg font-black text-amber-900 mt-1">Rp {{ number_format($member->dana_merchant_balance ?? 0, 0, ',', '.') }}</p>
+                    </div>
+                </div>
+                <form action="{{ route('dana.checkMerchantBalance') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="affiliate_id" value="{{ $member->id }}">
+                    <button type="submit" class="bg-white p-2 text-amber-600 border border-amber-200 rounded-lg hover:bg-amber-100 transition shadow-sm">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </form>
+            </div>
+
             {{-- DANA QUICK ACTIONS --}}
             <div class="flex gap-2">
                 <form action="{{ route('dana.startBinding') }}" method="POST" class="flex-1">

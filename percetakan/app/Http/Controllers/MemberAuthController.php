@@ -908,16 +908,18 @@ public function bankAccountInquiry(Request $request)
     if (!$aff) return back()->with('error', 'Affiliate tidak ditemukan.');
 
     // Sanitasi Nomor HP Merchant (Format 628xxx)
-    $merchantPhone = preg_replace('/[^0-9]/', '', config('services.dana.merchant_phone'));
+    // $merchantPhone = preg_replace('/[^0-9]/', '', config('services.dana.merchant_phone'));
 
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/emoney/bank-account-inquiry.htm';
     $partnerRef = 'BNK' . time() . Str::random(5);
+    $customerNumber = preg_replace('/[^0-9]/', '', $aff->whatsapp);
+    if (substr($customerNumber, 0, 1) === '0') $customerNumber = '62' . substr($customerNumber, 1);
 
     // --- [BODY] SESUAI DOKUMEN SNAP ---
     $body = [
         "partnerReferenceNo" => $partnerRef, // Unique per trx
-        "customerNumber"     => $merchantPhone, // Nomor HP Bisnis
+        "customerNumber"     => $customerNumber, // Nomor HP Bisnis
         "beneficiaryAccountNumber" => $request->account_no, // Rekening Tujuan
         "amount" => [
             "value"    => number_format((float)$request->amount, 2, '.', ''), // Include cents
@@ -983,6 +985,86 @@ public function bankAccountInquiry(Request $request)
 
     } catch (\Exception $e) {
         Log::error('[DANA BANK INQUIRY] Exception!', ['msg' => $e->getMessage()]);
+        return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+    }
+}
+
+public function checkMerchantBalance(Request $request)
+{
+    // --- [LOG 1] START PROCESS ---
+    Log::info('[DANA MERCHANT BALANCE] Memulai pengecekan saldo deposit merchant...', [
+        'affiliate_id' => $request->affiliate_id,
+        'merchant_id' => config('services.dana.merchant_id')
+    ]);
+
+    $timestamp = now('Asia/Jakarta')->toIso8601String();
+    $path = '/dana/merchant/queryMerchantResource.htm';
+    $reqMsgId = (string) Str::uuid(); // Unique UUID
+
+    // --- [BODY] SESUAI DOKUMEN OPEN API v2.0 ---
+    $payload = [
+        "request" => [
+            "head" => [
+                "version"      => "2.0", // Required
+                "function"     => "dana.merchant.queryMerchantResource", // Required
+                "clientId"     => config('services.dana.x_partner_id'), // Required
+                "clientSecret" => config('services.dana.client_secret'), // Required
+                "reqTime"      => $timestamp, // Required
+                "reqMsgId"     => $reqMsgId, // Required
+                "reserve"      => "{}" // Required
+            ],
+            "body" => [
+                "requestMerchantId" => config('services.dana.merchant_id'), // Required
+                "merchantResourceInfoList" => [
+                    "MERCHANT_DEPOSIT_BALANCE" // Khusus saldo disbursement
+                ]
+            ]
+        ]
+    ];
+
+    // --- [SECURITY] SIGNATURE OPEN API ---
+    // Gunakan payload['request'] untuk generate signature
+    $jsonToSign = json_encode($payload['request'], JSON_UNESCAPED_SLASHES);
+    $signature = $this->generateSignature($jsonToSign);
+    $payload['signature'] = $signature;
+
+    try {
+        // --- [LOG 2] SENDING REQUEST ---
+        Log::info('[DANA MERCHANT BALANCE] Mengirim Request ke DANA Open API', ['payload' => $payload]);
+
+        $response = Http::post('https://api.sandbox.dana.id' . $path, $payload);
+        $res = $response->json();
+
+        // --- [LOG 3] RESPONSE RECEIVED ---
+        Log::info('[DANA MERCHANT BALANCE] Respon Diterima', ['result' => $res]);
+
+        $resultInfo = $res['response']['body']['resultInfo'] ?? null;
+
+        if ($resultInfo && $resultInfo['resultStatus'] === 'S') {
+            // SUCCESS
+            $resource = $res['response']['body']['merchantResourceInformations'][0];
+            $value = json_decode($resource['value'], true); // Value dikembalikan dalam bentuk string JSON
+            
+            $amount = $value['amount']; // Nilai saldo
+
+            // Simpan ke database
+            DB::table('affiliates')->where('id', $request->affiliate_id)->update([
+                'dana_merchant_balance' => $amount,
+                'updated_at' => now()
+            ]);
+
+            return back()->with('success', '✅ Saldo Deposit Merchant: Rp ' . number_format($amount, 0, ',', '.'));
+        } else {
+            // FAILURE / UNKNOWN
+            $errorCode = $resultInfo['resultCode'] ?? 'UNKNOWN_ERROR';
+            $errorMsg = $resultInfo['resultMsg'] ?? 'Gagal mengambil data saldo';
+            
+            Log::error('[DANA MERCHANT BALANCE] Gagal!', ['code' => $errorCode, 'msg' => $errorMsg]);
+            return back()->with('error', '❌ ' . $errorMsg);
+        }
+
+    } catch (\Exception $e) {
+        Log::error('[DANA MERCHANT BALANCE] Exception!', ['msg' => $e->getMessage()]);
         return back()->with('error', 'Sistem Error: ' . $e->getMessage());
     }
 }
