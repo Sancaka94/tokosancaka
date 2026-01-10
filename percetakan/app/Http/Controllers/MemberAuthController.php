@@ -907,21 +907,22 @@ public function bankAccountInquiry(Request $request)
     $partnerRef = 'BNK' . time() . Str::random(5);
 
     $body = [
-        "partnerReferenceNo" => $partnerRef,
-        "customerNumber"     => $customerNumber, // Mengirim DNID
-        "beneficiaryAccountNumber" => $request->account_no,
-        "amount" => [
-            "value"    => number_format((float)$request->amount, 2, '.', ''),
-            "currency" => "IDR"
-        ],
-        "additionalInfo" => [
-            "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-            "chargeTarget"           => "MERCHANT",
-            "beneficiaryBankCode"    => $request->bank_code,
-            "beneficiaryAccountName" => $request->account_name ?? "",
-            "accountType"            => "SETTLEMENT_ACCOUNT"
-        ]
-    ];
+    "partnerReferenceNo" => "BNK" . time(),
+    "customerNumber"     => "6285745808809", // Tetap pakai No HP atau DNID085745808809 (tanpa spasi)
+    "beneficiaryAccountNumber" => $request->account_no,
+    "amount" => [
+        "value"    => number_format((float)$request->amount, 2, '.', ''),
+        "currency" => "IDR"
+    ],
+    "additionalInfo" => [
+        "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
+        "externalDivisionId"     => "SANCAKA216620080014040009735", // AMBIL DARI PORTAL
+        "chargeTarget"           => "DIVISION", // WAJIB DIVISION jika ada ExternalDivisionId
+        "beneficiaryBankCode"    => $request->bank_code,
+        "beneficiaryAccountName" => $request->account_name ?? "",
+        "accountType"            => "SETTLEMENT_ACCOUNT"
+    ]
+];
 
     // --- [SECURITY] SIGNATURE GENERATION ---
     $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
