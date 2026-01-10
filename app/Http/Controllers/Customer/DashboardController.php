@@ -294,9 +294,9 @@ public function index()
         return view('customer.merchant.create-shop');
     }
 
-    public function storeShop(Request $request)
+    public function storeShop(Request $request, DanaSignatureService $danaService)
     {
-        Log::info('[DANA CREATE SHOP] 1. Start Process (Merchant API v2.0)', ['user_id' => auth()->id()]);
+        Log::info('[DANA CREATE SHOP] 1. Start Process', ['user_id' => auth()->id()]);
 
         // 1. VALIDASI
         $request->validate([
@@ -319,9 +319,64 @@ public function index()
             $base64Logo = base64_encode(file_get_contents($request->file('shop_logo')->getRealPath()));
             $base64Doc  = base64_encode(file_get_contents($request->file('business_doc_file')->getRealPath()));
 
-            // --- 3. CONFIG ---
-            // --- 3. CONFIG & DEFAULTS ---
-            // --- 3. CONFIG & SMART DATA FORMATTING ---
+            // --- 3. SMART DATA FORMATTING (ADDRESS FIX) ---
+            
+            // Helper: Auto-Correct Nama Kota (Ngawi -> Kab. Ngawi)
+            $formatCity = function($rawCity) {
+                $city = Str::title(trim($rawCity));
+                if (empty($city)) return '-';
+                // Jika sudah ada Kab/Kota, biarkan. Jika belum, tambah Kab.
+                if (!Str::startsWith($city, ['Kab.', 'Kota ', 'Kab ', 'Kota'])) {
+                    return 'Kab. ' . $city;
+                }
+                return $city;
+            };
+
+            // A. FIX SHOP ADDRESS
+            $fixedShopAddress = [
+                "country"     => "Indonesia",
+                "province"    => Str::title(trim($request->input('shopAddress.province'))),
+                "city"        => $formatCity($request->input('shopAddress.city')),
+                "area"        => Str::title(trim($request->input('shopAddress.area'))), // Kecamatan
+                "address1"    => $request->input('shopAddress.address1'),
+                "address2"    => "-", 
+                "postcode"    => $request->input('shopAddress.postcode'),
+                "subDistrict" => "-"  
+            ];
+
+            // B. FIX OWNER ADDRESS (ERROR "Area Can't Be Blank" SOLVED HERE)
+            $rawOwnerCity = $request->input('ownerAddress.city');
+            $rawOwnerArea = $request->input('ownerAddress.area'); // Kemungkinan null dari form
+
+            // Logic Fallback: Jika Kecamatan Owner kosong, pakai Kecamatan Toko
+            if (empty($rawOwnerArea)) {
+                $rawOwnerArea = $fixedShopAddress['area']; 
+            }
+
+            $fixedOwnerAddress = [
+                "country"     => "Indonesia",
+                "province"    => Str::title(trim($request->input('ownerAddress.province'))),
+                "city"        => $formatCity($rawOwnerCity),
+                "area"        => Str::title(trim($rawOwnerArea)), // <--- SUDAH TERISI
+                "address1"    => $request->input('ownerAddress.address1'),
+                "address2"    => "-", 
+                "postcode"    => $request->input('ownerAddress.postcode'),
+                "subDistrict" => "-"
+            ];
+
+            // C. FIX TAX ADDRESS
+            $fixedTaxAddress = [
+                "country"     => "Indonesia",
+                "province"    => $fixedShopAddress['province'],
+                "city"        => $fixedShopAddress['city'],
+                "area"        => $fixedShopAddress['area'], 
+                "address1"    => $request->input('taxAddress.address1') ?? $fixedShopAddress['address1'],
+                "address2"    => "-",
+                "postcode"    => $request->input('taxAddress.postcode') ?? $fixedShopAddress['postcode'],
+                "subDistrict" => "-"
+            ];
+
+            // --- 4. CONFIG & DEFAULTS ---
             $clientId     = config('services.dana.x_partner_id'); 
             $clientSecret = config('services.dana.client_secret');
             $baseUrl      = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
@@ -332,62 +387,10 @@ public function index()
             $reqTime  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $reqMsgId = (string) Str::uuid();
 
-            // Defaults
             $shopOwning  = $request->shopOwning ?? 'DIRECT_OWNED';
             $shopBizType = $request->shopBizType ?? 'ONLINE';
 
-            // [LOGIC PEMBERSIH KOTA OTOMATIS]
-            // Ambil input mentah, hilangkan spasi depan/belakang, jadikan Huruf Besar Awal
-            $rawCity = Str::title(trim($request->input('shopAddress.city'))); // contoh: "  ngawi " -> "Ngawi"
-            
-            if (Str::startsWith($rawCity, 'Kota ')) {
-                // Jika user ketik "Kota Madiun", biarkan
-                $fixedCity = $rawCity;
-            } elseif (Str::startsWith($rawCity, 'Kabupaten ')) {
-                // Jika user ketik "Kabupaten Ngawi" -> ubah jadi "Kab. Ngawi"
-                $fixedCity = Str::replaceFirst('Kabupaten', 'Kab.', $rawCity);
-            } elseif (Str::startsWith($rawCity, 'Kab ')) {
-                // Jika user ketik "Kab Ngawi" (kurang titik) -> ubah jadi "Kab. Ngawi"
-                $fixedCity = Str::replaceFirst('Kab ', 'Kab. ', $rawCity);
-            } elseif (Str::startsWith($rawCity, 'Kab.')) {
-                // Jika sudah "Kab. Ngawi", biarkan
-                $fixedCity = $rawCity;
-            } else {
-                // Jika user cuma ketik "Ngawi", "Madiun", "Solo" -> Tambahkan "Kab. "
-                // Asumsi mayoritas adalah Kabupaten.
-                $fixedCity = 'Kab. ' . $rawCity;
-            }
-
-            // [LOGIC PEMBERSIH PROVINSI]
-            // "jawa timur" -> "Jawa Timur"
-            $fixedProvince = Str::title(trim($request->input('shopAddress.province')));
-
-            // SUSUN ARRAY SHOP ADDRESS YANG SUDAH BERSIH (PAKAI INI KE DB & API)
-            $fixedShopAddress = [
-                "country"     => "Indonesia",
-                "province"    => $fixedProvince, 
-                "city"        => $fixedCity, // <--- HASIL AUTO-CORRECT
-                "area"        => $request->input('shopAddress.area'), 
-                "address1"    => $request->input('shopAddress.address1'),
-                "address2"    => "-", 
-                "postcode"    => $request->input('shopAddress.postcode'),
-                "subDistrict" => "-"  
-            ];
-
-            // FIX TAX ADDRESS (Copy dari Shop Address yang sudah bersih)
-            $rawTax = $request->input('taxAddress', []);
-            $fixTaxAddress = [
-                "country"     => "Indonesia",
-                "province"    => $rawTax['province'] ?? $fixedShopAddress['province'],
-                "city"        => $rawTax['city'] ?? $fixedShopAddress['city'], // <--- IKUT HASIL AUTO-CORRECT
-                "area"        => $request->input('shopAddress.area'), 
-                "address1"    => $rawTax['address1'] ?? $fixedShopAddress['address1'],
-                "address2"    => "-",
-                "postcode"    => $rawTax['postcode'] ?? $fixedShopAddress['postcode'],
-                "subDistrict" => "-"
-            ];
-
-            // --- 4. DB INSERT/UPDATE ---
+            // --- 5. DB UPDATE/INSERT ---
             $dbData = [
                 'user_id' => auth()->id(),
                 'merchant_id' => $request->merchantId,
@@ -400,19 +403,22 @@ public function index()
                 'shop_biz_type' => $shopBizType,
                 'loyalty' => $request->loyalty ?? 'true',
                 'lat' => $request->lat, 'ln' => $request->ln,
-                'shop_address' => json_encode($fixedShopAddress), // <--- GANTI INI
+                
+                // SIMPAN DATA YANG SUDAH DIBERSIHKAN
+                'shop_address' => json_encode($fixedShopAddress),
+                'owner_address' => json_encode($fixedOwnerAddress), // <--- FIXED
+                'tax_address' => json_encode($fixedTaxAddress),     // <--- FIXED
+                
                 'ext_info' => json_encode($request->extInfo),
                 'owner_first_name' => $request->input('ownerName.firstName'),
                 'owner_last_name' => $request->input('ownerName.lastName'),
                 'owner_phone' => $request->input('ownerPhoneNumber.mobileNo'),
                 'owner_id_type' => $request->ownerIdType,
                 'owner_id_no' => $request->ownerIdNo,
-                'owner_address' => json_encode($request->ownerAddress),
                 'business_entity' => $request->businessEntity,
                 'mcc_codes' => json_encode($request->mccCodes),
                 'brand_name' => $request->brandName,
                 'tax_no' => $request->taxNo,
-                'tax_address' => json_encode($fixTaxAddress),
                 'director_pics' => json_encode($request->directorPics ?? []),
                 'non_director_pics' => json_encode($request->nonDirectorPics ?? []),
                 'logo_path' => $logoPath,
@@ -433,7 +439,7 @@ public function index()
 
             Log::info("[DANA DB] ID: $shopIdLocal Saved.");
 
-            // --- 5. DATA REQUEST OBJECT ---
+            // --- 6. DATA REQUEST OBJECT ---
             $requestObj = [
                 "head" => [
                     "version"      => "2.0",
@@ -450,7 +456,12 @@ public function index()
                     "parentDivisionId" => $request->parentDivisionId,
                     "shopParentType"   => $request->shopParentType,
                     "mainName"         => $request->mainName,
-                    "shopAddress"      => $fixedShopAddress, // <--- GANTI INI 
+                    
+                    // ALAMAT YANG SUDAH VALID
+                    "shopAddress"      => $fixedShopAddress, 
+                    "ownerAddress"     => $fixedOwnerAddress, // <--- FIXED
+                    "taxAddress"       => $fixedTaxAddress,   // <--- FIXED
+                    
                     "shopDesc"         => $request->shopDesc ?? '-',
                     "externalShopId"   => $request->externalShopId,
                     "logoUrlMap"       => [ "PC_LOGO" => $base64Logo ],
@@ -459,7 +470,6 @@ public function index()
                     "ln"               => $request->ln,
                     "lat"              => $request->lat,
                     "loyalty"          => "true",
-                    "ownerAddress"     => $request->ownerAddress,
                     "ownerName"        => $request->ownerName,
                     "ownerPhoneNumber" => [
                         "mobileNo" => $request->input('ownerPhoneNumber.mobileNo'),
@@ -474,7 +484,6 @@ public function index()
                     "businessEntity"   => $request->businessEntity,
                     "shopOwning"       => $shopOwning, 
                     "shopBizType"      => $shopBizType, 
-                    "taxAddress"       => $fixTaxAddress, 
                     "businessDocs"     => [[
                         "docType" => ($request->businessEntity == 'individu') ? 'KTP' : 'SIUP',
                         "docId"   => $request->ownerIdNo,
@@ -487,30 +496,29 @@ public function index()
                 ]
             ];
 
-            // --- 6. SIGNATURE GENERATION (PERBAIKAN UTAMA) ---
-            
-            // 1. Kunci String JSON (Hanya object request)
-            // Ini sesuai logika checkMerchantBalance di MemberAuthController
+            // --- 7. SIGNATURE GENERATION ---
             $jsonRequestString = json_encode($requestObj, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $stringToSign = $jsonRequestString; // V2.0 Sign JSON Langsung
+
+            Log::info('[DANA SIGN] StringToSign Length: ' . strlen($stringToSign));
+
+            // Generate Signature (Manual Helper)
+            $privateKeyStr = config('services.dana.private_key');
+            if (file_exists($privateKeyStr)) $privateKeyStr = file_get_contents($privateKeyStr);
+            if (!Str::contains($privateKeyStr, 'BEGIN PRIVATE KEY')) {
+                $privateKeyStr = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($privateKeyStr, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
+            }
             
-            // 2. String to Sign = JSON MENTAH (Tanpa POST:PATH:HASH...)
-            // Untuk Merchant API v2.0, kita sign langsung JSON-nya
-            $stringToSign = $jsonRequestString;
+            $binarySignature = "";
+            if (!openssl_sign($stringToSign, $binarySignature, $privateKeyStr, OPENSSL_ALGO_SHA256)) {
+                throw new \Exception("Gagal sign OpenSSL");
+            }
+            $signatureString = base64_encode($binarySignature);
 
-            Log::info('[DANA SIGN] StringToSign (V2.0): ' . substr($stringToSign, 0, 50) . '...');
-
-            // 3. Generate Signature
-            $signatureString = $this->generateSignature($stringToSign);
-            
-            Log::info('[DANA SIGN] Result: ' . substr($signatureString, 0, 20) . '...');
-
-            // --- 7. FINAL PAYLOAD ---
-            // Gabung manual agar JSON yang dikirim = JSON yang disign
+            // --- 8. FINAL PAYLOAD & SEND ---
             $finalJsonString = '{"request":' . $jsonRequestString . ',"signature":"' . $signatureString . '"}';
-
             $endpointPath = '/dana/merchant/shop/createShop.htm';
 
-            // --- 8. SEND REQUEST ---
             Log::info('[DANA HTTP] Sending...');
 
             $response = Http::withHeaders([
