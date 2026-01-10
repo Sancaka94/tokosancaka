@@ -403,6 +403,8 @@ public function index()
             $reqMsgId = (string) Str::uuid();
 
             $shopOwning  = $request->shopOwning ?? 'DIRECT_OWNED';
+
+
             $shopBizType = $request->shopBizType ?? 'ONLINE';
 
             // [FIX MISSING PARAMS: USER_PROFILING]
@@ -707,12 +709,22 @@ public function index()
 
             // 2. DATA PREPARATION (SESUAI DOKUMENTASI)
             
+            // [FIX 1: PAKSA DEFAULT VALUE AGAR TIDAK NULL]
+            // Jika input kosong, pakai 'DIRECT_OWNED'. Jangan biarkan null.
+            $shopOwning = $request->input('shopOwning');
+            if (empty($shopOwning)) $shopOwning = 'DIRECT_OWNED';
+
+            $shopBizType = $request->input('shopBizType');
+            if (empty($shopBizType)) $shopBizType = 'ONLINE';
+
+            $sizeType = $request->input('sizeType');
+            if (empty($sizeType)) $sizeType = 'UMI';
+
+            // [FIX 2: DATA PREPARATION YANG RAPI]
             $formatCity = function($rawCity) {
                 $city = Str::title(trim($rawCity));
                 if (empty($city)) return '-';
-                if (!Str::startsWith($city, ['Kab.', 'Kota ', 'Kab ', 'Kota'])) {
-                    return 'Kab. ' . $city;
-                }
+                if (!Str::startsWith($city, ['Kab.', 'Kota ', 'Kab ', 'Kota'])) return 'Kab. ' . $city;
                 return $city;
             };
 
