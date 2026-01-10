@@ -245,6 +245,38 @@
                             <option value="QRIS_NON_DIGITAL">QRIS NON DIGITAL</option>
                         </select>
                     </div>
+
+                    {{-- TAMBAHAN BARU: Field Wajib DANA --}}
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Target Pasar (Profiling) <span class="text-red-500">*</span></label>
+                        <select name="extInfo[USER_PROFILING]" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
+                            <option value="B2C">B2C (Ke Konsumen)</option>
+                            <option value="B2B">B2B (Ke Bisnis Lain)</option>
+                            <option value="B2B2C">B2B2C (Campuran)</option>
+                        </select>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Rata-rata Nilai Transaksi <span class="text-red-500">*</span></label>
+                        <select name="extInfo[AVG_TICKET]" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
+                            <option value="0-10000">< Rp 10.000</option>
+                            <option value="10000-50000">Rp 10.000 - Rp 50.000</option>
+                            <option value="50000-100000">Rp 50.000 - Rp 100.000</option>
+                            <option value="100000-500000">Rp 100.000 - Rp 500.000</option>
+                            <option value=">500000">> Rp 500.000</option>
+                        </select>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Omzet Per Tahun <span class="text-red-500">*</span></label>
+                        <select name="extInfo[OMZET]" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
+                            <option value="<100JT">< Rp 100 Juta</option>
+                            <option value="100JT-500JT">Rp 100 Juta - Rp 500 Juta</option>
+                            <option value="500JT-2M">Rp 500 Juta - Rp 2 Milyar</option>
+                            <option value=">2M">> Rp 2 Milyar</option>
+                        </select>
+                    </div>
+                    
                 </div>
             </div>
         </div>

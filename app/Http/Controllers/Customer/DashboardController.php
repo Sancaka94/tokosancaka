@@ -390,6 +390,15 @@ public function index()
             $shopOwning  = $request->shopOwning ?? 'DIRECT_OWNED';
             $shopBizType = $request->shopBizType ?? 'ONLINE';
 
+            // [FIX MISSING PARAMS: USER_PROFILING]
+            // Kita gabungkan input dari form dengan parameter wajib DANA yang kurang
+            $rawExtInfo = $request->input('extInfo', []);
+            $fixedExtInfo = array_merge($rawExtInfo, [
+                'USER_PROFILING' => 'B2C',            // Wajib: Business to Consumer
+                'AVG_TICKET'     => '10000-50000',    // Wajib: Rata-rata transaksi
+                'OMZET'          => '100JT-500JT'     // Wajib: Omzet rata-rata
+            ]);
+
             // --- 5. DB UPDATE/INSERT ---
             $dbData = [
                 'user_id' => auth()->id(),
@@ -409,7 +418,7 @@ public function index()
                 'owner_address' => json_encode($fixedOwnerAddress), // <--- FIXED
                 'tax_address' => json_encode($fixedTaxAddress),     // <--- FIXED
                 
-                'ext_info' => json_encode($request->extInfo),
+                'ext_info' => json_encode($fixedExtInfo),
                 'owner_first_name' => $request->input('ownerName.firstName'),
                 'owner_last_name' => $request->input('ownerName.lastName'),
                 'owner_phone' => $request->input('ownerPhoneNumber.mobileNo'),
@@ -465,7 +474,7 @@ public function index()
                     "shopDesc"         => $request->shopDesc ?? '-',
                     "externalShopId"   => $request->externalShopId,
                     "logoUrlMap"       => [ "PC_LOGO" => $base64Logo ],
-                    "extInfo"          => $request->extInfo,
+                    "extInfo"          => $fixedExtInfo,
                     "sizeType"         => $request->sizeType,
                     "ln"               => $request->ln,
                     "lat"              => $request->lat,
