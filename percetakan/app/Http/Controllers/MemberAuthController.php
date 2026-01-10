@@ -693,28 +693,14 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     // --- [BODY: HARUS SESUAI DOKUMEN BOS] ---
     // Menyertakan feeAmount karena statusnya Required di dokumen terbaru
     $body = [
-    "partnerReferenceNo" => $partnerRef, //
-    "customerNumber"     => (string) $cleanPhone, // Wajib literal
+    "partnerReferenceNo" => $partnerRef, // Alphanumeric, <32 char
+    "customerNumber"     => $cleanPhone, // 08xxxx (sandbox)
     "amount" => [
-        "value"    => $valStr,
+        "value"    => (string) intval($amount), // TANPA desimal
         "currency" => "IDR"
-    ],
-    "feeAmount" => [
-        "value"    => "0.00", // Wajib ada
-        "currency" => "IDR"
-    ],
-    "transactionDate" => $timestamp,
-    "sessionId"       => $finalSession, // 13 Karakter
-    "categoryId"      => "6",
-    "notes"           => "Topup Sancaka Aff " . $aff->id,
-    "additionalInfo"  => [
-        // PAKAI INI SAJA (Standar Merchant Disbursement)
-        "accountType"  => "NAME_DEPOSIT",
-        "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
-        "chargeTarget" => "MERCHANT" // Ganti DIVISION ke MERCHANT
-        // externalDivisionId dan customerId DIHAPUS karena pemicu PARAM_ILLEGAL
     ]
 ];
+
 
     try {
         // --- [LOG 3] SIGNATURE 1 PINTU ---
