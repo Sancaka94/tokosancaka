@@ -899,8 +899,8 @@ public function bankAccountInquiry(Request $request)
     // Ambil data affiliate Admin (ID 11)
     $aff = DB::table('affiliates')->where('id', 11)->first();
     
-    // Gunakan DNID utuh dari database
-    $customerNumber = $aff->dana_user_name; // Hasil: "DNID 085745808809"
+    // HAPUS SPASI: Menjadi "DNID085745808809" agar sesuai standar identifier
+    $customerNumber = str_replace(' ', '', $aff->dana_user_name);
 
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/emoney/bank-account-inquiry.htm';
