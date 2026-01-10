@@ -320,6 +320,45 @@
                         </tbody>
                     </table>
                 </div>
+
+                    {{-- LINK PAGINATION --}}
+                <div class="px-4 py-4 bg-slate-50/50 border-t border-slate-100">
+                    <div class="flex flex-col gap-4">
+                        {{-- Info Halaman --}}
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">
+                            Menampilkan {{ $transactions->firstItem() }} - {{ $transactions->lastItem() }} 
+                            dari {{ $transactions->total() }} Transaksi
+                        </div>
+
+                        {{-- Tombol Navigasi Custom (Mobile Friendly) --}}
+                        <div class="flex justify-center items-center gap-2">
+                            @if ($transactions->onFirstPage())
+                                <span class="p-2 w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-300 cursor-not-allowed">
+                                    <i class="fas fa-chevron-left text-xs"></i>
+                                </span>
+                            @else
+                                <a href="{{ $transactions->previousPageUrl() }}" class="p-2 w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-blue-500 hover:text-white transition shadow-sm">
+                                    <i class="fas fa-chevron-left text-xs"></i>
+                                </a>
+                            @endif
+
+                            <div class="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-700 shadow-sm">
+                                Halaman {{ $transactions->currentPage() }}
+                            </div>
+
+                            @if ($transactions->hasMorePages())
+                                <a href="{{ $transactions->nextPageUrl() }}" class="p-2 w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-blue-500 hover:text-white transition shadow-sm">
+                                    <i class="fas fa-chevron-right text-xs"></i>
+                                </a>
+                            @else
+                                <span class="p-2 w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-300 cursor-not-allowed">
+                                    <i class="fas fa-chevron-right text-xs"></i>
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
             </div>
             <p class="text-[9px] text-slate-400 mt-4 px-1 italic text-right">
                 * Data ditarik otomatis dari tabel <b>dana_transactions</b>.

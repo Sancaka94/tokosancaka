@@ -108,7 +108,7 @@ class MemberAuthController extends Controller
         $query->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
     }
 
-    $transactions = $query->orderBy('created_at', 'desc')->get();
+    $transactions = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
 
     return view('member.dashboard', compact('member', 'orders', 'transactions'));
 }
