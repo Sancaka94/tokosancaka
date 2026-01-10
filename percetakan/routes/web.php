@@ -137,7 +137,7 @@ Route::middleware('auth')->group(function () {
     
     Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('orders.destroy');
 
-    Route::post('/check-merchant-balance', [DanaDashboardController::class, 'checkMerchantBalance'])->name('checkMerchantBalance');
+    Route::post('/check-merchant-balance', [DanaDashboardController::class, 'checkMerchantBalance'])->name('dana.checkMerchantBalance');
 
 
     // Daftar Produk & Form Tambah
