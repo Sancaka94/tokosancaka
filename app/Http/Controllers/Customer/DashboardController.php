@@ -329,20 +329,54 @@ public function index()
             $base64Logo = base64_encode(file_get_contents($request->file('shop_logo')->getRealPath()));
             $base64Doc  = base64_encode(file_get_contents($request->file('business_doc_file')->getRealPath()));
 
-            // --- 3. PERSIAPAN DB DATA (UPDATE OR INSERT) ---
+            // --- 3. PERSIAPAN CONFIG & DEFAULT VALUE (FIX PARAM_MISSING) ---
             
-            // Susun data dalam array agar rapi
+            // [FIX 1] AMBIL DARI CONFIG USER YANG BENAR
+            // Anda menggunakan 'x_partner_id' di config, bukan 'client_id'
+            $clientId     = config('services.dana.x_partner_id'); 
+            $clientSecret = config('services.dana.client_secret');
+            $baseUrl      = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
+            $baseUrl      = rtrim($baseUrl, '/'); // Hapus slash di akhir
+            
+            // Cek jika config kosong (Safety Check)
+            if (empty($clientId)) {
+                Log::error('[DANA CONFIG] x_partner_id KOSONG di .env! Menggunakan Fallback Sandbox.');
+                $clientId = '2014000014442'; // Fallback Sandbox ID
+            }
+
+            $reqTime  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $reqMsgId = (string) Str::uuid();
+
+            // [FIX 2] PARAM_MISSING: SHOP OWNING & BIZ TYPE
+            // Form Anda mengirim null jika select option tidak dipilih/default
+            $shopOwning  = $request->shopOwning ?? 'DIRECT_OWNED';
+            $shopBizType = $request->shopBizType ?? 'ONLINE';
+
+            // [FIX 3] PARAM_MISSING: TAX ADDRESS
+            // DANA menolak jika taxAddress tidak lengkap (butuh country, city, dll)
+            $rawTax = $request->input('taxAddress', []);
+            $fixTaxAddress = [
+                "country"     => "Indonesia",
+                "province"    => $rawTax['province'] ?? $request->input('shopAddress.province'),
+                "city"        => $rawTax['city'] ?? $request->input('shopAddress.city'),
+                "area"        => $request->input('shopAddress.area'), 
+                "address1"    => $rawTax['address1'] ?? $request->input('shopAddress.address1'),
+                "address2"    => "-",
+                "postcode"    => $rawTax['postcode'] ?? $request->input('shopAddress.postcode'),
+                "subDistrict" => "-"
+            ];
+
+            // --- 4. PERSIAPAN DB DATA (UPDATE OR INSERT) ---
             $dbData = [
                 'user_id' => auth()->id(),
                 'merchant_id' => $request->merchantId,
                 'parent_division_id' => $request->parentDivisionId,
                 'main_name' => $request->mainName,
-                // 'external_shop_id' -> Kita set nanti di logika insert
                 'shop_desc' => $request->shopDesc,
                 'shop_parent_type' => $request->shopParentType,
                 'size_type' => $request->sizeType,
-                'shop_owning' => $request->shopOwning,
-                'shop_biz_type' => $request->shopBizType,
+                'shop_owning' => $shopOwning,   // <--- VALUE FIXED
+                'shop_biz_type' => $shopBizType, // <--- VALUE FIXED
                 'loyalty' => $request->loyalty ?? 'true',
                 'lat' => $request->lat,
                 'ln' => $request->ln,
@@ -358,41 +392,32 @@ public function index()
                 'mcc_codes' => json_encode($request->mccCodes),
                 'brand_name' => $request->brandName,
                 'tax_no' => $request->taxNo,
-                'tax_address' => json_encode($request->taxAddress),
+                'tax_address' => json_encode($fixTaxAddress), // <--- VALUE FIXED
                 'director_pics' => json_encode($request->directorPics ?? []),
                 'non_director_pics' => json_encode($request->nonDirectorPics ?? []),
                 'logo_path' => $logoPath,
                 'doc_path' => $docPath,
-                'dana_status' => 'PENDING', // Reset status jadi PENDING saat update
+                'dana_status' => 'PENDING',
                 'updated_at' => now(),
             ];
 
-            // [LOGIC PENTING] Cek apakah data sudah ada?
+            // Cek Duplicate External Shop ID
             $existingShop = DB::table('dana_shops')
                 ->where('external_shop_id', $request->externalShopId)
                 ->first();
 
             if ($existingShop) {
-                // --- UPDATE (Jika Duplicate) ---
+                // UPDATE
                 DB::table('dana_shops')->where('id', $existingShop->id)->update($dbData);
                 $shopIdLocal = $existingShop->id;
-                Log::info("[DANA CREATE SHOP] 3. Data Diupdate (Overwrite). ID: $shopIdLocal");
+                Log::info("[DANA CREATE SHOP] 3. Data Diupdate. ID: $shopIdLocal");
             } else {
-                // --- INSERT (Jika Baru) ---
-                $dbData['external_shop_id'] = $request->externalShopId; // Tambahkan Key Unik
+                // INSERT
+                $dbData['external_shop_id'] = $request->externalShopId;
                 $dbData['created_at'] = now();
-                
                 $shopIdLocal = DB::table('dana_shops')->insertGetId($dbData);
                 Log::info("[DANA CREATE SHOP] 3. Data Baru Disimpan. ID: $shopIdLocal");
             }
-
-            // --- 4. PERSIAPAN API REQUEST ---
-            $reqTime = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-            $reqMsgId = (string) Str::uuid();
-            $clientId = config('services.dana.client_id');
-            $clientSecret = config('services.dana.client_secret');
-            $baseUrl = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
-            $baseUrl = rtrim($baseUrl, '/');
 
             // --- 5. SUSUN PAYLOAD API DANA ---
             $payload = [
@@ -400,7 +425,7 @@ public function index()
                     "head" => [
                         "version"      => "2.0",
                         "function"     => "dana.merchant.shop.createShop",
-                        "clientId"     => $clientId,
+                        "clientId"     => $clientId, // <--- AMBIL DARI x_partner_id CONFIG
                         "clientSecret" => $clientSecret,
                         "reqTime"      => $reqTime,
                         "reqMsgId"     => $reqMsgId,
@@ -434,8 +459,12 @@ public function index()
                         "posNumber"        => "0",
                         "mccCodes"         => $request->mccCodes,
                         "businessEntity"   => $request->businessEntity,
-                        "shopOwning"       => $request->shopOwning,
-                        "shopBizType"      => $request->shopBizType,
+                        
+                        // [FIXED VARIABLES]
+                        "shopOwning"       => $shopOwning, 
+                        "shopBizType"      => $shopBizType, 
+                        "taxAddress"       => $fixTaxAddress, 
+
                         "businessDocs"     => [
                             [
                                 "docType" => ($request->businessEntity == 'individu') ? 'KTP' : 'SIUP',
@@ -444,7 +473,6 @@ public function index()
                             ]
                         ],
                         "taxNo"            => $request->taxNo,
-                        "taxAddress"       => $request->taxAddress,
                         "brandName"        => $request->brandName,
                         "directorPics"     => $request->directorPics ?? [],
                         "nonDirectorPics"  => $request->nonDirectorPics ?? []
@@ -452,7 +480,7 @@ public function index()
                 ]
             ];
 
-            // Log Payload (Hidden Base64)
+            // Debug Payload (Hidden Base64)
             $debugPayload = $payload;
             $debugPayload['request']['body']['logoUrlMap']['PC_LOGO'] = 'HIDDEN';
             $debugPayload['request']['body']['businessDocs'][0]['docFile'] = 'HIDDEN';
@@ -465,7 +493,7 @@ public function index()
             $finalPayload = $payload;
             $finalPayload['signature'] = $signatureString;
 
-            Log::info('[DANA CREATE SHOP] 5. Sending Request...');
+            Log::info('[DANA CREATE SHOP] 5. Sending Request to: ' . $baseUrl . $endpointPath);
 
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
@@ -491,8 +519,7 @@ public function index()
                 ]);
                 DB::commit();
                 
-                return redirect()->route('customer.dashboard')->with('success', "Toko Berhasil Dibuat/Diupdate! Shop ID: $danaShopId");
-
+                return redirect()->route('customer.dashboard')->with('success', "Toko Berhasil Dibuat! Shop ID: $danaShopId");
             } else {
                 DB::table('dana_shops')->where('id', $shopIdLocal)->update([
                     'dana_status'       => 'FAILED',
@@ -506,7 +533,7 @@ public function index()
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('[DANA CREATE SHOP] ERROR', ['msg' => $e->getMessage()]);
+            Log::error('[DANA CREATE SHOP] ERROR', ['msg' => $e->getMessage(), 'line' => $e->getLine()]);
             return back()->withInput()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
         }
     }
