@@ -1,30 +1,17 @@
-{{--
-    File: resources/views/layouts/partials/customer/sidebar.blade.php
-    Fitur:
-    1. Mobile: Drawer (Klik toggle untuk buka/tutup).
-    2. Desktop: Mini Sidebar (Icon Only).
-    3. Desktop Interaction: Bisa KLIK tombol toggle (lock open) ATAU HOVER mouse (temporary open).
---}}
-
-<div x-data="{ isExpanded: false, isHovered: false }" class="h-full">
-
-    {{-- Overlay untuk Mobile --}}
-    <div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 z-[90] bg-blue-900 bg-opacity-50 transition-opacity lg:hidden" x-cloak></div>
-
-    <aside
-        {{-- Event Hover untuk Desktop --}}
+<aside
         @mouseenter="isHovered = true"
         @mouseleave="isHovered = false"
-        {{-- 
-            LOGIKA LEBAR:
-            - Mobile: Selalu w-64 (dikontrol transform translate).
-            - Desktop: Jika diklik (isExpanded) ATAU di-hover (isHovered) -> Lebar 64. Jika tidak -> Lebar 20 (Mini).
-        --}}
         :class="[
             sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in',
             (isExpanded || isHovered) ? 'w-64' : 'w-64 lg:w-20'
         ]"
-        class="fixed inset-y-0 left-0 z-[100] overflow-y-auto bg-blue-900 text-white transition-all duration-300 transform lg:translate-x-0 lg:static lg:inset-0 shadow-xl scrollbar-hide"
+        {{-- 
+           PERUBAHAN PENTING DI SINI:
+           1. 'h-full': Agar sidebar mengisi tinggi penuh container flex.
+           2. 'overflow-y-auto': Agar sidebar punya scroll sendiri jika isinya panjang.
+           3. 'flex-shrink-0': Mencegah sidebar menyusut/gepeng saat layar sempit.
+        --}}
+        class="fixed inset-y-0 left-0 z-[100] h-full flex-shrink-0 overflow-y-auto bg-blue-900 text-white transition-all duration-300 transform lg:translate-x-0 lg:static lg:inset-0 shadow-xl scrollbar-hide"
         x-cloak>
 
         {{-- Header Sidebar --}}
