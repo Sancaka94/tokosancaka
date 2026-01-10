@@ -1432,4 +1432,66 @@ public function handleDanaCallback(Request $request)
     }
 }
 
+/**
+     * Menghapus pesanan secara permanen.
+     */
+    public function destroy($id)
+    {
+        Log::info("================ START ORDER DESTROY ================");
+        Log::info("LOG LOG: Mencoba menghapus Order ID: {$id}");
+
+        DB::beginTransaction();
+
+        try {
+            // 1. Cari Order
+            $order = Order::with(['items', 'attachments'])->findOrFail($id);
+
+            // 2. Logika Pengembalian Stok (Opsional)
+            // Jika pesanan dibatalkan/dihapus sebelum selesai, stok dikembalikan
+            if (in_array($order->status, ['pending', 'processing'])) {
+                Log::info("LOG LOG: Mengembalikan stok untuk Order #{$order->order_number}");
+                foreach ($order->items as $item) {
+                    $product = Product::find($item->product_id);
+                    if ($product) {
+                        $product->increment('stock', $item->quantity);
+                        $product->decrement('sold', $item->quantity);
+                        
+                        // Update status stok jika sebelumnya habis
+                        if ($product->stock > 0) {
+                            $product->update(['stock_status' => 'available']);
+                        }
+                    }
+                }
+            }
+
+            // 3. Hapus Lampiran Fisik (File di Storage)
+            foreach ($order->attachments as $attachment) {
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($attachment->file_path)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($attachment->file_path);
+                    Log::info("LOG LOG: File dihapus: {$attachment->file_path}");
+                }
+            }
+
+            // 4. Hapus Data dari Database
+            // Karena menggunakan ON DELETE CASCADE (jika diset di migrasi) 
+            // atau dihapus manual jika tidak:
+            $order->items()->delete();
+            $order->attachments()->delete();
+            $order->delete();
+
+            DB::commit();
+            Log::info("LOG LOG: Order #{$order->order_number} berhasil dihapus permanen.");
+
+            return redirect()->route('orders.index')
+                ->with('success', 'Pesanan #' . $order->order_number . ' berhasil dihapus secara permanen.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("LOG LOG: Gagal menghapus Order ID: {$id}. Error: " . $e->getMessage());
+            
+            return redirect()->route('orders.index')
+                ->with('error', 'Gagal menghapus pesanan: ' . $e->getMessage());
+        }
+    }
+
 }
