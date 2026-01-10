@@ -690,13 +690,16 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     $partnerRef = (string) time() . Str::random(8);
     $valStr = number_format((float)$request->amount, 2, '.', '');
 
+    $value = (string) intval((float) $valStr);
+
+
     // --- [BODY: HARUS SESUAI DOKUMEN BOS] ---
     // Menyertakan feeAmount karena statusnya Required di dokumen terbaru
     $body = [
-    "partnerReferenceNo" => $partnerRef, // Alphanumeric, <32 char
-    "customerNumber"     => $cleanPhone, // 08xxxx (sandbox)
+    "partnerReferenceNo" => $partnerRef,
+    "customerNumber"     => $cleanPhone,
     "amount" => [
-        "value"    => (string) intval($amount), // TANPA desimal
+        "value"    => $value,
         "currency" => "IDR"
     ]
 ];
