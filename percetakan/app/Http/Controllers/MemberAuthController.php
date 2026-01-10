@@ -667,34 +667,34 @@ public function customerTopup(Request $request)
 
     Log::info('[DANA TOPUP] Phone Adjusted for API', ['original' => $rawPhone, 'fixed' => $cleanPhone]);
     
-    $timestamp = now('Asia/Jakarta')->toIso8601String();
+   
     $partnerRef = (string) time() . Str::random(8); // Sesuai partnerReferenceNo di dokumen
-    $valStr = number_format((float)$request->amount, 2, '.', '');
+    //$valStr = number_format((float)$request->amount, 2, '.', '');
 
     // --- [BODY: HARUS SESUAI DOKUMEN BOS] ---
+    $timestamp = now('Asia/Jakarta')->toIso8601String(); // Format: YYYY-MM-DDTHH:mm:ss+07:00
+    
     $body = [
-    "partnerReferenceNo" => $partnerRef,
-    "customerNumber"     => $cleanPhone,
-    "amount" => [
-        "value"    => $valStr,
-        "currency" => "IDR"
-    ],
-    "feeAmount" => [
-        "value"    => "0.00", // Di Sandbox real, fee biasanya 0.00
-        "currency" => "IDR"
-    ],
-    "transactionDate" => $timestamp,
-    "sessionId"       => (string) Str::uuid(),
-    "categoryId"      => "6",
-    "notes"           => "Topup Sancaka",
-    "additionalInfo"  => [
-        // PAKAI INI SAJA (Standar Merchant Disbursement)
-        "accountType"  => "NAME_DEPOSIT",
-        "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
-        "chargeTarget" => "MERCHANT" // Ganti DIVISION ke MERCHANT
-        // externalDivisionId dan customerId DIHAPUS karena pemicu PARAM_ILLEGAL
-    ]
-];
+        "partnerReferenceNo" => (string) Str::limit('REF' . time() . Str::random(10), 64, ''), // Max 64 char
+        "customerNumber"     => $cleanPhone, // Format 628xxx
+        "amount" => [
+            "value"    => number_format((float)$request->amount, 2, '.', ''), // Harus desimal .00
+            "currency" => "IDR"
+        ],
+        "feeAmount" => [
+            "value"    => "0.00", // WAJIB ADA (Required) menurut dokumen Anda
+            "currency" => "IDR"
+        ],
+        "transactionDate" => $timestamp,
+        "sessionId"       => (string) Str::limit(Session::getId(), 25, ''), // Max 25 char
+        "categoryId"      => "6", // Max 10 char
+        "notes"           => "Topup Sancaka POS",
+        "additionalInfo"  => [
+            "accountType"  => "NAME_DEPOSIT",
+            "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE", // WAJIB (Required)
+            "chargeTarget" => "MERCHANT" // Nilai: DIVISION, MERCHANT, atau null
+        ]
+    ];
 
     // --- [LOG 4] SIGNATURE & SECURITY ---
     $path = '/v1.0/emoney/topup.htm';
