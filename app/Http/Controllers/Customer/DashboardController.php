@@ -203,6 +203,18 @@ public function index()
 
         return view('customer.dashboard', $data);
     }
+
+    public function indexShop()
+    {
+        // Ambil semua toko milik user yang sedang login
+        $shops = DB::table('dana_shops')
+                    ->where('user_id', auth()->id())
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+
+        return view('customer.merchant.index', compact('shops'));
+    }
+    
     /**
      * Menyiapkan data untuk grafik pesanan 7 hari terakhir (Metode Efisien).
      */

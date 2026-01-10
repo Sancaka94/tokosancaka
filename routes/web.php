@@ -415,6 +415,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix
     // Routes Merchant DANA
     Route::get('/merchant/create-shop', [DashboardController::class, 'createShopForm'])->name('merchant.create');
     Route::post('/merchant/create-shop', [DashboardController::class, 'storeShop'])->name('merchant.store');
+    Route::get('/merchant/shops', [DashboardController::class, 'indexShop'])->name('customer.merchant.index');
 
 
     }); // Penutup Prefix Customer Shared

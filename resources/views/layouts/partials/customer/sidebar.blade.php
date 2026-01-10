@@ -279,6 +279,12 @@
                                 <i class="fas fa-id-card fa-fw w-4 mr-2 text-blue-400"></i> Daftar Merchant DANA
                             </a>
                             {{-- END MENU BARU --}}
+                            <a href="{{ route('customer.merchant.index') }}" 
+                            class="{{ request()->routeIs('customer.merchant.*') ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                <i class="fas fa-store mr-3 flex-shrink-0 h-6 w-6 {{ request()->routeIs('customer.merchant.*') ? 'text-white' : 'text-gray-400 group-hover:text-gray-300' }}"></i>
+                                
+                                Data Toko DANA
+                            </a>
                             <a href="{{ route('seller.doku.index') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('seller.doku.*') ? 'bg-gray-800 text-white' : '' }}">
                                 <i class="fas fa-wallet fa-fw w-4 mr-2"></i> Dompet Sancaka
                             </a>
