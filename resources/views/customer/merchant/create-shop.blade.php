@@ -63,13 +63,13 @@
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Merchant ID <span class="text-red-500">*</span></label>
                         {{-- Ini ID default/sistem, tidak diambil dari DB user --}}
-                        <input type="text" name="merchantId" value="216622222444445555555" readonly 
+                        <input type="text" name="merchantId" value="216620080014040009735" readonly 
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md bg-gray-100 cursor-not-allowed px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Parent Division ID</label>
-                        <input type="text" name="parentDivisionId" value="216622222444445555555" readonly 
+                        <input type="text" name="parentDivisionId" value="216620080014040009735" readonly 
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md bg-gray-100 cursor-not-allowed px-3 py-2 border">
                     </div>
 
@@ -276,7 +276,7 @@
                             <option value=">2M">> Rp 2 Milyar</option>
                         </select>
                     </div>
-                    
+
                 </div>
             </div>
         </div>
