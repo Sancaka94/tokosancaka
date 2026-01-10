@@ -111,6 +111,9 @@ use App\Http\Controllers\DetectionController;
 //Telegram Bot
 use App\Http\Controllers\TelegramPpobController;
 
+// Dashboard DANA Merchant
+use App\Http\Controllers\Customer\DashboardController;
+
 
 Route::any('/telegram-webhook', [TelegramPpobController::class, 'handle']);
 
