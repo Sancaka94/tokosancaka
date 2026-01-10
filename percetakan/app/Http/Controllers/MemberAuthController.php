@@ -635,12 +635,6 @@ private function sendWhatsApp($to, $message)
 
 public function customerTopup(Request $request, \App\Services\DanaSignatureService $danaService)
 {
-    // --- [LOG 1] START PROCESS ---
-    Log::info('[DANA TOPUP] --- MEMULAI PROSES TOPUP (1 PINTU) ---', [
-        'affiliate_id' => $request->affiliate_id,
-        'target_phone' => $request->phone,
-        'amount' => $request->amount,
-    ]);
 
     // Ambil Data Affiliate
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
@@ -649,9 +643,28 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
         return back()->with('error', 'Affiliate tidak terdaftar di sistem.');
     }
 
-    // --- [LOG 2] SANITASI NOMOR & NOMINAL ---
-    $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
-    if (substr($cleanPhone, 0, 1) === '0') { $cleanPhone = '62' . substr($cleanPhone, 1); }
+    // --- [LOG 1] START PROCESS ---
+    Log::info('[DANA TOPUP] --- MEMULAI PROSES TOPUP (1 PINTU) ---', [
+        'affiliate_id' => $request->affiliate_id,
+        'target_phone' => $request->phone,
+        'amount' => $request->amount,
+    ]);
+
+    // --- [LOG 2] SANITASI NOMOR HP (WAJIB 628xxx) ---
+    $rawPhone = $request->phone;
+    $cleanPhone = preg_replace('/[^0-9]/', '', $rawPhone); // Hapus karakter non-angka
+
+    if (substr($cleanPhone, 0, 2) === '62') {
+        // Sudah benar 62xxx
+    } elseif (substr($cleanPhone, 0, 1) === '0') {
+        // Jika 08xxx -> 628xxx
+        $cleanPhone = '62' . substr($cleanPhone, 1);
+    } elseif (substr($cleanPhone, 0, 1) === '8') {
+        // Jika 8xxx -> 628xxx (Kasus di log Anda)
+        $cleanPhone = '62' . $cleanPhone;
+    }
+
+    Log::info('[DANA TOPUP] Phone Fixed', ['original' => $rawPhone, 'fixed' => $cleanPhone]);
     
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/emoney/topup.htm';
