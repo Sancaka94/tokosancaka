@@ -246,9 +246,14 @@
                     <tr>
                         <th scope="col" class="px-4 py-3 font-extrabold text-center w-12">No</th>
                         <th scope="col" class="px-4 py-3 font-extrabold">Tanggal</th>
-                        <th scope="col" class="px-4 py-3 font-extrabold">Kategori</th>
+                        
+                        {{-- KOLOM BARU: KODE AKUN --}}
+                        <th scope="col" class="px-4 py-3 font-extrabold text-center">Kode Akun</th>
+                        
+                        {{-- DIUBAH: NAMA AKUN / KATEGORI --}}
+                        <th scope="col" class="px-4 py-3 font-extrabold">Nama Akun / Kategori</th>
+                        
                         <th scope="col" class="px-4 py-3 font-extrabold">Keterangan / Invoice</th>
-                        {{-- Kolom Keuangan dengan Background khusus agar menonjol --}}
                         <th scope="col" class="px-4 py-3 font-extrabold text-right text-blue-800 bg-blue-50 border-l border-blue-100">Omzet</th>
                         <th scope="col" class="px-4 py-3 font-extrabold text-right text-red-800 bg-red-50 border-l border-red-100">Modal</th>
                         <th scope="col" class="px-4 py-3 font-extrabold text-right text-green-800 bg-green-50 border-l border-green-100">Profit</th>
@@ -270,7 +275,25 @@
                             <div class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($item->tanggal)->format('H:i') }} WIB</div>
                         </td>
 
-                        {{-- KATEGORI BADGE --}}
+                        {{-- LOGIC MENCARI KODE AKUN --}}
+                        @php
+                            // Cari data akun di $allAccounts berdasarkan nama kategori/akun
+                            $matchedAccount = $allAccounts->firstWhere('nama_akun', $item->kategori);
+                            $kodeAkun = $matchedAccount ? $matchedAccount->kode_akun : '-';
+                        @endphp
+
+                        {{-- KOLOM KODE AKUN --}}
+                        <td class="px-4 py-3 text-center">
+                            @if($kodeAkun != '-')
+                                <span class="font-mono font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded text-xs">
+                                    {{ $kodeAkun }}
+                                </span>
+                            @else
+                                <span class="text-gray-300">-</span>
+                            @endif
+                        </td>
+
+                        {{-- KATEGORI / NAMA AKUN BADGE --}}
                         <td class="px-4 py-3">
                             @php
                                 $cat = strtolower($item->kategori);
@@ -360,7 +383,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-6 py-12 text-center text-gray-400">
+                        <td colspan="9" class="px-6 py-12 text-center text-gray-400">
                             <div class="flex flex-col items-center justify-center">
                                 <div class="bg-gray-100 p-4 rounded-full mb-3">
                                     <i class="fas fa-search-dollar text-3xl text-gray-300"></i>
@@ -376,7 +399,7 @@
                 {{-- FOOTER TABLE: SUBTOTAL HALAMAN INI --}}
                 <tfoot class="bg-gray-50 border-t-2 border-gray-300 font-bold text-xs">
                     <tr>
-                        <td colspan="4" class="px-4 py-3 text-right text-gray-600 uppercase tracking-wider">
+                        <td colspan="5" class="px-4 py-3 text-right text-gray-600 uppercase tracking-wider">
                             Subtotal (Halaman Ini):
                         </td>
                         <td class="px-4 py-3 text-right text-blue-800 bg-blue-50/50">
