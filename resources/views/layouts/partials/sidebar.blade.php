@@ -1,11 +1,6 @@
 {{--
     File: resources/views/layouts/partials/sidebar.blade.php
-    Deskripsi: Sidebar Fixed & Responsive.
-    
-    MODIFIKASI TERBARU:
-    1. Hover Menu diganti jadi MERAH (hover:bg-red-600).
-    2. Scrollbar MUNCUL di Mobile (HP) & Desktop Expanded.
-    3. Zoom 75% & Tinggi 133vh tetap ada.
+    Deskripsi: Sidebar Fixed & Responsive - Refactored & Polished.
 --}}
 
 <div x-data="{ sidebarOpen: false, isExpanded: false, isHovered: false }" class="h-full flex flex-col">
@@ -23,12 +18,9 @@
          x-transition:leave-end="opacity-0">
     </div>
 
-    {{-- 
-       ZOOM 75% applied here
-    --}}
+    {{-- Sidebar Container (Zoom 75%) --}}
     <aside id="main-sidebar" 
         style="zoom: 75%;"
-        {{-- Hover hanya aktif di layar besar (Desktop) --}}
         @mouseenter="if(window.innerWidth >= 1024) isHovered = true"
         @mouseleave="isHovered = false"
         :class="[
@@ -78,41 +70,44 @@
             </form>
         </div>
 
-        {{-- 
-            SIDEBAR MENU
-            PERBAIKAN SCROLLBAR MOBILE:
-            - Default: 'overflow-y-auto' (Agar di Mobile bisa scroll).
-            - Logic :class hanya menyembunyikan scrollbar SAAT Desktop Mini ('lg:overflow-hidden').
-        --}}
+        {{-- MENU NAVIGATION --}}
         <nav id="sidebar-nav" 
              class="flex-1 px-4 pb-4 space-y-1 overflow-x-hidden transition-all duration-300 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent"
              :class="(isExpanded || isHovered) ? '' : 'lg:overflow-hidden'">
 
+            {{-- ================= UTAMA ================= --}}
+            
             {{-- Dashboard --}}
             <a href="{{ route('admin.dashboard') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.dashboard') ? 'bg-red-700 text-white' : '' }}">
                 <i class="fa-solid fa-house-chimney fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Dashboard</span>
             </a>
 
+            {{-- Email Sancaka --}}
             <a href="{{ url('admin/email') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.index*') ? 'bg-red-700 text-white' : '' }}">
                 <i class="fa-solid fa-inbox fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Email Sancaka</span>
             </a>
         
+            {{-- Chat Customer --}}
             <a href="https://tokosancaka.com/admin/chat" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->is('admin/chat*') ? 'bg-red-700 text-white' : '' }}">
                 <i class="fa-solid fa-comment-dots fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Chat Customer</span>
             </a>
 
+            {{-- Data Pelanggan --}}
             <a href="{{ route('admin.pelanggan.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.pelanggan.*') ? 'bg-red-700 text-white' : '' }}">
                 <i class="fa-solid fa-users fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Data Pelanggan</span>
             </a>
 
+            {{-- Monitor Surat Jalan --}}
             <a href="{{ route('admin.spx_scans.monitor.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.spx_scans.monitor.index') ? 'bg-red-700 text-white' : '' }}">
                 <i class="fa-solid fa-truck fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Monitor Surat Jalan</span>
             </a>
+
+            {{-- ================= ADMIN & USER ================= --}}
 
             {{-- Pengguna & Role --}}
             <div>
@@ -143,17 +138,21 @@
                 </div>
             </div>
 
+            {{-- Wilayah --}}
             <a href="{{ route('admin.wilayah.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.wilayah.*') ? 'bg-red-700 text-white' : '' }}">
                 <i class="fa-solid fa-map-marked-alt fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Wilayah</span>
             </a>
 
+            {{-- Pencarian Kode Pos --}}
             <a href="{{ route('admin.kodepos.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.kodepos.*') ? 'bg-red-700 text-white' : '' }}">
                 <i class="fa-solid fa-magnifying-glass-location fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Pencarian Kode Pos</span>
             </a>
 
-            {{-- Marketplace --}}
+            {{-- ================= MARKETPLACE ================= --}}
+
+            {{-- Marketplace Dropdown --}}
             <div>
                 <button onclick="toggleMenu('marketplaceMenu')" 
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
@@ -188,7 +187,7 @@
                 </div>
             </div>
 
-            {{-- Pesanan --}}
+            {{-- Pesanan Dropdown --}}
             <div>
                 <button onclick="toggleMenu('menuPesanan')" 
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
@@ -222,6 +221,118 @@
                 </div>
             </div>
 
+            {{-- Produk Katalog --}}
+            <a href="{{ route('admin.marketplace.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.marketplace.*') ? 'bg-red-700 text-white' : '' }}">
+                <i class="fa-solid fa-store fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
+                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Produk Katalog</span>
+            </a>
+
+            {{-- ================= LOGISTIK & PPOB ================= --}}
+
+            {{-- Master Ekspedisi (Disejajarkan dengan Menu Utama) --}}
+            <a href="{{ route('admin.ekspedisi.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.ekspedisi.*') ? 'bg-red-700 text-white' : '' }}">
+                <i class="fas fa-truck-moving fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
+                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Master Ekspedisi</span>
+            </a>
+
+            {{-- Manajemen Kurir --}}
+            <div>
+                <button onclick="toggleMenu('menuKurir')" 
+                        @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
+                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('admin.couriers.*') ? 'bg-red-700 text-white' : '' }}">
+                    <span class="flex items-center">
+                        <i class="fa-solid fa-truck-fast fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
+                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Manajemen Kurir</span>
+                    </span>
+                    <i id="arrow-menuKurir" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="fa-solid fa-chevron-down w-4 h-4 transform transition-transform duration-200"></i>
+                </button>
+                <div id="menuKurir" class="submenu mt-1" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
+                    <ul class="pl-8 pr-2 py-1 space-y-1">
+                        <li><a href="{{ route('admin.couriers.create') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.couriers.create') ? 'text-white' : 'text-gray-400' }}">Tambah Kurir</a></li>
+                        <li><a href="{{ route('admin.couriers.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.couriers.index') ? 'text-white' : 'text-gray-400' }}">Daftar Kurir</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            {{-- PPOB --}}
+            <div>
+                <button onclick="toggleMenu('menuPpob')" 
+                        @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
+                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('admin.ppob.*') ? 'bg-red-700 text-white' : '' }}">
+                    <span class="flex items-center">
+                        <i class="fa-solid fa-mobile-screen-button fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
+                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">PPOB</span>
+                    </span>
+                    <i id="arrow-menuPpob" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="fa-solid fa-chevron-down w-4 h-4 transform transition-transform duration-200"></i>
+                </button>
+                <div id="menuPpob" class="submenu mt-1" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
+                    <ul class="pl-8 pr-2 py-1 space-y-1">
+                        <li><a href="{{ route('admin.ppob.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.ppob.index') ? 'text-white' : 'text-gray-400' }}">Produk PPOB</a></li>
+                        <li><a href="{{ route('admin.ppob.data.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.ppob.data.index') ? 'text-white' : 'text-gray-400' }}">Data Transaksi</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            {{-- ================= KEUANGAN ================= --}}
+
+            {{-- Laporan Keuangan --}}
+            <div>
+                <button onclick="toggleMenu('menuKeuangan')" 
+                        @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
+                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('admin.saldo.requests.*') || request()->routeIs('admin.keuangan.*') || request()->routeIs('admin.akuntansi.*') ? 'bg-red-700 text-white' : '' }}">
+                    <span class="flex items-center">
+                        <i class="fa-solid fa-chart-pie fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
+                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Laporan Keuangan</span>
+                    </span>
+                    <div :class="(isExpanded || isHovered) ? 'flex' : 'flex lg:hidden'" class="items-center ml-auto">
+                        <span id="menu-keuangan-badge" class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-orange-500 rounded-md mr-2 hidden">0</span>
+                        <i id="arrow-menuKeuangan" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="fa-solid fa-chevron-down w-4 h-4 transform transition-transform duration-200"></i>
+                    </div>
+                </button>
+                <div id="menuKeuangan" class="submenu mt-1" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
+                    <ul class="pl-8 pr-2 py-1 space-y-1">
+                        
+                        {{-- Jurnal & Akuntansi --}}
+                        <li>
+                            <a href="{{ route('admin.akuntansi.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.akuntansi.*') ? 'text-white' : 'text-gray-400' }}">
+                                <i class="fas fa-book-journal-whills mr-2 text-blue-400"></i> Jurnal & Akuntansi
+                            </a>
+                        </li>
+                        
+                        <li>
+                            <a href="{{ route('admin.saldo.requests.index') }}" class="sidebar-link flex justify-between items-center px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.saldo.requests.*') ? 'text-white' : 'text-gray-400' }}">
+                                <span>Permintaan Saldo</span>
+                                <span id="saldo-requests-badge" class="inline-flex items-center justify-center px-2 text-xs font-bold text-white bg-orange-500 rounded-md hidden">0</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('admin.keuangan.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.keuangan.index') ? 'text-white' : 'text-gray-400' }}">
+                                Transaksi Keuangan
+                            </a>
+                        </li>
+
+                        {{-- Laba Rugi (Tahunan) - Disamakan Style-nya --}}
+                        <li>
+                            <a href="{{ route('admin.keuangan.laba_rugi') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.laba_rugi') ? 'text-white' : 'text-gray-400' }}">
+                                <i class="fas fa-file-invoice-dollar mr-2 text-green-400"></i> Laba Rugi (Tahunan)
+                            </a>
+                        </li>
+                        
+                        <li><a href="{{ route('admin.saldo.requests.history') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.saldo.requests.history') ? 'text-white' : 'text-gray-400' }}">Riwayat Top Up</a></li>
+                        <li><a href="{{ url('admin/wallet') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->is('admin/wallet*') ? 'text-white' : 'text-gray-400' }}">Dompet Pelanggan</a></li>
+                        <li><a href="{{ route('admin.laporan.pemasukan') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.pemasukan*') ? 'text-white' : 'text-gray-400' }}">Pemasukan</a></li>
+                        <li><a href="{{ route('admin.laporan.pengeluaran') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.pengeluaran*') ? 'text-white' : 'text-gray-400' }}">Pengeluaran</a></li>
+                        <li><a href="{{ route('admin.laporan.labaRugi') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.labaRugi*') ? 'text-white' : 'text-gray-400' }}">Laba Rugi</a></li>
+                        <li><a href="{{ route('admin.coa.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.coa.*') ? 'text-white' : 'text-gray-400' }}">Manajemen Akun (COA)</a></li>
+                        <li><a href="{{ route('admin.laporan.neracaSaldo') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.neracaSaldo') ? 'text-white' : 'text-gray-400' }}">Neraca Saldo</a></li>
+                        <li><a href="{{ route('admin.laporan.neraca') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.neraca') ? 'text-white' : 'text-gray-400' }}">Neraca</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            {{-- ================= KOMUNIKASI & BLOG ================= --}}
+
+            {{-- Buku Alamat --}}
             <a href="{{ route('admin.kontak.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.kontak.*') ? 'bg-red-700 text-white' : '' }}">
                 <i class="fa-solid fa-address-book fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Buku Alamat</span>
@@ -246,11 +357,6 @@
                 </div>
             </div>
 
-            <a href="{{ route('admin.marketplace.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.marketplace.*') ? 'bg-red-700 text-white' : '' }}">
-                <i class="fa-solid fa-store fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
-                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Produk Katalog</span>
-            </a>
-
             {{-- Blog --}}
             <div>
                 <button onclick="toggleMenu('menuBlog')" 
@@ -272,109 +378,7 @@
                 </div>
             </div>
 
-
-                        <li>
-                            <a href="{{ route('admin.ekspedisi.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors {{ request()->routeIs('admin.ekspedisi.*') ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                                <i class="fas fa-truck-moving w-5 text-center"></i>
-                                <span class="font-medium text-sm">Master Ekspedisi</span>
-                            </a>
-                        </li>
-
-            {{-- Manajemen Kurir --}}
-            <div>
-                <button onclick="toggleMenu('menuKurir')" 
-                        @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
-                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200">
-                    <span class="flex items-center">
-                        <i class="fa-solid fa-truck-fast fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
-                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Manajemen Kurir</span>
-                    </span>
-                    <i id="arrow-menuKurir" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="fa-solid fa-chevron-down w-4 h-4 transform transition-transform duration-200"></i>
-                </button>
-                <div id="menuKurir" class="submenu mt-1" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
-                    <ul class="pl-8 pr-2 py-1 space-y-1">
-                        <li><a href="{{ route('admin.couriers.create') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md">Tambah Kurir</a></li>
-                        <li><a href="{{ route('admin.couriers.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md">Daftar Kurir</a></li>
-                    </ul>
-                </div>
-            </div>
-
-            {{-- PPOB --}}
-            <div>
-                <button onclick="toggleMenu('menuPpob')" 
-                        @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
-                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('admin.ppob.*') ? 'bg-red-700 text-white' : '' }}">
-                    <span class="flex items-center">
-                        <i class="fa-solid fa-mobile-screen-button fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
-                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">PPOB</span>
-                    </span>
-                    <i id="arrow-menuPpob" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="fa-solid fa-chevron-down w-4 h-4 transform transition-transform duration-200"></i>
-                </button>
-                <div id="menuPpob" class="submenu mt-1" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
-                    <ul class="pl-8 pr-2 py-1 space-y-1">
-                        <li><a href="{{ route('admin.ppob.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.ppob.index') ? 'text-white' : 'text-gray-400' }}">Produk PPOB</a></li>
-                        <li><a href="{{ route('admin.ppob.data.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.ppob.data.index') ? 'text-white' : 'text-gray-400' }}">Data Transaksi</a></li>
-                    </ul>
-                </div>
-            </div>
-
-            {{-- Laporan Keuangan --}}
-            <div>
-                <button onclick="toggleMenu('menuKeuangan')" 
-                        @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
-                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('admin.saldo.requests.*') ? 'bg-red-700 text-white' : '' }}">
-                    <span class="flex items-center">
-                        <i class="fa-solid fa-chart-pie fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
-                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Laporan Keuangan</span>
-                    </span>
-                    <div :class="(isExpanded || isHovered) ? 'flex' : 'flex lg:hidden'" class="items-center ml-auto">
-                        <span id="menu-keuangan-badge" class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-orange-500 rounded-md mr-2 hidden">0</span>
-                        <i id="arrow-menuKeuangan" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="fa-solid fa-chevron-down w-4 h-4 transform transition-transform duration-200"></i>
-                    </div>
-                </button>
-                <div id="menuKeuangan" class="submenu mt-1" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
-                    <ul class="pl-8 pr-2 py-1 space-y-1">
-                        
-                        {{-- MENU BARU: JURNAL AKUNTANSI --}}
-                        <li>
-                            <a href="{{ route('admin.akuntansi.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.akuntansi.*') ? 'text-white' : 'text-gray-400' }}">
-                                <i class="fas fa-book-journal-whills mr-2 text-blue-400"></i> Jurnal & Akuntansi
-                            </a>
-                        </li>
-                        {{-- END MENU BARU --}}
-                        
-                        <li>
-                            <a href="{{ route('admin.saldo.requests.index') }}" class="sidebar-link flex justify-between items-center px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.saldo.requests.*') ? 'text-white' : 'text-gray-400' }}">
-                                <span>Permintaan Saldo</span>
-                                <span id="saldo-requests-badge" class="inline-flex items-center justify-center px-2 text-xs font-bold text-white bg-orange-500 rounded-md hidden">0</span>
-                            </a>
-                        </li>
-                        {{--  INI MENU BARU YANG DITAMBAHKAN  --}}
-                        <li>
-                            <a href="{{ route('admin.keuangan.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.keuangan.*') ? 'text-white' : 'text-gray-400' }}">
-                                Transaksi Keuangan
-                            </a>
-                        </li>
-
-                        {{-- MENU BARU: LAPORAN LABA RUGI --}}
-                        <li>
-                            <a href="{{ route('admin.keuangan.laba_rugi') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors {{ request()->routeIs('admin.laporan.laba_rugi') ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                                <i class="fas fa-file-invoice-dollar w-5 text-center"></i>
-                                <span class="font-medium text-sm">Laba Rugi (Tahunan)</span>
-                            </a>
-                        </li>
-                        {{--  AKHIR MENU BARU  --}}
-                        <li><a href="{{ route('admin.saldo.requests.history') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.saldo.requests.history') ? 'text-white' : 'text-gray-400' }}">Riwayat Top Up</a></li>
-                        <li><a href="{{ url('admin/wallet') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->is('admin/wallet*') ? 'text-white' : 'text-gray-400' }}">Dompet Pelanggan</a></li>
-                        <li><a href="{{ route('admin.laporan.pemasukan') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.pemasukan*') ? 'text-white' : 'text-gray-400' }}">Pemasukan</a></li>
-                        <li><a href="{{ route('admin.laporan.pengeluaran') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.pengeluaran*') ? 'text-white' : 'text-gray-400' }}">Pengeluaran</a></li>
-                        <li><a href="{{ route('admin.laporan.labaRugi') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.labaRugi*') ? 'text-white' : 'text-gray-400' }}">Laba Rugi</a></li>
-                        <li><a href="{{ route('admin.coa.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.coa.*') ? 'text-white' : 'text-gray-400' }}">Manajemen Akun (COA)</a></li>
-                        <li><a href="{{ route('admin.laporan.neracaSaldo') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.neracaSaldo') ? 'text-white' : 'text-gray-400' }}">Neraca Saldo</a></li>
-                        <li><a href="{{ route('admin.laporan.neraca') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.neraca') ? 'text-white' : 'text-gray-400' }}">Neraca</a></li>
-                    </ul>
-                </div>
-            </div>
+            {{-- ================= PENGATURAN ================= --}}
 
             {{-- Pengaturan (Utilitas) --}}
             <div>
@@ -389,9 +393,7 @@
                 </button>
                 <div id="menuUtilitas" class="submenu mt-1" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                     <ul class="pl-8 pr-2 py-1 space-y-1">
-                        <li><a href="{{ route('admin.logs.show') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.logs.show') ? 'text-red-600' : 'text-red-600' }}">Log Error</a></li>
-                        {{-- 3. MASTER EKSPEDISI (MENU BARU) --}}
-                        
+                        <li><a href="{{ route('admin.logs.show') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.logs.show') ? 'text-red-400' : 'text-red-400' }}">Log Error</a></li>
                         <li><a href="{{ route('admin.activity-log.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.activity-log.index') ? 'text-white' : 'text-gray-400' }}">Log Aktivitas</a></li>
                         <li><a href="{{ route('admin.settings.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.settings.index') ? 'text-white' : 'text-gray-400' }}">Pengaturan Aplikasi</a></li>
                         <li><a href="{{ route('admin.settings.api.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.settings.api.index') ? 'text-white' : 'text-gray-400' }}">Konfigurasi API</a></li>
@@ -405,6 +407,7 @@
 
         </nav>
 
+        {{-- LOGOUT BUTTON --}}
         <div class="mt-auto p-4 border-t border-gray-700 transition-all duration-300">
             <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200">
                 <i class="fa-solid fa-arrow-right-from-bracket fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
