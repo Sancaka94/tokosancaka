@@ -332,6 +332,13 @@
                                 <span id="saldo-requests-badge" class="inline-flex items-center justify-center px-2 text-xs font-bold text-white bg-orange-500 rounded-md hidden">0</span>
                             </a>
                         </li>
+                        {{--  INI MENU BARU YANG DITAMBAHKAN  --}}
+                        <li>
+                            <a href="{{ route('admin.keuangan.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.keuangan.*') ? 'text-white' : 'text-gray-400' }}">
+                                Transaksi Keuangan
+                            </a>
+                        </li>
+                        {{--  AKHIR MENU BARU  --}}
                         <li><a href="{{ route('admin.saldo.requests.history') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.saldo.requests.history') ? 'text-white' : 'text-gray-400' }}">Riwayat Top Up</a></li>
                         <li><a href="{{ url('admin/wallet') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->is('admin/wallet*') ? 'text-white' : 'text-gray-400' }}">Dompet Pelanggan</a></li>
                         <li><a href="{{ route('admin.laporan.pemasukan') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.pemasukan*') ? 'text-white' : 'text-gray-400' }}">Pemasukan</a></li>
