@@ -614,7 +614,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
     // 1. Route Export (Wajib ditaruh DI ATAS resource)
     Route::get('keuangan/export-excel', [KeuanganController::class, 'exportExcel'])->name('keuangan.export_excel');
-    Route::get('keuangan/export-pdf', [KeuanganController::class, 'exportPdf'])->name('keuangan.export_pdf');gi
+    Route::get('keuangan/export-pdf', [KeuanganController::class, 'exportPdf'])->name('keuangan.export_pdf');
 
     // DATA LAPORAN KEUANGAN
     Route::resource('keuangan', KeuanganController::class)->except(['create', 'show', 'edit']);
