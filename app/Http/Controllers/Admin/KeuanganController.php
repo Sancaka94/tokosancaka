@@ -12,10 +12,11 @@ class KeuanganController extends Controller
     public function index(Request $request)
     {
         // ==================================================================================
-        // 1. SIAPKAN QUERY DASAR
+        // 1. DEFINISI QUERY DASAR (SELECT DATA)
         // ==================================================================================
 
         // A. Manual Query
+        // Data manual dianggap selalu sah/valid (Real)
         $manualQuery = DB::table('keuangans')
             ->select(
                 'id',
@@ -30,8 +31,9 @@ class KeuanganController extends Controller
             );
 
         // B. PPOB Query
+        // Filter: Hanya Status Sukses/Lunas/Berhasil
         $ppobQuery = DB::table('ppob_transactions')
-            ->where('status', 'Success')
+            ->whereIn('status', ['Success', 'Lunas', 'Berhasil', 'success'])
             ->select(
                 'id',
                 DB::raw('DATE(created_at) as tanggal'),
@@ -44,16 +46,16 @@ class KeuanganController extends Controller
                 DB::raw('50 as profit')           
             );
 
-        // C. Ekspedisi Query
+        // C. Ekspedisi Query (Pesanan)
+        // Filter: Hanya Status Selesai/Terkirim/Lunas
         $ekspedisiQuery = DB::table('Pesanan')
-            ->where('status_pesanan', 'Selesai')
+            ->whereIn('status_pesanan', ['Selesai', 'Terkirim', 'Lunas', 'Delivered', 'Success', 'success'])
             ->select(
                 DB::raw("id_pesanan as id"),
                 DB::raw('DATE(tanggal_pesanan) as tanggal'),
                 DB::raw("'Pemasukan' as jenis"),
                 DB::raw("'Ekspedisi' as kategori"),
                 'nomor_invoice',
-                // Gabungkan Resi dan Nama Kurir (dari string regular-jne-...) agar mudah dicari
                 DB::raw("CONCAT(resi, ' (', expedition, ')') as keterangan"),
                 'price as omzet',
                 DB::raw('(shipping_cost + insurance_cost) as modal'),
@@ -61,9 +63,10 @@ class KeuanganController extends Controller
             );
 
         // D. Top Up Saldo Query
+        // Filter: Hanya Status Sukses/Paid
         $topupQuery = DB::table('transactions')
-            ->where('status', 'success')
             ->where('type', 'topup')
+            ->whereIn('status', ['success', 'paid', 'lunas', 'berhasil'])
             ->select(
                 'id',
                 DB::raw('DATE(created_at) as tanggal'),
@@ -77,8 +80,9 @@ class KeuanganController extends Controller
             );
 
         // E. Marketplace Query
+        // Filter: Hanya Status Selesai/Terkirim/Lunas (Pending/Batal TIDAK MASUK)
         $marketplaceQuery = DB::table('order_marketplace')
-            ->whereIn('status', ['completed', 'success', 'delivered', 'shipped']) 
+            ->whereIn('status', ['completed', 'success', 'delivered', 'selesai', 'terkirim', 'lunas']) 
             ->select(
                 'id',
                 DB::raw('DATE(created_at) as tanggal'),
@@ -92,73 +96,70 @@ class KeuanganController extends Controller
             );
 
         // ==================================================================================
-        // 2. LOGIKA PENCARIAN CERDAS (MAPPING KEYWORD)
+        // 2. LOGIKA PENCARIAN MENYELURUH (SEMUA KOLOM DATABASE)
         // ==================================================================================
         
         if ($request->filled('search')) {
-            $search = strtolower($request->search); // Ubah ke huruf kecil agar case-insensitive
+            $keyword = $request->search;
             
-            // --- 1. PENCARIAN MANUAL ---
-            $manualQuery->where(function($q) use ($search) {
-                $q->where('nomor_invoice', 'like', "%$search%")
-                  ->orWhere('keterangan', 'like', "%$search%")
-                  ->orWhere('kategori', 'like', "%$search%")
-                  ->orWhere('jenis', 'like', "%$search%");
+            // --- 1. SEARCH MANUAL ---
+            $manualQuery->where(function($q) use ($keyword) {
+                $q->where('nomor_invoice', 'like', "%$keyword%")
+                  ->orWhere('keterangan', 'like', "%$keyword%")
+                  ->orWhere('kategori', 'like', "%$keyword%")
+                  ->orWhere('jenis', 'like', "%$keyword%")
+                  ->orWhere('jumlah', 'like', "%$keyword%");
             });
 
-            // --- 2. PENCARIAN PPOB ---
-            $ppobQuery->where(function($q) use ($search) {
-                $q->where('order_id', 'like', "%$search%")
-                  ->orWhere('customer_no', 'like', "%$search%") // Cari No HP / ID Pelanggan
-                  ->orWhere('buyer_sku_code', 'like', "%$search%") // Cari Kode: PLN, PULSA
-                  ->orWhere('sn', 'like', "%$search%")
-                  // MAPPING: Jika user ketik "PPOB", "Pulsa", "Listrik", tampilkan data ini
-                  ->orWhereRaw("('PPOB' LIKE ? OR 'Pulsa' LIKE ? OR 'Listrik' LIKE ? OR 'Token' LIKE ?)", ["%$search%", "%$search%", "%$search%", "%$search%"]);
+            // --- 2. SEARCH PPOB ---
+            $ppobQuery->where(function($q) use ($keyword) {
+                $q->where('order_id', 'like', "%$keyword%")         
+                  ->orWhere('customer_no', 'like', "%$keyword%")    
+                  ->orWhere('buyer_sku_code', 'like', "%$keyword%") 
+                  ->orWhere('sn', 'like', "%$keyword%")             
+                  ->orWhere('message', 'like', "%$keyword%")        
+                  ->orWhere('desc', 'like', "%$keyword%")
+                  ->orWhereRaw("'PPOB' LIKE ?", ["%$keyword%"]);
             });
 
-            // --- 3. PENCARIAN EKSPEDISI (MAPPING KURIR) ---
-            $ekspedisiQuery->where(function($q) use ($search) {
-                $q->where('nomor_invoice', 'like', "%$search%")
-                  ->orWhere('resi', 'like', "%$search%")
-                  ->orWhere('resi_aktual', 'like', "%$search%")
-                  ->orWhere('sender_name', 'like', "%$search%")
-                  ->orWhere('receiver_name', 'like', "%$search%")
-                  ->orWhere('expedition', 'like', "%$search%") // Cari string asli: regular-jne-blabla
-                  
-                  // MAPPING CERDAS: 
-                  // Jika user ketik "JNE", "JNT", "Pos", "Lion", dll -> Cari di dalam kolom expedition
-                  ->orWhere(function($sub) use ($search) {
-                      // Daftar kata kunci kurir yang mungkin dicari user
-                      $couriers = ['jne', 'jnt', 'j&t', 'sicepat', 'anteraja', 'lion', 'pos', 'spx', 'ninja', 'idexpress', 'gojek', 'grab'];
-                      
-                      foreach ($couriers as $courier) {
-                          // Jika user mengetik salah satu nama kurir, cari di kolom expedition
-                          if (str_contains($search, $courier) || str_contains($courier, $search)) {
-                              $sub->orWhere('expedition', 'like', "%$courier%");
-                          }
-                      }
-                  })
-                  
-                  // MAPPING KATEGORI: Jika user ketik "Ekspedisi" atau "Pengiriman", tampilkan semua
-                  ->orWhereRaw("('Ekspedisi' LIKE ? OR 'Pengiriman' LIKE ? OR 'Kurir' LIKE ?)", ["%$search%", "%$search%", "%$search%"]);
+            // --- 3. SEARCH EKSPEDISI ---
+            $ekspedisiQuery->where(function($q) use ($keyword) {
+                $q->where('nomor_invoice', 'like', "%$keyword%")    
+                  ->orWhere('resi', 'like', "%$keyword%")           
+                  ->orWhere('resi_aktual', 'like', "%$keyword%")
+                  ->orWhere('expedition', 'like', "%$keyword%")     
+                  ->orWhere('service_type', 'like', "%$keyword%")   
+                  ->orWhere('sender_name', 'like', "%$keyword%")    
+                  ->orWhere('sender_phone', 'like', "%$keyword%")   
+                  ->orWhere('sender_address', 'like', "%$keyword%") 
+                  ->orWhere('receiver_name', 'like', "%$keyword%")  
+                  ->orWhere('receiver_phone', 'like', "%$keyword%") 
+                  ->orWhere('receiver_address', 'like', "%$keyword%") 
+                  ->orWhere('item_description', 'like', "%$keyword%") 
+                  ->orWhere('payment_method', 'like', "%$keyword%")
+                  ->orWhereRaw("'Ekspedisi' LIKE ?", ["%$keyword%"])
+                  ->orWhereRaw("'JNE' LIKE ?", ["%$keyword%"])
+                  ->orWhereRaw("'JNT' LIKE ?", ["%$keyword%"])
+                  ->orWhereRaw("'Lion' LIKE ?", ["%$keyword%"]);
             });
 
-            // --- 4. PENCARIAN TOP UP ---
-            $topupQuery->where(function($q) use ($search) {
-                $q->where('reference_id', 'like', "%$search%")
-                  ->orWhere('description', 'like', "%$search%") // "Top up saldo via..."
-                  // MAPPING: Jika user ketik "Topup", "Saldo", "Deposit"
-                  ->orWhereRaw("('Top Up Saldo' LIKE ? OR 'Deposit' LIKE ?)", ["%$search%", "%$search%"]);
+            // --- 4. SEARCH TOP UP ---
+            $topupQuery->where(function($q) use ($keyword) {
+                $q->where('reference_id', 'like', "%$keyword%")     
+                  ->orWhere('description', 'like', "%$keyword%")    
+                  ->orWhere('amount', 'like', "%$keyword%")         
+                  ->orWhere('status', 'like', "%$keyword%")
+                  ->orWhereRaw("'Top Up Saldo' LIKE ?", ["%$keyword%"]);
             });
 
-            // --- 5. PENCARIAN MARKETPLACE ---
-            $marketplaceQuery->where(function($q) use ($search) {
-                $q->where('invoice_number', 'like', "%$search%")
-                  ->orWhere('shipping_resi', 'like', "%$search%")
-                  ->orWhere('shipping_method', 'like', "%$search%")
-                  ->orWhere('shipping_address', 'like', "%$search%")
-                  // MAPPING: Jika user ketik "Marketplace", "Toko", "Online"
-                  ->orWhereRaw("('Marketplace' LIKE ? OR 'Toko' LIKE ?)", ["%$search%", "%$search%"]);
+            // --- 5. SEARCH MARKETPLACE ---
+            $marketplaceQuery->where(function($q) use ($keyword) {
+                $q->where('invoice_number', 'like', "%$keyword%")
+                  ->orWhere('shipping_resi', 'like', "%$keyword%")
+                  ->orWhere('shipping_method', 'like', "%$keyword%")
+                  ->orWhere('shipping_address', 'like', "%$keyword%")
+                  ->orWhere('payment_method', 'like', "%$keyword%")
+                  ->orWhereRaw("'Marketplace' LIKE ?", ["%$keyword%"]);
             });
         }
 
@@ -203,28 +204,60 @@ class KeuanganController extends Controller
                         ->mergeBindings($gabungan); 
 
         // ==================================================================================
-        // 5. HITUNG TOTAL & PAGINATION
+        // 5. HITUNG TOTAL & BREAKDOWN PER KATEGORI (CARD DINAMIS)
         // ==================================================================================
         
+        // Kita gunakan clone $queryFinal agar filter search/tanggal tetap terbawa
         $stats = (clone $queryFinal)->selectRaw("
+            -- GLOBAL TOTALS
             SUM(omzet) as total_omzet,
             SUM(modal) as total_modal,
-            SUM(profit) as total_profit
+            SUM(profit) as total_profit,
+
+            -- BREAKDOWN EKSPEDISI
+            SUM(CASE WHEN kategori = 'Ekspedisi' THEN omzet ELSE 0 END) as omzet_ekspedisi,
+            SUM(CASE WHEN kategori = 'Ekspedisi' THEN 1 ELSE 0 END) as count_ekspedisi,
+
+            -- BREAKDOWN PPOB
+            SUM(CASE WHEN kategori = 'PPOB' THEN omzet ELSE 0 END) as omzet_ppob,
+            SUM(CASE WHEN kategori = 'PPOB' THEN 1 ELSE 0 END) as count_ppob,
+
+            -- BREAKDOWN MARKETPLACE
+            SUM(CASE WHEN kategori = 'Marketplace' THEN omzet ELSE 0 END) as omzet_marketplace,
+            SUM(CASE WHEN kategori = 'Marketplace' THEN 1 ELSE 0 END) as count_marketplace,
+
+            -- BREAKDOWN TOP UP
+            SUM(CASE WHEN kategori = 'Top Up Saldo' THEN omzet ELSE 0 END) as omzet_topup,
+            SUM(CASE WHEN kategori = 'Top Up Saldo' THEN 1 ELSE 0 END) as count_topup
+
         ")->first();
 
-        $totalOmzet  = $stats->total_omzet ?? 0;
-        $totalModal  = $stats->total_modal ?? 0;
-        $totalProfit = $stats->total_profit ?? 0;
+        // Siapkan variabel untuk dikirim ke View
+        $summary = [
+            'omzet' => $stats->total_omzet ?? 0,
+            'modal' => $stats->total_modal ?? 0,
+            'profit' => $stats->total_profit ?? 0,
+            
+            // Breakdown Detail
+            'ekspedisi' => ['omzet' => $stats->omzet_ekspedisi ?? 0, 'count' => $stats->count_ekspedisi ?? 0],
+            'ppob'      => ['omzet' => $stats->omzet_ppob ?? 0, 'count' => $stats->count_ppob ?? 0],
+            'marketplace' => ['omzet' => $stats->omzet_marketplace ?? 0, 'count' => $stats->count_marketplace ?? 0],
+            'topup'     => ['omzet' => $stats->omzet_topup ?? 0, 'count' => $stats->count_topup ?? 0],
+        ];
+
+        // ==================================================================================
+        // 6. DATA TABEL
+        // ==================================================================================
 
         $transaksi = $queryFinal
             ->orderBy('tanggal', 'desc')
             ->paginate(15)
             ->withQueryString();
 
-        return view('admin.keuangan.index', compact('transaksi', 'totalOmzet', 'totalModal', 'totalProfit'));
+        return view('admin.keuangan.index', compact('transaksi', 'summary'));
     }
     
-    // CRUD Manual Tetap Sama
+    // CRUD Manual
     public function store(Request $request) { Keuangan::create($request->all()); return back()->with('success','Disimpan'); }
     public function update(Request $request, $id) { Keuangan::find($id)->update($request->all()); return back()->with('success','Diupdate'); }
     public function destroy($id) { Keuangan::find($id)->delete(); return back()->with('success','Dihapus'); }

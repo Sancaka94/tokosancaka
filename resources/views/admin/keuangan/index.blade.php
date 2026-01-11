@@ -121,60 +121,112 @@
     </div>
 
     {{-- =========================================================== --}}
-    {{-- 3. CARD RINGKASAN DINAMIS (OMZET - MODAL = PROFIT) --}}
+    {{-- 2. CARD RINGKASAN GLOBAL (UTAMA) --}}
     {{-- =========================================================== --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-600 relative overflow-hidden group hover:shadow-md transition">
+            <div class="absolute right-0 top-0 h-full w-16 bg-gradient-to-l from-blue-50 to-transparent opacity-50"></div>
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Omzet (Global)</p>
+            <h3 class="text-2xl font-extrabold text-gray-800">
+                Rp{{ number_format($summary['omzet'], 0, ',', '.') }}
+            </h3>
+            <div class="absolute top-6 right-6 text-blue-100 group-hover:text-blue-200 transition transform group-hover:scale-110">
+                <i class="fas fa-chart-line text-4xl"></i>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-red-500 relative overflow-hidden group hover:shadow-md transition">
+            <div class="absolute right-0 top-0 h-full w-16 bg-gradient-to-l from-red-50 to-transparent opacity-50"></div>
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Modal</p>
+            <h3 class="text-2xl font-extrabold text-gray-800">
+                Rp{{ number_format($summary['modal'], 0, ',', '.') }}
+            </h3>
+            <div class="absolute top-6 right-6 text-red-100 group-hover:text-red-200 transition transform group-hover:scale-110">
+                <i class="fas fa-wallet text-4xl"></i>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500 relative overflow-hidden group hover:shadow-md transition">
+            <div class="absolute right-0 top-0 h-full w-16 bg-gradient-to-l from-green-50 to-transparent opacity-50"></div>
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Profit Bersih</p>
+            <h3 class="text-2xl font-extrabold {{ $summary['profit'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                Rp{{ number_format($summary['profit'], 0, ',', '.') }}
+            </h3>
+            <div class="absolute top-6 right-6 text-green-100 group-hover:text-green-200 transition transform group-hover:scale-110">
+                <i class="fas fa-coins text-4xl"></i>
+            </div>
+        </div>
+    </div>
+
+    {{-- =========================================================== --}}
+    {{-- 3. CARD BREAKDOWN PER KATEGORI (OMZET & COUNT) --}}
+    {{-- =========================================================== --}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         
-        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500 hover:-translate-y-1 transition duration-300">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Omzet</p>
-                    <h3 class="text-2xl font-extrabold text-gray-800">
-                        Rp{{ number_format($totalOmzet, 0, ',', '.') }}
-                    </h3>
-                    <div class="mt-2 flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full w-fit">
-                        <i class="fas fa-info-circle me-1"></i> Pemasukan Kotor
-                    </div>
+        {{-- CARD EKSPEDISI --}}
+        <div class="bg-white rounded-lg shadow-sm p-4 border border-yellow-200 flex items-center justify-between hover:shadow-md transition">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Ekspedisi</span>
                 </div>
-                <div class="bg-blue-100 p-3 rounded-xl text-blue-600 shadow-inner">
-                    <i class="fas fa-chart-line text-2xl"></i>
-                </div>
+                <h4 class="text-lg font-bold text-gray-800">Rp{{ number_format($summary['ekspedisi']['omzet'], 0, ',', '.') }}</h4>
+                <p class="text-xs text-gray-500 font-medium mt-1">
+                    <i class="fas fa-receipt me-1"></i> {{ number_format($summary['ekspedisi']['count'], 0, ',', '.') }} Transaksi
+                </p>
+            </div>
+            <div class="bg-yellow-50 p-3 rounded-full text-yellow-600">
+                <i class="fas fa-truck-fast text-xl"></i>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-red-500 hover:-translate-y-1 transition duration-300">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Modal</p>
-                    <h3 class="text-2xl font-extrabold text-gray-800">
-                        Rp{{ number_format($totalModal, 0, ',', '.') }}
-                    </h3>
-                    <div class="mt-2 flex items-center text-xs text-red-600 bg-red-50 px-2 py-1 rounded-full w-fit">
-                        <i class="fas fa-info-circle me-1"></i> Pengeluaran + Modal
-                    </div>
+        {{-- CARD PPOB --}}
+        <div class="bg-white rounded-lg shadow-sm p-4 border border-purple-200 flex items-center justify-between hover:shadow-md transition">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">PPOB</span>
                 </div>
-                <div class="bg-red-100 p-3 rounded-xl text-red-600 shadow-inner">
-                    <i class="fas fa-wallet text-2xl"></i>
-                </div>
+                <h4 class="text-lg font-bold text-gray-800">Rp{{ number_format($summary['ppob']['omzet'], 0, ',', '.') }}</h4>
+                <p class="text-xs text-gray-500 font-medium mt-1">
+                    <i class="fas fa-receipt me-1"></i> {{ number_format($summary['ppob']['count'], 0, ',', '.') }} Transaksi
+                </p>
+            </div>
+            <div class="bg-purple-50 p-3 rounded-full text-purple-600">
+                <i class="fas fa-mobile-screen-button text-xl"></i>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500 hover:-translate-y-1 transition duration-300">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Profit Bersih</p>
-                    <h3 class="text-2xl font-extrabold {{ $totalProfit >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                        Rp{{ number_format($totalProfit, 0, ',', '.') }}
-                    </h3>
-                    <div class="mt-2 flex items-center text-xs text-green-700 bg-green-50 px-2 py-1 rounded-full w-fit">
-                        <i class="fas fa-check-circle me-1"></i> Omzet - Modal
-                    </div>
+        {{-- CARD MARKETPLACE --}}
+        <div class="bg-white rounded-lg shadow-sm p-4 border border-orange-200 flex items-center justify-between hover:shadow-md transition">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Marketplace</span>
                 </div>
-                <div class="bg-green-100 p-3 rounded-xl text-green-600 shadow-inner">
-                    <i class="fas fa-coins text-2xl"></i>
-                </div>
+                <h4 class="text-lg font-bold text-gray-800">Rp{{ number_format($summary['marketplace']['omzet'], 0, ',', '.') }}</h4>
+                <p class="text-xs text-gray-500 font-medium mt-1">
+                    <i class="fas fa-receipt me-1"></i> {{ number_format($summary['marketplace']['count'], 0, ',', '.') }} Transaksi
+                </p>
+            </div>
+            <div class="bg-orange-50 p-3 rounded-full text-orange-600">
+                <i class="fas fa-store text-xl"></i>
             </div>
         </div>
+
+        {{-- CARD TOP UP --}}
+        <div class="bg-white rounded-lg shadow-sm p-4 border border-cyan-200 flex items-center justify-between hover:shadow-md transition">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="bg-cyan-100 text-cyan-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Top Up Saldo</span>
+                </div>
+                <h4 class="text-lg font-bold text-gray-800">Rp{{ number_format($summary['topup']['omzet'], 0, ',', '.') }}</h4>
+                <p class="text-xs text-gray-500 font-medium mt-1">
+                    <i class="fas fa-receipt me-1"></i> {{ number_format($summary['topup']['count'], 0, ',', '.') }} Transaksi
+                </p>
+            </div>
+            <div class="bg-cyan-50 p-3 rounded-full text-cyan-600">
+                <i class="fas fa-wallet text-xl"></i>
+            </div>
+        </div>
+
     </div>
 
     {{-- =========================================================== --}}
