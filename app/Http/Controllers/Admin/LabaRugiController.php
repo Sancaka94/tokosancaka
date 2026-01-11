@@ -238,7 +238,6 @@ class LabaRugiController extends Controller
         $data = $this->getDataLaporan($tahun);
 
         $pdf = Pdf::loadView('admin.keuangan.pdf_laba_rugi', $data); // Pastikan buat view khusus PDF jika perlu style beda
-        $pdf = Pdf::loadView('admin.keuangan.pdf_laba_rugi', $data);
         $pdf->setPaper('a4', 'landscape'); // Tetap landscape
         $pdf->setOption('margin-left', 5); // Margin tipis
         $pdf->setOption('margin-right', 5);
