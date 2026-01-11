@@ -15,22 +15,20 @@ class AkuntansiController extends Controller
      * 1. INDEX: MENAMPILKAN JURNAL UMUM (Buku Besar)
      * ==============================================================================
      */
+    /**
+     * 1. INDEX: MENAMPILKAN JURNAL UMUM (Buku Besar)
+     */
     public function index(Request $request)
     {
         // A. QUERY DASAR
-        // Kita mulai dari tabel transaksi 'keuangans'
         $query = DB::table('keuangans')
-            // PERBAIKAN PENTING: Join KETAT menggunakan Kode Akun DAN Unit Usaha.
-            // Ini mencegah nama akun tertukar antar unit usaha yang memiliki kode sama.
             ->leftJoin('akun_keuangan', function($join) {
                 $join->on('keuangans.kode_akun', '=', 'akun_keuangan.kode_akun')
                      ->on('keuangans.unit_usaha', '=', 'akun_keuangan.unit_usaha');
             })
             ->select(
                 'keuangans.*', 
-                // Prioritaskan Nama Akun dari Master. Jika master terhapus, gunakan backup dari tabel transaksi.
                 DB::raw('COALESCE(akun_keuangan.nama_akun, keuangans.kategori) as nama_akun_final'),
-                // Ambil info tambahan dari master untuk keperluan filter/display
                 'akun_keuangan.kategori as kelompok_akun' 
             );
 
@@ -39,7 +37,7 @@ class AkuntansiController extends Controller
             $query->whereBetween('keuangans.tanggal', [$request->start_date, $request->end_date]);
         }
 
-        // C. FILTER: PENCARIAN (Invoice / Keterangan / Nama Akun / Unit Usaha / Kode)
+        // C. FILTER: PENCARIAN
         if ($request->filled('search')) {
             $keyword = $request->search;
             $query->where(function($q) use ($keyword) {
@@ -52,19 +50,18 @@ class AkuntansiController extends Controller
         }
 
         // D. EKSEKUSI DATA (Pagination)
-        // Kita clone query untuk menghitung saldo TOTAL sesuai filter yang aktif
-        $queryForSaldo = clone $query;
-
-        $jurnal = $query->orderBy('keuangans.tanggal', 'desc')
+        // Clone query untuk tabel (agar order by tidak mengganggu perhitungan saldo)
+        $jurnalQuery = clone $query;
+        $jurnal = $jurnalQuery->orderBy('keuangans.tanggal', 'desc')
                         ->orderBy('keuangans.created_at', 'desc')
                         ->paginate(20)
                         ->withQueryString();
 
-        // E. HITUNG SALDO (Sesuai Filter Tanggal/Search)
-        // Agar card di atas sinkron dengan data tabel
+        // E. HITUNG SALDO (PERBAIKAN LOGIKA)
+        // Gunakan (clone $query) di setiap baris agar filter 'jenis' tidak saling menumpuk/konflik
         $saldo = [
-            'total_masuk'  => $queryForSaldo->where('keuangans.jenis', 'Pemasukan')->sum('keuangans.jumlah'),
-            'total_keluar' => $queryForSaldo->where('keuangans.jenis', 'Pengeluaran')->sum('keuangans.jumlah'),
+            'total_masuk'  => (clone $query)->where('keuangans.jenis', 'Pemasukan')->sum('keuangans.jumlah'),
+            'total_keluar' => (clone $query)->where('keuangans.jenis', 'Pengeluaran')->sum('keuangans.jumlah'),
         ];
 
         return view('admin.akuntansi.index', compact('jurnal', 'saldo'));
