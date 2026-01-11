@@ -534,15 +534,34 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-1">Kategori</label>
-                                <select id="edit_kategori" name="kategori" class="w-full border-gray-300 rounded-lg shadow-sm text-sm" required>
-                                    <option value="Operasional">Operasional</option>
-                                    <option value="Gaji">Gaji</option>
-                                    <option value="Aset">Aset</option>
-                                    <option value="Marketing">Marketing</option>
-                                    <option value="Lainnya">Lainnya</option>
-                                    <option value="Ekspedisi">Ekspedisi</option>
-                                    <option value="Marketplace">Marketplace</option>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Kategori / Akun</label>
+                                <select id="edit_kategori" name="kategori" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500" required>
+                                    <option value="">-- Pilih Akun --</option>
+                                    
+                                    {{-- LOOGIC: Mengelompokkan berdasarkan Unit Usaha agar rapi --}}
+                                    @php
+                                        $groupedAccounts = $allAccounts->groupBy('unit_usaha');
+                                    @endphp
+
+                                    @foreach($groupedAccounts as $unit => $akuns)
+                                        <optgroup label="{{ $unit }}">
+                                            @foreach($akuns as $akun)
+                                                {{-- Value disimpan sebagai Nama Akun agar sesuai dengan data lama --}}
+                                                {{-- Tampilan: [1101] Kas --}}
+                                                <option value="{{ $akun->nama_akun }}">
+                                                    [{{ $akun->kode_akun }}] {{ $akun->nama_akun }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                    
+                                    {{-- Opsi Fallback jika data lama tidak ada di master akun --}}
+                                    <optgroup label="Lainnya">
+                                        <option value="Operasional">Operasional</option>
+                                        <option value="Gaji">Gaji</option>
+                                        <option value="Aset">Aset</option>
+                                        <option value="Marketing">Marketing</option>
+                                    </optgroup>
                                 </select>
                             </div>
                         </div>
