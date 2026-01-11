@@ -75,8 +75,7 @@ class KeuanganController extends Controller
                 DB::raw('0 as profit') 
             );
 
-        // E. MARKETPLACE Query (Tabel order_marketplace) --- BARU ---
-        // Sesuaikan status dengan enum di aplikasi Anda (misal: 'completed', 'sent', 'success')
+        // E. Marketplace Query
         $marketplaceQuery = DB::table('order_marketplace')
             ->whereIn('status', ['completed', 'success', 'delivered', 'shipped']) 
             ->select(
@@ -85,17 +84,9 @@ class KeuanganController extends Controller
                 DB::raw("'Pemasukan' as jenis"),
                 DB::raw("'Marketplace' as kategori"),
                 'invoice_number as nomor_invoice',
-                
-                // Keterangan: Gabungan Metode Pengiriman & Resi
                 DB::raw("CONCAT(shipping_method, ' - ', COALESCE(shipping_resi, '-')) as keterangan"),
-                
-                // 1. OMZET: Total yang dibayar customer
                 'total_amount as omzet', 
-                
-                // 2. MODAL: Ongkir + Asuransi (Biaya ke Kurir)
                 DB::raw('(shipping_cost + insurance_cost) as modal'), 
-                
-                // 3. PROFIT: Total - Biaya Kurir (Termasuk harga barang)
                 DB::raw('(total_amount - (shipping_cost + insurance_cost)) as profit') 
             );
 
@@ -114,24 +105,21 @@ class KeuanganController extends Controller
             $topupQuery->where(function($q) use ($search) {
                 $q->where('reference_id', 'like', "%$search%")->orWhere('description', 'like', "%$search%");
             });
-            $marketplaceQuery->where(function($q) use ($search) { // Search Marketplace
+            $marketplaceQuery->where(function($q) use ($search) {
                 $q->where('invoice_number', 'like', "%$search%")->orWhere('shipping_resi', 'like', "%$search%");
             });
         }
 
-        // 3. Eksekusi Gabungan (Union All 5 Tabel)
+        // 3. Eksekusi Gabungan (Union All) - BAGIAN YANG DIPERBAIKI
         $gabungan = $manualQuery
                     ->unionAll($ppobQuery)
                     ->unionAll($ekspedisiQuery)
                     ->unionAll($topupQuery)
                     ->unionAll($marketplaceQuery);
         
+        // Kita hanya perlu mergeBindings dari $gabungan, karena ia sudah menampung semua binding query di atasnya.
         $transaksi = DB::table(DB::raw("({$gabungan->toSql()}) as combined_table"))
-            ->mergeBindings($manualQuery)
-            ->mergeBindings($ppobQuery)
-            ->mergeBindings($ekspedisiQuery)
-            ->mergeBindings($topupQuery)
-            ->mergeBindings($marketplaceQuery)
+            ->mergeBindings($gabungan) 
             ->orderBy('tanggal', 'desc')
             ->paginate(15)
             ->withQueryString();
@@ -160,14 +148,10 @@ class KeuanganController extends Controller
         $topupStats = DB::table('transactions')->where('status', 'success')->where('type', 'topup')->sum('amount');
         $topupOmzet = $topupStats; $topupModal = $topupStats; $topupProfit = 0;
 
-        // E. Marketplace --- BARU ---
+        // E. Marketplace
         $marketplaceStats = DB::table('order_marketplace')
             ->whereIn('status', ['completed', 'success', 'delivered', 'shipped'])
-            ->selectRaw("
-                SUM(total_amount) as total_omzet, 
-                SUM(shipping_cost + insurance_cost) as total_modal
-            ")->first();
-        
+            ->selectRaw("SUM(total_amount) as total_omzet, SUM(shipping_cost + insurance_cost) as total_modal")->first();
         $marketplaceOmzet = $marketplaceStats->total_omzet ?? 0;
         $marketplaceModal = $marketplaceStats->total_modal ?? 0;
         $marketplaceProfit = $marketplaceOmzet - $marketplaceModal;
