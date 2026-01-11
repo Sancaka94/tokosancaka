@@ -142,71 +142,127 @@
 
     @include('layouts.partials.notifications')
     
-    {{-- === MULAI CARD MONITOR PENDAPATAN (GAYA WARNA-WARNI) === --}}
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-    
-    {{-- CARD 1: SELESAI (HIJAU - Sukses) --}}
-    <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg">
-        <div class="relative z-10 text-white">
-            <p class="text-3xl font-bold">
-                Rp{{ number_format($incomeSelesai, 0, ',', '.') }}
-            </p>
-            <p class="text-sm font-bold uppercase opacity-90 mt-1">Pendapatan Selesai</p>
-            <p class="text-xs opacity-75 mt-0.5">Total pesanan sukses</p>
-        </div>
-        {{-- Ikon Background --}}
-        <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
-            <i class="fas fa-store fa-5x text-white"></i>
-        </div>
-    </div>
+    {{-- === MULAI CARD MONITOR (PENDAPATAN & JUMLAH) === --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        
+        {{-- === ROW 1: MONITOR PENDAPATAN (RP) === --}}
 
-    {{-- CARD 2: MENUNGGU PICKUP (CYAN/BIRU MUDA - Menunggu) --}}
-    <div class="relative overflow-hidden rounded-lg bg-cyan-600 p-5 shadow-lg">
-        <div class="relative z-10 text-white">
-            <p class="text-3xl font-bold">
-                Rp{{ number_format($incomePickup, 0, ',', '.') }}
-            </p>
-            <p class="text-sm font-bold uppercase opacity-90 mt-1">Menunggu Pickup</p>
-            <p class="text-xs opacity-75 mt-0.5">Sudah lunas, belum kirim</p>
+        {{-- CARD 1: SELESAI (HIJAU - Sukses) --}}
+        <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg">
+            <div class="relative z-10 text-white">
+                <p class="text-3xl font-bold">
+                    Rp{{ number_format($incomeSelesai ?? 0, 0, ',', '.') }}
+                </p>
+                <p class="text-sm font-bold uppercase opacity-90 mt-1">Pendapatan Selesai</p>
+                <p class="text-xs opacity-75 mt-0.5">Total nilai pesanan sukses</p>
+            </div>
+            <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
+                <i class="fas fa-store fa-5x text-white"></i>
+            </div>
         </div>
-        {{-- Ikon Background --}}
-        <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
-            <i class="fas fa-box-open fa-5x text-white"></i>
-        </div>
-    </div>
 
-    {{-- CARD 3: SEDANG DIKIRIM (BIRU - Proses) --}}
-    <div class="relative overflow-hidden rounded-lg bg-blue-600 p-5 shadow-lg">
-        <div class="relative z-10 text-white">
-            <p class="text-3xl font-bold">
-                Rp{{ number_format($incomeDikirim, 0, ',', '.') }}
-            </p>
-            <p class="text-sm font-bold uppercase opacity-90 mt-1">Sedang Dikirim</p>
-            <p class="text-xs opacity-75 mt-0.5">Sedang dalam perjalanan</p>
+        {{-- CARD 2: MENUNGGU PICKUP (CYAN - Menunggu) --}}
+        <div class="relative overflow-hidden rounded-lg bg-cyan-600 p-5 shadow-lg">
+            <div class="relative z-10 text-white">
+                <p class="text-3xl font-bold">
+                    Rp{{ number_format($incomePickup ?? 0, 0, ',', '.') }}
+                </p>
+                <p class="text-sm font-bold uppercase opacity-90 mt-1">Menunggu Pickup</p>
+                <p class="text-xs opacity-75 mt-0.5">Sudah lunas, belum kirim</p>
+            </div>
+            <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
+                <i class="fas fa-box-open fa-5x text-white"></i>
+            </div>
         </div>
-        {{-- Ikon Background --}}
-        <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
-            <i class="fas fa-shipping-fast fa-5x text-white"></i>
-        </div>
-    </div>
 
-    {{-- CARD 4: GAGAL / BATAL (MERAH - Warning) --}}
-    <div class="relative overflow-hidden rounded-lg bg-red-500 p-5 shadow-lg">
-        <div class="relative z-10 text-white">
-            <p class="text-3xl font-bold">
-                Rp{{ number_format($incomeGagal, 0, ',', '.') }}
-            </p>
-            <p class="text-sm font-bold uppercase opacity-90 mt-1">Gagal / Batal</p>
-            <p class="text-xs opacity-75 mt-0.5">Potensi pendapatan hilang</p>
+        {{-- CARD 3: SEDANG DIKIRIM (BIRU - Proses) --}}
+        <div class="relative overflow-hidden rounded-lg bg-blue-600 p-5 shadow-lg">
+            <div class="relative z-10 text-white">
+                <p class="text-3xl font-bold">
+                    Rp{{ number_format($incomeDikirim ?? 0, 0, ',', '.') }}
+                </p>
+                <p class="text-sm font-bold uppercase opacity-90 mt-1">Sedang Dikirim</p>
+                <p class="text-xs opacity-75 mt-0.5">Sedang dalam perjalanan</p>
+            </div>
+            <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
+                <i class="fas fa-shipping-fast fa-5x text-white"></i>
+            </div>
         </div>
-        {{-- Ikon Background --}}
-        <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
-            <i class="fas fa-arrow-up fa-5x text-white"></i> {{-- Ikon panah ke atas seperti di gambar referensi --}}
-        </div>
-    </div>
 
-</div>
-{{-- === SELESAI CARD MONITOR === --}}
+        {{-- CARD 4: GAGAL / BATAL (MERAH - Warning) --}}
+        <div class="relative overflow-hidden rounded-lg bg-red-500 p-5 shadow-lg">
+            <div class="relative z-10 text-white">
+                <p class="text-3xl font-bold">
+                    Rp{{ number_format($incomeGagal ?? 0, 0, ',', '.') }}
+                </p>
+                <p class="text-sm font-bold uppercase opacity-90 mt-1">Gagal / Batal</p>
+                <p class="text-xs opacity-75 mt-0.5">Potensi pendapatan hilang</p>
+            </div>
+            <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
+                <i class="fas fa-arrow-up fa-5x text-white"></i>
+            </div>
+        </div>
+
+        {{-- === ROW 2: MONITOR JUMLAH TRANSAKSI (QTY) === --}}
+
+        {{-- CARD 5: TOTAL TERKIRIM / SELESAI --}}
+        <div class="relative overflow-hidden rounded-lg bg-green-400 p-5 shadow-lg">
+            <div class="relative z-10 text-white">
+                <p class="text-3xl font-bold">
+                    {{ number_format($countSelesai ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Resi</span>
+                </p>
+                <p class="text-sm font-bold uppercase opacity-90 mt-1">Jumlah Terkirim</p>
+                <p class="text-xs opacity-75 mt-0.5">Total paket berhasil sampai</p>
+            </div>
+            <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
+                <i class="fas fa-check-circle fa-5x text-white"></i>
+            </div>
+        </div>
+
+        {{-- CARD 6: TOTAL MENUNGGU PICKUP --}}
+        <div class="relative overflow-hidden rounded-lg bg-cyan-500 p-5 shadow-lg">
+            <div class="relative z-10 text-white">
+                <p class="text-3xl font-bold">
+                    {{ number_format($countPickup ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Paket</span>
+                </p>
+                <p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Menunggu Pickup</p>
+                <p class="text-xs opacity-75 mt-0.5">Paket siap diambil kurir</p>
+            </div>
+            <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
+                <i class="fas fa-clock fa-5x text-white"></i>
+            </div>
+        </div>
+
+        {{-- CARD 7: TOTAL SEDANG DIKIRIM --}}
+        <div class="relative overflow-hidden rounded-lg bg-blue-500 p-5 shadow-lg">
+            <div class="relative z-10 text-white">
+                <p class="text-3xl font-bold">
+                    {{ number_format($countDikirim ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Paket</span>
+                </p>
+                <p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Sedang Dikirim</p>
+                <p class="text-xs opacity-75 mt-0.5">Paket dalam perjalanan</p>
+            </div>
+            <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
+                <i class="fas fa-truck-moving fa-5x text-white"></i>
+            </div>
+        </div>
+
+        {{-- CARD 8: TOTAL GAGAL / BATAL --}}
+        <div class="relative overflow-hidden rounded-lg bg-red-400 p-5 shadow-lg">
+            <div class="relative z-10 text-white">
+                <p class="text-3xl font-bold">
+                    {{ number_format($countGagal ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Trx</span>
+                </p>
+                <p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Gagal / Batal</p>
+                <p class="text-xs opacity-75 mt-0.5">Transaksi dibatalkan/retur</p>
+            </div>
+            <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
+                <i class="fas fa-ban fa-5x text-white"></i>
+            </div>
+        </div>
+
+    </div>
+    {{-- === SELESAI CARD MONITOR === --}}
 
     {{-- TABEL DATA --}}
     <div class="table-container">
