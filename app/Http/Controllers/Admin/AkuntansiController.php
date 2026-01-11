@@ -15,35 +15,51 @@ class AkuntansiController extends Controller
      */
     public function index(Request $request)
     {
+        // 1. QUERY DASAR
         $query = DB::table('keuangans')
+            // PERBAIKAN FATAL DISINI:
+            // Join harus mencocokkan KODE AKUN dan UNIT USAHA secara bersamaan.
+            // Jika hanya kode akun, nanti akun '1101' Percetakan bisa tertukar dengan '1101' Ekspedisi.
             ->leftJoin('akun_keuangan', function($join) {
                 $join->on('keuangans.kode_akun', '=', 'akun_keuangan.kode_akun')
                      ->on('keuangans.unit_usaha', '=', 'akun_keuangan.unit_usaha');
             })
             ->select(
-                'keuangans.*', 
-                'akun_keuangan.nama_akun', 
-                'akun_keuangan.kategori as kategori_akun' // Kategori asli (Aset/Hutang)
+                'keuangans.*', // Utamakan data yang tersimpan mati di tabel transaksi
+                
+                // Ambil nama akun dari Master untuk validasi, 
+                // TAPI gunakan COALESCE: Jika di master tidak ketemu (karena beda ejaan unit),
+                // pakai nama akun yang tersimpan di tabel 'keuangans' (kolom kategori)
+                DB::raw('COALESCE(akun_keuangan.nama_akun, keuangans.kategori) as nama_akun_final'),
+                
+                // Ambil kategori laporan (Neraca/Laba Rugi) dari master
+                'akun_keuangan.kategori as kategori_laporan' 
             );
 
+        // 2. FILTER: RENTANG TANGGAL
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('keuangans.tanggal', [$request->start_date, $request->end_date]);
         }
 
+        // 3. FILTER: PENCARIAN
         if ($request->filled('search')) {
             $keyword = $request->search;
             $query->where(function($q) use ($keyword) {
                 $q->where('keuangans.nomor_invoice', 'like', "%$keyword%")
                   ->orWhere('keuangans.keterangan', 'like', "%$keyword%")
-                  ->orWhere('akun_keuangan.nama_akun', 'like', "%$keyword%");
+                  // Cari juga berdasarkan Kode Akun atau Unit Usaha
+                  ->orWhere('keuangans.kode_akun', 'like', "%$keyword%")
+                  ->orWhere('keuangans.unit_usaha', 'like', "%$keyword%");
             });
         }
 
+        // 4. EKSEKUSI DATA
         $jurnal = $query->orderBy('keuangans.tanggal', 'desc')
                         ->orderBy('keuangans.created_at', 'desc')
                         ->paginate(20)
                         ->withQueryString();
 
+        // 5. HITUNG SALDO
         $saldo = [
             'total_masuk'  => DB::table('keuangans')->where('jenis', 'Pemasukan')->sum('jumlah'),
             'total_keluar' => DB::table('keuangans')->where('jenis', 'Pengeluaran')->sum('jumlah'),
