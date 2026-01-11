@@ -27,6 +27,9 @@ class PesananController extends Controller
     /**
      * Menampilkan daftar semua pesanan dengan filter dan pencarian.
      */
+    /**
+     * Menampilkan daftar semua pesanan dengan filter dan pencarian.
+     */
     public function index(Request $request)
     {
         // 1. Tandai pesanan 'baru' sebagai 'telah_dilihat'
@@ -34,7 +37,7 @@ class PesananController extends Controller
             ->where('telah_dilihat', false)
             ->update(['telah_dilihat' => true]);
 
-        // 2. Mulai Query
+        // 2. Mulai Query Utama
         $query = Pesanan::query();
 
         // 3. Logic SEARCH GLOBAL (Ketik Manual di Search Box)
@@ -47,7 +50,6 @@ class PesananController extends Controller
                     ->orWhere('receiver_name', 'like', "%{$search}%")
                     ->orWhere('sender_phone', 'like', "%{$search}%")
                     ->orWhere('receiver_phone', 'like', "%{$search}%")
-                    // TAMBAHAN: Agar bisa cari nama ekspedisi (misal: "lion", "jne")
                     ->orWhere('expedition', 'like', "%{$search}%")
                     ->orWhere('status_pesanan', 'like', "%{$search}%");
             });
@@ -67,42 +69,51 @@ class PesananController extends Controller
             $query->where('status', $request->input('status'));
         }
 
-        // 6. Urutkan dan Pagination
+        // 6. Logic Filter TANGGAL (Flatpickr)
+        if ($request->filled('date_range')) {
+            $dates = explode(' to ', $request->date_range);
+            if (count($dates) == 2) {
+                $startDate = $dates[0] . ' 00:00:00';
+                $endDate   = $dates[1] . ' 23:59:59';
+                $query->whereBetween('tanggal_pesanan', [$startDate, $endDate]);
+            } elseif (count($dates) == 1) {
+                $query->whereDate('tanggal_pesanan', $dates[0]);
+            }
+        }
+
+        // =================================================================
+        // HITUNG DATA CARD (PENDAPATAN & JUMLAH)
+        // =================================================================
+        
+        // Group Status
+        $statusPickup = ['Menunggu Pickup', 'Pembayaran Lunas (Gagal Auto-Resi)', 'Pembayaran Lunas (Error Kirim API)'];
+        $statusDikirim = ['Diproses', 'Terkirim', 'Sedang Dikirim'];
+        $statusGagal = ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'];
+
+        // A. HITUNG PENDAPATAN (SUM PRICE)
+        $incomeSelesai = Pesanan::where('status_pesanan', 'Selesai')->sum('price');
+        $incomePickup  = Pesanan::whereIn('status_pesanan', $statusPickup)->sum('price');
+        $incomeDikirim = Pesanan::whereIn('status_pesanan', $statusDikirim)->sum('price');
+        $incomeGagal   = Pesanan::whereIn('status_pesanan', $statusGagal)->sum('price');
+
+        // B. HITUNG JUMLAH RESI/TRANSAKSI (COUNT ID) -- TAMBAHAN BARU --
+        $countSelesai = Pesanan::where('status_pesanan', 'Selesai')->count();
+        $countPickup  = Pesanan::whereIn('status_pesanan', $statusPickup)->count();
+        $countDikirim = Pesanan::whereIn('status_pesanan', $statusDikirim)->count();
+        $countGagal   = Pesanan::whereIn('status_pesanan', $statusGagal)->count();
+
+        // =================================================================
+
+        // 7. Urutkan dan Pagination
         $orders = $query->orderBy('tanggal_pesanan', 'desc')->paginate(15);
         $orders->appends($request->all());
 
-        // 1. Total Pendapatan: SELESAI
-    $incomeSelesai = Pesanan::where('status_pesanan', 'Selesai')->sum('price');
-
-    // 2. Total Pendapatan: MENUNGGU PICKUP (Uang masuk, tapi barang belum jalan)
-    // Kita masukan juga yang "Gagal Resi" disini karena itu artinya sudah bayar tapi macet di sistem
-    $incomePickup = Pesanan::whereIn('status_pesanan', [
-        'Menunggu Pickup', 
-        'Pembayaran Lunas (Gagal Auto-Resi)',
-        'Pembayaran Lunas (Error Kirim API)'
-    ])->sum('price');
-
-    // 3. Total Pendapatan: SEDANG DIKIRIM (Uang di jalan / Diproses)
-    $incomeDikirim = Pesanan::whereIn('status_pesanan', ['Diproses', 'Terkirim', 'Sedang Dikirim'])->sum('price');
-
-    // 4. Potensi Pendapatan Hilang: GAGAL (Batal/Kadaluarsa)
-    $incomeGagal = Pesanan::whereIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'])->sum('price');
-
-    // ---------------------------------------------------------
-
-    // 6. Urutkan dan Pagination (Kode lama Anda)
-    $orders = $query->orderBy('tanggal_pesanan', 'desc')->paginate(15);
-    $orders->appends($request->all());
-
-    // 7. Return View (JANGAN LUPA TAMBAHKAN VARIABLE BARU KE COMPACT)
-    return view('admin.pesanan.index', compact(
-        'orders', 
-        'incomeSelesai', 
-        'incomePickup', 
-        'incomeDikirim', 
-        'incomeGagal'
-    ));
-    
+        // 8. Return View (Kirim semua variable sum & count)
+        return view('admin.pesanan.index', compact(
+            'orders', 
+            'incomeSelesai', 'incomePickup', 'incomeDikirim', 'incomeGagal',
+            'countSelesai', 'countPickup', 'countDikirim', 'countGagal'
+        ));
     }
 
     /**
