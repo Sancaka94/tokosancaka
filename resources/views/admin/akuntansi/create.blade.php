@@ -238,7 +238,7 @@
             
             let typeMatch = false;
             if (acc.tipe_arus === 'Netral') {
-                typeMatch = true; // Selalu muncul
+                typeMatch = true; 
             } else {
                 typeMatch = (acc.tipe_arus === selectedType);
             }
