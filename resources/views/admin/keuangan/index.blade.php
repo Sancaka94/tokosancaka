@@ -246,6 +246,8 @@
                     <tr>
                         <th scope="col" class="px-4 py-3 font-extrabold text-center w-12">No</th>
                         <th scope="col" class="px-4 py-3 font-extrabold">Tanggal</th>
+
+                        <th scope="col" class="px-4 py-3 font-extrabold text-center">Unit Usaha</th>
                         
                         {{-- KOLOM BARU: KODE AKUN --}}
                         <th scope="col" class="px-4 py-3 font-extrabold text-center">Kode Akun</th>
@@ -273,6 +275,29 @@
                         <td class="px-4 py-3 whitespace-nowrap">
                             <div class="font-medium text-gray-700">{{ \Carbon\Carbon::parse($item->tanggal)->format('d M Y') }}</div>
                             <div class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($item->tanggal)->format('H:i') }} WIB</div>
+                        </td>
+
+                        {{-- LOGIC MENCARI KODE AKUN & UNIT USAHA --}}
+                        @php
+                            // Cari data akun di $allAccounts berdasarkan nama kategori/akun
+                            // PERHATIKAN: Kita cari 'first' yang cocok. Jika ada duplikat nama, ini bisa ambil yang pertama.
+                            // Idealnya controller mengirim 'unit_usaha' di tabel 'keuangans', tapi jika belum ada, kita tebak dari akun.
+                            $matchedAccount = $allAccounts->firstWhere('nama_akun', $item->kategori);
+                            
+                            $kodeAkun = $item->kode_akun ?? ($matchedAccount ? $matchedAccount->kode_akun : '-');
+                            // Ambil unit usaha dari tabel transaksi dulu, jika null baru dari master akun
+                            $unitUsaha = $item->unit_usaha ?? ($matchedAccount ? $matchedAccount->unit_usaha : 'Umum');
+                        @endphp
+
+                        {{-- KOLOM UNIT USAHA (BARU) --}}
+                        <td class="px-4 py-3 text-center">
+                            @if($unitUsaha == 'Ekspedisi')
+                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold">Ekspedisi</span>
+                            @elseif($unitUsaha == 'Percetakan')
+                                <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold">Percetakan</span>
+                            @else
+                                <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-[10px] font-bold">{{ $unitUsaha }}</span>
+                            @endif
                         </td>
 
                         {{-- LOGIC MENCARI KODE AKUN --}}
