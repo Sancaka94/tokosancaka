@@ -114,7 +114,7 @@
                         <i class="fas fa-search"></i>
                     </div>
                     <input type="text" name="search" value="{{ request('search') }}" 
-                        class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition shadow-sm" 
+                        class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm transition shadow-sm" 
                         placeholder="Cari Resi, Nama, dll...">
                 </div>
 
@@ -126,7 +126,7 @@
                     
                     {{-- ID HARUS: date_range_picker --}}
                     <input type="text" id="date_range_picker" name="date_range" value="{{ request('date_range') }}"
-                        class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white transition shadow-sm"
+                        class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm bg-white transition shadow-sm"
                         placeholder="Filter Tanggal..." readonly>
                     
                     {{-- Tombol Clear --}}
@@ -136,23 +136,12 @@
                 </div>
 
                 {{-- 3. Tombol Filter --}}
-                <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 shadow-sm transition flex items-center justify-center gap-2">
+                <button type="submit" class="bg-green-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 shadow-sm transition flex items-center justify-center gap-2">
                     <i class="fas fa-filter"></i> Filter
                 </button>
 
             </form>
         </div>
-
-        {{-- BAGIAN KANAN: TOMBOL AKSI --}}
-        <div class="flex items-center gap-2 w-full lg:w-auto justify-end">
-            <button type="button" onclick="openModal('exportModal')" class="bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 shadow-sm transition">
-                <i class="fas fa-file-export me-2 text-green-600"></i>Export
-            </button>
-            <a href="{{ route('admin.pesanan.create') }}" class="bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 shadow-sm transition">
-                <i class="fas fa-plus me-2"></i>Order Baru
-            </a>
-        </div>
-    </div>
 
         {{-- BAGIAN KANAN: TOMBOL AKSI --}}
         <div class="flex items-center gap-2 w-full lg:w-auto justify-end">
