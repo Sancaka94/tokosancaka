@@ -613,9 +613,9 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::post('/logs/clear', [AdminLogController::class, 'clearLogs'])->name('logs.clear');
 
     // 1. Route Export (Wajib ditaruh DI ATAS resource)
-    Route::get('laporan/laba-rugi', [App\Http\Controllers\Admin\LabaRugiController::class, 'index'])->name('admin.laporan.laba_rugi');
-    Route::get('laporan/laba-rugi/export-excel', [App\Http\Controllers\Admin\LabaRugiController::class, 'exportExcel'])->name('admin.laporan.laba_rugi.export_excel');
-    Route::get('laporan/laba-rugi/export-pdf', [App\Http\Controllers\Admin\LabaRugiController::class, 'exportPdf'])->name('admin.laporan.laba_rugi.export_pdf');
+    Route::get('keuangan/laba-rugi', [App\Http\Controllers\Admin\LabaRugiController::class, 'index'])->name('keuangan.laba_rugi');    Route::get('laporan/laba-rugi/export-excel', [App\Http\Controllers\Admin\LabaRugiController::class, 'exportExcel'])->name('admin.laporan.laba_rugi.export_excel');
+    Route::get('keuangan/laba-rugi/export-excel', [App\Http\Controllers\Admin\LabaRugiController::class, 'exportExcel'])->name('admin.laporan.laba_rugi.export_excel');
+    Route::get('keuangan/laba-rugi/export-pdf', [App\Http\Controllers\Admin\LabaRugiController::class, 'exportPdf'])->name('admin.laporan.laba_rugi.export_pdf');
     Route::get('keuangan/export-excel', [KeuanganController::class, 'exportExcel'])->name('keuangan.export_excel');
     Route::get('keuangan/export-pdf', [KeuanganController::class, 'exportPdf'])->name('keuangan.export_pdf');
 

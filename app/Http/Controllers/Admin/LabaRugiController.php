@@ -158,6 +158,7 @@ class LabaRugiController extends Controller
         // List Kategori Beban Unik untuk Judul Baris
         $kategoriBeban = array_keys($listBeban);
 
-        return view('admin.laporan.laba_rugi', compact('report', 'months', 'tahun', 'kategoriBeban'));
+        return view('admin.keuangan.laba_rugi', compact('report', 'months', 'tahun', 'kategoriBeban'));
+
     }
 }
