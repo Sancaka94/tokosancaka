@@ -65,56 +65,53 @@
     {{-- =========================================================== --}}
     {{-- 2. HEADER FILTER & PENCARIAN --}}
     {{-- =========================================================== --}}
+    {{-- 2. HEADER: FILTER & TOMBOL AKSI --}}
     <div class="bg-white rounded-xl shadow-sm p-5 mb-6 border border-gray-100">
         <div class="flex flex-col md:flex-row justify-between items-end gap-4">
             
-            {{-- Form Filter (Kiri) --}}
+            {{-- Form Filter --}}
             <form action="{{ route('admin.keuangan.index') }}" method="GET" class="w-full md:w-3/4 flex flex-col lg:flex-row gap-4">
-                
-                {{-- Input Pencarian --}}
+                {{-- Pencarian --}}
                 <div class="w-full lg:w-1/2">
-                    <label class="text-xs font-bold text-gray-500 mb-1 block uppercase tracking-wider">Cari Transaksi</label>
-                    <div class="relative group">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition">
-                            <i class="fas fa-search"></i>
-                        </div>
-                        <input type="text" name="search" value="{{ request('search') }}" 
-                            class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition shadow-sm" 
-                            placeholder="Ketik No. Invoice, Resi, atau Keterangan...">
+                    <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Cari Transaksi</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fas fa-search"></i></span>
+                        <input type="text" name="search" value="{{ request('search') }}" class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 text-sm" placeholder="No. Invoice, Resi, atau Keterangan...">
                     </div>
                 </div>
-
-                {{-- Input Filter Tanggal --}}
+                {{-- Tanggal --}}
                 <div class="w-full lg:w-1/2">
-                    <label class="text-xs font-bold text-gray-500 mb-1 block uppercase tracking-wider">Filter Tanggal</label>
-                    <div class="relative group">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition">
-                            <i class="far fa-calendar-alt"></i>
-                        </div>
-                        <input type="text" id="date_range_picker" name="date_range" value="{{ request('date_range') }}"
-                            class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white transition shadow-sm cursor-pointer"
-                            placeholder="Pilih Rentang Tanggal..." readonly>
-                        
-                        {{-- Tombol Clear Tanggal --}}
-                        <button type="button" id="clearDateBtn" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 hidden cursor-pointer transition" style="z-index: 10;">
-                            <i class="fas fa-times-circle"></i>
-                        </button>
+                    <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Filter Tanggal</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="far fa-calendar-alt"></i></span>
+                        <input type="text" id="date_range_picker" name="date_range" value="{{ request('date_range') }}" class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 text-sm" placeholder="Pilih Rentang Tanggal...">
                     </div>
                 </div>
-
-                {{-- Tombol Submit Filter --}}
+                {{-- Tombol Terapkan --}}
                 <div class="lg:w-auto mt-auto">
-                    <button type="submit" class="w-full lg:w-auto h-[42px] bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-lg text-sm font-medium shadow-sm transition flex items-center justify-center gap-2">
-                        <i class="fas fa-filter"></i> Terapkan
+                    <button type="submit" class="w-full h-[42px] bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-lg text-sm font-medium shadow-sm transition flex items-center justify-center gap-2">
+                        <i class="fas fa-filter"></i> Filter
                     </button>
                 </div>
             </form>
 
-            {{-- Tombol Tambah Manual (Kanan) --}}
-            <div class="w-full md:w-auto flex flex-col gap-2">
+            {{-- TOMBOL AKSI (EXPORT & MANUAL) --}}
+            <div class="w-full md:w-auto flex flex-col md:flex-row gap-2">
                 <label class="hidden md:block text-xs font-bold text-transparent mb-1 select-none">Aksi</label>
-                <button type="button" onclick="openModal('modalCreate')" class="h-[42px] bg-emerald-600 hover:bg-emerald-700 text-white px-5 rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 whitespace-nowrap">
-                    <i class="fas fa-plus-circle"></i> Input Manual
+                
+                {{-- Export Excel --}}
+                <a href="{{ route('admin.keuangan.export_excel', request()->all()) }}" target="_blank" class="h-[42px] bg-green-600 hover:bg-green-700 text-white px-4 rounded-lg text-sm font-medium shadow-md transition flex items-center justify-center gap-2">
+                    <i class="fas fa-file-excel"></i> Excel
+                </a>
+
+                {{-- Export PDF --}}
+                <a href="{{ route('admin.keuangan.export_pdf', request()->all()) }}" target="_blank" class="h-[42px] bg-red-600 hover:bg-red-700 text-white px-4 rounded-lg text-sm font-medium shadow-md transition flex items-center justify-center gap-2">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </a>
+
+                {{-- Input Manual --}}
+                <button type="button" onclick="openModal('modalCreate')" class="h-[42px] bg-emerald-600 hover:bg-emerald-700 text-white px-5 rounded-lg text-sm font-medium shadow-md transition flex items-center justify-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-plus-circle"></i> Manual
                 </button>
             </div>
         </div>
