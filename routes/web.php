@@ -114,6 +114,9 @@ use App\Http\Controllers\TelegramPpobController;
 // Dashboard DANA Merchant
 use App\Http\Controllers\Customer\DashboardController;
 
+// DATA LAPORAN KEUANGAN
+use App\Http\Controllers\Admin\KeuanganController;
+
 
 Route::any('/telegram-webhook', [TelegramPpobController::class, 'handle']);
 
@@ -608,6 +611,10 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     
     Route::get('/logs', [AdminLogController::class, 'showLogs'])->name('logs.show');
     Route::post('/logs/clear', [AdminLogController::class, 'clearLogs'])->name('logs.clear');
+
+    // DATA LAPORAN KEUANGAN
+    Route::resource('keuangan', KeuanganController::class)->except(['create', 'show', 'edit']);
+    
 
     // Wilayah & Kode Pos
     Route::get('/wilayah', [WilayahController::class, 'index'])->name('wilayah.index');
