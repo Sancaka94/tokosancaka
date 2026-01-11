@@ -1,78 +1,115 @@
-@extends('layouts.admin')
-
-@section('content')
-<div class="bg-gray-800 p-6 rounded-lg shadow-lg">
-    <div class="flex flex-wrap justify-between items-center mb-6 border-b border-gray-700 pb-4 gap-4">
-        <h1 class="text-3xl font-bold text-white">Manajemen Kode Akun</h1>
-        <div class="flex flex-wrap gap-2">
-            <a href="{{ route('admin.coa.create') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-sm">
-                <i class="fa-solid fa-plus mr-2"></i> Tambah Akun
-            </a>
-             <a href="{{ route('admin.coa.import.form') }}" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg text-sm">
-                <i class="fa-solid fa-file-import mr-2"></i> Import Excel
-            </a>
-            <a href="{{ route('admin.coa.export.excel') }}" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm">
-                <i class="fa-solid fa-file-excel mr-2"></i> Export Excel
-            </a>
-            <a href="{{ route('admin.coa.export.pdf') }}" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-sm">
-                <i class="fa-solid fa-file-pdf mr-2"></i> Export PDF
-            </a>
-        </div>
-    </div>
-
-    @if(session('success'))
-        <div class="bg-green-500 text-white p-4 rounded-lg mb-6">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="bg-red-500 text-white p-4 rounded-lg mb-6">{{ session('error') }}</div>
-    @endif
-
-    <div class="overflow-x-auto">
-        <table class="min-w-full bg-gray-900 rounded-lg">
-            <thead>
-                <tr>
-                    <th class="py-3 px-4 text-left text-sm font-semibold text-gray-300 uppercase">Kode</th>
-                    <th class="py-3 px-4 text-left text-sm font-semibold text-gray-300 uppercase">Nama Akun</th>
-                    <th class="py-3 px-4 text-left text-sm font-semibold text-gray-300 uppercase">Tipe</th>
-                    <th class="py-3 px-4 text-center text-sm font-semibold text-gray-300 uppercase">Aksi</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-700">
-                @forelse ($coas as $coa)
-                <tr>
-                    <td class="py-3 px-4 text-white font-mono">{{ $coa->kode }}</td>
-                    <td class="py-3 px-4 text-white">{{ $coa->nama }}</td>
-                    <td class="py-3 px-4 text-white">
-                        <span class="px-2 py-1 text-xs font-semibold rounded-full
-                            @switch($coa->tipe)
-                                @case('aset') bg-blue-500 text-blue-100 @break
-                                @case('kewajiban') bg-yellow-500 text-yellow-100 @break
-                                @case('ekuitas') bg-purple-500 text-purple-100 @break
-                                @case('pendapatan') bg-green-500 text-green-100 @break
-                                @case('beban') bg-red-500 text-red-100 @break
-                            @endswitch
-                        ">{{ ucfirst($coa->tipe) }}</span>
-                    </td>
-                    <td class="py-3 px-4 text-center">
-                        <a href="{{ route('admin.coa.edit', $coa->id) }}" class="text-blue-400 hover:text-blue-300 mr-4">Edit</a>
-                        <form action="{{ route('admin.coa.destroy', $coa->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus akun ini?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="text-red-400 hover:text-red-300">Hapus</button>
-                        </form>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="4" class="text-center py-4 text-gray-400">Belum ada data kode akun.</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-    <div class="mt-6">
-        {{ $coas->links() }}
-    </div>
-</div>
-@endsection
-
+@extends('layouts.admin')
+
+@section('title', 'Manajemen Akun (COA)')
+
+@section('content')
+<div class="container mx-auto px-4 py-8 max-w-6xl">
+
+    {{-- Header --}}
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Master Data Akun (COA)</h1>
+            <p class="text-gray-500 mt-1">Kelola daftar akun untuk keperluan jurnal & laporan.</p>
+        </div>
+        <a href="{{ route('admin.coa.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg shadow-lg hover:shadow-blue-200 hover:-translate-y-0.5 transition-all font-medium flex items-center gap-2">
+            <i class="fas fa-plus-circle"></i> Tambah Akun Baru
+        </a>
+    </div>
+
+    {{-- TABS UNIT USAHA --}}
+    <div class="mb-6 flex space-x-2 border-b border-gray-200">
+        <a href="{{ route('admin.coa.index', ['unit' => 'Ekspedisi']) }}" 
+           class="px-6 py-3 font-bold text-sm rounded-t-lg transition-colors {{ $unit == 'Ekspedisi' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+           <i class="fas fa-truck-fast mr-2"></i> Jasa Ekspedisi
+        </a>
+        <a href="{{ route('admin.coa.index', ['unit' => 'Percetakan']) }}" 
+           class="px-6 py-3 font-bold text-sm rounded-t-lg transition-colors {{ $unit == 'Percetakan' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+           <i class="fas fa-print mr-2"></i> Percetakan
+        </a>
+    </div>
+
+    {{-- NOTIFIKASI --}}
+    @if(session('success'))
+        <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-r shadow-sm flex justify-between items-center">
+            <div>
+                <p class="font-bold">Berhasil!</p>
+                <p>{{ session('success') }}</p>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-green-500 hover:text-green-800"><i class="fas fa-times"></i></button>
+        </div>
+    @endif
+
+    {{-- TABEL DATA --}}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-50 text-gray-600 uppercase font-bold text-xs border-b">
+                    <tr>
+                        <th class="px-6 py-4">Kode</th>
+                        <th class="px-6 py-4">Nama Akun</th>
+                        <th class="px-6 py-4">Kategori (Induk)</th>
+                        <th class="px-6 py-4">Jenis Laporan</th>
+                        <th class="px-6 py-4 text-center">Tipe Arus</th>
+                        <th class="px-6 py-4 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @forelse($accounts as $acc)
+                    <tr class="hover:bg-blue-50/30 transition duration-150">
+                        <td class="px-6 py-3 font-bold text-blue-600">{{ $acc->kode_akun }}</td>
+                        <td class="px-6 py-3 font-medium text-gray-800">{{ $acc->nama_akun }}</td>
+                        <td class="px-6 py-3">
+                            <span class="px-2 py-1 bg-gray-100 rounded text-gray-600 text-xs border border-gray-200">
+                                {{ $acc->kategori }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-3">
+                            @if($acc->jenis_laporan == 'Laba Rugi')
+                                <span class="text-orange-600 font-medium">Laba Rugi</span>
+                            @else
+                                <span class="text-indigo-600 font-medium">Neraca</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-3 text-center">
+                            @if($acc->tipe_arus == 'Pemasukan')
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <i class="fas fa-arrow-down mr-1"></i> Pemasukan
+                                </span>
+                            @elseif($acc->tipe_arus == 'Pengeluaran')
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    <i class="fas fa-arrow-up mr-1"></i> Pengeluaran
+                                </span>
+                            @else
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    <i class="fas fa-circle mr-1 text-[8px]"></i> Netral
+                                </span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-3 text-center">
+                            <div class="flex justify-center gap-3">
+                                <a href="{{ route('admin.coa.edit', $acc->id) }}" class="text-yellow-500 hover:text-yellow-600 transition" title="Edit">
+                                    <i class="fas fa-pencil-alt text-lg"></i>
+                                </a>
+                                <form action="{{ route('admin.coa.destroy', $acc->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus akun {{ $acc->nama_akun }}? Data historis mungkin terpengaruh.');">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="text-red-500 hover:text-red-600 transition" title="Hapus">
+                                        <i class="fas fa-trash text-lg"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-400">
+                            <i class="fas fa-folder-open text-4xl mb-3 block opacity-30"></i>
+                            Belum ada data akun untuk unit usaha ini.
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endsection

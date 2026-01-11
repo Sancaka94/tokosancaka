@@ -638,6 +638,8 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
     // DATA LAPORAN KEUANGAN
     Route::resource('keuangan', KeuanganController::class)->except(['create', 'show', 'edit']);
+
+    Route::resource('coa', CoaController::class);
     
     Route::resource('ekspedisi', \App\Http\Controllers\Admin\EkspedisiController::class)->except(['create', 'show', 'edit']);
 
