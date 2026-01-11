@@ -89,12 +89,12 @@
                 </div>
 
                 {{-- Tombol Clear (X) - Muncul jika ada value --}}
-                <button type="button" id="clearDateBtn" 
+                <button type="button" id="clearBtn" onclick="document.getElementById('date_range_picker').value='';"
                     class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 cursor-pointer transition-colors {{ request('date_range') ? '' : 'hidden' }}"
                     title="Hapus Tanggal">
                     <i class="fas fa-times-circle"></i>
                 </button>
-                
+
                 {{-- Tombol Terapkan --}}
                 <div class="lg:w-auto mt-auto">
                     <button type="submit" class="w-full h-[42px] bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-lg text-sm font-medium shadow-sm transition flex items-center justify-center gap-2">
