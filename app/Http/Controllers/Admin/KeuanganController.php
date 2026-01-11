@@ -197,7 +197,11 @@ class KeuanganController extends Controller
             'topup' => ['omzet' => $allData->where('kategori', 'Top Up Saldo')->sum('omzet'), 'count' => $allData->where('kategori', 'Top Up Saldo')->count()],
         ];
 
-        $allAccounts = DB::table('akun_keuangan')->orderBy('kode_akun')->get();
+        // Pastikan baris ini ada:
+        $allAccounts = DB::table('akun_keuangan')
+                    ->orderBy('unit_usaha') // Urutkan biar grouping rapi
+                    ->orderBy('kode_akun')
+                    ->get();
 
         return view('admin.keuangan.index', compact('transaksi', 'summary', 'allAccounts'));
     }
