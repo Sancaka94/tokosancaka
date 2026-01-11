@@ -117,6 +117,7 @@ use App\Http\Controllers\Customer\DashboardController;
 // DATA LAPORAN KEUANGAN
 use App\Http\Controllers\Admin\KeuanganController;
 
+use App\Http\Controllers\Admin\LabaRugiController;
 
 Route::any('/telegram-webhook', [TelegramPpobController::class, 'handle']);
 
