@@ -61,7 +61,8 @@
                     <label class="block text-sm font-bold text-gray-800 mb-2">1. Pilih Unit Usaha <span class="text-red-500">*</span></label>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <label class="cursor-pointer relative">
-                            <input type="radio" name="filter_unit" value="Ekspedisi" class="peer sr-only" onchange="filterAccounts()">
+                            {{-- PERBAIKAN: name diganti jadi 'unit_usaha' --}}
+                            <input type="radio" name="unit_usaha" value="Ekspedisi" class="peer sr-only" onchange="filterAccounts()">
                             <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50 hover:bg-gray-50 transition-all flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                                     <i class="fas fa-truck-fast"></i>
@@ -77,7 +78,8 @@
                         </label>
 
                         <label class="cursor-pointer relative">
-                            <input type="radio" name="filter_unit" value="Percetakan" class="peer sr-only" onchange="filterAccounts()">
+                            {{-- PERBAIKAN: name diganti jadi 'unit_usaha' --}}
+                            <input type="radio" name="unit_usaha" value="Percetakan" class="peer sr-only" onchange="filterAccounts()">
                             <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-purple-500 peer-checked:bg-purple-50 hover:bg-gray-50 transition-all flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
                                     <i class="fas fa-print"></i>
@@ -92,6 +94,7 @@
                             </div>
                         </label>
                     </div>
+                    @error('unit_usaha') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 {{-- Divider --}}
@@ -133,6 +136,7 @@
                             Akun / Pos Keuangan <span class="text-red-500">*</span>
                         </label>
                         <div class="relative">
+                            {{-- NAME adalah 'kode_akun' agar sesuai controller --}}
                             <select name="kode_akun" id="kode_akun" required disabled
                                 class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 appearance-none">
                                 <option value="">-- Pilih Unit Usaha Terlebih Dahulu --</option>
@@ -190,22 +194,22 @@
 <script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script> {{-- Bahasa Indonesia --}}
 
 <script>
-    // 1. Inisialisasi Flatpickr (Date Picker Keren)
+    // 1. Inisialisasi Flatpickr
     flatpickr("#tanggal_picker", {
         altInput: true,
-        altFormat: "j F Y", // Tampil: 11 Januari 2026
-        dateFormat: "Y-m-d", // Simpan: 2026-01-11
-        locale: "id", // Bahasa Indonesia
+        altFormat: "j F Y", 
+        dateFormat: "Y-m-d", 
+        locale: "id", 
         defaultDate: "{{ old('tanggal', date('Y-m-d')) }}",
-        disableMobile: "true" // Paksa tampilan custom di HP juga
+        disableMobile: "true" 
     });
 
     // 2. Data Akun dari Controller (JSON)
     const allAccounts = @json($allAccounts);
 
     function filterAccounts() {
-        // Ambil nilai filter
-        const selectedUnit = document.querySelector('input[name="filter_unit"]:checked')?.value;
+        // PERBAIKAN: Selector disesuaikan dengan name="unit_usaha"
+        const selectedUnit = document.querySelector('input[name="unit_usaha"]:checked')?.value;
         const selectedType = document.getElementById('jenis_transaksi').value; // Pemasukan / Pengeluaran
         
         const selectBox = document.getElementById('kode_akun');
@@ -248,7 +252,7 @@
         } else {
             filtered.forEach(acc => {
                 const option = document.createElement('option');
-                option.value = acc.kode_akun;
+                option.value = acc.kode_akun; // VALUE ADALAH KODE AKUN (Sesuai database)
                 option.text = `[${acc.kode_akun}] ${acc.nama_akun} (${acc.kategori})`;
                 selectBox.appendChild(option);
             });
