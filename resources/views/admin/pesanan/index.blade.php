@@ -584,4 +584,44 @@
         }
     }
 </script>
+
+{{-- === SCRIPT JS KHUSUS FLATPICKR (Langsung Disini) === --}}
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Ambil elemen berdasarkan ID yang baru
+            const dateInput = document.getElementById('date_range_picker');
+            const clearBtn = document.getElementById('clearDateBtn');
+
+            if(dateInput) {
+                const fp = flatpickr(dateInput, {
+                    mode: "range",
+                    dateFormat: "Y-m-d",
+                    altInput: true,
+                    altFormat: "j F Y",
+                    locale: "id",
+                    disableMobile: "true", // Paksa tampilan desktop style di HP agar z-index jalan
+                    theme: "airbnb",
+                    onReady: function(selectedDates, dateStr, instance) {
+                        if (dateStr) clearBtn.classList.remove('hidden');
+                    },
+                    onChange: function(selectedDates, dateStr, instance) {
+                        if (dateStr) {
+                            clearBtn.classList.remove('hidden');
+                        } else {
+                            clearBtn.classList.add('hidden');
+                        }
+                    }
+                });
+
+                clearBtn.addEventListener('click', function() {
+                    fp.clear();
+                    clearBtn.classList.add('hidden');
+                });
+            } else {
+                console.error("Flatpickr Error: Input ID 'date_range_picker' tidak ditemukan.");
+            }
+        });
+    </script>
 @endpush
