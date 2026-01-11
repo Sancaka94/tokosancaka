@@ -83,17 +83,25 @@
                 <div class="w-full lg:w-1/2">
                     <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Filter Tanggal</label>
                     <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="far fa-calendar-alt"></i></span>
-                        <input type="text" id="date_range_picker" name="date_range" value="{{ request('date_range') }}" class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 text-sm" placeholder="Pilih Rentang Tanggal...">
+                        {{-- Icon Kalender Kiri --}}
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                            <i class="far fa-calendar-alt"></i>
+                        </span>
+
+                        {{-- Input Date Range (Tambahkan pr-10 agar teks tidak menabrak tombol X) --}}
+                        <input type="text" id="date_range_picker" name="date_range" 
+                            value="{{ request('date_range') }}" 
+                            class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 text-sm placeholder-gray-400" 
+                            placeholder="Pilih Rentang Tanggal...">
+
+                        {{-- Tombol Clear (X) - Muncul jika ada value --}}
+                        <button type="button" id="clearDateBtn" 
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 cursor-pointer transition-colors {{ request('date_range') ? '' : 'hidden' }}"
+                            title="Hapus Tanggal">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
                     </div>
                 </div>
-
-                {{-- Tombol Clear (X) - Muncul jika ada value --}}
-                <button type="button" id="clearBtn" onclick="document.getElementById('date_range_picker').value='';"
-                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 cursor-pointer transition-colors {{ request('date_range') ? '' : 'hidden' }}"
-                    title="Hapus Tanggal">
-                    <i class="fas fa-times-circle"></i>
-                </button>
 
                 {{-- Tombol Terapkan --}}
                 <div class="lg:w-auto mt-auto">
@@ -659,35 +667,42 @@
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         
-        // 1. Inisialisasi Flatpickr (Range Tanggal)
+        // 1. Inisialisasi Flatpickr dengan Tombol Clear
         const dateInput = document.getElementById('date_range_picker');
         const clearBtn = document.getElementById('clearDateBtn');
 
         if (dateInput) {
             const fp = flatpickr(dateInput, {
                 mode: "range",
-                dateFormat: "Y-m-d",
+                dateFormat: "Y-m-d", // Format kirim ke controller
                 altInput: true,
-                altFormat: "j F Y",
+                altFormat: "j F Y",  // Format tampil (11 Januari 2026)
                 locale: "id",
                 theme: "airbnb",
-                onReady: function(selectedDates, dateStr, instance) {
-                    if (dateStr) clearBtn.classList.remove('hidden');
-                },
+                defaultDate: "{{ request('date_range') }}", // Isi kembali jika ada request
+                
+                // Event saat tanggal dipilih
                 onChange: function(selectedDates, dateStr, instance) {
                     if (dateStr) {
                         clearBtn.classList.remove('hidden');
                     } else {
                         clearBtn.classList.add('hidden');
                     }
+                },
+                
+                // Event saat kalender siap (cek value awal)
+                onReady: function(selectedDates, dateStr, instance) {
+                    if (dateStr) {
+                        clearBtn.classList.remove('hidden');
+                    }
                 }
             });
 
-            // Tombol Clear Tanggal
+            // Logic Tombol Clear
             if(clearBtn) {
                 clearBtn.addEventListener('click', function() {
-                    fp.clear();
-                    clearBtn.classList.add('hidden');
+                    fp.clear(); // Hapus data di flatpickr
+                    clearBtn.classList.add('hidden'); // Sembunyikan tombol
                 });
             }
         }
