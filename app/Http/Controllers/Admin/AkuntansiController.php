@@ -66,36 +66,39 @@ class AkuntansiController extends Controller
     }
 
     /**
-     * 3. STORE: SIMPAN TRANSAKSI MANUAL (PERBAIKAN)
+     * 3. STORE: SIMPAN TRANSAKSI MANUAL (DIPERBAIKI LOGIKA PENCARIANNYA)
      */
     public function store(Request $request)
     {
         $request->validate([
             'tanggal'     => 'required|date',
+            'unit_usaha'  => 'required', // Wajib validasi Unit Usaha
             'jenis'       => 'required|in:Pemasukan,Pengeluaran',
-            'kode_akun'   => 'required|exists:akun_keuangan,kode_akun', // Pastikan kode ada di master
+            'kode_akun'   => 'required', 
             'jumlah'      => 'required|numeric|min:0',
             'keterangan'  => 'required|string',
         ]);
 
-        // 1. Cari Detail Akun berdasarkan Kode yang dikirim Blade
+        // PERBAIKAN FATAL DISINI:
+        // Cari akun berdasarkan KODE AKUN **DAN** UNIT USAHA yang dipilih user.
         $masterAkun = DB::table('akun_keuangan')
                         ->where('kode_akun', $request->kode_akun)
+                        ->where('unit_usaha', $request->unit_usaha) // <--- INI KUNCINYA
                         ->first();
 
-        // 2. Simpan ke tabel Keuangans
+        // Validasi tambahan jika akun tidak ditemukan di unit tersebut
+        if (!$masterAkun) {
+            return back()->with('error', 'Kode Akun tidak ditemukan untuk Unit Usaha ' . $request->unit_usaha);
+        }
+
         DB::table('keuangans')->insert([
             'tanggal'       => $request->tanggal,
             'jenis'         => $request->jenis,
             
-            // PENTING: Simpan Kode Akun
+            // Ambil data FIX dari Master Akun yang sudah difilter unitnya
             'kode_akun'     => $masterAkun->kode_akun, 
-            
-            // Simpan Nama Akun ke kolom 'kategori' (Agar konsisten dengan view laporan lama)
             'kategori'      => $masterAkun->nama_akun, 
-            
-            // Ambil Unit Usaha dari Master (Lebih aman daripada input user)
-            'unit_usaha'    => $masterAkun->unit_usaha, 
+            'unit_usaha'    => $masterAkun->unit_usaha, // Pasti sesuai pilihan user (misal: Percetakan)
             
             'nomor_invoice' => 'MAN-' . time(),
             'keterangan'    => $request->keterangan,
@@ -104,7 +107,7 @@ class AkuntansiController extends Controller
             'updated_at'    => now(),
         ]);
 
-        return redirect()->route('admin.akuntansi.index')->with('success', 'Transaksi berhasil dicatat.');
+        return redirect()->route('admin.akuntansi.index')->with('success', 'Transaksi berhasil dicatat untuk ' . $masterAkun->unit_usaha);
     }
 
     /**
@@ -207,31 +210,37 @@ class AkuntansiController extends Controller
     }
 
     /**
-     * 6. UPDATE: SIMPAN PERUBAHAN (PERBAIKAN)
+     * 6. UPDATE: SIMPAN PERUBAHAN (DIPERBAIKI LOGIKA PENCARIANNYA)
      */
     public function update(Request $request, $id)
     {
         $request->validate([
             'tanggal'     => 'required|date',
+            'unit_usaha'  => 'required', // Wajib validasi
             'jenis'       => 'required|in:Pemasukan,Pengeluaran',
-            'kode_akun'   => 'required|exists:akun_keuangan,kode_akun',
+            'kode_akun'   => 'required',
             'jumlah'      => 'required|numeric|min:0',
             'keterangan'  => 'required|string',
         ]);
 
-        // 1. Cari Data Akun Baru (Jika user mengubah akun)
+        // PERBAIKAN FATAL DISINI JUGA:
+        // Pastikan update mengambil data master yang sesuai dengan Unit Usaha yang dipilih
         $masterAkun = DB::table('akun_keuangan')
                         ->where('kode_akun', $request->kode_akun)
+                        ->where('unit_usaha', $request->unit_usaha) // <--- FILTER UNIT
                         ->first();
 
-        // 2. Update Database
+        if (!$masterAkun) {
+            return back()->with('error', 'Akun tidak valid untuk unit usaha ini.');
+        }
+
         DB::table('keuangans')->where('id', $id)->update([
             'tanggal'       => $request->tanggal,
             'jenis'         => $request->jenis,
             
-            // Update Kode Akun & Detailnya
+            // Update detail sesuai master yang benar
             'kode_akun'     => $masterAkun->kode_akun,
-            'kategori'      => $masterAkun->nama_akun, // Nama Akun disimpan di kategori
+            'kategori'      => $masterAkun->nama_akun,
             'unit_usaha'    => $masterAkun->unit_usaha,
             
             'keterangan'    => $request->keterangan,
