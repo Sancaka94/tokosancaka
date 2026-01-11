@@ -16,21 +16,26 @@ class AkuntansiController extends Controller
      */
     public function index(Request $request)
     {
-        // Query Dasar
+        // 1. QUERY DASAR (JOIN YANG DIPERBAIKI)
         $query = DB::table('keuangans')
-            ->leftJoin('akun_keuangan', 'keuangans.kode_akun', '=', 'akun_keuangan.kode_akun')
+            // KUNCI PERBAIKAN: Join menggunakan 2 kondisi (Kode & Unit)
+            // Agar data tidak ganda (duplikat) saat kode akun sama beda unit
+            ->leftJoin('akun_keuangan', function($join) {
+                $join->on('keuangans.kode_akun', '=', 'akun_keuangan.kode_akun')
+                     ->on('keuangans.unit_usaha', '=', 'akun_keuangan.unit_usaha');
+            })
             ->select(
                 'keuangans.*', 
                 'akun_keuangan.nama_akun', 
                 'akun_keuangan.kategori as kategori_akun'
             );
 
-        // Filter: Rentang Tanggal
+        // 2. FILTER: RENTANG TANGGAL
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('keuangans.tanggal', [$request->start_date, $request->end_date]);
         }
 
-        // Filter: Pencarian (Invoice / Keterangan)
+        // 3. FILTER: PENCARIAN (Invoice / Keterangan / Nama Akun)
         if ($request->filled('search')) {
             $keyword = $request->search;
             $query->where(function($q) use ($keyword) {
@@ -40,12 +45,16 @@ class AkuntansiController extends Controller
             });
         }
 
-        // Urutkan dari yang terbaru
-        $jurnal = $query->orderBy('keuangans.tanggal', 'desc')->paginate(20);
+        // 4. EKSEKUSI DATA & PAGINATION
+        $jurnal = $query->orderBy('keuangans.tanggal', 'desc')     // Urutkan Tanggal Terbaru
+                        ->orderBy('keuangans.created_at', 'desc')  // Urutkan Jam Input Terbaru (jika tgl sama)
+                        ->paginate(20)
+                        ->withQueryString(); // PENTING: Agar filter tidak hilang saat pindah halaman
 
-        // Hitung Saldo (Opsional, untuk info di atas tabel)
+        // 5. HITUNG SALDO (TOTAL GLOBAL)
+        // Hitung total keseluruhan (tanpa filter halaman) untuk ditampilkan di Card atas
         $saldo = [
-            'total_masuk' => DB::table('keuangans')->where('jenis', 'Pemasukan')->sum('jumlah'),
+            'total_masuk'  => DB::table('keuangans')->where('jenis', 'Pemasukan')->sum('jumlah'),
             'total_keluar' => DB::table('keuangans')->where('jenis', 'Pengeluaran')->sum('jumlah'),
         ];
 
