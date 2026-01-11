@@ -334,6 +334,15 @@
                 </button>
                 <div id="menuKeuangan" class="submenu mt-1" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                     <ul class="pl-8 pr-2 py-1 space-y-1">
+                        
+                        {{-- MENU BARU: JURNAL AKUNTANSI --}}
+                        <li>
+                            <a href="{{ route('admin.akuntansi.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.akuntansi.*') ? 'text-white' : 'text-gray-400' }}">
+                                <i class="fas fa-book-journal-whills mr-2 text-blue-400"></i> Jurnal & Akuntansi
+                            </a>
+                        </li>
+                        {{-- END MENU BARU --}}
+                        
                         <li>
                             <a href="{{ route('admin.saldo.requests.index') }}" class="sidebar-link flex justify-between items-center px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.saldo.requests.*') ? 'text-white' : 'text-gray-400' }}">
                                 <span>Permintaan Saldo</span>
