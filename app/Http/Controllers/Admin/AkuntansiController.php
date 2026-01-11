@@ -168,7 +168,8 @@ class AkuntansiController extends Controller
                     'unit_usaha'    => 'Ekspedisi', // Atau Unit Lain
                     'kode_akun'     => '4105', // Masuk ke Pendapatan Tambahan/PPOB
                     'nomor_invoice' => $row->order_id,
-                    'keterangan'    => "Trx PPOB: " . $row->product_code . " - " . $row->customer_no,
+                    // Gunakan 'buyer_sku_code' sesuai struktur database Anda
+                    'keterangan' => "Trx PPOB: " . ($row->buyer_sku_code ?? 'PPOB') . " - " . $row->customer_no,
                     'jumlah'        => $omzet,
                     'created_at'    => now(),
                     'updated_at'    => now()
