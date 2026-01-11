@@ -12,48 +12,56 @@ class AkuntansiController extends Controller
 {
     /**
      * 1. INDEX: MENAMPILKAN JURNAL UMUM (Buku Besar)
-     * Versi Awal (Original)
      */
     public function index(Request $request)
     {
-        // 1. QUERY DASAR (JOIN YANG DIPERBAIKI)
+        // A. QUERY DASAR
+        // Kita mulai dari tabel transaksi 'keuangans'
         $query = DB::table('keuangans')
-            // Join menggunakan 2 kondisi (Kode & Unit) agar tidak duplikat
+            // PERBAIKAN PENTING: Join KETAT menggunakan Kode Akun DAN Unit Usaha
+            // Ini mencegah Akun '1101' Percetakan mengambil nama Akun '1101' Ekspedisi
             ->leftJoin('akun_keuangan', function($join) {
                 $join->on('keuangans.kode_akun', '=', 'akun_keuangan.kode_akun')
                      ->on('keuangans.unit_usaha', '=', 'akun_keuangan.unit_usaha');
             })
             ->select(
                 'keuangans.*', 
-                'akun_keuangan.nama_akun', 
-                'akun_keuangan.kategori as kategori_akun'
+                // Ambil Nama Akun dari Master (jika ada), jika tidak ada (null), pakai backup dari 'kategori' di tabel transaksi
+                DB::raw('COALESCE(akun_keuangan.nama_akun, keuangans.kategori) as nama_akun_final'),
+                // Ambil info tambahan dari master
+                'akun_keuangan.kategori as kelompok_akun' 
             );
 
-        // 2. FILTER: RENTANG TANGGAL
+        // B. FILTER: RENTANG TANGGAL
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('keuangans.tanggal', [$request->start_date, $request->end_date]);
         }
 
-        // 3. FILTER: PENCARIAN
+        // C. FILTER: PENCARIAN (Invoice / Keterangan / Nama Akun / Unit Usaha)
         if ($request->filled('search')) {
             $keyword = $request->search;
             $query->where(function($q) use ($keyword) {
                 $q->where('keuangans.nomor_invoice', 'like', "%$keyword%")
                   ->orWhere('keuangans.keterangan', 'like', "%$keyword%")
+                  ->orWhere('keuangans.unit_usaha', 'like', "%$keyword%") // Bisa cari per unit
                   ->orWhere('akun_keuangan.nama_akun', 'like', "%$keyword%");
             });
         }
 
-        // 4. EKSEKUSI DATA & PAGINATION
+        // D. EKSEKUSI DATA (Pagination)
+        // Kita clone query untuk menghitung saldo TOTAL sesuai filter yang aktif
+        $queryForSaldo = clone $query;
+
         $jurnal = $query->orderBy('keuangans.tanggal', 'desc')
                         ->orderBy('keuangans.created_at', 'desc')
                         ->paginate(20)
                         ->withQueryString();
 
-        // 5. HITUNG SALDO (TOTAL GLOBAL - Tanpa Filter Halaman)
+        // E. HITUNG SALDO (Sesuai Filter Tanggal/Search)
+        // Agar card di atas sinkron dengan data tabel
         $saldo = [
-            'total_masuk'  => DB::table('keuangans')->where('jenis', 'Pemasukan')->sum('jumlah'),
-            'total_keluar' => DB::table('keuangans')->where('jenis', 'Pengeluaran')->sum('jumlah'),
+            'total_masuk'  => $queryForSaldo->where('keuangans.jenis', 'Pemasukan')->sum('keuangans.jumlah'),
+            'total_keluar' => $queryForSaldo->where('keuangans.jenis', 'Pengeluaran')->sum('keuangans.jumlah'),
         ];
 
         return view('admin.akuntansi.index', compact('jurnal', 'saldo'));
