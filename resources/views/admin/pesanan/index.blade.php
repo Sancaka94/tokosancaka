@@ -109,7 +109,7 @@
                         <i class="fas fa-search"></i>
                     </div>
                     <input type="text" name="search" value="{{ request('search') }}" 
-                        class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition shadow-sm" 
+                        class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition shadow-sm" 
                         placeholder="Cari Resi, Nama, dll...">
                 </div>
 
@@ -119,7 +119,7 @@
                         <i class="far fa-calendar-alt"></i>
                     </div>
                     <input type="text" id="date_range" name="date_range" value="{{ request('date_range') }}"
-                        class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm cursor-pointer bg-white transition shadow-sm"
+                        class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm cursor-pointer bg-white transition shadow-sm"
                         placeholder="Filter Tanggal (Mulai - Sampai)" readonly>
                     
                     {{-- Tombol Clear Tanggal (Muncul via JS jika ada isi) --}}
@@ -129,7 +129,7 @@
                 </div>
 
                 {{-- 3. Tombol Submit Filter --}}
-                <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 shadow-sm transition flex items-center justify-center gap-2">
+                <button type="submit" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm transition flex items-center justify-center gap-2">
                     <i class="fas fa-filter"></i> Filter
                 </button>
 
@@ -472,7 +472,7 @@
                          <span class="md:hidden block font-bold text-gray-500 text-xs mb-2 text-center uppercase border-b pb-2">⚙️ Aksi</span>
                         <div class="flex items-center justify-center md:justify-center space-x-3 md:space-x-3 w-full py-2 md:py-0">
                             {{-- Detail --}}
-                            <a href="{{ route('admin.pesanan.show', ['resi' => $order->resi ?? $order->nomor_invoice]) }}" class="text-gray-500 hover:text-indigo-600 transform hover:scale-110 transition" title="Detail">
+                            <a href="{{ route('admin.pesanan.show', ['resi' => $order->resi ?? $order->nomor_invoice]) }}" class="text-gray-500 hover:text-blue-600 transform hover:scale-110 transition" title="Detail">
                                 <i class="fas fa-eye fa-lg"></i>
                             </a>
 
