@@ -63,12 +63,12 @@
                 <div class="h-6 w-px bg-gray-300 hidden sm:block"></div>
 
                 {{-- Tombol Export Excel --}}
-                <a href="{{ route('admin.laporan.laba_rugi.export_excel', ['tahun' => $tahun]) }}" target="_blank" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center justify-center gap-2">
+                <a href="{{ route('admin.keuangan.laba_rugi.export_excel', ['tahun' => $tahun]) }}" target="_blank" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center justify-center gap-2">
                     <i class="fas fa-file-excel"></i> Excel
                 </a>
 
                 {{-- Tombol Export PDF --}}
-                <a href="{{ route('admin.laporan.laba_rugi.export_pdf', ['tahun' => $tahun]) }}" target="_blank" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center justify-center gap-2">
+                <a href="{{ route('admin.keuangan.laba_rugi.export_pdf', ['tahun' => $tahun]) }}" target="_blank" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center justify-center gap-2">
                     <i class="fas fa-file-pdf"></i> PDF
                 </a>
 
