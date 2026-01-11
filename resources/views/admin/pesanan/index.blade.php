@@ -70,6 +70,12 @@
             transition: all 0.3s ease-in-out;
         }
     }
+
+    /* Custom Style untuk Date Picker agar menyatu dengan Tailwind */
+    .flatpickr-input {
+        background-color: white !important;
+    }
+
 </style>
 @endpush
 
@@ -85,26 +91,58 @@
 @section('content')
 <div class="bg-white p-4 sm:p-6 rounded-lg shadow-md">
 
-    {{-- HEADER & SEARCH --}}
-    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <div class="w-full md:w-1/3">
-            <form action="{{ route('admin.pesanan.index') }}" method="GET" class="relative">
+    {{-- HEADER & SEARCH & FILTER DATE --}}
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+        
+        {{-- BAGIAN KIRI: FORM PENCARIAN & FILTER TANGGAL --}}
+        <div class="w-full lg:w-3/4">
+            <form action="{{ route('admin.pesanan.index') }}" method="GET" class="flex flex-col md:flex-row gap-3">
+                
+                {{-- Pertahankan Status saat filter --}}
                 @if(request('status'))
                     <input type="hidden" name="status" value="{{ request('status') }}">
                 @endif
-                
-                <input type="text" name="search" class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Cari Resi, Nama, atau No. HP..." value="{{ request('search') }}">
-                <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
-                    <i class="fas fa-search"></i>
+
+                {{-- 1. Input Search --}}
+                <div class="relative w-full md:w-1/3">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <input type="text" name="search" value="{{ request('search') }}" 
+                        class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition shadow-sm" 
+                        placeholder="Cari Resi, Nama, dll...">
                 </div>
+
+                {{-- 2. Input Tanggal (Flatpickr) --}}
+                <div class="relative w-full md:w-1/3 group">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                        <i class="far fa-calendar-alt"></i>
+                    </div>
+                    <input type="text" id="date_range" name="date_range" value="{{ request('date_range') }}"
+                        class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm cursor-pointer bg-white transition shadow-sm"
+                        placeholder="Filter Tanggal (Mulai - Sampai)" readonly>
+                    
+                    {{-- Tombol Clear Tanggal (Muncul via JS jika ada isi) --}}
+                    <button type="button" id="clearDate" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 hidden transition">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
+                </div>
+
+                {{-- 3. Tombol Submit Filter --}}
+                <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 shadow-sm transition flex items-center justify-center gap-2">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+
             </form>
         </div>
-        <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-            <button type="button" onclick="openModal('exportModal')" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 w-full md:w-auto">
-                <i class="fas fa-file-export me-2"></i>Export Laporan
+
+        {{-- BAGIAN KANAN: TOMBOL AKSI --}}
+        <div class="flex items-center gap-2 w-full lg:w-auto justify-end">
+            <button type="button" onclick="openModal('exportModal')" class="bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 shadow-sm transition">
+                <i class="fas fa-file-export me-2 text-green-600"></i>Export
             </button>
-            <a href="{{ route('admin.pesanan.create') }}" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 w-full md:w-auto text-center">
-                <i class="fas fa-plus me-2"></i>Create Order
+            <a href="{{ route('admin.pesanan.create') }}" class="bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 shadow-sm transition">
+                <i class="fas fa-plus me-2"></i>Order Baru
             </a>
         </div>
     </div>
