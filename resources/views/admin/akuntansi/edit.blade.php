@@ -67,7 +67,8 @@
                     <label class="block text-sm font-bold text-gray-800 mb-2">1. Unit Usaha <span class="text-red-500">*</span></label>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <label class="cursor-pointer relative">
-                            <input type="radio" name="filter_unit" value="Ekspedisi" class="peer sr-only" onchange="filterAccounts()" 
+                            {{-- PERBAIKAN: name diganti jadi 'unit_usaha' --}}
+                            <input type="radio" name="unit_usaha" value="Ekspedisi" class="peer sr-only" onchange="filterAccounts()" 
                                 {{ $data->unit_usaha == 'Ekspedisi' ? 'checked' : '' }}>
                             <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-yellow-500 peer-checked:bg-yellow-50 hover:bg-gray-50 transition-all flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
@@ -84,7 +85,8 @@
                         </label>
 
                         <label class="cursor-pointer relative">
-                            <input type="radio" name="filter_unit" value="Percetakan" class="peer sr-only" onchange="filterAccounts()"
+                            {{-- PERBAIKAN: name diganti jadi 'unit_usaha' --}}
+                            <input type="radio" name="unit_usaha" value="Percetakan" class="peer sr-only" onchange="filterAccounts()"
                                 {{ $data->unit_usaha == 'Percetakan' ? 'checked' : '' }}>
                             <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-purple-500 peer-checked:bg-purple-50 hover:bg-gray-50 transition-all flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
@@ -100,6 +102,7 @@
                             </div>
                         </label>
                     </div>
+                    @error('unit_usaha') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 {{-- Divider --}}
@@ -141,6 +144,7 @@
                             Akun / Pos Keuangan <span class="text-red-500">*</span>
                         </label>
                         <div class="relative">
+                            {{-- NAME adalah 'kode_akun' agar sesuai controller --}}
                             <select name="kode_akun" id="kode_akun" required 
                                 class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-500/20 transition-all outline-none bg-white appearance-none">
                                 <option value="">-- Pilih Unit Usaha Terlebih Dahulu --</option>
@@ -209,8 +213,8 @@
     const currentAccount = "{{ $data->kode_akun }}"; // Akun yang sedang diedit
 
     function filterAccounts() {
-        // Ambil nilai filter
-        const selectedUnit = document.querySelector('input[name="filter_unit"]:checked')?.value;
+        // PERBAIKAN: Selector disesuaikan dengan name="unit_usaha"
+        const selectedUnit = document.querySelector('input[name="unit_usaha"]:checked')?.value;
         const selectedType = document.getElementById('jenis_transaksi').value; // Pemasukan / Pengeluaran
         
         const selectBox = document.getElementById('kode_akun');
@@ -250,7 +254,7 @@
         } else {
             filtered.forEach(acc => {
                 const option = document.createElement('option');
-                option.value = acc.kode_akun;
+                option.value = acc.kode_akun; // VALUE ADALAH KODE AKUN (Sesuai database)
                 option.text = `[${acc.kode_akun}] ${acc.nama_akun} (${acc.kategori})`;
                 
                 // Pre-select akun yang sedang diedit
