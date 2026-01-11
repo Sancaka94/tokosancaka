@@ -11,7 +11,7 @@
             <h1 class="text-2xl font-bold text-gray-800">Laporan Laba Rugi</h1>
             <p class="text-sm text-gray-500">Periode Tahun: <span class="font-bold text-blue-600">{{ $tahun }}</span></p>
         </div>
-        <form action="{{ route('admin.laporan.laba_rugi') }}" method="GET" class="flex items-center gap-3 mt-4 md:mt-0">
+        <form action="{{ route('admin.keuangan.laba_rugi') }}" method="GET" class="flex items-center gap-3 mt-4 md:mt-0">
             <label class="text-sm font-semibold text-gray-600">Pilih Tahun:</label>
             <select name="tahun" class="border-gray-300 rounded-lg text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 @for($y = date('Y'); $y >= 2023; $y--)
