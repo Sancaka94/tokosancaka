@@ -67,18 +67,12 @@ class AkuntansiController extends Controller
      */
     public function create()
     {
-        // Ambil Akun untuk Dropdown, dikelompokkan biar rapi
-        $akunPemasukan = DB::table('akun_keuangan')
-            ->whereIn('tipe_arus', ['Pemasukan', 'Netral'])
+        // Ambil SEMUA akun, nanti difilter pakai JS di frontend
+        $allAccounts = DB::table('akun_keuangan')
             ->orderBy('kode_akun')
             ->get();
 
-        $akunPengeluaran = DB::table('akun_keuangan')
-            ->whereIn('tipe_arus', ['Pengeluaran', 'Netral'])
-            ->orderBy('kode_akun')
-            ->get();
-
-        return view('admin.akuntansi.create', compact('akunPemasukan', 'akunPengeluaran'));
+        return view('admin.akuntansi.create', compact('allAccounts'));
     }
 
     /**
