@@ -615,6 +615,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     // DATA LAPORAN KEUANGAN
     Route::resource('keuangan', KeuanganController::class)->except(['create', 'show', 'edit']);
     
+    Route::resource('ekspedisi', \App\Http\Controllers\Admin\EkspedisiController::class)->except(['create', 'show', 'edit']);
 
     // Wilayah & Kode Pos
     Route::get('/wilayah', [WilayahController::class, 'index'])->name('wilayah.index');
