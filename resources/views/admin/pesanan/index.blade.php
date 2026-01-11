@@ -8,6 +8,10 @@
 @section('title', 'Data Pesanan Customer')
 @section('page-title', 'Data Pesanan Customer')
 
+{{-- Load CSS Flatpickr (Wajib ada) --}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/airbnb.css">
+
 
 @push('styles')
 <style>
@@ -72,8 +76,9 @@
     }
 
     /* Custom Style untuk Date Picker agar menyatu dengan Tailwind */
-    .flatpickr-input {
-        background-color: white !important;
+    .flatpickr-calendar { z-index: 9999 !important; } /* Supaya di atas header tabel */
+    .flatpickr-input { background-color: white !important; cursor: pointer !important; }
+
     }
 
 </style>
@@ -94,11 +99,11 @@
     {{-- HEADER & SEARCH & FILTER DATE --}}
     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
         
-        {{-- BAGIAN KIRI: FORM PENCARIAN & FILTER TANGGAL --}}
+        {{-- BAGIAN KIRI: FORM PENCARIAN & FILTER --}}
         <div class="w-full lg:w-3/4">
             <form action="{{ route('admin.pesanan.index') }}" method="GET" class="flex flex-col md:flex-row gap-3">
                 
-                {{-- Pertahankan Status saat filter --}}
+                {{-- Keep current status --}}
                 @if(request('status'))
                     <input type="hidden" name="status" value="{{ request('status') }}">
                 @endif
@@ -109,7 +114,7 @@
                         <i class="fas fa-search"></i>
                     </div>
                     <input type="text" name="search" value="{{ request('search') }}" 
-                        class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition shadow-sm" 
+                        class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition shadow-sm" 
                         placeholder="Cari Resi, Nama, dll...">
                 </div>
 
@@ -118,23 +123,36 @@
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                         <i class="far fa-calendar-alt"></i>
                     </div>
-                    <input type="text" id="date_range" name="date_range" value="{{ request('date_range') }}"
-                        class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm cursor-pointer bg-white transition shadow-sm"
-                        placeholder="Filter Tanggal (Mulai - Sampai)" readonly>
                     
-                    {{-- Tombol Clear Tanggal (Muncul via JS jika ada isi) --}}
-                    <button type="button" id="clearDate" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 hidden transition">
+                    {{-- ID HARUS: date_range_picker --}}
+                    <input type="text" id="date_range_picker" name="date_range" value="{{ request('date_range') }}"
+                        class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white transition shadow-sm"
+                        placeholder="Filter Tanggal..." readonly>
+                    
+                    {{-- Tombol Clear --}}
+                    <button type="button" id="clearDateBtn" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 hidden cursor-pointer" style="z-index: 10;">
                         <i class="fas fa-times-circle"></i>
                     </button>
                 </div>
 
-                {{-- 3. Tombol Submit Filter --}}
-                <button type="submit" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm transition flex items-center justify-center gap-2">
+                {{-- 3. Tombol Filter --}}
+                <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 shadow-sm transition flex items-center justify-center gap-2">
                     <i class="fas fa-filter"></i> Filter
                 </button>
 
             </form>
         </div>
+
+        {{-- BAGIAN KANAN: TOMBOL AKSI --}}
+        <div class="flex items-center gap-2 w-full lg:w-auto justify-end">
+            <button type="button" onclick="openModal('exportModal')" class="bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 shadow-sm transition">
+                <i class="fas fa-file-export me-2 text-green-600"></i>Export
+            </button>
+            <a href="{{ route('admin.pesanan.create') }}" class="bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 shadow-sm transition">
+                <i class="fas fa-plus me-2"></i>Order Baru
+            </a>
+        </div>
+    </div>
 
         {{-- BAGIAN KANAN: TOMBOL AKSI --}}
         <div class="flex items-center gap-2 w-full lg:w-auto justify-end">
@@ -526,6 +544,9 @@
 
 @endsection
 
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script>
+
 @push('scripts')
 <script>
     // Modal Logic
@@ -585,43 +606,46 @@
     }
 </script>
 
-{{-- === SCRIPT JS KHUSUS FLATPICKR (Langsung Disini) === --}}
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script>
+{{-- Script JS Flatpickr (Ditaruh Disini Agar Pasti Jalan) --}}
+    
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            // Ambil elemen berdasarkan ID yang baru
-            const dateInput = document.getElementById('date_range_picker');
-            const clearBtn = document.getElementById('clearDateBtn');
+        // Gunakan self-invoking function agar variable tidak bentrok
+        (function() {
+            var dateInput = document.getElementById('date_range_picker');
+            var clearBtn = document.getElementById('clearDateBtn');
 
-            if(dateInput) {
-                const fp = flatpickr(dateInput, {
+            // Cek apakah elemen benar-benar ada sebelum dijalankan
+            if (dateInput) {
+                var fp = flatpickr(dateInput, {
                     mode: "range",
                     dateFormat: "Y-m-d",
                     altInput: true,
                     altFormat: "j F Y",
                     locale: "id",
-                    disableMobile: "true", // Paksa tampilan desktop style di HP agar z-index jalan
+                    disableMobile: "true",
                     theme: "airbnb",
                     onReady: function(selectedDates, dateStr, instance) {
-                        if (dateStr) clearBtn.classList.remove('hidden');
+                        if (dateStr && clearBtn) clearBtn.classList.remove('hidden');
                     },
                     onChange: function(selectedDates, dateStr, instance) {
-                        if (dateStr) {
+                        if (dateStr && clearBtn) {
                             clearBtn.classList.remove('hidden');
-                        } else {
+                        } else if (clearBtn) {
                             clearBtn.classList.add('hidden');
                         }
                     }
                 });
 
-                clearBtn.addEventListener('click', function() {
-                    fp.clear();
-                    clearBtn.classList.add('hidden');
-                });
-            } else {
-                console.error("Flatpickr Error: Input ID 'date_range_picker' tidak ditemukan.");
+                if(clearBtn) {
+                    clearBtn.addEventListener('click', function() {
+                        fp.clear();
+                        clearBtn.classList.add('hidden');
+                    });
+                }
             }
-        });
+        })();
     </script>
+    {{-- ================================================================= --}}
+    {{-- END: HEADER, SEARCH & FILTER TANGGAL                              --}}
+    {{-- ================================================================= --}}
 @endpush
