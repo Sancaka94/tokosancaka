@@ -225,8 +225,13 @@ class AkuntansiController extends Controller
     public function edit($id)
     {
         $data = DB::table('keuangans')->where('id', $id)->first();
-        $akunList = DB::table('akun_keuangan')->orderBy('kode_akun')->get();
-        return view('admin.akuntansi.edit', compact('data', 'akunList'));
+        
+        // Change: Send ALL accounts for JS filtering
+        $allAccounts = DB::table('akun_keuangan')
+            ->orderBy('kode_akun')
+            ->get();
+
+        return view('admin.akuntansi.edit', compact('data', 'allAccounts'));
     }
 
     public function update(Request $request, $id)
