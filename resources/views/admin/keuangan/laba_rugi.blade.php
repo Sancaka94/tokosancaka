@@ -15,16 +15,26 @@
             position: -webkit-sticky;
             position: sticky;
             left: 0;
-            background-color: white;
             z-index: 10;
-            border-right: 1px solid #e5e7eb;
+            /* Background color moved inline/class specific to avoid conflict */
         }
+
+        /* Agar kolom TERAKHIR (TOTAL) tetap diam saat scroll ke samping */
+        .sticky-col-right {
+            position: -webkit-sticky;
+            position: sticky;
+            right: 0;
+            z-index: 10;
+            border-left: 1px solid #e5e7eb; /* Border pemisah di kiri */
+            box-shadow: -2px 0 5px rgba(0,0,0,0.05); /* Bayangan halus agar terlihat terpisah */
+        }
+
         /* Style khusus saat mode Print / PDF */
         @media print {
             .no-print { display: none !important; }
             body { background: white; }
             .shadow-lg, .shadow-sm { box-shadow: none !important; }
-            .sticky-col { position: static !important; border: none !important; }
+            .sticky-col, .sticky-col-right { position: static !important; border: none !important; box-shadow: none !important; }
             table { width: 100%; border-collapse: collapse; }
             th, td { border: 1px solid #000 !important; font-size: 10px !important; padding: 4px !important; }
         }
@@ -100,7 +110,7 @@
     {{-- ================================================================= --}}
     <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
         <div class="overflow-x-auto">
-            <table class="w-full text-sm text-right whitespace-nowrap">
+            <table class="w-full text-sm text-right whitespace-nowrap border-collapse">
                 
                 {{-- HEADER BULAN --}}
                 <thead class="bg-gray-100 text-gray-600 uppercase text-xs font-bold">
@@ -109,7 +119,8 @@
                         @foreach($months as $m => $name)
                             <th class="px-4 py-4 min-w-[100px]">{{ substr($name, 0, 3) }}</th>
                         @endforeach
-                        <th class="px-4 py-4 min-w-[120px] bg-gray-200 border-l border-gray-300 text-gray-800">TOTAL</th>
+                        {{-- Sticky Right diterapkan di sini --}}
+                        <th class="px-4 py-4 min-w-[120px] sticky-col-right bg-gray-200 text-gray-800">TOTAL</th>
                     </tr>
                 </thead>
 
@@ -120,13 +131,15 @@
                     {{-- ==================================================== --}}
                     <tr class="bg-blue-50/50">
                         <td class="px-6 py-3 text-left font-bold text-blue-800 sticky-col bg-blue-50 border-r">PENDAPATAN USAHA</td>
-                        <td colspan="13"></td>
+                        <td colspan="12"></td>
+                        {{-- Kolom sticky kosong untuk baris judul --}}
+                        <td class="sticky-col-right bg-blue-50/50"></td>
                     </tr>
 
                     @php $grandTotalPendapatan = 0; @endphp
                     @foreach(['Ekspedisi', 'PPOB', 'Marketplace', 'Lain-lain'] as $sumber)
                         <tr class="hover:bg-gray-50 transition">
-                            <td class="px-6 py-2 text-left pl-8 sticky-col border-r">Pendapatan {{ $sumber }}</td>
+                            <td class="px-6 py-2 text-left pl-8 sticky-col bg-white border-r">Pendapatan {{ $sumber }}</td>
                             @php $sumRow = 0; @endphp
                             @foreach($months as $m => $name)
                                 <td class="px-4 py-2 text-gray-600">
@@ -134,7 +147,8 @@
                                 </td>
                                 @php $sumRow += $report[$m]['pendapatan'][$sumber]; @endphp
                             @endforeach
-                            <td class="px-4 py-2 font-bold bg-gray-50 border-l border-gray-200">
+                            {{-- Sticky Right diterapkan di sini --}}
+                            <td class="px-4 py-2 font-bold sticky-col-right bg-gray-50 text-gray-800">
                                 {{ number_format($sumRow, 0, ',', '.') }}
                             </td>
                             @php $grandTotalPendapatan += $sumRow; @endphp
@@ -147,7 +161,8 @@
                         @foreach($months as $m => $name)
                             <td class="px-4 py-3">{{ number_format($report[$m]['total_pendapatan'], 0, ',', '.') }}</td>
                         @endforeach
-                        <td class="px-4 py-3 bg-blue-100 border-l border-blue-200">
+                        {{-- Sticky Right diterapkan di sini --}}
+                        <td class="px-4 py-3 sticky-col-right bg-blue-100 text-blue-900">
                             {{ number_format($grandTotalPendapatan, 0, ',', '.') }}
                         </td>
                     </tr>
@@ -157,13 +172,14 @@
                     {{-- ==================================================== --}}
                     <tr class="bg-red-50/50">
                         <td class="px-6 py-3 text-left font-bold text-red-800 sticky-col bg-red-50 border-r">BEBAN POKOK PENDAPATAN</td>
-                        <td colspan="13"></td>
+                        <td colspan="12"></td>
+                         <td class="sticky-col-right bg-red-50/50"></td>
                     </tr>
 
                     @php $grandTotalHPP = 0; @endphp
                     @foreach(['Beban Pokok Ekspedisi', 'Beban Pokok PPOB', 'Beban Pokok Marketplace'] as $sumber)
                         <tr class="hover:bg-gray-50 transition">
-                            <td class="px-6 py-2 text-left pl-8 sticky-col border-r">{{ $sumber }}</td>
+                            <td class="px-6 py-2 text-left pl-8 sticky-col bg-white border-r">{{ $sumber }}</td>
                             @php $sumRow = 0; @endphp
                             @foreach($months as $m => $name)
                                 <td class="px-4 py-2 text-gray-500">
@@ -171,7 +187,8 @@
                                 </td>
                                 @php $sumRow += $report[$m]['hpp'][$sumber]; @endphp
                             @endforeach
-                            <td class="px-4 py-2 font-bold bg-gray-50 border-l border-gray-200">
+                            {{-- Sticky Right diterapkan di sini --}}
+                            <td class="px-4 py-2 font-bold sticky-col-right bg-gray-50 text-gray-800">
                                 ({{ number_format($sumRow, 0, ',', '.') }})
                             </td>
                             @php $grandTotalHPP += $sumRow; @endphp
@@ -184,7 +201,8 @@
                         @foreach($months as $m => $name)
                             <td class="px-4 py-3">({{ number_format($report[$m]['total_hpp'], 0, ',', '.') }})</td>
                         @endforeach
-                        <td class="px-4 py-3 bg-red-100 border-l border-red-200">
+                        {{-- Sticky Right diterapkan di sini --}}
+                        <td class="px-4 py-3 sticky-col-right bg-red-100 text-red-900">
                             ({{ number_format($grandTotalHPP, 0, ',', '.') }})
                         </td>
                     </tr>
@@ -199,7 +217,8 @@
                             <td class="px-4 py-4">{{ number_format($report[$m]['laba_kotor'], 0, ',', '.') }}</td>
                             @php $grandTotalLabaKotor += $report[$m]['laba_kotor']; @endphp
                         @endforeach
-                        <td class="px-4 py-4 bg-green-200 border-l border-green-300">
+                        {{-- Sticky Right diterapkan di sini --}}
+                        <td class="px-4 py-4 sticky-col-right bg-green-200 text-green-900">
                             {{ number_format($grandTotalLabaKotor, 0, ',', '.') }}
                         </td>
                     </tr>
@@ -209,14 +228,15 @@
                     {{-- ==================================================== --}}
                     <tr class="bg-gray-50">
                         <td class="px-6 py-3 text-left font-bold text-gray-800 sticky-col bg-gray-50 border-r">BEBAN OPERASIONAL</td>
-                        <td colspan="13"></td>
+                        <td colspan="12"></td>
+                         <td class="sticky-col-right bg-gray-50"></td>
                     </tr>
 
                     @php $grandTotalBebanOps = 0; @endphp
                     @if(count($listKategoriBeban) > 0)
                         @foreach($listKategoriBeban as $kat)
                             <tr class="hover:bg-gray-50 transition">
-                                <td class="px-6 py-2 text-left pl-8 sticky-col border-r">{{ $kat }}</td>
+                                <td class="px-6 py-2 text-left pl-8 sticky-col bg-white border-r">{{ $kat }}</td>
                                 @php $sumRow = 0; @endphp
                                 @foreach($months as $m => $name)
                                     @php 
@@ -227,7 +247,8 @@
                                         ({{ number_format($val, 0, ',', '.') }})
                                     </td>
                                 @endforeach
-                                <td class="px-4 py-2 font-bold bg-gray-50 border-l border-gray-200">
+                                {{-- Sticky Right diterapkan di sini --}}
+                                <td class="px-4 py-2 font-bold sticky-col-right bg-gray-50 text-gray-800">
                                     ({{ number_format($sumRow, 0, ',', '.') }})
                                 </td>
                                 @php $grandTotalBebanOps += $sumRow; @endphp
@@ -235,8 +256,9 @@
                         @endforeach
                     @else
                         <tr>
-                            <td class="px-6 py-2 text-left pl-8 italic text-gray-400 sticky-col border-r">Tidak ada data beban manual</td>
-                            <td colspan="13"></td>
+                            <td class="px-6 py-2 text-left pl-8 italic text-gray-400 sticky-col bg-white border-r">Tidak ada data beban manual</td>
+                            <td colspan="12"></td>
+                            <td class="sticky-col-right bg-white"></td>
                         </tr>
                     @endif
 
@@ -246,7 +268,8 @@
                         @foreach($months as $m => $name)
                             <td class="px-4 py-3">({{ number_format($report[$m]['total_beban'], 0, ',', '.') }})</td>
                         @endforeach
-                        <td class="px-4 py-3 bg-gray-200 border-l border-gray-300">
+                        {{-- Sticky Right diterapkan di sini --}}
+                        <td class="px-4 py-3 sticky-col-right bg-gray-200 text-gray-900">
                             ({{ number_format($grandTotalBebanOps, 0, ',', '.') }})
                         </td>
                     </tr>
@@ -265,7 +288,8 @@
                             </td>
                             @php $grandTotalNetIncome += $report[$m]['laba_bersih']; @endphp
                         @endforeach
-                        <td class="px-4 py-5 bg-indigo-900 border-l border-indigo-600 text-lg">
+                        {{-- Sticky Right diterapkan di sini --}}
+                        <td class="px-4 py-5 sticky-col-right bg-indigo-900 border-l border-indigo-600 text-lg">
                             {{ number_format($grandTotalNetIncome, 0, ',', '.') }}
                         </td>
                     </tr>
