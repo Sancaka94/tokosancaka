@@ -349,7 +349,7 @@
 
                         {{-- MENU BARU: LAPORAN LABA RUGI --}}
                         <li>
-                            <a href="{{ route('admin.laporan.laba_rugi') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors {{ request()->routeIs('admin.laporan.laba_rugi') ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                            <a href="{{ route('admin.keuangan.laba_rugi') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors {{ request()->routeIs('admin.laporan.laba_rugi') ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
                                 <i class="fas fa-file-invoice-dollar w-5 text-center"></i>
                                 <span class="font-medium text-sm">Laba Rugi (Tahunan)</span>
                             </a>
