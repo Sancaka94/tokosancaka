@@ -210,7 +210,7 @@
 
     // 2. Data Akun dari Controller (JSON)
     const allAccounts = @json($allAccounts);
-    const currentAccount = "{{ $data->kode_akun }}"; // Akun yang sedang diedit
+    const currentAccount = "{{ $data->kode_akun }}"; // Akun yang sedang diedit (Kode 1101, etc)
 
     function filterAccounts() {
         // PERBAIKAN: Selector disesuaikan dengan name="unit_usaha"
@@ -257,8 +257,8 @@
                 option.value = acc.kode_akun; // VALUE ADALAH KODE AKUN (Sesuai database)
                 option.text = `[${acc.kode_akun}] ${acc.nama_akun} (${acc.kategori})`;
                 
-                // Pre-select akun yang sedang diedit
-                if (acc.kode_akun == currentAccount) {
+                // Pre-select akun yang sedang diedit (Hanya jika Kode & Unit cocok)
+                if (acc.kode_akun == currentAccount && acc.unit_usaha == selectedUnit) {
                     option.selected = true;
                 }
                 
