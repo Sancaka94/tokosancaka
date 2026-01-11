@@ -24,23 +24,21 @@ use Carbon\Carbon;
 
 class PesananController extends Controller
 {
-    /**
-     * Menampilkan daftar semua pesanan dengan filter dan pencarian.
-     */
-    /**
-     * Menampilkan daftar semua pesanan dengan filter dan pencarian.
-     */
     public function index(Request $request)
     {
-        // 1. Tandai pesanan 'baru' sebagai 'telah_dilihat'
+        // 1. Update Status Notifikasi (Tandai sudah dilihat)
         Pesanan::where('status', 'baru')
             ->where('telah_dilihat', false)
             ->update(['telah_dilihat' => true]);
 
-        // 2. Mulai Query Utama
+        // =================================================================
+        // STEP 1: QUERY GLOBAL (Berlaku untuk Tabel & Card)
+        // =================================================================
+        // Query ini akan menampung Search (JNE/Lion/Nama) dan Filter Tanggal
+        
         $query = Pesanan::query();
 
-        // 3. Logic SEARCH GLOBAL (Ketik Manual di Search Box)
+        // A. LOGIC SEARCH (Nama, Resi, NoHP, DAN EKSPEDISI)
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
@@ -50,12 +48,13 @@ class PesananController extends Controller
                     ->orWhere('receiver_name', 'like', "%{$search}%")
                     ->orWhere('sender_phone', 'like', "%{$search}%")
                     ->orWhere('receiver_phone', 'like', "%{$search}%")
-                    ->orWhere('expedition', 'like', "%{$search}%")
+                    // PENTING: Ini yang bikin card berubah saat ketik "JNE", "Lion", "JNT"
+                    ->orWhere('expedition', 'like', "%{$search}%") 
                     ->orWhere('status_pesanan', 'like', "%{$search}%");
             });
         }
         
-        // 4. Logic FILTER KLIK TOMBOL DASHBOARD (?ekspedisi=...)
+        // B. LOGIC FILTER TOMBOL DASHBOARD (?ekspedisi=JNE)
         if ($request->has('ekspedisi') && $request->ekspedisi != '') {
             $filterKurir = $request->ekspedisi;
             $query->where(function($q) use ($filterKurir) {
@@ -64,72 +63,80 @@ class PesananController extends Controller
             });
         }
 
-        // 5. Logic Filter STATUS
-        if ($request->filled('status')) {
-            $query->where('status', $request->input('status'));
-        }
-
-        // 6. Logic Filter TANGGAL (PERBAIKAN TOTAL)
+        // C. LOGIC FILTER TANGGAL (Kebal Format URL)
         if ($request->filled('date_range')) {
             $rawDate = $request->date_range;
-            
-            // LANGKAH 1: Normalisasi Pemisah
-            // Ubah " - " (strip) atau " s.d. " menjadi " to " agar seragam
-            // Ini mengatasi masalah URL: "2026-01-01 - 2026-01-11"
+            // Normalisasi: Ubah " - " atau " s.d. " jadi " to "
             $normalizedDate = str_replace([' - ', ' s.d. '], ' to ', $rawDate);
-            
-            // LANGKAH 2: Pecah String
             $dates = explode(' to ', $normalizedDate);
 
-            // LANGKAH 3: Terapkan Query
             if (count($dates) >= 2) {
-                // Jika user memilih Range (Mulai s/d Selesai)
-                // Pakai trim() untuk buang spasi yang tidak sengaja terbawa
+                // Range Tanggal
                 $startDate = trim($dates[0]) . ' 00:00:00';
                 $endDate   = trim($dates[1]) . ' 23:59:59';
-                
                 $query->whereBetween('tanggal_pesanan', [$startDate, $endDate]);
             } elseif (count($dates) == 1) {
-                // Jika user hanya memilih 1 tanggal (Single Date)
+                // Satu Tanggal
                 $query->whereDate('tanggal_pesanan', trim($dates[0]));
             }
         }
 
         // =================================================================
-        // HITUNG DATA CARD (PENDAPATAN & JUMLAH)
+        // STEP 2: CLONE QUERY UNTUK CARD
         // =================================================================
+        // Kita "foto" query di titik ini. Saat ini query sudah berisi:
+        // "Cari JNE" + "Tanggal Sekian".
+        // Kita pakai $cardQuery ini untuk menghitung total di kotak warna-warni.
         
-        // Group Status
-        $statusPickup = ['Menunggu Pickup', 'Pembayaran Lunas (Gagal Auto-Resi)', 'Pembayaran Lunas (Error Kirim API)'];
-        $statusDikirim = ['Diproses', 'Terkirim', 'Sedang Dikirim'];
-        $statusGagal = ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'];
-
-        // A. HITUNG PENDAPATAN (SUM PRICE)
-        $incomeSelesai = Pesanan::where('status_pesanan', 'Selesai')->sum('price');
-        $incomePickup  = Pesanan::whereIn('status_pesanan', $statusPickup)->sum('price');
-        $incomeDikirim = Pesanan::whereIn('status_pesanan', $statusDikirim)->sum('price');
-        $incomeGagal   = Pesanan::whereIn('status_pesanan', $statusGagal)->sum('price');
-
-        // B. HITUNG JUMLAH RESI/TRANSAKSI (COUNT ID) -- TAMBAHAN BARU --
-        $countSelesai = Pesanan::where('status_pesanan', 'Selesai')->count();
-        $countPickup  = Pesanan::whereIn('status_pesanan', $statusPickup)->count();
-        $countDikirim = Pesanan::whereIn('status_pesanan', $statusDikirim)->count();
-        $countGagal   = Pesanan::whereIn('status_pesanan', $statusGagal)->count();
+        $cardQuery = clone $query; 
 
         // =================================================================
+        // STEP 3: HITUNG DATA CARD (PENDAPATAN & JUMLAH)
+        // =================================================================
+        // Menggunakan $cardQuery, jadi angkanya ikut berubah sesuai Search/Tanggal.
+        
+        $statusPickup  = ['Menunggu Pickup', 'Pembayaran Lunas (Gagal Auto-Resi)', 'Pembayaran Lunas (Error Kirim API)'];
+        $statusDikirim = ['Diproses', 'Terkirim', 'Sedang Dikirim'];
+        $statusGagal   = ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'];
 
-        // 7. Urutkan dan Pagination
+        // --- A. CARD PENDAPATAN (Rp) ---
+        // (clone $cardQuery) -> Ambil query JNE tadi -> Tambahkan syarat status -> Hitung Total
+        $incomeSelesai = (clone $cardQuery)->where('status_pesanan', 'Selesai')->sum('price');
+        $incomePickup  = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->sum('price');
+        $incomeDikirim = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->sum('price');
+        $incomeGagal   = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->sum('price');
+
+        // --- B. CARD JUMLAH (Qty) ---
+        $countSelesai = (clone $cardQuery)->where('status_pesanan', 'Selesai')->count();
+        $countPickup  = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->count();
+        $countDikirim = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->count();
+        $countGagal   = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->count();
+
+
+        // =================================================================
+        // STEP 4: LANJUTKAN QUERY UNTUK TABEL BAWAH
+        // =================================================================
+        // Filter "Status" (Tab Menu: Semua, Menunggu Pickup, dll) hanya berlaku untuk Tabel,
+        // TIDAK BOLEH mengubah Card (supaya Card tetap jadi Summary utuh).
+        
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        // Ambil Data Tabel (Pagination)
         $orders = $query->orderBy('tanggal_pesanan', 'desc')->paginate(15);
-        $orders->appends($request->all());
+        $orders->appends($request->all()); // Agar filter tidak hilang saat pindah halaman
 
-        // 8. Return View (Kirim semua variable sum & count)
+        // =================================================================
+        // STEP 5: RETURN VIEW
+        // =================================================================
         return view('admin.pesanan.index', compact(
             'orders', 
             'incomeSelesai', 'incomePickup', 'incomeDikirim', 'incomeGagal',
             'countSelesai', 'countPickup', 'countDikirim', 'countGagal'
         ));
     }
-
+    
     /**
      * Menampilkan form untuk membuat pesanan baru.
      */
