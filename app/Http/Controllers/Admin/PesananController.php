@@ -69,15 +69,29 @@ class PesananController extends Controller
             $query->where('status', $request->input('status'));
         }
 
-        // 6. Logic Filter TANGGAL (Flatpickr)
+        // 6. Logic Filter TANGGAL (PERBAIKAN TOTAL)
         if ($request->filled('date_range')) {
-            $dates = explode(' to ', $request->date_range);
-            if (count($dates) == 2) {
-                $startDate = $dates[0] . ' 00:00:00';
-                $endDate   = $dates[1] . ' 23:59:59';
+            $rawDate = $request->date_range;
+            
+            // LANGKAH 1: Normalisasi Pemisah
+            // Ubah " - " (strip) atau " s.d. " menjadi " to " agar seragam
+            // Ini mengatasi masalah URL: "2026-01-01 - 2026-01-11"
+            $normalizedDate = str_replace([' - ', ' s.d. '], ' to ', $rawDate);
+            
+            // LANGKAH 2: Pecah String
+            $dates = explode(' to ', $normalizedDate);
+
+            // LANGKAH 3: Terapkan Query
+            if (count($dates) >= 2) {
+                // Jika user memilih Range (Mulai s/d Selesai)
+                // Pakai trim() untuk buang spasi yang tidak sengaja terbawa
+                $startDate = trim($dates[0]) . ' 00:00:00';
+                $endDate   = trim($dates[1]) . ' 23:59:59';
+                
                 $query->whereBetween('tanggal_pesanan', [$startDate, $endDate]);
             } elseif (count($dates) == 1) {
-                $query->whereDate('tanggal_pesanan', $dates[0]);
+                // Jika user hanya memilih 1 tanggal (Single Date)
+                $query->whereDate('tanggal_pesanan', trim($dates[0]));
             }
         }
 
