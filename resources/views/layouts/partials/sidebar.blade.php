@@ -272,6 +272,14 @@
                 </div>
             </div>
 
+
+                        <li>
+                            <a href="{{ route('admin.ekspedisi.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors {{ request()->routeIs('admin.ekspedisi.*') ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                                <i class="fas fa-truck-moving w-5 text-center"></i>
+                                <span class="font-medium text-sm">Master Ekspedisi</span>
+                            </a>
+                        </li>
+
             {{-- Manajemen Kurir --}}
             <div>
                 <button onclick="toggleMenu('menuKurir')" 
@@ -338,6 +346,14 @@
                                 Transaksi Keuangan
                             </a>
                         </li>
+
+                        {{-- MENU BARU: LAPORAN LABA RUGI --}}
+                        <li>
+                            <a href="{{ route('admin.laporan.laba_rugi') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors {{ request()->routeIs('admin.laporan.laba_rugi') ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                                <i class="fas fa-file-invoice-dollar w-5 text-center"></i>
+                                <span class="font-medium text-sm">Laba Rugi (Tahunan)</span>
+                            </a>
+                        </li>
                         {{--  AKHIR MENU BARU  --}}
                         <li><a href="{{ route('admin.saldo.requests.history') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.saldo.requests.history') ? 'text-white' : 'text-gray-400' }}">Riwayat Top Up</a></li>
                         <li><a href="{{ url('admin/wallet') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->is('admin/wallet*') ? 'text-white' : 'text-gray-400' }}">Dompet Pelanggan</a></li>
@@ -366,12 +382,7 @@
                     <ul class="pl-8 pr-2 py-1 space-y-1">
                         <li><a href="{{ route('admin.logs.show') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.logs.show') ? 'text-red-600' : 'text-red-600' }}">Log Error</a></li>
                         {{-- 3. MASTER EKSPEDISI (MENU BARU) --}}
-                        <li>
-                            <a href="{{ route('admin.ekspedisi.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors {{ request()->routeIs('admin.ekspedisi.*') ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                                <i class="fas fa-truck-moving w-5 text-center"></i>
-                                <span class="font-medium text-sm">Master Ekspedisi</span>
-                            </a>
-                        </li>
+                        
                         <li><a href="{{ route('admin.activity-log.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.activity-log.index') ? 'text-white' : 'text-gray-400' }}">Log Aktivitas</a></li>
                         <li><a href="{{ route('admin.settings.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.settings.index') ? 'text-white' : 'text-gray-400' }}">Pengaturan Aplikasi</a></li>
                         <li><a href="{{ route('admin.settings.api.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.settings.api.index') ? 'text-white' : 'text-gray-400' }}">Konfigurasi API</a></li>
