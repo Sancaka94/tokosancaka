@@ -6,14 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Models\Keuangan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Pagination\LengthAwarePaginator; // Penting untuk pagination manual
+use Illuminate\Pagination\LengthAwarePaginator;
+use App\Exports\KeuanganExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class KeuanganController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * FUNGSI KHUSUS: PENGOLAH DATA PUSAT
+     * Fungsi ini memuat SEMUA logika lama Anda (Query, Filter Search, Filter Tanggal, Hitung JSON).
+     * Dipisahkan agar bisa dipakai oleh Index (Tabel), Excel, dan PDF sekaligus.
+     */
+    private function getDataLengkap(Request $request)
     {
         // ==================================================================================
-        // 1. QUERY DASAR (Manual, PPOB, Topup, Marketplace)
+        // 1. QUERY DASAR (SAMA PERSIS SEPERTI KODE LAMA)
         // ==================================================================================
 
         // A. Manual Query
@@ -43,8 +51,7 @@ class KeuanganController extends Controller
             'invoice_number as nomor_invoice', DB::raw("CONCAT(shipping_method, ' - ', COALESCE(shipping_resi, '-')) as keterangan"), 
             'total_amount as omzet', DB::raw('(shipping_cost + insurance_cost) as modal'), DB::raw('(total_amount - (shipping_cost + insurance_cost)) as profit'));
 
-        // E. EKSPEDISI QUERY (Ambil Data Mentah Dulu)
-        // Kita tidak hitung profit di SQL, tapi ambil komponennya untuk dihitung di PHP
+        // E. EKSPEDISI QUERY (Ambil Data Mentah)
         $ekspedisiQuery = DB::table('Pesanan')
             ->whereIn('status_pesanan', ['Selesai', 'Terkirim', 'Lunas', 'Delivered', 'Success', 'success'])
             ->select(
@@ -55,28 +62,21 @@ class KeuanganController extends Controller
                 'nomor_invoice',
                 DB::raw("CONCAT(resi, ' (', expedition, ')') as keterangan"),
                 'price as omzet', 
-                // Kolom penting untuk perhitungan profit:
                 'shipping_cost', 
                 'insurance_cost', 
-                'expedition',   // String nama kurir & layanan (misal: "regular-jne-yes")
+                'expedition',   
                 'service_type',
-                DB::raw('0 as modal'), // Placeholder, nanti diisi PHP
-                DB::raw('0 as profit') // Placeholder, nanti diisi PHP
+                DB::raw('0 as modal'), 
+                DB::raw('0 as profit') 
             );
 
         // ==================================================================================
-        // 2. SEARCH & FILTER (Terapkan ke semua Query)
+        // 2. SEARCH & FILTER (SAMA PERSIS SEPERTI KODE LAMA)
         // ==================================================================================
         
         if ($request->filled('search')) {
             $keyword = $request->search;
             
-            $filterClosure = function($q) use ($keyword) {
-                // Logika umum search
-                $q->where('nomor_invoice', 'like', "%$keyword%");
-            };
-            
-            // Terapkan filter spesifik per query (copy dari logika search sebelumnya)
             $manualQuery->where(function($q) use ($keyword) {
                  $q->where('nomor_invoice', 'like', "%$keyword%")->orWhere('keterangan', 'like', "%$keyword%")->orWhere('kategori', 'like', "%$keyword%");
             });
@@ -89,8 +89,6 @@ class KeuanganController extends Controller
             $marketplaceQuery->where(function($q) use ($keyword) {
                  $q->where('invoice_number', 'like', "%$keyword%")->orWhereRaw("'Marketplace' LIKE ?", ["%$keyword%"]);
             });
-            
-            // Search Ekspedisi (Lengkap)
             $ekspedisiQuery->where(function($q) use ($keyword) {
                 $q->where('nomor_invoice', 'like', "%$keyword%")
                   ->orWhere('resi', 'like', "%$keyword%")
@@ -113,43 +111,34 @@ class KeuanganController extends Controller
         }
 
         // ==================================================================================
-        // 3. PROSES HITUNG PROFIT EKSPEDISI (PHP SIDE)
+        // 3. PROSES HITUNG PROFIT EKSPEDISI / JSON (SAMA PERSIS SEPERTI KODE LAMA)
         // ==================================================================================
 
-        // Ambil Data Aturan Diskon dari Database
         $diskonRules = DB::table('Ekspedisi')->whereNotNull('keyword')->get();
-
-        // Ambil data Ekspedisi dari DB (Get Collection)
         $ekspedisiData = $ekspedisiQuery->get();
 
-        // Loop dan Hitung Profit per Baris
         $processedEkspedisi = $ekspedisiData->map(function($row) use ($diskonRules) {
             $diskonPersen = 0;
-            $expStr = strtolower($row->expedition); // misal: "regular-jne-yes"
+            $expStr = strtolower($row->expedition); 
             
-            // 1. Cari Kurir yang cocok
             foreach ($diskonRules as $rule) {
                 if (str_contains($expStr, strtolower($rule->keyword))) {
-                    // 2. Parse JSON Rules
                     $rules = json_decode($rule->diskon_rules, true);
                     if (is_array($rules)) {
-                        // 3. Cari Layanan yang cocok (reg, yes, cargo, dll)
                         foreach ($rules as $key => $val) {
                             if ($key !== 'default' && str_contains($expStr, $key)) {
                                 $diskonPersen = $val;
-                                break 2; // Ketemu layanan spesifik
+                                break 2; 
                             }
                         }
-                        // Jika tidak ada layanan spesifik, pakai default
                         if (isset($rules['default'])) {
                             $diskonPersen = $rules['default'];
                         }
                     }
-                    break; // Ketemu kurir
+                    break;
                 }
             }
 
-            // 4. Hitung Modal & Profit
             $ongkirPublish = $row->shipping_cost;
             $ongkirReal    = $ongkirPublish - ($ongkirPublish * $diskonPersen);
             
@@ -160,68 +149,90 @@ class KeuanganController extends Controller
         });
 
         // ==================================================================================
-        // 4. GABUNGKAN DATA (MERGE) & PAGINATION
+        // 4. GABUNGKAN DATA (MERGE)
         // ==================================================================================
 
-        // Ambil data selain ekspedisi
         $othersData = $manualQuery
             ->unionAll($ppobQuery)
             ->unionAll($topupQuery)
             ->unionAll($marketplaceQuery)
             ->get();
 
-        // Gabung semua data
         $allData = $othersData->merge($processedEkspedisi);
-
-        // Sort descending by tanggal
         $sortedData = $allData->sortByDesc('tanggal');
 
-        // Pagination Manual (Karena data sudah berupa Collection)
+        return $sortedData; // Mengembalikan Collection Data Lengkap
+    }
+
+    /**
+     * HALAMAN UTAMA (INDEX)
+     * Menggunakan Logic Lama untuk Pagination & Summary Card
+     */
+    public function index(Request $request)
+    {
+        // 1. Ambil Data dari Fungsi Pusat (Logic Lama)
+        $allData = $this->getDataLengkap($request);
+
+        // 2. Pagination Manual (Logic Lama)
         $page = $request->input('page', 1);
         $perPage = 15;
         $offset = ($page * $perPage) - $perPage;
 
         $transaksi = new LengthAwarePaginator(
-            $sortedData->slice($offset, $perPage)->values(), // Items halaman ini
-            $sortedData->count(), // Total items
-            $perPage, // Items per page
-            $page, // Halaman sekarang
+            $allData->slice($offset, $perPage)->values(), 
+            $allData->count(), 
+            $perPage, 
+            $page, 
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        // ==================================================================================
-        // 5. HITUNG SUMMARY (CARD) DARI COLLECTION
-        // ==================================================================================
-
-        // Hitung manual dari collection karena SQL Union tidak bisa melihat profit ekspedisi yg baru dihitung
+        // 3. Summary untuk Card (Logic Lama)
         $summary = [
-            'omzet'  => $sortedData->sum('omzet'),
-            'modal'  => $sortedData->sum('modal'),
-            'profit' => $sortedData->sum('profit'),
-
-            // Breakdown Detail
-            'ekspedisi' => [
-                'omzet' => $processedEkspedisi->sum('omzet'),
-                'count' => $processedEkspedisi->count()
-            ],
-            'ppob' => [
-                'omzet' => $othersData->where('kategori', 'PPOB')->sum('omzet'),
-                'count' => $othersData->where('kategori', 'PPOB')->count()
-            ],
-            'marketplace' => [
-                'omzet' => $othersData->where('kategori', 'Marketplace')->sum('omzet'),
-                'count' => $othersData->where('kategori', 'Marketplace')->count()
-            ],
-            'topup' => [
-                'omzet' => $othersData->where('kategori', 'Top Up Saldo')->sum('omzet'),
-                'count' => $othersData->where('kategori', 'Top Up Saldo')->count()
-            ],
+            'omzet'  => $allData->sum('omzet'),
+            'modal'  => $allData->sum('modal'),
+            'profit' => $allData->sum('profit'),
+            'ekspedisi' => ['omzet' => $allData->where('kategori', 'Ekspedisi')->sum('omzet'), 'count' => $allData->where('kategori', 'Ekspedisi')->count()],
+            'ppob' => ['omzet' => $allData->where('kategori', 'PPOB')->sum('omzet'), 'count' => $allData->where('kategori', 'PPOB')->count()],
+            'marketplace' => ['omzet' => $allData->where('kategori', 'Marketplace')->sum('omzet'), 'count' => $allData->where('kategori', 'Marketplace')->count()],
+            'topup' => ['omzet' => $allData->where('kategori', 'Top Up Saldo')->sum('omzet'), 'count' => $allData->where('kategori', 'Top Up Saldo')->count()],
         ];
 
         return view('admin.keuangan.index', compact('transaksi', 'summary'));
     }
 
-    // CRUD Manual
+    /**
+     * FITUR BARU: EXPORT EXCEL
+     * Menggunakan Logic yang SAMA dengan Index, tapi di-download
+     */
+    public function exportExcel(Request $request)
+    {
+        $data = $this->getDataLengkap($request);
+        $fileName = 'Laporan_Keuangan_' . date('Y-m-d_H-i') . '.xlsx';
+        return Excel::download(new KeuanganExport($data), $fileName);
+    }
+
+    /**
+     * FITUR BARU: EXPORT PDF
+     * Menggunakan Logic yang SAMA dengan Index, tapi di-download PDF
+     */
+    public function exportPdf(Request $request)
+    {
+        $data = $this->getDataLengkap($request);
+        
+        // Hitung ulang summary kecil untuk Header PDF
+        $summary = [
+            'omzet' => $data->sum('omzet'),
+            'modal' => $data->sum('modal'),
+            'profit' => $data->sum('profit'),
+        ];
+        
+        $pdf = Pdf::loadView('admin.keuangan.pdf', compact('data', 'summary'));
+        $pdf->setPaper('a4', 'landscape');
+        
+        return $pdf->download('Laporan_Keuangan_' . date('Y-m-d') . '.pdf');
+    }
+
+    // CRUD Manual (SAMA SEPERTI LAMA)
     public function store(Request $request) { Keuangan::create($request->all()); return back()->with('success','Disimpan'); }
     public function update(Request $request, $id) { Keuangan::find($id)->update($request->all()); return back()->with('success','Diupdate'); }
     public function destroy($id) { Keuangan::find($id)->delete(); return back()->with('success','Dihapus'); }
