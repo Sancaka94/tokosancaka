@@ -230,18 +230,40 @@ class LabaRugiController extends Controller
     }
 
     /**
-     * EXPORT PDF
+     * EXPORT PDF (OTOMATIS PORTRAIT / LANDSCAPE)
      */
     public function exportPdf(Request $request)
     {
         $tahun = $request->input('tahun', date('Y'));
+        // Ambil input 'bulan'. Jika tidak ada, default ke 'all' (semua)
+        $bulan = $request->input('bulan', 'all'); 
+
         $data = $this->getDataLaporan($tahun);
 
-        $pdf = Pdf::loadView('admin.keuangan.pdf_laba_rugi', $data); // Pastikan buat view khusus PDF jika perlu style beda
-        $pdf->setPaper('f4', 'landscape'); // Tetap landscape
-        $pdf->setOption('margin-left', 5); // Margin tipis
-        $pdf->setOption('margin-right', 5);
+        if ($bulan !== 'all') {
+            // ==========================================
+            // MODE PORTRAIT: User pilih 1 Bulan Spesifik
+            // ==========================================
+            // Tampilan: Kolom Bulan Terpilih vs Kolom Total Tahun
+            
+            $data['bulanDipilih'] = $bulan; // Kirim angka bulan (1-12) ke View
+            
+            $pdf = Pdf::loadView('admin.keuangan.pdf_laba_rugi_ringkas', $data);
+            $pdf->setPaper('a4', 'portrait'); // SET PORTRAIT
+            
+            $namaFile = 'Laporan_Ringkas_Bulan_' . $bulan . '_' . $tahun . '.pdf';
+        } else {
+            // ==========================================
+            // MODE LANDSCAPE: User pilih "Semua Bulan"
+            // ==========================================
+            // Tampilan: Tabel Lebar Jan-Des + Total
+            
+            $pdf = Pdf::loadView('admin.keuangan.pdf_laba_rugi', $data);
+            $pdf->setPaper('a4', 'landscape'); // SET LANDSCAPE
+            
+            $namaFile = 'Laporan_Detail_Tahunan_' . $tahun . '.pdf';
+        }
 
-        return $pdf->download('Laba_Rugi_' . $tahun . '.pdf');
+        return $pdf->download($namaFile);
     }
 }

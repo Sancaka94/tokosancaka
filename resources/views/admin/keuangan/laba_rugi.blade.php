@@ -46,30 +46,49 @@
             </div>
 
             {{-- Form Filter & Export --}}
-            <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                
-                {{-- Form Filter Tahun --}}
-                <form action="{{ route('admin.keuangan.laba_rugi') }}" method="GET" class="flex items-center gap-2 w-full sm:w-auto">
-                    <select name="tahun" class="border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 w-full sm:w-32">
-                        @for($y = date('Y'); $y >= 2023; $y--)
-                            <option value="{{ $y }}" {{ $tahun == $y ? 'selected' : '' }}>{{ $y }}</option>
-                        @endfor
-                    </select>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
-                        <i class="fas fa-filter"></i>
-                    </button>
+<div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+    
+    {{-- Form Filter Utama --}}
+    <form action="{{ route('admin.keuangan.laba_rugi') }}" method="GET" class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        
+            {{-- Pilihan Tahun --}}
+            <select name="tahun" class="border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3">
+                @for($y = date('Y'); $y >= 2023; $y--)
+                    <option value="{{ $y }}" {{ $tahun == $y ? 'selected' : '' }}>Tahun {{ $y }}</option>
+                @endfor
+            </select>
+
+            {{-- Tombol Filter Web (Hanya refresh halaman) --}}
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm" title="Tampilkan di Web">
+                <i class="fas fa-search"></i> Lihat
+            </button>
                 </form>
 
-                <div class="h-6 w-px bg-gray-300 hidden sm:block"></div>
+                <div class="h-6 w-px bg-gray-300 hidden sm:block mx-2"></div>
 
-                {{-- Tombol Export Excel --}}
-                <a href="{{ route('admin.keuangan.laba_rugi.export_excel', ['tahun' => $tahun]) }}" target="_blank" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center justify-center gap-2">
-                    <i class="fas fa-file-excel"></i> Excel
-                </a>
+                {{-- Form Khusus Export PDF (Terpisah agar logic bulan bisa jalan) --}}
+                <form action="{{ route('admin.keuangan.laba_rugi.export_pdf') }}" method="GET" target="_blank" class="flex items-center gap-2">
+                    
+                    {{-- Input Hidden Tahun (Ikut tahun yang sedang dipilih) --}}
+                    <input type="hidden" name="tahun" value="{{ $tahun }}">
 
-                {{-- Tombol Export PDF --}}
-                <a href="{{ route('admin.keuangan.laba_rugi.export_pdf', ['tahun' => $tahun]) }}" target="_blank" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center justify-center gap-2">
-                    <i class="fas fa-file-pdf"></i> PDF
+                    {{-- Pilihan Mode Laporan --}}
+                    <select name="bulan" class="border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500 py-2 px-3 w-48">
+                        <option value="all" selected>Semua (Detail Landscape)</option>
+                        <option disabled>--- Pilih Bulan (Portrait) ---</option>
+                        @foreach($months as $k => $v)
+                            <option value="{{ $k }}">{{ $v }} (Ringkas)</option>
+                        @endforeach
+                    </select>
+
+                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center gap-2">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                </form>
+                
+                {{-- Tombol Excel (Tetap Download Semua) --}}
+                <a href="{{ route('admin.keuangan.laba_rugi.export_excel', ['tahun' => $tahun]) }}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center gap-2" title="Download Excel Full">
+                    <i class="fas fa-file-excel"></i>
                 </a>
 
             </div>
