@@ -111,8 +111,14 @@
 <body>
 
     @php
-        // Helper: Nama Bulan Bahasa Indonesia
-        $namaBulan = \Carbon\Carbon::create()->month($bulanDipilih)->locale('id')->isoFormat('MMMM');
+        // PERBAIKAN:
+        // 1. Tambahkan (int) untuk memaksa string menjadi angka
+        // 2. Tambahkan ->day(1) untuk mencegah error tanggal (misal: tgl 31 diubah ke Feb jadi Maret)
+        $namaBulan = \Carbon\Carbon::create()
+            ->day(1)
+            ->month((int) $bulanDipilih)
+            ->locale('id')
+            ->isoFormat('MMMM');
     @endphp
 
     <div class="header">
