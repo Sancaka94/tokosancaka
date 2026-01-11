@@ -2,6 +2,32 @@
 
 @section('title', 'Catat Transaksi Baru')
 
+{{-- Add Flatpickr CSS in Head (Stack) --}}
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    /* Custom Flatpickr Theme to match Tailwind Blue */
+    .flatpickr-calendar {
+        border-radius: 0.75rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        border: 1px solid #f3f4f6;
+    }
+    .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange, .flatpickr-day.selected.inRange, .flatpickr-day.startRange.inRange, .flatpickr-day.endRange.inRange, .flatpickr-day.selected:focus, .flatpickr-day.startRange:focus, .flatpickr-day.endRange:focus, .flatpickr-day.selected:hover, .flatpickr-day.startRange:hover, .flatpickr-day.endRange:hover, .flatpickr-day.selected.prevMonthDay, .flatpickr-day.startRange.prevMonthDay, .flatpickr-day.endRange.prevMonthDay, .flatpickr-day.selected.nextMonthDay, .flatpickr-day.startRange.nextMonthDay, .flatpickr-day.endRange.nextMonthDay {
+        background: #3b82f6; /* Tailwind Blue-500 */
+        border-color: #3b82f6;
+    }
+    .flatpickr-months .flatpickr-month {
+        background: #f9fafb; /* Gray-50 */
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+        padding-top: 10px;
+    }
+    .flatpickr-current-month .flatpickr-monthDropdown-months {
+        font-weight: 600;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="container mx-auto px-4 py-8 max-w-4xl">
 
@@ -76,11 +102,17 @@
                 {{-- ======================================================== --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-6">
                     
-                    {{-- Tanggal --}}
+                    {{-- Tanggal (UPGRADED DESIGN) --}}
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Tanggal Transaksi</label>
-                        <input type="date" name="tanggal" value="{{ old('tanggal', date('Y-m-d')) }}" 
-                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none">
+                        <div class="relative">
+                            <input type="text" id="tanggal_picker" name="tanggal" value="{{ old('tanggal', date('Y-m-d')) }}" 
+                                class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none bg-white"
+                                placeholder="Pilih tanggal...">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                        </div>
                         @error('tanggal') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
 
@@ -88,7 +120,7 @@
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Jenis Arus Kas</label>
                         <select name="jenis" id="jenis_transaksi" onchange="filterAccounts()" 
-                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none bg-white">
+                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none bg-white appearance-none">
                             <option value="Pengeluaran" {{ old('jenis') == 'Pengeluaran' ? 'selected' : '' }}>🔴 Pengeluaran (Uang Keluar)</option>
                             <option value="Pemasukan" {{ old('jenis') == 'Pemasukan' ? 'selected' : '' }}>🟢 Pemasukan (Uang Masuk)</option>
                         </select>
@@ -102,7 +134,7 @@
                         </label>
                         <div class="relative">
                             <select name="kode_akun" id="kode_akun" required disabled
-                                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400">
+                                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 appearance-none">
                                 <option value="">-- Pilih Unit Usaha Terlebih Dahulu --</option>
                             </select>
                             <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none text-gray-500">
@@ -152,21 +184,34 @@
     </div>
 </div>
 
-{{-- SCRIPT FILTER AKUN --}}
+{{-- SCRIPT: Flatpickr & Filter Akun --}}
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script> {{-- Bahasa Indonesia --}}
+
 <script>
-    // Data Akun dari Controller (JSON)
+    // 1. Inisialisasi Flatpickr (Date Picker Keren)
+    flatpickr("#tanggal_picker", {
+        altInput: true,
+        altFormat: "j F Y", // Tampil: 11 Januari 2026
+        dateFormat: "Y-m-d", // Simpan: 2026-01-11
+        locale: "id", // Bahasa Indonesia
+        defaultDate: "{{ old('tanggal', date('Y-m-d')) }}",
+        disableMobile: "true" // Paksa tampilan custom di HP juga
+    });
+
+    // 2. Data Akun dari Controller (JSON)
     const allAccounts = @json($allAccounts);
 
     function filterAccounts() {
-        // 1. Ambil nilai filter
+        // Ambil nilai filter
         const selectedUnit = document.querySelector('input[name="filter_unit"]:checked')?.value;
         const selectedType = document.getElementById('jenis_transaksi').value; // Pemasukan / Pengeluaran
         
         const selectBox = document.getElementById('kode_akun');
         const hintText = document.getElementById('akun_hint');
 
-        // 2. Reset Dropdown
+        // Reset Dropdown
         selectBox.innerHTML = '<option value="">-- Pilih Akun --</option>';
 
         if (!selectedUnit) {
@@ -177,23 +222,15 @@
             return;
         }
 
-        // 3. Enable Dropdown
+        // Enable Dropdown
         selectBox.disabled = false;
         selectBox.classList.remove('bg-gray-50', 'cursor-not-allowed');
         selectBox.classList.add('bg-white');
         hintText.innerText = `Menampilkan akun ${selectedType} untuk unit ${selectedUnit}.`;
 
-        // 4. Filter Data JSON
-        // Logika Filter:
-        // - Unit Usaha harus sama
-        // - Tipe Arus (Pemasukan/Pengeluaran) harus sesuai, ATAU tipe akunnya 'Netral' (Kas/Bank bisa masuk/keluar)
+        // Filter Data JSON
         const filtered = allAccounts.filter(acc => {
             const unitMatch = acc.unit_usaha === selectedUnit;
-            
-            // Logic Arus:
-            // Jika akun Pemasukan -> Hanya muncul saat pilih Pemasukan
-            // Jika akun Pengeluaran -> Hanya muncul saat pilih Pengeluaran
-            // Jika akun Netral (Kas/Bank/Utang) -> Muncul di Keduanya
             
             let typeMatch = false;
             if (acc.tipe_arus === 'Netral') {
@@ -205,11 +242,10 @@
             return unitMatch && typeMatch;
         });
 
-        // 5. Populate Options
+        // Populate Options
         if (filtered.length === 0) {
             selectBox.innerHTML += '<option value="" disabled>Tidak ada akun yang cocok</option>';
         } else {
-            // Grouping biar rapi (Optional, sederhana dulu)
             filtered.forEach(acc => {
                 const option = document.createElement('option');
                 option.value = acc.kode_akun;
