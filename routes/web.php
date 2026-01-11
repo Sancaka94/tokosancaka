@@ -119,6 +119,8 @@ use App\Http\Controllers\Admin\KeuanganController;
 
 use App\Http\Controllers\Admin\LabaRugiController;
 
+use App\Http\Controllers\Admin\AkuntansiController;
+
 Route::any('/telegram-webhook', [TelegramPpobController::class, 'handle']);
 
 // 1. Jalur Utama AI (Menerima Gambar dari Kamera)
@@ -499,6 +501,20 @@ Route::prefix('broadcast')->name('broadcast.')->group(function () {
 
     Route::delete('/history/clear-all', [BroadcastController::class, 'destroyAll'])->name('destroy.all');
 
+});
+
+Route::prefix('admin/akuntansi')->name('admin.akuntansi.')->group(function () {
+    Route::get('/', [AkuntansiController::class, 'index'])->name('index');
+    Route::get('/create', [AkuntansiController::class, 'create'])->name('create');
+    Route::post('/store', [AkuntansiController::class, 'store'])->name('store');
+    
+    // Route Khusus Sinkronisasi
+    Route::post('/sync', [AkuntansiController::class, 'syncData'])->name('sync');
+    
+    // Edit & Delete
+    Route::get('/edit/{id}', [AkuntansiController::class, 'edit'])->name('edit');
+    Route::put('/update/{id}', [AkuntansiController::class, 'update'])->name('update');
+    Route::delete('/delete/{id}', [AkuntansiController::class, 'destroy'])->name('destroy');
 });
 
 Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->name('admin.')->group(function () {
