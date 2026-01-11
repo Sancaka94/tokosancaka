@@ -53,6 +53,7 @@ class KeuanganController extends Controller
                 DB::raw("'Pemasukan' as jenis"),
                 DB::raw("'Ekspedisi' as kategori"),
                 'nomor_invoice',
+                // Gabungkan Resi dan Nama Kurir (dari string regular-jne-...) agar mudah dicari
                 DB::raw("CONCAT(resi, ' (', expedition, ')') as keterangan"),
                 'price as omzet',
                 DB::raw('(shipping_cost + insurance_cost) as modal'),
@@ -91,57 +92,73 @@ class KeuanganController extends Controller
             );
 
         // ==================================================================================
-        // 2. LOGIKA PENCARIAN (SEARCH) - SUDAH DIPERBAIKI
+        // 2. LOGIKA PENCARIAN CERDAS (MAPPING KEYWORD)
         // ==================================================================================
         
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = strtolower($request->search); // Ubah ke huruf kecil agar case-insensitive
             
-            // 1. Manual
+            // --- 1. PENCARIAN MANUAL ---
             $manualQuery->where(function($q) use ($search) {
                 $q->where('nomor_invoice', 'like', "%$search%")
                   ->orWhere('keterangan', 'like', "%$search%")
                   ->orWhere('kategori', 'like', "%$search%")
-                  ->orWhere('jenis', 'like', "%$search%")
-                  ->orWhere('jumlah', 'like', "%$search%");
+                  ->orWhere('jenis', 'like', "%$search%");
             });
 
-            // 2. PPOB
+            // --- 2. PENCARIAN PPOB ---
             $ppobQuery->where(function($q) use ($search) {
                 $q->where('order_id', 'like', "%$search%")
-                  ->orWhere('customer_no', 'like', "%$search%")
-                  ->orWhere('buyer_sku_code', 'like', "%$search%")
+                  ->orWhere('customer_no', 'like', "%$search%") // Cari No HP / ID Pelanggan
+                  ->orWhere('buyer_sku_code', 'like', "%$search%") // Cari Kode: PLN, PULSA
                   ->orWhere('sn', 'like', "%$search%")
-                  ->orWhere('message', 'like', "%$search%");
+                  // MAPPING: Jika user ketik "PPOB", "Pulsa", "Listrik", tampilkan data ini
+                  ->orWhereRaw("('PPOB' LIKE ? OR 'Pulsa' LIKE ? OR 'Listrik' LIKE ? OR 'Token' LIKE ?)", ["%$search%", "%$search%", "%$search%", "%$search%"]);
             });
 
-            // 3. Ekspedisi (Cari Nama Kurir disini: expedition)
+            // --- 3. PENCARIAN EKSPEDISI (MAPPING KURIR) ---
             $ekspedisiQuery->where(function($q) use ($search) {
                 $q->where('nomor_invoice', 'like', "%$search%")
                   ->orWhere('resi', 'like', "%$search%")
                   ->orWhere('resi_aktual', 'like', "%$search%")
-                  ->orWhere('expedition', 'like', "%$search%") 
-                  ->orWhere('service_type', 'like', "%$search%")
                   ->orWhere('sender_name', 'like', "%$search%")
-                  ->orWhere('sender_phone', 'like', "%$search%")
                   ->orWhere('receiver_name', 'like', "%$search%")
-                  ->orWhere('receiver_phone', 'like', "%$search%");
+                  ->orWhere('expedition', 'like', "%$search%") // Cari string asli: regular-jne-blabla
+                  
+                  // MAPPING CERDAS: 
+                  // Jika user ketik "JNE", "JNT", "Pos", "Lion", dll -> Cari di dalam kolom expedition
+                  ->orWhere(function($sub) use ($search) {
+                      // Daftar kata kunci kurir yang mungkin dicari user
+                      $couriers = ['jne', 'jnt', 'j&t', 'sicepat', 'anteraja', 'lion', 'pos', 'spx', 'ninja', 'idexpress', 'gojek', 'grab'];
+                      
+                      foreach ($couriers as $courier) {
+                          // Jika user mengetik salah satu nama kurir, cari di kolom expedition
+                          if (str_contains($search, $courier) || str_contains($courier, $search)) {
+                              $sub->orWhere('expedition', 'like', "%$courier%");
+                          }
+                      }
+                  })
+                  
+                  // MAPPING KATEGORI: Jika user ketik "Ekspedisi" atau "Pengiriman", tampilkan semua
+                  ->orWhereRaw("('Ekspedisi' LIKE ? OR 'Pengiriman' LIKE ? OR 'Kurir' LIKE ?)", ["%$search%", "%$search%", "%$search%"]);
             });
 
-            // 4. Top Up (PERBAIKAN: HAPUS pencarian payment_method karena kolom tidak ada)
+            // --- 4. PENCARIAN TOP UP ---
             $topupQuery->where(function($q) use ($search) {
                 $q->where('reference_id', 'like', "%$search%")
-                  ->orWhere('description', 'like', "%$search%") // "via DOKU" ada di sini
-                  ->orWhere('amount', 'like', "%$search%");
+                  ->orWhere('description', 'like', "%$search%") // "Top up saldo via..."
+                  // MAPPING: Jika user ketik "Topup", "Saldo", "Deposit"
+                  ->orWhereRaw("('Top Up Saldo' LIKE ? OR 'Deposit' LIKE ?)", ["%$search%", "%$search%"]);
             });
 
-            // 5. Marketplace
+            // --- 5. PENCARIAN MARKETPLACE ---
             $marketplaceQuery->where(function($q) use ($search) {
                 $q->where('invoice_number', 'like', "%$search%")
                   ->orWhere('shipping_resi', 'like', "%$search%")
                   ->orWhere('shipping_method', 'like', "%$search%")
-                  ->orWhere('payment_method', 'like', "%$search%")
-                  ->orWhere('shipping_address', 'like', "%$search%");
+                  ->orWhere('shipping_address', 'like', "%$search%")
+                  // MAPPING: Jika user ketik "Marketplace", "Toko", "Online"
+                  ->orWhereRaw("('Marketplace' LIKE ? OR 'Toko' LIKE ?)", ["%$search%", "%$search%"]);
             });
         }
 
@@ -173,7 +190,7 @@ class KeuanganController extends Controller
         }
 
         // ==================================================================================
-        // 4. EKSEKUSI GABUNGAN (UNION ALL)
+        // 4. EKSEKUSI GABUNGAN
         // ==================================================================================
 
         $gabungan = $manualQuery
@@ -186,7 +203,7 @@ class KeuanganController extends Controller
                         ->mergeBindings($gabungan); 
 
         // ==================================================================================
-        // 5. HITUNG TOTAL DINAMIS
+        // 5. HITUNG TOTAL & PAGINATION
         // ==================================================================================
         
         $stats = (clone $queryFinal)->selectRaw("
@@ -199,10 +216,6 @@ class KeuanganController extends Controller
         $totalModal  = $stats->total_modal ?? 0;
         $totalProfit = $stats->total_profit ?? 0;
 
-        // ==================================================================================
-        // 6. AMBIL DATA TABEL
-        // ==================================================================================
-
         $transaksi = $queryFinal
             ->orderBy('tanggal', 'desc')
             ->paginate(15)
@@ -211,8 +224,8 @@ class KeuanganController extends Controller
         return view('admin.keuangan.index', compact('transaksi', 'totalOmzet', 'totalModal', 'totalProfit'));
     }
     
-    // CRUD Functions
-    public function store(Request $request) { Keuangan::create($request->all()); return back()->with('success','Data tersimpan.'); }
-    public function update(Request $request, $id) { Keuangan::find($id)->update($request->all()); return back()->with('success','Data diperbarui.'); }
-    public function destroy($id) { Keuangan::find($id)->delete(); return back()->with('success','Data dihapus.'); }
+    // CRUD Manual Tetap Sama
+    public function store(Request $request) { Keuangan::create($request->all()); return back()->with('success','Disimpan'); }
+    public function update(Request $request, $id) { Keuangan::find($id)->update($request->all()); return back()->with('success','Diupdate'); }
+    public function destroy($id) { Keuangan::find($id)->delete(); return back()->with('success','Dihapus'); }
 }
