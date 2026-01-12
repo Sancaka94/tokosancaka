@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Keuangan;
+use App\Models\Pesanan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Exports\KeuanganExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class KeuanganController extends Controller
 {
@@ -26,29 +28,29 @@ class KeuanganController extends Controller
 
         // A. Manual Query
         $manualQuery = DB::table('keuangans')
-            ->select('id', 'tanggal', 'jenis', 'kategori', 'nomor_invoice', 'keterangan', 
-            DB::raw("CASE WHEN jenis = 'Pemasukan' THEN jumlah ELSE 0 END as omzet"), 
-            DB::raw("CASE WHEN jenis = 'Pengeluaran' THEN jumlah ELSE 0 END as modal"), 
+            ->select('id', 'tanggal', 'jenis', 'kategori', 'nomor_invoice', 'keterangan',
+            DB::raw("CASE WHEN jenis = 'Pemasukan' THEN jumlah ELSE 0 END as omzet"),
+            DB::raw("CASE WHEN jenis = 'Pengeluaran' THEN jumlah ELSE 0 END as modal"),
             DB::raw("CASE WHEN jenis = 'Pemasukan' THEN jumlah ELSE -jumlah END as profit"));
 
         // B. PPOB Query
         $ppobQuery = DB::table('ppob_transactions')
             ->whereIn('status', ['Success', 'Lunas', 'Berhasil', 'success'])
-            ->select('id', DB::raw('DATE(created_at) as tanggal'), DB::raw("'Pemasukan' as jenis"), DB::raw("'PPOB' as kategori"), 
-            'order_id as nomor_invoice', DB::raw("CONCAT(buyer_sku_code, ' - ', customer_no) as keterangan"), 
+            ->select('id', DB::raw('DATE(created_at) as tanggal'), DB::raw("'Pemasukan' as jenis"), DB::raw("'PPOB' as kategori"),
+            'order_id as nomor_invoice', DB::raw("CONCAT(buyer_sku_code, ' - ', customer_no) as keterangan"),
             DB::raw('(price + 50) as omzet'), 'price as modal', DB::raw('50 as profit'));
 
         // C. Top Up Saldo Query
         $topupQuery = DB::table('transactions')
             ->where('type', 'topup')->whereIn('status', ['success', 'paid', 'lunas', 'berhasil'])
-            ->select('id', DB::raw('DATE(created_at) as tanggal'), DB::raw("'Pemasukan' as jenis"), DB::raw("'Top Up Saldo' as kategori"), 
+            ->select('id', DB::raw('DATE(created_at) as tanggal'), DB::raw("'Pemasukan' as jenis"), DB::raw("'Top Up Saldo' as kategori"),
             'reference_id as nomor_invoice', 'description as keterangan', 'amount as omzet', 'amount as modal', DB::raw('0 as profit'));
 
         // D. Marketplace Query
         $marketplaceQuery = DB::table('order_marketplace')
             ->whereIn('status', ['completed', 'success', 'delivered', 'selesai', 'terkirim', 'lunas'])
-            ->select('id', DB::raw('DATE(created_at) as tanggal'), DB::raw("'Pemasukan' as jenis"), DB::raw("'Marketplace' as kategori"), 
-            'invoice_number as nomor_invoice', DB::raw("CONCAT(shipping_method, ' - ', COALESCE(shipping_resi, '-')) as keterangan"), 
+            ->select('id', DB::raw('DATE(created_at) as tanggal'), DB::raw("'Pemasukan' as jenis"), DB::raw("'Marketplace' as kategori"),
+            'invoice_number as nomor_invoice', DB::raw("CONCAT(shipping_method, ' - ', COALESCE(shipping_resi, '-')) as keterangan"),
             'total_amount as omzet', DB::raw('(shipping_cost + insurance_cost) as modal'), DB::raw('(total_amount - (shipping_cost + insurance_cost)) as profit'));
 
         // E. EKSPEDISI QUERY (Ambil Data Mentah)
@@ -61,22 +63,22 @@ class KeuanganController extends Controller
                 DB::raw("'Ekspedisi' as kategori"),
                 'nomor_invoice',
                 DB::raw("CONCAT(resi, ' (', expedition, ')') as keterangan"),
-                'price as omzet', 
-                'shipping_cost', 
-                'insurance_cost', 
-                'expedition',   
+                'price as omzet',
+                'shipping_cost',
+                'insurance_cost',
+                'expedition',
                 'service_type',
-                DB::raw('0 as modal'), 
-                DB::raw('0 as profit') 
+                DB::raw('0 as modal'),
+                DB::raw('0 as profit')
             );
 
         // ==================================================================================
         // 2. SEARCH & FILTER (SAMA PERSIS SEPERTI KODE LAMA)
         // ==================================================================================
-        
+
         if ($request->filled('search')) {
             $keyword = $request->search;
-            
+
             $manualQuery->where(function($q) use ($keyword) {
                  $q->where('nomor_invoice', 'like', "%$keyword%")->orWhere('keterangan', 'like', "%$keyword%")->orWhere('kategori', 'like', "%$keyword%");
             });
@@ -119,8 +121,8 @@ class KeuanganController extends Controller
 
         $processedEkspedisi = $ekspedisiData->map(function($row) use ($diskonRules) {
             $diskonPersen = 0;
-            $expStr = strtolower($row->expedition); 
-            
+            $expStr = strtolower($row->expedition);
+
             foreach ($diskonRules as $rule) {
                 if (str_contains($expStr, strtolower($rule->keyword))) {
                     $rules = json_decode($rule->diskon_rules, true);
@@ -128,7 +130,7 @@ class KeuanganController extends Controller
                         foreach ($rules as $key => $val) {
                             if ($key !== 'default' && str_contains($expStr, $key)) {
                                 $diskonPersen = $val;
-                                break 2; 
+                                break 2;
                             }
                         }
                         if (isset($rules['default'])) {
@@ -141,7 +143,7 @@ class KeuanganController extends Controller
 
             $ongkirPublish = $row->shipping_cost;
             $ongkirReal    = $ongkirPublish - ($ongkirPublish * $diskonPersen);
-            
+
             $row->modal  = $ongkirReal + $row->insurance_cost;
             $row->profit = $row->omzet - $row->modal;
 
@@ -179,10 +181,10 @@ class KeuanganController extends Controller
         $offset = ($page * $perPage) - $perPage;
 
         $transaksi = new LengthAwarePaginator(
-            $allData->slice($offset, $perPage)->values(), 
-            $allData->count(), 
-            $perPage, 
-            $page, 
+            $allData->slice($offset, $perPage)->values(),
+            $allData->count(),
+            $perPage,
+            $page,
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
@@ -224,18 +226,114 @@ class KeuanganController extends Controller
     public function exportPdf(Request $request)
     {
         $data = $this->getDataLengkap($request);
-        
+
         // Hitung ulang summary kecil untuk Header PDF
         $summary = [
             'omzet' => $data->sum('omzet'),
             'modal' => $data->sum('modal'),
             'profit' => $data->sum('profit'),
         ];
-        
+
         $pdf = Pdf::loadView('admin.keuangan.pdf', compact('data', 'summary'));
         $pdf->setPaper('a4', 'landscape');
-        
+
         return $pdf->download('Laporan_Keuangan_' . date('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * FITUR BARU: SYNC MANUAL
+     * Mencari pesanan hari ini yang sudah ada Resi, tapi belum masuk Keuangan.
+     */
+    public function syncHariIni()
+    {
+        try {
+            $today = date('Y-m-d');
+            $count = 0;
+
+            // 1. Ambil Pesanan yang DI-UPDATE HARI INI dan SUDAH ADA RESI
+            // Kita pakai updated_at karena resi biasanya masuk belakangan
+            $orders = Pesanan::whereDate('updated_at', $today)
+                        ->whereNotNull('resi')
+                        ->where('resi', '!=', '')
+                        ->get();
+
+            // 2. Ambil Rules Diskon (Untuk hitung modal)
+            $ekspedisiRules = DB::table('Ekspedisi')->get();
+
+            DB::beginTransaction();
+            foreach ($orders as $pesanan) {
+                // Cek apakah invoice ini SUDAH ADA di keuangan (Kategori Ekspedisi)
+                // Kita cek salah satu saja (Pemasukan), kalau sudah ada berarti skip.
+                $exists = Keuangan::where('nomor_invoice', $pesanan->nomor_invoice)
+                            ->where('kategori', 'Ekspedisi')
+                            ->exists();
+
+                if (!$exists) {
+                    // --- LOGIKA HITUNG DISKON (Sama seperti PesananController) ---
+                    $diskonPersen = 0;
+                    $expStr = strtolower($pesanan->expedition);
+
+                    foreach ($ekspedisiRules as $rule) {
+                        if (str_contains($expStr, strtolower($rule->keyword))) {
+                            $rules = json_decode($rule->diskon_rules, true);
+                            if (is_array($rules)) {
+                                foreach ($rules as $key => $val) {
+                                    if ($key !== 'default' && str_contains($expStr, $key)) {
+                                        $diskonPersen = $val;
+                                        break 2;
+                                    }
+                                }
+                                if (isset($rules['default'])) $diskonPersen = $rules['default'];
+                            }
+                            break;
+                        }
+                    }
+
+                    $ongkirPublish = (float) $pesanan->shipping_cost;
+                    $nilaiDiskon   = $ongkirPublish * $diskonPersen;
+                    $modalReal     = $ongkirPublish - $nilaiDiskon;
+
+                    if ($ongkirPublish > 0) {
+                        // A. Simpan Pemasukan (Omzet)
+                        Keuangan::create([
+                            'kode_akun'     => '1101',
+                            'tanggal'       => $today,
+                            'jenis'         => 'Pemasukan',
+                            'kategori'      => 'Ekspedisi',
+                            'unit_usaha'    => 'Ekspedisi',
+                            'nomor_invoice' => $pesanan->nomor_invoice,
+                            'keterangan'    => "Sync: Omzet Order " . $pesanan->expedition . " - Resi: " . $pesanan->resi,
+                            'jumlah'        => $ongkirPublish,
+                        ]);
+
+                        // B. Simpan Pengeluaran (Modal)
+                        Keuangan::create([
+                            'kode_akun'     => '1101',
+                            'tanggal'       => $today,
+                            'jenis'         => 'Pengeluaran',
+                            'kategori'      => 'Ekspedisi',
+                            'unit_usaha'    => 'Ekspedisi',
+                            'nomor_invoice' => $pesanan->nomor_invoice,
+                            'keterangan'    => "Sync: Setor Modal " . $pesanan->expedition,
+                            'jumlah'        => $modalReal,
+                        ]);
+
+                        $count++; // Hitung berapa yang berhasil ditambahkan
+                    }
+                }
+            }
+            DB::commit();
+
+            if ($count > 0) {
+                return back()->with('success', "Berhasil men-sinkronkan {$count} data pesanan hari ini ke Keuangan.");
+            } else {
+                return back()->with('info', "Data hari ini sudah sinkron (Tidak ada data baru yang ditambahkan).");
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal sinkronisasi: ' . $e->getMessage());
+        }
     }
 
     // CRUD Manual (SAMA SEPERTI LAMA)

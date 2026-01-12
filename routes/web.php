@@ -312,7 +312,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/checkout-ppob/remove/{id}', [PpobCheckoutController::class, 'removeItem'])->name('ppob.cart.remove');
     Route::post('/checkout-ppob/clear', [PpobCheckoutController::class, 'clearCart'])->name('ppob.cart.clear');
     Route::get('/ppob/invoice/{invoice}', [PpobCheckoutController::class, 'invoice'])->name('ppob.invoice');
-    
+
     Route::prefix('digital')->name('ppob.')->group(function () {
         Route::post('/checkout', [PpobController::class, 'store'])->name('store');
         Route::get('/status/{ref_id}', [PpobController::class, 'checkStatus'])->name('status');
@@ -341,7 +341,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/seller/reviews/{review}/reply', [SellerReviewController::class, 'deleteReply'])->name('seller.reviews.reply.delete');
 
     Route::get('/api/contacts/search', [App\Http\Controllers\Customer\KontakController::class, 'search'])->name('api.contacts.search');
- 
+
 
 });
 
@@ -364,7 +364,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan'])->prefix('custo
     // Checkout Barang
     Route::get('/checkout', [CustomerCheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [CustomerCheckoutController::class, 'store'])->name('checkout.store');
-    
+
     // PPOB History
     Route::prefix('ppob')->name('ppob.')->group(function () {
         Route::get('/history', [PpobHistoryController::class, 'index'])->name('history');
@@ -401,13 +401,13 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan'])->prefix('custo
 
 // SHARED ROUTES (Pelanggan & Seller)
 Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix('customer')->name('customer.')->group(function () {
-    
+
     // --- [FIX 404 UTAMA] PESANAN MULTI KOLI ---
     // Definisikan semua kemungkinan URL yang Anda pakai
     Route::get('/pesanan/multi/create', [KoliController::class, 'create'])->name('koli.create');
     Route::get('/pesanan/create/multi-koli', [KoliController::class, 'create'])->name('koli.create_legacy'); // Fix jika view panggil URL ini
     Route::post('/pesanan/multi/store', [KoliController::class, 'store'])->name('koli.store');
-    
+
     Route::post('/koli/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
     Route::post('/koli/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
 
@@ -423,10 +423,10 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix
     Route::prefix('merchant')->name('merchant.')->group(function() {
         // 1. Halaman List Toko (Index)
         Route::get('/', [DashboardController::class, 'indexShop'])->name('index');
-        
+
         // 2. Halaman Form Tambah Toko (Create)
         Route::get('/create', [DashboardController::class, 'createShopForm'])->name('create');
-        
+
         // 3. Proses Simpan ke API (Store)
         Route::post('/store', [DashboardController::class, 'storeShop'])->name('store');
 
@@ -481,7 +481,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Seller|Admin'])->prefix('se
 // =========================================================================
 
 Route::prefix('broadcast')->name('broadcast.')->group(function () {
-    
+
     // 1. Halaman Utama (Form Kirim & Tabel Riwayat)
     Route::get('/', [BroadcastController::class, 'index'])->name('index');
 
@@ -507,10 +507,10 @@ Route::prefix('admin/akuntansi')->name('admin.akuntansi.')->group(function () {
     Route::get('/', [AkuntansiController::class, 'index'])->name('index');
     Route::get('/create', [AkuntansiController::class, 'create'])->name('create');
     Route::post('/store', [AkuntansiController::class, 'store'])->name('store');
-    
+
     // Route Khusus Sinkronisasi
     Route::post('/sync', [AkuntansiController::class, 'syncData'])->name('sync');
-    
+
     // Edit & Delete
     Route::get('/edit/{id}', [AkuntansiController::class, 'edit'])->name('edit');
     Route::put('/update/{id}', [AkuntansiController::class, 'update'])->name('update');
@@ -518,7 +518,7 @@ Route::prefix('admin/akuntansi')->name('admin.akuntansi.')->group(function () {
 });
 
 Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->name('admin.')->group(function () {
-    
+
     if(file_exists(__DIR__.'/web/admin.php')) require __DIR__.'/web/admin.php';
     if(file_exists(__DIR__.'/admin/orders.php')) require __DIR__.'/admin/orders.php';
 
@@ -533,14 +533,14 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     // Users
     Route::resource('customers/data/pengguna', DataPenggunaController::class)->names('customers.data.pengguna');
     Route::post('/users/{user}/toggle-freeze', [UserController::class, 'toggleFreeze'])->name('users.toggle-freeze');
-    
+
     Route::resource('pelanggan', PelangganController::class);
     Route::prefix('pelanggan')->name('pelanggan.')->group(function () {
         Route::post('/import-excel', [PelangganController::class, 'importExcel'])->name('import.excel');
         Route::get('/export-excel', [PelangganController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export-pdf', [PelangganController::class, 'exportPdf'])->name('export.pdf');
     });
-    // Route::get('/pengguna/export', [PelangganController::class, 'export'])->name('customers.pengguna.export'); 
+    // Route::get('/pengguna/export', [PelangganController::class, 'export'])->name('customers.pengguna.export');
 
     // Marketplace
     Route::resource('stores', AdminMarketplaceController::class)->names('stores');
@@ -554,7 +554,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('products/{slug}/specifications', [ProductController::class, 'editSpecifications'])->name('products.edit.specifications');
     Route::put('products/{slug}/specifications', [ProductController::class, 'updateSpecifications'])->name('products.update.specifications');
     Route::get('categories/{category}/attributes', [ProductController::class, 'getAttributes'])->name('categories.attributes');
-    
+
     Route::prefix('category-attributes')->name('category-attributes.')->group(function () {
         Route::get('/', [CategoryAttributeController::class, 'index'])->name('index');
         Route::post('/{category}', [CategoryAttributeController::class, 'store'])->name('store');
@@ -617,7 +617,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('/posts/{post}/edit', [PostController::class, 'edit'])->name('posts.edit');
     Route::put('/posts/{post}', [PostController::class, 'update'])->name('posts.update');
     Route::get('/post/{post:slug}', [PostController::class, 'show'])->name('posts.post-detail');
-    
+
     Route::resource('banners', BannerController::class);
     Route::get('/sliders', [SliderController::class, 'index'])->name('sliders.index');
     Route::post('/sliders', [SliderController::class, 'store'])->name('sliders.store');
@@ -625,7 +625,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
     Route::resource('reviews', AdminReviewController::class);
     Route::post('reviews/{review}/reply', [AdminReviewController::class, 'reply'])->name('reviews.reply');
-    
+
     Route::get('/logs', [AdminLogController::class, 'showLogs'])->name('logs.show');
     Route::post('/logs/clear', [AdminLogController::class, 'clearLogs'])->name('logs.clear');
 
@@ -635,12 +635,13 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('keuangan/laba-rugi/export-pdf', [App\Http\Controllers\Admin\LabaRugiController::class, 'exportPdf'])->name('keuangan.laba_rugi.export_pdf');
     Route::get('keuangan/export-excel', [KeuanganController::class, 'exportExcel'])->name('keuangan.export_excel');
     Route::get('keuangan/export-pdf', [KeuanganController::class, 'exportPdf'])->name('keuangan.export_pdf');
+    Route::post('keuangan/sync-today', [App\Http\Controllers\Admin\KeuanganController::class, 'syncHariIni'])->name('admin.keuangan.sync');
 
     // DATA LAPORAN KEUANGAN
     Route::resource('keuangan', KeuanganController::class)->except(['create', 'show', 'edit']);
 
     Route::resource('coa', CoaController::class);
-    
+
     Route::resource('ekspedisi', \App\Http\Controllers\Admin\EkspedisiController::class)->except(['create', 'show', 'edit']);
 
     // Wilayah & Kode Pos
@@ -666,7 +667,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('/imap', [EmailController::class, 'index'])->name('imap.index');
     Route::get('/imap/{id}', [EmailController::class, 'show'])->name('imap.show');
     Route::delete('/imap/{id}', [EmailController::class, 'destroy'])->name('imap.destroy');
-    
+
     Route::prefix('chat')->name('chat.')->group(function () {
         Route::get('/', [AdminChatController::class, 'index'])->name('index');
         Route::get('/start', [AdminChatController::class, 'start'])->name('start');
@@ -680,15 +681,15 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     // PPOB ADMIN (FIX FINAL: EXCEL & PDF - SUPPORT TITIK & STRIP)
     // =====================================================================
     Route::prefix('ppob')->name('ppob.')->group(function () {
-        
+
         // 1. HALAMAN UTAMA
-        Route::get('/produk', [PpobProductController::class, 'index'])->name('product.index'); 
-        Route::get('/digital', [PpobProductController::class, 'index'])->name('index'); 
-        Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index'); 
+        Route::get('/produk', [PpobProductController::class, 'index'])->name('product.index');
+        Route::get('/digital', [PpobProductController::class, 'index'])->name('index');
+        Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
 
         // 2. EXPORT DATA TRANSAKSI (AdminPpobController)
         // Kita beri 2 nama route sekaligus agar view manapun yang panggil tetap jalan
-        
+
         // Excel
         Route::get('/data/export/excel', [AdminPpobController::class, 'exportExcel'])->name('data.export.excel'); // Versi Titik
         Route::get('/data/export-excel', [AdminPpobController::class, 'exportExcel'])->name('export-excel');      // Versi Strip
@@ -706,7 +707,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         // 4. HELPER & ACTIONS
         Route::post('/bulk-update', [PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
         Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price');
-        
+
         Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('deposit');
         Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('cek-saldo');
         Route::post('/topup', [AdminPpobController::class, 'topup'])->name('topup');
@@ -717,7 +718,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         Route::get('/transaction/destroy/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy.get');
 
         Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
-        
+
         // Ubah PpobProductController menjadi AdminPpobController
         Route::get('/{id}', [AdminPpobController::class, 'show'])->name('show');
     });
@@ -737,7 +738,7 @@ Route::controller(BlogController::class)->group(function () {
     Route::get('/blog', 'blogIndex')->name('blog.posts.index');
 
     // Halaman Detail Postingan
-    Route::get('/blog/posts/{post:slug}', 'show')->name('blog.posts.show'); 
+    Route::get('/blog/posts/{post:slug}', 'show')->name('blog.posts.show');
     // ATAU jika pakai logic manual di controller show($slug):
     // Route::get('/blog/posts/{slug}', 'show')->name('blog.posts.show');
 

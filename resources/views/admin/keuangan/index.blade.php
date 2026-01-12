@@ -11,13 +11,13 @@
 <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/airbnb.css">
 <style>
     /* Styling agar input kalender terlihat bersih */
-    .flatpickr-input { 
-        background-color: white !important; 
-        cursor: pointer !important; 
+    .flatpickr-input {
+        background-color: white !important;
+        cursor: pointer !important;
     }
     /* Pastikan kalender muncul di atas elemen lain (z-index tinggi) */
-    .flatpickr-calendar { 
-        z-index: 9999 !important; 
+    .flatpickr-calendar {
+        z-index: 9999 !important;
     }
     /* Animasi fade in sederhana */
     .fade-in {
@@ -68,7 +68,7 @@
     {{-- 2. HEADER: FILTER & TOMBOL AKSI --}}
     <div class="bg-white rounded-xl shadow-sm p-5 mb-6 border border-gray-100">
         <div class="flex flex-col md:flex-row justify-between items-end gap-4">
-            
+
             {{-- Form Filter --}}
             <form action="{{ route('admin.keuangan.index') }}" method="GET" class="w-full md:w-3/4 flex flex-col lg:flex-row gap-4">
                 {{-- Pencarian --}}
@@ -89,13 +89,13 @@
                         </span>
 
                         {{-- Input Date Range (Tambahkan pr-10 agar teks tidak menabrak tombol X) --}}
-                        <input type="text" id="date_range_picker" name="date_range" 
-                            value="{{ request('date_range') }}" 
-                            class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 text-sm placeholder-gray-400" 
+                        <input type="text" id="date_range_picker" name="date_range"
+                            value="{{ request('date_range') }}"
+                            class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 text-sm placeholder-gray-400"
                             placeholder="Pilih Rentang Tanggal...">
 
                         {{-- Tombol Clear (X) - Muncul jika ada value --}}
-                        <button type="button" id="clearDateBtn" 
+                        <button type="button" id="clearDateBtn"
                             class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 cursor-pointer transition-colors {{ request('date_range') ? '' : 'hidden' }}"
                             title="Hapus Tanggal">
                             <i class="fas fa-times-circle"></i>
@@ -114,7 +114,18 @@
             {{-- TOMBOL AKSI (EXPORT & MANUAL) --}}
             <div class="w-full md:w-auto flex flex-col md:flex-row gap-2">
                 <label class="hidden md:block text-xs font-bold text-transparent mb-1 select-none">Aksi</label>
-                
+
+                {{-- ======================================================= --}}
+                {{-- TOMBOL BARU: SINKRONISASI (TAMBAHKAN INI) --}}
+                {{-- ======================================================= --}}
+                <form action="{{ route('admin.keuangan.sync') }}" method="POST" onsubmit="return confirm('Proses ini akan mengecek pesanan hari ini yang belum masuk laporan keuangan. Lanjutkan?');">
+                    @csrf
+                    <button type="submit" class="h-[42px] bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-lg text-sm font-medium shadow-md transition flex items-center justify-center gap-2 w-full md:w-auto whitespace-nowrap" title="Cek ulang pesanan hari ini">
+                        <i class="fas fa-sync-alt"></i> Sync
+                    </button>
+                </form>
+                {{-- ======================================================= --}}
+
                 {{-- Export Excel --}}
                 <a href="{{ route('admin.keuangan.export_excel', request()->all()) }}" target="_blank" class="h-[42px] bg-green-600 hover:bg-green-700 text-white px-4 rounded-lg text-sm font-medium shadow-md transition flex items-center justify-center gap-2">
                     <i class="fas fa-file-excel"></i> Excel
@@ -175,7 +186,7 @@
     {{-- 3. CARD BREAKDOWN PER KATEGORI (OMZET & COUNT) --}}
     {{-- =========================================================== --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        
+
         {{-- CARD EKSPEDISI --}}
         <div class="bg-white rounded-lg shadow-sm p-4 border border-yellow-200 flex items-center justify-between hover:shadow-md transition">
             <div>
@@ -246,7 +257,7 @@
     {{-- 4. TABEL DATA TRANSAKSI --}}
     {{-- =========================================================== --}}
     <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-        
+
         <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
             <h3 class="font-bold text-gray-700 flex items-center gap-2">
                 <i class="fas fa-list-ul text-blue-500"></i> Rincian Data
@@ -264,13 +275,13 @@
                         <th scope="col" class="px-4 py-3 font-extrabold">Tanggal</th>
 
                         <th scope="col" class="px-4 py-3 font-extrabold text-center">Unit Usaha</th>
-                        
+
                         {{-- KOLOM BARU: KODE AKUN --}}
                         <th scope="col" class="px-4 py-3 font-extrabold text-center">Kode Akun</th>
-                        
+
                         {{-- DIUBAH: NAMA AKUN / KATEGORI --}}
                         <th scope="col" class="px-4 py-3 font-extrabold">Nama Akun / Kategori</th>
-                        
+
                         <th scope="col" class="px-4 py-3 font-extrabold">Keterangan / Invoice</th>
                         <th scope="col" class="px-4 py-3 font-extrabold text-right text-blue-800 bg-blue-50 border-l border-blue-100">Omzet</th>
                         <th scope="col" class="px-4 py-3 font-extrabold text-right text-red-800 bg-red-50 border-l border-red-100">Modal</th>
@@ -281,7 +292,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse($transaksi as $index => $item)
                     <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group">
-                        
+
                         {{-- NO --}}
                         <td class="px-4 py-3 text-center text-gray-500">
                             {{ $transaksi->firstItem() + $index }}
@@ -299,7 +310,7 @@
                             // PERHATIKAN: Kita cari 'first' yang cocok. Jika ada duplikat nama, ini bisa ambil yang pertama.
                             // Idealnya controller mengirim 'unit_usaha' di tabel 'keuangans', tapi jika belum ada, kita tebak dari akun.
                             $matchedAccount = $allAccounts->firstWhere('nama_akun', $item->kategori);
-                            
+
                             $kodeAkun = $item->kode_akun ?? ($matchedAccount ? $matchedAccount->kode_akun : '-');
                             // Ambil unit usaha dari tabel transaksi dulu, jika null baru dari master akun
                             $unitUsaha = $item->unit_usaha ?? ($matchedAccount ? $matchedAccount->unit_usaha : 'Umum');
@@ -457,7 +468,7 @@
                 </tfoot>
             </table>
         </div>
-        
+
         {{-- PAGINATION --}}
         @if($transaksi->hasPages())
         <div class="p-4 border-t border-gray-200 bg-gray-50">
@@ -472,11 +483,11 @@
 {{-- =========================================================== --}}
 <div id="modalCreate" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        
+
         {{-- Overlay Gelap --}}
         <div class="fixed inset-0 bg-gray-900 bg-opacity-60 transition-opacity backdrop-blur-sm" onclick="closeModal('modalCreate')"></div>
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        
+
         {{-- Konten Modal --}}
         <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full ring-1 ring-black ring-opacity-5">
             <form action="{{ route('admin.keuangan.store') }}" method="POST">
@@ -490,14 +501,14 @@
                             <i class="fas fa-times text-xl"></i>
                         </button>
                     </div>
-                    
+
                     <div class="space-y-4">
                         {{-- Field Tanggal --}}
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Tanggal Transaksi</label>
                             <input type="date" name="tanggal" value="{{ date('Y-m-d') }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" required>
                         </div>
-                        
+
                         {{-- Grid Jenis & Kategori --}}
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -547,7 +558,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 {{-- Footer Modal --}}
                 <div class="bg-gray-50 px-4 py-4 sm:px-6 flex flex-row-reverse gap-3">
                     <button type="submit" class="w-full sm:w-auto inline-flex justify-center rounded-lg border border-transparent shadow-sm px-5 py-2.5 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm transition">
@@ -588,7 +599,7 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Tanggal</label>
                             <input type="date" id="edit_tanggal" name="tanggal" class="w-full border-gray-300 rounded-lg shadow-sm text-sm" required>
                         </div>
-                        
+
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-1">Jenis</label>
@@ -601,7 +612,7 @@
                                 <label class="block text-sm font-semibold text-gray-700 mb-1">Kategori / Akun</label>
                                 <select id="edit_kategori" name="kategori" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500" required>
                                     <option value="">-- Pilih Akun --</option>
-                                    
+
                                     {{-- LOOGIC: Mengelompokkan berdasarkan Unit Usaha agar rapi --}}
                                     @php
                                         $groupedAccounts = $allAccounts->groupBy('unit_usaha');
@@ -618,7 +629,7 @@
                                             @endforeach
                                         </optgroup>
                                     @endforeach
-                                    
+
                                     {{-- Opsi Fallback jika data lama tidak ada di master akun --}}
                                     <optgroup label="Lainnya">
                                         <option value="Operasional">Operasional</option>
@@ -666,7 +677,7 @@
 <script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        
+
         // 1. Inisialisasi Flatpickr dengan Tombol Clear
         const dateInput = document.getElementById('date_range_picker');
         const clearBtn = document.getElementById('clearDateBtn');
@@ -680,7 +691,7 @@
                 locale: "id",
                 theme: "airbnb",
                 defaultDate: "{{ request('date_range') }}", // Isi kembali jika ada request
-                
+
                 // Event saat tanggal dipilih
                 onChange: function(selectedDates, dateStr, instance) {
                     if (dateStr) {
@@ -689,7 +700,7 @@
                         clearBtn.classList.add('hidden');
                     }
                 },
-                
+
                 // Event saat kalender siap (cek value awal)
                 onReady: function(selectedDates, dateStr, instance) {
                     if (dateStr) {
@@ -734,11 +745,11 @@
         // Ambil Tanggal YYYY-MM-DD
         const rawDate = data.tanggal.substring(0, 10);
         document.getElementById('edit_tanggal').value = rawDate;
-        
+
         document.getElementById('edit_jenis').value = data.jenis;
         document.getElementById('edit_kategori').value = data.kategori;
         document.getElementById('edit_invoice').value = data.nomor_invoice;
-        
+
         // Logika Mengisi Jumlah Uang
         // Di view kita punya 'omzet', 'modal', 'profit'.
         // Jika Jenis = Pemasukan, nilai aslinya ada di kolom 'omzet'
@@ -749,7 +760,7 @@
         } else if(data.jenis === 'Pengeluaran') {
             amount = data.modal;
         }
-        
+
         document.getElementById('edit_jumlah').value = amount;
         document.getElementById('edit_keterangan').value = data.keterangan;
 
