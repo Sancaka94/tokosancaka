@@ -241,94 +241,100 @@ class KeuanganController extends Controller
     }
 
     /**
-     * FITUR BARU: SYNC MANUAL
-     * Mencari pesanan hari ini yang sudah ada Resi, tapi belum masuk Keuangan.
+     * FITUR BARU: SYNC MANUAL (UPDATE OR CREATE)
+     * Bisa diklik berkali-kali. Jika data sudah ada, akan di-update (memperbaiki NULL).
      */
     public function syncHariIni()
     {
         try {
             $today = date('Y-m-d');
-            $count = 0;
 
-            // 1. Ambil Pesanan yang DI-UPDATE HARI INI dan SUDAH ADA RESI
-            // Kita pakai updated_at karena resi biasanya masuk belakangan
+            // 1. Ambil Pesanan Hari Ini yang sudah ada Resi
             $orders = Pesanan::whereDate('updated_at', $today)
                         ->whereNotNull('resi')
                         ->where('resi', '!=', '')
                         ->get();
 
-            // 2. Ambil Rules Diskon (Untuk hitung modal)
+            if ($orders->isEmpty()) {
+                return back()->with('info', "Tidak ada transaksi ber-resi yang diproses pada tanggal $today.");
+            }
+
             $ekspedisiRules = DB::table('Ekspedisi')->get();
+            $count = 0;
 
             DB::beginTransaction();
+
             foreach ($orders as $pesanan) {
-                // Cek apakah invoice ini SUDAH ADA di keuangan (Kategori Ekspedisi)
-                // Kita cek salah satu saja (Pemasukan), kalau sudah ada berarti skip.
-                $exists = Keuangan::where('nomor_invoice', $pesanan->nomor_invoice)
-                            ->where('kategori', 'Ekspedisi')
-                            ->exists();
 
-                if (!$exists) {
-                    // --- LOGIKA HITUNG DISKON (Sama seperti PesananController) ---
-                    $diskonPersen = 0;
-                    $expStr = strtolower($pesanan->expedition);
+                // --- LOGIKA HITUNG DISKON (Sama seperti sebelumnya) ---
+                $diskonPersen = 0;
+                $expStr = strtolower($pesanan->expedition);
 
-                    foreach ($ekspedisiRules as $rule) {
-                        if (str_contains($expStr, strtolower($rule->keyword))) {
-                            $rules = json_decode($rule->diskon_rules, true);
-                            if (is_array($rules)) {
-                                foreach ($rules as $key => $val) {
-                                    if ($key !== 'default' && str_contains($expStr, $key)) {
-                                        $diskonPersen = $val;
-                                        break 2;
-                                    }
+                foreach ($ekspedisiRules as $rule) {
+                    if (str_contains($expStr, strtolower($rule->keyword))) {
+                        $rules = json_decode($rule->diskon_rules, true);
+                        if (is_array($rules)) {
+                            foreach ($rules as $key => $val) {
+                                if ($key !== 'default' && str_contains($expStr, $key)) {
+                                    $diskonPersen = $val;
+                                    break 2;
                                 }
-                                if (isset($rules['default'])) $diskonPersen = $rules['default'];
                             }
-                            break;
+                            if (isset($rules['default'])) $diskonPersen = $rules['default'];
                         }
+                        break;
                     }
+                }
 
-                    $ongkirPublish = (float) $pesanan->shipping_cost;
-                    $nilaiDiskon   = $ongkirPublish * $diskonPersen;
-                    $modalReal     = $ongkirPublish - $nilaiDiskon;
+                $ongkirPublish = (float) $pesanan->shipping_cost;
+                $nilaiDiskon   = $ongkirPublish * $diskonPersen;
+                $modalReal     = $ongkirPublish - $nilaiDiskon;
 
-                    if ($ongkirPublish > 0) {
-                        // A. Simpan Pemasukan (Omzet)
-                        Keuangan::create([
-                            'kode_akun'     => '1101',
+                if ($ongkirPublish > 0) {
+
+                    // ==========================================================
+                    // LOGIKA UPDATE OR CREATE (AGAR BISA DI-KLIK BERKALI-KALI)
+                    // ==========================================================
+
+                    // 1. Handle PEMASUKAN (OMZET)
+                    // Cari data berdasarkan array pertama, Update data berdasarkan array kedua
+                    Keuangan::updateOrCreate(
+                        [
+                            'nomor_invoice' => $pesanan->nomor_invoice, // Kunci Unik 1
+                            'jenis'         => 'Pemasukan',             // Kunci Unik 2
+                            'kategori'      => 'Ekspedisi'              // Kunci Unik 3
+                        ],
+                        [
+                            'kode_akun'     => '1101',          // Data yang akan di-update/insert
+                            'unit_usaha'    => 'Ekspedisi',     // Data yang akan di-update/insert
                             'tanggal'       => $today,
-                            'jenis'         => 'Pemasukan',
-                            'kategori'      => 'Ekspedisi',
-                            'unit_usaha'    => 'Ekspedisi',
-                            'nomor_invoice' => $pesanan->nomor_invoice,
                             'keterangan'    => "Sync: Omzet Order " . $pesanan->expedition . " - Resi: " . $pesanan->resi,
-                            'jumlah'        => $ongkirPublish,
-                        ]);
+                            'jumlah'        => $ongkirPublish
+                        ]
+                    );
 
-                        // B. Simpan Pengeluaran (Modal)
-                        Keuangan::create([
-                            'kode_akun'     => '1101',
+                    // 2. Handle PENGELUARAN (MODAL)
+                    Keuangan::updateOrCreate(
+                        [
+                            'nomor_invoice' => $pesanan->nomor_invoice, // Kunci Unik 1
+                            'jenis'         => 'Pengeluaran',           // Kunci Unik 2
+                            'kategori'      => 'Ekspedisi'              // Kunci Unik 3
+                        ],
+                        [
+                            'kode_akun'     => '1101',          // Data yang akan di-update/insert
+                            'unit_usaha'    => 'Ekspedisi',     // Data yang akan di-update/insert
                             'tanggal'       => $today,
-                            'jenis'         => 'Pengeluaran',
-                            'kategori'      => 'Ekspedisi',
-                            'unit_usaha'    => 'Ekspedisi',
-                            'nomor_invoice' => $pesanan->nomor_invoice,
-                            'keterangan'    => "Sync: Setor Modal " . $pesanan->expedition,
-                            'jumlah'        => $modalReal,
-                        ]);
+                            'keterangan'    => "Sync: Setor Modal " . $pesanan->expedition . " (Diskon " . ($diskonPersen * 100) . "%)",
+                            'jumlah'        => $modalReal
+                        ]
+                    );
 
-                        $count++; // Hitung berapa yang berhasil ditambahkan
-                    }
+                    $count++;
                 }
             }
             DB::commit();
 
-            if ($count > 0) {
-                return back()->with('success', "Berhasil men-sinkronkan {$count} data pesanan hari ini ke Keuangan.");
-            } else {
-                return back()->with('info', "Data hari ini sudah sinkron (Tidak ada data baru yang ditambahkan).");
-            }
+            return back()->with('success', "Sinkronisasi Selesai! {$count} data pesanan hari ini telah diperbarui/ditambahkan.");
 
         } catch (\Exception $e) {
             DB::rollBack();
