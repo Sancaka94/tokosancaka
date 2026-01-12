@@ -1133,6 +1133,7 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                         // KASUS B: Cut Off Time NULL (Misal Sicepat Cargo) -> Tetap SEKARANG
                         Log::info("DECISION: Pickup TETAP Hari Ini (CutOffTime NULL / Bebas Request).");
                     }
+
                 }
             } catch (Exception $e) {
                 // Fallback jika API error: Gunakan logika aman (Jam 17:00)
