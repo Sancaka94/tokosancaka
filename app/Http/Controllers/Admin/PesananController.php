@@ -1130,9 +1130,21 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                              Log::info("DECISION: Pickup TETAP Hari Ini (CutOffTime NULL / Bebas Request).");
                         }
                     } else {
-                        // KASUS B: Cut Off Time NULL (Misal Sicepat Cargo) -> Tetap SEKARANG
-                        Log::info("DECISION: Pickup TETAP Hari Ini (CutOffTime NULL / Bebas Request).");
-                    }
+                            // KASUS B: Cut Off Time NULL (Misal Sicepat Cargo / Reg)
+
+                            // --- SAFETY NET: CEK JAM WAJAR ---
+                            // API Sicepat menolak request > jam 22:00/23:00. Kita batasi jam 21:00.
+                            $currentTime = date('H:i:s');
+
+                            if ($currentTime > '21:00:00') {
+                                $besok = strtotime('+1 day 09:00:00');
+                                $scheduleClock = date('Y-m-d H:i:s', $besok);
+                                $pesanGeserJadwal = "Jadwal Pickup digeser ke besok (" . date('d M H:i', $besok) . ") karena sudah terlalu larut malam.";
+                                Log::warning("DECISION: Pickup DIGESER ke Besok (Safety Net > 21:00).");
+                            } else {
+                                Log::info("DECISION: Pickup TETAP Hari Ini (CutOffTime NULL / Bebas Request).");
+                            }
+                        }
 
                 }
             } catch (Exception $e) {
@@ -1446,7 +1458,7 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                     $pesanan->save();
 
                     // === INSERT KEUANGAN (Pakai $this karena bukan static) ===
-                    $this->_simpanKeKeuangan($pesanan);
+                    (new self())->_simpanKeKeuangan($pesanan);
                 }
                 $pesanan->save();
                 DB::commit(); // Commit semua perubahan
