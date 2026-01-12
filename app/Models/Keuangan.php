@@ -11,6 +11,8 @@ class Keuangan extends Model
 
     protected $table = 'keuangans';
     protected $fillable = [
+        'kode_akun',    // <--- Tambahkan ini
+        'unit_usaha',   // <--- Tambahkan ini
         'tanggal',
         'jenis',
         'kategori',
