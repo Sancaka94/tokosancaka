@@ -320,33 +320,41 @@ if (($kiriminResponse['status'] ?? false) !== true) {
     // Opsional: Anda bisa melempar exception agar transaksi di-rollback
     // throw new Exception('Gagal membuat pesanan di KiriminAja: ' . ($kiriminResponse['text'] ?? 'Error tidak diketahui'));
 
-} else {
-    // Berhasil, update pesanan dengan resi dan status baru
-    $pesanan->resi = $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
-    $pesanan->status = 'Menunggu Pickup';
-    $pesanan->status_pesanan = 'Menunggu Pickup';
-    Log::info('KiriminAja Order SUCCESS (Admin COD/Saldo)', [
-        'invoice' => $pesanan->nomor_invoice,
-        'resi' => $pesanan->resi
-    ]);
+    } else {
+                    // ==========================================================
+                    // 🔥 UPDATE BARU: STRATEGI GREEDY CARI RESI 🔥
+                    // ==========================================================
+                    $resiDidapat = $kiriminResponse['awb']                                  // 1. Root 'awb'
+                                ?? $kiriminResponse['data']['awb']                          // 2. Root 'data' -> 'awb'
+                                ?? $kiriminResponse['details']['awb']                       // 3. 'details' -> 'awb'
+                                ?? $kiriminResponse['result']['awb_no']                     // 4. 'result' -> 'awb_no'
+                                ?? $kiriminResponse['payment_ref']                          // 5. Booking ID
+                                ?? ($kiriminResponse['results'][0]['awb'] ?? null);         // 6. Array results
 
-    // 🔥 TAMBAHAN: CEK APAKAH ADA INFO JADWAL DIGESER?
-    if (isset($kiriminResponse['custom_warning'])) {
-        // Gunakan 'warning' agar muncul kotak kuning/oranye di interface
-        session()->flash('warning', $kiriminResponse['custom_warning']);
-    }
+                    // Update Pesanan
+                    $pesanan->resi = $resiDidapat;
+                    $pesanan->status = 'Menunggu Pickup';
+                    $pesanan->status_pesanan = 'Menunggu Pickup';
 
-}
+                    // Simpan Perubahan
+                    $pesanan->save();
 
-// Simpan perubahan status/resi ke database
-// $pesanan->save(); <-- Ini tidak perlu karena sudah ada di Langkah 7
+                    Log::info('KiriminAja SUCCESS', ['invoice' => $pesanan->nomor_invoice, 'resi' => $resiDidapat]);
 
+                    // 🔥 AUTO INSERT KEUANGAN 🔥
+                    $this->_simpanKeKeuangan($pesanan);
 
+                    // Pesan Warning (Jadwal Digeser)
+                    if (isset($kiriminResponse['custom_warning'])) {
+                        session()->flash('warning', $kiriminResponse['custom_warning']);
+                    }
+                }
             }
 
-            // 7. Simpan finalisasi data
+            // 7. Simpan Finalisasi Harga
             $pesanan->price = ($cod_value > 0) ? $cod_value : $total_paid_ongkir;
             $pesanan->save();
+
             DB::commit();
 
             // 8. Kirim notifikasi WhatsApp
@@ -699,16 +707,27 @@ if (($kiriminResponse['status'] ?? false) !== true) {
                     $pesanan->status_pesanan = 'Pembayaran Lunas (Gagal Auto-Resi)';
                     // TODO: Notifikasi Admin
                 } else {
-                    $pesanan->resi = $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+
+                    // === LOGIKA GREEDY CARI RESI ===
+                    $resiDidapat = $kiriminResponse['awb']
+                                ?? $kiriminResponse['data']['awb']
+                                ?? $kiriminResponse['details']['awb']
+                                ?? $kiriminResponse['result']['awb_no']
+                                ?? $kiriminResponse['payment_ref']
+                                ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+
+                    $pesanan->resi = $resiDidapat;
                     $pesanan->status = 'Menunggu Pickup';
                     $pesanan->status_pesanan = 'Menunggu Pickup';
-                    Log::info('Tripay Callback (Pesanan SCK-): KiriminAja Order SUCCESS. Status updated.', ['invoice' => $merchantRef, 'resi' => $pesanan->resi]);
-                    // TODO: Kirim Notifikasi WA ke customer (jika perlu)
-                    // Perlu instance untuk panggil _sendWhatsappNotification
-                    // $instance->_sendWhatsappNotification($pesanan, $validatedData, $shipping_cost, $insurance_cost, 0, $pesanan->price, new Request()); // Buat Request kosong?
+                    Log::info('Tripay Callback: KiriminAja SUCCESS.', ['resi' => $resiDidapat]);
+
+                    // Simpan Resi
+                    $pesanan->save();
+
+                    // === INSERT KEUANGAN (Pakai new self() karena static) ===
+                    (new self())->_simpanKeKeuangan($pesanan);
                 }
-                $pesanan->save(); // Simpan resi dan status akhir
-                Log::info('Tripay Callback (Pesanan SCK-): Final Pesanan status saved.', ['invoice' => $merchantRef, 'final_status' => $pesanan->status]);
+                $pesanan->save();
 
             } catch (Exception $e) {
                 Log::error("Tripay Callback (Pesanan SCK-): Exception during KiriminAja process for PAID order.", [ 'ref' => $merchantRef, 'error' => $e->getMessage(), 'line' => $e->getLine(), 'file' => $e->getFile() ]);
@@ -1408,10 +1427,25 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                     $pesanan->status = 'Pembayaran Lunas (Gagal Auto-Resi)';
                     $pesanan->status_pesanan = 'Pembayaran Lunas (Gagal Auto-Resi)';
                 } else {
-                    $pesanan->resi = $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+
+                    // === LOGIKA GREEDY CARI RESI ===
+                    $resiDidapat = $kiriminResponse['awb']
+                                ?? $kiriminResponse['data']['awb']
+                                ?? $kiriminResponse['details']['awb']
+                                ?? $kiriminResponse['result']['awb_no']
+                                ?? $kiriminResponse['payment_ref']
+                                ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+
+                    $pesanan->resi = $resiDidapat;
                     $pesanan->status = 'Menunggu Pickup';
                     $pesanan->status_pesanan = 'Menunggu Pickup';
-                    Log::info('DOKU Callback (Admin): KiriminAja Order SUCCESS.', ['invoice' => $merchantRef, 'resi' => $pesanan->resi]);
+                    Log::info('DOKU Callback: KiriminAja SUCCESS.', ['resi' => $resiDidapat]);
+
+                    // Simpan Resi
+                    $pesanan->save();
+
+                    // === INSERT KEUANGAN (Pakai $this karena bukan static) ===
+                    $this->_simpanKeKeuangan($pesanan);
                 }
                 $pesanan->save();
                 DB::commit(); // Commit semua perubahan
