@@ -234,7 +234,7 @@ class AkuntansiController extends Controller
             // Ambil data Pesanan yang berubah HARI INI
             $orders = DB::table('Pesanan')
                 ->whereDate('updated_at', $today) // Hanya data hari ini biar ringan
-                ->whereIn('status_pesanan', ['Selesai', 'Success', 'Delivered', 'Menunggu Pickup', 'Diproses', 'Terkirim'])
+                ->whereIn('status_pesanan', ['Selesai', 'Success', 'Delivered', 'Terkirim'])
                 ->get();
 
             // Ambil rules diskon untuk hitung profit
