@@ -6,10 +6,10 @@
 <div x-data="{ sidebarOpen: false, isExpanded: false, isHovered: false }" class="h-full flex flex-col">
 
     {{-- Overlay untuk Mobile --}}
-    <div x-show="sidebarOpen" 
-         @click="sidebarOpen = false" 
-         class="fixed inset-0 z-[49] bg-blue-900 bg-opacity-50 transition-opacity lg:hidden" 
-         style="display: none;" 
+    <div x-show="sidebarOpen"
+         @click="sidebarOpen = false"
+         class="fixed inset-0 z-[49] bg-blue-900 bg-opacity-50 transition-opacity lg:hidden"
+         style="display: none;"
          x-transition:enter="transition-opacity ease-linear duration-300"
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100"
@@ -19,7 +19,7 @@
     </div>
 
     {{-- Sidebar Container (Zoom 75%) --}}
-    <aside id="main-sidebar" 
+    <aside id="main-sidebar"
         style="zoom: 75%;"
         @mouseenter="if(window.innerWidth >= 1024) isHovered = true"
         @mouseleave="isHovered = false"
@@ -28,7 +28,7 @@
             (isExpanded || isHovered) ? 'w-[280px]' : 'w-[280px] lg:w-20'
         ]"
         class="bg-blue-900 text-gray-300 flex-shrink-0 flex flex-col min-h-[133.33vh] h-full fixed inset-y-0 left-0 z-50 transform transition-all duration-300 lg:static lg:inset-auto shadow-xl overflow-hidden">
-        
+
         {{-- Tombol Close untuk Mobile --}}
         <div class="flex justify-end p-4 lg:hidden">
             <div id="close-wrapper" class="absolute top-4 -right-12 lg:hidden z-50">
@@ -42,10 +42,10 @@
 
         {{-- USER PANEL --}}
         <div class="flex flex-col items-center p-6 border-b border-gray-700 relative z-10 transition-all duration-300">
-            <img src="https://tokosancaka.com/storage/uploads/sancaka.png" 
+            <img src="https://tokosancaka.com/storage/uploads/sancaka.png"
                  :class="(isExpanded || isHovered) ? 'w-20 h-20' : 'w-10 h-10 lg:mt-4'"
-                 class="rounded-full mb-3 transition-all duration-300 object-cover border-2 border-gray-600" 
-                 alt="User Image" 
+                 class="rounded-full mb-3 transition-all duration-300 object-cover border-2 border-gray-600"
+                 alt="User Image"
                  onerror="this.onerror=null;this.src='https://placehold.co/80x80/1f2937/ffffff?text=Logo';">
 
             <div :class="(isExpanded || isHovered) ? 'opacity-100 max-h-20' : 'opacity-0 max-h-0 lg:hidden'" class="font-bold text-lg text-white transition-all duration-300 text-center overflow-hidden whitespace-nowrap">
@@ -71,12 +71,12 @@
         </div>
 
         {{-- MENU NAVIGATION --}}
-        <nav id="sidebar-nav" 
+        <nav id="sidebar-nav"
              class="flex-1 px-4 pb-4 space-y-1 overflow-x-hidden transition-all duration-300 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent"
              :class="(isExpanded || isHovered) ? '' : 'lg:overflow-hidden'">
 
             {{-- ================= UTAMA ================= --}}
-            
+
             {{-- Dashboard --}}
             <a href="{{ route('admin.dashboard') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.dashboard') ? 'bg-red-700 text-white' : '' }}">
                 <i class="fa-solid fa-house-chimney fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
@@ -88,7 +88,7 @@
                 <i class="fa-solid fa-inbox fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Email Sancaka</span>
             </a>
-        
+
             {{-- Chat Customer --}}
             <a href="https://tokosancaka.com/admin/chat" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->is('admin/chat*') ? 'bg-red-700 text-white' : '' }}">
                 <i class="fa-solid fa-comment-dots fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
@@ -111,7 +111,7 @@
 
             {{-- Pengguna & Role --}}
             <div>
-                <button onclick="toggleMenu('menuPengguna')" 
+                <button onclick="toggleMenu('menuPengguna')"
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
                         class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs(['admin.registrations.*', 'admin.customers.*', 'admin.roles.*']) ? 'bg-red-700 text-white' : '' }}">
                     <span class="flex items-center">
@@ -154,7 +154,7 @@
 
             {{-- Marketplace Dropdown --}}
             <div>
-                <button onclick="toggleMenu('marketplaceMenu')" 
+                <button onclick="toggleMenu('marketplaceMenu')"
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
                         class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->is('admin/products*') || request()->is('admin/spx-scans*') ? 'bg-red-700 text-white' : '' }}">
                     <span class="flex items-center">
@@ -189,7 +189,7 @@
 
             {{-- Pesanan Dropdown --}}
             <div>
-                <button onclick="toggleMenu('menuPesanan')" 
+                <button onclick="toggleMenu('menuPesanan')"
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
                         class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->is('admin/pesanan*') ? 'bg-red-700 text-white' : '' }}">
                     <span class="flex items-center">
@@ -237,7 +237,7 @@
 
             {{-- Manajemen Kurir --}}
             <div>
-                <button onclick="toggleMenu('menuKurir')" 
+                <button onclick="toggleMenu('menuKurir')"
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
                         class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('admin.couriers.*') ? 'bg-red-700 text-white' : '' }}">
                     <span class="flex items-center">
@@ -256,7 +256,7 @@
 
             {{-- PPOB --}}
             <div>
-                <button onclick="toggleMenu('menuPpob')" 
+                <button onclick="toggleMenu('menuPpob')"
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
                         class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('admin.ppob.*') ? 'bg-red-700 text-white' : '' }}">
                     <span class="flex items-center">
@@ -277,7 +277,7 @@
 
             {{-- Laporan Keuangan --}}
             <div>
-                <button onclick="toggleMenu('menuKeuangan')" 
+                <button onclick="toggleMenu('menuKeuangan')"
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
                         class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('admin.saldo.requests.*') || request()->routeIs('admin.keuangan.*') || request()->routeIs('admin.akuntansi.*') ? 'bg-red-700 text-white' : '' }}">
                     <span class="flex items-center">
@@ -291,23 +291,23 @@
                 </button>
                 <div id="menuKeuangan" class="submenu mt-1" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                     <ul class="pl-8 pr-2 py-1 space-y-1">
-                        
+
                         {{-- Jurnal & Akuntansi --}}
                         <li>
                             <a href="{{ route('admin.akuntansi.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.akuntansi.*') ? 'text-white' : 'text-gray-400' }}">
                                 <i class="fas fa-book-journal-whills mr-2 text-blue-400"></i> Jurnal & Akuntansi
                             </a>
                         </li>
-                        
+
                         <li>
                             <a href="{{ route('admin.saldo.requests.index') }}" class="sidebar-link flex justify-between items-center px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.saldo.requests.*') ? 'text-white' : 'text-gray-400' }}">
-                                <span>Permintaan Saldo</span>
+                                <span><i class="fas fa-hand-holding-dollar mr-2 text-yellow-500"></i> Permintaan Saldo</span>
                                 <span id="saldo-requests-badge" class="inline-flex items-center justify-center px-2 text-xs font-bold text-white bg-orange-500 rounded-md hidden">0</span>
                             </a>
                         </li>
                         <li>
                             <a href="{{ route('admin.keuangan.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.keuangan.index') ? 'text-white' : 'text-gray-400' }}">
-                                Transaksi Keuangan
+                                <i class="fas fa-money-bill-transfer mr-2 text-indigo-400"></i> Transaksi Keuangan
                             </a>
                         </li>
 
@@ -317,18 +317,55 @@
                                 <i class="fas fa-file-invoice-dollar mr-2 text-green-400"></i> Laba Rugi (Tahunan)
                             </a>
                         </li>
-                        
-                        <li><a href="{{ route('admin.saldo.requests.history') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.saldo.requests.history') ? 'text-white' : 'text-gray-400' }}">Riwayat Top Up</a></li>
-                        <li><a href="{{ url('admin/wallet') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->is('admin/wallet*') ? 'text-white' : 'text-gray-400' }}">Dompet Pelanggan</a></li>
-                        <li><a href="{{ route('admin.laporan.pemasukan') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.pemasukan*') ? 'text-white' : 'text-gray-400' }}">Pemasukan</a></li>
-                        <li><a href="{{ route('admin.laporan.pengeluaran') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.pengeluaran*') ? 'text-white' : 'text-gray-400' }}">Pengeluaran</a></li>
-                        <li><a href="{{ route('admin.laporan.labaRugi') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.labaRugi*') ? 'text-white' : 'text-gray-400' }}">Laba Rugi</a></li>
-                        <li><a href="{{ route('admin.coa.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.coa.*') ? 'text-white' : 'text-gray-400' }}">Manajemen Akun (COA)</a></li>
-                        <li><a href="{{ route('admin.laporan.neracaSaldo') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.neracaSaldo') ? 'text-white' : 'text-gray-400' }}">Neraca Saldo</a></li>
-                        <li><a href="{{ route('admin.laporan.neraca') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.neraca') ? 'text-white' : 'text-gray-400' }}">Neraca</a></li>
+
+                        <li>
+                            <a href="{{ route('admin.saldo.requests.history') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.saldo.requests.history') ? 'text-white' : 'text-gray-400' }}">
+                                <i class="fas fa-clock-rotate-left mr-2 text-purple-400"></i> Riwayat Top Up
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ url('admin/wallet') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->is('admin/wallet*') ? 'text-white' : 'text-gray-400' }}">
+                                <i class="fas fa-wallet mr-2 text-orange-400"></i> Dompet Pelanggan
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('admin.laporan.pemasukan') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.pemasukan*') ? 'text-white' : 'text-gray-400' }}">
+                                <i class="fas fa-arrow-trend-up mr-2 text-emerald-500"></i> Pemasukan
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('admin.laporan.pengeluaran') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.pengeluaran*') ? 'text-white' : 'text-gray-400' }}">
+                                <i class="fas fa-arrow-trend-down mr-2 text-rose-500"></i> Pengeluaran
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('admin.laporan.labaRugi') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.labaRugi*') ? 'text-white' : 'text-gray-400' }}">
+                                <i class="fas fa-chart-column mr-2 text-teal-400"></i> Laba Rugi
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('admin.coa.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.coa.*') ? 'text-white' : 'text-gray-400' }}">
+                                <i class="fas fa-list-check mr-2 text-gray-300"></i> Manajemen Akun (COA)
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('admin.laporan.neracaSaldo') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.neracaSaldo') ? 'text-white' : 'text-gray-400' }}">
+                                <i class="fas fa-scale-unbalanced mr-2 text-cyan-400"></i> Neraca Saldo
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('admin.laporan.neraca') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.laporan.neraca') ? 'text-white' : 'text-gray-400' }}">
+                                <i class="fas fa-scale-balanced mr-2 text-blue-500"></i> Neraca
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
+            {{-- Rekonsiliasi Bank --}}
+
+            {{-- ================= PRODUKSI & INVENTORY ================= --}}
+
+            {{-- Manajemen Produksi --}}
 
             {{-- ================= KOMUNIKASI & BLOG ================= --}}
 
@@ -340,7 +377,7 @@
 
             {{-- Chat Whatsapp --}}
             <div>
-                <button onclick="toggleMenu('menuWhatsapp')" 
+                <button onclick="toggleMenu('menuWhatsapp')"
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
                         class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('broadcast.*') || request()->is('whatsapp*') ? 'bg-red-700 text-white' : '' }}">
                     <span class="flex items-center">
@@ -359,7 +396,7 @@
 
             {{-- Blog --}}
             <div>
-                <button onclick="toggleMenu('menuBlog')" 
+                <button onclick="toggleMenu('menuBlog')"
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
                         class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->is('admin/posts*') || request()->is('admin/categories*') || request()->is('admin/tags*') ? 'bg-red-700 text-white' : '' }}">
                     <span class="flex items-center">
@@ -382,7 +419,7 @@
 
             {{-- Pengaturan (Utilitas) --}}
             <div>
-                <button onclick="toggleMenu('menuUtilitas')" 
+                <button onclick="toggleMenu('menuUtilitas')"
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
                         class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200">
                     <span class="flex items-center">
