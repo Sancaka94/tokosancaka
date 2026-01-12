@@ -1742,96 +1742,117 @@ public function cetakThermal($resi)
     return view('admin.pesanan.cetak_thermal', compact('pesanan'));
 }
 
-/**
-     * HELPER: Simpan Transaksi Keuangan (Omzet & Modal)
-     * Menggunakan Logic Diskon dari Tabel Ekspedisi
+    /**
+     * HELPER: Simpan Transaksi Keuangan (HANYA JIKA STATUS SUKSES)
+     * Cash Basis: Pencatatan dilakukan saat paket benar-benar selesai.
      */
     private function _simpanKeKeuangan(Pesanan $pesanan)
     {
         try {
             // ==========================================================
-            // 1. AMBIL RULES DISKON DARI DATABASE
+            // 1. VALIDASI STATUS (GATEKEEPER)
             // ==========================================================
-            // Kita perlu tahu berapa persen diskon untuk ekspedisi ini
+            // Daftar status yang dianggap "Uang Masuk / Transaksi Selesai"
+            $statusSukses = [
+                'Selesai',
+                'Terkirim',
+                'Delivered',
+                'Success',
+                'Berhasil',
+                'Finished'
+            ];
+
+            // Normalisasi status database agar huruf besar/kecil tidak masalah
+            $currentStatus = ucwords(strtolower($pesanan->status_pesanan));
+
+            // JIKA STATUS BELUM SUKSES -> STOP / JANGAN SIMPAN
+            if (!in_array($currentStatus, $statusSukses)) {
+                return;
+            }
+
+            // ==========================================================
+            // 2. HITUNG DISKON & PROFIT
+            // ==========================================================
             $ekspedisiRules = DB::table('Ekspedisi')->get();
-
             $diskonPersen = 0;
-            $expStr = strtolower($pesanan->expedition); // Misal: "jne-reg" atau "sicepat-gokil"
+            $expStr = strtolower($pesanan->expedition);
 
-            // Loop untuk mencocokkan ekspedisi (JNE, SiCepat, dll)
             foreach ($ekspedisiRules as $rule) {
-                // Cek apakah string pesanan mengandung keyword ekspedisi (misal: "jne")
                 if (str_contains($expStr, strtolower($rule->keyword))) {
-
                     $rules = json_decode($rule->diskon_rules, true);
-
-                    // Cek jenis layanan (REG, YES, CARGO, dll)
                     if (is_array($rules)) {
                         foreach ($rules as $key => $val) {
-                            // Jika key ada di string (misal "reg" ada di "jne-reg")
                             if ($key !== 'default' && str_contains($expStr, $key)) {
                                 $diskonPersen = $val;
-                                break 2; // Ketemu, keluar dari semua loop
+                                break 2;
                             }
                         }
-                        // Jika tidak ada layanan spesifik, pakai default
-                        if (isset($rules['default'])) {
-                            $diskonPersen = $rules['default'];
-                        }
+                        if (isset($rules['default'])) $diskonPersen = $rules['default'];
                     }
-                    break; // Keluar loop ekspedisi
+                    break;
                 }
             }
 
-
             // ==========================================================
-            // 2. HITUNG NOMINAL
+            // 3. HITUNG NOMINAL
             // ==========================================================
-            $ongkirPublish = (float) $pesanan->shipping_cost; // Ini OMZET (Yang dibayar customer)
-            $nilaiDiskon   = $ongkirPublish * $diskonPersen;  // Ini PROFIT
-            $modalReal     = $ongkirPublish - $nilaiDiskon;   // Ini MODAL (Yang disetor ke kurir)
+            $ongkirPublish = (float) $pesanan->shipping_cost; // Omzet
+            $nilaiDiskon   = $ongkirPublish * $diskonPersen;  // Profit
+            $modalReal     = $ongkirPublish - $nilaiDiskon;   // Beban Pokok
 
-            // Pastikan nominal tidak negatif/error
+            // Validasi nominal
             if ($ongkirPublish <= 0) return;
 
+            // Pastikan Resi Ada (Karena status sudah selesai, resi pasti ada)
+            $resiFinal = $pesanan->resi ?? $pesanan->nomor_invoice;
+
             // ==========================================================
-            // 3. SIMPAN PEMASUKAN (OMZET)
+            // 4. EKSEKUSI PENYIMPANAN (UPDATE OR CREATE)
             // ==========================================================
-            // Cek duplikasi Pemasukan
-            if (!Keuangan::where('nomor_invoice', $pesanan->nomor_invoice)->where('jenis', 'Pemasukan')->where('kategori', 'Ekspedisi')->exists()) {
-                Keuangan::create([
-                    'kode_akun'     => '1101', // Masuk Kas
-                    'tanggal'       => now()->toDateString(),
+            // Menggunakan updateOrCreate agar jika webhook terkirim 2x, data tidak dobel.
+
+            // A. PEMASUKAN (Pendapatan Jasa)
+            Keuangan::updateOrCreate(
+                [
+                    // Kunci Unik (Syarat agar tidak dobel)
+                    'nomor_invoice' => $pesanan->nomor_invoice,
                     'jenis'         => 'Pemasukan',
-                    'kategori'      => 'Ekspedisi',
+                    'kategori'      => 'Pendapatan Jasa Pengiriman'
+                ],
+                [
+                    // Data yang diupdate/disimpan
+                    'kode_akun'     => '4101', // Akun Pendapatan
+                    'tanggal'       => now()->toDateString(), // Tanggal SELESAI (bukan tanggal order)
                     'unit_usaha'    => 'Ekspedisi',
-                    'nomor_invoice' => $pesanan->nomor_invoice,
-                    'keterangan'    => "Omzet Order " . $pesanan->expedition . " - Resi: " . $pesanan->resi,
-                    'jumlah'        => $ongkirPublish, // Nilai Penuh
-                ]);
-            }
+                    'keterangan'    => "Pendapatan Resi: " . $resiFinal . " (" . $pesanan->expedition . ")",
+                    'jumlah'        => $ongkirPublish,
+                    'updated_at'    => now()
+                ]
+            );
 
-            // ==========================================================
-            // 4. SIMPAN PENGELUARAN (MODAL)
-            // ==========================================================
-            // Cek duplikasi Pengeluaran
-            if (!Keuangan::where('nomor_invoice', $pesanan->nomor_invoice)->where('jenis', 'Pengeluaran')->where('kategori', 'Ekspedisi')->exists()) {
-                Keuangan::create([
-                    'kode_akun'     => '1101', // Keluar dari Kas
-                    'tanggal'       => now()->toDateString(),
+            // B. PENGELUARAN (Beban/Modal ke Pusat)
+            Keuangan::updateOrCreate(
+                [
+                    // Kunci Unik
+                    'nomor_invoice' => $pesanan->nomor_invoice,
                     'jenis'         => 'Pengeluaran',
-                    'kategori'      => 'Ekspedisi',
+                    'kategori'      => 'Beban Ekspedisi'
+                ],
+                [
+                    // Data yang diupdate/disimpan
+                    'kode_akun'     => '5101', // Akun Beban
+                    'tanggal'       => now()->toDateString(),
                     'unit_usaha'    => 'Ekspedisi',
-                    'nomor_invoice' => $pesanan->nomor_invoice,
-                    'keterangan'    => "Setor Modal " . $pesanan->expedition . " (Diskon " . ($diskonPersen * 100) . "%)",
-                    'jumlah'        => $modalReal, // Nilai Setelah Diskon
-                ]);
-            }
+                    'keterangan'    => "Setor Modal ke Pusat: " . $resiFinal . " (Profit " . ($diskonPersen * 100) . "%)",
+                    'jumlah'        => $modalReal,
+                    'updated_at'    => now()
+                ]
+            );
 
-            Log::info("Keuangan Auto: Invoice {$pesanan->nomor_invoice} | Omzet: {$ongkirPublish} | Modal: {$modalReal} | Cuan: {$nilaiDiskon}");
+            Log::info("Keuangan CASH BASIS Tersimpan: Invoice {$pesanan->nomor_invoice} | Status: {$currentStatus}");
 
         } catch (Exception $e) {
-            Log::error('Keuangan: Gagal auto-insert.', ['error' => $e->getMessage()]);
+            Log::error('Keuangan Error:', ['invoice' => $pesanan->nomor_invoice, 'msg' => $e->getMessage()]);
         }
     }
 
