@@ -454,6 +454,9 @@
                         <td colspan="5" class="px-4 py-3 text-right text-gray-600 uppercase tracking-wider">
                             Subtotal (Halaman Ini):
                         </td>
+                        <td class="px-4 py-3 text-right text-gray-600 bg-gray-50">
+
+                        </td>
                         <td class="px-4 py-3 text-right text-blue-800 bg-blue-50/50">
                             Rp{{ number_format($transaksi->sum('omzet'), 0, ',', '.') }}
                         </td>
