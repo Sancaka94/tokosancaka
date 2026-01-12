@@ -1043,17 +1043,24 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
             $scheduleClock = date('Y-m-d H:i:s');
             $pesanGeserJadwal = null;
 
+            // =================================================================
             // 3. LOGIKA JADWAL PICKUP DINAMIS (BERDASARKAN CUT OFF TIME API)
+            // =================================================================
             try {
+                Log::info("START: Cek Jadwal Pickup Dinamis (Invoice: {$order->nomor_invoice})");
+
                 // Ambil data kurir yang dipilih user (Misal: regular-sicepat-GOKIL-...)
                 $expParts = explode('-', $data['expedition'] ?? '');
                 $targetCourier = $expParts[1] ?? null; // sicepat
                 $targetService = $expParts[2] ?? null; // GOKIL
 
                 if ($targetCourier && $targetService) {
+
+                    Log::info("DEBUG: Target Kurir: $targetCourier | Layanan: $targetService");
+                    Log::info("DEBUG: Mengirim Request Pricing DUMMY ke KiriminAja (1kg, 1x1x1, Rp1000) untuk intip CutOffTime...");
+
                     // CEK METADATA KURIR KE API KIRIMINAJA
-                    // PENTING: Gunakan DATA DUMMY yang pasti valid (1kg, 1x1x1, Rp1000)
-                    // agar API tidak menolak request hanya karena berat/dimensi kekecilan.
+                    // PENTING: Gunakan DATA DUMMY agar API tidak menolak
                     $pricingCheck = $kirimaja->getExpressPricing(
                         $senderData['kirimaja_data']['district_id'],      // origin
                         $senderData['kirimaja_data']['subdistrict_id'],   // subdistrict_origin
@@ -1064,8 +1071,8 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                         1,     // width  (Dummy: 1 cm)
                         1,     // height (Dummy: 1 cm)
                         1000,  // item_value (Dummy: Rp 1.000)
-                        $targetCourier, // Filter kurir spesifik (misal: 'sicepat')
-                        $category,      // regular/trucking
+                        $targetCourier, // Filter kurir spesifik
+                        $category,
                         0               // insurance (Dummy: 0)
                     );
 
@@ -1079,15 +1086,19 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                                 strcasecmp($res['service_type'], $targetService) === 0) {
 
                                 $apiCutOffTime = $res['cut_off_time']; // Bisa "17:00:00" atau NULL
+                                Log::info("DEBUG: Ditemukan Data API untuk $targetCourier-$targetService. CutOffTime: " . ($apiCutOffTime ?? 'NULL (Bebas)'));
                                 break;
                             }
                         }
+                    } else {
+                        Log::warning("DEBUG: API Pricing Dummy mengembalikan hasil kosong atau format salah.", ['response_sample' => $pricingCheck]);
                     }
 
                     // Eksekusi Logika Jadwal
                     if (!empty($apiCutOffTime)) {
                         // KASUS A: Ada Cut Off Time (Misal SPX 17:00:00)
                         $currentTime = date('H:i:s');
+                        Log::info("COMPARE: Jam Sekarang ($currentTime) vs Batas Ekspedisi ($apiCutOffTime)");
 
                         if ($currentTime > $apiCutOffTime) {
                             // Jika sudah lewat -> Geser BESOK Jam 09:00
@@ -1095,26 +1106,29 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                             $scheduleClock = date('Y-m-d H:i:s', $besok);
 
                             $pesanGeserJadwal = "Jadwal Pickup digeser ke besok (" . date('d M H:i', $besok) . ") karena melewati batas waktu ekspedisi ({$apiCutOffTime}).";
-                            Log::info("Pickup Digeser (Lewat Cutoff): Invoice {$order->nomor_invoice} | Now: {$currentTime} > Cutoff: {$apiCutOffTime}");
+                            Log::warning("DECISION: Pickup DIGESER ke Besok ({$scheduleClock}).");
                         } else {
-                            // Belum lewat -> Tetap SEKARANG
-                            Log::info("Pickup Aman (Sebelum Cutoff): Invoice {$order->nomor_invoice} | Now: {$currentTime} < Cutoff: {$apiCutOffTime}");
+                            Log::info("DECISION: Pickup TETAP Hari Ini (Masih Keburu).");
                         }
                     } else {
                         // KASUS B: Cut Off Time NULL (Misal Sicepat Cargo) -> Tetap SEKARANG
-                        Log::info("Pickup Langsung (Cutoff NULL): Invoice {$order->nomor_invoice} | Ekspedisi: {$targetCourier}");
+                        Log::info("DECISION: Pickup TETAP Hari Ini (CutOffTime NULL / Bebas Request).");
                     }
                 }
             } catch (Exception $e) {
                 // Fallback jika API error: Gunakan logika aman (Jam 17:00)
-                Log::warning("Gagal cek Cutoff Time API: " . $e->getMessage());
+                Log::error("ERROR: Gagal Cek Cutoff Time API: " . $e->getMessage());
+
                 if (date('H') >= 17) {
                      $besok = strtotime('+1 day 09:00:00');
                      $scheduleClock = date('Y-m-d H:i:s', $besok);
-                     $pesanGeserJadwal = "Jadwal Pickup digeser ke besok (System Fallback).";
+                     $pesanGeserJadwal = "Jadwal Pickup digeser ke besok (System Fallback Error API).";
+                     Log::warning("DECISION: Pickup DIGESER ke Besok (Fallback System Jam 17:00).");
                 }
             }
-            // 4. Hitung Berat Volumetrik & Final Weight
+            // =================================================================
+
+            // Hitung Berat Volumetrik
             $category = ($data['service_type'] ?? $serviceGroup) === 'cargo' ? 'trucking' : 'regular';
 
             $weightInput = (int) $data['weight'];
