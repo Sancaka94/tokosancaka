@@ -15,23 +15,31 @@ use Carbon\Carbon;
 
 class KirimAjaController extends Controller
 {
+    /**
+     * Handle Webhook dari KiriminAja (Real-time Update)
+     */
     public function handle(Request $request)
     {
+        // [LOG 1] Tangkap Payload Mentah
+        // Ini yang paling penting untuk debugging jika data tidak masuk
         $payload = $request->all();
+        Log::info('[WEBHOOK-KA] 🟢 Payload Diterima:', ['content' => $payload]);
 
-        Log::info('Handle KiriminAja Webhook Payload Received', ['payload' => $payload]);
-
-        $method = $payload['method'] ?? null;
+        $method    = $payload['method'] ?? 'unknown';
         $dataArray = $payload['data'] ?? [];
 
+        // Validasi Payload Kosong
         if (empty($dataArray)) {
+            Log::warning('[WEBHOOK-KA] ⚠️ Data array kosong atau format salah.');
             return response()->json(['error' => 'Invalid payload, data[] is missing'], 400);
         }
 
         try {
             DB::beginTransaction();
 
-            // 1. Mapping Status
+            // -----------------------------------------------------------
+            // 1. MAPPING STATUS & TIMESTAMP
+            // -----------------------------------------------------------
             $pesananStatusMap = [
                 'processed_packages'       => 'Menunggu Pickup',
                 'shipped_packages'         => 'Sedang Dikirim',
@@ -58,51 +66,58 @@ class KirimAjaController extends Controller
             ];
 
             $pesananStatus = $pesananStatusMap[$method] ?? null;
-            $orderStatus    = $orderStatusMap[$method] ?? null;
+            $orderStatus   = $orderStatusMap[$method] ?? null;
 
-            foreach ($dataArray as $data) {
+            Log::info("[WEBHOOK-KA] Method: $method | Target Status Pesanan: " . ($pesananStatus ?? 'Tetap') . " | Target Order: " . ($orderStatus ?? 'Tetap'));
+
+            // -----------------------------------------------------------
+            // 2. LOOP DATA (BATCH PROCESSING)
+            // -----------------------------------------------------------
+            foreach ($dataArray as $index => $data) {
                 if (!$data) continue;
 
                 $orderId = $data['order_id'] ?? null;
-                $awb     = $data['awb'] ?? null; // Nomor Resi dari Webhook
+                $awb     = $data['awb'] ?? null; // Ini RESI dari Webhook
+
+                // [LOG 2] Cek Data Item
+                Log::info("[WEBHOOK-KA] Processing Item #$index", ['order_id' => $orderId, 'awb_webhook' => $awb]);
 
                 if (!$orderId) {
-                    Log::warning('Webhook KiriminAja: Order ID missing', $data);
+                    Log::warning('[WEBHOOK-KA] ⚠️ Order ID hilang di item ini.');
                     continue;
                 }
 
-                // Lock for update untuk mencegah race condition saat update saldo
-                $order = Order::where('invoice_number', $orderId)->lockForUpdate()->first();
-                $pesanan = Pesanan::where('nomor_invoice', $orderId)->lockForUpdate()->first();
+                // Lock DB untuk mencegah race condition
+                $order            = Order::where('invoice_number', $orderId)->lockForUpdate()->first();
+                $pesanan          = Pesanan::where('nomor_invoice', $orderId)->lockForUpdate()->first();
                 $orderMarketplace = OrderMarketplace::where('invoice_number', $orderId)->lockForUpdate()->first();
 
-                // Ambil timestamp dari payload
-                $shippedAt = $data['shipped_at'] ?? null;
+                // Ambil Timestamp & Convert ke WIB
+                $shippedAt  = $data['shipped_at'] ?? null;
                 $finishedAt = $data['finished_at'] ?? null;
-                $updateTime = now()->timezone('Asia/Jakarta'); // Default time
+                $updateTime = now()->timezone('Asia/Jakarta');
 
                 // =========================================================================
-                // A. UPDATE RESI / AWB (AGAR TIDAK NULL)
+                // A. UPDATE RESI / AWB (JIKA KOSONG)
                 // =========================================================================
-                // Logika: Jika di webhook ada AWB, dan di DB masih kosong, isi segera.
                 if (!empty($awb)) {
-                    // 1. Untuk Model Order
+                    // 1. Model Order
                     if ($order && empty($order->shipping_reference)) {
                         $order->shipping_reference = $awb;
                         $order->save();
-                        Log::info("Resi Order Updated: $orderId -> $awb");
+                        Log::info("[WEBHOOK-KA] ✅ Resi Order Updated: $orderId -> $awb");
                     }
-                    // 2. Untuk Model Pesanan
+                    // 2. Model Pesanan
                     if ($pesanan && empty($pesanan->resi)) {
                         $pesanan->resi = $awb;
                         $pesanan->save();
-                        Log::info("Resi Pesanan Updated: $orderId -> $awb");
+                        Log::info("[WEBHOOK-KA] ✅ Resi Pesanan Updated: $orderId -> $awb");
                     }
-                    // 3. Untuk Model OrderMarketplace
+                    // 3. Model OrderMarketplace
                     if ($orderMarketplace && empty($orderMarketplace->shipping_resi)) {
                         $orderMarketplace->shipping_resi = $awb;
                         $orderMarketplace->save();
-                        Log::info("Resi OrderMarketplace Updated: $orderId -> $awb");
+                        Log::info("[WEBHOOK-KA] ✅ Resi OrderMarketplace Updated: $orderId -> $awb");
                     }
                 }
 
@@ -110,10 +125,8 @@ class KirimAjaController extends Controller
                 // B. UPDATE STATUS & SALDO (MODEL ORDER)
                 // =========================================================================
                 if ($order && $orderStatus) {
-                    // Cek status sebelumnya agar saldo tidak masuk 2x
                     $previousStatus = $order->status;
 
-                    // Update Status jika berbeda
                     if ($previousStatus !== $orderStatus) {
                         $order->status = $orderStatus;
 
@@ -126,28 +139,34 @@ class KirimAjaController extends Controller
                             $order->{$timestampMap[$method]} = $updateTime;
                         }
 
-                        // --- LOGIKA KEUANGAN (SALDO) ---
-                        // Hanya jalankan jika status BARU saja berubah jadi 'completed'
-                        // dan status SEBELUMNYA bukan 'completed'
+                        Log::info("[WEBHOOK-KA] 🔄 Status Order Updated: $previousStatus -> $orderStatus");
+
+                        // 🔥 LOGIKA SALDO (HANYA JIKA COMPLETED) 🔥
                         if ($orderStatus === 'completed' && $previousStatus !== 'completed') {
+                            Log::info("[WEBHOOK-KA] 💰 Triggering Revenue Process for $orderId");
                             $this->processRevenue($order, $updateTime);
                         }
 
                         $order->save();
+                    } else {
+                        Log::info("[WEBHOOK-KA] Status Order Sama ($previousStatus), Skip Update.");
                     }
                 }
 
                 // =========================================================================
-                // C. UPDATE STATUS (MODEL PESANAN)
+                // C. UPDATE STATUS (MODEL PESANAN) - MANUAL INPUT ADMIN
                 // =========================================================================
                 if ($pesanan && $pesananStatus) {
                     if ($pesanan->status !== 'Selesai' && $pesanan->status !== $pesananStatus) {
+
+                        $oldPesananStatus = $pesanan->status;
                         $pesanan->status = $pesananStatus;
-                        // Sesuaikan kolom status lain jika ada (misal status_pesanan)
+
                         if (\Schema::hasColumn('pesanans', 'status_pesanan')) {
                             $pesanan->status_pesanan = $pesananStatus;
                         }
 
+                        // Update Timestamp
                         if ($method === 'shipped_packages' && $shippedAt) {
                             $pesanan->shipped_at = Carbon::parse($shippedAt)->timezone('Asia/Jakarta');
                         } elseif ($method === 'finished_packages' && $finishedAt) {
@@ -157,6 +176,16 @@ class KirimAjaController extends Controller
                         }
 
                         $pesanan->save();
+                        Log::info("[WEBHOOK-KA] 🔄 Status Pesanan Updated: $oldPesananStatus -> $pesananStatus");
+
+                        // 🔥 TRIGGER KEUANGAN MANUAL (OPTIONAL) 🔥
+                        // Jika Anda ingin pencatatan keuangan manual juga terjadi saat webhook 'finished_packages' masuk
+                        if ($pesananStatus === 'Selesai') {
+                             // Anda bisa memanggil _simpanKeKeuangan di sini jika functionnya public/static
+                             // (new \App\Http\Controllers\Admin\PesananController)->simpanKeuanganPublic($pesanan);
+                             Log::info("[WEBHOOK-KA] 💰 Pesanan Selesai. Siap untuk pencatatan keuangan (Cash Basis).");
+                        }
+
                     }
                 }
 
@@ -167,26 +196,30 @@ class KirimAjaController extends Controller
                     if ($orderMarketplace->status !== 'completed' && $orderMarketplace->status !== $orderStatus) {
                         $orderMarketplace->status = $orderStatus;
                         $orderMarketplace->save();
+                        Log::info("[WEBHOOK-KA] 🔄 Status OrderMP Updated: $orderStatus");
                     }
                 }
 
+                // [LOG 3] Peringatan Jika Data Tidak Ditemukan
                 if (!$order && !$pesanan && !$orderMarketplace) {
-                    Log::warning('Webhook: Order ID tidak ditemukan di semua tabel', ['order_id' => $orderId]);
+                    Log::warning("[WEBHOOK-KA] ❌ Order ID $orderId tidak ditemukan di tabel manapun!");
                 }
 
             } // End Foreach
 
             DB::commit();
+            Log::info("[WEBHOOK-KA] 🏁 Transaction Committed Successfully.");
             return response()->json(['success' => true]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Gagal memproses Webhook KiriminAja', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
+            Log::error('[WEBHOOK-KA] 💥 CRITICAL ERROR:', [
+                'message' => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
                 'payload' => $payload
             ]);
-            return response()->json(['success' => false, 'message' => 'Internal Error'], 500);
+            return response()->json(['success' => false, 'message' => 'Internal Error: ' . $e->getMessage()], 500);
         }
     }
 
@@ -197,19 +230,24 @@ class KirimAjaController extends Controller
     {
         try {
             $store = Store::find($order->store_id);
-            if (!$store) return;
+            if (!$store) {
+                Log::error("[WEBHOOK-KA] Revenue Failed: Store ID {$order->store_id} not found.");
+                return;
+            }
 
             $seller = User::where('id_pengguna', $store->user_id)->first();
-            if (!$seller) return;
+            if (!$seller) {
+                Log::error("[WEBHOOK-KA] Revenue Failed: User ID {$store->user_id} not found.");
+                return;
+            }
 
-            // Pastikan menggunakan nilai yang benar (subtotal / total_price - potongan admin jika ada)
             $revenue = $order->subtotal;
 
             // Tambah Saldo
             $seller->saldo += $revenue;
             $seller->save();
 
-            // Catat Riwayat Transaksi (TopUp/Mutasi)
+            // Catat Riwayat Transaksi
             TopUp::create([
                 'customer_id'      => $seller->id_pengguna,
                 'amount'           => $revenue,
@@ -220,28 +258,30 @@ class KirimAjaController extends Controller
                 'created_at'       => $order->finished_at ?? $updateTime,
             ]);
 
-            Log::info('Saldo Seller berhasil ditambah via Webhook.', [
-                'invoice' => $order->invoice_number,
-                'amount' => $revenue
-            ]);
+            Log::info("[WEBHOOK-KA] 💵 Saldo Seller (+{$revenue}) berhasil ditambah untuk invoice {$order->invoice_number}.");
 
         } catch (\Exception $e) {
-            Log::error('Webhook Revenue Error', ['invoice' => $order->invoice_number, 'msg' => $e->getMessage()]);
-            throw $e; // Lempar error agar transaksi di-rollback
+            Log::error("[WEBHOOK-KA] 💥 Revenue Error for {$order->invoice_number}: " . $e->getMessage());
+            throw $e; // Lempar error agar transaksi utama di-rollback
         }
     }
 
+    /**
+     * Set Callback URL (Setup)
+     */
     public function setCallback(Request $request, \App\Services\KiriminAjaService $kiriminAja)
     {
         $url = url('/api/webhook/kiriminaja');
+        Log::info("[SETUP-KA] Setting Callback URL to: $url");
 
         try {
             $response = $kiriminAja->setCallback($url);
+            Log::info("[SETUP-KA] Response:", ['response' => $response]);
 
             if (!empty($response) && isset($response['status']) && $response['status'] === true) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Callback URL berhasil diset di KiriminAja',
+                    'message' => 'Callback URL berhasil diset',
                     'data'    => $response
                 ]);
             } else {
@@ -252,6 +292,7 @@ class KirimAjaController extends Controller
                 ], 400);
             }
         } catch (\Exception $e) {
+            Log::error("[SETUP-KA] Error: " . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
