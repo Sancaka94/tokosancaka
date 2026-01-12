@@ -1119,15 +1119,15 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                         $currentTime = date('H:i:s');
                         Log::info("COMPARE: Jam Sekarang ($currentTime) vs Batas Ekspedisi ($apiCutOffTime)");
 
-                        if ($currentTime > $apiCutOffTime) {
-                            // Jika sudah lewat -> Geser BESOK Jam 09:00
-                            $besok = strtotime('+1 day 09:00:00');
-                            $scheduleClock = date('Y-m-d H:i:s', $besok);
-
-                            $pesanGeserJadwal = "Jadwal Pickup digeser ke besok (" . date('d M H:i', $besok) . ") karena melewati batas waktu ekspedisi ({$apiCutOffTime}).";
-                            Log::warning("DECISION: Pickup DIGESER ke Besok ({$scheduleClock}).");
+                        // Batas wajar request hari ini: Jam 21:00 (9 Malam)
+                        // Jika lewat jam 21:00, otomatis geser besok meskipun API bilang NULL.
+                        if ($currentTime > '17:00:00') {
+                             $besok = strtotime('+1 day 09:00:00');
+                             $scheduleClock = date('Y-m-d H:i:s', $besok);
+                             $pesanGeserJadwal = "Jadwal Pickup digeser ke besok (" . date('d M H:i', $besok) . ") karena sudah terlalu larut malam.";
+                             Log::warning("DECISION: Pickup DIGESER ke Besok (Safety Net > 21:00).");
                         } else {
-                            Log::info("DECISION: Pickup TETAP Hari Ini (Masih Keburu).");
+                             Log::info("DECISION: Pickup TETAP Hari Ini (CutOffTime NULL / Bebas Request).");
                         }
                     } else {
                         // KASUS B: Cut Off Time NULL (Misal Sicepat Cargo) -> Tetap SEKARANG
