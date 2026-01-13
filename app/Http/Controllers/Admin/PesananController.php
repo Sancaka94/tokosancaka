@@ -322,57 +322,61 @@ class PesananController extends Controller
 
                     } else {
                     // ==========================================================
-                    // 🔥 UPDATE BARU: STRATEGI ANTI-NULL (1 FREKUENSI) 🔥
+                    // 🔥 LOGIKA FIX: AMBIL REF SEPERTI PERCETAKAN 🔥
                     // ==========================================================
+                    Log::info('KiriminAja Create Order RAW Response:', $kiriminResponse);
+                    // 1. Coba ambil dari 'data' -> 'order_id' (Biasanya ini format KiriminAja v3)
+                    // 2. Coba ambil dari 'id' (Format v4/Booking)
+                    // 3. Coba ambil dari 'payment_ref'
+                    $bookingId = $kiriminResponse['data']['order_id'] 
+                              ?? $kiriminResponse['id'] 
+                              ?? $kiriminResponse['data']['id']
+                              ?? $kiriminResponse['payment_ref'] 
+                              ?? null;
 
-                    // 1. Ambil Booking ID / Reference ID (Pasti ada saat create order)
-                    $bookingId = $kiriminResponse['id']
-                            ?? $kiriminResponse['data']['id']
-                            ?? $kiriminResponse['payment_ref']
-                            ?? null;
-
-                    // 2. Ambil AWB Asli (Mungkin belum ada/null saat detik pertama)
-                    $awbAsli = $kiriminResponse['awb']
-                            ?? $kiriminResponse['data']['awb']
-                            ?? $kiriminResponse['details']['awb']
-                            ?? $kiriminResponse['result']['awb_no']
+                    // 4. Cek AWB (Jika API langsung kasih)
+                    $awbAsli = $kiriminResponse['awb'] 
+                            ?? $kiriminResponse['data']['awb'] 
                             ?? ($kiriminResponse['results'][0]['awb'] ?? null);
 
-                    // 3. LOGIKA UTAMA: Prioritaskan AWB, jika kosong pakai Booking ID
-                    // Ini menjamin kolom resi TIDAK AKAN NULL.
+                    // 5. Tentukan Final Resi (Prioritas AWB -> Booking ID)
                     $finalResi = !empty($awbAsli) ? $awbAsli : $bookingId;
 
-                    // 4. Fallback Terakhir (Safety Net extra)
+                    // 6. Fallback (Hanya jika benar-benar kosong)
                     if (empty($finalResi)) {
-                        $finalResi = 'REF-' . $pesanan->nomor_invoice;
+                         $finalResi = 'REF-' . $pesanan->nomor_invoice;
+                         // Log respon asli untuk debugging jika masih gagal
+                         Log::warning('KiriminAja Response Raw:', $kiriminResponse);
                     }
 
-                    // 5. Update Database Pesanan
-                    $pesanan->resi = $finalResi; // Isi Resi dengan hasil prioritas di atas
-
-                    // Optional: Jika punya kolom shipping_ref, simpan juga ID aslinya
+                    // 7. Update Database
+                    $pesanan->resi = $finalResi; 
+                    
+                    // Jika ada kolom shipping_ref, isi juga:
                     // $pesanan->shipping_ref = $bookingId;
 
                     $pesanan->status = 'Pesanan Dibuat';
                     $pesanan->status_pesanan = 'Pesanan Dibuat';
-
-                    // 6. Simpan Perubahan (PENTING: Save dulu sebelum catat keuangan)
-                    $pesanan->save();
+                    
+                    // 8. Simpan DULU sebelum catat keuangan
+                    $pesanan->save(); 
 
                     Log::info('KiriminAja SUCCESS', [
-                        'invoice' => $pesanan->nomor_invoice,
-                        'resi_final' => $finalResi,
-                        'awb_found' => $awbAsli ? 'YES' : 'NO'
+                        'invoice' => $pesanan->nomor_invoice, 
+                        'resi_set' => $finalResi
                     ]);
 
-                    // 7. 🔥 AUTO INSERT KEUANGAN 🔥
-                    // Dipanggil setelah save() agar 'keterangan' di keuangan memuat resi yang baru disimpan
-                    $this->simpanKeKeuangan($pesanan);
+                    // 9. Catat Keuangan
+                    if (method_exists($this, 'simpanKeKeuangan')) {
+                        $this->simpanKeKeuangan($pesanan); 
+                    } else {
+                        self::simpanKeKeuangan($pesanan);
+                    }
 
-                    // 8. Pesan Warning (Jadwal Digeser)
                     if (isset($kiriminResponse['custom_warning'])) {
                         session()->flash('warning', $kiriminResponse['custom_warning']);
                     }
+                
                 }
                 // --- AKHIR BLOK YANG HILANG ---
             }
