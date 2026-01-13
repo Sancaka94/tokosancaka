@@ -295,60 +295,86 @@ class PesananController extends Controller
 
                 // --- MULAI BLOK YANG HILANG ---
 
-// Dapatkan data alamat lengkap (termasuk Lat/Lng) dari helper Anda
-$senderAddressData = $this->_getAddressData($request, 'sender');
-$receiverAddressData = $this->_getAddressData($request, 'receiver');
+            // Dapatkan data alamat lengkap (termasuk Lat/Lng) dari helper Anda
+            $senderAddressData = $this->_getAddressData($request, 'sender');
+            $receiverAddressData = $this->_getAddressData($request, 'receiver');
 
-// Panggil KiriminAja
-Log::info('Memulai create KiriminAja (Admin COD/Saldo) untuk ' . $pesanan->nomor_invoice);
-$kiriminResponse = $this->_createKiriminAjaOrder(
-    $validatedData, $pesanan, $kirimaja, // Objek & data utama
-    $senderAddressData, $receiverAddressData, // Data alamat
-    $cod_value, $shipping_cost, $insurance_cost // Biaya dari _calculateTotalPaid
-);
+            // Panggil KiriminAja
+            Log::info('Memulai create KiriminAja (Admin COD/Saldo) untuk ' . $pesanan->nomor_invoice);
+            $kiriminResponse = $this->_createKiriminAjaOrder(
+                $validatedData, $pesanan, $kirimaja, // Objek & data utama
+                $senderAddressData, $receiverAddressData, // Data alamat
+                $cod_value, $shipping_cost, $insurance_cost // Biaya dari _calculateTotalPaid
+            );
 
-// Proses responsnya
-if (($kiriminResponse['status'] ?? false) !== true) {
-    // Jika Gagal, update status pesanan agar mudah dilacak admin
-    $pesanan->status = 'Gagal Kirim Resi';
-    $pesanan->status_pesanan = 'Gagal Kirim Resi';
-    Log::error('KiriminAja Order FAILED (Admin COD/Saldo): ' . ($kiriminResponse['text'] ?? 'Unknown error'), [
-        'invoice' => $pesanan->nomor_invoice,
-        'response' => $kiriminResponse
-    ]);
+            // Proses responsnya
+            if (($kiriminResponse['status'] ?? false) !== true) {
+                // Jika Gagal, update status pesanan agar mudah dilacak admin
+                $pesanan->status = 'Gagal Kirim Resi';
+                $pesanan->status_pesanan = 'Gagal Kirim Resi';
+                Log::error('KiriminAja Order FAILED (Admin COD/Saldo): ' . ($kiriminResponse['text'] ?? 'Unknown error'), [
+                    'invoice' => $pesanan->nomor_invoice,
+                    'response' => $kiriminResponse
+                ]);
 
-    // Opsional: Anda bisa melempar exception agar transaksi di-rollback
-    // throw new Exception('Gagal membuat pesanan di KiriminAja: ' . ($kiriminResponse['text'] ?? 'Error tidak diketahui'));
+                // Opsional: Anda bisa melempar exception agar transaksi di-rollback
+                // throw new Exception('Gagal membuat pesanan di KiriminAja: ' . ($kiriminResponse['text'] ?? 'Error tidak diketahui'));
 
-    } else {
+                    } else {
                     // ==========================================================
-                    // 🔥 UPDATE BARU: STRATEGI GREEDY CARI RESI 🔥
+                    // 🔥 UPDATE BARU: STRATEGI ANTI-NULL (1 FREKUENSI) 🔥
                     // ==========================================================
-                    $resiDidapat = $kiriminResponse['awb']                                  // 1. Root 'awb'
-                                ?? $kiriminResponse['data']['awb']                          // 2. Root 'data' -> 'awb'
-                                ?? $kiriminResponse['details']['awb']                       // 3. 'details' -> 'awb'
-                                ?? $kiriminResponse['result']['awb_no']                     // 4. 'result' -> 'awb_no'
-                                ?? $kiriminResponse['payment_ref']                          // 5. Booking ID
-                                ?? ($kiriminResponse['results'][0]['awb'] ?? null);         // 6. Array results
 
-                    // Update Pesanan
-                    $pesanan->resi = $resiDidapat;
-                    $pesanan->status = 'Pesanan Dibuat'; // Ubah jadi status awal
+                    // 1. Ambil Booking ID / Reference ID (Pasti ada saat create order)
+                    $bookingId = $kiriminResponse['id']
+                            ?? $kiriminResponse['data']['id']
+                            ?? $kiriminResponse['payment_ref']
+                            ?? null;
+
+                    // 2. Ambil AWB Asli (Mungkin belum ada/null saat detik pertama)
+                    $awbAsli = $kiriminResponse['awb']
+                            ?? $kiriminResponse['data']['awb']
+                            ?? $kiriminResponse['details']['awb']
+                            ?? $kiriminResponse['result']['awb_no']
+                            ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+
+                    // 3. LOGIKA UTAMA: Prioritaskan AWB, jika kosong pakai Booking ID
+                    // Ini menjamin kolom resi TIDAK AKAN NULL.
+                    $finalResi = !empty($awbAsli) ? $awbAsli : $bookingId;
+
+                    // 4. Fallback Terakhir (Safety Net extra)
+                    if (empty($finalResi)) {
+                        $finalResi = 'REF-' . $pesanan->nomor_invoice;
+                    }
+
+                    // 5. Update Database Pesanan
+                    $pesanan->resi = $finalResi; // Isi Resi dengan hasil prioritas di atas
+
+                    // Optional: Jika punya kolom shipping_ref, simpan juga ID aslinya
+                    // $pesanan->shipping_ref = $bookingId;
+
+                    $pesanan->status = 'Pesanan Dibuat';
                     $pesanan->status_pesanan = 'Pesanan Dibuat';
 
-                    // Simpan Perubahan
+                    // 6. Simpan Perubahan (PENTING: Save dulu sebelum catat keuangan)
                     $pesanan->save();
 
-                    Log::info('KiriminAja SUCCESS', ['invoice' => $pesanan->nomor_invoice, 'resi' => $resiDidapat]);
+                    Log::info('KiriminAja SUCCESS', [
+                        'invoice' => $pesanan->nomor_invoice,
+                        'resi_final' => $finalResi,
+                        'awb_found' => $awbAsli ? 'YES' : 'NO'
+                    ]);
 
-                    // 🔥 AUTO INSERT KEUANGAN 🔥
+                    // 7. 🔥 AUTO INSERT KEUANGAN 🔥
+                    // Dipanggil setelah save() agar 'keterangan' di keuangan memuat resi yang baru disimpan
                     $this->simpanKeKeuangan($pesanan);
 
-                    // Pesan Warning (Jadwal Digeser)
+                    // 8. Pesan Warning (Jadwal Digeser)
                     if (isset($kiriminResponse['custom_warning'])) {
                         session()->flash('warning', $kiriminResponse['custom_warning']);
                     }
                 }
+                // --- AKHIR BLOK YANG HILANG ---
             }
 
             // 7. Simpan Finalisasi Harga
