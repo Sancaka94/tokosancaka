@@ -342,7 +342,7 @@ if (($kiriminResponse['status'] ?? false) !== true) {
                     Log::info('KiriminAja SUCCESS', ['invoice' => $pesanan->nomor_invoice, 'resi' => $resiDidapat]);
 
                     // 🔥 AUTO INSERT KEUANGAN 🔥
-                    $this->_simpanKeKeuangan($pesanan);
+                    $this->simpanKeKeuangan($pesanan);
 
                     // Pesan Warning (Jadwal Digeser)
                     if (isset($kiriminResponse['custom_warning'])) {
@@ -725,7 +725,7 @@ if (($kiriminResponse['status'] ?? false) !== true) {
                     $pesanan->save();
 
                     // === INSERT KEUANGAN (Pakai new self() karena static) ===
-                    (new self())->_simpanKeKeuangan($pesanan);
+                    (new self())->simpanKeKeuangan($pesanan);
                 }
                 $pesanan->save();
 
@@ -1445,7 +1445,7 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                     $pesanan->save();
 
                     // === INSERT KEUANGAN (Pakai $this karena bukan static) ===
-                    (new self())->_simpanKeKeuangan($pesanan);
+                    (new self())->simpanKeKeuangan($pesanan);
                 }
                 $pesanan->save();
                 DB::commit(); // Commit semua perubahan
