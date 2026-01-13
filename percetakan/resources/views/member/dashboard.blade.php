@@ -262,11 +262,14 @@
                 {{-- FORM FINAL TRANSFER --}}
                 <form action="{{ route('member.dana.transferBank') }}" method="POST" class="p-6">
                     @csrf
-                    {{-- Hidden inputs mengambil nilai dari old() agar data tidak hilang --}}
+                    {{-- Hidden inputs mengambil nilai agar data tidak hilang --}}
                     <input type="hidden" name="affiliate_id" value="{{ old('affiliate_id', $member->id) }}">
                     <input type="hidden" name="bank_code" value="{{ old('bank_code') }}">
                     <input type="hidden" name="account_no" value="{{ old('account_no') }}">
                     <input type="hidden" name="amount" value="{{ old('amount') }}">
+
+                    {{-- TAMBAHKAN INI: Mengambil nama asli dari Controller --}}
+                    <input type="hidden" name="account_name" value="{{ session('valid_account_name') }}">
 
                     <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 mb-6 space-y-3">
                         <div class="flex justify-between border-b border-slate-200 pb-2">
@@ -278,6 +281,11 @@
                         <div class="flex justify-between border-b border-slate-200 pb-2">
                             <span class="text-xs text-slate-500">No. Rekening</span>
                             <span class="text-xs font-bold text-slate-800">{{ old('account_no') }}</span>
+                        </div>
+                        {{-- Tampilkan Nama Pemilik di UI Konfirmasi --}}
+                        <div class="flex justify-between border-b border-slate-200 pb-2">
+                            <span class="text-xs text-slate-500">Atas Nama</span>
+                            <span class="text-xs font-bold text-slate-800 uppercase">{{ session('valid_account_name') }}</span>
                         </div>
                         <div class="flex justify-between border-b border-slate-200 pb-2">
                             <span class="text-xs text-slate-500">Nominal Transfer</span>
