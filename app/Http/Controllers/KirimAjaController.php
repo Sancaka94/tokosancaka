@@ -178,12 +178,12 @@ class KirimAjaController extends Controller
                         $pesanan->save();
                         Log::info("[WEBHOOK-KA] 🔄 Status Pesanan Updated: $oldPesananStatus -> $pesananStatus");
 
-                        // 🔥 TRIGGER KEUANGAN MANUAL (OPTIONAL) 🔥
-                        // Jika Anda ingin pencatatan keuangan manual juga terjadi saat webhook 'finished_packages' masuk
+                        // 🔥 TRIGGER KEUANGAN OTOMATIS 🔥
                         if ($pesananStatus === 'Selesai') {
-                             // Anda bisa memanggil _simpanKeKeuangan di sini jika functionnya public/static
-                             // (new \App\Http\Controllers\Admin\PesananController)->simpanKeuanganPublic($pesanan);
-                             Log::info("[WEBHOOK-KA] 💰 Pesanan Selesai. Siap untuk pencatatan keuangan (Cash Basis).");
+                             Log::info("[WEBHOOK-KA] 💰 Pesanan Selesai. Mengeksekusi pencatatan keuangan...");
+
+                             // Panggil fungsi statis dari PesananController
+                             \App\Http\Controllers\Admin\PesananController::simpanKeuangan($pesanan);
                         }
 
                     }
