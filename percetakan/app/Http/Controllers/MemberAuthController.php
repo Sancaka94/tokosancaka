@@ -922,7 +922,7 @@ public function bankAccountInquiry(Request $request)
             //"chargeTarget"           => "DIVISION", // Wajib DIVISION jika ada externalDivisionId
             "beneficiaryBankCode"    => $request->bank_code,
             "beneficiaryAccountName" => $request->account_name ?? "",
-            "accountType"            => "SETTLEMENT_ACCOUNT"
+            //"accountType"            => "SETTLEMENT_ACCOUNT"
         ]
     ];
 
