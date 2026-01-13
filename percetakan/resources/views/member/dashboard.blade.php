@@ -10,7 +10,8 @@
         <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-sm animate-fade-in mb-3">
             <i class="fas fa-check-circle text-lg"></i>
             <div>
-                <p class="text-xs font-bold">{{ session('success') }}</p>
+                {{-- Tambahkan class 'whitespace-pre-line' agar \n terbaca sebagai Enter --}}
+                <p class="text-xs font-bold whitespace-pre-line">{{ session('success') }}</p>
                 @if(session('dana_report') && session('dana_report')->is_success)
                     <p class="text-[10px] opacity-80 mt-1">{{ session('dana_report')->description }}</p>
                 @endif

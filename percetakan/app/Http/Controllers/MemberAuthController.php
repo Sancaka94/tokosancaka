@@ -1012,10 +1012,6 @@ public function checkTopupStatus(Request $request)
         }
     }
 
-    // -------------------------------------------------------------------------
-    // TRANSFER TO BANK (DISBURSEMENT / PENCAIRAN KE REKENING)
-    // -------------------------------------------------------------------------
-
     public function transferToBank(Request $request)
     {
         // --- [LOG 1] MULAI PROSES ---
@@ -1026,58 +1022,58 @@ public function checkTopupStatus(Request $request)
             'amount' => $request->amount
         ]);
 
-        // 1. Validasi Affiliate & Saldo Internal
+        // 1. Validasi Affiliate
         $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
 
         if (!$aff) return back()->with('error', 'Affiliate tidak ditemukan.');
 
-        // Cek Saldo Internal
+        // 2. Cek Kecukupan Saldo
         if ($aff->balance < $request->amount) {
-            return back()->with('error', 'Saldo komisi Anda tidak mencukupi untuk transfer ini.');
+            return back()->with('error', 'Saldo komisi Anda tidak mencukupi.');
         }
 
-        // 2. Sanitasi Nomor Customer (Pengirim/Merchant)
+        // 3. Sanitasi Nomor Customer (Pengirim/Merchant)
         $customerNumber = preg_replace('/[^0-9]/', '', $aff->whatsapp);
         if (substr($customerNumber, 0, 1) === '0') $customerNumber = '62' . substr($customerNumber, 1);
 
-        // 3. POTONG SALDO DULUAN (SAFETY FIRST)
-        // Kita potong saldo di awal untuk mencegah race condition (double transfer).
-        // Jika nanti API Gagal, kita Refund (kembalikan saldonya).
+        // 4. POTONG SALDO DULUAN (SAFETY FIRST)
+        // Mencegah double transfer. Jika gagal nanti kita refund.
         DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
 
-        // 4. Setup Request DANA
+        // 5. Setup Request DANA
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path = '/v1.0/emoney/transfer-bank.htm';
-        $partnerRef = "TRF" . time() . Str::random(6); // Unique ID per transaksi
+        $partnerRef = "TRF" . time() . Str::random(6); // Unique ID
 
         $body = [
             "partnerReferenceNo" => $partnerRef,
             "customerNumber"     => $customerNumber,
-            //"accountType"        => "SETTLEMENT_ACCOUNT", // Default untuk Merchant
-            "beneficiaryAccountNumber" => $request->account_no, // No Rekening Tujuan
-            "beneficiaryBankCode"      => $request->bank_code, // Kode Bank (014, 002, dll)
+            // "accountType"        => "SETTLEMENT_ACCOUNT",
+            "beneficiaryAccountNumber" => $request->account_no,
+            "beneficiaryBankCode"      => $request->bank_code,
             "amount" => [
-                "value"    => number_format((float)$request->amount, 2, '.', ''), // Wajib 2 desimal
+                "value"    => number_format((float)$request->amount, 2, '.', ''),
                 "currency" => "IDR"
             ],
             "additionalInfo" => [
                 "fundType"     => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-                //"chargeTarget" => "MERCHANT", // Biaya admin ditanggung Merchant
-                "beneficiaryAccountName" => $request->account_name // Nama Pemilik Rekening
+                // "chargeTarget" => "MERCHANT",
+                // PENTING: Gunakan nama asli dari hasil Inquiry sebelumnya (Input Hidden)
+                "beneficiaryAccountName" => $request->account_name
             ]
         ];
 
-        // 5. Generate Signature
+        // 6. Generate Signature
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
         $hashedBody = strtolower(hash('sha256', $jsonBody));
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
         $signature = $this->generateSignature($stringToSign);
 
-        // 6. Kirim Request
+        // 7. Kirim Request
         try {
             $headers = [
                 'Content-Type'  => 'application/json',
-                'Authorization' => 'Bearer ' . $aff->dana_access_token, // Pastikan Token Valid
+                'Authorization' => 'Bearer ' . $aff->dana_access_token,
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
                 'ORIGIN'        => config('services.dana.origin'),
@@ -1099,7 +1095,7 @@ public function checkTopupStatus(Request $request)
 
             // --- [LOGIC HANDLING RESPONSE] ---
 
-            // A. SUKSES (2004300)
+            // KONDISI A: SUKSES (2004300)
             if ($resCode == '2004300') {
                 // Catat Log Transaksi Sukses
                 DB::table('dana_transactions')->insert([
@@ -1113,12 +1109,14 @@ public function checkTopupStatus(Request $request)
                     'created_at' => now()
                 ]);
 
-                $msg = "✅ Transfer Berhasil!<br>Ref: $partnerRef<br>Nominal: Rp " . number_format($request->amount);
+                // Pesan Sukses dengan \n (Baris Baru)
+                $msg = "Transfer Berhasil!\nRef: $partnerRef\nNominal: Rp " . number_format($request->amount);
+
                 return back()->with('success', $msg);
             }
 
-            // B. PENDING / IN PROGRESS (2024300, 4294300, 5004301)
-            // Uang tetap dipotong, status PENDING, tunggu Callback/Cek Status manual
+            // KONDISI B: PENDING (2024300, 4294300, 5004301)
+            // Uang tetap ditahan (tidak direfund), user diminta cek berkala
             elseif (in_array($resCode, ['2024300', '4294300', '5004301'])) {
                 DB::table('dana_transactions')->insert([
                     'affiliate_id' => $aff->id,
@@ -1126,17 +1124,17 @@ public function checkTopupStatus(Request $request)
                     'reference_no' => $partnerRef,
                     'phone' => $request->account_no,
                     'amount' => $request->amount,
-                    'status' => 'PENDING', // Status Pending
+                    'status' => 'PENDING',
                     'response_payload' => json_encode($result),
                     'created_at' => now()
                 ]);
 
-                return back()->with('warning', '⏳ Transaksi Sedang Diproses (Pending). Mohon cek status secara berkala.');
+                return back()->with('warning', "⏳ Transaksi Sedang Diproses (Pending).\nMohon cek status secara berkala.");
             }
 
-            // C. GAGAL (REFUND SALDO)
+            // KONDISI C: GAGAL (KEMBALIKAN SALDO / REFUND)
             else {
-                // KEMBALIKAN SALDO (REFUND)
+                // REFUND SALDO
                 DB::table('affiliates')->where('id', $aff->id)->increment('balance', $request->amount);
 
                 // Catat Log Gagal
@@ -1151,18 +1149,18 @@ public function checkTopupStatus(Request $request)
                     'created_at' => now()
                 ]);
 
-                // Mapping Pesan Error User-Friendly
+                // Mapping Pesan Error
                 $errorMsg = $result['responseMessage'] ?? 'Transaksi Gagal';
-                if ($resCode == '4034314') $errorMsg = "Saldo Merchant DANA Tidak Cukup (Hubungi Admin).";
-                if ($resCode == '4044311') $errorMsg = "Nomor Rekening Tidak Valid / Salah Bank.";
-                if ($resCode == '4034302') $errorMsg = "Melebihi Limit Transaksi.";
+                if ($resCode == '4034314') $errorMsg = "Saldo Merchant DANA Tidak Cukup.";
+                if ($resCode == '4044311') $errorMsg = "Rekening Salah atau Tidak Valid.";
+                if ($resCode == '4034318') $errorMsg = "Akun Merchant Tidak Aktif/Salah Konfigurasi.";
 
                 Log::error('[DANA TRANSFER BANK] Gagal & Refund', ['res' => $result]);
-                return back()->with('error', "Gagal: $errorMsg (Saldo telah dikembalikan).");
+                return back()->with('error', "Gagal: $errorMsg\n(Saldo telah dikembalikan).");
             }
 
         } catch (\Exception $e) {
-            // JIKA SYSTEM ERROR -> REFUND JUGA
+            // SYSTEM ERROR -> REFUND JUGA
             DB::table('affiliates')->where('id', $aff->id)->increment('balance', $request->amount);
 
             Log::error('[DANA TRANSFER BANK] Exception', ['msg' => $e->getMessage()]);
