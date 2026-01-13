@@ -405,22 +405,18 @@ class TrackingController extends Controller
 
                 $normalizedHistories->push((object)[
                     'status' => $statusText,
-                    'lokasi' => $rawResponse['details']['destination']['city'] ?? '-', // Lokasi default kota tujuan
+                    'lokasi' => $rawResponse['details']['destination']['city'] ?? '-',
                     'keterangan' => $history['status'] ?? null,
                     'created_at' => Carbon::parse($history['created_at'])->timezone('Asia/Jakarta'),
                 ]);
             }
         }
 
-        // 3. TAMBAHKAN HISTORY LOKAL "PESANAN DIBUAT" (WAJIB ADA)
-        // Kita ambil dari 'created_at' database lokal
+        // 3. TAMBAHKAN HISTORY LOKAL (PESANAN DIBUAT)
         if ($pesanan->created_at) {
             $waktuDibuat = Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta');
 
-            // Cek apakah sudah ada status serupa dari API di jam yang sangat dekat (biar gak dobel)
-            // Tapi logika ini kita longgarkan: Hanya skip kalau PERSIS SAMA teksnya.
-            // Kalau beda teks, tetep tampilin biar user tau kapan order masuk sistem.
-
+            // Cek duplikat
             $alreadyExists = $normalizedHistories->contains(function ($h) use ($waktuDibuat) {
                 return str_contains(strtolower($h->status), 'created') ||
                        str_contains(strtolower($h->status), 'dibuat');
@@ -438,16 +434,14 @@ class TrackingController extends Controller
                 $normalizedHistories->push((object)[
                     'status' => 'Pesanan Dibuat Oleh TOKOSANCAKA.COM', // <-- STATUS REQUEST MAS
                     'lokasi' => $lokasiAkun, // <-- LOKASI DINAMIS DARI DB
-                    'keterangan' => 'Pesanan berhasil dibuat di sistem SANCAKA EXPRESS. <br><b>INGIN KIRIM PAKET?</b> <a href="https://tokosancaka.com/register" target="_blank">Daftar AKUN ANDA Disini, GRATIS! </a>',
+                    'keterangan' => 'Pesanan berhasil dibuat di sistem Sancaka Express. <br><b>Ingin Kirim Paket?</b> <a href="https://tokosancaka.com/register" target="_blank">Daftar Akun Disini, GRATIS!</a>',
                     'created_at' => $waktuDibuat,
                 ]);
             }
         }
 
-        // 4. Sorting: Paling Baru di Atas
+        // 4. Sorting & Return
         $sortedHistories = $normalizedHistories->sortByDesc('created_at')->values();
-
-        // 5. Return Data Lengkap
         $details = $rawResponse['details'] ?? [];
 
         return [
@@ -460,10 +454,7 @@ class TrackingController extends Controller
             'penerima' => $details['destination']['name'] ?? $pesanan->receiver_name ?? 'N/A',
             'alamat_penerima' => $details['destination']['address'] ?? $pesanan->receiver_address ?? 'N/A',
             'no_penerima' => $details['destination']['phone'] ?? $pesanan->receiver_phone ?? 'N/A',
-
-            // Status Prioritas: Ambil dari API Text -> API Delivered -> DB Lokal
             'status' => $rawResponse['text'] ?? ($pesanan->status ?? 'Pesanan Dibuat'),
-
             'tanggal_dibuat' => $pesanan->created_at,
             'histories' => $sortedHistories,
             'jasa_ekspedisi_aktual' => $pesanan->jasa_ekspedisi_aktual,
