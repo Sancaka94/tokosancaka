@@ -72,6 +72,16 @@ class KirimAjaController extends Controller
 
                 if (!$orderId) continue;
 
+                // =============================================================
+                // 🔥 TAMBAHAN LOGGING UNTUK CEK AWB (REQUEST MAS) 🔥
+                // =============================================================
+                if (!empty($awb)) {
+                    Log::info("[WEBHOOK-KA] 🔍 DATA CHECK | Order: $orderId | AWB Ditemukan: $awb");
+                } else {
+                    Log::warning("[WEBHOOK-KA] ⚠️ DATA CHECK | Order: $orderId | AWB TIDAK ADA di payload ini.");
+                }
+                // =============================================================
+
                 // Ambil Waktu & Convert ke WIB
                 $shippedAt  = $data['shipped_at'] ?? null;
                 $finishedAt = $data['finished_at'] ?? null;
