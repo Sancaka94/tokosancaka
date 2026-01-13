@@ -184,11 +184,15 @@ class KirimAjaController extends Controller
 
                              try {
                                  // Kita coba panggil fungsinya
+                                 // Pastikan function ini sudah PUBLIC STATIC di PesananController
                                  \App\Http\Controllers\Admin\PesananController::simpanKeuangan($pesanan);
+
                                  Log::info("[WEBHOOK-KA] 💰 Sukses mencatat keuangan.");
                              } catch (\Throwable $th) {
-                                 // Jika EROR, jangan batalkan status Selesai. Cukup catat errornya di Log.
+                                 // Jika EROR, Status Pesanan TETAP BERUBAH jadi Selesai.
+                                 // Error dicatat di Log biar bisa kita perbaiki nanti.
                                  Log::error("[WEBHOOK-KA] ❌ GAGAL CATAT KEUANGAN: " . $th->getMessage());
+                                 Log::error("[WEBHOOK-KA] ❌ Lokasi Error: " . $th->getFile() . " baris " . $th->getLine());
                              }
                         }
 
