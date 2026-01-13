@@ -1062,7 +1062,7 @@ public function checkTopupStatus(Request $request)
             ],
             "additionalInfo" => [
                 "fundType"     => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-                "chargeTarget" => "MERCHANT", // Biaya admin ditanggung Merchant
+                //"chargeTarget" => "MERCHANT", // Biaya admin ditanggung Merchant
                 "beneficiaryAccountName" => $request->account_name // Nama Pemilik Rekening
             ]
         ];
