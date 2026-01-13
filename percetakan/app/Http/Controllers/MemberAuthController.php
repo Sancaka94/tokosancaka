@@ -894,79 +894,121 @@ public function checkTopupStatus(Request $request)
     }
 }
 
-public function bankAccountInquiry(Request $request)
-{
-    // 1. Ambil Data dari Database (ID 11 sesuai data Anda)
-    $aff = DB::table('affiliates')->where('id', 11)->first();
+// -------------------------------------------------------------------------
+    // BANK ACCOUNT INQUIRY (CEK REKENING BANK) - PERBAIKAN UTAMA
+    // -------------------------------------------------------------------------
 
-    // Format customerNumber sesuai log: 6285745808809 (Tanpa DNID, Tanpa Spasi)
-    $customerNumber = "6285745808809";
+    public function bankAccountInquiry(Request $request)
+    {
+        // 1. Ambil Data Affiliate (Dinamis dari input form)
+        $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
+        if (!$aff) return back()->with('error', 'Affiliate tidak ditemukan.');
 
-    // 2. Setup Variable Header & Path
-    $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'); // Format: 2020-12-21T17:07:11+07:00
-    $path = '/v1.0/emoney/bank-account-inquiry.htm';
-    $externalId = (string) rand(1000000000, 9999999999) . rand(1000000000, 9999999999); // 20-36 digit unik
+        // 2. Sanitasi Nomor Customer (DANA mengharuskan format 62...)
+        // Ini adalah nomor "pengirim" (si affiliate), bukan nomor rekening tujuan
+        $customerNumber = preg_replace('/[^0-9]/', '', $aff->whatsapp);
+        if (substr($customerNumber, 0, 1) === '0') $customerNumber = '62' . substr($customerNumber, 1);
 
-    // 3. Request Body (Sesuai Dokumentasi JSON yang Anda berikan)
-    $body = [
-        "partnerReferenceNo" => "BNK" . time(), // Contoh: 2020102900000000000001
-        "customerNumber"     => $customerNumber,
-        "beneficiaryAccountNumber" => $request->account_no, // Rekening tujuan (e.g. 2460888509)
-        "amount" => [
-            "value"    => number_format((float)$request->amount, 2, '.', ''), // Wajib 2 desimal: 10000.00
-            "currency" => "IDR"
-        ],
-        "additionalInfo" => [
-            "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-            //"externalDivisionId"     => "SANCAKA216620080014040009735", // Dari Portal Anda
-            //"chargeTarget"           => "DIVISION", // Wajib DIVISION jika ada externalDivisionId
-            "beneficiaryBankCode"    => $request->bank_code,
-            "beneficiaryAccountName" => $request->account_name ?? "",
-            //"accountType"            => "SETTLEMENT_ACCOUNT"
-        ]
-    ];
+        // 3. Setup Request
+        $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $path = '/v1.0/emoney/bank-account-inquiry.htm';
+        $refNo = "BNK" . time() . Str::random(4);
 
-    // 4. Generate Signature (Symmetric/Asymmetric sesuai config Anda)
-    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
-    $hashedBody = strtolower(hash('sha256', $jsonBody));
-    $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-    $signature = $this->generateSignature($stringToSign); // Pastikan fungsi ini sudah benar
+        $body = [
+            "partnerReferenceNo" => $refNo,
+            "customerNumber"     => $customerNumber,
+            "beneficiaryAccountNumber" => $request->account_no, // Rekening Tujuan
+            "amount" => [
+                "value"    => number_format((float)$request->amount, 2, '.', ''),
+                "currency" => "IDR"
+            ],
+            "additionalInfo" => [
+                "fundType"            => "MERCHANT_WITHDRAW_FOR_CORPORATE",
+                "beneficiaryBankCode" => $request->bank_code, // 014 (BCA), 114 (Jatim), dll
+                "beneficiaryAccountName" => "" // Biarkan kosong agar diisi response DANA
+            ]
+        ];
 
-    // 5. Header Lengkap Sesuai Dokumentasi JSON [PENTING]
-    $headers = [
-        'Content-Type'  => 'application/json',
-        'Authorization' => 'Bearer ' . $aff->dana_access_token,
-        'X-TIMESTAMP'   => $timestamp,
-        'X-SIGNATURE'   => $signature,
-        'ORIGIN'        => config('services.dana.origin'),
-        'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-        'X-EXTERNAL-ID' => (string) time() . Str::random(6),
-        'X-IP-ADDRESS'  => $request->ip(),
-        'X-DEVICE-ID'   => 'SANCAKA-DANA-01',
-        'CHANNEL-ID'    => '95221'
-    ];
+        // 4. Signature
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+        $signature = $this->generateSignature($stringToSign);
 
-    // --- [LOG LOG] Kirim ke DANA ---
-    Log::info('[DANA BANK INQUIRY] Mengirim Request Sesuai SNAP JSON', [
-        'url' => 'POST ' . $path,
-        'headers' => $headers,
-        'body' => $body
-    ]);
+        // 5. Kirim Request
+        try {
+            $response = Http::withHeaders([
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $aff->dana_access_token,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'X-IP-ADDRESS'  => $request->ip(),
+                'X-DEVICE-ID'   => 'SANCAKA-DANA-01',
+                'CHANNEL-ID'    => '95221'
+            ])->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
 
-    try {
-        $response = Http::withHeaders($headers)
-            ->withBody($jsonBody, 'application/json')
-            ->post('https://api.sandbox.dana.id' . $path);
+            $result = $response->json();
+            Log::info('[BANK INQUIRY]', ['res' => $result]);
 
-        $result = $response->json();
-        Log::info('[DANA BANK INQUIRY] Respon Diterima', ['result' => $result]);
+            $resCode = $result['responseCode'] ?? '500';
 
-        return $result;
-    } catch (\Exception $e) {
-        Log::error('[DANA BANK INQUIRY] Fatal Error', ['msg' => $e->getMessage()]);
-        return response()->json(['error' => $e->getMessage()], 500);
+            // Catat Log ke DB (Audit Trail)
+            DB::table('dana_transactions')->insert([
+                'affiliate_id' => $aff->id,
+                'type' => 'BANK_INQUIRY',
+                'reference_no' => $refNo,
+                'phone' => $request->account_no . " (" . $request->bank_code . ")",
+                'amount' => $request->amount,
+                'status' => ($resCode == '2004200') ? 'SUCCESS' : 'FAILED',
+                'response_payload' => json_encode($result),
+                'created_at' => now()
+            ]);
+
+            // RESPON SUKSES (2004200)
+            if ($resCode == '2004200') {
+                $bankName = $result['beneficiaryBankShortName'] ?? $result['beneficiaryBankName'];
+                $accName  = $result['beneficiaryAccountName'];
+                $accNo    = $result['beneficiaryAccountNumber'];
+
+                $msg = "✅ Rekening Ditemukan!<br>";
+                $msg .= "Bank: <b>$bankName</b><br>";
+                $msg .= "Nama: <b>$accName</b><br>";
+                $msg .= "No: <b>$accNo</b>";
+
+                // Gunakan 'dana_report' agar tampil cantik di dashboard (sesuai blade Anda)
+                $report = (object) [
+                    'is_success' => true,
+                    'message_title' => 'Bank Account Valid',
+                    'description' => "Rekening $bankName atas nama $accName valid."
+                ];
+
+                return back()->with('success', "Rekening Valid: $accName ($bankName)")
+                             ->with('dana_report', $report);
+            }
+
+            // RESPON GAGAL
+            $errMsg = $result['responseMessage'] ?? 'Unknown Error';
+
+            // Handle Error Spesifik
+            if ($resCode == '4034218') $errMsg = "Akun Merchant Inactive (Hubungi Admin DANA)";
+            if ($resCode == '4044201') $errMsg = "Rekening Tidak Ditemukan/Salah Bank";
+
+            $report = (object) [
+                'is_success' => false,
+                'message_title' => "Gagal Cek Rekening ($resCode)",
+                'description' => $errMsg
+            ];
+
+            return back()->with('error', $errMsg)->with('dana_report', $report);
+
+        } catch (\Exception $e) {
+            Log::error('[BANK INQUIRY ERROR]', ['msg' => $e->getMessage()]);
+            return back()->with('error', 'Sistem Error saat cek rekening.');
+        }
     }
-}
 
 
 }
