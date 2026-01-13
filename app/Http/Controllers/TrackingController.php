@@ -427,10 +427,18 @@ class TrackingController extends Controller
             });
 
             if (!$alreadyExists) {
+
+                // --- LOGIKA LOKASI SESUAI AKUN (PENGIRIM) ---
+                // Kita ambil Kota/Kabupaten Pengirim sebagai lokasi pembuatan
+                $lokasiAkun = strtoupper($pesanan->sender_regency ?? 'NGAWI');
+                if (!empty($pesanan->sender_district)) {
+                    $lokasiAkun = strtoupper($pesanan->sender_district) . ', ' . $lokasiAkun;
+                }
+
                 $normalizedHistories->push((object)[
-                    'status' => 'Pesanan Dibuat',
-                    'lokasi' => 'Sistem Sancaka Express',
-                    'keterangan' => 'Pesanan berhasil dibuat SANCAKA EXPRESS (TOKOSANCAKA.COM). <br><b>Ingin Kirim Paket?</b> <a href="https://tokosancaka.com/register" target="_blank">Daftar Akun Disini</a>',
+                    'status' => 'Pesanan Dibuat Oleh TOKOSANCAKA.COM', // <-- STATUS REQUEST MAS
+                    'lokasi' => $lokasiAkun, // <-- LOKASI DINAMIS DARI DB
+                    'keterangan' => 'Pesanan berhasil dibuat di sistem SANCAKA EXPRESS. <br><b>INGIN KIRIM PAKET?</b> <a href="https://tokosancaka.com/register" target="_blank">Daftar AKUN ANDA Disini, GRATIS! </a>',
                     'created_at' => $waktuDibuat,
                 ]);
             }
