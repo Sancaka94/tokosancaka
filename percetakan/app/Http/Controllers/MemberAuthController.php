@@ -987,6 +987,7 @@ public function checkTopupStatus(Request $request)
 
                 return back()->with('success', "Rekening Valid: $accName ($bankName)")
                              ->with('dana_report', $report)
+                             ->with('valid_account_name', $accName) // <--- TAMBAHKAN INI (Kirim Nama Asli)
                              ->withInput(); // <--- WAJIB ADA INI
             }
 
@@ -1062,7 +1063,7 @@ public function checkTopupStatus(Request $request)
             "additionalInfo" => [
                 "fundType"     => "MERCHANT_WITHDRAW_FOR_CORPORATE",
                 "chargeTarget" => "MERCHANT", // Biaya admin ditanggung Merchant
-                "beneficiaryAccountName" => $request->account_name ?? "User Sancaka" // Opsional, buat validasi
+                "beneficiaryAccountName" => $request->account_name // Nama Pemilik Rekening
             ]
         ];
 
