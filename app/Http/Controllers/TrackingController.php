@@ -13,7 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB; // <--- WAJIB UTK DB KEDUA
 use Illuminate\Support\Facades\Log;
 // --- TAMBAHKAN BARIS INI ---
-use App\Helpers\ShippingHelper; 
+use App\Helpers\ShippingHelper;
 // ---------------------------
 
 class TrackingController extends Controller
@@ -52,7 +52,7 @@ class TrackingController extends Controller
                 ->where('shipping_reference', $resi)
                 ->orWhere('invoice_number', $resi)
                 ->first();
-            
+
             if ($orderModel) {
                 // Gunakan Helper untuk parsing layanan Order DB1
                 $shipInfo = ShippingHelper::parseShippingMethod($orderModel->courier . ' ' . ($orderModel->service_type ?? 'REG'));
@@ -111,7 +111,7 @@ class TrackingController extends Controller
                     'no_penerima' => $pesanan->receiver_phone ?? '-',
                     'status' => $pesanan->status,
                     'tanggal_dibuat' => $pesanan->created_at,
-                    'histories' => [], 
+                    'histories' => [],
                     'resi_aktual' => $pesanan->resi_aktual,
                  ];
             }
@@ -138,7 +138,7 @@ class TrackingController extends Controller
                     $cleanService = str_replace($shipInfo['courier_name'], '', $shipInfo['service_name']);
                     $cleanService = trim($cleanService);
                     if (empty($cleanService)) $cleanService = 'Regular';
-                    
+
                     // Format tampilan yang rapi (TIKI - REGULER)
                     $displayEkspedisi = $shipInfo['courier_name'] . ' - ' . strtoupper($cleanService);
 
@@ -150,7 +150,7 @@ class TrackingController extends Controller
                             'created_at' => Carbon::parse($percetakan->created_at)
                         ],
                         (object)[
-                            'status' => $percetakan->status, 
+                            'status' => $percetakan->status,
                             'lokasi' => 'Percetakan Sancaka',
                             'keterangan' => 'Status terkini: ' . $percetakan->status,
                             'created_at' => Carbon::parse($percetakan->updated_at ?? $percetakan->created_at)
@@ -171,7 +171,7 @@ class TrackingController extends Controller
                         'tanggal_dibuat' => $percetakan->created_at,
                         'histories' => $fakeHistory,
                         // Gunakan format yang sudah dibersihkan
-                        'jasa_ekspedisi_aktual' => $displayEkspedisi, 
+                        'jasa_ekspedisi_aktual' => $displayEkspedisi,
                     ];
                 }
             } catch (\Exception $e) {
@@ -206,7 +206,7 @@ class TrackingController extends Controller
                 ];
             }
         }
-        
+
         // ==========================================================
         // 4. CARI DI SCANNED PACKAGES
         // ==========================================================
@@ -215,10 +215,10 @@ class TrackingController extends Controller
                                 ->where('resi_number', $resi)
                                 ->orderBy('created_at', 'desc')
                                 ->get();
-            
+
             if ($scannedHistories->isNotEmpty()) {
                 $latestScan = $scannedHistories->first();
-                $firstScan = $scannedHistories->last(); 
+                $firstScan = $scannedHistories->last();
                 $senderName = $firstScan->kontak->nama ?? ($firstScan->user->name ?? 'Mitra Sancaka Express');
                 $senderAddress = $firstScan->kontak->alamat ?? ($firstScan->user->address ?? 'N/A');
 
@@ -253,13 +253,13 @@ class TrackingController extends Controller
      * [CETAK THERMAL ADMIN]
      * Logika: DB1 -> DB2 (Percetakan)
      */
-    
+
     public function cetakThermal($resi)
     {
         // ====================================================================
         // BAGIAN 1: KODE ASLI ANDA (SAYA COPY PASTE 100% TANPA UBAH)
         // ====================================================================
-        
+
         $pesanan = Pesanan::where('resi', $resi)
             ->orWhere('nomor_invoice', $resi)
             ->first();
@@ -269,7 +269,7 @@ class TrackingController extends Controller
                 ->where('shipping_reference', $resi)
                 ->orWhere('invoice_number', $resi)
                 ->first();
-            
+
             if ($orderModel) {
                 $pesanan = (object)[
                     'resi' => $orderModel->shipping_reference,
@@ -322,7 +322,7 @@ class TrackingController extends Controller
                     ->first();
 
                 if ($orderPercetakan) {
-                    
+
                     // Logic Ekspedisi (ambil kata pertama dari 'TIKI - Tiki Reguler')
                     $rawService = $orderPercetakan->courier_service ?? 'Internal';
                     $expeditionName = explode(' - ', $rawService)[0];
@@ -332,7 +332,7 @@ class TrackingController extends Controller
                         'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
                         'nomor_invoice' => $orderPercetakan->order_number,
                         'status' => $orderPercetakan->status,
-                        
+
                         // PENGIRIM (Tetap Sancaka)
                         'sender_name' => 'Sancaka Percetakan',
                         'sender_phone' => '08819435180',
@@ -363,7 +363,7 @@ class TrackingController extends Controller
                         // Total COD = Harga Akhir + Ongkir
                         'total_cod' => ($orderPercetakan->final_price ?? 0) + ($orderPercetakan->shipping_cost ?? 0),
                         'cod_amount' => 0,
-                        
+
                         // EKSPEDISI (Sesuai Kolom DB: courier_service)
                         'expedition' => $expeditionName,
                         'service_type' => 'REG',
@@ -390,50 +390,57 @@ class TrackingController extends Controller
     }
 
     /**
-     * Helper Normalisasi
+     * Helper Normalisasi: Gabungkan Data API + Data Lokal
      */
     private function normalizeKiriminAjaResponse(array $rawResponse, $pesanan): array
     {
-        if (!isset($rawResponse['status']) || !$rawResponse['status'] || !isset($rawResponse['details'])) {
-            return [
-                'error' => $rawResponse['text'] ?? 'Gagal mengambil data pelacakan.',
-                'is_external_error' => true
-            ];
-        }
+        // 1. Siapkan Wadah History
+        $normalizedHistories = collect([]);
 
-        $details = $rawResponse['details'];
-        $histories = $rawResponse['histories'] ?? [];
+        // 2. Ambil History dari API KiriminAja (Jika Ada)
+        if (isset($rawResponse['histories']) && is_array($rawResponse['histories'])) {
+            foreach ($rawResponse['histories'] as $history) {
+                // Bersihkan teks status yang kotor
+                $statusText = preg_replace('/\s\d{2}-\d{2}-\d{4}\s\d{2}:\d{2}\s\|/i', '', $history['status'] ?? 'N/A');
 
-        $normalizedHistories = collect($histories)->map(function ($history) use ($details) {
-            $timestampWIB = Carbon::parse($history['created_at'], 'Asia/Jakarta');
-            $statusText = preg_replace('/\s\d{2}-\d{2}-\d{4}\s\d{2}:\d{2}\s\|/i', '', $history['status'] ?? 'N/A');
-
-            return (object)[
-                'status' => $statusText,
-                'lokasi' => $details['destination']['city'] ?? '-',
-                'keterangan' => $history['status'] ?? null,
-                'created_at' => $timestampWIB,
-            ];
-        })->toArray();
-
-        if ($pesanan->created_at) {
-            $createdHistory = (object)[
-                'status' => 'Pesanan Dibuat',
-                'lokasi' => 'Sistem Internal',
-                'keterangan' => 'Data diterima sistem Sancaka Express.',
-                'created_at' => Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta'),
-            ];
-            
-            $isDuplicate = collect($normalizedHistories)->contains(function ($h) use ($createdHistory) {
-                return $h->created_at->diffInMinutes($createdHistory->created_at) < 5 || str_contains(strtolower($h->status), 'dibuat');
-            });
-
-            if (!$isDuplicate) {
-                $normalizedHistories[] = $createdHistory;
+                $normalizedHistories->push((object)[
+                    'status' => $statusText,
+                    'lokasi' => $rawResponse['details']['destination']['city'] ?? '-', // Lokasi default kota tujuan
+                    'keterangan' => $history['status'] ?? null,
+                    'created_at' => Carbon::parse($history['created_at'])->timezone('Asia/Jakarta'),
+                ]);
             }
         }
 
-        $sortedHistories = collect($normalizedHistories)->sortByDesc('created_at')->values();
+        // 3. TAMBAHKAN HISTORY LOKAL "PESANAN DIBUAT" (WAJIB ADA)
+        // Kita ambil dari 'created_at' database lokal
+        if ($pesanan->created_at) {
+            $waktuDibuat = Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta');
+
+            // Cek apakah sudah ada status serupa dari API di jam yang sangat dekat (biar gak dobel)
+            // Tapi logika ini kita longgarkan: Hanya skip kalau PERSIS SAMA teksnya.
+            // Kalau beda teks, tetep tampilin biar user tau kapan order masuk sistem.
+
+            $alreadyExists = $normalizedHistories->contains(function ($h) use ($waktuDibuat) {
+                return str_contains(strtolower($h->status), 'created') ||
+                       str_contains(strtolower($h->status), 'dibuat');
+            });
+
+            if (!$alreadyExists) {
+                $normalizedHistories->push((object)[
+                    'status' => 'Pesanan Dibuat',
+                    'lokasi' => 'Sistem Internal',
+                    'keterangan' => 'Pesanan berhasil dibuat di sistem Sancaka Express.',
+                    'created_at' => $waktuDibuat,
+                ]);
+            }
+        }
+
+        // 4. Sorting: Paling Baru di Atas
+        $sortedHistories = $normalizedHistories->sortByDesc('created_at')->values();
+
+        // 5. Return Data Lengkap
+        $details = $rawResponse['details'] ?? [];
 
         return [
             'is_pesanan' => true,
@@ -445,7 +452,10 @@ class TrackingController extends Controller
             'penerima' => $details['destination']['name'] ?? $pesanan->receiver_name ?? 'N/A',
             'alamat_penerima' => $details['destination']['address'] ?? $pesanan->receiver_address ?? 'N/A',
             'no_penerima' => $details['destination']['phone'] ?? $pesanan->receiver_phone ?? 'N/A',
-            'status' => $rawResponse['text'] ?? ($details['delivered'] ? 'Telah Diterima' : $pesanan->status),
+
+            // Status Prioritas: Ambil dari API Text -> API Delivered -> DB Lokal
+            'status' => $rawResponse['text'] ?? ($pesanan->status ?? 'Pesanan Dibuat'),
+
             'tanggal_dibuat' => $pesanan->created_at,
             'histories' => $sortedHistories,
             'jasa_ekspedisi_aktual' => $pesanan->jasa_ekspedisi_aktual,
