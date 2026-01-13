@@ -430,7 +430,7 @@ class TrackingController extends Controller
                 $normalizedHistories->push((object)[
                     'status' => 'Pesanan Dibuat',
                     'lokasi' => 'Sistem Sancaka Express',
-                    'keterangan' => 'Pesanan berhasil dibuat di sistem Sancaka Express (TOKOSANCAKA.COM)',
+                    'keterangan' => 'Pesanan berhasil dibuat SANCAKA EXPRESS (TOKOSANCAKA.COM). <br><b>Ingin Kirim Paket?</b> <a href="https://tokosancaka.com/register" target="_blank">Daftar Akun Disini</a>',
                     'created_at' => $waktuDibuat,
                 ]);
             }
