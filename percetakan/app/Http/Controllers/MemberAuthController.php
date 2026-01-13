@@ -987,6 +987,7 @@ public function checkTopupStatus(Request $request)
 
                 return back()->with('success', "Rekening Valid: $accName ($bankName)")
                              ->with('dana_report', $report);
+                             ->withInput(); // <--- WAJIB ADA INI
             }
 
             // RESPON GAGAL
@@ -1007,6 +1008,164 @@ public function checkTopupStatus(Request $request)
         } catch (\Exception $e) {
             Log::error('[BANK INQUIRY ERROR]', ['msg' => $e->getMessage()]);
             return back()->with('error', 'Sistem Error saat cek rekening.');
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // TRANSFER TO BANK (DISBURSEMENT / PENCAIRAN KE REKENING)
+    // -------------------------------------------------------------------------
+
+    public function transferToBank(Request $request)
+    {
+        // --- [LOG 1] MULAI PROSES ---
+        Log::info('[DANA TRANSFER BANK] Start', [
+            'affiliate_id' => $request->affiliate_id,
+            'bank_code' => $request->bank_code,
+            'account_no' => $request->account_no,
+            'amount' => $request->amount
+        ]);
+
+        // 1. Validasi Affiliate & Saldo Internal
+        $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
+
+        if (!$aff) return back()->with('error', 'Affiliate tidak ditemukan.');
+
+        // Cek Saldo Internal
+        if ($aff->balance < $request->amount) {
+            return back()->with('error', 'Saldo komisi Anda tidak mencukupi untuk transfer ini.');
+        }
+
+        // 2. Sanitasi Nomor Customer (Pengirim/Merchant)
+        $customerNumber = preg_replace('/[^0-9]/', '', $aff->whatsapp);
+        if (substr($customerNumber, 0, 1) === '0') $customerNumber = '62' . substr($customerNumber, 1);
+
+        // 3. POTONG SALDO DULUAN (SAFETY FIRST)
+        // Kita potong saldo di awal untuk mencegah race condition (double transfer).
+        // Jika nanti API Gagal, kita Refund (kembalikan saldonya).
+        DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
+
+        // 4. Setup Request DANA
+        $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $path = '/v1.0/emoney/transfer-bank.htm';
+        $partnerRef = "TRF" . time() . Str::random(6); // Unique ID per transaksi
+
+        $body = [
+            "partnerReferenceNo" => $partnerRef,
+            "customerNumber"     => $customerNumber,
+            "accountType"        => "SETTLEMENT_ACCOUNT", // Default untuk Merchant
+            "beneficiaryAccountNumber" => $request->account_no, // No Rekening Tujuan
+            "beneficiaryBankCode"      => $request->bank_code, // Kode Bank (014, 002, dll)
+            "amount" => [
+                "value"    => number_format((float)$request->amount, 2, '.', ''), // Wajib 2 desimal
+                "currency" => "IDR"
+            ],
+            "additionalInfo" => [
+                "fundType"     => "MERCHANT_WITHDRAW_FOR_CORPORATE",
+                "chargeTarget" => "MERCHANT", // Biaya admin ditanggung Merchant
+                "beneficiaryAccountName" => $request->account_name ?? "User Sancaka" // Opsional, buat validasi
+            ]
+        ];
+
+        // 5. Generate Signature
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+        $signature = $this->generateSignature($stringToSign);
+
+        // 6. Kirim Request
+        try {
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $aff->dana_access_token, // Pastikan Token Valid
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'X-IP-ADDRESS'  => $request->ip(),
+                'X-DEVICE-ID'   => 'SANCAKA-DANA-01',
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            Log::info('[DANA TRANSFER BANK] Mengirim Request...', ['body' => $body]);
+
+            $response = Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post('https://api.sandbox.dana.id' . $path);
+
+            $result = $response->json();
+            $resCode = $result['responseCode'] ?? '500';
+
+            // --- [LOGIC HANDLING RESPONSE] ---
+
+            // A. SUKSES (2004300)
+            if ($resCode == '2004300') {
+                // Catat Log Transaksi Sukses
+                DB::table('dana_transactions')->insert([
+                    'affiliate_id' => $aff->id,
+                    'type' => 'TRANSFER_BANK',
+                    'reference_no' => $partnerRef,
+                    'phone' => $request->account_no . " (" . $request->bank_code . ")",
+                    'amount' => $request->amount,
+                    'status' => 'SUCCESS',
+                    'response_payload' => json_encode($result),
+                    'created_at' => now()
+                ]);
+
+                $msg = "✅ Transfer Berhasil!<br>Ref: $partnerRef<br>Nominal: Rp " . number_format($request->amount);
+                return back()->with('success', $msg);
+            }
+
+            // B. PENDING / IN PROGRESS (2024300, 4294300, 5004301)
+            // Uang tetap dipotong, status PENDING, tunggu Callback/Cek Status manual
+            elseif (in_array($resCode, ['2024300', '4294300', '5004301'])) {
+                DB::table('dana_transactions')->insert([
+                    'affiliate_id' => $aff->id,
+                    'type' => 'TRANSFER_BANK',
+                    'reference_no' => $partnerRef,
+                    'phone' => $request->account_no,
+                    'amount' => $request->amount,
+                    'status' => 'PENDING', // Status Pending
+                    'response_payload' => json_encode($result),
+                    'created_at' => now()
+                ]);
+
+                return back()->with('warning', '⏳ Transaksi Sedang Diproses (Pending). Mohon cek status secara berkala.');
+            }
+
+            // C. GAGAL (REFUND SALDO)
+            else {
+                // KEMBALIKAN SALDO (REFUND)
+                DB::table('affiliates')->where('id', $aff->id)->increment('balance', $request->amount);
+
+                // Catat Log Gagal
+                DB::table('dana_transactions')->insert([
+                    'affiliate_id' => $aff->id,
+                    'type' => 'TRANSFER_BANK',
+                    'reference_no' => $partnerRef,
+                    'phone' => $request->account_no,
+                    'amount' => $request->amount,
+                    'status' => 'FAILED',
+                    'response_payload' => json_encode($result),
+                    'created_at' => now()
+                ]);
+
+                // Mapping Pesan Error User-Friendly
+                $errorMsg = $result['responseMessage'] ?? 'Transaksi Gagal';
+                if ($resCode == '4034314') $errorMsg = "Saldo Merchant DANA Tidak Cukup (Hubungi Admin).";
+                if ($resCode == '4044311') $errorMsg = "Nomor Rekening Tidak Valid / Salah Bank.";
+                if ($resCode == '4034302') $errorMsg = "Melebihi Limit Transaksi.";
+
+                Log::error('[DANA TRANSFER BANK] Gagal & Refund', ['res' => $result]);
+                return back()->with('error', "Gagal: $errorMsg (Saldo telah dikembalikan).");
+            }
+
+        } catch (\Exception $e) {
+            // JIKA SYSTEM ERROR -> REFUND JUGA
+            DB::table('affiliates')->where('id', $aff->id)->increment('balance', $request->amount);
+
+            Log::error('[DANA TRANSFER BANK] Exception', ['msg' => $e->getMessage()]);
+            return back()->with('error', 'System Error: ' . $e->getMessage());
         }
     }
 

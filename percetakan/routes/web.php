@@ -18,10 +18,10 @@ use App\Http\Controllers\LogViewerController;
 
 // Sesuaikan middleware dengan kebutuhan admin panel Anda (misal: 'auth', 'admin')
 Route::middleware(['auth'])->prefix('admin/logs')->name('admin.logs.')->group(function () {
-    
+
     // Halaman Viewer (GET)
     Route::get('/', [LogViewerController::class, 'index'])->name('index');
-    
+
     // Proses Hapus (POST) - Sesuai fetch di Javascript Anda
     Route::post('/clear', [LogViewerController::class, 'clear'])->name('clear');
 
@@ -37,7 +37,7 @@ Route::resource('dana_response_codes', DanaResponseCodeController::class);
 
 // Grouping untuk fitur DANA agar lebih rapi
 Route::prefix('dana')->name('dana.')->group(function () {
-    
+
     // 1. Route Dashboard Utama
     Route::get('/dashboard', [DanaDashboardController::class, 'index'])->name('dashboard');
 
@@ -116,10 +116,10 @@ Route::get('/', function () {
 });
 
 Route::middleware('auth')->group(function () {
-   
+
     // Tambahkan baris ini
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
-    
+
     // Route profile bawaan (edit, update, destroy)
     Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -132,9 +132,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/affiliate/sync-balance', [AffiliateController::class, 'syncBalance'])->name('affiliate.sync');
 
     // Rute CURL ORDER
-    
+
     Route::delete('/orders/bulk-delete', [OrderController::class, 'bulkDestroy'])->name('orders.bulkDestroy');
-    
+
     Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('orders.destroy');
 
     Route::post('/check-merchant-balance', [DanaDashboardController::class, 'checkMerchantBalance'])->name('dana.checkMerchantBalance');
@@ -157,7 +157,7 @@ Route::resource('reports', ReportController::class)->except(['create', 'store'])
 Route::resource('coupons', CouponController::class);
 
 Route::resource('dana_response_codes', DanaResponseCodeController::class)->except(['create', 'edit', 'show']);
-    
+
 });
 
 Route::prefix('member')->name('member.')->group(function () {
@@ -169,8 +169,8 @@ Route::prefix('member')->name('member.')->group(function () {
     Route::middleware('auth:member')->group(function () {
         Route::get('/dashboard', [MemberAuthController::class, 'dashboard'])->name('dashboard');
         Route::post('/logout', [MemberAuthController::class, 'logout'])->name('logout');
-    
-    
+
+
         // --- TAMBAHAN BARU: RIWAYAT PESANAN ---
         // Kita pakai controller baru biar rapi
         Route::get('/orders', [\App\Http\Controllers\MemberOrderController::class, 'index'])->name('orders.index');
@@ -180,21 +180,23 @@ Route::prefix('member')->name('member.')->group(function () {
         Route::get('/settings', [\App\Http\Controllers\MemberProfileController::class, 'index'])->name('settings.index');
         Route::put('/settings/update', [\App\Http\Controllers\MemberProfileController::class, 'update'])->name('settings.update');
         Route::put('/settings/pin', [\App\Http\Controllers\MemberProfileController::class, 'updatePin'])->name('settings.update-pin');
-    
+
         //Route::post('/dana/check-status', [MemberAuthController::class, 'checkTopupStatus'])->name('dana.checkStatus');
 
         //Route::post('/dana/bank-inquiry', [MemberAuthController::class, 'bankAccountInquiry'])->name('dana.bankInquiry');
-    
+
         // Grup Khusus Fitur DANA Disbursement
     Route::prefix('dana')->name('dana.')->group(function () {
-        
+
         // --- FITUR DISBURSEMENT TO BANK ---
         // Rute untuk validasi rekening bank (Inquiry)
         Route::post('/bank-inquiry', [MemberAuthController::class, 'bankAccountInquiry'])->name('bankInquiry');
-        
+
         // --- FITUR PENGECEKAN STATUS ---
         // Rute untuk sinkronisasi status transaksi secara manual
         Route::post('/check-status', [MemberAuthController::class, 'checkTopupStatus'])->name('checkStatus');
+
+        Route::post('/transfer-bank', [MemberAuthController::class, 'transferToBank'])->name('transferBank');
 
     });
 
@@ -207,7 +209,7 @@ Route::middleware('auth:member')->prefix('dana')->name('dana.')->group(function 
     // Binding OAuth
     Route::post('/bind', [MemberAuthController::class, 'startBinding'])->name('startBinding');
     Route::get('/callback', [MemberAuthController::class, 'handleCallback'])->name('callback');
-    
+
     // Inquiry & Topup
     Route::post('/balance', [MemberAuthController::class, 'checkBalance'])->name('checkBalance');
     Route::post('/inquiry', [MemberAuthController::class, 'accountInquiry'])->name('accountInquiry');
