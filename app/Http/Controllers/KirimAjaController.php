@@ -29,8 +29,6 @@ class KirimAjaController extends Controller
 
         try {
             // Kita bungkus DB Utama dengan Transaksi
-            // Catatan: DB Second tidak bisa ikut DB::beginTransaction() bawaan ini karena beda koneksi.
-            // Tapi untuk update status sederhana, direct query sudah cukup aman.
             DB::beginTransaction();
 
             // 1. MAPPING STATUS UTAMA (DB A)
@@ -43,10 +41,10 @@ class KirimAjaController extends Controller
                 'return_finished_packages' => 'Retur Selesai',
             ];
 
-            // MAPPING STATUS MARKETPLACE & PERCETAKAN (DB B - Biasanya pakai bhs Inggris)
+            // MAPPING STATUS MARKETPLACE & PERCETAKAN (DB B)
             $generalStatusMap = [
                 'processed_packages'       => 'processing',
-                'shipped_packages'         => 'shipment', // Atau 'shipping'
+                'shipped_packages'         => 'shipment',
                 'canceled_packages'        => 'canceled',
                 'finished_packages'        => 'completed',
                 'returned_packages'        => 'returning',
@@ -60,8 +58,8 @@ class KirimAjaController extends Controller
                 'return_finished_packages' => 'returned_at',
             ];
 
-            $statusPesananIndo = $pesananStatusMap[$method] ?? null; // Bhs Indo
-            $statusGeneral     = $generalStatusMap[$method] ?? null; // Bhs Inggris
+            $statusPesananIndo = $pesananStatusMap[$method] ?? null;
+            $statusGeneral     = $generalStatusMap[$method] ?? null;
 
             // 2. LOOP DATA WEBHOOK
             foreach ($dataArray as $data) {
@@ -72,22 +70,18 @@ class KirimAjaController extends Controller
 
                 if (!$orderId) continue;
 
-                // =============================================================
-                // 🔥 TAMBAHAN LOGGING UNTUK CEK AWB (REQUEST MAS) 🔥
-                // =============================================================
+                // LOGGING CHECK AWB
                 if (!empty($awb)) {
                     Log::info("[WEBHOOK-KA] 🔍 DATA CHECK | Order: $orderId | AWB Ditemukan: $awb");
                 } else {
                     Log::warning("[WEBHOOK-KA] ⚠️ DATA CHECK | Order: $orderId | AWB TIDAK ADA di payload ini.");
                 }
-                // =============================================================
 
                 // Ambil Waktu & Convert ke WIB
                 $shippedAt  = $data['shipped_at'] ?? null;
                 $finishedAt = $data['finished_at'] ?? null;
                 $updateTime = now()->timezone('Asia/Jakarta');
 
-                // Flag penanda apakah data ketemu di DB Utama
                 $foundInMainDB = false;
 
                 // =========================================================================
@@ -98,9 +92,13 @@ class KirimAjaController extends Controller
                 $order = Order::where('invoice_number', $orderId)->lockForUpdate()->first();
                 if ($order) {
                     $foundInMainDB = true;
-                    if ($awb && empty($order->shipping_reference)) {
+
+                    // [FIX LOGIKA] FORCE UPDATE AWB
+                    // Jika API kirim AWB, timpa shipping_reference (meskipun isinya Kode Booking)
+                    if ($awb) {
                         $order->shipping_reference = $awb;
                     }
+
                     if ($statusGeneral && $order->status !== 'completed') {
                         $order->status = $statusGeneral;
 
@@ -119,13 +117,16 @@ class KirimAjaController extends Controller
                 }
 
                 // 1.B. Cek Pesanan Manual (SCK) - Direct DB Update
-                // Menggunakan DB::table untuk menghindari masalah Primary Key
                 $cekPesanan = DB::table('Pesanan')->where('nomor_invoice', $orderId)->first();
                 if ($cekPesanan) {
                     $foundInMainDB = true;
                     $updateData = ['updated_at' => now()];
 
-                    if ($awb && empty($cekPesanan->resi)) $updateData['resi'] = $awb;
+                    // [FIX LOGIKA] FORCE UPDATE RESI
+                    // Timpa kolom 'resi' jika ada AWB baru dari API
+                    if ($awb) {
+                        $updateData['resi'] = $awb;
+                    }
 
                     if ($statusPesananIndo && $cekPesanan->status !== 'Selesai') {
                         $updateData['status'] = $statusPesananIndo;
@@ -161,7 +162,13 @@ class KirimAjaController extends Controller
                 $orderMarketplace = OrderMarketplace::where('invoice_number', $orderId)->first();
                 if ($orderMarketplace) {
                     $foundInMainDB = true;
-                    if ($awb && empty($orderMarketplace->shipping_resi)) $orderMarketplace->shipping_resi = $awb;
+
+                    // [FIX LOGIKA] FORCE UPDATE RESI
+                    // Timpa shipping_resi dengan AWB asli
+                    if ($awb) {
+                        $orderMarketplace->shipping_resi = $awb;
+                    }
+
                     if ($statusGeneral && $orderMarketplace->status !== 'completed') $orderMarketplace->status = $statusGeneral;
                     $orderMarketplace->save();
                 }
@@ -171,32 +178,28 @@ class KirimAjaController extends Controller
                 // =========================================================================
 
                 if (!$foundInMainDB) {
-                    // Gunakan koneksi kedua 'mysql_second'
                     try {
                         $percetakanDB = DB::connection('mysql_second');
                         $orderPercetakan = $percetakanDB->table('orders')
-                                            ->where('order_number', $orderId)
-                                            ->orWhere('shipping_ref', $orderId) // Jaga-jaga lookup by resi
-                                            ->first();
+                                                        ->where('order_number', $orderId)
+                                                        ->orWhere('shipping_ref', $orderId)
+                                                        ->first();
 
                         if ($orderPercetakan) {
                             $updateDataB = ['updated_at' => now()];
 
-                            // Update Resi di Percetakan
-                            if ($awb && empty($orderPercetakan->shipping_ref)) {
+                            // [FIX LOGIKA] FORCE UPDATE REF KE AWB
+                            // Timpa shipping_ref yang isinya kode booking menjadi AWB asli
+                            if ($awb) {
                                 $updateDataB['shipping_ref'] = $awb;
                             }
 
-                            // Update Status
                             if ($statusGeneral && $orderPercetakan->status !== 'completed') {
                                 $updateDataB['status'] = $statusGeneral;
-
-                                // Mapping status spesifik percetakan jika perlu
-                                // (Asumsi kolom status di percetakan pakai 'processing', 'shipment', 'completed')
                             }
 
                             // Eksekusi Update ke DB Kedua
-                            if (count($updateDataB) > 1) { // Lebih dari 1 artinya ada data selain updated_at
+                            if (count($updateDataB) > 1) {
                                 $percetakanDB->table('orders')
                                     ->where('id', $orderPercetakan->id)
                                     ->update($updateDataB);
@@ -214,7 +217,7 @@ class KirimAjaController extends Controller
 
             } // End Foreach
 
-            DB::commit(); // Commit transaksi DB Utama
+            DB::commit();
             return response()->json(['success' => true]);
 
         } catch (\Exception $e) {
