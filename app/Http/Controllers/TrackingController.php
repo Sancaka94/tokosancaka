@@ -429,8 +429,8 @@ class TrackingController extends Controller
             if (!$alreadyExists) {
                 $normalizedHistories->push((object)[
                     'status' => 'Pesanan Dibuat',
-                    'lokasi' => 'Sistem Internal',
-                    'keterangan' => 'Pesanan berhasil dibuat di sistem Sancaka Express.',
+                    'lokasi' => 'Sistem Sancaka Express',
+                    'keterangan' => 'Pesanan berhasil dibuat di sistem Sancaka Express (TOKOSANCAKA.COM)',
                     'created_at' => $waktuDibuat,
                 ]);
             }
