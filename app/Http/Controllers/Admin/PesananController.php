@@ -328,25 +328,31 @@ class PesananController extends Controller
                     // 1. Coba ambil dari 'data' -> 'order_id' (Biasanya ini format KiriminAja v3)
                     // 2. Coba ambil dari 'id' (Format v4/Booking)
                     // 3. Coba ambil dari 'payment_ref'
-                    $bookingId = $kiriminResponse['data']['order_id'] 
-                              ?? $kiriminResponse['id'] 
-                              ?? $kiriminResponse['data']['id']
-                              ?? $kiriminResponse['payment_ref'] 
+                    // ==========================================================
+                    // 🔥 UPDATE BARU: LOGIKA FIX BERDASARKAN LOG ASLI 🔥
+                    // ==========================================================
+                    
+                    // 1. Ambil Booking ID / Pickup Number (Ini yang VALID dari log Bapak)
+                    $bookingId = $kiriminResponse['pickup_number']         // Prioritas 1: Pickup Number (XID-...)
+                              ?? $kiriminResponse['id']                    // Prioritas 2: ID Root
+                              ?? $kiriminResponse['data']['id']            // Prioritas 3: Data ID
+                              ?? $kiriminResponse['payment_ref']           // Prioritas 4: Payment Ref
+                              ?? ($kiriminResponse['details'][0]['order_id'] ?? null) // Prioritas 5: Details[0]
                               ?? null;
 
-                    // 4. Cek AWB (Jika API langsung kasih)
+                    // 2. Ambil AWB Asli (Mungkin masih null)
                     $awbAsli = $kiriminResponse['awb'] 
                             ?? $kiriminResponse['data']['awb'] 
+                            ?? ($kiriminResponse['details'][0]['awb'] ?? null) // Cek di dalam array details
                             ?? ($kiriminResponse['results'][0]['awb'] ?? null);
 
-                    // 5. Tentukan Final Resi (Prioritas AWB -> Booking ID)
+                    // 3. LOGIKA UTAMA: Prioritas AWB, jika kosong pakai Booking ID
                     $finalResi = !empty($awbAsli) ? $awbAsli : $bookingId;
 
-                    // 6. Fallback (Hanya jika benar-benar kosong)
+                    // 4. Fallback Terakhir
                     if (empty($finalResi)) {
                          $finalResi = 'REF-' . $pesanan->nomor_invoice;
-                         // Log respon asli untuk debugging jika masih gagal
-                         Log::warning('KiriminAja Response Raw:', $kiriminResponse);
+                         Log::warning('KiriminAja Response Raw (Masih Gagal):', $kiriminResponse);
                     }
 
                     // 7. Update Database
