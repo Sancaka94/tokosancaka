@@ -60,7 +60,7 @@
                     <p class="text-[9px] text-slate-300 uppercase mb-0.5">Kode Referal Anda</p>
                     <p class="font-mono font-bold text-lg text-yellow-400 tracking-wide leading-none">{{ $member->coupon_code }}</p>
                 </div>
-                <button onclick="navigator.clipboard.writeText('{{ $member->coupon_code }}'); alert('Kode Kupon berhasil disalin!')" 
+                <button onclick="navigator.clipboard.writeText('{{ $member->coupon_code }}'); alert('Kode Kupon berhasil disalin!')"
                         class="text-[10px] bg-white text-slate-900 px-3 py-2 rounded-lg font-bold hover:bg-yellow-400 transition flex items-center gap-1 active:scale-95">
                     <i class="far fa-copy"></i> Salin
                 </button>
@@ -77,14 +77,14 @@
                     </button>
                 </form>
                 @if($member->balance > 0)
-                <button onclick="openTopupModal('{{ $member->id }}', '{{ $member->balance }}', '{{ $member->whatsapp }}')" 
+                <button onclick="openTopupModal('{{ $member->id }}', '{{ $member->balance }}', '{{ $member->whatsapp }}')"
                         class="flex-1 text-[10px] bg-emerald-500 text-white py-2 rounded-lg font-bold hover:bg-emerald-600 transition flex items-center justify-center gap-1">
                     <i class="fas fa-hand-holding-usd"></i> Cairkan Saldo
                 </button>
                 @endif
 
                 {{-- Tombol Baru: Cairkan ke Bank --}}
-                <button onclick="openBankModal('{{ $member->id }}', '{{ $member->balance }}')" 
+                <button onclick="openBankModal('{{ $member->id }}', '{{ $member->balance }}')"
                         class="flex-1 text-[10px] bg-slate-600 text-white py-2 rounded-lg font-bold hover:bg-slate-700 transition flex items-center justify-center gap-1">
                     <i class="fas fa-university"></i> Ke Rekening Bank
                 </button>
@@ -137,14 +137,14 @@
                 </div>
                 <span class="text-[10px] font-bold text-slate-600 group-hover:text-blue-600">Order</span>
             </a>
-            
+
             <a href="https://wa.me/6285745808809" target="_blank" class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center gap-2 hover:border-green-300 hover:shadow-md transition group">
                 <div class="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center text-lg group-hover:bg-green-600 group-hover:text-white transition">
                     <i class="fab fa-whatsapp"></i>
                 </div>
                 <span class="text-[10px] font-bold text-slate-600 group-hover:text-green-600">Admin</span>
             </a>
-            
+
             <form action="{{ route('dana.accountInquiry') }}" method="POST" class="w-full">
                 @csrf
                 <input type="hidden" name="affiliate_id" value="{{ $member->id }}">
@@ -156,7 +156,7 @@
                 </button>
             </form>
 
-            
+
             <a href="#" class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center gap-2 hover:border-orange-300 hover:shadow-md transition group">
                 <div class="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center text-lg group-hover:bg-orange-600 group-hover:text-white transition">
                     <i class="fas fa-cog"></i>
@@ -347,7 +347,7 @@
                     <div class="flex flex-col gap-4">
                         {{-- Info Halaman --}}
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">
-                            Menampilkan {{ $transactions->firstItem() }} - {{ $transactions->lastItem() }} 
+                            Menampilkan {{ $transactions->firstItem() }} - {{ $transactions->lastItem() }}
                             dari {{ $transactions->total() }} Transaksi
                         </div>
 
@@ -421,85 +421,84 @@
     </div>
 
     {{-- MODAL PENCAIRAN KE BANK --}}
-<div id="bankModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
-        <div class="bg-slate-800 p-6 text-white">
-            <h3 class="text-lg font-black uppercase italic tracking-tighter">Cairkan Ke Bank</h3>
-            <p class="text-slate-400 text-[10px] uppercase font-bold tracking-widest">Bank Account Inquiry</p>
-        </div>
-        
-        <form action="{{ route('member.dana.bankInquiry') }}" method="POST" class="p-6">
-            @csrf
-            <input type="hidden" name="affiliate_id" id="bank_aff_id">
-            
-            {{-- Pilih Bank --}}
-            <div class="mb-4">
-                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Pilih Bank Tujuan</label>
-                <select name="bank_code" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 transition">
-                    <option value="" disabled selected>-- Pilih Bank Tujuan --</option>
-                    
-                    <optgroup label="Bank Terpopuler">
-                        <option value="014">Bank BCA</option>
-                        <option value="008">Bank Mandiri</option>
-                        <option value="002">Bank BRI</option>
-                        <option value="009">Bank BNI</option>
-                        <option value="427">Bank Syariah Indonesia (BSI)</option>
-                    </optgroup>
-
-                    <optgroup label="Bank Nasional & Swasta">
-                        <option value="022">Bank CIMB Niaga</option>
-                        <option value="147">Bank Muamalat</option>
-                        <option value="213">Bank BTPN / JENIUS</option>
-                        <option value="200">Bank Tabungan Negara (BTN)</option>
-                        <option value="013">Permata Bank</option>
-                        <option value="011">Bank Danamon</option>
-                        <option value="426">Bank Mega</option>
-                        <option value="153">Bank Sinarmas</option>
-                        <option value="028">Bank OCBC NISP</option>
-                    </optgroup>
-
-                    <optgroup label="Bank Pembangunan Daerah (BPD)">
-                        <option value="110">Bank BJB</option>
-                        <option value="111">Bank DKI</option>
-                        <option value="114">Bank Jatim</option>
-                        <option value="113">Bank Jateng</option>
-                        <option value="112">BPD DIY</option>
-                        <option value="118">Bank Nagari</option>
-                        <option value="129">BPD Bali</option>
-                        <option value="132">Bank Papua</option>
-                    </optgroup>
-                    
-                    {{-- Anda bisa menambahkan sisa bank lainnya di sini menggunakan loop jika data disimpan di database --}}
-                </select>
+    <div id="bankModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div class="bg-slate-800 p-6 text-white">
+                <h3 class="text-lg font-black uppercase italic tracking-tighter">Cairkan Ke Bank</h3>
+                <p class="text-slate-400 text-[10px] uppercase font-bold tracking-widest">Bank Account Inquiry</p>
             </div>
 
-            {{-- Nomor Rekening --}}
-            <div class="mb-4">
-                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Nomor Rekening</label>
-                <input type="text" name="account_no" required placeholder="Contoh: 01234567890" 
-                       class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:border-blue-500 transition">
-            </div>
+            <form action="{{ route('member.dana.bankInquiry') }}" method="POST" class="p-6">
+                @csrf
+                <input type="hidden" name="affiliate_id" id="bank_aff_id">
 
-            {{-- Nominal --}}
-            <div class="mb-6">
-                <div class="flex justify-between items-center mb-1">
-                    <label class="text-[10px] font-black text-slate-400 uppercase">Nominal Transfer</label>
-                    <span class="text-[10px] font-black text-blue-600 uppercase" id="bank_max_balance"></span>
+                {{-- Pilih Bank --}}
+                <div class="mb-4">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Pilih Bank Tujuan</label>
+                    <select name="bank_code" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 transition">
+                        <option value="" disabled selected>-- Pilih Bank Tujuan --</option>
+
+                        <optgroup label="Bank Terpopuler">
+                            <option value="014">Bank BCA</option>
+                            <option value="008">Bank Mandiri</option>
+                            <option value="002">Bank BRI</option>
+                            <option value="009">Bank BNI</option>
+                            <option value="427">Bank Syariah Indonesia (BSI)</option>
+                        </optgroup>
+
+                        <optgroup label="Bank Nasional & Swasta">
+                            <option value="022">Bank CIMB Niaga</option>
+                            <option value="147">Bank Muamalat</option>
+                            <option value="213">Bank BTPN / JENIUS</option>
+                            <option value="200">Bank Tabungan Negara (BTN)</option>
+                            <option value="013">Permata Bank</option>
+                            <option value="011">Bank Danamon</option>
+                            <option value="426">Bank Mega</option>
+                            <option value="153">Bank Sinarmas</option>
+                            <option value="028">Bank OCBC NISP</option>
+                        </optgroup>
+
+                        <optgroup label="Bank Pembangunan Daerah (BPD)">
+                            <option value="110">Bank BJB</option>
+                            <option value="111">Bank DKI</option>
+                            {{-- PERHATIKAN: KODE JATIM HARUS 114 --}}
+                            <option value="114">Bank Jatim</option>
+                            <option value="113">Bank Jateng</option>
+                            <option value="112">BPD DIY</option>
+                            <option value="118">Bank Nagari</option>
+                            <option value="129">BPD Bali</option>
+                            <option value="132">Bank Papua</option>
+                        </optgroup>
+                    </select>
                 </div>
-                <input type="number" name="amount" required min="10000" step="1" placeholder="Min. 10.000" 
-                       class="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-black text-2xl text-slate-800 focus:border-blue-500 transition">
-                <p class="text-[8px] text-slate-400 mt-2 italic">*Pengecekan ini membutuhkan waktu sekitar 8 detik.</p>
-            </div>
 
-            <div class="flex gap-3">
-                <button type="button" onclick="closeBankModal()" class="flex-1 py-3 text-slate-400 font-bold text-xs uppercase transition">Batal</button>
-                <button type="submit" class="flex-[2] py-3 bg-slate-800 text-white rounded-xl font-black text-xs uppercase shadow-lg hover:bg-slate-900 transition">
-                    <i class="fas fa-search"></i> Cek Rekening
-                </button>
-            </div>
-        </form>
+                {{-- Nomor Rekening --}}
+                <div class="mb-4">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Nomor Rekening</label>
+                    <input type="text" name="account_no" required placeholder="Contoh: 01234567890"
+                           class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:border-blue-500 transition">
+                </div>
+
+                {{-- Nominal --}}
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-[10px] font-black text-slate-400 uppercase">Nominal Transfer</label>
+                        <span class="text-[10px] font-black text-blue-600 uppercase" id="bank_max_balance"></span>
+                    </div>
+                    <input type="number" name="amount" required min="10000" step="1" placeholder="Min. 10.000"
+                           class="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-black text-2xl text-slate-800 focus:border-blue-500 transition">
+                    <p class="text-[8px] text-slate-400 mt-2 italic">*Pengecekan ini membutuhkan waktu sekitar 8 detik.</p>
+                </div>
+
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeBankModal()" class="flex-1 py-3 text-slate-400 font-bold text-xs uppercase transition">Batal</button>
+                    <button type="submit" class="flex-[2] py-3 bg-slate-800 text-white rounded-xl font-black text-xs uppercase shadow-lg hover:bg-slate-900 transition">
+                        <i class="fas fa-search"></i> Cek Rekening
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 
     <script>
         function openTopupModal(id, balance, phone) {
@@ -515,18 +514,16 @@
         }
     </script>
 
-    <script> 
-
+    <script>
         function openBankModal(id, balance) {
-    document.getElementById('bank_aff_id').value = id;
-    document.getElementById('bank_max_balance').innerText = 'Limit: Rp ' + new Intl.NumberFormat('id-ID').format(balance);
-    document.getElementById('bankModal').classList.remove('hidden');
+            document.getElementById('bank_aff_id').value = id;
+            document.getElementById('bank_max_balance').innerText = 'Limit: Rp ' + new Intl.NumberFormat('id-ID').format(balance);
+            document.getElementById('bankModal').classList.remove('hidden');
         }
 
         function closeBankModal() {
             document.getElementById('bankModal').classList.add('hidden');
         }
-
     </script>
 
     {{-- TAMBAHKAN CSS ANIMASI DI BAGIAN PALING BAWAH --}}
