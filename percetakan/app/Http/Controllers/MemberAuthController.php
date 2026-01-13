@@ -1053,7 +1053,7 @@ public function checkTopupStatus(Request $request)
         $body = [
             "partnerReferenceNo" => $partnerRef,
             "customerNumber"     => $customerNumber,
-            "accountType"        => "SETTLEMENT_ACCOUNT", // Default untuk Merchant
+            //"accountType"        => "SETTLEMENT_ACCOUNT", // Default untuk Merchant
             "beneficiaryAccountNumber" => $request->account_no, // No Rekening Tujuan
             "beneficiaryBankCode"      => $request->bank_code, // Kode Bank (014, 002, dll)
             "amount" => [
