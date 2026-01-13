@@ -333,8 +333,8 @@ if (($kiriminResponse['status'] ?? false) !== true) {
 
                     // Update Pesanan
                     $pesanan->resi = $resiDidapat;
-                    $pesanan->status = 'Menunggu Pickup';
-                    $pesanan->status_pesanan = 'Menunggu Pickup';
+                    $pesanan->status = 'Pesanan Dibuat'; // Ubah jadi status awal
+                    $pesanan->status_pesanan = 'Pesanan Dibuat';
 
                     // Simpan Perubahan
                     $pesanan->save();
@@ -717,8 +717,8 @@ if (($kiriminResponse['status'] ?? false) !== true) {
                                 ?? ($kiriminResponse['results'][0]['awb'] ?? null);
 
                     $pesanan->resi = $resiDidapat;
-                    $pesanan->status = 'Menunggu Pickup';
-                    $pesanan->status_pesanan = 'Menunggu Pickup';
+                    $pesanan->status = 'Pesanan Dibuat';
+                    $pesanan->status_pesanan = 'Pesanan Dibuat';
                     Log::info('Tripay Callback: KiriminAja SUCCESS.', ['resi' => $resiDidapat]);
 
                     // Simpan Resi
