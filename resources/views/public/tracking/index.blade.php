@@ -101,7 +101,7 @@
         transform: scale(1.1);
     }
     .timeline-item:first-child .fw-bold { color: var(--success-color); }
-    
+
     .timeline-item.order-created .timeline-icon {
         background-color: var(--secondary-color);
         border-color: var(--secondary-color);
@@ -136,7 +136,7 @@ if (!function_exists('getTrackingStatusIcon')) {
 <div class="container main-content-padding">
     <div class="row justify-content-center">
         <div class="col-lg-8 col-md-10">
-            
+
             {{-- FORM PENCARIAN --}}
             <div class="card tracking-card mb-5">
                 <div class="card-body p-4 p-md-5">
@@ -152,7 +152,7 @@ if (!function_exists('getTrackingStatusIcon')) {
                         </div>
                     </form>
 
-                    
+
                 </div>
             </div>
 
@@ -178,8 +178,8 @@ if (!function_exists('getTrackingStatusIcon')) {
                             {{-- Bagian Kanan: Tombol Cetak SAJA (Layanan dipindah) --}}
                             <div class="col-12 col-md-auto">
                                 @if ($result['is_pesanan'] ?? false)
-                                    <a href="{{ route('cetak_thermal', $result['summary']['awb'] ?? $result['resi']) }}" 
-                                       target="_blank" 
+                                    <a href="{{ route('cetak_thermal', $result['summary']['awb'] ?? $result['resi']) }}"
+                                       target="_blank"
                                        class="btn btn-sm btn-outline-secondary text-nowrap bg-green-50">
                                         <i class="fas fa-print me-1"></i> Cetak Resi
                                     </a>
@@ -232,7 +232,7 @@ if (!function_exists('getTrackingStatusIcon')) {
                                         <i class="{{ getTrackingStatusIcon($history->status ?? '') }}"></i>
                                     </div>
                                     <p class="fw-bold mb-0">{{ $history->status ?? '-' }}</p>
-                                    
+
                                     @if(!empty($history->lokasi))
                                         <p class="mb-1 small text-muted">{{ $history->lokasi }}</p>
                                     @endif
@@ -267,8 +267,8 @@ if (!function_exists('getTrackingStatusIcon')) {
                             </div>
                             <div class="col-12 col-md-auto">
                                 @if ($result['is_pesanan'] ?? false)
-                                    <a href="{{ route('cetak_thermal', $result['resi']) }}" 
-                                       target="_blank" 
+                                    <a href="{{ route('cetak_thermal', $result['resi']) }}"
+                                       target="_blank"
                                        class="btn btn-sm btn-outline-secondary text-nowrap">
                                         <i class="fas fa-print me-1"></i> Cetak Resi
                                     </a>
@@ -318,8 +318,11 @@ if (!function_exists('getTrackingStatusIcon')) {
                                         <i class="{{ getTrackingStatusIcon($history->status ?? '') }}"></i>
                                     </div>
                                     <p class="fw-bold mb-0">{{ $history->status ?? '-' }}</p>
-                                    <p class="mb-1 small text-muted">{{ $history->lokasi ?? '' }} {{ isset($history->keterangan) ? '- '.$history->keterangan : '' }}</p>
-                                    
+                                    {{-- KODE BARU (Benar: HTML dirender) --}}
+                                    <p class="mb-1 small text-muted">
+                                        {{ $history->lokasi ?? '' }}
+                                        {!! isset($history->keterangan) ? '- ' . $history->keterangan : '' !!}
+                                    </p>
                                     <small class="text-muted">
                                         {{ is_a($history->created_at, 'Carbon\Carbon') ? $history->created_at->format('d M Y, H:i') . ' WIB' : $history->created_at }}
                                     </small>
