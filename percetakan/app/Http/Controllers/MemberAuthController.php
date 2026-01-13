@@ -20,7 +20,7 @@ use App\Models\OrderDetail;
 use App\Models\OrderAttachment;
 use App\Models\Coupon;
 use App\Models\Affiliate;
-use App\Models\Store; 
+use App\Models\Store;
 use App\Models\TopUp;
 use App\Models\User;
 
@@ -63,14 +63,14 @@ class MemberAuthController extends Controller
         // Walaupun kolom database namanya 'pin', input user tetap kita labeli 'password' di array ini.
         $credentials = [
             'whatsapp' => $request->whatsapp,
-            'password' => $request->pin, 
+            'password' => $request->pin,
             'is_active' => 1 // Opsional: Pastikan hanya member aktif yg bisa masuk
         ];
 
         // Coba Login menggunakan Guard 'member'
         // $request->filled('remember') mengecek checkbox "Ingat Saya"
         if (Auth::guard('member')->attempt($credentials, $request->filled('remember'))) {
-            
+
             // Regenerasi Session ID untuk keamanan (Fixation Attack)
             $request->session()->regenerate();
 
@@ -133,7 +133,7 @@ class MemberAuthController extends Controller
     public function startBinding(Request $request)
     {
         Log::info('[BINDING] Memulai proses redirect ke DANA Portal...');
-        
+
         $affiliateId = $request->affiliate_id ?? 11;
 
         $queryParams = [
@@ -141,7 +141,7 @@ class MemberAuthController extends Controller
             'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
             'externalId'  => 'BIND-' . $affiliateId . '-' . time(),
             'merchantId'  => config('services.dana.merchant_id'),
-            'redirectUrl' => config('services.dana.redirect_url_oauth'), 
+            'redirectUrl' => config('services.dana.redirect_url_oauth'),
             'state'       => 'ID-' . $affiliateId,
             'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         ];
@@ -172,7 +172,7 @@ class MemberAuthController extends Controller
         $timestamp = now('Asia/Jakarta')->toIso8601String();
         $clientId = config('services.dana.x_partner_id');
         $externalId = (string) time();
-        
+
         // Signature B2B2C: ClientID|Timestamp
         $stringToSign = $clientId . "|" . $timestamp;
         $signature = $this->generateSignature($stringToSign);
@@ -210,7 +210,7 @@ class MemberAuthController extends Controller
                     'affiliate_id' => $affiliateId,
                     'type' => 'BINDING',
                     'reference_no' => $externalId,
-                    'phone' => '-', 
+                    'phone' => '-',
                     'amount' => 0,
                     'status' => 'SUCCESS',
                     'response_payload' => json_encode($result),
@@ -300,7 +300,7 @@ class MemberAuthController extends Controller
 
         $jsonToSign = json_encode($payload['request'], JSON_UNESCAPED_SLASHES);
         $signature = $this->generateSignature($jsonToSign);
-        
+
         $response = Http::post('https://api.sandbox.dana.id/dana/merchant/queryMerchantResource.htm', ["request" => $payload['request'], "signature" => $signature]);
         $res = $response->json();
 
@@ -325,7 +325,7 @@ class MemberAuthController extends Controller
 
     // 1. Ambil data affiliate
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
-    
+
     // 2. Validasi Saldo Profit
     if (!$aff || $aff->balance < $request->amount) {
         Log::warning('[DANA TOPUP] Saldo Tidak Cukup atau Affiliate Tidak Ditemukan');
@@ -340,7 +340,7 @@ class MemberAuthController extends Controller
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/emoney/customer-top-up.htm';
     $partnerRef = 'TP' . time() . Str::random(4);
-    
+
     $body = [
         'partnerReferenceNo' => $partnerRef,
         'amount' => [
@@ -348,7 +348,7 @@ class MemberAuthController extends Controller
             'currency' => 'IDR'
         ],
         'beneficiaryAccountNo' => $cleanPhone,
-        'additionalInfo' => (object)[] 
+        'additionalInfo' => (object)[]
     ];
 
     $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
@@ -374,14 +374,14 @@ class MemberAuthController extends Controller
         $response = Http::withHeaders($headers)
             ->withBody($jsonBody, 'application/json')
             ->post('https://api.sandbox.dana.id' . $path);
-            
+
         $result = $response->json();
 
         Log::info('[DANA TOPUP] Respon Diterima', ['status' => $response->status(), 'result' => $result]);
 
         // 6. Cek Keberhasilan (Status 200 di Sandbox seringkali result-nya null)
         if ($response->successful()) {
-            
+
             // A. Potong Saldo Profit Affiliate
             DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
 
@@ -407,7 +407,7 @@ class MemberAuthController extends Controller
             $pesanUser = "▪️ Ref ID: " . $partnerRef . "\n";
             $pesanUser = "▪️ Waktu: " . now()->format('d/m H:i') . " WIB\n\n";
             $pesanUser = "Saldo profit Anda telah otomatis terpotong. Terima kasih!";
-            
+
             $this->sendWhatsApp($cleanPhone, $pesanUser);
 
             // D. Kirim Notifikasi ke ADMIN (Nomor Bos)
@@ -416,11 +416,11 @@ class MemberAuthController extends Controller
             $pesanAdmin = "Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n";
             $pesanAdmin = "Tujuan: " . $cleanPhone . "\n";
             $pesanAdmin = "Status: Saldo Berhasil Dipotong.";
-            
+
             $this->sendWhatsApp('6285745808809', $pesanAdmin); // Nomor Admin Bos
 
             Log::info('[DANA TOPUP] BERHASIL & WA TERKIRIM');
-            
+
             return back()->with('success', '💸 Topup Berhasil, Saldo Dipotong, dan WA Terkirim!');
         }
 
@@ -436,7 +436,7 @@ public function accountInquiry(Request $request)
 {
     // --- [LOG 1] INPUT REQUEST ---
     Log::info('[DANA INQUIRY] Start Process', [
-        'affiliate_id' => $request->affiliate_id, 
+        'affiliate_id' => $request->affiliate_id,
         'amount' => $request->amount,
         'ip' => $request->ip()
     ]);
@@ -469,8 +469,8 @@ public function accountInquiry(Request $request)
         "transactionDate" => $timestamp,
         "additionalInfo"  => [
             "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE",
-            "externalDivisionId" => "", 
-            "chargeTarget"       => "MERCHANT", 
+            "externalDivisionId" => "",
+            "chargeTarget"       => "MERCHANT",
             "customerId"         => ""
         ]
     ];
@@ -548,7 +548,7 @@ public function accountInquiry(Request $request)
         // --- [DATABASE 2] UPDATE NAMA KE TABEL AFFILIATES ---
         if (in_array($resCode, ['2000000', '2003700'])) {
             $customerName = $result['additionalInfo']['customerName'] ?? 'Akun Valid';
-            
+
             DB::table('affiliates')->where('id', $request->affiliate_id)->update([
                 'dana_user_name' => $customerName,
                 'updated_at' => now()
@@ -588,7 +588,7 @@ public function accountInquiry(Request $request)
 public function handleWebhook(Request $request)
 {
     Log::info('========== DANA WEBHOOK INCOMING ==========', $request->all());
-    
+
     $head = $request->input('request.head');
     $body = $request->input('request.body');
 
@@ -606,7 +606,7 @@ public function handleWebhook(Request $request)
             // LOGIKA REFUND: Jika statusnya CLOSED (timeout) atau FAILED
             if (in_array($status, ['CLOSED', 'FAILED']) && $trx->status === 'SUCCESS') {
                 DB::table('affiliates')->where('id', $trx->affiliate_id)->increment('balance', $trx->amount);
-                
+
                 // Tandai di audit log bahwa ini sudah direfund
                 DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'REFUNDED']);
                 Log::info('[WEBHOOK] Saldo Profit Berhasil Direfund!', ['affiliate' => $trx->affiliate_id]);
@@ -620,7 +620,7 @@ public function handleWebhook(Request $request)
 private function sendWhatsApp($to, $message)
 {
     $token = "ynMyPswSKr14wdtXMJF7"; // Ganti dengan token Fonte bos
-    
+
     // Pastikan nomor format 62...
     $to = preg_replace('/[^0-9]/', '', $to);
     if (substr($to, 0, 1) === '0') $to = '62' . substr($to, 1);
@@ -675,7 +675,7 @@ public function customerTopup(Request $request)
         // Jika input 8xxxxx -> Tambahkan '62' di depan
         $cleanPhone = '62' . $cleanPhone;
     }
-    
+
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $partnerRef = (string) time() . Str::random(8); // Sesuai partnerReferenceNo di dokumen
     $valStr = number_format((float)$request->amount, 2, '.', '');
@@ -698,8 +698,8 @@ public function customerTopup(Request $request)
     "notes"           => "Topup Sancaka",
     "additionalInfo"  => [
             "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE",
-            "externalDivisionId" => "", 
-            "chargeTarget"       => "MERCHANT", 
+            "externalDivisionId" => "",
+            "chargeTarget"       => "MERCHANT",
             "customerId"         => ""
         ]
 ];
@@ -726,10 +726,10 @@ public function customerTopup(Request $request)
 
     try {
         Log::info('[DANA TOPUP] Mengirim Request ke DANA API', ['body' => $body]);
-        
+
         $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
         $result = $response->json();
-        
+
         $resCode = $result['responseCode'] ?? '5003801';
 
         // --- [SMART MATCHING] ---
@@ -753,7 +753,7 @@ public function customerTopup(Request $request)
                 'is_success'    => $isSuccessCode, // <--- GUNAKAN VARIABEL INI
                 'created_at'    => now()
             ]);
-            
+
             // Refresh data library
             $library = DB::table('dana_response_codes')
                         ->where('response_code', $resCode)
@@ -784,7 +784,7 @@ public function customerTopup(Request $request)
             // WA ke User
             $msgUser = "✅ *TOPUP BERHASIL*\n\nHalo *{$aff->name}*,\nTopup DANA ke {$cleanPhone} senilai Rp " . number_format($request->amount) . " berhasil.\n\nRef ID: {$partnerRef}\nWaktu: " . now()->format('d/m H:i') . " WIB\nTerima kasih!";
             $this->sendWhatsApp($cleanPhone, $msgUser, $waToken);
-            
+
             Log::info('[DANA TOPUP] Berhasil', ['code' => $resCode]);
             return back()->with('dana_report', $library)->with('success', 'Topup Berhasil Diuraikan!');
         } else {
@@ -798,10 +798,10 @@ public function customerTopup(Request $request)
 
     } catch (\Exception $e) {
         Log::error('[DANA TOPUP] EXCEPTION ERROR', ['msg' => $e->getMessage()]);
-        
+
         // WA Error ke Admin
         $this->sendWhatsApp("6285745808809", "🚨 *SYSTEM ERROR TOPUP*\nMsg: " . $e->getMessage(), "ynMyPswSKr14wdtXMJF7");
-        
+
         return back()->with('error', 'Sistem Error: ' . $e->getMessage());
     }
 }
@@ -860,7 +860,7 @@ public function checkTopupStatus(Request $request)
 
         if (isset($result['responseCode']) && $result['responseCode'] == '2003900') {
             $status = $result['latestTransactionStatus']; // 00, 01, dll
-            
+
             // --- [LOG 4] MAPPING STATUS ---
             if ($status == '00') {
                 // SUCCESS: Mark as Success
@@ -875,7 +875,7 @@ public function checkTopupStatus(Request $request)
                 return back()->with('error', '❌ Transaksi GAGAL: ' . ($result['transactionStatusDesc'] ?? 'Failed'));
             }
         }
-        
+
         // TAMBAHKAN LOGIKA INI BOS:
     elseif ($resCode == '4043901') {
         // Jika DANA bilang tidak ketemu, tandai Gagal Permanen
@@ -898,15 +898,15 @@ public function bankAccountInquiry(Request $request)
 {
     // 1. Ambil Data dari Database (ID 11 sesuai data Anda)
     $aff = DB::table('affiliates')->where('id', 11)->first();
-    
+
     // Format customerNumber sesuai log: 6285745808809 (Tanpa DNID, Tanpa Spasi)
-    $customerNumber = "6285745808809"; 
+    $customerNumber = "6285745808809";
 
     // 2. Setup Variable Header & Path
     $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'); // Format: 2020-12-21T17:07:11+07:00
     $path = '/v1.0/emoney/bank-account-inquiry.htm';
     $externalId = (string) rand(1000000000, 9999999999) . rand(1000000000, 9999999999); // 20-36 digit unik
-    
+
     // 3. Request Body (Sesuai Dokumentasi JSON yang Anda berikan)
     $body = [
         "partnerReferenceNo" => "BNK" . time(), // Contoh: 2020102900000000000001
@@ -918,8 +918,8 @@ public function bankAccountInquiry(Request $request)
         ],
         "additionalInfo" => [
             "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-            "externalDivisionId"     => "SANCAKA216620080014040009735", // Dari Portal Anda
-            "chargeTarget"           => "DIVISION", // Wajib DIVISION jika ada externalDivisionId
+            //"externalDivisionId"     => "SANCAKA216620080014040009735", // Dari Portal Anda
+            //"chargeTarget"           => "DIVISION", // Wajib DIVISION jika ada externalDivisionId
             "beneficiaryBankCode"    => $request->bank_code,
             "beneficiaryAccountName" => $request->account_name ?? "",
             "accountType"            => "SETTLEMENT_ACCOUNT"
