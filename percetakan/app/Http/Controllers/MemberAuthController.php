@@ -986,7 +986,7 @@ public function checkTopupStatus(Request $request)
                 ];
 
                 return back()->with('success', "Rekening Valid: $accName ($bankName)")
-                             ->with('dana_report', $report);
+                             ->with('dana_report', $report)
                              ->withInput(); // <--- WAJIB ADA INI
             }
 
