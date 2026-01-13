@@ -1746,7 +1746,8 @@ public function cetakThermal($resi)
      * HELPER: Simpan Transaksi Keuangan (HANYA JIKA STATUS SUKSES)
      * Cash Basis: Pencatatan dilakukan saat paket benar-benar selesai.
      */
-    private function _simpanKeKeuangan(Pesanan $pesanan)
+    // Hapus 'private' dan '_', ganti jadi 'public static'
+    public static function simpanKeKeuangan(Pesanan $pesanan)
     {
         try {
             // ==========================================================
