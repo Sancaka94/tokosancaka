@@ -688,61 +688,73 @@ class CheckoutController extends Controller
         }
     }
 
-    /**
-     * =========================================================================
-     * DANA DIRECT DEBIT PAYMENT CREATION
-     * =========================================================================
-     */
     public function createPaymentDANA(Order $order)
     {
+        // 1. Bersihkan Invoice (Hanya Alfanumerik jika DANA menolak simbol)
+        // Tapi biasanya strip (-) diperbolehkan. Kita gunakan invoice asli dulu.
         $trxId = $order->invoice_number;
+
         Log::info('DANA CHECKOUT START: ' . $trxId);
 
         $user = Auth::user();
-        $returnUrl  = route('dana.return'); // Ensure this route exists
-        $notifyUrl  = route('dana.notify'); // Ensure this route exists
+
+        // 2. Pastikan Config Tidak Kosong
+        $merchantId = config('services.dana.merchant_id');
+        if (empty($merchantId)) {
+            Log::error('DANA CONFIG ERROR: Merchant ID kosong. Cek config/services.php');
+            return redirect()->route('checkout.index')->with('error', 'Konfigurasi Pembayaran DANA belum lengkap.');
+        }
+
+        // 3. Pastikan URL Valid (Absolute URL)
+        // Gunakan url() atau route() untuk memastikan http/https ada
+        $returnUrl = route('dana.return');
+        $notifyUrl = route('dana.notify');
+
+        // Waktu
         $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
+        // Format ValidUpTo yang paling aman untuk SNAP: Y-m-d\TH:i:sP
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // Prepare Request Body based on API Documentation
+        // 4. Susun Body dengan Casting Strict (String)
         $bodyArray = [
-            "partnerReferenceNo" => $trxId,
-            "merchantId" => config('services.dana.merchant_id'),
-            "amount" => [
-                "value" => number_format($order->total_amount, 2, '.', ''),
+            "partnerReferenceNo" => (string) $trxId,
+            "merchantId"         => (string) $merchantId, // WAJIB STRING
+            "amount"             => [
+                "value"    => number_format($order->total_amount, 2, '.', ''), // WAJIB STRING "10000.00"
                 "currency" => "IDR"
             ],
-            "validUpTo" => $expiryTime,
-            "urlParams" => [
+            "validUpTo"          => $expiryTime,
+            "urlParams"          => [
                 [
-                    "url" => $returnUrl,
-                    "type" => "PAY_RETURN",
-                    "isDeeplink" => "Y"
+                    "url"           => $returnUrl,
+                    "type"          => "PAY_RETURN",
+                    "isDeeplink"    => "Y"
                 ],
                 [
-                    "url" => $notifyUrl,
-                    "type" => "NOTIFICATION",
-                    "isDeeplink" => "Y"
+                    "url"           => $notifyUrl,
+                    "type"          => "NOTIFICATION",
+                    "isDeeplink"    => "Y" // SNAP biasanya minta Y atau N (string)
                 ]
             ],
-            "additionalInfo" => [
-                "productCode" => "51051000100000000001", // Required Product Code
-                "mcc" => "5732", // Merchant Category Code
-                "order" => [
-                    "orderTitle" => "Order " . $trxId,
+            "additionalInfo"     => [
+                // Pastikan productCode max 20 karakter
+                "productCode" => "51051000100000000001",
+                "mcc"         => "5732",
+                "order"       => [
+                    "orderTitle"        => mb_strimwidth("Order " . $trxId, 0, 40, "..."), // Limit panjang judul
                     "merchantTransType" => "01",
-                    "orderMemo" => "Pembayaran Order " . $trxId,
-                    "createdTime" => $timestamp,
-                    "buyer" => [
-                        "externalUserId" => (string) $user->id_pengguna,
+                    "orderMemo"         => "Pembayaran " . $trxId,
+                    "createdTime"       => $timestamp,
+                    "buyer"             => [
+                        // Pastikan ID user tidak null
+                        "externalUserId"   => (string) ($user->id_pengguna ?? 'GUEST_' . uniqid()),
                         "externalUserType" => "MERCHANT_USER",
-                        "nickname" => Str::limit($user->nama_lengkap ?? 'Guest', 40),
+                        "nickname"         => mb_strimwidth($user->nama_lengkap ?? 'Guest', 0, 40, ""),
                     ]
-                    // Note: 'goods' and 'shippingInfo' arrays can be added here if needed for fuller data
                 ],
-                "envInfo" => [
-                    "sourcePlatform" => "IPG",
-                    "terminalType" => "SYSTEM",
+                "envInfo"     => [
+                    "sourcePlatform"    => "IPG",
+                    "terminalType"      => "SYSTEM",
                     "orderTerminalType" => "WEB",
                 ]
             ]
@@ -750,51 +762,47 @@ class CheckoutController extends Controller
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        // API Endpoint for Direct Debit
+        // API Endpoint Direct Debit
         $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
         try {
              $accessToken = $this->danaSignature->getAccessToken();
-             $signature = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
+             $signature   = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
 
-             $baseUrl = (config('services.dana.dana_env') == 'PRODUCTION')
+             // Cek ENV untuk URL Base
+             $danaEnv = strtoupper(config('services.dana.dana_env', 'SANDBOX'));
+             $baseUrl = ($danaEnv === 'PRODUCTION')
                         ? 'https://api.dana.id'
                         : 'https://api.sandbox.dana.id';
 
              $response = Http::withHeaders([
                 'Authorization'  => 'Bearer ' . $accessToken,
-                'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+                'X-PARTNER-ID'   => config('services.dana.x_partner_id', '2000001'), // Default sandbox
                 'X-EXTERNAL-ID'  => Str::random(32),
                 'X-TIMESTAMP'    => $timestamp,
                 'X-SIGNATURE'    => $signature,
                 'Content-Type'   => 'application/json',
-                'CHANNEL-ID'     => '95221',
-                'ORIGIN'         => config('services.dana.origin'),
+                'CHANNEL-ID'     => '95221', // Biasanya channel Web
+                'ORIGIN'         => config('app.url'), // Origin dari web kita
             ])->withBody($jsonBody, 'application/json')
               ->post($baseUrl . $relativePath);
 
             $result = $response->json();
 
-            // Check for Success Code 2005400
+            // Cek Success Code SNAP (2005400 = Success)
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
-
-                // Get Redirect URL
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
-
                 if($redirectUrl) {
-                    // Update Order with Payment URL
                     $order->payment_url = $redirectUrl;
                     $order->save();
-
-                    session()->forget('cart'); // Clear cart on successful URL generation
-                    Log::info("DANA Direct Debit URL saved for Order $trxId: " . $redirectUrl);
-
+                    session()->forget('cart');
+                    Log::info("DANA URL generated: " . $redirectUrl);
                     return redirect()->away($redirectUrl);
                 }
             }
 
             Log::error('DANA Checkout Failed:', $result);
-            return redirect()->route('checkout.index')->with('error', 'Gagal inisialisasi pembayaran DANA: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+            return redirect()->route('checkout.index')->with('error', 'Gagal inisialisasi DANA: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 
         } catch (\Exception $e) {
             Log::error('DANA Connection Error: ' . $e->getMessage());
