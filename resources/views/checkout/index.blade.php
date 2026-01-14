@@ -367,7 +367,6 @@
     </div>
 </div>
 
-<!-- Payment Method Modal -->
 <div id="paymentModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 hidden transition-opacity">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 transform transition-all">
         <div class="flex justify-between items-center p-4 border-b">
@@ -378,124 +377,74 @@
         </div>
         <div class="p-2">
             <ul id="paymentOptionsList" class="max-h-[60vh] overflow-y-auto space-y-2 p-4">
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
-                     data-value="cash"
-                     data-label="Saldo Sancaka"
-                     data-img="{{ asset('public/assets/saldo.png') }}">
-                     <img src="{{ asset('public/assets/saldo.png') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">Saldo {{ $user->nama_lengkap }}: (Rp{{ number_format(Auth::user()->saldo, 0, ',', '.') }})</span>
-                 </li>
 
-                 <!-- PENAMBAHAN DOKU -->
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
-                     data-value="DOKU_JOKUL"
-                     data-label="Doku (Kartu Kredit, E-Wallet, dll)"
-                     data-img="{{ asset('public/assets/doku.png') }}">
-                     <img src="{{ asset('public/assets/doku.png') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">Rekomendasi Sancaka (Kartu Kredit, E-Wallet, dll)</span>
-                 </li>
-                 <!-- AKHIR PENAMBAHAN DOKU -->
-
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
-                    data-value="DANA"
-                    data-label="DANA (Bebas Biaya Admin)"
-                    data-img="{{ asset('public/assets/dana.webp') }}">
-                    <img src="{{ asset('public/assets/dana.webp') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">DANA Otomatis</span>
+                {{-- 1. OPSI INTERNAL (SALDO) --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
+                    data-value="cash"
+                    data-label="Saldo Sancaka"
+                    data-img="{{ asset('public/assets/saldo.png') }}">
+                    <img src="{{ asset('public/assets/saldo.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <span class="text-sm font-medium text-gray-900">Saldo {{ Auth::user()->nama_lengkap }}: (Rp{{ number_format(Auth::user()->saldo, 0, ',', '.') }})</span>
                 </li>
 
-                 <li id="codPaymentOption" class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
-                     data-value="cod"
-                     data-label="COD"
-                     data-img="{{ asset('public/assets/cod.png') }}">
-                     <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">COD (Cash on Delivery)</span>
-                 </li>
-                 <!-- PENAMBAHAN CODBARANG -->
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
-                     data-value="CODBARANG"
-                     data-label="COD BARANG"
-                     data-img="{{ asset('public/assets/cod.png') }}">
-                     <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">COD BARANG</span>
-                 </li>
-                 <!-- AKHIR PENAMBAHAN -->
+                {{-- 2. OPSI KHUSUS (DOKU) --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
+                    data-value="DOKU_JOKUL"
+                    data-label="Doku (Kartu Kredit, E-Wallet, dll)"
+                    data-img="{{ asset('public/assets/doku.png') }}">
+                    <img src="{{ asset('public/assets/doku.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <span class="text-sm font-medium text-gray-900">Rekomendasi Sancaka (Kartu Kredit, E-Wallet, dll)</span>
+                </li>
 
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="PERMATAVA" data-label="Permata Virtual Account" data-img="{{ asset('public/assets/permata.webp') }}">
-                     <img src="{{ asset('public/assets/permata.webp') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">Permata Virtual Account</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="BNIVA" data-label="BNI Virtual Account" data-img="{{ asset('public/assets/bni.webp') }}">
-                     <img src="{{ asset('public/assets/bni.webp') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">BNI Virtual Account</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="BRIVA" data-label="BRI Virtual Account" data-img="{{ asset('public/assets/bri.webp') }}">
-                     <img src="{{ asset('public/assets/bri.webp') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">BRI Virtual Account</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="MANDIRIVA" data-label="Mandiri Virtual Account" data-img="{{ asset('public/assets/mandiri.webp') }}">
-                     <img src="{{ asset('public/assets/mandiri.webp') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">Mandiri Virtual Account</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="BCAVA" data-label="BCA Virtual Account" data-img="{{ asset('public/assets/bca.webp') }}">
-                     <img src="{{ asset('public/assets/bca.webp') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">BCA Virtual Account</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="MUAMALATVA" data-label="Muamalat Virtual Account" data-img="{{ asset('public/assets/muamalat.png') }}">
-                     <img src="{{ asset('public/assets/muamalat.png') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">Muamalat Virtual Account</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="CIMBVA" data-label="CIMB Niaga Virtual Account" data-img="{{ asset('public/assets/cimb.svg') }}">
-                     <img src="{{ asset('public/assets/cimb.svg') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">CIMB Niaga Virtual Account</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="BSIVA" data-label="BSI Virtual Account" data-img="{{ asset('public/assets/bsi.png') }}">
-                     <img src="{{ asset('public/assets/bsi.png') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">BSI Virtual Account</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="OCBCVA" data-label="OCBC NISP Virtual Account" data-img="{{ asset('public/assets/ocbc.png') }}">
-                     <img src="{{ asset('public/assets/ocbc.png') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">OCBC NISP Virtual Account</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="DANAMONVA" data-label="Danamon Virtual Account" data-img="{{ asset('public/assets/danamon.png') }}">
-                     <img src="{{ asset('public/assets/danamon.png') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">Danamon Virtual Account</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="OTHERBANKVA" data-label="Other Bank Virtual Account" data-img="{{ asset('public/assets/other.png') }}">
-                     <img src="{{ asset('public/assets/other.png') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">Other Bank Virtual Account</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="ALFAMART" data-label="Alfamart" data-img="{{ asset('public/assets/alfamart.webp') }}">
-                     <img src="{{ asset('public/assets/alfamart.webp') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">Alfamart</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="INDOMARET" data-label="Indomaret" data-img="{{ asset('public/assets/indomaret.webp') }}">
-                     <img src="{{ asset('public/assets/indomaret.webp') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">Indomaret</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="ALFAMIDI" data-label="Alfamidi" data-img="{{ asset('public/assets/Alfamidi.png') }}">
-                     <img src="{{ asset('public/assets/Alfamidi.png') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">Alfamidi</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="OVO" data-label="OVO" data-img="{{ asset('public/assets/ovo.webp') }}">
-                     <img src="{{ asset('public/assets/ovo.webp') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">OVO</span>
-                 </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="QRIS" data-label="QRIS" data-img="{{ asset('public/assets/qris2.png') }}">
-                     <img src="{{ asset('public/assets/qris2.png') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">QRIS</span>
-                 </li>
+                {{-- 3. OPSI OTOMATIS DARI TRIPAY (MENGGANTIKAN MAPPING MANUAL) --}}
+                @if(isset($tripayChannels) && count($tripayChannels) > 0)
+                    {{-- Header Opsional untuk memisahkan --}}
+                    <li class="px-2 pt-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Metode Pembayaran Otomatis</li>
 
-                 {{-- <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="DANA" data-label="DANA" data-img="{{ asset('public/assets/dana.webp') }}">
-                     <img src="{{ asset('public/assets/dana.webp') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">DANA</span>
-                 </li> --}}
+                    @foreach($tripayChannels as $channel)
+                        <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
+                            data-value="{{ $channel['code'] }}"
+                            data-label="{{ $channel['name'] }}"
+                            data-img="{{ $channel['icon_url'] }}">
 
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="SHOPEEPAY" data-label="ShopeePay" data-img="{{ asset('public/assets/shopeepay.webp') }}">
-                     <img src="{{ asset('public/assets/shopeepay.webp') }}" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">ShopeePay</span>
-                 </li>
-             </ul>
+                            {{-- Logo dari Tripay --}}
+                            <img src="{{ $channel['icon_url'] }}"
+                                 alt="{{ $channel['name'] }}"
+                                 class="h-8 w-8 object-contain mr-4"
+                                 onerror="this.src='https://placehold.co/32x32?text=IMG'">
+
+                            {{-- Nama Metode --}}
+                            <span class="text-sm font-medium text-gray-900">
+                                {{ $channel['name'] }}
+                            </span>
+                        </li>
+                    @endforeach
+                @else
+                    <li class="p-4 text-center text-gray-500 text-sm border border-dashed rounded-lg">
+                        Gagal memuat metode pembayaran otomatis.
+                    </li>
+                @endif
+
+                {{-- 4. OPSI INTERNAL (COD) --}}
+                <li class="px-2 pt-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Bayar Ditempat</li>
+
+                <li id="codPaymentOption" class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
+                    data-value="cod"
+                    data-label="COD (Bayar Ongkir)"
+                    data-img="{{ asset('public/assets/cod.png') }}">
+                    <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <span class="text-sm font-medium text-gray-900">COD (Cash on Delivery)</span>
+                </li>
+
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
+                    data-value="CODBARANG"
+                    data-label="COD BARANG"
+                    data-img="{{ asset('public/assets/cod.png') }}">
+                    <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <span class="text-sm font-medium text-gray-900">COD BARANG</span>
+                </li>
+
+            </ul>
         </div>
         <div class="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg space-x-4">
             <button type="button" id="backButton" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Kembali</button>
