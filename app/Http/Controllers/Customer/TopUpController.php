@@ -1549,11 +1549,8 @@ public function checkTopupStatus(Request $request)
         }
     }
 
-    //**
-     * =========================================================================
-     * GAPURA CONSULT PAY (FIXED: Support Kode 2005700)
-     * =========================================================================
-     */
+    // Dana Cek Payment Methods (Perbaikan Utama)
+
     public function consultPaymentMethods(Request $request)
     {
         Log::info('================ [GAPURA CONSULT START] ================');
