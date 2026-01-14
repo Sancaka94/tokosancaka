@@ -609,44 +609,39 @@ class CheckoutController extends Controller
                     $order->payment_url = $paymentUrl;
 
                 } else {
-                    // === LOGIKA BARU TRIPAY (OTOMATIS & BERSIH) ===
-                    Log::info('Memulai proses TRIPAY Marketplace untuk ' . $order->invoice_number);
+                Log::info('Memulai proses TRIPAY Marketplace untuk ' . $order->invoice_number);
 
-                    // 1. Panggil Helper Function (Kode jadi lebih pendek)
-                    $tripayResult = $this->_createTripayTransaction(
-                        $order,
-                        $request->payment_method, // Kode channel (misal: BRIVA, QRIS, ALFAMART)
-                        $grand_total,
-                        $user->nama_lengkap,
-                        $user->email,
-                        $user->no_wa,
-                        $orderItemsPayload // Array item yang sudah Anda buat sebelumnya
-                    );
+                // 1. Buat Transaksi ke Tripay
+                $tripayResult = $this->_createTripayTransaction(
+                    $order,
+                    $request->payment_method,
+                    $grand_total,
+                    $user->nama_lengkap,
+                    $user->email,
+                    $user->no_wa,
+                    $orderItemsPayload
+                );
 
-                    // 2. Cek Hasil
-                    if ($tripayResult['success']) {
-                        $tripayData = $tripayResult['data'];
+                if ($tripayResult['success']) {
+                    $tripayData = $tripayResult['data'];
 
-                        // 3. LOGIKA URL OTOMATIS (Tanpa If-Else Manual)
-                        // Ambil checkout_url (Halaman Instruksi Resmi Tripay) sebagai prioritas utama
-                        $paymentUrl = $tripayData['checkout_url']
-                                      ?? $tripayData['pay_url']
-                                      ?? $tripayData['qr_url']
-                                      ?? null;
+                    // 2. SIMPAN DATA PENTING KE DATABASE (INI KUNCINYA)
+                    // Simpan Link Redirect (Shopee/OVO/Dana)
+                    $order->payment_url = $tripayData['checkout_url'] ?? $tripayData['pay_url'] ?? null;
 
-                        // Fallback khusus jika URL kosong tapi ada kode bayar (Jaga-jaga)
-                        if (!$paymentUrl && !empty($tripayData['pay_code'])) {
-                            // Untuk VA/Retail, kadang kita butuh 'pay_code' saja jika mau custom UI.
-                            // Tapi agar aman, pastikan field database support text biasa,
-                            // atau biarkan null agar user lihat di halaman invoice nanti.
-                        }
+                    // Simpan Nomor VA / Kode Bayar (BCA/BRI/Alfa) -> Masuk ke kolom baru
+                    $order->pay_code = $tripayData['pay_code'] ?? null;
 
-                        $order->payment_url = $paymentUrl;
-                    } else {
-                        // Jika gagal, lempar error agar transaksi di-rollback
-                        throw new \Exception($tripayResult['message']);
-                    }
+                    // Simpan URL QRIS (Jika QRIS) -> Masuk ke kolom baru
+                    $order->qr_url = $tripayData['qr_url'] ?? null;
+
+                    $order->save(); // Simpan perubahan ke DB
+
+                } else {
+                    throw new \Exception($tripayResult['message']);
                 }
+            }
+            // --- 7. Selesai Semua, Commit Transaksi ---
             }
 
             $order->save();

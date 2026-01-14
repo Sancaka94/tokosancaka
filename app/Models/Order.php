@@ -22,9 +22,9 @@ class Order extends Model
 
     use HasFactory, SoftDeletes; // Hapus SoftDeletes jika tidak digunakan
 
-    
 
-    
+
+
 
     protected $table = 'orders'; // Eksplisit mendefinisikan nama tabel
 
@@ -67,6 +67,10 @@ class Order extends Model
         'idempotency_key',
         'item_price',         // Biarkan jika masih dipakai
         'total_harga_barang',
+        // === TAMBAHKAN DUA BARIS INI ===
+        'pay_code', // Untuk Nomor VA / Kode Bayar
+        'qr_url',   // Untuk Link Gambar QRIS
+        // ===============================
 
     ];
 
@@ -88,7 +92,7 @@ class Order extends Model
 
     }
 
-    
+
 
     public function store()
 
@@ -115,8 +119,8 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
 
     }
-    
-    
+
+
     // =============================================
     // TAMBAHKAN TIGA FUNGSI HELPER DI BAWAH INI
     // =============================================
