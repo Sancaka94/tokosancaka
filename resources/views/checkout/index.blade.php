@@ -396,6 +396,29 @@
                     <span class="text-sm font-medium text-gray-900">Rekomendasi Sancaka (Kartu Kredit, E-Wallet, dll)</span>
                 </li>
 
+                {{-- OPSI DANA (DIRECT DEBIT) --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
+                    data-value="DANA"
+                    data-label="DANA Indonesia"
+                    data-img="{{ asset('public/assets/dana.webp') }}">
+
+                    {{-- Logo DANA --}}
+                    <img src="{{ asset('public/assets/dana.webp') }}"
+                         alt="DANA"
+                         class="h-8 w-8 object-contain mr-4"
+                         onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">DANA</span>
+                        <span class="text-xs text-gray-500">Sambungkan akun DANA (Direct Debit)</span>
+                    </div>
+
+                    {{-- Badge Bebas Admin (Opsional, pemanis tampilan) --}}
+                    <span class="ml-auto bg-blue-100 text-blue-800 text-[10px] font-semibold px-2 py-0.5 rounded">
+                        Otomatis
+                    </span>
+                </li>
+
                 {{-- 3. OPSI OTOMATIS DARI TRIPAY (MENGGANTIKAN MAPPING MANUAL) --}}
                 @if(isset($tripayChannels) && count($tripayChannels) > 0)
                     {{-- Header Opsional untuk memisahkan --}}
