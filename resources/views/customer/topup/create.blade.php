@@ -9,11 +9,10 @@
     <div class="mt-8">
         {{-- ========================================================== --}}
         {{-- PERBAIKAN: Inisialisasi paymentMethod dengan old() --}}
-        {{-- Ini penting agar dropdown & upload box muncul jika validasi gagal --}}
         {{-- ========================================================== --}}
         <div x-data="{ paymentMethod: '{{ old('payment_method', '') }}' }" class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg">
             <div class="p-6 md:p-8">
-                
+
                 {{-- Menampilkan error validasi jika ada --}}
                 @if ($errors->any())
                     <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
@@ -25,7 +24,7 @@
                         </ul>
                     </div>
                 @endif
-                
+
                 {{-- Menampilkan error session jika ada --}}
                 @if (session('error'))
                     <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
@@ -44,24 +43,32 @@
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <span class="text-gray-500 sm:text-sm">Rp</span>
                             </div>
+                            {{-- Tambahkan ID="amount" agar bisa dibaca JQuery --}}
                             <input type="number" name="amount" id="amount" class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-12 sm:text-sm border-gray-300 rounded-md" placeholder="10000" min="10000" required value="{{ old('amount') }}">
                         </div>
                         <p class="mt-2 text-xs text-gray-500">Minimal top up adalah Rp 10.000.</p>
+
+                        {{-- Area untuk menampilkan hasil Consult Pay (Logo Payment yang tersedia) --}}
+                        <div id="payment-methods-preview" class="mt-2 hidden">
+                            <span class="text-xs font-semibold text-gray-600">Metode Tersedia:</span>
+                            <div id="payment-icons" class="flex flex-wrap gap-2 mt-1">
+                                {{-- Icon akan muncul di sini via AJAX --}}
+                            </div>
+                        </div>
                     </div>
 
-                    
+
                     <div class="space-y-6">
                         <div class="mb-6">
                             <label for="payment_method" class="block text-sm font-medium text-gray-700">Pilih Metode Pembayaran</label>
-                            
+
                             <select id="payment_method" name="payment_method" x-model="paymentMethod"
-                                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 
-                                           focus:outline-none focus:ring-blue-500 focus:border-blue-500 
+                                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300
+                                           focus:outline-none focus:ring-blue-500 focus:border-blue-500
                                            sm:text-sm rounded-md" required>
-                                
-                                {{-- PERBAIKAN: Hapus 'selected' agar x-model bisa mengontrol --}}
+
                                 <option value="" disabled>-- Pilih Metode Pembayaran --</option>
-                                
+
                                 {{-- Grup 1: Manual --}}
                                 <optgroup label="Transfer Manual (Konfirmasi Admin)">
                                     <option value="TRANSFER_MANUAL">Transfer Bank (Upload Bukti)</option>
@@ -71,11 +78,7 @@
                                 <optgroup label="DOKU (Otomatis)">
                                     <option value="DOKU_JOKUL">DOKU (Semua Bank, E-Wallet, QRIS)</option>
                                 </optgroup>
-                                
-                                {{-- ========================================================== --}}
-                                {{-- PERBAIKAN: Mengelompokkan semua opsi Tripay --}}
-                                {{-- ========================================================== --}}
-                                
+
                                 {{-- Grup 3: Tripay - QRIS & E-Wallet --}}
                                 <optgroup label="Tripay (Otomatis) - QRIS & E-Wallet">
                                     <option value="QRIS">QRIS (Semua E-Wallet & M-Banking)</option>
@@ -94,8 +97,7 @@
                                     <option value="PERMATAVA">Permata Virtual Account</option>
                                     <option value="CIMBVA">CIMB Niaga Virtual Account</option>
                                     <option value="DANAMONVA">Danamon Virtual Account</option>
-                                    {{-- Pastikan kode BSI Anda 'BSIH2H' atau 'BSIVA' sesuai di Tripay --}}
-                                    <option value="BSIVA">BSI Virtual Account</option> 
+                                    <option value="BSIVA">BSI Virtual Account</option>
                                     <option value="MUAMALATVA">Bank Muamalat Virtual Account</option>
                                 </optgroup>
 
@@ -107,19 +109,8 @@
                                     <option value="DAN_DAN">Dan+Dan</option>
                                     <option value="LAWSON">Lawson</option>
                                 </optgroup>
-                                
-                                {{-- CATATAN: Opsi Bank Transfer (Manual) dari Tripay dihapus --}}
-                                {{-- agar tidak membingungkan dengan 'Transfer Manual (Upload Bukti)' --}}
-
                             </select>
                         </div>
-
-                        {{-- ========================================================== --}}
-                        {{-- === PERUBAHAN: Kotak Upload Bukti Transfer DIHAPUS === --}}
-                        {{-- ========================================================== --}}
-                        {{-- <div x-show="paymentMethod === 'TRANSFER_MANUAL'" ...> ... </div> --}}
-                        {{-- ========================================================== --}}
-
                     </div>
 
                     <div class="mt-8">
@@ -131,4 +122,66 @@
             </div>
         </div>
     </div>
+
+    {{--
+       SCRIPT AJAX UNTUK CONSULT PAY (GAPURA)
+       Pastikan layout Anda memuat jQuery. Jika tidak, tambahkan CDN jQuery di head layout.
+    --}}
+    @push('scripts')
+    {{-- Jika error, ganti @push('scripts') dengan <script> biasa --}}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            let typingTimer;
+            const doneTypingInterval = 1000; // Tunggu 1 detik setelah user berhenti mengetik
+            const $input = $('#amount');
+            const $previewArea = $('#payment-methods-preview');
+            const $iconArea = $('#payment-icons');
+
+            $input.on('keyup', function () {
+                clearTimeout(typingTimer);
+                if ($input.val()) {
+                    typingTimer = setTimeout(cekMetodePembayaran, doneTypingInterval);
+                }
+            });
+
+            function cekMetodePembayaran() {
+                let nominal = $input.val();
+                if(nominal < 10000) return; // Minimal 10rb baru cek
+
+                $iconArea.html('<span class="text-gray-400 text-xs">Mengecek metode pembayaran...</span>');
+                $previewArea.removeClass('hidden');
+
+                $.ajax({
+                    url: "{{ route('topup.consult') }}", // Pastikan route ini ada di web.php
+                    method: "POST",
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        amount: nominal
+                    },
+                    success: function(response) {
+                        $iconArea.empty();
+                        if(response.success && response.data.length > 0) {
+                            // Loop data dan tampilkan badge/icon sederhana
+                            $.each(response.data, function(index, item) {
+                                // Contoh tampilan badge sederhana
+                                let badge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                                ${item.option.replace(/_/g, ' ')}
+                                             </span>`;
+                                $iconArea.append(badge);
+                            });
+                        } else {
+                            $iconArea.html('<span class="text-red-400 text-xs">Tidak ada metode pembayaran khusus ditemukan.</span>');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error("Gagal consult pay");
+                        $iconArea.html('<span class="text-gray-400 text-xs">Gagal memuat info promo.</span>');
+                    }
+                });
+            }
+        });
+    </script>
+    @endpush
+
 @endsection
