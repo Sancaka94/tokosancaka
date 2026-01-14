@@ -1552,103 +1552,122 @@ public function checkTopupStatus(Request $request)
     /**
      * =========================================================================
      * GAPURA CONSULT PAY (Cek Metode Pembayaran Tersedia)
+     * DENGAN FULL LOGGING KE laravel.log
      * =========================================================================
      */
     public function consultPaymentMethods(Request $request)
     {
-        // 1. Validasi Input
-        $request->validate([
-            'amount' => 'required|numeric|min:100',
+        // [LOG 1] Request Masuk
+        Log::info('================ [GAPURA CONSULT START] ================');
+        Log::info('[GAPURA] 1. Request Masuk dari User', [
+            'user_id' => Auth::id(),
+            'ip'      => $request->ip(),
+            'amount'  => $request->amount
         ]);
 
-        // Ambil ID dari Config (Pastikan sudah ada di .env)
-        $merchantId = config('services.dana.merchant_id');
-        $clientId   = config('services.dana.x_partner_id');
-
-        // 2. Siapkan Parameter Header
-        $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'); // Format ISO 8601
-        $externalId = (string) time() . Str::random(8); // Unique ID per request
-        $path       = '/v1.0/payment-gateway/consult-pay.htm';
-
-        // 3. Siapkan Body Request (Sesuai Dokumentasi Gapura)
-        $body = [
-            "merchantId" => $merchantId,
-            "amount" => [
-                "value"    => number_format((float)$request->amount, 2, '.', ''), // Format 10000.00
-                "currency" => "IDR"
-            ],
-            // "externalStoreId" => "OPTIONAL_STORE_ID", // Aktifkan jika punya Store ID spesifik
-            "additionalInfo" => [
-                "buyer" => [
-                    // Data user yang sedang login (Opsional tapi disarankan)
-                    "nickname"       => Auth::user()->name ?? 'Guest',
-                    "externalUserId" => (string) (Auth::id() ?? 'GUEST-' . time()),
-                ],
-                "envInfo" => [
-                    "sourcePlatform"     => "IPG",
-                    "terminalType"       => "SYSTEM",
-                    "orderTerminalType"  => "WEB",
-                    "clientIp"           => $request->ip(),
-                    "websiteLanguage"    => "id_ID",
-                    // Session ID & Token ID bisa di-generate random jika tidak ada tracking khusus
-                    "sessionId"          => Session::getId(),
-                    "tokenId"            => Str::uuid()->toString(),
-                    "osType"             => "Web Browser",
-                    "appVersion"         => "1.0",
-                    "merchantAppVersion" => "1.0"
-                ],
-                // "merchantTransType" => "General" // Opsional
-            ]
-        ];
-
-        // 4. Generate Signature (SNAP Asymmetric)
-        // Urutan: POST + Path + HashedBody + Timestamp
-        $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
-        $hashedBody   = strtolower(hash('sha256', $jsonBody));
-        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-
-        // Gunakan method generateSignature yang sudah ada di Controller Anda
-        $signature    = $this->generateSignature($stringToSign);
-
-        // 5. Setup Headers
-        $headers = [
-            'Content-Type'  => 'application/json',
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'X-PARTNER-ID'  => $clientId,
-            'X-EXTERNAL-ID' => $externalId,
-            'CHANNEL-ID'    => '95221', // Sesuai dokumen
-            'ORIGIN'        => config('app.url'), // Domain website Anda
-        ];
-
         try {
-            Log::info('[GAPURA CONSULT] Checking Payment Methods...', ['amount' => $request->amount]);
+            // 1. Validasi Input
+            $request->validate([
+                'amount' => 'required|numeric|min:100',
+            ]);
+
+            // Ambil Config
+            $merchantId = config('services.dana.merchant_id');
+            $clientId   = config('services.dana.x_partner_id');
+
+            // 2. Siapkan Parameter
+            $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $externalId = (string) time() . Str::random(8);
+            $path       = '/v1.0/payment-gateway/consult-pay.htm';
+
+            // 3. Siapkan Body
+            $body = [
+                "merchantId" => $merchantId,
+                "amount" => [
+                    "value"    => number_format((float)$request->amount, 2, '.', ''),
+                    "currency" => "IDR"
+                ],
+                "additionalInfo" => [
+                    "buyer" => [
+                        "nickname"       => Auth::user()->nama_lengkap ?? 'Guest',
+                        "externalUserId" => (string) (Auth::id() ?? 'GUEST-' . time()),
+                    ],
+                    "envInfo" => [
+                        "sourcePlatform"     => "IPG",
+                        "terminalType"       => "SYSTEM",
+                        "orderTerminalType"  => "WEB",
+                        "clientIp"           => $request->ip(),
+                        "websiteLanguage"    => "id_ID",
+                        "sessionId"          => Session::getId(),
+                        "tokenId"            => Str::uuid()->toString(),
+                        "osType"             => "Web Browser",
+                        "appVersion"         => "1.0",
+                        "merchantAppVersion" => "1.0"
+                    ]
+                ]
+            ];
+
+            // [LOG 2] Body Request (Penting cek format angka amount disini)
+            Log::info('[GAPURA] 2. Body Payload Prepared', $body);
+
+            // 4. Generate Signature
+            $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
+            $hashedBody   = strtolower(hash('sha256', $jsonBody));
+            $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
+            // [LOG 3] Cek String To Sign (Untuk debugging jika 401 Unauthorized)
+            Log::debug('[GAPURA] 3. Signature Source String', ['str' => $stringToSign]);
+
+            $signature = $this->generateSignature($stringToSign);
+
+            // 5. Setup Headers
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => $clientId,
+                'X-EXTERNAL-ID' => $externalId,
+                'CHANNEL-ID'    => '95221',
+                'ORIGIN'        => config('app.url'),
+            ];
+
+            // [LOG 4] Headers & Endpoint
+            Log::info('[GAPURA] 4. Sending Request...', [
+                'url' => 'https://api.sandbox.dana.id' . $path,
+                'headers' => $headers
+            ]);
 
             // 6. Kirim Request
             $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
-                ->post('https://api.sandbox.dana.id' . $path); // Ganti ke Production URL jika live
+                ->post('https://api.sandbox.dana.id' . $path);
 
             $result = $response->json();
-            $resCode = $result['responseCode'] ?? '500';
+            $httpStatus = $response->status();
 
-            Log::info('[GAPURA CONSULT] Response:', ['code' => $resCode, 'msg' => $result['responseMessage'] ?? '-']);
+            // [LOG 5] Terima Response Mentah
+            Log::info('[GAPURA] 5. Response Received', [
+                'http_status' => $httpStatus,
+                'body' => $result
+            ]);
+
+            $resCode = $result['responseCode'] ?? 'UNKNOWN';
 
             // 7. Handle Response
             if ($resCode == '2000000') {
-                // SUKSES: Ambil list metode pembayaran
                 $paymentMethods = $result['paymentInfos'] ?? [];
 
-                // Mapping agar mudah dibaca di Frontend
+                // [LOG 6] Sukses & Jumlah Metode
+                Log::info('[GAPURA] 6. SUCCESS. Methods found: ' . count($paymentMethods));
+
                 $availableMethods = collect($paymentMethods)->map(function($item) {
                     return [
-                        'method' => $item['payMethod'], // Contoh: VIRTUAL_ACCOUNT
-                        'option' => $item['payOption'], // Contoh: VIRTUAL_ACCOUNT_BCA
+                        'method' => $item['payMethod'],
+                        'option' => $item['payOption'],
                         'promo'  => isset($item['promoInfos']) ? 'Ada Promo' : 'Normal'
                     ];
                 });
 
-                // Return JSON untuk dipakai frontend (misal ditampilkan di dropdown/modal)
                 return response()->json([
                     'success' => true,
                     'data'    => $availableMethods,
@@ -1656,16 +1675,30 @@ public function checkTopupStatus(Request $request)
                 ]);
             }
 
-            // GAGAL
+            // GAGAL dari API DANA
+            // [LOG 7] Gagal logic (misal saldo kurang, maintenance, param salah)
+            Log::warning('[GAPURA] 7. FAILED RESPONSE CODE: ' . $resCode, [
+                'message' => $result['responseMessage'] ?? 'No Message'
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengambil metode pembayaran: ' . ($result['responseMessage'] ?? 'Unknown Error'),
+                'message' => 'Gateway Error: ' . ($result['responseMessage'] ?? 'Unknown'),
                 'code'    => $resCode
             ], 400);
 
         } catch (\Exception $e) {
-            Log::error('[GAPURA CONSULT] Error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'System Error'], 500);
+            // [LOG 8] Critical Error (Kodingan crash/Exception)
+            Log::error('[GAPURA] 8. CRITICAL EXCEPTION', [
+                'msg'  => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Internal Server Error: ' . $e->getMessage()
+            ], 500);
         }
     }
 }
