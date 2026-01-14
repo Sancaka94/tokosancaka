@@ -106,43 +106,31 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-        // ============================================================
-        // === MODE DEBUG TRIPAY (TANPA CACHE) ========================
-        // ============================================================
-        $apiKey  = config('tripay.api_key');
-        $mode    = config('tripay.mode');
+        // --- DEBUG START (TEMPEL INI SEMENTARA) ---
+        $apiKey = config('tripay.api_key');
+        $mode = config('tripay.mode');
         $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
 
-        // Cek Config Dulu
-        if(empty($apiKey)) {
-            dd("ERROR: API Key Tripay Kosong! Cek file .env Anda bagian TRIPAY_API_KEY.");
-        }
-
         try {
-            // Kita tembak langsung tanpa Cache untuk melihat errornya
             $response = Http::withToken($apiKey)->get($baseUrl . '/merchant/payment-channel');
 
+            // JIKA GAGAL, TAMPILKAN LAYAR HITAM ERRORNYA
             if ($response->failed()) {
-                // JIKA ERROR, TAMPILKAN DI LAYAR (SUPAYA KITA TAHU SEBABNYA)
                 dd([
-                    'Status' => 'Koneksi ke Tripay Gagal',
-                    'HTTP Code' => $response->status(),
-                    'Pesan Error Tripay' => $response->json(),
-                    'Mode' => $mode,
-                    'URL' => $baseUrl . '/merchant/payment-channel',
-                    'Cek API Key (Depan)' => substr($apiKey, 0, 5) . '...', // Cek apakah key terbaca
+                    'STATUS' => 'GAGAL KONEKSI KE TRIPAY',
+                    'MODE' => $mode . ' (Pastikan ini sesuai credential)',
+                    'URL' => $baseUrl,
+                    'PESAN DARI TRIPAY' => $response->json()
                 ]);
             }
 
-            // Jika sukses, ambil datanya
+            // Jika Sukses
             $tripayChannels = $response->json()['data'] ?? [];
 
         } catch (\Exception $e) {
-            dd("ERROR KONEKSI: " . $e->getMessage());
+            dd("KONEKSI ERROR: " . $e->getMessage());
         }
-        // ============================================================
-        // === AKHIR MODE DEBUG =======================================
-        // ============================================================
+        // --- DEBUG END ---
 
 
         $user = Auth::user();
