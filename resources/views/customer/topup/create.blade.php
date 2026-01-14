@@ -127,17 +127,20 @@
        SCRIPT AJAX UNTUK CONSULT PAY (GAPURA)
        Pastikan layout Anda memuat jQuery. Jika tidak, tambahkan CDN jQuery di head layout.
     --}}
-    @push('scripts')
+
     {{-- Jika error, ganti @push('scripts') dengan <script> biasa --}}
+    @push('scripts')
+    {{-- Pastikan jQuery sudah dimuat --}}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
             let typingTimer;
-            const doneTypingInterval = 1000; // Tunggu 1 detik setelah user berhenti mengetik
+            const doneTypingInterval = 1000; // Delay 1 detik
             const $input = $('#amount');
             const $previewArea = $('#payment-methods-preview');
             const $iconArea = $('#payment-icons');
 
+            // Event Listener saat mengetik
             $input.on('keyup', function () {
                 clearTimeout(typingTimer);
                 if ($input.val()) {
@@ -145,38 +148,91 @@
                 }
             });
 
+            // Event Listener saat nilai berubah (misal copas/spinner)
+            $input.on('change', function () {
+                clearTimeout(typingTimer);
+                cekMetodePembayaran();
+            });
+
             function cekMetodePembayaran() {
                 let nominal = $input.val();
-                if(nominal < 10000) return; // Minimal 10rb baru cek
 
-                $iconArea.html('<span class="text-gray-400 text-xs">Mengecek metode pembayaran...</span>');
+                // [LOG 1] Cek Nominal Awal
+                console.log('[FRONTEND] Cek Nominal:', nominal);
+
+                if(nominal < 10000) {
+                    console.log('[FRONTEND] Nominal kurang dari 10.000, batalkan request.');
+                    $previewArea.addClass('hidden');
+                    return;
+                }
+
+                // Tampilkan Loading
+                $iconArea.html('<span class="text-gray-400 text-xs animate-pulse">Sedang mengecek promo & metode pembayaran...</span>');
                 $previewArea.removeClass('hidden');
 
+                // [LOG 2] Mulai Mengirim Request AJAX
+                console.log('[FRONTEND] Mengirim request ke: {{ route("topup.consult") }}');
+
                 $.ajax({
-                    url: "{{ route('topup.consult') }}", // Pastikan route ini ada di web.php
+                    url: "{{ route('topup.consult') }}",
                     method: "POST",
+                    dataType: "json", // Memaksa respon harus JSON
                     data: {
                         _token: "{{ csrf_token() }}",
                         amount: nominal
                     },
                     success: function(response) {
-                        $iconArea.empty();
+                        // [LOG 3] Sukses Menerima Respon
+                        console.log('[FRONTEND] Response Sukses Diterima:', response);
+
+                        $iconArea.empty(); // Bersihkan loading
+
                         if(response.success && response.data.length > 0) {
-                            // Loop data dan tampilkan badge/icon sederhana
+                            console.log('[FRONTEND] Menampilkan ' + response.data.length + ' metode pembayaran.');
+
+                            // Loop data dan tampilkan
                             $.each(response.data, function(index, item) {
-                                // Contoh tampilan badge sederhana
-                                let badge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                                                ${item.option.replace(/_/g, ' ')}
+                                // Format text agar underscore hilang (CONTOH: VIRTUAL_ACCOUNT_BCA -> VIRTUAL ACCOUNT BCA)
+                                let cleanName = item.option.replace(/_/g, ' ');
+
+                                // Cek jika ada promo
+                                let promoBadge = (item.promo === 'Ada Promo')
+                                    ? '<span class="ml-1 text-[10px] bg-red-100 text-red-600 px-1 rounded">Promo</span>'
+                                    : '';
+
+                                let badge = `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 shadow-sm mb-1 mr-1">
+                                                ${cleanName} ${promoBadge}
                                              </span>`;
                                 $iconArea.append(badge);
                             });
                         } else {
-                            $iconArea.html('<span class="text-red-400 text-xs">Tidak ada metode pembayaran khusus ditemukan.</span>');
+                            console.warn('[FRONTEND] Sukses connect, tapi data kosong/tidak ada metode khusus.');
+                            $iconArea.html('<span class="text-gray-500 text-xs">Standar (Tidak ada promo khusus).</span>');
                         }
                     },
-                    error: function(xhr) {
-                        console.error("Gagal consult pay");
-                        $iconArea.html('<span class="text-gray-400 text-xs">Gagal memuat info promo.</span>');
+                    error: function(xhr, status, error) {
+                        // [LOG 4] Error Terjadi
+                        console.error('================ [ERROR LOG] ================');
+                        console.error('Status:', status);
+                        console.error('Error Thrown:', error);
+                        console.error('Response Text (Server):', xhr.responseText);
+                        console.error('Response Code:', xhr.status);
+
+                        // Coba parse JSON error jika ada message dari controller
+                        let errorMsg = 'Gagal memuat info promo.';
+                        try {
+                            let jsonResp = JSON.parse(xhr.responseText);
+                            if(jsonResp.message) {
+                                errorMsg = jsonResp.message;
+                                console.error('Pesan dari Controller:', jsonResp.message);
+                            }
+                        } catch(e) {
+                            console.error('Respon bukan JSON valid.');
+                        }
+                        console.error('=============================================');
+
+                        // Tampilkan pesan error ke user (kecil saja)
+                        $iconArea.html(`<span class="text-red-400 text-xs">Info: ${errorMsg}</span>`);
                     }
                 });
             }
