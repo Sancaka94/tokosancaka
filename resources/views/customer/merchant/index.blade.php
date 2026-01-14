@@ -23,7 +23,7 @@
     </div>
 
     {{-- ALERT MESSAGES --}}
-    (session('success'))
+    @if(session('success'))
         <div class="rounded-md bg-green-50 p-4 mb-6 border border-green-200 shadow-sm">
             <div class="flex">
                 <div class="flex-shrink-0">
