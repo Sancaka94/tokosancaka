@@ -50,7 +50,7 @@
 
                         {{-- Area untuk menampilkan hasil Consult Pay (Logo Payment yang tersedia) --}}
                         <div id="payment-methods-preview" class="mt-2 hidden">
-                            <span class="text-xs font-semibold text-gray-600">Metode Tersedia:</span>
+                            <span class="text-xs font-semibold text-gray-600">Metode Tersedia Untuk DANA:</span>
                             <div id="payment-icons" class="flex flex-wrap gap-2 mt-1">
                                 {{-- Icon akan muncul di sini via AJAX --}}
                             </div>
