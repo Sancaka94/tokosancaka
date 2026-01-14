@@ -757,3 +757,6 @@ Route::post('/topup/consult-methods', [TopUpController::class, 'consultPaymentMe
 Route::get('/dana/return', [TopUpController::class, 'returnPage'])->name('dana.return');
 Route::post('/dana/notify', [TopUpController::class, 'handleNotify'])->name('dana.notify'); // Ingat exclude CSRF
 
+// Route untuk cek manual (misal oleh Admin)
+Route::get('/dana/check-gateway/{orderId}', [TopUpController::class, 'checkDanaGatewayStatus'])
+    ->name('dana.check_gateway');
