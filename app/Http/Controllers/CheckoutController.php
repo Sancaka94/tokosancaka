@@ -685,6 +685,120 @@ class CheckoutController extends Controller
         }
     }
 
+    /**
+     * =========================================================================
+     * DANA DIRECT DEBIT PAYMENT CREATION
+     * =========================================================================
+     */
+    public function createPaymentDANA(Order $order)
+    {
+        $trxId = $order->invoice_number;
+        Log::info('DANA CHECKOUT START: ' . $trxId);
+
+        $user = Auth::user();
+        $returnUrl  = route('dana.return'); // Ensure this route exists
+        $notifyUrl  = route('dana.notify'); // Ensure this route exists
+        $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
+        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+
+        // Prepare Request Body based on API Documentation
+        $bodyArray = [
+            "partnerReferenceNo" => $trxId,
+            "merchantId" => config('services.dana.merchant_id'),
+            "amount" => [
+                "value" => number_format($order->total_amount, 2, '.', ''),
+                "currency" => "IDR"
+            ],
+            "validUpTo" => $expiryTime,
+            "urlParams" => [
+                [
+                    "url" => $returnUrl,
+                    "type" => "PAY_RETURN",
+                    "isDeeplink" => "Y"
+                ],
+                [
+                    "url" => $notifyUrl,
+                    "type" => "NOTIFICATION",
+                    "isDeeplink" => "Y"
+                ]
+            ],
+            "additionalInfo" => [
+                "productCode" => "51051000100000000001", // Required Product Code
+                "mcc" => "5732", // Merchant Category Code
+                "order" => [
+                    "orderTitle" => "Order " . $trxId,
+                    "merchantTransType" => "01",
+                    "orderMemo" => "Pembayaran Order " . $trxId,
+                    "createdTime" => $timestamp,
+                    "buyer" => [
+                        "externalUserId" => (string) $user->id_pengguna,
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname" => Str::limit($user->nama_lengkap ?? 'Guest', 40),
+                    ]
+                    // Note: 'goods' and 'shippingInfo' arrays can be added here if needed for fuller data
+                ],
+                "envInfo" => [
+                    "sourcePlatform" => "IPG",
+                    "terminalType" => "SYSTEM",
+                    "orderTerminalType" => "WEB",
+                ]
+            ]
+        ];
+
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        // API Endpoint for Direct Debit
+        $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host';
+
+        try {
+             $accessToken = $this->danaSignature->getAccessToken();
+             $signature = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
+
+             $baseUrl = (config('services.dana.dana_env') == 'PRODUCTION')
+                        ? 'https://api.dana.id'
+                        : 'https://api.sandbox.dana.id';
+
+             $response = Http::withHeaders([
+                'Authorization'  => 'Bearer ' . $accessToken,
+                'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID'  => Str::random(32),
+                'X-TIMESTAMP'    => $timestamp,
+                'X-SIGNATURE'    => $signature,
+                'Content-Type'   => 'application/json',
+                'CHANNEL-ID'     => '95221',
+                'ORIGIN'         => config('services.dana.origin'),
+            ])->withBody($jsonBody, 'application/json')
+              ->post($baseUrl . $relativePath);
+
+            $result = $response->json();
+
+            // Check for Success Code 2005400
+            if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
+
+                // Get Redirect URL
+                $redirectUrl = $result['webRedirectUrl'] ?? null;
+
+                if($redirectUrl) {
+                    // Update Order with Payment URL
+                    $order->payment_url = $redirectUrl;
+                    $order->save();
+
+                    session()->forget('cart'); // Clear cart on successful URL generation
+                    Log::info("DANA Direct Debit URL saved for Order $trxId: " . $redirectUrl);
+
+                    return redirect()->away($redirectUrl);
+                }
+            }
+
+            Log::error('DANA Checkout Failed:', $result);
+            return redirect()->route('checkout.index')->with('error', 'Gagal inisialisasi pembayaran DANA: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+
+        } catch (\Exception $e) {
+            Log::error('DANA Connection Error: ' . $e->getMessage());
+            return redirect()->route('checkout.index')->with('error', 'Koneksi ke DANA bermasalah.');
+        }
+    }
+
 
     /**
      * Menampilkan halaman invoice setelah checkout.
