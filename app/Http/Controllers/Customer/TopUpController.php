@@ -1800,8 +1800,8 @@ public function checkTopupStatus(Request $request)
                 $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'] ?? null;
                 if($redirectUrl) {
                     // Update URL pembayaran (jika kolom payment_url ada di tabel transactions)
-                    // $transaction->payment_url = $redirectUrl;
-                    // $transaction->save();
+                     $transaction->payment_url = $redirectUrl;
+                     $transaction->save();
 
                     return redirect()->away($redirectUrl);
                 }
