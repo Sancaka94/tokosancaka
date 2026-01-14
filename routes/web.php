@@ -753,3 +753,7 @@ Route::post('/topup/consult-methods', [TopUpController::class, 'consultPaymentMe
     ->name('topup.consult')
     ->middleware('auth'); // Pastikan user login
 
+// Route untuk DANA (Tambahkan ini)
+Route::get('/dana/return', [TopUpController::class, 'returnPage'])->name('dana.return');
+Route::post('/dana/notify', [TopUpController::class, 'handleNotify'])->name('dana.notify'); // Ingat exclude CSRF
+
