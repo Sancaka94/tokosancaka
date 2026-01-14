@@ -165,11 +165,15 @@
                                 'VIRTUAL_ACCOUNT_BSI':      'bsi.png',
                                 'VIRTUAL_ACCOUNT_MUAMALAT': 'muamalat.png',
                                 'VIRTUAL_ACCOUNT_BTPN':     'btpn.png',
+
                                 'NETWORK_PAY_PG_OVO':       'ovo.webp',
                                 'NETWORK_PAY_PG_GOPAY':     'gopay.webp',
                                 'NETWORK_PAY_PG_SPAY':      'shopeepay.webp',
                                 'NETWORK_PAY_PG_LINKAJA':   'linkaja.png',
                                 'NETWORK_PAY_PG_DANA':      'dana.webp',
+                                'NETWORK_PAY_PG_CARD':      'card.png',
+
+
                                 'BALANCE':                  'saldo.png',
                                 'CARD':                     'card.png',
                                 'CREDIT_CARD':              'card.png',
