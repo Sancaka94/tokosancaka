@@ -6,25 +6,30 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Validation\ValidationException;
+use Exception;
+
+// --- MODEL ---
 use App\Models\Pesanan;
 use App\Models\Product;
 use App\Models\Kontak;
 use App\Models\User;
 use App\Models\OrderMarketplace;
-use Illuminate\Support\Str;
+use App\Models\Order;
+use App\Models\Keuangan; // <--- PERBAIKAN UTAMA DISINI
+
+// --- SERVICES ---
 use App\Services\KiriminAjaService;
 use App\Services\DokuJokulService;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Validation\ValidationException;
-use App\Models\Order;
-use Exception;
-// 👇 Dependensi untuk Notifikasi Real-time
 use App\Services\FonnteService;
+
+// --- NOTIFIKASI ---
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\NotifikasiUmum;
-
 
 class PesananController extends Controller
 {
