@@ -485,10 +485,11 @@
                      <img src="{{ asset('public/assets/qris2.png') }}" class="h-8 w-8 object-contain mr-4">
                      <span class="text-sm font-medium text-gray-900">QRIS</span>
                  </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="DANA" data-label="DANA" data-img="{{ asset('public/assets/dana.webp') }}">
+
+                 {{-- <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="DANA" data-label="DANA" data-img="{{ asset('public/assets/dana.webp') }}">
                      <img src="{{ asset('public/assets/dana.webp') }}" class="h-8 w-8 object-contain mr-4">
                      <span class="text-sm font-medium text-gray-900">DANA</span>
-                 </li>
+                 </li> --}}
 
                  <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="SHOPEEPAY" data-label="ShopeePay" data-img="{{ asset('public/assets/shopeepay.webp') }}">
                      <img src="{{ asset('public/assets/shopeepay.webp') }}" class="h-8 w-8 object-contain mr-4">
