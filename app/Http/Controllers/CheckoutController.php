@@ -106,6 +106,23 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
+        // AMBIL CHANNEL PEMBAYARAN TRIPAY OTOMATIS (CACHE 24 JAM)
+        $tripayChannels = \Illuminate\Support\Facades\Cache::remember('tripay_channels_list', 60 * 24, function () {
+            $apiKey = config('tripay.api_key');
+            $mode   = config('tripay.mode');
+            $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
+
+            try {
+                $response = Http::withToken($apiKey)->get($baseUrl . '/merchant/payment-channel');
+                if ($response->successful()) {
+                    return $response->json()['data'] ?? [];
+                }
+            } catch (\Exception $e) {
+                Log::error('Gagal ambil channel Tripay: ' . $e->getMessage());
+            }
+            return [];
+        });
+
         $user = Auth::user();
 
         $firstCartItemData = reset($cart);
@@ -304,7 +321,7 @@ class CheckoutController extends Controller
             }
         }
 
-        return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user'));
+        return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels'));
     }
 
 
