@@ -603,58 +603,42 @@ class CheckoutController extends Controller
                     $order->payment_url = $paymentUrl;
 
                 } else {
+                    // === LOGIKA BARU TRIPAY (OTOMATIS & BERSIH) ===
                     Log::info('Memulai proses TRIPAY Marketplace untuk ' . $order->invoice_number);
 
-                    $apiKey       = config('tripay.api_key');
+                    // 1. Panggil Helper Function (Kode jadi lebih pendek)
+                    $tripayResult = $this->_createTripayTransaction(
+                        $order,
+                        $request->payment_method, // Kode channel (misal: BRIVA, QRIS, ALFAMART)
+                        $grand_total,
+                        $user->nama_lengkap,
+                        $user->email,
+                        $user->no_wa,
+                        $orderItemsPayload // Array item yang sudah Anda buat sebelumnya
+                    );
 
-                    Log::info('DEBUG TRIPAY KEY:', ['key' => $apiKey]);
+                    // 2. Cek Hasil
+                    if ($tripayResult['success']) {
+                        $tripayData = $tripayResult['data'];
 
-                    $privateKey   = config('tripay.private_key');
-                    $merchantCode = config('tripay.merchant_code');
-                    $mode         = config('tripay.mode');
+                        // 3. LOGIKA URL OTOMATIS (Tanpa If-Else Manual)
+                        // Ambil checkout_url (Halaman Instruksi Resmi Tripay) sebagai prioritas utama
+                        $paymentUrl = $tripayData['checkout_url']
+                                      ?? $tripayData['pay_url']
+                                      ?? $tripayData['qr_url']
+                                      ?? null;
 
-                    $payload = [
-                        'method'         => $request->payment_method,
-                        'merchant_ref'   => $order->invoice_number,
-                        'amount'         => $grand_total,
-                        'customer_name'  => $user->nama_lengkap,
-                        'customer_email' => $user->email,
-                        'customer_phone' => $user->no_wa,
-                        'order_items'    => $orderItemsPayload,
-                        'expired_time'   => time() + (1 * 60 * 60),
-                        'signature'      => hash_hmac('sha256', $merchantCode.$order->invoice_number.$grand_total, $privateKey),
-                        'return_url'     => route('checkout.invoice', ['invoice' => $order->invoice_number]),
-                    ];
-
-                    $baseUrl = ($mode === 'production')
-                        ? 'https://tripay.co.id/api/transaction/create'
-                        : 'https://tripay.co.id/api-sandbox/transaction/create';
-
-                    $tripayResponse = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
-                                            ->timeout(60)->withoutVerifying()->post($baseUrl, $payload);
-
-                    if ($tripayResponse->successful() && isset($tripayResponse->json()['success']) && $tripayResponse->json()['success'] === true) {
-                        $tripayData = $tripayResponse->json()['data'];
-
-                        $paymentMethod = $request->payment_method;
-                        if (str_contains($paymentMethod, 'QRIS')) {
-                            $paymentUrl = $tripayData['qr_url'] ?? $tripayData['checkout_url'] ?? $tripayData['pay_url'] ?? null;
-                        } elseif (in_array($paymentMethod, ['OVO', 'SHOPEEPAY'])) {
-                            $paymentUrl = $tripayData['checkout_url'] ?? $tripayData['pay_url'] ?? null;
-                        } elseif (str_contains($paymentMethod, 'VA')) {
-                            $paymentUrl = $tripayData['pay_code'] ?? $tripayData['checkout_url'] ?? $tripayData['pay_url'] ?? null;
-                        } elseif (in_array($paymentMethod, ['ALFAMART', 'INDOMARET', 'ALFAMIDI'])) {
-                            $paymentUrl = $tripayData['pay_code'] ?? $tripayData['checkout_url'] ?? $tripayData['pay_url'] ?? null;
-                        }
-                        if ($paymentUrl === null) {
-                            $paymentUrl = $tripayData['checkout_url'] ?? $tripayData['pay_url'] ?? $tripayData['qr_url'] ?? $tripayData['pay_code'] ?? null;
+                        // Fallback khusus jika URL kosong tapi ada kode bayar (Jaga-jaga)
+                        if (!$paymentUrl && !empty($tripayData['pay_code'])) {
+                            // Untuk VA/Retail, kadang kita butuh 'pay_code' saja jika mau custom UI.
+                            // Tapi agar aman, pastikan field database support text biasa,
+                            // atau biarkan null agar user lihat di halaman invoice nanti.
                         }
 
                         $order->payment_url = $paymentUrl;
                     } else {
-                        Log::error('Gagal membuat transaksi Tripay', ['response' => $tripayResponse->body()]);
-                        $errorMessage = $tripayResponse->json()['message'] ?? 'Gagal menghubungi payment gateway.';
-                        throw new \Exception('Gagal membuat transaksi pembayaran: ' . $errorMessage);
+                        // Jika gagal, lempar error agar transaksi di-rollback
+                        throw new \Exception($tripayResult['message']);
                     }
                 }
             }
@@ -1393,6 +1377,80 @@ TEXT;
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
             ]);
+        }
+    }
+
+    /**
+     * PRIVATE HELPER: Menangani Transaksi Tripay
+     * Otomatis handle hitungan harga & request API
+     */
+    private function _createTripayTransaction($order, $methodChannel, $amount, $custName, $custEmail, $custPhone, $items)
+    {
+        $apiKey       = config('tripay.api_key');
+        $privateKey   = config('tripay.private_key');
+        $merchantCode = config('tripay.merchant_code');
+        $mode         = config('tripay.mode');
+
+        if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+            Log::error('TRIPAY CONFIG MISSING');
+            return ['success' => false, 'message' => 'Konfigurasi Tripay belum lengkap.'];
+        }
+
+        // 1. Validasi Hitungan Total (Safety Net)
+        // Agar tidak error "Total amount mismatch" dari Tripay
+        $calculatedTotalItems = 0;
+        foreach ($items as $item) {
+            $calculatedTotalItems += ($item['price'] * $item['quantity']);
+        }
+        $amount = (int) $amount;
+
+        // Jika ada selisih (misal karena pembulatan), ganti detail item jadi 1 baris invoice
+        if ($calculatedTotalItems !== $amount) {
+            $items = [[
+                'sku'      => 'INV-' . $order->invoice_number,
+                'name'     => 'Pembayaran Invoice #' . $order->invoice_number,
+                'price'    => $amount,
+                'quantity' => 1
+            ]];
+        }
+
+        $baseUrl = ($mode === 'production')
+            ? 'https://tripay.co.id/api/transaction/create'
+            : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+        $signature = hash_hmac('sha256', $merchantCode . $order->invoice_number . $amount, $privateKey);
+
+        $payload = [
+            'method'         => $methodChannel,
+            'merchant_ref'   => $order->invoice_number,
+            'amount'         => $amount,
+            'customer_name'  => $custName,
+            'customer_email' => $custEmail,
+            'customer_phone' => $custPhone,
+            'order_items'    => $items,
+            'return_url'     => route('checkout.invoice', ['invoice' => $order->invoice_number]),
+            'expired_time'   => (time() + (24 * 60 * 60)), // Expired 24 Jam
+            'signature'      => $signature
+        ];
+
+        try {
+            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+                            ->timeout(30)
+                            ->withoutVerifying()
+                            ->post($baseUrl, $payload);
+
+            $body = $response->json();
+
+            if ($response->successful() && ($body['success'] ?? false) === true) {
+                return ['success' => true, 'data' => $body['data']];
+            }
+
+            Log::error('Tripay API Error:', ['response' => $body]);
+            return ['success' => false, 'message' => $body['message'] ?? 'Gagal membuat transaksi Tripay.'];
+
+        } catch (\Exception $e) {
+            Log::error("Tripay Connection Exception: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Koneksi ke payment gateway bermasalah.'];
         }
     }
 
