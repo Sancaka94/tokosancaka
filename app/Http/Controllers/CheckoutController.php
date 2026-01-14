@@ -106,31 +106,40 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-        // --- DEBUG START (TEMPEL INI SEMENTARA) ---
-        $apiKey = config('tripay.api_key');
-        $mode = config('tripay.mode');
+        // =========================================================
+        // === DEBUG MODE: PAKSA KONEKSI (HAPUS CACHE DULU) ===
+        // =========================================================
+
+        $apiKey  = config('tripay.api_key');
+        $mode    = config('tripay.mode');
         $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
 
+        // 1. Cek apakah config terbaca
+        if (empty($apiKey)) {
+            dd("STOP: API KEY KOSONG. Cek file config/tripay.php dan .env Anda.");
+        }
+
+        // 2. Tembak langsung ke Tripay (Tanpa Cache)
         try {
-            $response = Http::withToken($apiKey)->get($baseUrl . '/merchant/payment-channel');
+            $response = Http::withToken($apiKey)
+                            ->timeout(15)
+                            ->get($baseUrl . '/merchant/payment-channel');
 
-            // JIKA GAGAL, TAMPILKAN LAYAR HITAM ERRORNYA
-            if ($response->failed()) {
-                dd([
-                    'STATUS' => 'GAGAL KONEKSI KE TRIPAY',
-                    'MODE' => $mode . ' (Pastikan ini sesuai credential)',
-                    'URL' => $baseUrl,
-                    'PESAN DARI TRIPAY' => $response->json()
-                ]);
-            }
-
-            // Jika Sukses
-            $tripayChannels = $response->json()['data'] ?? [];
+            // 3. TAMPILKAN HASILNYA (LAYAR HITAM)
+            dd([
+                'STATUS KONEKSI' => $response->status(),
+                'MODE APLIKASI'  => $mode,
+                'URL TARGET'     => $baseUrl . '/merchant/payment-channel',
+                'PESAN DARI TRIPAY' => $response->json()
+            ]);
 
         } catch (\Exception $e) {
-            dd("KONEKSI ERROR: " . $e->getMessage());
+            dd("ERROR KONEKSI CURL: " . $e->getMessage());
         }
-        // --- DEBUG END ---
+
+        // =========================================================
+        // === JANGAN LANJUT KE BAWAH SEBELUM INI MUNCUL ===
+        // =========================================================
 
 
         $user = Auth::user();
