@@ -455,7 +455,6 @@
 
 {{-- Modal S&K dihapus --}}
 
-
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const subtotal = {{ $subtotal ?? 0 }};
