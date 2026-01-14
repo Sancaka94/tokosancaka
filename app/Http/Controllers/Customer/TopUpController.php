@@ -1717,19 +1717,23 @@ public function checkTopupStatus(Request $request)
         $this->danaSignature = $danaSignature;
     }
 
-  public function createPaymentDANA(Transaction $transaction)
+  /**
+     * CREATE PAYMENT DANA (Menggunakan 'reference_id')
+     */
+    public function createPaymentDANA(Transaction $transaction)
     {
-        Log::info('DANA_H2H_START: Memulai untuk Ref ID: ' . $transaction->reference_id);
+        // Ambil reference_id dari tabel transactions
+        $trxId = $transaction->reference_id;
+
+        Log::info('DANA START for Transaction Table: ' . $trxId);
 
         $user = Auth::user();
-        $orderId    = $transaction->reference_id;
         $returnUrl  = route('dana.return');
         $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // 1. SIAPKAN BODY REQUEST (Struktur Diperbaiki Sesuai Doc Gapura)
         $bodyArray = [
-            "partnerReferenceNo" => $orderId,
+            "partnerReferenceNo" => $trxId,
             "merchantId" => config('services.dana.merchant_id'),
             "amount" => [
                 "value" => number_format($transaction->amount, 2, '.', ''),
@@ -1749,20 +1753,15 @@ public function checkTopupStatus(Request $request)
                 ]
             ],
             "additionalInfo" => [
-                // [WAJIB 1] MCC Harus Ada (Lihat Dokumen: additionalInfo.mcc - Required)
-                "mcc" => "5732", // Kode elektronik/umum
-
+                "mcc" => "5732",
                 "order" => [
-                    "orderTitle" => "Top Up " . $orderId,
+                    "orderTitle" => "Top Up " . $trxId,
                     "merchantTransType" => "01",
                     "scenario" => "REDIRECT",
-
-                    // [WAJIB 2] Struktur Buyer Sesuai Dokumen
                     "buyer" => [
                         "externalUserId" => (string) $user->id_pengguna,
-                        // Jika externalUserId diisi, externalUserType WAJIB diisi
                         "externalUserType" => "MERCHANT_USER",
-                        "nickname"       => Str::limit($user->nama_lengkap ?? 'Guest', 40),
+                        "nickname" => Str::limit($user->nama_lengkap ?? 'Guest', 40),
                     ]
                 ],
                 "envInfo" => [
@@ -1775,28 +1774,15 @@ public function checkTopupStatus(Request $request)
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        // Log untuk memastikan struktur JSON sudah benar sebelum dikirim
-        Log::info('DANA_PAYLOAD_FINAL:', ['json' => $bodyArray]);
-
-        // 2. GENERATE SIGNATURE
         try {
              $accessToken = $this->danaSignature->getAccessToken();
              $signature = $this->danaSignature->generateSignature('POST', '/payment-gateway/v1.0/debit/payment-host-to-host.htm', $jsonBody, $timestamp);
-        } catch (\Exception $e) {
-             Log::error('DANA Signature Error: ' . $e->getMessage());
-             return back()->with('error', 'Gagal memproses tanda tangan keamanan DANA.');
-        }
 
-        // 3. HIT API
-        $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
-        $baseUrl = (config('services.dana.dana_env') == 'PRODUCTION')
-                    ? 'https://api.dana.id'
-                    : 'https://api.sandbox.dana.id';
+             $baseUrl = (config('services.dana.dana_env') == 'PRODUCTION')
+                        ? 'https://api.dana.id'
+                        : 'https://api.sandbox.dana.id';
 
-        $fullUrl = $baseUrl . $relativePath;
-
-        try {
-            $response = Http::withHeaders([
+             $response = Http::withHeaders([
                 'Authorization'  => 'Bearer ' . $accessToken,
                 'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
                 'X-EXTERNAL-ID'  => Str::random(32),
@@ -1805,30 +1791,77 @@ public function checkTopupStatus(Request $request)
                 'Content-Type'   => 'application/json',
                 'CHANNEL-ID'     => '95221',
                 'ORIGIN'         => config('services.dana.origin'),
-            ])->withBody($jsonBody, 'application/json')->post($fullUrl);
+            ])->withBody($jsonBody, 'application/json')
+              ->post($baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm');
 
             $result = $response->json();
 
-            // Cek Sukses (2005400)
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'] ?? null;
-
                 if($redirectUrl) {
-                    $transaction->payment_url = $redirectUrl;
-                    $transaction->save();
+                    // Update URL pembayaran (jika kolom payment_url ada di tabel transactions)
+                    // $transaction->payment_url = $redirectUrl;
+                    // $transaction->save();
 
-                    Log::info('DANA Success. Redirecting user to: ' . $redirectUrl);
                     return redirect()->away($redirectUrl);
                 }
             }
 
-            Log::error('DANA Response Gagal:', $result);
-            return back()->with('error', 'Gagal dari DANA: ' . ($result['responseMessage'] ?? 'Unknown Error') . ' (Code: ' . ($result['responseCode']??'-') . ')');
+            Log::error('DANA Gagal:', $result);
+            return back()->with('error', 'Gagal dari DANA: ' . ($result['responseMessage'] ?? 'Unknown'));
 
         } catch (\Exception $e) {
-            Log::error('DANA Koneksi Error: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan koneksi ke server DANA.');
+            Log::error('DANA Error: ' . $e->getMessage());
+            return back()->with('error', 'Koneksi DANA Error.');
         }
+    }
+
+    /**
+     * WEBHOOK DANA: UPDATE TABEL TRANSACTIONS
+     */
+    public function handleNotify(Request $request)
+    {
+        Log::info('========== DANA WEBHOOK (Transactions Table) ==========');
+
+        $trxIdFromDana = $request->input('partnerReferenceNo') ?? $request->input('originalPartnerReferenceNo');
+        $statusDana    = $request->input('latestTransactionStatus');
+
+        // PENTING: Mencari di tabel 'transactions' menggunakan 'reference_id'
+        $transaction = Transaction::where('reference_id', $trxIdFromDana)->first();
+
+        if (!$transaction) {
+            Log::error("Webhook: ID $trxIdFromDana tidak ditemukan di tabel transactions.");
+            return response()->json(['res' => 'Transaction not found'], 404);
+        }
+
+        DB::beginTransaction();
+        try {
+            if ($transaction->status == 'pending') {
+                if ($statusDana == '00') { // SUKSES
+                    Log::info("Webhook: $trxIdFromDana SUKSES.");
+
+                    $transaction->status = 'success';
+                    $transaction->save();
+
+                    // Tambah Saldo (Pakai user_id sesuai tabel transactions)
+                    $user = User::where('id_pengguna', $transaction->user_id)->first();
+                    if ($user) {
+                        $user->increment('saldo', $transaction->amount);
+                    }
+
+                } elseif ($statusDana == '05') { // GAGAL
+                    $transaction->status = 'failed';
+                    $transaction->save();
+                }
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Webhook Error: " . $e->getMessage());
+        }
+
+        return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful'])
+                ->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
     }
 
     /**
@@ -1907,51 +1940,5 @@ public function checkTopupStatus(Request $request)
             ->with('success', 'Pembayaran Anda sedang diproses oleh sistem. Silakan refresh halaman ini secara berkala untuk melihat perubahan status/saldo.');
     }
 
-    public function handleNotify(Request $request)
-    {
-        Log::info('========== DANA WEBHOOK INCOMING ==========');
-        Log::info('Headers:', $request->headers->all());
-        Log::info('Body:', $request->all());
 
-        // 1. Ambil Data Penting dari Body
-        $orderId = $request->input('originalPartnerReferenceNo'); // Order ID kita (misal: INV-1767...)
-        $status  = $request->input('latestTransactionStatus');    // 00 = Success, 05 = Cancel
-        $amount  = $request->input('amount.value');               // Nominal
-
-        // 2. Cek Signature (Opsional tapi disarankan untuk Production)
-        // Di Sandbox, kita bisa skip dulu atau log saja.
-        $incomingSignature = $request->header('X-SIGNATURE');
-
-        // 3. Update Status di Database Anda
-        // Logika sederhana:
-        if ($status == '00') {
-            Log::info("Order $orderId BERHASIL dibayar (Rp $amount).");
-
-            // TODO: Update database Anda di sini
-            // $order = Order::where('invoice_number', $orderId)->first();
-            // if ($order) {
-            //     $order->status = 'PAID';
-            //     $order->save();
-            // }
-
-        } elseif ($status == '05') {
-            Log::warning("Order $orderId DIBATALKAN/EXPIRED.");
-
-            // TODO: Update database jadi Cancelled
-            // $order->status = 'CANCELLED';
-            // $order->save();
-        } else {
-            Log::warning("Status Transaksi Lainnya: $status");
-        }
-
-        // 4. Return Response Wajib DANA
-        // Kode 2005600 artinya kita sukses menerima notifikasi
-        return response()->json([
-            'responseCode' => '2005600',
-            'responseMessage' => 'Successful'
-        ])->withHeaders([
-            // DANA kadang mewajibkan timestamp di header response
-            'X-TIMESTAMP' => \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String()
-        ]);
-    }
 }
