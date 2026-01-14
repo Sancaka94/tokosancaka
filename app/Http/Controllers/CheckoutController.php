@@ -106,22 +106,43 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-        // AMBIL CHANNEL PEMBAYARAN TRIPAY OTOMATIS (CACHE 24 JAM)
-        $tripayChannels = \Illuminate\Support\Facades\Cache::remember('tripay_channels_list', 60 * 24, function () {
-            $apiKey = config('tripay.api_key');
-            $mode   = config('tripay.mode');
-            $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
+        // ============================================================
+        // === MODE DEBUG TRIPAY (TANPA CACHE) ========================
+        // ============================================================
+        $apiKey  = config('tripay.api_key');
+        $mode    = config('tripay.mode');
+        $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
 
-            try {
-                $response = Http::withToken($apiKey)->get($baseUrl . '/merchant/payment-channel');
-                if ($response->successful()) {
-                    return $response->json()['data'] ?? [];
-                }
-            } catch (\Exception $e) {
-                Log::error('Gagal ambil channel Tripay: ' . $e->getMessage());
+        // Cek Config Dulu
+        if(empty($apiKey)) {
+            dd("ERROR: API Key Tripay Kosong! Cek file .env Anda bagian TRIPAY_API_KEY.");
+        }
+
+        try {
+            // Kita tembak langsung tanpa Cache untuk melihat errornya
+            $response = Http::withToken($apiKey)->get($baseUrl . '/merchant/payment-channel');
+
+            if ($response->failed()) {
+                // JIKA ERROR, TAMPILKAN DI LAYAR (SUPAYA KITA TAHU SEBABNYA)
+                dd([
+                    'Status' => 'Koneksi ke Tripay Gagal',
+                    'HTTP Code' => $response->status(),
+                    'Pesan Error Tripay' => $response->json(),
+                    'Mode' => $mode,
+                    'URL' => $baseUrl . '/merchant/payment-channel',
+                    'Cek API Key (Depan)' => substr($apiKey, 0, 5) . '...', // Cek apakah key terbaca
+                ]);
             }
-            return [];
-        });
+
+            // Jika sukses, ambil datanya
+            $tripayChannels = $response->json()['data'] ?? [];
+
+        } catch (\Exception $e) {
+            dd("ERROR KONEKSI: " . $e->getMessage());
+        }
+        // ============================================================
+        // === AKHIR MODE DEBUG =======================================
+        // ============================================================
 
         $user = Auth::user();
 
