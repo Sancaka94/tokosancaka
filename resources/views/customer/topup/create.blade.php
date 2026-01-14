@@ -182,31 +182,65 @@
                         amount: nominal
                     },
                     success: function(response) {
-                        // [LOG 3] Sukses Menerima Respon
                         console.log('[FRONTEND] Response Sukses Diterima:', response);
-
-                        $iconArea.empty(); // Bersihkan loading
+                        $iconArea.empty();
 
                         if(response.success && response.data.length > 0) {
-                            console.log('[FRONTEND] Menampilkan ' + response.data.length + ' metode pembayaran.');
 
-                            // Loop data dan tampilkan
+                            // 1. KAMUS MAPPING: Kode API DANA -> Nama File Anda
+                            // Sesuaikan persis dengan nama file di folder assets Anda
+                            const logoMap = {
+                                'VIRTUAL_ACCOUNT_BCA':      'bca.webp',
+                                'VIRTUAL_ACCOUNT_BNI':      'bni.webp',
+                                'VIRTUAL_ACCOUNT_BRI':      'bri.webp',
+                                'VIRTUAL_ACCOUNT_MANDIRI':  'mandiri.webp',
+                                'VIRTUAL_ACCOUNT_PERMATA':  'permata.webp',
+                                'VIRTUAL_ACCOUNT_CIMB':     'cimb.svg',
+                                'VIRTUAL_ACCOUNT_DANAMON':  'danamon.png',
+                                'VIRTUAL_ACCOUNT_BSI':      'bsi.png',
+                                'VIRTUAL_ACCOUNT_MUAMALAT': 'muamalat.png',
+
+                                'NETWORK_PAY_PG_OVO':       'ovo.webp',
+                                'NETWORK_PAY_PG_GOPAY':     'gopay.webp',
+                                'NETWORK_PAY_PG_SPAY':      'shopeepay.webp', // Mapping khusus SPAY -> shopeepay
+                                'NETWORK_PAY_PG_LINKAJA':   'linkaja.png',
+                                'NETWORK_PAY_PG_DANA':      'dana.webp',
+
+                                'BALANCE':                  'saldo.png', // Mapping BALANCE -> saldo.png
+                                'CARD':                     'other.png'  // Fallback untuk Kartu
+                            };
+
+                            // 2. Loop Data
                             $.each(response.data, function(index, item) {
-                                // Format text agar underscore hilang (CONTOH: VIRTUAL_ACCOUNT_BCA -> VIRTUAL ACCOUNT BCA)
-                                let cleanName = item.option.replace(/_/g, ' ');
+                                let apiCode = item.option; // Contoh: VIRTUAL_ACCOUNT_BNI
+                                let cleanName = apiCode.replace(/_/g, ' ').replace('VIRTUAL ACCOUNT', 'VA').replace('NETWORK PAY PG', '');
 
-                                // Cek jika ada promo
-                                let promoBadge = (item.promo === 'Ada Promo')
-                                    ? '<span class="ml-1 text-[10px] bg-red-100 text-red-600 px-1 rounded">Promo</span>'
-                                    : '';
+                                // Cek apakah ada di kamus mapping?
+                                let filename = logoMap[apiCode];
 
-                                let badge = `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 shadow-sm mb-1 mr-1">
-                                                ${cleanName} ${promoBadge}
-                                             </span>`;
+                                // Tentukan Konten Kartu (Gambar atau Teks)
+                                let cardContent = '';
+
+                                if (filename) {
+                                    // Jika gambar ditemukan di mapping
+                                    let logoUrl = "{{ asset('assets') }}/" + filename;
+                                    cardContent = `<img src="${logoUrl}" alt="${cleanName}" class="h-8 object-contain mb-1">`;
+                                } else {
+                                    // Jika gambar TIDAK ada (Fallback ke Icon Teks)
+                                    cardContent = `<span class="text-xs font-bold text-gray-600 border rounded px-1">${cleanName.substring(0,4)}</span>`;
+                                }
+
+                                // Template HTML Card
+                                let badge = `
+                                    <div class="inline-flex flex-col items-center justify-center p-2 m-1 bg-white border border-gray-200 rounded-lg shadow-sm w-28 h-16 text-center hover:border-blue-500 hover:bg-blue-50 transition-all cursor-default" title="${item.option}">
+                                        ${cardContent}
+                                        <span class="text-[10px] text-gray-500 leading-tight font-medium mt-1 truncate w-full">${cleanName}</span>
+                                    </div>
+                                `;
                                 $iconArea.append(badge);
                             });
+
                         } else {
-                            console.warn('[FRONTEND] Sukses connect, tapi data kosong/tidak ada metode khusus.');
                             $iconArea.html('<span class="text-gray-500 text-xs">Standar (Tidak ada promo khusus).</span>');
                         }
                     },
