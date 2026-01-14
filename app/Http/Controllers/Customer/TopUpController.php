@@ -1903,14 +1903,55 @@ public function checkTopupStatus(Request $request)
         }
     }
 
-    // Halaman Return (User kembali setelah bayar)
     public function returnPage(Request $request)
     {
-        $status = $request->query('status');
-        $orderId = $request->query('originalPartnerReferenceNo');
+        // 1. Log untuk melihat apa saja yang dikirim DANA saat redirect balik
+        Log::info('DANA Return Page Params:', $request->all());
 
-        return "<h1>Status Pembayaran: $status</h1><p>Order ID: $orderId</p>
-                <br><a href='".route('dana.status', $orderId)."'>Cek Status Detail via API</a>";
+        $status = $request->input('status') ?? 'PROCESSED';
+
+        // 2. Coba ambil Order ID dari berbagai kemungkinan nama parameter
+        // DANA Redirect biasanya pakai 'partnerReferenceNo', sedangkan Notify pakai 'originalPartnerReferenceNo'
+        $orderId = $request->input('partnerReferenceNo')
+                ?? $request->input('originalPartnerReferenceNo')
+                ?? $request->input('orderId')
+                ?? $request->input('merchantTransId');
+
+        // 3. Pengecekan Safety: Jika Order ID tetap kosong
+        if (empty($orderId)) {
+            return view('layouts.customer')->with('content', "
+                <div class='p-8 text-center'>
+                    <h1 class='text-2xl font-bold mb-4'>Status Pembayaran: $status</h1>
+                    <p class='text-gray-600 mb-4'>Kami menerima respon dari DANA, tetapi ID Transaksi tidak terdeteksi di URL.</p>
+                    <a href='".route('customer.topup.index')."' class='bg-blue-600 text-white px-4 py-2 rounded'>Kembali ke Riwayat</a>
+                </div>
+            ");
+        }
+
+        // 4. Jika Order ID ada, tampilkan tombol cek status
+        // Pastikan parameter dikirim sebagai array ['orderId' => $orderId]
+        $checkUrl = route('dana.status', ['orderId' => $orderId]);
+        $historyUrl = route('customer.topup.index');
+
+        // Tampilan Sederhana (Bisa Anda ganti dengan view blade yang cantik)
+        return "
+            <div style='font-family: sans-serif; text-align: center; padding: 50px;'>
+                <h1 style='color: #2563eb;'>Pembayaran Selesai / Diproses</h1>
+                <p>Status dari DANA: <strong>$status</strong></p>
+                <p>Order ID: <strong>$orderId</strong></p>
+                <hr style='margin: 20px auto; width: 50%;'>
+
+                <div style='margin-top: 20px;'>
+                    <a href='$checkUrl' style='background-color: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;'>
+                        Cek Status Realtime (API)
+                    </a>
+
+                    <a href='$historyUrl' style='background-color: #6b7280; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>
+                        Kembali ke Riwayat
+                    </a>
+                </div>
+            </div>
+        ";
     }
 
     public function handleNotify(Request $request)
