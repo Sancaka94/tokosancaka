@@ -1656,7 +1656,7 @@ public function checkTopupStatus(Request $request)
                 $availableMethods = collect($paymentMethods)->map(function($item) {
                     return [
                         'method' => $item['payMethod'],
-                        'option' => $item['payOption'],
+                        'option' => $item['payOption'] ?? $item['payMethod'],
                         'promo'  => isset($item['promoInfos']) ? 'Ada Promo' : 'Normal'
                     ];
                 });
