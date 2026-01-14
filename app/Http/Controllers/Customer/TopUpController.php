@@ -110,19 +110,16 @@ class TopUpController extends Controller
 
             }
 
-            // --------------------------------------------------------
             // 2. LOGIKA DANA DIRECT
-            // --------------------------------------------------------
             elseif ($validated['payment_method'] === 'DANA' || $validated['payment_method'] === 'NETWORK_PAY_PG_DANA') {
 
                 $transaction = Transaction::create([
-                    'customer_id'    => $user->id_pengguna,
-                    'transaction_id' => $invoiceNumber,
+                    'user_id'        => $user->id_pengguna,
+                    'reference_id'   => $invoiceNumber,
                     'amount'         => $amount,
+                    'type'           => 'topup',
                     'status'         => 'pending',
-                    'payment_method' => 'DANA_DIRECT',
                     'description'    => 'Top up saldo via DANA',
-                    'payment_url'    => null,
                 ]);
 
                 DB::commit();
