@@ -1830,7 +1830,7 @@ public function checkTopupStatus(Request $request)
      * Endpoint: /rest/v1.1/debit/status
      * Sumber: image_985920.png
      */
-    public function checkStatus($orderId)
+    public function checkDanaGatewayStatus($orderId)
     {
         Log::info("Checking Status for Order: $orderId");
 
