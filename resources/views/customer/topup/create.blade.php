@@ -199,6 +199,7 @@
                                 'VIRTUAL_ACCOUNT_DANAMON':  'danamon.png',
                                 'VIRTUAL_ACCOUNT_BSI':      'bsi.png',
                                 'VIRTUAL_ACCOUNT_MUAMALAT': 'muamalat.png',
+                                'VIRTUAL_ACCOUNT_BTPN':     'btpn.png',
 
                                 'NETWORK_PAY_PG_OVO':       'ovo.webp',
                                 'NETWORK_PAY_PG_GOPAY':     'gopay.webp',
