@@ -116,13 +116,27 @@
                             @php
                                 $status = strtolower($order->status);
                                 $badges = [
-                                    'paid' => ['bg'=>'bg-green-100', 'text'=>'text-green-800', 'label'=>'LUNAS', 'icon'=>'fa-check-circle'],
-                                    'pending' => ['bg'=>'bg-yellow-100', 'text'=>'text-yellow-800', 'label'=>'MENUNGGU PEMBAYARAN', 'icon'=>'fa-clock'],
-                                    'failed' => ['bg'=>'bg-red-100', 'text'=>'text-red-800', 'label'=>'GAGAL', 'icon'=>'fa-times-circle'],
-                                    'expired' => ['bg'=>'bg-gray-200', 'text'=>'text-gray-600', 'label'=>'KADALUARSA', 'icon'=>'fa-hourglass-end'],
+                                    // Status Hijau (Lunas/Selesai)
+                                    'paid'       => ['bg'=>'bg-green-100', 'text'=>'text-green-800', 'label'=>'LUNAS', 'icon'=>'fa-check-circle'],
+                                    'completed'  => ['bg'=>'bg-green-100', 'text'=>'text-green-800', 'label'=>'SELESAI', 'icon'=>'fa-star'],
+
+                                    // Status Biru/Ungu (Proses) -> INI YANG TADI KURANG
+                                    'processing' => ['bg'=>'bg-green-100', 'text'=>'text-green-800', 'label'=>'SUDAH DIBAYAR (DIPROSES)', 'icon'=>'fa-box-open'],
+                                    'shipped'    => ['bg'=>'bg-purple-100', 'text'=>'text-purple-800', 'label'=>'SEDANG DIKIRIM', 'icon'=>'fa-shipping-fast'],
+
+                                    // Status Kuning (Pending)
+                                    'pending'    => ['bg'=>'bg-yellow-100', 'text'=>'text-yellow-800', 'label'=>'MENUNGGU PEMBAYARAN', 'icon'=>'fa-clock'],
+
+                                    // Status Merah/Abu (Gagal)
+                                    'failed'     => ['bg'=>'bg-red-100', 'text'=>'text-red-800', 'label'=>'GAGAL', 'icon'=>'fa-times-circle'],
+                                    'expired'    => ['bg'=>'bg-gray-200', 'text'=>'text-gray-600', 'label'=>'KADALUARSA', 'icon'=>'fa-hourglass-end'],
+                                    'canceled'   => ['bg'=>'bg-red-100', 'text'=>'text-red-800', 'label'=>'DIBATALKAN', 'icon'=>'fa-ban'],
                                 ];
+
+                                // Ambil badge sesuai status, jika tidak ada fallback ke pending
                                 $current = $badges[$status] ?? $badges['pending'];
                             @endphp
+
                             <div class="inline-flex items-center px-4 py-2 rounded-lg {{ $current['bg'] }} {{ $current['text'] }}">
                                 <i class="fas {{ $current['icon'] }} mr-2"></i>
                                 <span class="font-bold text-sm tracking-wide">{{ $current['label'] }}</span>
