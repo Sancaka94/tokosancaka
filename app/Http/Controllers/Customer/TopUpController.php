@@ -1549,15 +1549,13 @@ public function checkTopupStatus(Request $request)
         }
     }
 
-    /**
+    //**
      * =========================================================================
-     * GAPURA CONSULT PAY (Cek Metode Pembayaran Tersedia)
-     * DENGAN FULL LOGGING KE laravel.log
+     * GAPURA CONSULT PAY (FIXED: Support Kode 2005700)
      * =========================================================================
      */
     public function consultPaymentMethods(Request $request)
     {
-        // [LOG 1] Request Masuk
         Log::info('================ [GAPURA CONSULT START] ================');
         Log::info('[GAPURA] 1. Request Masuk dari User', [
             'user_id' => Auth::id(),
@@ -1571,7 +1569,6 @@ public function checkTopupStatus(Request $request)
                 'amount' => 'required|numeric|min:100',
             ]);
 
-            // Ambil Config
             $merchantId = config('services.dana.merchant_id');
             $clientId   = config('services.dana.x_partner_id');
 
@@ -1589,7 +1586,7 @@ public function checkTopupStatus(Request $request)
                 ],
                 "additionalInfo" => [
                     "buyer" => [
-                        "nickname"       => Auth::user()->nama_lengkap ?? 'Guest',
+                        "nickname"       => Auth::user()->name ?? 'Guest',
                         "externalUserId" => (string) (Auth::id() ?? 'GUEST-' . time()),
                     ],
                     "envInfo" => [
@@ -1607,7 +1604,6 @@ public function checkTopupStatus(Request $request)
                 ]
             ];
 
-            // [LOG 2] Body Request (Penting cek format angka amount disini)
             Log::info('[GAPURA] 2. Body Payload Prepared', $body);
 
             // 4. Generate Signature
@@ -1615,7 +1611,6 @@ public function checkTopupStatus(Request $request)
             $hashedBody   = strtolower(hash('sha256', $jsonBody));
             $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
 
-            // [LOG 3] Cek String To Sign (Untuk debugging jika 401 Unauthorized)
             Log::debug('[GAPURA] 3. Signature Source String', ['str' => $stringToSign]);
 
             $signature = $this->generateSignature($stringToSign);
@@ -1631,7 +1626,6 @@ public function checkTopupStatus(Request $request)
                 'ORIGIN'        => config('app.url'),
             ];
 
-            // [LOG 4] Headers & Endpoint
             Log::info('[GAPURA] 4. Sending Request...', [
                 'url' => 'https://api.sandbox.dana.id' . $path,
                 'headers' => $headers
@@ -1645,7 +1639,6 @@ public function checkTopupStatus(Request $request)
             $result = $response->json();
             $httpStatus = $response->status();
 
-            // [LOG 5] Terima Response Mentah
             Log::info('[GAPURA] 5. Response Received', [
                 'http_status' => $httpStatus,
                 'body' => $result
@@ -1653,11 +1646,14 @@ public function checkTopupStatus(Request $request)
 
             $resCode = $result['responseCode'] ?? 'UNKNOWN';
 
-            // 7. Handle Response
-            $successCodes = ['2000000', '2005700', '2005400']; // Tambahkan kode lain jika perlu
+            // ============================================================
+            // PERBAIKAN UTAMA DI SINI (LOGIC PENERIMAAN KODE SUKSES)
+            // ============================================================
+            $successCodes = ['2000000', '2005700', '2005400']; // 2005700 ditambahkan!
+
+            if (in_array($resCode, $successCodes)) {
                 $paymentMethods = $result['paymentInfos'] ?? [];
 
-                // [LOG 6] Sukses & Jumlah Metode
                 Log::info('[GAPURA] 6. SUCCESS. Methods found: ' . count($paymentMethods));
 
                 $availableMethods = collect($paymentMethods)->map(function($item) {
@@ -1675,8 +1671,7 @@ public function checkTopupStatus(Request $request)
                 ]);
             }
 
-            // GAGAL dari API DANA
-            // [LOG 7] Gagal logic (misal saldo kurang, maintenance, param salah)
+            // GAGAL
             Log::warning('[GAPURA] 7. FAILED RESPONSE CODE: ' . $resCode, [
                 'message' => $result['responseMessage'] ?? 'No Message'
             ]);
@@ -1688,7 +1683,6 @@ public function checkTopupStatus(Request $request)
             ], 400);
 
         } catch (\Exception $e) {
-            // [LOG 8] Critical Error (Kodingan crash/Exception)
             Log::error('[GAPURA] 8. CRITICAL EXCEPTION', [
                 'msg'  => $e->getMessage(),
                 'file' => $e->getFile(),
