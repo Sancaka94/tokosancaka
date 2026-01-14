@@ -23,7 +23,7 @@
     </div>
 
     {{-- ALERT MESSAGES --}}
-    @if(session('success'))
+    (session('success'))
         <div class="rounded-md bg-green-50 p-4 mb-6 border border-green-200 shadow-sm">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -38,7 +38,7 @@
 
     {{-- LIST TOKO (GRID) --}}
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        
+
         @forelse($shops as $shop)
             <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-300">
                 <div class="p-5">
@@ -55,8 +55,8 @@
                             @endphp
 
                             @if($logoUrl)
-                                <img class="h-12 w-12 rounded-full object-cover border border-gray-300" 
-                                     src="{{ $logoUrl }}" 
+                                <img class="h-12 w-12 rounded-full object-cover border border-gray-300"
+                                     src="{{ $logoUrl }}"
                                      alt="{{ $shop->main_name }}">
                             @else
                                 <span class="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center border border-gray-300">
@@ -74,7 +74,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="bg-gray-50 px-5 py-4 border-t border-gray-100">
                     <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
                         <div class="sm:col-span-1">
@@ -101,7 +101,7 @@
                                 {{ $shop->dana_shop_id ?? '-' }}
                             </dd>
                         </div>
-                        
+
                         @if($shop->dana_status == 'FAILED')
                             <div class="sm:col-span-2">
                                 <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Error Message</dt>
