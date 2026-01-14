@@ -304,7 +304,7 @@ class CheckoutController extends Controller
             }
         }
 
-        return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user'));
+        return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'weblogo'));
     }
 
 
