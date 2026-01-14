@@ -749,3 +749,7 @@ Route::controller(BlogController::class)->group(function () {
     Route::get('/feed', 'generateFeed')->name('feed');
 });
 
+Route::post('/topup/consult-methods', [TopUpController::class, 'consultPaymentMethods'])
+    ->name('topup.consult')
+    ->middleware('auth'); // Pastikan user login
+
