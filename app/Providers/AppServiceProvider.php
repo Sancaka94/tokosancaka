@@ -38,9 +38,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //View::composer('layouts.marketplace', function ($view) {
-        //$view->with('weblogo', 'logo.png'); // Replace 'logo.png' with your logic
-        //});
+        View::composer('layouts.marketplace', function ($view) {
+        $view->with('weblogo', 'logo.png'); // Replace 'logo.png' with your logic
+        });
         // ----------------------------------------
         // 1. VIEW COMPOSER
         // ----------------------------------------
