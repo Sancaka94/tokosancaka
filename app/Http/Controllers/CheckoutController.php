@@ -816,20 +816,44 @@ class CheckoutController extends Controller
     }
 
 
-    /**
-     * Menampilkan halaman invoice setelah checkout.
-     */
     public function invoice($invoice)
     {
-        if (!$invoice) {
-            return redirect()->route('checkout.index')->with('error', 'Invoice tidak ditemukan.');
-        }
+        // 1. Ambil data Order dari Database
         $order = Order::with('items.product', 'items.variant', 'store', 'user')
-                            ->where('invoice_number', $invoice)
-                            ->where('user_id', Auth::id())
-                            ->firstOrFail();
+            ->where('invoice_number', $invoice)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
 
-        return view('checkout.invoice', compact('order'));
+        // 2. Siapkan variabel untuk data Tripay
+        $tripayDetail = null;
+
+        // 3. Cek apakah perlu ambil data ke Tripay?
+        // (Jangan ambil jika COD, DANA Direct, atau sudah Lunas)
+        $excludeMethods = ['cod', 'CODBARANG', 'cash', 'DANA'];
+
+        if (!in_array($order->payment_method, $excludeMethods) && $order->status !== 'paid') {
+
+            try {
+                $apiKey = config('tripay.api_key');
+                $mode   = config('tripay.mode');
+                $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
+
+                // PANGGIL API DETAIL TRANSAKSI TRIPAY
+                $response = Http::withToken($apiKey)
+                    ->get($baseUrl . '/transaction/detail', [
+                        'reference' => $invoice // Kirim No Invoice
+                    ]);
+
+                if ($response->successful()) {
+                    $tripayDetail = $response->json()['data'];
+                }
+            } catch (\Exception $e) {
+                Log::error("Gagal ambil detail Tripay: " . $e->getMessage());
+            }
+        }
+
+        // 4. Kirim data $tripayDetail ke View
+        return view('checkout.invoice', compact('order', 'tripayDetail'));
     }
 
     /**
