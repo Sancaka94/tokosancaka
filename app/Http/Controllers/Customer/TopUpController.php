@@ -1654,7 +1654,7 @@ public function checkTopupStatus(Request $request)
             $resCode = $result['responseCode'] ?? 'UNKNOWN';
 
             // 7. Handle Response
-            if ($resCode == '2000000') {
+            $successCodes = ['2000000', '2005700', '2005400']; // Tambahkan kode lain jika perlu
                 $paymentMethods = $result['paymentInfos'] ?? [];
 
                 // [LOG 6] Sukses & Jumlah Metode
