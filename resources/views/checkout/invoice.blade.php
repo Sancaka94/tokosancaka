@@ -17,7 +17,7 @@
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                         <div class="flex items-center">
                             {{-- Logo Perusahaan --}}
-                            <img src="https://tokosancaka.biz.id/storage/uploads/logo.jpeg"
+                            <img src="https://tokosancaka.com/storage/uploads/logo.jpeg"
                                  alt="Logo"
                                  class="h-16 w-16 rounded-xl shadow-sm object-cover mr-5"
                                  onerror="this.style.display='none';">
