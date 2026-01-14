@@ -51,7 +51,7 @@
 ">
 
     {{-- Slider --}}
-    <div x-data="{ activeSlide: 0, slides: {{ json_encode($slides ?? []) }} }" x-init="if (slides.length > 1) { setInterval(() => { activeSlide = (activeSlide + 1) % slides.length }, 5000) }" id="customer-slider" class="relative w-full max-w-7xl mx-auto rounded-lg shadow-lg overflow-hidden">
+    {{--}} <div x-data="{ activeSlide: 0, slides: {{ json_encode($slides ?? []) }} }" x-init="if (slides.length > 1) { setInterval(() => { activeSlide = (activeSlide + 1) % slides.length }, 5000) }" id="customer-slider" class="relative w-full max-w-7xl mx-auto rounded-lg shadow-lg overflow-hidden">
         <div class="relative w-full overflow-hidden">
             <div class="flex transition-transform duration-700 ease-in-out" :style="`transform: translateX(-${activeSlide * 100}%);`">
                 <template x-for="(slide, index) in slides" :key="index">
