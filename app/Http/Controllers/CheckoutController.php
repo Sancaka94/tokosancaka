@@ -106,40 +106,27 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-        // =========================================================
-        // === DEBUG MODE: PAKSA KONEKSI (HAPUS CACHE DULU) ===
-        // =========================================================
+       // ============================================================
+        // === KODE FINAL TRIPAY (DENGAN CACHE OTOMATIS) ==============
+        // ============================================================
+        $tripayChannels = \Illuminate\Support\Facades\Cache::remember('tripay_channels_list', 60 * 24, function () {
+            $apiKey  = config('tripay.api_key');
+            $mode    = config('tripay.mode');
+            $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
 
-        $apiKey  = config('tripay.api_key');
-        $mode    = config('tripay.mode');
-        $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
-
-        // 1. Cek apakah config terbaca
-        if (empty($apiKey)) {
-            dd("STOP: API KEY KOSONG. Cek file config/tripay.php dan .env Anda.");
-        }
-
-        // 2. Tembak langsung ke Tripay (Tanpa Cache)
-        try {
-            $response = Http::withToken($apiKey)
-                            ->timeout(15)
-                            ->get($baseUrl . '/merchant/payment-channel');
-
-            // 3. TAMPILKAN HASILNYA (LAYAR HITAM)
-            dd([
-                'STATUS KONEKSI' => $response->status(),
-                'MODE APLIKASI'  => $mode,
-                'URL TARGET'     => $baseUrl . '/merchant/payment-channel',
-                'PESAN DARI TRIPAY' => $response->json()
-            ]);
-
-        } catch (\Exception $e) {
-            dd("ERROR KONEKSI CURL: " . $e->getMessage());
-        }
-
-        // =========================================================
-        // === JANGAN LANJUT KE BAWAH SEBELUM INI MUNCUL ===
-        // =========================================================
+            try {
+                // Timeout 10 detik agar tidak loading lama jika Tripay gangguan
+                $response = Http::withToken($apiKey)->timeout(10)->get($baseUrl . '/merchant/payment-channel');
+                if ($response->successful()) {
+                    return $response->json()['data'] ?? [];
+                }
+                Log::error('Gagal ambil channel Tripay: ' . $response->body());
+            } catch (\Exception $e) {
+                Log::error('Tripay Exception: ' . $e->getMessage());
+            }
+            return [];
+        });
+        // ============================================================
 
 
         $user = Auth::user();
