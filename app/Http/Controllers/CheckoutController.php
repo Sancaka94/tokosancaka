@@ -144,6 +144,7 @@ class CheckoutController extends Controller
         // === AKHIR MODE DEBUG =======================================
         // ============================================================
 
+
         $user = Auth::user();
 
         $firstCartItemData = reset($cart);
