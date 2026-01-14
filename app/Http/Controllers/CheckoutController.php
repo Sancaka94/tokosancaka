@@ -694,37 +694,39 @@ class CheckoutController extends Controller
 
     public function createPaymentDANA(Order $order)
     {
-        // 1. Bersihkan Invoice (Hanya Alfanumerik jika DANA menolak simbol)
-        // Tapi biasanya strip (-) diperbolehkan. Kita gunakan invoice asli dulu.
+        // 1. SIAPKAN DATA UTAMA
+        // Pastikan invoice hanya huruf dan angka (hapus simbol aneh jika ada)
+        // DANA kadang menolak simbol tertentu di ReferenceNo
         $trxId = $order->invoice_number;
 
-        Log::info('DANA CHECKOUT START: ' . $trxId);
+        // 2. AMBIL CONFIG (Pastikan String)
+        $merchantId = (string) config('services.dana.merchant_id');
 
-        $user = Auth::user();
-
-        // 2. Pastikan Config Tidak Kosong
-        $merchantId = config('services.dana.merchant_id');
-        if (empty($merchantId)) {
-            Log::error('DANA CONFIG ERROR: Merchant ID kosong. Cek config/services.php');
-            return redirect()->route('checkout.index')->with('error', 'Konfigurasi Pembayaran DANA belum lengkap.');
+        // VALIDASI CONFIG: Merchant ID harus angka panjang (bukan T44557 punya Tripay)
+        if (empty($merchantId) || strlen($merchantId) < 5) {
+            Log::error('DANA CONFIG ERROR: Merchant ID terlihat salah/kosong: ' . $merchantId);
+            return redirect()->route('checkout.index')->with('error', 'Konfigurasi DANA Merchant ID salah.');
         }
 
-        // 3. Pastikan URL Valid (Absolute URL)
-        // Gunakan url() atau route() untuk memastikan http/https ada
+        // 3. URLs
         $returnUrl = route('dana.return');
         $notifyUrl = route('dana.notify');
 
-        // Waktu
+        // 4. Timezone Wajib Asia/Jakarta
         $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
-        // Format ValidUpTo yang paling aman untuk SNAP: Y-m-d\TH:i:sP
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // 4. Susun Body dengan Casting Strict (String)
+        // 5. Bersihkan String (Hapus emoji/simbol untuk judul)
+        $cleanName = preg_replace('/[^A-Za-z0-9 ]/', '', $user->nama_lengkap ?? 'Guest');
+        $cleanTitle = "Order " . preg_replace('/[^A-Za-z0-9-]/', '', $trxId);
+
+        // 6. BODY REQUEST (SUPER STRICT MODE)
         $bodyArray = [
             "partnerReferenceNo" => (string) $trxId,
-            "merchantId"         => (string) $merchantId, // WAJIB STRING
+            "merchantId"         => (string) $merchantId, // WAJIB STRING ANGKA
             "amount"             => [
-                "value"    => number_format($order->total_amount, 2, '.', ''), // WAJIB STRING "10000.00"
+                // Format wajib: "10000.00" (String, 2 desimal, titik)
+                "value"    => number_format((float)$order->total_amount, 2, '.', ''),
                 "currency" => "IDR"
             ],
             "validUpTo"          => $expiryTime,
@@ -737,23 +739,22 @@ class CheckoutController extends Controller
                 [
                     "url"           => $notifyUrl,
                     "type"          => "NOTIFICATION",
-                    "isDeeplink"    => "Y" // SNAP biasanya minta Y atau N (string)
+                    "isDeeplink"    => "Y"
                 ]
             ],
             "additionalInfo"     => [
-                // Pastikan productCode max 20 karakter
+                // Product Code Mockup untuk Sandbox (WAJIB INI JIKA SANDBOX)
                 "productCode" => "51051000100000000001",
                 "mcc"         => "5732",
                 "order"       => [
-                    "orderTitle"        => mb_strimwidth("Order " . $trxId, 0, 40, "..."), // Limit panjang judul
+                    "orderTitle"        => mb_substr($cleanTitle, 0, 40), // Max 40 chars
                     "merchantTransType" => "01",
-                    "orderMemo"         => "Pembayaran " . $trxId,
+                    "orderMemo"         => "Pay " . $trxId,
                     "createdTime"       => $timestamp,
                     "buyer"             => [
-                        // Pastikan ID user tidak null
-                        "externalUserId"   => (string) ($user->id_pengguna ?? 'GUEST_' . uniqid()),
+                        "externalUserId"   => (string) ($order->user_id ?? 'GUEST123'),
                         "externalUserType" => "MERCHANT_USER",
-                        "nickname"         => mb_strimwidth($user->nama_lengkap ?? 'Guest', 0, 40, ""),
+                        "nickname"         => mb_substr($cleanName, 0, 40),
                     ]
                 ],
                 "envInfo"     => [
@@ -766,14 +767,15 @@ class CheckoutController extends Controller
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        // API Endpoint Direct Debit
+        // LOG PAYLOAD UNTUK DEBUGGING (Cek di laravel.log jika masih error)
+        Log::info('DANA PAYLOAD:', ['body' => $bodyArray]);
+
         $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
         try {
              $accessToken = $this->danaSignature->getAccessToken();
              $signature   = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
 
-             // Cek ENV untuk URL Base
              $danaEnv = strtoupper(config('services.dana.dana_env', 'SANDBOX'));
              $baseUrl = ($danaEnv === 'PRODUCTION')
                         ? 'https://api.dana.id'
@@ -781,36 +783,38 @@ class CheckoutController extends Controller
 
              $response = Http::withHeaders([
                 'Authorization'  => 'Bearer ' . $accessToken,
-                'X-PARTNER-ID'   => config('services.dana.x_partner_id', '2000001'), // Default sandbox
+                'X-PARTNER-ID'   => config('services.dana.x_partner_id', '2000001'),
                 'X-EXTERNAL-ID'  => Str::random(32),
                 'X-TIMESTAMP'    => $timestamp,
                 'X-SIGNATURE'    => $signature,
                 'Content-Type'   => 'application/json',
-                'CHANNEL-ID'     => '95221', // Biasanya channel Web
-                'ORIGIN'         => config('app.url'), // Origin dari web kita
+                'CHANNEL-ID'     => '95221',
+                'ORIGIN'         => config('app.url'),
             ])->withBody($jsonBody, 'application/json')
               ->post($baseUrl . $relativePath);
 
             $result = $response->json();
 
-            // Cek Success Code SNAP (2005400 = Success)
+            // CEK ERROR DARI DANA
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
                 if($redirectUrl) {
                     $order->payment_url = $redirectUrl;
                     $order->save();
                     session()->forget('cart');
-                    Log::info("DANA URL generated: " . $redirectUrl);
                     return redirect()->away($redirectUrl);
                 }
             }
 
-            Log::error('DANA Checkout Failed:', $result);
-            return redirect()->route('checkout.index')->with('error', 'Gagal inisialisasi DANA: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+            Log::error('DANA RESPONSE ERROR:', $result);
+
+            // Tampilkan pesan error spesifik ke layar user
+            $msg = $result['responseMessage'] ?? 'Unknown Error';
+            return redirect()->route('checkout.index')->with('error', 'Gagal DANA: ' . $msg);
 
         } catch (\Exception $e) {
-            Log::error('DANA Connection Error: ' . $e->getMessage());
-            return redirect()->route('checkout.index')->with('error', 'Koneksi ke DANA bermasalah.');
+            Log::error('DANA Exception: ' . $e->getMessage());
+            return redirect()->route('checkout.index')->with('error', 'Koneksi DANA Gagal.');
         }
     }
 
