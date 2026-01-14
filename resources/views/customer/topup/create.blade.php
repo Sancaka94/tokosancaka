@@ -206,6 +206,7 @@
                                 'NETWORK_PAY_PG_SPAY':      'shopeepay.webp', // Mapping khusus SPAY -> shopeepay
                                 'NETWORK_PAY_PG_LINKAJA':   'linkaja.png',
                                 'NETWORK_PAY_PG_DANA':      'dana.webp',
+                                'NETWORK_PAY_PG_CARD':      'card.png',
 
                                 'BALANCE':                  'saldo.png', // Mapping BALANCE -> saldo.png
                                 'CARD':                     'other.png'  // Fallback untuk Kartu
