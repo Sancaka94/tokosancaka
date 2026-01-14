@@ -1725,12 +1725,7 @@ public function checkTopupStatus(Request $request)
         $this->danaSignature = $danaSignature;
     }
 
-  /**
-     * =========================================================================
-     * FUNGSI CREATE PAYMENT DANA (FIXED: Dengan Data Buyer & Normalisasi HP)
-     * =========================================================================
-     */
-    public function createPaymentDANA(Transaction $transaction)
+  public function createPaymentDANA(Transaction $transaction)
     {
         Log::info('DANA_H2H_START: Memulai untuk Ref ID: ' . $transaction->reference_id);
 
@@ -1740,12 +1735,11 @@ public function checkTopupStatus(Request $request)
         $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // 1. SIAPKAN BODY REQUEST
+        // 1. SIAPKAN BODY REQUEST (Struktur Diperbaiki Sesuai Doc Gapura)
         $bodyArray = [
             "partnerReferenceNo" => $orderId,
             "merchantId" => config('services.dana.merchant_id'),
             "amount" => [
-                // Format wajib string dengan 2 desimal (contoh: "10000.00")
                 "value" => number_format($transaction->amount, 2, '.', ''),
                 "currency" => "IDR"
             ],
@@ -1763,18 +1757,21 @@ public function checkTopupStatus(Request $request)
                 ]
             ],
             "additionalInfo" => [
-                // [PERBAIKAN UTAMA] Menambahkan Data Buyer
-                "buyer" => [
-                    "id" => (string) $user->id_pengguna,
-                    "phone" => $this->normalizePhone($user->no_wa ?? '081234567890'),
-                    "email" => $user->email ?? 'guest@tokosancaka.com',
-                    // Batasi nama maks 40 karakter agar aman
-                    "firstName" => Str::limit($user->nama_lengkap ?? 'Guest', 40)
-                ],
+                // [WAJIB 1] MCC Harus Ada (Lihat Dokumen: additionalInfo.mcc - Required)
+                "mcc" => "5732", // Kode elektronik/umum
+
                 "order" => [
-                    "orderTitle" => "Top Up Saldo " . $orderId,
-                    "merchantTransType" => "01", // 01 = Sale
+                    "orderTitle" => "Top Up " . $orderId,
+                    "merchantTransType" => "01",
                     "scenario" => "REDIRECT",
+
+                    // [WAJIB 2] Struktur Buyer Sesuai Dokumen
+                    "buyer" => [
+                        "externalUserId" => (string) $user->id_pengguna,
+                        // Jika externalUserId diisi, externalUserType WAJIB diisi
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname"       => Str::limit($user->nama_lengkap ?? 'Guest', 40),
+                    ]
                 ],
                 "envInfo" => [
                     "sourcePlatform" => "IPG",
@@ -1784,25 +1781,22 @@ public function checkTopupStatus(Request $request)
             ]
         ];
 
-        // Encode JSON
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        // [DEBUG LOG] Catat apa yang kita kirim ke DANA
-        Log::info('DANA_PAYLOAD_DEBUG:', ['json' => $bodyArray]);
+        // Log untuk memastikan struktur JSON sudah benar sebelum dikirim
+        Log::info('DANA_PAYLOAD_FINAL:', ['json' => $bodyArray]);
 
         // 2. GENERATE SIGNATURE
         try {
              $accessToken = $this->danaSignature->getAccessToken();
-             // Pastikan path sesuai dokumentasi DANA Direct Debit
              $signature = $this->danaSignature->generateSignature('POST', '/payment-gateway/v1.0/debit/payment-host-to-host.htm', $jsonBody, $timestamp);
         } catch (\Exception $e) {
              Log::error('DANA Signature Error: ' . $e->getMessage());
              return back()->with('error', 'Gagal memproses tanda tangan keamanan DANA.');
         }
 
-        // 3. HIT API DANA
+        // 3. HIT API
         $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
-        // Tentukan URL Sandbox atau Production
         $baseUrl = (config('services.dana.dana_env') == 'PRODUCTION')
                     ? 'https://api.dana.id'
                     : 'https://api.sandbox.dana.id';
@@ -1818,19 +1812,16 @@ public function checkTopupStatus(Request $request)
                 'X-SIGNATURE'    => $signature,
                 'Content-Type'   => 'application/json',
                 'CHANNEL-ID'     => '95221',
-                'ORIGIN'         => config('services.dana.origin'), // Pastikan di .env ada APP_URL/ORIGIN
+                'ORIGIN'         => config('services.dana.origin'),
             ])->withBody($jsonBody, 'application/json')->post($fullUrl);
 
             $result = $response->json();
 
-            // Cek Jika Sukses (Kode 2005400)
+            // Cek Sukses (2005400)
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
-
-                // Ambil Link Redirect (Prioritas webRedirectUrl, fallback ke appLinkUrl)
                 $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'] ?? null;
 
                 if($redirectUrl) {
-                    // Update URL pembayaran di database kita
                     $transaction->payment_url = $redirectUrl;
                     $transaction->save();
 
@@ -1839,7 +1830,6 @@ public function checkTopupStatus(Request $request)
                 }
             }
 
-            // Jika Gagal
             Log::error('DANA Response Gagal:', $result);
             return back()->with('error', 'Gagal dari DANA: ' . ($result['responseMessage'] ?? 'Unknown Error') . ' (Code: ' . ($result['responseCode']??'-') . ')');
 
