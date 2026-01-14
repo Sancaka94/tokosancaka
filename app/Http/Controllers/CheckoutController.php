@@ -622,7 +622,7 @@ class CheckoutController extends Controller
                         $paymentMethod = $request->payment_method;
                         if (str_contains($paymentMethod, 'QRIS')) {
                             $paymentUrl = $tripayData['qr_url'] ?? $tripayData['checkout_url'] ?? $tripayData['pay_url'] ?? null;
-                        } elseif (in_array($paymentMethod, ['OVO', 'DANA', 'SHOPEEPAY'])) {
+                        } elseif (in_array($paymentMethod, ['OVO', 'SHOPEEPAY'])) {
                             $paymentUrl = $tripayData['checkout_url'] ?? $tripayData['pay_url'] ?? null;
                         } elseif (str_contains($paymentMethod, 'VA')) {
                             $paymentUrl = $tripayData['pay_code'] ?? $tripayData['checkout_url'] ?? $tripayData['pay_url'] ?? null;
