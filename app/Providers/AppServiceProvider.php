@@ -38,11 +38,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        View::composer('layouts.marketplace', function ($view) {
+        $view->with('weblogo', 'logo.png'); // Replace 'logo.png' with your logic
+        });
         // ----------------------------------------
         // 1. VIEW COMPOSER
         // ----------------------------------------
         View::composer('layouts.partials.header', HeaderComposer::class);
-        
+
         View::composer('*', function ($view) {
     try {
         if (auth()->check()) {
@@ -50,17 +53,17 @@ class AppServiceProvider extends ServiceProvider
             $stats = Cache::remember('global_sidebar_data_v5', 5, function () { // Cache 30 detik
                 return [
                     // --- DATA MONITOR (8 KARTU) ---
-                    'totalPendapatan' => \App\Models\TopUp::where('status', 'success')->sum('amount') 
+                    'totalPendapatan' => \App\Models\TopUp::where('status', 'success')->sum('amount')
                                        + Pesanan::sum('shipping_cost'),
                     'totalPesanan' => Pesanan::count(),
                     'jumlahToko' => \App\Models\User::where('role', 'Seller')->count(),
                     'penggunaBaru' => \App\Models\User::where('role', 'Pelanggan')
                                          ->where('created_at', '>=', now()->subDays(30))->count(),
                     'totalTerkirim' => Pesanan::where('status_pesanan', 'Selesai')->count(),
-                    'totalSedangDikirim' => Pesanan::whereIn('status_pesanan', 
+                    'totalSedangDikirim' => Pesanan::whereIn('status_pesanan',
                         ['Sedang Dikirim', 'Dikirim', 'Diproses', 'Sedang Diantar'])->count(),
                     'totalMenungguPickup' => Pesanan::where('status_pesanan', 'Menunggu Pickup')->count(),
-                    'totalGagal' => Pesanan::whereIn('status_pesanan', 
+                    'totalGagal' => Pesanan::whereIn('status_pesanan',
                         ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan', 'Gagal Resi'])->count(),
 
                     // --- DATA AKTIVITAS (Baru Ditambahkan) ---
@@ -84,12 +87,12 @@ class AppServiceProvider extends ServiceProvider
         // ----------------------------------------
         // 2. INJECT CONFIG API DARI DATABASE
         // ----------------------------------------
-        
+
         // PERBAIKAN: "try" dimulai DULUAN sebelum cek database
         try {
             // Cek apakah tabel API ada (dilakukan di dalam blok try agar aman)
-            if (Schema::hasTable('API')) { 
-                
+            if (Schema::hasTable('API')) {
+
                 // --- A. INJECT KIRIMINAJA ---
                 $kaMode = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
                 $kaToken = Api::getValue('KIRIMINAJA_TOKEN', $kaMode);
@@ -110,7 +113,7 @@ class AppServiceProvider extends ServiceProvider
 
                 // --- D. INJECT DOKU (LENGKAP) ---
                 $dokuEnv = Api::getValue('DOKU_ENV', 'global', 'sandbox');
-                
+
                 Config::set('doku.mode', $dokuEnv);
                 Config::set('doku.client_id', Api::getValue('DOKU_CLIENT_ID', $dokuEnv));
                 Config::set('doku.secret_key', Api::getValue('DOKU_SECRET_KEY', $dokuEnv));
@@ -121,7 +124,7 @@ class AppServiceProvider extends ServiceProvider
                 // Inject Keys
                 Config::set('doku.doku_public_key', Api::getValue('DOKU_PUBLIC_KEY', $dokuEnv));
                 Config::set('doku.merchant_private_key', Api::getValue('MERCHANT_PRIVATE_KEY', $dokuEnv));
-                
+
                 // Set URL sesuai mode
                 if ($dokuEnv === 'production') {
                     Config::set('doku.url', 'https://api.doku.com');
