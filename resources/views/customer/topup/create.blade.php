@@ -232,12 +232,15 @@
 
                                 // Template HTML Card
                                 let badge = `
-                                    <div class="inline-flex flex-col items-center justify-center p-2 m-1 bg-white border border-gray-200 rounded-lg shadow-sm w-28 h-16 text-center hover:border-blue-500 hover:bg-blue-50 transition-all cursor-default" title="${item.option}">
+                                <div class="inline-flex flex-col items-center justify-center p-3 m-1 bg-white border border-gray-200 rounded-lg shadow-sm w-32 h-24 text-center hover:border-blue-500 hover:bg-blue-50 transition-all cursor-default" title="${item.option}">
+                                    <div class="flex-grow flex items-center justify-center">
                                         ${cardContent}
-                                        <span class="text-[10px] text-gray-500 leading-tight font-medium mt-1 truncate w-full">${cleanName}</span>
                                     </div>
-                                `;
-                                $iconArea.append(badge);
+                                    <span class="text-[11px] text-gray-700 leading-tight font-medium mt-2 w-full whitespace-normal break-words">${cleanName}</span>
+                                </div>
+                            `;
+                            $iconArea.append(badge);
+
                             });
 
                         } else {
