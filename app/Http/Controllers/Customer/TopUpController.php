@@ -111,26 +111,21 @@ class TopUpController extends Controller
             }
 
             // --------------------------------------------------------
-            // 2. LOGIKA DANA (BARU DITAMBAHKAN)
+            // 2. LOGIKA DANA DIRECT
             // --------------------------------------------------------
-            // Cek jika user memilih DANA atau NETWORK_PAY_PG_DANA
             elseif ($validated['payment_method'] === 'DANA' || $validated['payment_method'] === 'NETWORK_PAY_PG_DANA') {
 
-                // Simpan transaksi awal di database kita dulu
                 $transaction = Transaction::create([
-                    'user_id'        => $user->id_pengguna,
+                    'customer_id'    => $user->id_pengguna,
+                    'transaction_id' => $invoiceNumber,
                     'amount'         => $amount,
-                    'type'           => 'topup',
                     'status'         => 'pending',
-                    'payment_method' => 'DANA_DIRECT', // Tandai sebagai DANA Direct
-                    'description'    => 'Top up saldo via DANA Direct Debit',
-                    'reference_id'   => $invoiceNumber,
+                    'payment_method' => 'DANA_DIRECT',
+                    'description'    => 'Top up saldo via DANA',
+                    'payment_url'    => null,
                 ]);
 
-                DB::commit(); // Commit dulu biar data ada sebelum panggil API
-
-                // Panggil method createPaymentDANA (Kita rename method di bawah biar gak bingung)
-                // Kita oper data yang dibutuhkan saja
+                DB::commit();
                 return $this->createPaymentDANA($transaction);
             }
 
@@ -1905,53 +1900,14 @@ public function checkTopupStatus(Request $request)
 
     public function returnPage(Request $request)
     {
-        // 1. Log untuk melihat apa saja yang dikirim DANA saat redirect balik
-        Log::info('DANA Return Page Params:', $request->all());
+        Log::info('DANA Return Page Hit. Redirecting to History.');
 
-        $status = $request->input('status') ?? 'PROCESSED';
+        // Karena DANA tidak mengirim parameter ID di redirect sandbox,
+        // Kita langsung arahkan user ke halaman riwayat transaksi.
+        // Status 'Success' akan diupdate otomatis oleh Webhook (handleNotify).
 
-        // 2. Coba ambil Order ID dari berbagai kemungkinan nama parameter
-        // DANA Redirect biasanya pakai 'partnerReferenceNo', sedangkan Notify pakai 'originalPartnerReferenceNo'
-        $orderId = $request->input('partnerReferenceNo')
-                ?? $request->input('originalPartnerReferenceNo')
-                ?? $request->input('orderId')
-                ?? $request->input('merchantTransId');
-
-        // 3. Pengecekan Safety: Jika Order ID tetap kosong
-        if (empty($orderId)) {
-            return view('layouts.customer')->with('content', "
-                <div class='p-8 text-center'>
-                    <h1 class='text-2xl font-bold mb-4'>Status Pembayaran: $status</h1>
-                    <p class='text-gray-600 mb-4'>Kami menerima respon dari DANA, tetapi ID Transaksi tidak terdeteksi di URL.</p>
-                    <a href='".route('customer.topup.index')."' class='bg-blue-600 text-white px-4 py-2 rounded'>Kembali ke Riwayat</a>
-                </div>
-            ");
-        }
-
-        // 4. Jika Order ID ada, tampilkan tombol cek status
-        // Pastikan parameter dikirim sebagai array ['orderId' => $orderId]
-        $checkUrl = route('dana.status', ['orderId' => $orderId]);
-        $historyUrl = route('customer.topup.index');
-
-        // Tampilan Sederhana (Bisa Anda ganti dengan view blade yang cantik)
-        return "
-            <div style='font-family: sans-serif; text-align: center; padding: 50px;'>
-                <h1 style='color: #2563eb;'>Pembayaran Selesai / Diproses</h1>
-                <p>Status dari DANA: <strong>$status</strong></p>
-                <p>Order ID: <strong>$orderId</strong></p>
-                <hr style='margin: 20px auto; width: 50%;'>
-
-                <div style='margin-top: 20px;'>
-                    <a href='$checkUrl' style='background-color: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;'>
-                        Cek Status Realtime (API)
-                    </a>
-
-                    <a href='$historyUrl' style='background-color: #6b7280; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>
-                        Kembali ke Riwayat
-                    </a>
-                </div>
-            </div>
-        ";
+        return redirect()->route('customer.topup.index')
+            ->with('success', 'Pembayaran Anda sedang diproses oleh sistem. Silakan refresh halaman ini secara berkala untuk melihat perubahan status/saldo.');
     }
 
     public function handleNotify(Request $request)
