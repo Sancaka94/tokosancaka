@@ -23,13 +23,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'webhook/fonnte', // <--- Tambahkan baris ini
             //'api/telegram/webhook', // Sesuaikan dengan route
             'telegram-webhook',
+            'dana/notify', // URL Webhook DANA dibebaskan dari CSRF
         ]);
 
         // --- TAMBAHKAN BAGIAN INI ---
         $middleware->alias([
             'is_agent' => \App\Http\Middleware\IsAgent::class,
         ]);
-        
+
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
