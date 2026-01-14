@@ -151,132 +151,108 @@
 
                     {{-- LOGIKA UTAMA TAMPILAN PEMBAYARAN --}}
 
-                    {{-- 1. JIKA SUDAH LUNAS --}}
+                    {{-- === KODE TRIPAY CERDAS (FIXED) === --}}
+
+                    {{-- 1. LOGIKA STATUS --}}
                     @if(in_array($order->status, ['paid', 'processing', 'shipped', 'completed']))
                         <div class="text-center py-10">
-                            <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-4 animate-bounce">
-                                <i class="fas fa-check text-3xl text-green-600"></i>
+                            <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-4">
+                                <svg class="h-12 w-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                             </div>
                             <h3 class="text-xl font-bold text-gray-900">Pembayaran Berhasil!</h3>
                             <p class="text-sm text-gray-500 mt-2">Terima kasih, pesanan Anda sedang kami proses.</p>
-                            <a href="{{ url('etalase') }}" class="inline-block mt-6 px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition shadow-lg text-sm font-medium">
-                                Lanjut Belanja
-                            </a>
+                            <a href="{{ url('etalase') }}" class="inline-block mt-6 px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition shadow-lg text-sm font-medium">Lanjut Belanja</a>
                         </div>
 
-                    {{-- 2. JIKA COD --}}
+                    {{-- 2. LOGIKA COD --}}
                     @elseif(in_array($order->payment_method, ['cod', 'CODBARANG']))
-                        <div class="text-center bg-white p-6 rounded-xl shadow-sm border border-orange-200">
+                        <div class="text-center bg-white p-6 rounded-xl border border-orange-200">
                             <img src="{{ asset('public/assets/cod.png') }}" class="h-16 mx-auto mb-4 object-contain">
                             <h3 class="font-bold text-gray-900">Bayar Ditempat (COD)</h3>
-                            <p class="text-sm text-gray-600 mt-2">Siapkan uang tunai pas saat kurir tiba.</p>
-                            <div class="mt-4 p-3 bg-orange-50 rounded-lg text-orange-800 font-bold text-lg border border-orange-100">
-                                Rp {{ number_format($order->total_amount, 0, ',', '.') }}
-                            </div>
+                            <p class="text-sm text-gray-600 mt-2">Siapkan uang tunai <strong>Rp {{ number_format($order->total_amount, 0, ',', '.') }}</strong> saat kurir tiba.</p>
                         </div>
 
-                    {{-- 3. JIKA DANA DIRECT DEBIT (Modul Kustom) --}}
+                    {{-- 3. LOGIKA DANA (DIRECT) --}}
                     @elseif($order->payment_method === 'DANA')
-                        <div class="text-center bg-white p-6 rounded-xl shadow-sm border border-blue-200">
+                        <div class="text-center p-6">
                             <img src="{{ asset('public/assets/dana.webp') }}" class="h-12 mx-auto mb-4 object-contain">
                             <p class="text-sm text-gray-600 mb-4">Selesaikan pembayaran via Aplikasi DANA.</p>
-                            <a href="{{ $order->payment_url }}" class="block w-full py-3 bg-[#118EEA] hover:bg-[#0b79c9] text-white font-bold rounded-lg shadow-md transition transform hover:-translate-y-1">
-                                Buka Aplikasi DANA
-                            </a>
+                            <a href="{{ $order->payment_url }}" class="block w-full py-3 bg-[#118EEA] hover:bg-[#0b79c9] text-white font-bold rounded-lg shadow-md">Buka Aplikasi DANA</a>
                         </div>
 
-                    {{-- 4. JIKA TRIPAY (INVOICE CERDAS) --}}
+                    {{-- 4. LOGIKA TRIPAY (DETAIL DARI API) --}}
                     @elseif(isset($tripayDetail))
 
-                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <div class="p-4 bg-white rounded-xl border border-gray-200">
                             <div class="text-center mb-6">
-                                <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">Metode Pembayaran</p>
+                                <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Metode Pembayaran</p>
                                 <h3 class="font-bold text-gray-800 text-lg">{{ $tripayDetail['payment_name'] }}</h3>
                             </div>
 
-                            {{-- A. TAMPILAN QRIS --}}
-                            @if($tripayDetail['payment_method'] == 'QRIS' || $tripayDetail['payment_method'] == 'QRIS2' || isset($tripayDetail['qr_url']))
+                            {{-- A. QRIS (Tampil Gambar) --}}
+                            @if(isset($tripayDetail['qr_url']))
                                 <div class="text-center">
-                                    <p class="text-xs text-gray-500 mb-3">Scan QR Code ini dengan E-Wallet Anda:</p>
-                                    <div class="inline-block p-2 bg-white border rounded-lg shadow-inner mb-4">
-                                        <img src="{{ $tripayDetail['qr_url'] }}" class="w-48 h-48 object-contain">
-                                    </div>
-                                    <div class="flex items-center justify-center space-x-2 text-xs text-gray-400">
-                                        <i class="fas fa-check-circle text-green-500"></i>
-                                        <span>Gopay, OVO, Dana, ShopeePay, LinkAja</span>
-                                    </div>
+                                    <p class="text-xs text-gray-500 mb-3">Scan QR Code ini:</p>
+                                    <img src="{{ $tripayDetail['qr_url'] }}" class="w-48 h-48 mx-auto border p-2 rounded-lg">
                                 </div>
 
-                            {{-- B. TAMPILAN VIRTUAL ACCOUNT / RETAIL --}}
+                            {{-- B. VIRTUAL ACCOUNT / RETAIL (Tampil NOMOR VA) --}}
                             @elseif(isset($tripayDetail['pay_code']))
                                 <div class="text-center">
                                     <p class="text-xs text-gray-500 mb-2">Nomor Kode Bayar / VA:</p>
-                                    <div class="relative group cursor-pointer" onclick="copyToClipboard('payCode')">
-                                        <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-center space-x-3 hover:bg-blue-100 transition">
-                                            <span id="payCode" class="text-2xl font-mono font-bold text-blue-700 tracking-wider">
-                                                {{ $tripayDetail['pay_code'] }}
-                                            </span>
-                                            <i class="far fa-copy text-blue-400"></i>
-                                        </div>
-                                        <div class="text-xs text-blue-600 mt-2 font-medium">Klik untuk menyalin</div>
+                                    <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-center space-x-3 cursor-pointer hover:bg-blue-100 transition" onclick="navigator.clipboard.writeText('{{ $tripayDetail['pay_code'] }}'); alert('Disalin!');">
+                                        {{-- INI PERBAIKANNYA: MENAMPILKAN PAY_CODE, BUKAN URL --}}
+                                        <span class="text-2xl font-mono font-bold text-blue-700 tracking-wider">
+                                            {{ $tripayDetail['pay_code'] }}
+                                        </span>
+                                        <i class="fas fa-copy text-blue-400"></i>
                                     </div>
+                                    <p class="text-xs text-blue-600 mt-2 font-medium">Klik nomor untuk menyalin</p>
                                 </div>
 
-                            {{-- C. TAMPILAN REDIRECT LINK (OVO/SHOPEEPAY APP) --}}
+                            {{-- C. LINK REDIRECT (OVO/SHOPEE) --}}
                             @elseif(isset($tripayDetail['checkout_url']))
                                 <div class="text-center">
-                                    <p class="text-sm text-gray-600 mb-4">Klik tombol di bawah untuk lanjut bayar:</p>
-                                    <a href="{{ $tripayDetail['checkout_url'] }}" target="_blank" class="block w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-md transition">
+                                    <a href="{{ $tripayDetail['checkout_url'] }}" target="_blank" class="block w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-md">
                                         Bayar Sekarang <i class="fas fa-external-link-alt ml-2"></i>
                                     </a>
                                 </div>
                             @endif
 
-                            {{-- ACCORDION CARA PEMBAYARAN --}}
+                            {{-- INSTRUKSI (ACCORDION) --}}
                             @if(!empty($tripayDetail['instructions']))
-                            <div class="mt-8 pt-6 border-t border-dashed border-gray-200">
-                                <h4 class="text-sm font-bold text-gray-800 mb-3 flex items-center">
-                                    <i class="fas fa-info-circle text-gray-400 mr-2"></i> Cara Pembayaran
-                                </h4>
-                                <div class="space-y-2" x-data="{ selected: null }">
+                                <div class="mt-8 pt-6 border-t border-dashed border-gray-200" x-data="{ selected: null }">
+                                    <h4 class="text-sm font-bold text-gray-800 mb-3">Cara Pembayaran</h4>
                                     @foreach($tripayDetail['instructions'] as $index => $instruction)
-                                        <div class="border border-gray-200 rounded-lg overflow-hidden">
-                                            <button @click="selected !== {{ $index }} ? selected = {{ $index }} : selected = null"
-                                                    class="w-full text-left px-4 py-3 bg-gray-50 hover:bg-white text-xs font-semibold text-gray-700 flex justify-between items-center transition">
-                                                <span>{{ $instruction['title'] }}</span>
+                                        <div class="border-b border-gray-100">
+                                            <button @click="selected !== {{ $index }} ? selected = {{ $index }} : selected = null" class="w-full text-left py-2 text-xs font-semibold text-gray-600 flex justify-between">
+                                                {{ $instruction['title'] }}
                                                 <i class="fas" :class="selected === {{ $index }} ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
                                             </button>
-                                            <div x-show="selected === {{ $index }}" class="px-4 py-3 bg-white text-xs text-gray-600 leading-relaxed border-t border-gray-100">
-                                                <ol class="list-decimal list-inside space-y-1">
-                                                    @foreach($instruction['steps'] as $step)
-                                                        <li>{!! $step !!}</li>
-                                                    @endforeach
+                                            <div x-show="selected === {{ $index }}" class="py-2 text-xs text-gray-500 pl-2">
+                                                <ol class="list-decimal list-inside">
+                                                    @foreach($instruction['steps'] as $step) <li>{!! $step !!}</li> @endforeach
                                                 </ol>
                                             </div>
                                         </div>
                                     @endforeach
                                 </div>
-                            </div>
                             @endif
-
-                            {{-- TIMER --}}
-                            <div class="mt-6 pt-4 border-t border-gray-100 text-center">
-                                <p class="text-xs text-red-500 font-medium">
-                                    <i class="far fa-clock mr-1"></i> Batas Waktu:
-                                    {{ \Carbon\Carbon::createFromTimestamp($tripayDetail['expired_time'])->format('d M Y, H:i') }}
-                                </p>
-                            </div>
                         </div>
 
-                    {{-- 5. FALLBACK (JIKA DATA NULL) --}}
+                    {{-- 5. FALLBACK (JIKA GAGAL LOAD API) --}}
                     @else
                         <div class="text-center py-8">
-                            <p class="text-gray-600 mb-4 text-sm">Silakan selesaikan pembayaran Anda melalui link berikut:</p>
-                            <a href="{{ $order->payment_url }}" target="_blank" class="block w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition shadow-lg">
+                            <p class="text-gray-600 mb-4 text-sm">Silakan selesaikan pembayaran melalui link:</p>
+                            <a href="{{ $order->payment_url }}" target="_blank" class="block w-full py-3 bg-blue-600 text-white rounded-lg font-bold shadow-lg">
                                 Halaman Pembayaran <i class="fas fa-external-link-alt ml-1"></i>
                             </a>
                         </div>
                     @endif
+                    {{-- === AKHIR DARI KODE TRIPAY === --}}
+                    {{-- END OF MAIN PAYMENT LOGIC --}}
+
+                    {{-- Back to Shop Link --}}
 
                     <div class="mt-8 text-center">
                         <a href="{{ route('checkout.index') }}" class="text-sm text-gray-500 hover:text-gray-800 transition">
