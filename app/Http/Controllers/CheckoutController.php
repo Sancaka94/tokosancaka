@@ -893,17 +893,27 @@ class CheckoutController extends Controller
         $amount = $data['amount_received'] ?? ($data['amount'] ?? 0);
 
         if (!$merchantRef || !$status) {
-            Log::warning('CheckoutController Callback: Missing merchant_ref or status.', ['data' => $data]);
-            return response()->json(['success' => false, 'message' => 'Missing required data'], 400);
+            return response()->json(['success' => false, 'message' => 'Missing data'], 400);
         }
 
         DB::beginTransaction();
         try {
+            // === PERBAIKAN LOGIKA ROUTING ===
 
-            if (Str::startsWith($merchantRef, 'SCK-')) {
-                Log::info('Routing callback to AdminPesananController', ['ref' => $merchantRef]);
+            // 1. Prioritaskan Order Baru (Format: SCK-ORD-XXXX)
+            // Ini harus dicek DULUAN sebelum 'SCK-' biasa
+            if (Str::startsWith($merchantRef, 'SCK-ORD-') || Str::startsWith($merchantRef, 'ORD-')) {
+                Log::info('Routing callback to processOrderCallback (Marketplace)', ['ref' => $merchantRef]);
+                // Panggil fungsi prosesor di controller ini (Tabel orders)
+                $this->processOrderCallback($merchantRef, $status, $data);
+
+            // 2. Baru cek Format Lama / Manual (Format: SCK-XXXX)
+            } elseif (Str::startsWith($merchantRef, 'SCK-')) {
+                Log::info('Routing callback to AdminPesananController (Legacy)', ['ref' => $merchantRef]);
+                // Panggil controller lama (Tabel pesanan)
                 AdminPesananController::processPesananCallback($merchantRef, $status, $data);
 
+            // 3. TopUp
             } elseif (Str::startsWith($merchantRef, 'TOPUP-')) {
                 Log::info('Routing callback to TopUpController', ['ref' => $merchantRef]);
                 TopUpController::processTopUpCallback($merchantRef, $status, $amount, $data);
