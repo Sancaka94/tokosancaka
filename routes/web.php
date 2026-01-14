@@ -446,6 +446,13 @@ Route::get('/customer/pesanan/export-pdf', [AdminPesananController::class, 'expo
 Route::middleware('auth')->group(function() {
     Route::get('seller/address/search', [SellerRegisterController::class, 'searchAddressKiriminAja'])->name('seller.address.search');
     Route::post('seller/address/geocode', [SellerRegisterController::class, 'geocodeAddress'])->name('seller.address.geocode');
+
+
+});
+
+// Checkout Invoice (Auth General) Marketplace Etalase
+Route::middleware('auth')->group(function() {
+     Route::get('/invoice/{invoice}', [CheckoutController::class, 'invoice'])->name('checkout.invoice');
 });
 
 // Agent Routes
