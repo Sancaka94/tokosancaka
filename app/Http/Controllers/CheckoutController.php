@@ -694,39 +694,35 @@ class CheckoutController extends Controller
 
     public function createPaymentDANA(Order $order)
     {
-        // 1. SIAPKAN DATA UTAMA
-        // Pastikan invoice hanya huruf dan angka (hapus simbol aneh jika ada)
-        // DANA kadang menolak simbol tertentu di ReferenceNo
-        $trxId = $order->invoice_number;
+        // 1. BERSIHKAN DATA (HANYA HURUF & ANGKA)
+        // DANA benci simbol '-' atau spasi di ReferenceNo
+        $originalInvoice = $order->invoice_number;
+        $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $originalInvoice); // SCK-ORD-123 jadi SCKORD123
 
-        // 2. AMBIL CONFIG (Pastikan String)
+        Log::info('DANA CHECKOUT START: ' . $originalInvoice . ' -> Clean: ' . $cleanInvoice);
+
+        // 2. AMBIL CONFIG
         $merchantId = (string) config('services.dana.merchant_id');
 
-        // VALIDASI CONFIG: Merchant ID harus angka panjang (bukan T44557 punya Tripay)
+        // Pastikan Merchant ID valid (String & Panjang)
         if (empty($merchantId) || strlen($merchantId) < 5) {
-            Log::error('DANA CONFIG ERROR: Merchant ID terlihat salah/kosong: ' . $merchantId);
-            return redirect()->route('checkout.index')->with('error', 'Konfigurasi DANA Merchant ID salah.');
+            return redirect()->route('checkout.index')->with('error', 'Config DANA Merchant ID Salah.');
         }
 
         // 3. URLs
         $returnUrl = route('dana.return');
         $notifyUrl = route('dana.notify');
 
-        // 4. Timezone Wajib Asia/Jakarta
+        // 4. Waktu (Wajib format ISO8601 dengan Timezone)
         $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // 5. Bersihkan String (Hapus emoji/simbol untuk judul)
-        $cleanName = preg_replace('/[^A-Za-z0-9 ]/', '', $user->nama_lengkap ?? 'Guest');
-        $cleanTitle = "Order " . preg_replace('/[^A-Za-z0-9-]/', '', $trxId);
-
-        // 6. BODY REQUEST (SUPER STRICT MODE)
+        // 5. BODY REQUEST (FORMAT KETAT)
         $bodyArray = [
-            "partnerReferenceNo" => (string) $trxId,
-            "merchantId"         => (string) $merchantId, // WAJIB STRING ANGKA
+            "partnerReferenceNo" => $cleanInvoice, // TIDAK BOLEH ADA STRIP (-)
+            "merchantId"         => $merchantId,
             "amount"             => [
-                // Format wajib: "10000.00" (String, 2 desimal, titik)
-                "value"    => number_format((float)$order->total_amount, 2, '.', ''),
+                "value"    => number_format((float)$order->total_amount, 2, '.', ''), // String "20000.00"
                 "currency" => "IDR"
             ],
             "validUpTo"          => $expiryTime,
@@ -743,18 +739,20 @@ class CheckoutController extends Controller
                 ]
             ],
             "additionalInfo"     => [
-                // Product Code Mockup untuk Sandbox (WAJIB INI JIKA SANDBOX)
                 "productCode" => "51051000100000000001",
                 "mcc"         => "5732",
                 "order"       => [
-                    "orderTitle"        => mb_substr($cleanTitle, 0, 40), // Max 40 chars
+                    // Judul juga dibersihkan, max 40 karakter
+                    "orderTitle"        => substr("Pay " . $cleanInvoice, 0, 40),
                     "merchantTransType" => "01",
-                    "orderMemo"         => "Pay " . $trxId,
+                    "orderMemo"         => substr("Inv " . $cleanInvoice, 0, 40),
                     "createdTime"       => $timestamp,
                     "buyer"             => [
-                        "externalUserId"   => (string) ($order->user_id ?? 'GUEST123'),
+                        // ID Buyer dipastikan string aman
+                        "externalUserId"   => (string) ($order->user_id ?? 'GUEST' . rand(100,999)),
                         "externalUserType" => "MERCHANT_USER",
-                        "nickname"         => mb_substr($cleanName, 0, 40),
+                        // Nickname hanya huruf/angka
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9]/', '', $order->user->nama_lengkap ?? 'Guest'), 0, 20),
                     ]
                 ],
                 "envInfo"     => [
@@ -767,9 +765,7 @@ class CheckoutController extends Controller
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        // LOG PAYLOAD UNTUK DEBUGGING (Cek di laravel.log jika masih error)
-        Log::info('DANA PAYLOAD:', ['body' => $bodyArray]);
-
+        // API Endpoint
         $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
         try {
@@ -795,11 +791,15 @@ class CheckoutController extends Controller
 
             $result = $response->json();
 
-            // CEK ERROR DARI DANA
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
                 if($redirectUrl) {
+                    // Update Payment URL di DB
                     $order->payment_url = $redirectUrl;
+
+                    // Update Reference di DB (Opsional: Simpan versi bersih di kolom lain jika perlu)
+                    // Tapi payment_url sudah cukup untuk redirect.
+
                     $order->save();
                     session()->forget('cart');
                     return redirect()->away($redirectUrl);
@@ -807,10 +807,7 @@ class CheckoutController extends Controller
             }
 
             Log::error('DANA RESPONSE ERROR:', $result);
-
-            // Tampilkan pesan error spesifik ke layar user
-            $msg = $result['responseMessage'] ?? 'Unknown Error';
-            return redirect()->route('checkout.index')->with('error', 'Gagal DANA: ' . $msg);
+            return redirect()->route('checkout.index')->with('error', 'Gagal DANA: ' . ($result['responseMessage'] ?? 'Format Error'));
 
         } catch (\Exception $e) {
             Log::error('DANA Exception: ' . $e->getMessage());
