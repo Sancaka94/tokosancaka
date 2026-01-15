@@ -755,12 +755,10 @@ class CheckoutController extends Controller
                         ]
                     ]
                 ],
-                "envInfo"     => [
-                    "sourcePlatform"    => "IPG",
-                    "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "WEB",
-                    "clientIp"          => "202.10.43.112",
-                    "extendInfo"        => json_encode(["deviceId" => "WE" . Str::random(20)])
+                "envInfo" => [
+                                    "sourcePlatform" => "IPG",
+                                    "terminalType" => "SYSTEM",
+                                    "orderTerminalType" => "WEB",
                 ]
             ]
         ];
