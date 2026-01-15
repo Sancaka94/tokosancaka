@@ -770,6 +770,17 @@ class CheckoutController extends Controller
             'ORIGIN'         => config('services.dana.origin'),
         ];
 
+        // -----------------------------------------------------------
+            // OPSI DEBUG 1: CEK REQUEST SEBELUM DIKIRIM (Uncomment jika perlu)
+            // -----------------------------------------------------------
+             dd([
+                 'DEBUG_TYPE' => 'REQUEST',
+                 'URL' => config('services.dana.base_url') . $relativePath,
+                 'HEADERS' => $headers,
+                 'BODY' => $bodyArray
+                 ]);
+            // -----------------------------------------------------------
+
         // LOGGING
         Log::info('DANA_DEBUG_FULL', [
             'TARGET_URL' => config('services.dana.base_url') . $relativePath,
@@ -784,6 +795,17 @@ class CheckoutController extends Controller
 
             $result = $response->json();
             Log::info('DANA_RESPONSE', $result);
+
+            // -----------------------------------------------------------
+            // OPSI DEBUG 2: CEK HASIL RESPON DARI DANA (AKTIF)
+            // -----------------------------------------------------------
+            dd([
+                'DEBUG_TYPE' => 'RESPONSE DANA',
+                'HTTP_STATUS' => $response->status(),
+                'RESULT_JSON' => $result,
+                'REQUEST_BODY_SENT' => $bodyArray // Biar bisa dicocokkan
+            ]);
+            // -----------------------------------------------------------
 
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
