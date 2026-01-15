@@ -767,6 +767,13 @@ class OrderController extends Controller
                             ]
                         ];
 
+                        // --- [MULAI TAMBAHAN LOG] ---
+                        Log::info('DANA_REQUEST_PAYLOAD', [
+                            'order_number' => $order->order_number, // Biar mudah dicari berdasarkan nomor order
+                            'payload'      => $bodyArray
+                        ]);
+                        // --- [AKHIR TAMBAHAN LOG] ---
+
                         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
                         $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
 
