@@ -718,8 +718,8 @@ class CheckoutController extends Controller
             ],
             "validUpTo"          => $expiryTime,
             "urlParams"          => [
-                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "true"],
+                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "true"]
             ],
             // Opsi Pembayaran (Wajib BALANCE/Saldo agar aman tanpa Token)
             "payOptionDetails"   => [
@@ -759,7 +759,7 @@ class CheckoutController extends Controller
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
                     "orderTerminalType" => "WEB",
-                    "clientIp"          => "127.0.0.1", // Hardcode IPv4
+                    "clientIp"          => app()->isLocal() ? '103.10.10.10' : request()->ip(),
                     "extendInfo"        => json_encode(["deviceId" => "WE" . Str::random(20)])
                 ]
             ]
