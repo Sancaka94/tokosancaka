@@ -694,27 +694,33 @@ class CheckoutController extends Controller
         $originalInvoice = $order->invoice_number;
         $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $originalInvoice);
 
-        // 2. CONFIG & URL
+        // 2. AMBIL CONFIG SESUAI PERMINTAAN
         $merchantId = (string) config('services.dana.merchant_id');
-        if (empty($merchantId)) {
-            Log::error('DANA CONFIG ERROR: Merchant ID kosong');
-            return redirect()->route('checkout.index')->with('error', 'Konfigurasi Pembayaran Error.');
+        $baseUrl    = config('services.dana.base_url'); // <-- AMBIL DARI CONFIG BARU
+        $origin     = config('services.dana.origin');   // <-- AMBIL DARI CONFIG BARU
+        $partnerId  = config('services.dana.x_partner_id');
+
+        // Validasi Config
+        if (empty($merchantId) || empty($baseUrl)) {
+            Log::error('DANA CONFIG ERROR: MerchantID atau Base URL kosong. Cek file services.php');
+            return redirect()->route('checkout.index')->with('error', 'Konfigurasi Pembayaran DANA Belum Lengkap.');
         }
 
+        // 3. URLs
         $returnUrl = route('dana.return');
         $notifyUrl = route('dana.notify');
 
-        // 3. WAKTU (ISO8601 GMT+7)
+        // 4. WAKTU
         $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // 4. SIAPKAN AMOUNT (String 2 Desimal)
+        // 5. SIAPKAN AMOUNT
         $amountValue = number_format((float)$order->total_amount, 2, '.', '');
 
-        // 5. BODY REQUEST
+        // 6. BODY REQUEST
         $bodyArray = [
             "partnerReferenceNo" => $cleanInvoice,
-            "merchantId"         => $merchantId,
+            "merchantId"         => $merchantId, // <-- Pakai config services.dana.merchant_id
             "amount"             => [
                 "value"    => $amountValue,
                 "currency" => "IDR"
@@ -729,7 +735,7 @@ class CheckoutController extends Controller
                 [
                     "url"           => $notifyUrl,
                     "type"          => "NOTIFICATION",
-                    "isDeeplink"    => "Y" // Untuk notifikasi, set Y saja mengikuti standar
+                    "isDeeplink"    => "Y"
                 ]
             ],
             "additionalInfo"     => [
@@ -741,20 +747,18 @@ class CheckoutController extends Controller
                     "orderMemo"         => substr("Inv " . $cleanInvoice, 0, 64),
                     "createdTime"       => $timestamp,
                     "buyer"             => [
-                        // Hapus externalUserId jika User ID DANA tidak diketahui,
-                        // tapi karena ini direct debit tanpa binding, format Anda sebelumnya sudah benar.
                         "externalUserId"   => (string) ($order->user_id ?? 'GUEST'.rand(100,999)),
                         "externalUserType" => "MERCHANT_USER",
                         "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $order->user->nama_lengkap ?? 'Guest'), 0, 64),
                     ],
-                    // [FIX 1] TAMBAHKAN GOODS (WAJIB ADA UNTUK TRANSAKSI '01')
+                    // WAJIB ADA (Agar tidak error 4005401)
                     "goods" => [
                         [
                             "merchantGoodsId" => substr("ITEM-" . $cleanInvoice, 0, 64),
                             "description"     => "Pembayaran Order " . $originalInvoice,
-                            "category"        => "DIGITAL_GOODS", // Atau PHYSICAL_GOODS
+                            "category"        => "DIGITAL_GOODS",
                             "price"           => [
-                                "value"    => $amountValue, // Samakan dengan total agar tidak error mismatch
+                                "value"    => $amountValue,
                                 "currency" => "IDR"
                             ],
                             "unit"            => "pcs",
@@ -766,15 +770,16 @@ class CheckoutController extends Controller
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
                     "orderTerminalType" => "WEB",
-                    // [FIX 2] TAMBAHKAN CLIENT IP
-                    "clientIp"          => "202.10.43.112",
+                    // WAJIB IPv4 (Agar tidak error 4005401 karena IPv6 kepanjangan)
+                    "clientIp"          => "127.0.0.1",
                 ]
             ]
         ];
 
-        // LOG DEBUG
+        // LOG REQUEST
         Log::info('DANA_REQUEST_DEBUG', [
             'INVOICE' => $cleanInvoice,
+            'URL'     => $baseUrl,
             'PAYLOAD' => $bodyArray
         ]);
 
@@ -785,22 +790,17 @@ class CheckoutController extends Controller
              $accessToken = $this->danaSignature->getAccessToken();
              $signature   = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
 
-             $danaEnv = strtoupper(config('services.dana.dana_env', 'SANDBOX'));
-             $baseUrl = ($danaEnv === 'PRODUCTION')
-                        ? 'https://api.dana.id'
-                        : 'https://api.sandbox.dana.id';
-
              $response = Http::withHeaders([
                 'Authorization'  => 'Bearer ' . $accessToken,
-                'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+                'X-PARTNER-ID'   => $partnerId,  // <-- Config: x_partner_id
                 'X-EXTERNAL-ID'  => Str::random(32),
                 'X-TIMESTAMP'    => $timestamp,
                 'X-SIGNATURE'    => $signature,
                 'Content-Type'   => 'application/json',
                 'CHANNEL-ID'     => '95221',
-                'ORIGIN'         => config('app.url'),
+                'ORIGIN'         => $origin,     // <-- Config: origin
             ])->withBody($jsonBody, 'application/json')
-              ->post($baseUrl . $relativePath);
+              ->post($baseUrl . $relativePath);  // <-- Config: base_url
 
             $result = $response->json();
 
@@ -816,9 +816,7 @@ class CheckoutController extends Controller
                 }
             }
 
-            // Notifikasi Error ke User
-            $errMsg = $result['responseMessage'] ?? 'Format Error';
-            return redirect()->route('checkout.index')->with('error', 'Gagal DANA: ' . $errMsg);
+            return redirect()->route('checkout.index')->with('error', 'Gagal DANA: ' . ($result['responseMessage'] ?? 'Format Error'));
 
         } catch (\Exception $e) {
             Log::error('DANA Exception: ' . $e->getMessage());
