@@ -735,7 +735,7 @@ class OrderController extends Controller
                         $bodyArray = [
                             "partnerReferenceNo" => $order->order_number,
                             "merchantId" => config('services.dana.merchant_id'),
-                            "externalStoreId" => "216660000003146819193",
+                            "externalStoreId" => "toko-pelanggan",
                             "amount" => [
                                 "value" => number_format($finalPrice, 2, '.', ''),
                                 "currency" => "IDR"
