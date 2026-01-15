@@ -718,8 +718,8 @@ class CheckoutController extends Controller
             ],
             "validUpTo"          => $expiryTime,
             "urlParams"          => [
-                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "true"],
-                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "true"]
+                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => true],
+                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => true]
             ],
             // Opsi Pembayaran (Wajib BALANCE/Saldo agar aman tanpa Token)
             "payOptionDetails"   => [
