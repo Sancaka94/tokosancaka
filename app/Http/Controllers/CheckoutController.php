@@ -691,81 +691,79 @@ class CheckoutController extends Controller
     public function createPaymentDANA(Order $order)
     {
         // 1. BERSIHKAN DATA (HANYA HURUF & ANGKA)
-        // DANA benci simbol '-' atau spasi di ReferenceNo
+        // DANA mewajibkan partnerReferenceNo unik & format string
         $originalInvoice = $order->invoice_number;
-        $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $originalInvoice); // SCK-ORD-123 jadi SCKORD123
-
-        Log::info('DANA CHECKOUT START: ' . $originalInvoice . ' -> Clean: ' . $cleanInvoice);
+        $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $originalInvoice);
 
         // 2. AMBIL CONFIG
         $merchantId = (string) config('services.dana.merchant_id');
 
-        // Pastikan Merchant ID valid (String & Panjang)
-        if (empty($merchantId) || strlen($merchantId) < 5) {
-            return redirect()->route('checkout.index')->with('error', 'Config DANA Merchant ID Salah.');
+        // Pastikan Merchant ID valid
+        if (empty($merchantId)) {
+            Log::error('DANA CONFIG ERROR: Merchant ID kosong');
+            return redirect()->route('checkout.index')->with('error', 'Konfigurasi Pembayaran Error (MerchantID).');
         }
 
         // 3. URLs
         $returnUrl = route('dana.return');
         $notifyUrl = route('dana.notify');
 
-        // 4. Waktu (Wajib format ISO8601 dengan Timezone)
+        // 4. Waktu (Wajib format ISO8601 dengan Timezone GMT+7)
+        // Contoh: 2026-01-15T10:00:00+07:00
         $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // 5. BODY REQUEST (FORMAT KETAT)
+        // 5. BODY REQUEST
         $bodyArray = [
-            "partnerReferenceNo" => $cleanInvoice, // TIDAK BOLEH ADA STRIP (-)
+            "partnerReferenceNo" => $cleanInvoice,
             "merchantId"         => $merchantId,
             "amount"             => [
-                "value"    => number_format((float)$order->total_amount, 2, '.', ''), // String "20000.00"
+                // Value WAJIB string dengan 2 desimal, contoh: "10000.00"
+                "value"    => number_format((float)$order->total_amount, 2, '.', ''),
                 "currency" => "IDR"
             ],
-            "validUpTo"          => $expiryTime,
+            "validUpTo"          => $expiryTime, //
             "urlParams"          => [
                 [
                     "url"           => $returnUrl,
-                    "type"          => "PAY_RETURN",
+                    "type"          => "PAY_RETURN", //
                     "isDeeplink"    => "Y"
                 ],
                 [
                     "url"           => $notifyUrl,
-                    "type"          => "NOTIFICATION",
+                    "type"          => "NOTIFICATION", //
                     "isDeeplink"    => "Y"
                 ]
             ],
             "additionalInfo"     => [
-                "productCode" => "51051000100000000001",
-                "mcc"         => "5732",
+                "productCode" => "51051000100000000001", //
+                "mcc"         => "5732", //
                 "order"       => [
-                    // Judul juga dibersihkan, max 40 karakter
-                    "orderTitle"        => substr("Pay " . $cleanInvoice, 0, 40),
+                    "orderTitle"        => substr("Pay " . $cleanInvoice, 0, 64), // Max 64 chars
                     "merchantTransType" => "01",
-                    "orderMemo"         => substr("Inv " . $cleanInvoice, 0, 40),
-                    "createdTime"       => $timestamp,
+                    "orderMemo"         => substr("Inv " . $cleanInvoice, 0, 64), // Max 64 chars
+                    "createdTime"       => $timestamp, //
                     "buyer"             => [
-                        // ID Buyer dipastikan string aman
-                        "externalUserId"   => (string) ($order->user_id ?? 'GUEST' . rand(100,999)),
+                        "externalUserId"   => (string) ($order->user_id ?? 'GUEST'.rand(100,999)),
                         "externalUserType" => "MERCHANT_USER",
-                        // Nickname hanya huruf/angka
-                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9]/', '', $order->user->nama_lengkap ?? 'Guest'), 0, 20),
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $order->user->nama_lengkap ?? 'Guest'), 0, 64), // Max 64 chars
                     ]
                 ],
                 "envInfo"     => [
-                    "sourcePlatform"    => "IPG",
-                    "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "WEB",
+                    "sourcePlatform"    => "IPG", //
+                    "terminalType"      => "SYSTEM", //
+                    "orderTerminalType" => "WEB", //
                 ]
             ]
         ];
 
         // =================================================================
-        // [TAMBAHAN] LOG REQUEST PAYLOAD (CHECK ERROR 4005401 DISINI)
+        // [TAMBAHAN LOG] CEK REQUEST PAYLOAD DISINI
         // =================================================================
         Log::info('DANA_REQUEST_DEBUG', [
             'INVOICE' => $cleanInvoice,
             'URL'     => config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id',
-            'PAYLOAD' => $bodyArray // <--- INI YANG ANDA BUTUHKAN
+            'PAYLOAD' => $bodyArray // <--- Periksa hasil log ini
         ]);
         // =================================================================
 
@@ -785,34 +783,33 @@ class CheckoutController extends Controller
 
              $response = Http::withHeaders([
                 'Authorization'  => 'Bearer ' . $accessToken,
-                'X-PARTNER-ID'   => config('services.dana.x_partner_id', '2000001'),
-                'X-EXTERNAL-ID'  => Str::random(32),
-                'X-TIMESTAMP'    => $timestamp,
+                'X-PARTNER-ID'   => config('services.dana.x_partner_id'), //
+                'X-EXTERNAL-ID'  => Str::random(32), //
+                'X-TIMESTAMP'    => $timestamp, //
                 'X-SIGNATURE'    => $signature,
                 'Content-Type'   => 'application/json',
-                'CHANNEL-ID'     => '95221',
+                'CHANNEL-ID'     => '95221', //
                 'ORIGIN'         => config('app.url'),
             ])->withBody($jsonBody, 'application/json')
               ->post($baseUrl . $relativePath);
 
             $result = $response->json();
 
+            // LOG RESPONSE DARI DANA
+            Log::info('DANA_RESPONSE_DEBUG', ['result' => $result]);
+
+            // Cek sukses 2005400
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
                 if($redirectUrl) {
-                    // Update Payment URL di DB
                     $order->payment_url = $redirectUrl;
-
-                    // Update Reference di DB (Opsional: Simpan versi bersih di kolom lain jika perlu)
-                    // Tapi payment_url sudah cukup untuk redirect.
-
                     $order->save();
                     session()->forget('cart');
                     return redirect()->away($redirectUrl);
                 }
             }
 
-            Log::error('DANA RESPONSE ERROR:', $result);
+            Log::error('DANA FAILED:', $result);
             return redirect()->route('checkout.index')->with('error', 'Gagal DANA: ' . ($result['responseMessage'] ?? 'Format Error'));
 
         } catch (\Exception $e) {
