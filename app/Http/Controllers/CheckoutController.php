@@ -690,86 +690,95 @@ class CheckoutController extends Controller
 
     public function createPaymentDANA(Order $order)
     {
-        // 1. BERSIHKAN DATA (HANYA HURUF & ANGKA)
-        // DANA mewajibkan partnerReferenceNo unik & format string
+        // 1. BERSIHKAN DATA
         $originalInvoice = $order->invoice_number;
         $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $originalInvoice);
 
-        // 2. AMBIL CONFIG
+        // 2. CONFIG & URL
         $merchantId = (string) config('services.dana.merchant_id');
-
-        // Pastikan Merchant ID valid
         if (empty($merchantId)) {
             Log::error('DANA CONFIG ERROR: Merchant ID kosong');
-            return redirect()->route('checkout.index')->with('error', 'Konfigurasi Pembayaran Error (MerchantID).');
+            return redirect()->route('checkout.index')->with('error', 'Konfigurasi Pembayaran Error.');
         }
 
-        // 3. URLs
         $returnUrl = route('dana.return');
         $notifyUrl = route('dana.notify');
 
-        // 4. Waktu (Wajib format ISO8601 dengan Timezone GMT+7)
-        // Contoh: 2026-01-15T10:00:00+07:00
+        // 3. WAKTU (ISO8601 GMT+7)
         $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+
+        // 4. SIAPKAN AMOUNT (String 2 Desimal)
+        $amountValue = number_format((float)$order->total_amount, 2, '.', '');
 
         // 5. BODY REQUEST
         $bodyArray = [
             "partnerReferenceNo" => $cleanInvoice,
             "merchantId"         => $merchantId,
             "amount"             => [
-                // Value WAJIB string dengan 2 desimal, contoh: "10000.00"
-                "value"    => number_format((float)$order->total_amount, 2, '.', ''),
+                "value"    => $amountValue,
                 "currency" => "IDR"
             ],
-            "validUpTo"          => $expiryTime, //
+            "validUpTo"          => $expiryTime,
             "urlParams"          => [
                 [
                     "url"           => $returnUrl,
-                    "type"          => "PAY_RETURN", //
+                    "type"          => "PAY_RETURN",
                     "isDeeplink"    => "Y"
                 ],
                 [
                     "url"           => $notifyUrl,
-                    "type"          => "NOTIFICATION", //
-                    "isDeeplink"    => "Y"
+                    "type"          => "NOTIFICATION",
+                    "isDeeplink"    => "Y" // Untuk notifikasi, set Y saja mengikuti standar
                 ]
             ],
             "additionalInfo"     => [
-                "productCode" => "51051000100000000001", //
-                "mcc"         => "5732", //
+                "productCode" => "51051000100000000001",
+                "mcc"         => "5732",
                 "order"       => [
-                    "orderTitle"        => substr("Pay " . $cleanInvoice, 0, 64), // Max 64 chars
+                    "orderTitle"        => substr("Pay " . $cleanInvoice, 0, 64),
                     "merchantTransType" => "01",
-                    "orderMemo"         => substr("Inv " . $cleanInvoice, 0, 64), // Max 64 chars
-                    "createdTime"       => $timestamp, //
+                    "orderMemo"         => substr("Inv " . $cleanInvoice, 0, 64),
+                    "createdTime"       => $timestamp,
                     "buyer"             => [
+                        // Hapus externalUserId jika User ID DANA tidak diketahui,
+                        // tapi karena ini direct debit tanpa binding, format Anda sebelumnya sudah benar.
                         "externalUserId"   => (string) ($order->user_id ?? 'GUEST'.rand(100,999)),
                         "externalUserType" => "MERCHANT_USER",
-                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $order->user->nama_lengkap ?? 'Guest'), 0, 64), // Max 64 chars
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $order->user->nama_lengkap ?? 'Guest'), 0, 64),
+                    ],
+                    // [FIX 1] TAMBAHKAN GOODS (WAJIB ADA UNTUK TRANSAKSI '01')
+                    "goods" => [
+                        [
+                            "merchantGoodsId" => substr("ITEM-" . $cleanInvoice, 0, 64),
+                            "description"     => "Pembayaran Order " . $originalInvoice,
+                            "category"        => "DIGITAL_GOODS", // Atau PHYSICAL_GOODS
+                            "price"           => [
+                                "value"    => $amountValue, // Samakan dengan total agar tidak error mismatch
+                                "currency" => "IDR"
+                            ],
+                            "unit"            => "pcs",
+                            "quantity"        => "1"
+                        ]
                     ]
                 ],
                 "envInfo"     => [
-                    "sourcePlatform"    => "IPG", //
-                    "terminalType"      => "SYSTEM", //
-                    "orderTerminalType" => "WEB", //
+                    "sourcePlatform"    => "IPG",
+                    "terminalType"      => "SYSTEM",
+                    "orderTerminalType" => "WEB",
+                    // [FIX 2] TAMBAHKAN CLIENT IP
+                    "clientIp"          => request()->ip() ?? '127.0.0.1',
                 ]
             ]
         ];
 
-        // =================================================================
-        // [TAMBAHAN LOG] CEK REQUEST PAYLOAD DISINI
-        // =================================================================
+        // LOG DEBUG
         Log::info('DANA_REQUEST_DEBUG', [
             'INVOICE' => $cleanInvoice,
-            'URL'     => config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id',
-            'PAYLOAD' => $bodyArray // <--- Periksa hasil log ini
+            'PAYLOAD' => $bodyArray
         ]);
-        // =================================================================
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-        // API Endpoint
         $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
         try {
@@ -783,22 +792,20 @@ class CheckoutController extends Controller
 
              $response = Http::withHeaders([
                 'Authorization'  => 'Bearer ' . $accessToken,
-                'X-PARTNER-ID'   => config('services.dana.x_partner_id'), //
-                'X-EXTERNAL-ID'  => Str::random(32), //
-                'X-TIMESTAMP'    => $timestamp, //
+                'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID'  => Str::random(32),
+                'X-TIMESTAMP'    => $timestamp,
                 'X-SIGNATURE'    => $signature,
                 'Content-Type'   => 'application/json',
-                'CHANNEL-ID'     => '95221', //
+                'CHANNEL-ID'     => '95221',
                 'ORIGIN'         => config('app.url'),
             ])->withBody($jsonBody, 'application/json')
               ->post($baseUrl . $relativePath);
 
             $result = $response->json();
 
-            // LOG RESPONSE DARI DANA
             Log::info('DANA_RESPONSE_DEBUG', ['result' => $result]);
 
-            // Cek sukses 2005400
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
                 if($redirectUrl) {
@@ -809,8 +816,9 @@ class CheckoutController extends Controller
                 }
             }
 
-            Log::error('DANA FAILED:', $result);
-            return redirect()->route('checkout.index')->with('error', 'Gagal DANA: ' . ($result['responseMessage'] ?? 'Format Error'));
+            // Notifikasi Error ke User
+            $errMsg = $result['responseMessage'] ?? 'Format Error';
+            return redirect()->route('checkout.index')->with('error', 'Gagal DANA: ' . $errMsg);
 
         } catch (\Exception $e) {
             Log::error('DANA Exception: ' . $e->getMessage());
