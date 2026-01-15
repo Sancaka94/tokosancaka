@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification; // <-- TAMBAHKAN INI
 use App\Notifications\NotifikasiUmum;      // <-- TAMBAHKAN INI
+use App\Events\AdminNotificationEvent; // <-- TAMBAHKAN INI
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TopUp;
