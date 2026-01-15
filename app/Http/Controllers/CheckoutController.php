@@ -693,7 +693,7 @@ class CheckoutController extends Controller
         // 1. HARDCODE CONFIG
         // Pastikan ini benar. Jika ragu, coba SAMAKAN keduanya dengan Merchant ID.
         $merchantIdConf = "216620080014040009735";
-        $partnerIdConf  = "216620080014040009735"; // Jika gagal, ganti ini jadi: "216620080014040009735"
+        $partnerIdConf  = "2025081520100641466855"; // Jika gagal, ganti ini jadi: "216620080014040009735"
 
         // 2. DATA UTAMA
         $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $order->invoice_number);
