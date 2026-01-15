@@ -759,6 +759,16 @@ class CheckoutController extends Controller
             ]
         ];
 
+        // =================================================================
+        // [TAMBAHAN] LOG REQUEST PAYLOAD (CHECK ERROR 4005401 DISINI)
+        // =================================================================
+        Log::info('DANA_REQUEST_DEBUG', [
+            'INVOICE' => $cleanInvoice,
+            'URL'     => config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id',
+            'PAYLOAD' => $bodyArray // <--- INI YANG ANDA BUTUHKAN
+        ]);
+        // =================================================================
+
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         // API Endpoint
