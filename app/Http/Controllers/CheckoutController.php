@@ -690,23 +690,28 @@ class CheckoutController extends Controller
 
     public function createPaymentDANA(Order $order)
     {
-        // 1. HARDCODE CONFIG
-        // Pastikan ini benar. Jika ragu, coba SAMAKAN keduanya dengan Merchant ID.
-        $merchantIdConf = "216620080014040009735";
-        $partnerIdConf  = "2025081520100641466855"; // Jika gagal, ganti ini jadi: "216620080014040009735"
+        // ====================================================================
+        // 1. CONFIGURATION (SYNC ID)
+        // ====================================================================
+        // Menggunakan ID Valid (2166...) untuk Header & Body agar sinkron
+        $validId = "216620080014040009735";
+        $merchantIdConf = $validId;
+        $partnerIdConf  = "2025081520100641466855"; // Partner ID yang sinkron dengan Merchant ID di atas
 
-        // 2. DATA UTAMA
+        // ====================================================================
+        // 2. DATA PREPARATION
+        // ====================================================================
         $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $order->invoice_number);
         $timestamp    = Carbon::now('Asia/Jakarta')->toIso8601String();
         $expiryTime   = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
         $amountValue  = number_format((float)$order->total_amount, 2, '.', '');
 
+        // ====================================================================
         // 3. BODY REQUEST
+        // ====================================================================
         $bodyArray = [
             "partnerReferenceNo" => $cleanInvoice,
             "merchantId"         => $merchantIdConf,
-            //"externalStoreId"    => "toko-pelanggan",
-
             "amount"             => [
                 "value"    => $amountValue,
                 "currency" => "IDR"
@@ -715,6 +720,15 @@ class CheckoutController extends Controller
             "urlParams"          => [
                 ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
                 ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+            ],
+            // Opsi Pembayaran (Wajib BALANCE/Saldo agar aman tanpa Token)
+            "payOptionDetails"   => [
+                [
+                    "payMethod"   => "BALANCE",
+                    "payOption"   => "BALANCE",
+                    "transAmount" => ["value" => $amountValue, "currency" => "IDR"],
+                    "feeAmount"   => ["value" => "0.00", "currency" => "IDR"]
+                ]
             ],
             "additionalInfo"     => [
                 "productCode" => "51051000100000000001",
@@ -729,6 +743,7 @@ class CheckoutController extends Controller
                         "externalUserType" => "MERCHANT_USER",
                         "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $order->user->nama_lengkap ?? 'Guest'), 0, 20),
                     ],
+                    // Goods Wajib Ada
                     "goods" => [
                         [
                             "merchantGoodsId" => substr("ITEM" . $cleanInvoice, 0, 40),
@@ -740,88 +755,92 @@ class CheckoutController extends Controller
                         ]
                     ]
                 ],
-                // --- PERBAIKAN DISINI ---
                 "envInfo"     => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
                     "orderTerminalType" => "WEB",
-                    "clientIp"          => "202.10.43.112",
-                    // Field ini WAJIB ada di dokumen dan berisi JSON String
+                    "clientIp"          => "127.0.0.1", // Hardcode IPv4
                     "extendInfo"        => json_encode(["deviceId" => "WE" . Str::random(20)])
                 ]
-                // ------------------------
             ]
         ];
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
-        $accessToken = $this->danaSignature->getAccessToken();
-        $signature   = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
-
-        $headers = [
-            'Authorization'  => 'Bearer ' . $accessToken,
-            'X-PARTNER-ID'   => $partnerIdConf,
-            'X-EXTERNAL-ID'  => Str::random(32),
-            'X-TIMESTAMP'    => $timestamp,
-            'X-SIGNATURE'    => $signature,
-            'Content-Type'   => 'application/json',
-            'CHANNEL-ID'     => '95221',
-            'ORIGIN'         => config('services.dana.origin'),
-        ];
-
-        // -----------------------------------------------------------
-            // OPSI DEBUG 1: CEK REQUEST SEBELUM DIKIRIM (Uncomment jika perlu)
-            // -----------------------------------------------------------
-             dd([
-                 'DEBUG_TYPE' => 'REQUEST',
-                 'URL' => config('services.dana.base_url') . $relativePath,
-                 'HEADERS' => $headers,
-                 'BODY' => $bodyArray
-                 ]);
-            // -----------------------------------------------------------
-
-        // LOGGING
-        Log::info('DANA_DEBUG_FULL', [
-            'TARGET_URL' => config('services.dana.base_url') . $relativePath,
-            'HEADERS'    => $headers,
-            'BODY'       => $bodyArray
-        ]);
-
         try {
-             $response = Http::withHeaders($headers)
+            // ====================================================================
+            // 4. SIGNATURE & HEADERS
+            // ====================================================================
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature   = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
+
+            $headers = [
+                'Authorization'  => 'Bearer ' . $accessToken,
+                'X-PARTNER-ID'   => $partnerIdConf, // ID Sinkron dengan Body
+                'X-EXTERNAL-ID'  => Str::random(32),
+                'X-TIMESTAMP'    => $timestamp,
+                'X-SIGNATURE'    => $signature,
+                'Content-Type'   => 'application/json',
+                'CHANNEL-ID'     => '95221',
+                'ORIGIN'         => config('services.dana.origin'),
+            ];
+
+            // ====================================================================
+            // 5. LOGGING REQUEST (SEBELUM KIRIM)
+            // ====================================================================
+            Log::info('DANA_REQ_START', [
+                'Invoice' => $cleanInvoice,
+                'URL'     => config('services.dana.base_url') . $relativePath,
+                'Headers' => $headers,
+                'Body'    => $bodyArray
+            ]);
+
+            // ====================================================================
+            // 6. SEND REQUEST
+            // ====================================================================
+            $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post(config('services.dana.base_url') . $relativePath);
 
             $result = $response->json();
-            Log::info('DANA_RESPONSE', $result);
 
-            // -----------------------------------------------------------
-            // OPSI DEBUG 2: CEK HASIL RESPON DARI DANA (AKTIF)
-            // -----------------------------------------------------------
-            dd([
-                'DEBUG_TYPE' => 'RESPONSE DANA',
-                'HTTP_STATUS' => $response->status(),
-                'RESULT_JSON' => $result,
-                'REQUEST_BODY_SENT' => $bodyArray // Biar bisa dicocokkan
+            // ====================================================================
+            // 7. LOGGING RESPONSE (SETELAH TERIMA)
+            // ====================================================================
+            Log::info('DANA_RES_END', [
+                'Invoice'     => $cleanInvoice,
+                'Status_Code' => $response->status(),
+                'Result'      => $result
             ]);
-            // -----------------------------------------------------------
 
+            // ====================================================================
+            // 8. HANDLE SUCCESS / REDIRECT
+            // ====================================================================
+            // Cek Kode Sukses DANA (2005400)
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
                 if($redirectUrl) {
+                    // Simpan URL Pembayaran
                     $order->payment_url = $redirectUrl;
                     $order->save();
+
+                    // Kosongkan Keranjang
                     session()->forget('cart');
+
+                    // REDIRECT USER KE DANA
                     return redirect()->away($redirectUrl);
                 }
             }
 
-            return redirect()->route('checkout.index')->with('error', 'Gagal DANA: ' . ($result['responseMessage'] ?? 'Error'));
+            // Jika Gagal DANA, Log Error dan Kembalikan User
+            Log::error('DANA_FAIL', ['Result' => $result]);
+            return redirect()->route('checkout.index')->with('error', 'Gagal memproses pembayaran DANA: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 
         } catch (\Exception $e) {
-            Log::error('DANA Exception: ' . $e->getMessage());
-            return redirect()->route('checkout.index')->with('error', 'Koneksi DANA Gagal.');
+            // Tangkap Error Koneksi / Koding
+            Log::error('DANA_EXCEPTION', ['Error' => $e->getMessage()]);
+            return redirect()->route('checkout.index')->with('error', 'Terjadi kesalahan koneksi ke DANA.');
         }
     }
 
