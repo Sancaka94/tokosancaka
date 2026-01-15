@@ -690,26 +690,18 @@ class CheckoutController extends Controller
 
     public function createPaymentDANA(Order $order)
     {
-        // ====================================================================
-        // 1. HARDCODE CONFIG (UNTUK MEMASTIKAN BUKAN MASALAH CACHE .ENV)
-        // ====================================================================
-        // Salin nilai ini LANGSUNG dari .env yang sudah Anda perbaiki tadi
+        // 1. HARDCODE CONFIG
+        // Pastikan ini benar. Jika ragu, coba SAMAKAN keduanya dengan Merchant ID.
         $merchantIdConf = "216620080014040009735";
-        $partnerIdConf  = "2025081520100641466855"; // Wajib < 36 karakter
-        // ====================================================================
+        $partnerIdConf  = "2025081520100641466855"; // Jika gagal, ganti ini jadi: "216620080014040009735"
 
-        // 1. BERSIHKAN INVOICE
+        // 2. DATA UTAMA
         $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $order->invoice_number);
+        $timestamp    = Carbon::now('Asia/Jakarta')->toIso8601String();
+        $expiryTime   = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+        $amountValue  = number_format((float)$order->total_amount, 2, '.', '');
 
-        // 2. WAKTU
-        $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
-        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
-
-        // 3. SIAPKAN AMOUNT
-        // Pastikan ini STRING, bukan float/int
-        $amountValue = number_format((float)$order->total_amount, 2, '.', '');
-
-        // 4. BODY REQUEST
+        // 3. BODY REQUEST
         $bodyArray = [
             "partnerReferenceNo" => $cleanInvoice,
             "merchantId"         => $merchantIdConf,
@@ -746,40 +738,40 @@ class CheckoutController extends Controller
                         ]
                     ]
                 ],
+                // --- PERBAIKAN DISINI ---
                 "envInfo"     => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
                     "orderTerminalType" => "WEB",
-                    "clientIp"          => "202.10.43.112", // Hardcode IPv4
+                    "clientIp"          => "202.10.43.112",
+                    // Field ini WAJIB ada di dokumen dan berisi JSON String
+                    "extendInfo"        => json_encode(["deviceId" => "WE" . Str::random(20)])
                 ]
+                // ------------------------
             ]
         ];
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
-        // 5. GENERATE SIGNATURE
         $accessToken = $this->danaSignature->getAccessToken();
         $signature   = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
 
-        // =================================================================
-        // 6. SIAPKAN HEADER (KITA LOG INI JUGA)
-        // =================================================================
         $headers = [
             'Authorization'  => 'Bearer ' . $accessToken,
-            'X-PARTNER-ID'   => $partnerIdConf, // INI YANG SERING SALAH
-            'X-EXTERNAL-ID'  => Str::random(32), // Max 36 chars
+            'X-PARTNER-ID'   => $partnerIdConf,
+            'X-EXTERNAL-ID'  => Str::random(32),
             'X-TIMESTAMP'    => $timestamp,
             'X-SIGNATURE'    => $signature,
             'Content-Type'   => 'application/json',
-            'CHANNEL-ID'     => '95221', // Max 5 chars
+            'CHANNEL-ID'     => '95221',
             'ORIGIN'         => config('services.dana.origin'),
         ];
 
-        // LOGGING SUPER LENGKAP
+        // LOGGING
         Log::info('DANA_DEBUG_FULL', [
             'TARGET_URL' => config('services.dana.base_url') . $relativePath,
-            'HEADERS'    => $headers, // <--- Kita mau lihat ini
+            'HEADERS'    => $headers,
             'BODY'       => $bodyArray
         ]);
 
