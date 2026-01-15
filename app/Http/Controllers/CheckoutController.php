@@ -759,7 +759,7 @@ class CheckoutController extends Controller
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
                     "orderTerminalType" => "WEB",
-                    "clientIp"          => app()->isLocal() ? '103.10.10.10' : request()->ip(),
+                    "clientIp"          => "202.10.43.112",
                     "extendInfo"        => json_encode(["deviceId" => "WE" . Str::random(20)])
                 ]
             ]
