@@ -767,7 +767,7 @@ class CheckoutController extends Controller
                     "terminalType"      => "SYSTEM",
                     "orderTerminalType" => "WEB",
                     // [FIX 2] TAMBAHKAN CLIENT IP
-                    "clientIp"          => request()->ip() ?? '127.0.0.1',
+                    "clientIp"          => "202.10.43.112",
                 ]
             ]
         ];
