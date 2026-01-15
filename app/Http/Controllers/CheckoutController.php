@@ -705,6 +705,8 @@ class CheckoutController extends Controller
         $bodyArray = [
             "partnerReferenceNo" => $cleanInvoice,
             "merchantId"         => $merchantIdConf,
+            "externalStoreId"    => "toko-pelanggan",
+
             "amount"             => [
                 "value"    => $amountValue,
                 "currency" => "IDR"
