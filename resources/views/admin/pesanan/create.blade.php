@@ -789,6 +789,108 @@ applyStrictInsurance(true);
             });
         });
     })();
+
+    // --- 1. LOGIKA LOAD TRIPAY ---
+    let tripayLoaded = false;
+
+    async function loadTripayChannels() {
+        // Cek jika sudah pernah load, jangan load lagi (biar hemat kuota)
+        if (tripayLoaded) return;
+
+        const container = document.getElementById('tripayChannelsContainer');
+
+        try {
+            // Panggil API yang sudah kita buat di Controller
+            const response = await fetch("{{ route('admin.pesanan.get_channels') }}");
+            const res = await response.json();
+
+            if (res.success && res.data.length > 0) {
+                container.innerHTML = ''; // Hapus loading spinner
+
+                res.data.forEach(channel => {
+                    // Hanya tampilkan channel yang AKTIF
+                    if (channel.active) {
+                        const li = document.createElement('li');
+                        li.className = 'payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 border-b';
+
+                        // Simpan data di atribut element
+                        li.dataset.value = channel.code;
+                        li.dataset.label = channel.name;
+                        li.dataset.img   = channel.icon_url;
+
+                        li.innerHTML = `
+                            <img src="${channel.icon_url}" class="w-10 h-10 mr-4 object-contain p-1 border rounded bg-white" onerror="this.src='https://placehold.co/50'">
+                            <div>
+                                <div class="font-semibold text-gray-800">${channel.name}</div>
+                                <div class="text-xs text-gray-500">${channel.group_name}</div>
+                            </div>
+                        `;
+
+                        // Tambahkan fungsi klik
+                        li.addEventListener('click', () => selectPayment(li));
+
+                        container.appendChild(li);
+                    }
+                });
+                tripayLoaded = true;
+            } else {
+                container.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Gagal memuat saluran pembayaran.</div>';
+            }
+        } catch (error) {
+            console.error(error);
+            container.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Terjadi kesalahan koneksi API.</div>';
+        }
+    }
+
+    // --- 2. FUNGSI KLIK PEMBAYARAN (GABUNGAN MANUAL & OTOMATIS) ---
+    function selectPayment(element) {
+        const val = element.dataset.value;
+        const label = element.dataset.label;
+        // Ambil gambar dari dataset (otomatis) atau tag img (manual)
+        const img = element.dataset.img || element.querySelector('img').src;
+
+        // Set ke Input Hidden
+        document.getElementById('payment_method').value = val;
+
+        // Update Tampilan Tombol Utama
+        document.getElementById('selectedPaymentName').textContent = label;
+        document.getElementById('selectedPaymentLogo').src = img;
+
+        // Atur Logika "Potong Saldo" (Wajib pilih customer)
+        const custContainer = document.getElementById('customer_container');
+        const custSelect = document.getElementById('customer_id');
+
+        if (val === 'Potong Saldo') {
+            custContainer.classList.remove('hidden');
+            custSelect.setAttribute('required', 'required');
+        } else {
+            custContainer.classList.add('hidden');
+            custSelect.removeAttribute('required');
+            custSelect.value = '';
+        }
+
+        // Tutup Modal
+        document.getElementById('paymentMethodModal').classList.add('hidden');
+
+        // Jalankan Validasi Tombol Submit
+        if (typeof runValidityChecks === "function") runValidityChecks();
+    }
+
+    // --- 3. PASANG EVENT LISTENER ---
+
+    // Saat tombol "Pilih Metode Pembayaran" diklik -> Buka Modal & Load API
+    document.getElementById('paymentMethodButton').addEventListener('click', () => {
+        document.getElementById('paymentMethodModal').classList.remove('hidden');
+        loadTripayChannels(); // <--- INI PENTING
+    });
+
+    // Pasang listener untuk metode MANUAL yang sudah ada di HTML (Saldo, COD, Doku)
+    // Gunakan selector khusus 'payment-option' yang ada di dalam list statis
+    const manualOptions = document.querySelectorAll('#paymentOptionsList > li.payment-option');
+    manualOptions.forEach(li => {
+        li.addEventListener('click', () => selectPayment(li));
+    });
+
 });
 </script>
 @endpush
