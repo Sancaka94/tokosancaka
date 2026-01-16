@@ -93,7 +93,7 @@
 
                     {{-- Spacer kecil (opsional) agar tidak terlalu mepet banget dengan garis header,
                          tapi jika ingin benar-benar nempel, hapus div mt-2 ini --}}
-                    <div class="mt-2"></div>
+                    {{-- <div class="mt-2"></div> --}}
 
                     <div class="flex overflow-x-auto gap-2 custom-scrollbar pb-1">
                         <button @click="activeCategory = 'all'"
