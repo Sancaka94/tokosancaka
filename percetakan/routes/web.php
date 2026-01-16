@@ -15,6 +15,7 @@ use App\Http\Controllers\DanaWidgetController;
 use App\Http\Controllers\DanaDashboardController;
 use App\Http\Controllers\DanaResponseCodeController;
 use App\Http\Controllers\LogViewerController;
+use App\Http\Controllers\CategoryController; // <--- Jangan lupa import ini di paling atas
 
 // Sesuaikan middleware dengan kebutuhan admin panel Anda (misal: 'auth', 'admin')
 Route::middleware(['auth'])->prefix('admin/logs')->name('admin.logs.')->group(function () {
@@ -275,4 +276,7 @@ Route::post('/join-partner/forgot-pin', [AffiliateController::class, 'forgotPin'
 
 // Pastikan baris ini ada di paling bawah untuk memuat rute Login/Register
 require __DIR__.'/auth.php';
+
+// Route untuk Kategori
+Route::resource('categories', CategoryController::class);
 
