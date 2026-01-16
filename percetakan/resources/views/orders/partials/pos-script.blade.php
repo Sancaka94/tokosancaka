@@ -462,22 +462,20 @@ addToCart(id, name, price, maxStock, weight = 0, image = null) {
                     const result = await response.json();
                     console.log("LOG: Response Server Diterima:", result);
 
+                    // --- KODE BARU (UNTUK INVOICE) ---
                     if (result.status === 'success') {
-                        console.log("LOG: Transaksi DB Berhasil.");
-                        // LOGIKA REDIRECT DANA / PAYMENT GATEWAY
-                    // INI KUNCINYA: Jika dapet payment_url, langsung lari ke DANA
+
+                        // 1. Cek apakah harus bayar online (DANA/Tripay)
                         if (result.payment_url) {
-                            console.log("LOG: Redirecting ke DANA...");
-                            window.location.href = result.payment_url; // Ganti window.open jadi ini biar lancar
+                            console.log("LOG: Redirecting ke Payment Gateway...");
+                            window.location.href = result.payment_url;
                             return;
                         }
-                        this.showPaymentModal = false;
-                        this.customerNote = '';
-                        let msg = `✅ Transaksi Berhasil!\nInvoice: ${result.invoice}`;
-                        if(this.paymentMethod === 'cash') msg += `\n💰 KEMBALIAN: Rp ${this.rupiah(result.change_amount)}`;
-                        alert(msg);
-                        if (result.payment_url) window.open(result.payment_url, '_blank');
-                        window.location.reload();
+
+                        // 2. Jika Cash / PayLater / QRIS Manual -> BUKA INVOICE
+                        // result.order_id didapat dari controller yang sudah kita perbaiki
+                        window.location.href = "/orders/" + result.order_id + "/invoice";
+
                     } else {
                         throw new Error(result.message);
                     }
