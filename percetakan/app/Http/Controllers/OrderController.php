@@ -1028,15 +1028,90 @@ class OrderController extends Controller
 
     private function _sendWaNotification($order, $finalPrice, $paymentUrl, $paymentStatus) {
         try {
+            // 1. Pastikan relasi items terload untuk mendapatkan detail produk
+            // Jika belum di-eager load sebelumnya, kita load manual di sini
+            $order->load('items');
+
+            // 2. Format Rupiah & Tanggal
+            $formattedTotal = "Rp " . number_format($finalPrice, 0, ',', '.');
+            $tanggal = \Carbon\Carbon::parse($order->created_at)->format('d M Y H:i');
+
+            // 3. Susun Daftar Item Barang/Jasa
+            $itemListText = "";
+            foreach ($order->items as $item) {
+                // Contoh: - Cuci Kering (5 kg)
+                // Contoh: - Kertas A4 (10 lbr)
+                $itemListText .= "- " . $item->product_name . " (" . $item->quantity . ")\n";
+            }
+
+            // 4. Terjemahkan Status & Metode
+            $statusText = ($paymentStatus == 'paid') ? "LUNAS ✅" : "BELUM LUNAS ⏳";
+            $metodeText = strtoupper(str_replace('_', ' ', $order->payment_method));
+
+            // 5. Cek Alamat (Jika Delivery)
+            $alamatInfo = "";
+            if ($order->destination_address) {
+                $alamatInfo = "\n📍 *Alamat Pengiriman:*\n" . $order->destination_address . "\n";
+            }
+
+            // ==========================================
+            // A. SUSUN PESAN UNTUK CUSTOMER (LEBIH RAMAH)
+            // ==========================================
             if ($order->customer_phone) {
-                $msg = "Halo *{$order->customer_name}*, Order *{$order->order_number}* Berhasil!\nTotal: Rp " . number_format($finalPrice,0,',','.') . "\nStatus: $paymentStatus";
-                if($paymentUrl) $msg .= "\nLink Bayar: $paymentUrl";
+                $msg  = "Halo Kak *{$order->customer_name}* 👋,\n\n";
+                $msg .= "Terima kasih sudah order di *Sancaka Store*.\n";
+                $msg .= "Berikut rincian pesanan Kakak:\n\n";
+
+                $msg .= "🧾 *No. Invoice:* {$order->order_number}\n";
+                $msg .= "📅 *Tanggal:* {$tanggal}\n";
+                $msg .= "💰 *Status:* {$statusText}\n\n";
+
+                $msg .= "📦 *Rincian Pesanan:*\n";
+                $msg .= $itemListText; // Daftar produk masuk sini
+
+                $msg .= $alamatInfo; // Alamat masuk sini (kalau ada)
+
+                $msg .= "\n💵 *Total Tagihan: {$formattedTotal}*";
+
+                if ($paymentUrl && $paymentStatus == 'unpaid') {
+                    $msg .= "\n\n👇 *Silakan lakukan pembayaran melalui link berikut:*\n";
+                    $msg .= $paymentUrl;
+                }
+
+                $msg .= "\n\n_Mohon ditunggu, pesanan segera kami proses. Terima kasih!_ 🙏";
+
                 $this->_sendFonnteMessage($order->customer_phone, $msg);
             }
+
+            // ==========================================
+            // B. SUSUN PESAN UNTUK ADMIN (LEBIH TEGAS & RINCI)
+            // ==========================================
             $adminPhone = '085745808809';
-            $msgAdmin = "🔔 *ORDER BARU*\nInv: {$order->order_number}\nTotal: Rp " . number_format($finalPrice, 0, ',', '.') . "\nMetode: {$order->payment_method}";
+
+            $msgAdmin  = "🔔 *ORDER BARU MASUK!* 🔔\n\n";
+            $msgAdmin .= "👤 *Customer:* {$order->customer_name}\n";
+            $msgAdmin .= "📱 *WA:* {$order->customer_phone}\n";
+            $msgAdmin .= "🧾 *Inv:* {$order->order_number}\n";
+            $msgAdmin .= "💳 *Metode:* {$metodeText}\n";
+            $msgAdmin .= "💰 *Total:* {$formattedTotal}\n";
+            $msgAdmin .= "🔖 *Status:* {$statusText}\n\n";
+
+            $msgAdmin .= "📦 *Item:*\n";
+            $msgAdmin .= $itemListText;
+
+            if ($order->customer_note) {
+                $msgAdmin .= "\n📝 *Catatan:* " . $order->customer_note;
+            }
+
+            if ($order->destination_address) {
+                $msgAdmin .= "\n🚚 *Kirim Ke:* " . $order->destination_address;
+            }
+
             $this->_sendFonnteMessage($adminPhone, $msgAdmin);
-        } catch (\Exception $e) {}
+
+        } catch (\Exception $e) {
+            Log::error("WA Error: " . $e->getMessage());
+        }
     }
 
     private function _sendFonnteMessage($target, $message) {
