@@ -425,9 +425,33 @@ class PesananController extends Controller
                     $errorMessage = $kiriminResponse['text'] ?? ($kiriminResponse['errors'][0]['text'] ?? 'Gagal membuat order di sistem ekspedisi.');
                     throw new Exception($errorMessage);
                 }
-                $order->status = 'Menunggu Pickup';
-                $order->status_pesanan = 'Menunggu Pickup';
-                $order->resi = $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+
+                // ==========================================================
+            // 🔥 LOGIKA BARU: SIMPAN SHIPPING REF & RESI 🔥
+            // ==========================================================
+
+            // 1. Ambil Booking ID (Ref) dari berbagai kemungkinan response
+            $bookingId = $kiriminResponse['id']
+                      ?? $kiriminResponse['data']['id']
+                      ?? $kiriminResponse['payment_ref']
+                      ?? ($kiriminResponse['details'][0]['order_id'] ?? null);
+
+            // 2. Simpan ke database
+            $order->shipping_ref = $bookingId;
+
+            // 3. Ambil Resi (AWB)
+            $awbAsli = $kiriminResponse['awb']
+                    ?? $kiriminResponse['result']['awb_no'] // Format v3
+                    ?? ($kiriminResponse['results'][0]['awb'] ?? null); // Format v4
+
+            // 4. Update Status & Resi
+            $order->status = 'Pesanan Dibuat';
+            $order->status_pesanan = 'Pesanan Dibuat';
+
+            // Jika AWB belum keluar, gunakan Booking ID sebagai Resi sementara
+            $order->resi = !empty($awbAsli) ? $awbAsli : ($bookingId ?? 'REF-'.$order->nomor_invoice);
+
+            // ==========================================================
             }
 
             // 7. Simpan finalisasi data pesanan
