@@ -225,12 +225,12 @@
                                                      onerror="this.style.display='none'">
                                                 <div>
                                                     <span class="text-sm font-medium text-gray-900"><strong>{{ $serviceName }}</strong></span>
-<span class="block text-xs text-gray-500">
-    Estimasi In Syaa Allah: {{ $etd }}
-    @if( !\Illuminate\Support\Str::contains($etd, ['menit', 'minutes', 'Jam', 'hours',]) )
-        Hari
-    @endif
-</span>
+                                                    <span class="block text-xs text-gray-500">
+                                                        Estimasi In Syaa Allah: {{ $etd }}
+                                                        @if( !\Illuminate\Support\Str::contains($etd, ['menit', 'minutes', 'Jam', 'hours',]) )
+                                                            Hari
+                                                        @endif
+                                                    </span>
                                                 </div>
                                             </div>
                                             <span class="text-sm font-medium text-gray-900">
@@ -419,7 +419,26 @@
                     </span>
                 </li>
 
-                {{-- 3. OPSI OTOMATIS DARI TRIPAY (MENGGANTIKAN MAPPING MANUAL) --}}
+                {{-- 3. OPSI INTERNAL (COD) --}}
+                <li class="px-2 pt-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Bayar Ditempat</li>
+
+                <li id="codPaymentOption" class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
+                    data-value="cod"
+                    data-label="COD (Bayar Ongkir)"
+                    data-img="{{ asset('public/assets/cod.png') }}">
+                    <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <span class="text-sm font-medium text-gray-900">COD (Cash on Delivery)</span>
+                </li>
+
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
+                    data-value="CODBARANG"
+                    data-label="COD BARANG"
+                    data-img="{{ asset('public/assets/cod.png') }}">
+                    <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <span class="text-sm font-medium text-gray-900">COD BARANG</span>
+                </li>
+
+                {{-- 4. OPSI OTOMATIS DARI TRIPAY (MENGGANTIKAN MAPPING MANUAL) --}}
                 @if(isset($tripayChannels) && count($tripayChannels) > 0)
                     {{-- Header Opsional untuk memisahkan --}}
                     <li class="px-2 pt-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Metode Pembayaran Otomatis</li>
@@ -447,25 +466,6 @@
                         Gagal memuat metode pembayaran otomatis.
                     </li>
                 @endif
-
-                {{-- 4. OPSI INTERNAL (COD) --}}
-                <li class="px-2 pt-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Bayar Ditempat</li>
-
-                <li id="codPaymentOption" class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
-                    data-value="cod"
-                    data-label="COD (Bayar Ongkir)"
-                    data-img="{{ asset('public/assets/cod.png') }}">
-                    <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">COD (Cash on Delivery)</span>
-                </li>
-
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
-                    data-value="CODBARANG"
-                    data-label="COD BARANG"
-                    data-img="{{ asset('public/assets/cod.png') }}">
-                    <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">COD BARANG</span>
-                </li>
 
             </ul>
         </div>
