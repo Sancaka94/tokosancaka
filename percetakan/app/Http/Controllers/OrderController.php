@@ -22,6 +22,7 @@ use App\Models\Affiliate;
 use App\Models\Store;
 use App\Models\TopUp;
 use App\Models\User;
+use App\Models\Category;
 
 // Services
 use App\Services\DokuJokulService;
@@ -58,7 +59,28 @@ class OrderController extends Controller
 
         $autoCoupon = $request->query('coupon');
 
-        return view('orders.create', compact('products', 'customers', 'autoCoupon'));
+        // --- [MULAI KODE TAMBAHAN] ---
+        // Logika untuk mengambil kategori dari database
+        $categories = [];
+        try {
+            // Cek apakah tabel category ada & ambil datanya
+            if (class_exists('App\Models\Category')) {
+                $categories = Category::where('is_active', true)->get();
+            }
+        } catch (\Exception $e) { }
+
+        // Fallback manual jika database kosong/error
+        if (count($categories) == 0) {
+            $categories = [
+                (object)['id' => 'retail', 'name' => 'Retail / Toko', 'slug' => 'retail'],
+                (object)['id' => 'laundry', 'name' => 'Laundry (Kiloan/Satuan)', 'slug' => 'laundry'],
+                (object)['id' => 'fnb', 'name' => 'Food & Beverage', 'slug' => 'fnb'],
+            ];
+        }
+        // --- [SELESAI KODE TAMBAHAN] ---
+
+        // JANGAN LUPA: Tambahkan 'categories' ke dalam compact
+        return view('orders.create', compact('products', 'customers', 'autoCoupon', 'categories'));
     }
 
     /**
