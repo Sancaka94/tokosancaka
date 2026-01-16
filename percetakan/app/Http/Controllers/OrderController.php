@@ -1159,7 +1159,7 @@ class OrderController extends Controller
             // Pastikan baris ini ada DI DALAM try { ... } dan DI DALAM function
             $adminContacts = [
                 '085745808809',
-                '08819435180',
+                '085843428393',
             ];
 
             $msgAdmin  = "🔔 *INFO {$storeName}* 🔔\n";
