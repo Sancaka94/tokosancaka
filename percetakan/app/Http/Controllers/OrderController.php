@@ -790,7 +790,7 @@ class OrderController extends Controller
                     Log::info("[DANA] Requesting Payment URL...");
                     try {
                         $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
-                        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+                        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
 
                         $bodyArray = [
                             "partnerReferenceNo" => $order->order_number,
