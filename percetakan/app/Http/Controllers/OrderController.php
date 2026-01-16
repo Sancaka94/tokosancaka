@@ -1057,6 +1057,7 @@ class OrderController extends Controller
             // 1. Load detail item agar bisa dibaca loop-nya
             $order->load('items');
 
+
             // ============================================================
             // A. LOGIKA CERDAS: BRANDING (SANCLEAN vs SANCAKA)
             // ============================================================
@@ -1077,6 +1078,8 @@ class OrderController extends Controller
                     }
                 }
             }
+
+            $invoiceLink = url('/invoice/' . $order->order_number);
 
             // Tentukan Nama Toko
             $storeName = $isLaundry ? "SANCLEAN (Laundry & Care)" : "SANCAKA STORE";
@@ -1119,7 +1122,10 @@ class OrderController extends Controller
                 $msg .= $alamatInfo;
 
                 $msg .= "\n💵 *Total: {$formattedTotal}*";
-                $msg .= "\n💵 *Link Pembayaran Via QRIS: *";
+                // --- [TAMBAHAN BARU: LINK INVOICE] ---
+                $msg .= "\n\n📄 *Lihat Struk/Nota Digital:*";
+                $msg .= "\n" . $invoiceLink;
+                // -------------------------------------
 
                 // --- TAMBAHAN LOGIKA PESAN BAYAR NANTI ---
                 if ($order->payment_method == 'pay_later') {
