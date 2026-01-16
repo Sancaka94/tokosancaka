@@ -403,6 +403,18 @@ class OrderController extends Controller
 
         $customerNote = $request->input('customer_note');
         $catatanSistem = '';
+
+        // Tambahan category
+        // --- [MULAI KODE TAMBAHAN] ---
+        // Tangkap kategori yang dipilih dari form
+        $selectedCategory = $request->input('category_slug', 'retail');
+
+        // Jika Laundry, tambahkan penanda khusus di catatan sistem
+        if ($selectedCategory === 'laundry') {
+            $catatanSistem .= "[JENIS: LAUNDRY] ";
+        }
+        // --- [SELESAI KODE TAMBAHAN] ---
+
         $inputMethod = $request->payment_method;
         $custId      = $request->customer_id;
 
