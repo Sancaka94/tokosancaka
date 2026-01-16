@@ -16,7 +16,7 @@
     <style>
         [x-cloak] { display: none !important; }
         /* Scrollbar Style */
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; } /* Height added for horizontal scroll */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
@@ -26,6 +26,8 @@
         input[type=number] { -moz-appearance: textfield; }
     </style>
 </head>
+
+{{-- Inisialisasi Alpine Data --}}
 <body class="bg-slate-100 font-sans text-slate-800 h-screen overflow-hidden select-none"
       x-data="posSystem">
 
@@ -50,7 +52,7 @@
                 </div>
 
                 <div class="flex items-center gap-2 shrink-0">
-                    <a href="https://tokosancaka.com/percetakan/public/member/login"
+                    <a href="{{ url('/member/login') }}"
                        class="relative p-2.5 bg-white rounded-xl text-slate-600 border border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all shadow-sm flex items-center justify-center w-10 h-10"
                        title="Login Member">
                         <i class="fas fa-user"></i>
@@ -73,8 +75,7 @@
                     <div class="flex-1 pr-6">
                         <h4 class="text-xs font-bold text-red-800 uppercase tracking-wide mb-0.5">Info Promo & Affiliasi</h4>
                         <p class="text-[11px] text-red-700 leading-relaxed">
-                            Ingin diskon <span class="font-bold">30%</span>? Masukan kode <span class="font-bold bg-white px-1 rounded border border-red-200">KUPON</span> Pada kolom KODE PROMO.
-                            Anda juga dapat menjadi <a href="https://tokosancaka.com/percetakan/public/join-partner" target="_blank" class="underline font-bold hover:text-red-900"><strong>Affiliator (Klik Disini)</strong></a> untuk komisi besar.
+                            Ingin diskon <span class="font-bold">30%</span>? Masukan kode <span class="font-bold bg-white px-1 rounded border border-red-200">KUPON</span>.
                         </p>
                     </div>
                     <button @click="showInfo = false" class="absolute top-2 right-2 text-red-400 hover:text-red-700 hover:bg-red-100 rounded-full h-6 w-6 flex items-center justify-center transition-all">
@@ -96,7 +97,7 @@
 
                     <div class="flex overflow-x-auto gap-2 custom-scrollbar pb-1">
                         <button @click="activeCategory = 'all'"
-                            class="flex-shrink-0 px-4 rounded-xl text-xs font-bold transition-all border shadow-sm flex items-center gap-2"
+                            class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all border shadow-sm flex items-center gap-2"
                             :class="activeCategory === 'all'
                                 ? 'bg-red-600 text-white border-red-600 ring-2 ring-red-100'
                                 : 'bg-white text-slate-600 border-slate-200 hover:border-red-300 hover:text-red-600'">
@@ -106,7 +107,7 @@
                         @if(isset($categories))
                             @foreach($categories as $cat)
                             <button @click="activeCategory = '{{ $cat->slug }}'"
-                                class="flex-shrink-0 px-4 rounded-xl text-xs font-bold transition-all border shadow-sm whitespace-nowrap"
+                                class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all border shadow-sm whitespace-nowrap"
                                 :class="activeCategory === '{{ $cat->slug }}'
                                     ? 'bg-red-600 text-white border-red-600 ring-2 ring-red-100'
                                     : 'bg-white text-slate-600 border-slate-200 hover:border-red-300 hover:text-red-600'">
@@ -117,17 +118,13 @@
                     </div>
                 </div>
 
-                {{-- KODE BARU: Tambahkan tombol "Semua" di bawah kategori --}}
-
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     @forelse($products as $product)
 
-                    {{-- UPDATE: LOGIKA FILTER (Cek Search & Cek Kategori) --}}
-                    {{-- Kita ambil slug kategori produk, jika null kita anggap 'retail' atau 'others' --}}
-                    @php
-                        $prodCatSlug = $product->category->slug ?? 'retail';
-                    @endphp
+                    {{-- Logic Slug Kategori --}}
+                    @php $prodCatSlug = $product->category->slug ?? 'retail'; @endphp
 
+                    {{-- FILTER LOGIC: Search + Category Match --}}
                     <template x-if="itemMatchesSearch('{{ addslashes($product->name) }}') && (activeCategory === 'all' || activeCategory === '{{ $prodCatSlug }}')">
 
                         <div @click="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->sell_price }}, {{ $product->stock }}, {{ $product->weight ?? 0 }}, '{{ $product->image ? asset('storage/'.$product->image) : '' }}')"
@@ -160,7 +157,6 @@
                             </div>
 
                             <div class="flex-1 flex flex-col">
-                                {{-- Menampilkan Nama Kategori kecil diatas Nama Produk (Opsional) --}}
                                 <span class="text-[9px] text-slate-400 font-bold uppercase mb-0.5">{{ $product->category->name ?? 'Umum' }}</span>
 
                                 <h3 class="font-bold text-slate-700 text-xs leading-tight mb-1 line-clamp-2 group-hover:text-red-600 transition-colors">{{ $product->name }}</h3>
@@ -202,8 +198,9 @@
             <div class="flex-1 overflow-y-auto custom-scrollbar bg-white">
 
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50"
-                x-show="activeCategory === 'all' || (!activeCategory.includes('laundry') && !activeCategory.includes('fnb') && !activeCategory.includes('ppob'))"
-                x-transition.opacity>
+                     x-show="activeCategory === 'all' || (!activeCategory.includes('laundry') && !activeCategory.includes('fnb') && !activeCategory.includes('ppob'))"
+                     x-transition.opacity>
+
                     <div class="flex justify-between items-center mb-2">
                         <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                             Berkas Cetak (<span x-text="uploadedFiles.length"></span>/10)
@@ -241,15 +238,15 @@
                                     </div>
                                     <div class="col-span-1">
                                         <select x-model="item.paperSize" class="w-full text-[10px] font-bold py-1.5 px-1 rounded-lg border-slate-200 bg-slate-50 focus:ring-red-500 focus:border-red-500">
-                                            <option value="A4">Kertas A4</option>
-                                            <option value="F4">Kertas F4</option>
-                                            <option value="A3">Kertas A3</option>
+                                            <option value="A4">A4</option>
+                                            <option value="F4">F4</option>
+                                            <option value="A3">A3</option>
                                         </select>
                                     </div>
                                     <div class="col-span-1 relative">
                                         <div class="flex items-center border border-slate-200 rounded-lg bg-slate-50 overflow-hidden h-full">
                                             <input type="number" x-model="item.qty" min="1" class="w-full text-center text-[10px] font-bold bg-transparent border-none p-0 focus:ring-0" placeholder="1">
-                                            <span class="text-[9px] text-slate-400 pr-1.5">lbr/set</span>
+                                            <span class="text-[9px] text-slate-400 pr-1.5">lbr</span>
                                         </div>
                                     </div>
                                 </div>
@@ -341,7 +338,6 @@
                         <span x-text="'Rp ' + rupiah(subtotal)"></span>
                     </div>
 
-                    {{-- TOMBOL TAMBAH CATATAN --}}
                     <div class="flex justify-between items-center py-2 border-b border-dashed border-slate-200">
                         <button @click="noteModalOpen = true" class="text-[11px] font-bold flex items-center gap-1 transition-colors focus:outline-none"
                                 :class="customerNote ? 'text-blue-600' : 'text-slate-400 hover:text-blue-500'">
@@ -406,12 +402,6 @@
                 <p class="text-slate-600 text-sm leading-relaxed mb-5">
                     Masukan kode <span class="font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200 text-xs">KUPON</span> dari teman atau saudara Anda.
                 </p>
-                <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-6">
-                    <p class="text-xs text-blue-800 leading-relaxed">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Anda juga dapat menjadi <b>Affiliator</b> dan dapatkan <b>komisi besar</b> ketika menjadi member.
-                    </p>
-                </div>
                 <div class="space-y-3">
                     <a href="https://tokosancaka.com/percetakan/public/join-partner" target="_blank" class="flex items-center justify-center w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-red-200 hover:shadow-red-300 transform active:scale-95 transition-all group">
                         <span>Gabung Sekarang</span>
@@ -424,7 +414,6 @@
     </div>
 
     @include('orders.partials.noteModal')
-
     @include('orders.partials.payment-modal')
 
     <script>
