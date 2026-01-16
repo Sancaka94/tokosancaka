@@ -1170,7 +1170,7 @@ class OrderController extends Controller
             $msgAdmin .= "💰 *Omzet (Pendapatan):* {$formattedTotal}\n";
             $msgAdmin .= "🔖 *Status (Keterangan):* {$statusText}\n\n";
 
-            $msgAdmin .= "📦 *Item:*\n";
+            $msgAdmin .= "📦 *Rincian Item Pesanan:*\n";
             $msgAdmin .= $itemListText;
 
             if ($order->customer_note) {
