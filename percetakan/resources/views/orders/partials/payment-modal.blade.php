@@ -1,4 +1,4 @@
-<div x-show="showPaymentModal" style="display: none;" 
+<div x-show="showPaymentModal" style="display: none;"
      class="fixed inset-0 z-50 bg-slate-100 flex flex-col"
      x-transition:enter="transition ease-out duration-300"
      x-transition:enter-start="opacity-0 translate-y-full"
@@ -6,7 +6,7 @@
      x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="opacity-100 translate-y-0"
      x-transition:leave-end="opacity-0 translate-y-full">
-    
+
     <div class="h-16 px-6 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm shrink-0 z-20">
         <div class="flex items-center gap-3">
             <div class="h-10 w-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
@@ -17,7 +17,7 @@
                 <p class="text-xs text-slate-500 font-medium">Selesaikan transaksi pesanan ini</p>
             </div>
         </div>
-        
+
         <button @click="showPaymentModal = false" class="group flex items-center gap-2 px-4 py-2 rounded-full bg-red-500 hover:bg-red-600 text-slate-500 hover:text-red-100 transition border border-transparent hover:border-red-100">
             <span class="text-xs font-bold hidden sm:block">BATAL / TUTUP</span>
             <i class="fas fa-times text-lg"></i>
@@ -25,7 +25,7 @@
     </div>
 
     <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
-        
+
         <div class="lg:w-[35%] bg-white border-r border-slate-200 overflow-y-auto custom-scrollbar flex flex-col order-2 lg:order-1 h-full shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10">
             <div class="p-6 space-y-6">
                 <div class="text-center p-6 bg-slate-50 rounded-2xl border border-slate-100">
@@ -38,7 +38,7 @@
 
                 <div class="space-y-3">
                     <h4 class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-2">Rincian Biaya</h4>
-                    
+
                     <div class="flex justify-between items-center text-sm text-slate-600">
                         <span>Subtotal (<span x-text="cartTotalQty"></span> Item)</span>
                         <span class="font-bold text-slate-800" x-text="'Rp ' + rupiah(subtotal)"></span>
@@ -62,7 +62,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="mt-auto p-6 bg-slate-50 border-t border-slate-100 hidden lg:block">
                 <div class="flex items-center gap-3 text-slate-400 text-xs">
                     <i class="fas fa-shield-alt text-xl"></i>
@@ -73,20 +73,20 @@
 
         <div class="lg:w-[65%] bg-slate-50/50 overflow-y-auto custom-scrollbar p-4 sm:p-8 order-1 lg:order-2 h-full">
             <div class="max-w-3xl mx-auto space-y-6">
-                
+
                 <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                     <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
                         <span class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">1</span>
                         Data Pelanggan & Pengiriman
                     </label>
-                    
+
                     <div class="flex p-1 bg-slate-100 border border-slate-200 rounded-xl mb-4 w-full sm:w-80">
-                        <button @click="customerType = 'guest'; selectedCustomerId = '';" 
+                        <button @click="customerType = 'guest'; selectedCustomerId = '';"
                                 class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
                                 :class="customerType === 'guest' ? 'bg-white text-red-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'">
                             Tamu (Guest)
                         </button>
-                        <button @click="customerType = 'member'" 
+                        <button @click="customerType = 'member'"
                                 class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
                                 :class="customerType === 'member' ? 'bg-white text-green-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'">
                             Member
@@ -120,14 +120,14 @@
                                 <input type="number" x-model="customerPhone" class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500">
                             </div>
                         </div>
-                        
+
                         <div x-show="deliveryType === 'shipping'">
                             <div class="mb-3">
                                 <label class="text-[10px] font-bold text-slate-500">Cari Kecamatan / Kelurahan*</label>
                                 <div class="relative mt-1">
                                     <input type="text" x-model="searchQuery" @input.debounce.500ms="searchLocation()" placeholder="Ketik nama kecamatan..." class="w-full pl-8 pr-4 py-2 rounded-lg border border-slate-300 text-sm">
                                     <i class="fas fa-search absolute left-3 top-3 text-slate-400 text-xs"></i>
-                                    
+
                                     <div x-show="searchResults.length > 0" @click.outside="searchResults = []" class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                                         <template x-for="loc in searchResults">
                                             <div @click="selectLocation(loc)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-slate-50 text-xs">
@@ -150,7 +150,7 @@
                                 <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Pilih Layanan Pengiriman</p>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
                                     <template x-for="courier in courierList" :key="courier.service + courier.cost">
-                                        <div @click="selectCourier(courier)" 
+                                        <div @click="selectCourier(courier)"
                                              class="flex items-center p-2 rounded-lg border cursor-pointer transition hover:bg-blue-50 relative"
                                              :class="selectedCourier && selectedCourier.service === courier.service && selectedCourier.cost === courier.cost ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 bg-white'">
                                             <div class="w-10 h-10 bg-white rounded border border-slate-100 flex items-center justify-center p-1 mr-3 shrink-0">
@@ -177,15 +177,15 @@
                         <select x-model="selectedCustomerId" class="w-full mt-1 px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 font-bold text-slate-700 focus:ring-2 focus:ring-red-500">
                             <option value="">-- Pilih Member --</option>
                             @foreach($customers as $c)
-                                <option value="{{ $c->id }}" 
-                                        data-saldo="{{ $c->saldo }}" 
+                                <option value="{{ $c->id }}"
+                                        data-saldo="{{ $c->saldo }}"
                                         data-affiliate-balance="{{ $c->affiliate_balance ?? 0 }}"
                                         data-has-pin="{{ $c->has_pin ? 'yes' : 'no' }}">
                                     {{ $c->name }} (Saldo: Rp {{ number_format($c->saldo,0,',','.') }})
                                 </option>
                             @endforeach
                         </select>
-                        
+
                         <div x-show="selectedCustomerId" class="mt-3 flex gap-3">
                             <div class="flex-1 p-3 bg-blue-50 rounded-xl border border-blue-100 flex flex-col items-center">
                                 <span class="text-[10px] text-blue-400 font-bold uppercase">Saldo Topup</span>
@@ -206,55 +206,72 @@
                     </label>
 
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                        <div @click="paymentMethod = 'cash'" 
+
+                        <div @click="paymentMethod = 'pay_later'"
+                            class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
+                            :class="paymentMethod === 'pay_later' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-100 bg-white hover:border-amber-200 hover:bg-slate-50'">
+                            <i class="fas fa-clock text-lg"></i>
+                            <span class="text-[10px] font-bold text-center">Bayar Nanti</span>
+                            <div x-show="paymentMethod === 'pay_later'" class="absolute top-1 right-1 text-amber-500"><i class="fas fa-check-circle text-[10px]"></i></div>
+                        </div>
+
+                        <div @click="paymentMethod = 'qris_manual'"
+                            class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
+                            :class="paymentMethod === 'qris_manual' ? 'border-gray-800 bg-gray-100 text-gray-900' : 'border-slate-100 bg-white hover:border-gray-400 hover:bg-slate-50'">
+                            <i class="fas fa-qrcode text-lg"></i>
+                            <span class="text-[10px] font-bold text-center">QRIS Manual</span>
+                            <div x-show="paymentMethod === 'qris_manual'" class="absolute top-1 right-1 text-gray-800"><i class="fas fa-check-circle text-[10px]"></i></div>
+                        </div>
+
+                        <div @click="paymentMethod = 'cash'"
                              class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
                              :class="paymentMethod === 'cash' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200 hover:bg-slate-50'">
-                            <i class="fas fa-money-bill-wave text-lg"></i> 
+                            <i class="fas fa-money-bill-wave text-lg"></i>
                             <span class="text-[10px] font-bold text-center">Tunai</span>
                             <div x-show="paymentMethod === 'cash'" class="absolute top-1 right-1 text-red-500"><i class="fas fa-check-circle text-[10px]"></i></div>
                         </div>
-                        
-                        <div @click="paymentMethod = 'saldo'" 
+
+                        <div @click="paymentMethod = 'saldo'"
                              class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
                              :class="paymentMethod === 'saldo' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50'">
-                            <i class="fas fa-wallet text-lg"></i> 
+                            <i class="fas fa-wallet text-lg"></i>
                             <span class="text-[10px] font-bold text-center">Saldo</span>
                             <div x-show="paymentMethod === 'saldo'" class="absolute top-1 right-1 text-blue-500"><i class="fas fa-check-circle text-[10px]"></i></div>
                         </div>
 
-                        <div @click="selectAffiliatePayment()" 
+                        <div @click="selectAffiliatePayment()"
                              class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
                              :class="paymentMethod === 'affiliate_balance' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-slate-100 bg-white hover:border-purple-200 hover:bg-slate-50'">
-                            <i class="fas fa-coins text-lg"></i> 
+                            <i class="fas fa-coins text-lg"></i>
                             <span class="text-[10px] font-bold text-center">Profit</span>
                             <div x-show="paymentMethod === 'affiliate_balance'" class="absolute top-1 right-1 text-purple-500"><i class="fas fa-check-circle text-[10px]"></i></div>
                         </div>
 
-                        <div @click="paymentMethod = 'tripay'; fetchTripayChannels()" 
+                        <div @click="paymentMethod = 'tripay'; fetchTripayChannels()"
                              class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
                              :class="paymentMethod === 'tripay' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200 hover:bg-slate-50'">
-                            <i class="fas fa-qrcode text-lg"></i> 
+                            <i class="fas fa-qrcode text-lg"></i>
                             <span class="text-[10px] font-bold text-center">QRIS/VA</span>
                             <div x-show="paymentMethod === 'tripay'" class="absolute top-1 right-1 text-red-500"><i class="fas fa-check-circle text-[10px]"></i></div>
                         </div>
 
-                        <div @click="paymentMethod = 'doku'" 
+                        <div @click="paymentMethod = 'doku'"
                              class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
                              :class="paymentMethod === 'doku' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200 hover:bg-slate-50'">
-                            <i class="fas fa-credit-card text-lg"></i> 
+                            <i class="fas fa-credit-card text-lg"></i>
                             <span class="text-[10px] font-bold text-center">DOKU</span>
                             <div x-show="paymentMethod === 'doku'" class="absolute top-1 right-1 text-red-500"><i class="fas fa-check-circle text-[10px]"></i></div>
                         </div>
 
-                        <div @click="paymentMethod = 'dana'" 
+                        <div @click="paymentMethod = 'dana'"
                             class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
                             :class="paymentMethod === 'dana' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50'">
-                            
-                            <img src="https://tokosancaka.com/storage/logo/dana.png" 
+
+                            <img src="https://tokosancaka.com/storage/logo/dana.png"
                                 alt="DANA" class="h-4 object-contain mb-1 transition-all group-hover:scale-110">
-                            
+
                             <span class="text-[10px] font-bold text-center uppercase tracking-tighter">DANA</span>
-                            
+
                             <div x-show="paymentMethod === 'dana'" class="absolute top-1 right-1 text-blue-500 animate-bounce">
                                 <i class="fas fa-check-circle text-[10px]"></i>
                             </div>
@@ -264,15 +281,15 @@
 
 
                     <div class="mt-5 pt-5 border-t border-dashed border-slate-200">
-                        
+
                         <div x-show="paymentMethod === 'cash'" x-transition>
                             <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">Nominal Diterima</label>
                             <div class="relative">
                                 <span class="absolute left-4 top-3.5 text-slate-400 font-bold text-lg">Rp</span>
-                                <input type="number" x-model="cashAmount" placeholder="0" 
+                                <input type="number" x-model="cashAmount" placeholder="0"
                                        class="w-full pl-12 pr-4 py-3 text-2xl font-black text-slate-800 bg-slate-50 rounded-xl border border-slate-200 focus:ring-2 focus:ring-red-500 transition">
                             </div>
-                            
+
                             <div class="grid grid-cols-4 sm:grid-cols-7 gap-2 mt-3">
                                  <button @click="cashAmount = 10000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">10k</button>
                                  <button @click="cashAmount = 20000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">20k</button>
@@ -312,6 +329,14 @@
                             </div>
                         </div>
 
+                        <div x-show="paymentMethod === 'qris_manual'" x-transition class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl text-center">
+                            <p class="text-xs font-bold text-gray-500 uppercase mb-2">Scan QRIS Toko</p>
+                            <div class="bg-white p-2 inline-block rounded-lg shadow-sm border">
+                                <img src="https://tokosancaka.com/storage/qris_toko.jpg" alt="QRIS Manual" class="w-48 h-48 object-contain">
+                            </div>
+                            <p class="text-xs text-gray-400 mt-2">Tunjukkan bukti bayar ke kasir setelah scan.</p>
+                        </div>
+
                     </div>
                 </div>
 
@@ -323,23 +348,23 @@
         <div class="hidden lg:block mr-auto">
             <p class="text-xs text-slate-400">Pastikan data sudah benar sebelum memproses.</p>
         </div>
-        
+
         <button @click="showPaymentModal = false" class="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition">
             Kembali
         </button>
-        
-        <button @click="checkout()" :disabled="isProcessing || (paymentMethod === 'cash' && change < 0)" 
+
+        <button @click="checkout()" :disabled="isProcessing || (paymentMethod === 'cash' && change < 0)"
         class="w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-lg shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         :class="paymentMethod === 'dana' ? 'bg-blue-600 shadow-blue-200 hover:bg-blue-700' : 'bg-red-600 shadow-red-200 hover:bg-red-700'">
-    
+
     <span x-show="!isProcessing">
-        <span x-text="paymentMethod === 'dana' ? 'Bayar via DANA' : 'Bayar & Cetak Struk'"></span>
+        <span x-text="paymentMethod === 'dana' ? 'Bayar via DANA' : (paymentMethod === 'pay_later' ? 'Simpan Tagihan' : 'Bayar & Cetak Struk')"></span>
     </span>
-    
+
     <span x-show="isProcessing">
         <i class="fas fa-spinner fa-spin"></i> Sedang Memproses...
     </span>
-    
+
     <i x-show="!isProcessing" class="fas fa-arrow-right"></i>
 </button>
 
