@@ -273,7 +273,6 @@
     </div>
 </div>
 </div>
-
             <div class="lg:col-span-1 space-y-8">
                <div class="bg-white p-6 rounded-lg shadow-md sticky top-8
             border border-green-600
@@ -283,18 +282,18 @@
             hover:shadow-xl
             hover:ring-4 hover:ring-green-300">
 
-    <h3 class="text-xl font-semibold text-white px-4 py-3 mb-6
-           bg-green-600 border border-green-700 rounded-lg
-           flex items-center gap-2
-           transition-all duration-200
-           hover:bg-green-700
-           hover:border-green-800
-           hover:shadow-lg
-           hover:ring-2 hover:ring-green-300">
+            <h3 class="text-xl font-semibold text-white px-4 py-3 mb-6
+                bg-green-600 border border-green-700 rounded-lg
+                flex items-center gap-2
+                transition-all duration-200
+                hover:bg-green-700
+                hover:border-green-800
+                hover:shadow-lg
+                hover:ring-2 hover:ring-green-300">
 
-    <i class="fas fa-box-open text-white"></i>
-    Detail Paket
-</h3>
+            <i class="fas fa-box-open text-white"></i>
+            Detail Paket
+        </h3>
 
 
 
