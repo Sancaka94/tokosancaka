@@ -656,7 +656,12 @@ class PesananController extends Controller
 
     public function cetakResiThermal(string $resi)
     {
-        $pesanan = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->firstOrFail();
+        // TAMBAHKAN ->orWhere('shipping_ref', $resi)
+        $pesanan = Pesanan::where('resi', $resi)
+            ->orWhere('nomor_invoice', $resi)
+            ->orWhere('shipping_ref', $resi) // <--- TAMBAHAN PENTING
+            ->firstOrFail();
+
         return view('admin.pesanan.cetak_thermal', compact('pesanan'));
     }
 

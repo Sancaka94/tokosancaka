@@ -1279,6 +1279,7 @@ public function cetakThermal($resi)
     // Cari data berdasarkan resi, jika tidak ada cari berdasarkan nomor invoice
     $order = \App\Models\Pesanan::where('resi', $resi)
                 ->orWhere('nomor_invoice', $resi)
+                ->orWhere('shipping_ref', $resi) // <--- TAMBAHAN PENTING
                 ->firstOrFail();
 
     // Mengarahkan ke view cetak yang sudah ada
