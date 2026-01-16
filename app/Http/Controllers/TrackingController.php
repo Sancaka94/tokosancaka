@@ -45,6 +45,7 @@ class TrackingController extends Controller
         $pesanan = Pesanan::where('resi', $resi)
             ->orWhere('resi_aktual', $resi)
             ->orWhere('nomor_invoice', $resi)
+            ->orWhere('shipping_ref', $resi) // <--- TAMBAHAN: Cari berdasarkan Shipping Ref
             ->first();
 
         if (!$pesanan) {
@@ -262,12 +263,14 @@ class TrackingController extends Controller
 
         $pesanan = Pesanan::where('resi', $resi)
             ->orWhere('nomor_invoice', $resi)
+            ->orWhere('shipping_ref', $resi) // <--- TAMBAHAN: Cari berdasarkan Shipping Ref
             ->first();
 
         if (!$pesanan) {
             $orderModel = Order::with(['store', 'user'])
                 ->where('shipping_reference', $resi)
                 ->orWhere('invoice_number', $resi)
+                ->orWhere('shipping_ref', $resi) // <--- TAMBAHAN: Cari berdasarkan Shipping Ref
                 ->first();
 
             if ($orderModel) {
