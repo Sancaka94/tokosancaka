@@ -611,7 +611,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
+    // document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
     document.addEventListener('click', function(event) {
         if (!event.target.closest('#sender_address_search, #sender_address_results')) {
             document.getElementById('sender_address_results').classList.add('hidden');
