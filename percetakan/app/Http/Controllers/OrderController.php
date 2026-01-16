@@ -1054,21 +1054,20 @@ class OrderController extends Controller
 
     private function _sendWaNotification($order, $finalPrice, $paymentUrl, $paymentStatus) {
         try {
-            // 1. Load detail item agar bisa dibaca loop-nya
-            $order->load('items');
-
+            // [UPDATE PENTING] Load relasi 'product' agar bisa baca satuan (unit)
+            $order->load(['items.product']);
 
             // ============================================================
-            // A. LOGIKA CERDAS: BRANDING (SANCLEAN vs SANCAKA)
+            // A. LOGIKA CERDAS: BRANDING & KATEGORI
             // ============================================================
             $isLaundry = false;
 
-            // Cek 1: Deteksi dari Catatan Sistem
+            // Cek dari Catatan Sistem
             if (str_contains(strtoupper($order->note ?? ''), 'LAUNDRY')) {
                 $isLaundry = true;
             }
 
-            // Cek 2: Deteksi dari Nama Produk (Jika catatan kosong)
+            // Cek dari Nama Produk
             if (!$isLaundry) {
                 foreach ($order->items as $item) {
                     $pName = strtoupper($item->product_name);
@@ -1079,31 +1078,41 @@ class OrderController extends Controller
                 }
             }
 
-            $invoiceLink = url('/invoice/' . $order->order_number);
-
-            // Tentukan Nama Toko
             $storeName = $isLaundry ? "SANCLEAN (Laundry & Care)" : "SANCAKA STORE";
-            // ============================================================
 
-
-            // 2. DATA DASAR & FORMAT
+            // 2. DATA DASAR
             $formattedTotal = "Rp " . number_format($finalPrice, 0, ',', '.');
             $tanggal = \Carbon\Carbon::parse($order->created_at)->timezone('Asia/Jakarta')->format('d M Y, H:i');
             $statusText = ($paymentStatus == 'paid') ? "LUNAS ✅" : "BELUM BAYAR ⏳";
             $metodeText = strtoupper(str_replace('_', ' ', $order->payment_method));
 
-            // 3. SUSUN DAFTAR ITEM
+            // 3. SUSUN DAFTAR ITEM DENGAN SATUAN (KG/PCS)
             $itemListText = "";
             foreach ($order->items as $item) {
+                // Hapus angka 0 di belakang koma (contoh: 5.00 -> 5)
+                $qty = $item->quantity + 0;
+
+                // Cari Satuan (Unit)
+                $unit = 'pcs'; // Default standard
+
+                if ($item->product && !empty($item->product->unit)) {
+                    // Ambil dari database produk (Akurat)
+                    $unit = $item->product->unit;
+                } elseif ($isLaundry) {
+                    // Jika data unit kosong tapi ini Laundry -> Paksa 'kg'
+                    $unit = 'kg';
+                }
+
                 // Hasil: - Cuci Kering (5 kg)
-                $itemListText .= "- " . $item->product_name . " (" . $item->quantity . ")\n";
+                $itemListText .= "- " . $item->product_name . " (" . $qty . " " . $unit . ")\n";
             }
 
-            // 4. INFO ALAMAT (Jika Ada)
+            // 4. INFO ALAMAT & INVOICE
             $alamatInfo = "";
             if ($order->destination_address) {
                 $alamatInfo = "\n📍 *Tujuan:* " . $order->destination_address . "\n";
             }
+            $invoiceLink = url('/invoice/' . $order->order_number);
 
             // ==========================================
             // B. KIRIM PESAN KE CUSTOMER
@@ -1113,43 +1122,78 @@ class OrderController extends Controller
                 $msg .= "Terima kasih telah menggunakan layanan *{$storeName}*.\n";
                 $msg .= "Berikut rinciannya:\n\n";
 
-                $msg .= "🧾 *Nomor Nota:* {$order->order_number}\n";
+                $msg .= "🧾 *No. Nota:* {$order->order_number}\n";
                 $msg .= "📅 *Waktu:* {$tanggal}\n";
                 $msg .= "💰 *Status:* {$statusText}\n\n";
 
                 $msg .= "📦 *Detail Pesanan:*\n";
-                $msg .= $itemListText;
+                $msg .= $itemListText; // <--- SUDAH ADA SATUANNYA
                 $msg .= $alamatInfo;
 
                 $msg .= "\n💵 *Total: {$formattedTotal}*";
-                // --- [TAMBAHAN BARU: LINK INVOICE] ---
-                $msg .= "\n\n📄 *Lihat Struk/Nota Digital:*";
-                $msg .= "\n" . $invoiceLink;
-                // -------------------------------------
 
-                // --- TAMBAHAN LOGIKA PESAN BAYAR NANTI ---
-                if ($order->payment_method == 'pay_later') {
-                    $msg .= "\n\n⚠️ *TAGIHAN BELUM LUNAS*";
-                    $msg .= "\nTagihan Kakak sebesar *{$formattedTotal}* belum kami terima.";
-                    $msg .= "\nApabila Kakak Ingin Mengambil Mohon Lakukan pembayaran sebesar *{$formattedTotal}* agar pesanan dapat diambil.";
-                    $msg .= "\n\nTerima kasih atas kerjasamanya! 🙏";
+                // Tambahkan Link Invoice
+                $msg .= "\n\n📄 *Lihat Struk Digital:*";
+                $msg .= "\n" . $invoiceLink;
+
+                // Logika Pesan Tambahan per Metode Bayar
+                if ($paymentUrl && $paymentStatus == 'unpaid') {
+                    $msg .= "\n\n👇 *Mohon selesaikan pembayaran di sini:*\n";
+                    $msg .= $paymentUrl;
                 }
-                // --- PESAN QRIS MANUAL ---
+                elseif ($order->payment_method == 'pay_later') {
+                    $msg .= "\n\n⚠️ *TAGIHAN BELUM LUNAS*";
+                    $msg .= "\nMohon segera melakukan pembayaran sebesar *{$formattedTotal}* agar pesanan dapat diproses.";
+                }
                 elseif ($order->payment_method == 'qris_manual') {
                     $msg .= "\n\n✅ Pembayaran via QRIS Manual Berhasil Diterima.";
-                    $msg .= "\nTerima kasih sudah berbelanja! 🙏";
                 }
-                // --- DEFAULT ---
-                else {
-                    if ($isLaundry) {
-                        $msg .= "\n\n_Cucian sedang kami proses..._";
-                    } else {
-                        $msg .= "\n\n_Pesanan segera kami proses..._";
-                    }
+
+                // Penutup Beda-beda
+                if ($isLaundry) {
+                    $msg .= "\n\n_Cucian sedang kami proses. Nanti kami kabari lagi jika sudah selesai!_ ✨";
+                } else {
+                    $msg .= "\n\n_Pesanan segera kami proses. Terima kasih!_ 🙏";
                 }
 
                 $this->_sendFonnteMessage($order->customer_phone, $msg);
             }
+
+            // ==========================================
+            // C. KIRIM PESAN KE ADMIN
+            // ==========================================
+            $adminContacts = [
+                '085745808809',
+                '08819435180',
+            ];
+
+            $msgAdmin  = "🔔 *INFO {$storeName}* 🔔\n";
+            $msgAdmin .= "Ada order masuk bos!\n\n";
+            $msgAdmin .= "👤 *Cust:* {$order->customer_name}\n";
+            $msgAdmin .= "🧾 *Inv:* {$order->order_number}\n";
+            $msgAdmin .= "💳 *Via:* {$metodeText}\n";
+            $msgAdmin .= "💰 *Omzet:* {$formattedTotal}\n";
+            $msgAdmin .= "🔖 *Status:* {$statusText}\n\n";
+
+            $msgAdmin .= "📦 *Item:*\n";
+            $msgAdmin .= $itemListText; // <--- SUDAH ADA SATUANNYA
+
+            if ($order->customer_note) {
+                $msgAdmin .= "\n📝 *Note:* " . $order->customer_note;
+            }
+            if ($order->destination_address) {
+                $msgAdmin .= "\n🚚 *Kirim:* " . $order->destination_address;
+            }
+
+            foreach ($adminContacts as $phone) {
+                $this->_sendFonnteMessage($phone, $msgAdmin);
+                sleep(1);
+            }
+
+        } catch (\Exception $e) {
+            Log::error("WA Error: " . $e->getMessage());
+        }
+    }
 
             // ==========================================
             // C. KIRIM PESAN KE BANYAK ADMIN
