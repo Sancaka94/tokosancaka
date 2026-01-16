@@ -96,7 +96,7 @@
 
                     <div class="flex overflow-x-auto gap-2 custom-scrollbar pb-1">
                         <button @click="activeCategory = 'all'"
-                            class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all border shadow-sm flex items-center gap-2"
+                            class="flex-shrink-0 px-4 rounded-xl text-xs font-bold transition-all border shadow-sm flex items-center gap-2"
                             :class="activeCategory === 'all'
                                 ? 'bg-red-600 text-white border-red-600 ring-2 ring-red-100'
                                 : 'bg-white text-slate-600 border-slate-200 hover:border-red-300 hover:text-red-600'">
@@ -106,7 +106,7 @@
                         @if(isset($categories))
                             @foreach($categories as $cat)
                             <button @click="activeCategory = '{{ $cat->slug }}'"
-                                class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all border shadow-sm whitespace-nowrap"
+                                class="flex-shrink-0 px-4 rounded-xl text-xs font-bold transition-all border shadow-sm whitespace-nowrap"
                                 :class="activeCategory === '{{ $cat->slug }}'
                                     ? 'bg-red-600 text-white border-red-600 ring-2 ring-red-100'
                                     : 'bg-white text-slate-600 border-slate-200 hover:border-red-300 hover:text-red-600'">
