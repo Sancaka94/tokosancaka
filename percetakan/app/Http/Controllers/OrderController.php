@@ -1094,17 +1094,24 @@ class OrderController extends Controller
 
                 $msg .= "\n💵 *Total: {$formattedTotal}*";
 
-                // Jika belum bayar & ada link payment
-                if ($paymentUrl && $paymentStatus == 'unpaid') {
-                    $msg .= "\n\n👇 *Mohon selesaikan pembayaran di sini:*\n";
-                    $msg .= $paymentUrl;
+                // --- TAMBAHAN LOGIKA PESAN BAYAR NANTI ---
+                if ($order->payment_method == 'pay_later') {
+                    $msg .= "\n\n⚠️ *TAGIHAN BELUM LUNAS*";
+                    $msg .= "\nMohon segera melakukan pembayaran sebesar *{$formattedTotal}* agar pesanan dapat diproses/diambil.";
+                    $msg .= "\n\nTerima kasih atas kerjasamanya! 🙏";
                 }
-
-                // Penutup Beda-beda
-                if ($isLaundry) {
-                    $msg .= "\n\n_Cucian Kakak sedang kami proses. Nanti kami kabari lagi jika sudah selesai!_ ✨";
-                } else {
-                    $msg .= "\n\n_Pesanan segera kami proses. Terima kasih!_ 🙏";
+                // --- PESAN QRIS MANUAL ---
+                elseif ($order->payment_method == 'qris_manual') {
+                    $msg .= "\n\n✅ Pembayaran via QRIS Manual Berhasil Diterima.";
+                    $msg .= "\nTerima kasih sudah berbelanja! 🙏";
+                }
+                // --- DEFAULT ---
+                else {
+                    if ($isLaundry) {
+                        $msg .= "\n\n_Cucian sedang kami proses..._";
+                    } else {
+                        $msg .= "\n\n_Pesanan segera kami proses..._";
+                    }
                 }
 
                 $this->_sendFonnteMessage($order->customer_phone, $msg);
