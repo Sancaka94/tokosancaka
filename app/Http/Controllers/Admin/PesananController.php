@@ -1336,7 +1336,7 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
             'customer_phone' => $data['receiver_phone'], // Gunakan telp penerima
             'order_items' => $orderItems,
             'return_url' => route('admin.pesanan.show', ['resi' => $pesanan->nomor_invoice]), // Arahkan ke tracking
-            'expired_time' => time() + (1 * 60 * 60), // 1 jam
+            'expired_time' => time() + (24 * 60 * 60), // 24 jam
             'signature' => hash_hmac('sha256', $merchantCode . $pesanan->nomor_invoice . $total, $privateKey),
         ];
         Log::info('Tripay Create Transaction Payload (Internal):', $payload);

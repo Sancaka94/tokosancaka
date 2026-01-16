@@ -820,50 +820,105 @@ class PesananController extends Controller
         }
     }
 
-    /**
+   /**
      * FUNGSI UNTUK MEMBUAT TRANSAKSI TRIPAY
+     * (LOGIKA DISAMAKAN DENGAN ADMIN: AMBIL DARI DATABASE)
      */
-    private function _createTripayTransactionInternal(array $data, Pesanan $order, int $total, array $orderItems): array // Menerima $order
+    private function _createTripayTransactionInternal(array $data, Pesanan $order, int $total, array $orderItems): array
     {
-        $apiKey = config('tripay.api_key'); $privateKey = config('tripay.private_key'); $merchantCode = config('tripay.merchant_code'); $mode = config('tripay.mode', 'sandbox');
-        if ($total <= 0) return ['success' => false, 'message' => 'Jumlah tidak valid.'];
+        // ==========================================================
+        // 🔥 LOGIKA BARU: AMBIL CONFIG DARI DATABASE (SEPERTI ADMIN) 🔥
+        // ==========================================================
 
+        // 1. Ambil Mode Global dari Database
+        $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+        // 2. Siapkan wadah variabel
+        $baseUrl      = '';
+        $apiKey       = '';
+        $privateKey   = '';
+        $merchantCode = '';
+
+        // 3. Isi variabel berdasarkan MODE yang aktif di Database
+        if ($mode === 'production') {
+            $baseUrl      = 'https://tripay.co.id/api/transaction/create';
+            $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
+            $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'production');
+            $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', 'production');
+        } else {
+            // Fallback ke Sandbox
+            $baseUrl      = 'https://tripay.co.id/api-sandbox/transaction/create';
+            $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'sandbox');
+            $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', 'sandbox');
+        }
+
+        // Cek Konfigurasi Lengkap
+        if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+            Log::error('TRIPAY CONFIG MISSING (Customer Mode: ' . $mode . ')');
+            return ['success' => false, 'message' => 'Konfigurasi Tripay belum lengkap di Database.'];
+        }
+
+        // ==========================================================
+        // AKHIR LOGIKA CONFIG DATABASE
+        // ==========================================================
+
+        if ($total <= 0) return ['success' => false, 'message' => 'Jumlah pembayaran tidak valid.'];
+
+        // Ambil email customer
         $customerEmail = Auth::user()->email ?? null;
         if (empty($customerEmail) || !filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
             $customerEmail = 'customer+' . Str::random(5) . '@tokosancaka.com';
         }
 
+        // [OPTIMASI] Gunakan Integer untuk amount
+        $amountInt = (int) $total;
+
+        // [OPTIMASI] Expired Time 24 Jam (Agar user punya waktu bayar)
+        $expiredTime = time() + (24 * 60 * 60);
+
         $payload = [
-            'method' => $data['payment_method'], 'merchant_ref' => $order->nomor_invoice, 'amount' => $total,
-            'customer_name' => $data['receiver_name'],
+            'method'         => $data['payment_method'],
+            'merchant_ref'   => $order->nomor_invoice,
+            'amount'         => $amountInt,
+            'customer_name'  => $data['receiver_name'], // Gunakan nama penerima paket
             'customer_email' => $customerEmail,
-            'customer_phone' => $data['receiver_phone'],
-            'order_items' => $orderItems,
-            // PERBAIKAN: Menggunakan kunci 'order' sesuai rute {order}
-            'return_url' => route('customer.pesanan.show', ['order' => $order]),
-            'expired_time' => time() + (1 * 60 * 60),
-            'signature' => hash_hmac('sha256', $merchantCode . $order->nomor_invoice . $total, $privateKey),
+            'customer_phone' => $data['receiver_phone'], // Gunakan no hp penerima
+            'order_items'    => $orderItems,
+            // Arahkan kembali ke halaman detail pesanan CUSTOMER
+            'return_url'     => route('customer.pesanan.show', ['order' => $order]),
+            'expired_time'   => $expiredTime,
+            'signature'      => hash_hmac('sha256', $merchantCode . $order->nomor_invoice . $amountInt, $privateKey),
         ];
-        Log::info('Tripay Create Transaction Payload (Internal Customer):', $payload);
-        $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+        Log::info('Tripay Create Transaction Payload (Customer):', $payload);
+
         try {
-            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
-                ->timeout(60)
-                ->withoutVerifying()
-                ->post($baseUrl, $payload);
+            // Setup HTTP Client
+            $http = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->timeout(60);
+
+            // [KEAMANAN] Matikan verifikasi SSL HANYA jika bukan production
+            if ($mode !== 'production') {
+                $http->withoutVerifying();
+            }
+
+            $response = $http->post($baseUrl, $payload);
 
             if (!$response->successful()) {
                 Log::error('Gagal menghubungi Tripay (HTTP Error) (Customer)', ['status' => $response->status(), 'body' => $response->body()]);
                 return ['success' => false, 'message' => 'Gagal menghubungi server pembayaran (HTTP: ' . $response->status() . ').'];
             }
+
             $responseData = $response->json();
-            Log::info('Tripay Create Transaction Response (Internal Customer):', $responseData);
+            Log::info('Tripay Create Transaction Response (Customer):', $responseData);
 
             if (!isset($responseData['success']) || $responseData['success'] !== true) {
                 Log::error('Tripay mengembalikan respon gagal (Customer)', ['response' => $responseData]);
                 return ['success' => false, 'message' => $responseData['message'] ?? 'Gagal membuat tagihan pembayaran.'];
             }
+
             return $responseData;
+
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             Log::error('Koneksi ke Tripay gagal (Customer)', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => 'Tidak dapat terhubung ke server pembayaran.'];
