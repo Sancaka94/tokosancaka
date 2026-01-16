@@ -21,7 +21,7 @@
         <div class="bg-slate-900 text-white p-6 text-center relative overflow-hidden">
             <div class="relative z-10">
                 <h1 class="text-2xl font-black tracking-widest uppercase mb-1">Sancaka Store</h1>
-                <p class="text-xs text-slate-400">Jl. Contoh No. 123, Ngawi</p>
+                <p class="text-xs text-slate-400">Jl.Dr.Wahidin No.18A RT.22/05 Ketanggi Ngawi 63211</p>
                 <p class="text-xs text-slate-400">WhatsApp: 0857-4580-8809</p>
             </div>
             <div class="absolute -top-10 -right-10 w-32 h-32 bg-slate-800 rounded-full opacity-50"></div>
