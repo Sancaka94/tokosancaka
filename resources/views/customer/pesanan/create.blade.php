@@ -1236,18 +1236,25 @@ ongkirModalBody.appendChild(card);
             document.getElementById('selected_expedition_display').value = e.target.dataset.display;
             document.getElementById('selected_expedition_logo_url').value = e.target.dataset.logo;
 
-            const codOptions = document.querySelectorAll('.cod-payment-option');
+            // ============================================================
+            // 🔥 MATIKAN LOGIC INI AGAR COD TIDAK HILANG 🔥
+            // ============================================================
+            /* const codOptions = document.querySelectorAll('.cod-payment-option');
             if (e.target.dataset.codSupported === 'true') {
                 codOptions.forEach(opt => opt.style.display = 'flex');
             } else {
                 if (['COD', 'CODBARANG'].includes(document.getElementById('payment_method').value)) {
                     document.getElementById('payment_method').value = '';
                     document.getElementById('selectedPaymentName').textContent = 'Pilih...';
-                    document.getElementById('selectedPaymentLogo').src = 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png';
+                    document.getElementById('selectedPaymentLogo').src = '...';
                 }
                 codOptions.forEach(opt => opt.style.display = 'none');
             }
+            */
+            // ============================================================
+
             ongkirModalEl.classList.add('hidden');
+            runValidityChecks();
         }
     });
 
@@ -1321,7 +1328,7 @@ ongkirModalBody.appendChild(card);
         openConfirmationModal();
     });
 
-    document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
+    // document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
 
     document.addEventListener('click', function(event) {
         if (!event.target.closest('#sender_address_search, #sender_address_results')) {
