@@ -313,6 +313,30 @@
             </div>
 
             <div class="p-4 bg-slate-50 border-t border-slate-200 z-20 shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">
+
+                {{-- === TEMPEL KODE BARU DI SINI === --}}
+                <div x-show="activeCategory.includes('laundry')" x-transition.opacity.duration.300ms class="mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-xl space-y-2">
+                    <div class="flex items-center gap-2 mb-1">
+                        <div class="h-6 w-6 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">
+                            <i class="fas fa-tshirt"></i>
+                        </div>
+                        <h3 class="text-[10px] font-bold text-indigo-700 uppercase tracking-widest">Data Pelanggan Laundry</h3>
+                    </div>
+                    <div>
+                        <input type="text" x-model="customerName" placeholder="Nama Pelanggan"
+                            class="w-full px-3 py-1.5 text-xs rounded-lg border border-indigo-200 focus:ring-indigo-500 focus:border-indigo-500 bg-white placeholder-slate-400">
+                    </div>
+                    <div>
+                        <input type="number" x-model="customerPhone" placeholder="Nomor WhatsApp (Wajib)"
+                            class="w-full px-3 py-1.5 text-xs rounded-lg border border-indigo-200 focus:ring-indigo-500 focus:border-indigo-500 bg-white placeholder-slate-400">
+                    </div>
+                    <div>
+                        <textarea x-model="customerAddressDetail" rows="2" placeholder="Alamat / Catatan Cucian..."
+                                class="w-full px-3 py-1.5 text-xs rounded-lg border border-indigo-200 focus:ring-indigo-500 focus:border-indigo-500 bg-white placeholder-slate-400 resize-none"></textarea>
+                    </div>
+                </div>
+                {{-- === BATAS KODE BARU === --}}
+
                 <div class="mb-3">
                     <div class="relative">
                         <input type="text" x-model="couponCode" @input.debounce.500ms="checkCoupon()" placeholder="KODE PROMO..."
