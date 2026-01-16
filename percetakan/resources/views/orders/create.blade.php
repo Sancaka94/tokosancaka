@@ -27,7 +27,7 @@
     </style>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 h-screen overflow-hidden select-none"
-      x-data="{ ...posSystem(), activeCategory: 'all' }">
+      x-data="posSystem">
 
     <div class="flex h-full w-full flex-col lg:flex-row overflow-hidden">
 
