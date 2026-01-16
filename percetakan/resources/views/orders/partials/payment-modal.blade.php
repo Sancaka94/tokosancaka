@@ -353,20 +353,26 @@
             Kembali
         </button>
 
-        <button @click="checkout()" :disabled="isProcessing || (paymentMethod === 'cash' && change < 0)"
-        class="w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-lg shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        :class="paymentMethod === 'dana' ? 'bg-blue-600 shadow-blue-200 hover:bg-blue-700' : 'bg-red-600 shadow-red-200 hover:bg-red-700'">
+        <button @click="checkout()"
+            :disabled="isProcessing || (paymentMethod === 'cash' && change < 0)"
+            class="w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-lg shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            :class="{
+                'bg-blue-600 shadow-blue-200 hover:bg-blue-700': paymentMethod === 'dana',
+                'bg-amber-500 shadow-amber-200 hover:bg-amber-600 text-white': paymentMethod === 'pay_later',
+                'bg-gray-800 shadow-gray-300 hover:bg-black text-white': paymentMethod === 'qris_manual',
+                'bg-red-600 shadow-red-200 hover:bg-red-700': !['dana', 'pay_later', 'qris_manual'].includes(paymentMethod)
+            }">
 
-    <span x-show="!isProcessing">
-        <span x-text="paymentMethod === 'dana' ? 'Bayar via DANA' : (paymentMethod === 'pay_later' ? 'Simpan Tagihan' : 'Bayar & Cetak Struk')"></span>
-    </span>
+            <span x-show="!isProcessing">
+                <span x-text="paymentMethod === 'dana' ? 'Bayar via DANA' : (paymentMethod === 'pay_later' ? 'Simpan Tagihan' : 'Bayar & Cetak Struk')"></span>
+            </span>
 
-    <span x-show="isProcessing">
-        <i class="fas fa-spinner fa-spin"></i> Sedang Memproses...
-    </span>
+            <span x-show="isProcessing">
+                <i class="fas fa-spinner fa-spin"></i> Sedang Memproses...
+            </span>
 
-    <i x-show="!isProcessing" class="fas fa-arrow-right"></i>
-</button>
+            <i x-show="!isProcessing" class="fas fa-arrow-right"></i>
+        </button>
 
     </div>
 </div>
