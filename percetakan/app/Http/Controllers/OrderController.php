@@ -1028,86 +1028,122 @@ class OrderController extends Controller
 
     private function _sendWaNotification($order, $finalPrice, $paymentUrl, $paymentStatus) {
         try {
-            // 1. Pastikan relasi items terload untuk mendapatkan detail produk
-            // Jika belum di-eager load sebelumnya, kita load manual di sini
+            // 1. Load detail item agar bisa dibaca loop-nya
             $order->load('items');
 
-            // 2. Format Rupiah & Tanggal
-            $formattedTotal = "Rp " . number_format($finalPrice, 0, ',', '.');
-            $tanggal = \Carbon\Carbon::parse($order->created_at)->format('d M Y H:i');
+            // ============================================================
+            // A. LOGIKA CERDAS: BRANDING (SANCLEAN vs SANCAKA)
+            // ============================================================
+            $isLaundry = false;
 
-            // 3. Susun Daftar Item Barang/Jasa
+            // Cek 1: Deteksi dari Catatan Sistem
+            if (str_contains(strtoupper($order->note ?? ''), 'LAUNDRY')) {
+                $isLaundry = true;
+            }
+
+            // Cek 2: Deteksi dari Nama Produk (Jika catatan kosong)
+            if (!$isLaundry) {
+                foreach ($order->items as $item) {
+                    $pName = strtoupper($item->product_name);
+                    if (str_contains($pName, 'CUCI') || str_contains($pName, 'SETRIKA') || str_contains($pName, 'LAUNDRY') || str_contains($pName, 'KARPET')) {
+                        $isLaundry = true;
+                        break;
+                    }
+                }
+            }
+
+            // Tentukan Nama Toko
+            $storeName = $isLaundry ? "SANCLEAN (Laundry & Care)" : "SANCAKA STORE";
+            // ============================================================
+
+
+            // 2. DATA DASAR & FORMAT
+            $formattedTotal = "Rp " . number_format($finalPrice, 0, ',', '.');
+            $tanggal = \Carbon\Carbon::parse($order->created_at)->timezone('Asia/Jakarta')->format('d M Y, H:i');
+            $statusText = ($paymentStatus == 'paid') ? "LUNAS ✅" : "BELUM BAYAR ⏳";
+            $metodeText = strtoupper(str_replace('_', ' ', $order->payment_method));
+
+            // 3. SUSUN DAFTAR ITEM
             $itemListText = "";
             foreach ($order->items as $item) {
-                // Contoh: - Cuci Kering (5 kg)
-                // Contoh: - Kertas A4 (10 lbr)
+                // Hasil: - Cuci Kering (5 kg)
                 $itemListText .= "- " . $item->product_name . " (" . $item->quantity . ")\n";
             }
 
-            // 4. Terjemahkan Status & Metode
-            $statusText = ($paymentStatus == 'paid') ? "LUNAS ✅" : "BELUM LUNAS ⏳";
-            $metodeText = strtoupper(str_replace('_', ' ', $order->payment_method));
-
-            // 5. Cek Alamat (Jika Delivery)
+            // 4. INFO ALAMAT (Jika Ada)
             $alamatInfo = "";
             if ($order->destination_address) {
-                $alamatInfo = "\n📍 *Alamat Pengiriman:*\n" . $order->destination_address . "\n";
+                $alamatInfo = "\n📍 *Tujuan:* " . $order->destination_address . "\n";
             }
 
             // ==========================================
-            // A. SUSUN PESAN UNTUK CUSTOMER (LEBIH RAMAH)
+            // B. KIRIM PESAN KE CUSTOMER
             // ==========================================
             if ($order->customer_phone) {
                 $msg  = "Halo Kak *{$order->customer_name}* 👋,\n\n";
-                $msg .= "Terima kasih sudah order di *Sancaka Store*.\n";
-                $msg .= "Berikut rincian pesanan Kakak:\n\n";
+                $msg .= "Terima kasih telah menggunakan layanan *{$storeName}*.\n";
+                $msg .= "Berikut rinciannya:\n\n";
 
-                $msg .= "🧾 *No. Invoice:* {$order->order_number}\n";
-                $msg .= "📅 *Tanggal:* {$tanggal}\n";
+                $msg .= "🧾 *No. Nota:* {$order->order_number}\n";
+                $msg .= "📅 *Waktu:* {$tanggal}\n";
                 $msg .= "💰 *Status:* {$statusText}\n\n";
 
-                $msg .= "📦 *Rincian Pesanan:*\n";
-                $msg .= $itemListText; // Daftar produk masuk sini
+                $msg .= "📦 *Detail Pesanan:*\n";
+                $msg .= $itemListText;
+                $msg .= $alamatInfo;
 
-                $msg .= $alamatInfo; // Alamat masuk sini (kalau ada)
+                $msg .= "\n💵 *Total: {$formattedTotal}*";
 
-                $msg .= "\n💵 *Total Tagihan: {$formattedTotal}*";
-
+                // Jika belum bayar & ada link payment
                 if ($paymentUrl && $paymentStatus == 'unpaid') {
-                    $msg .= "\n\n👇 *Silakan lakukan pembayaran melalui link berikut:*\n";
+                    $msg .= "\n\n👇 *Mohon selesaikan pembayaran di sini:*\n";
                     $msg .= $paymentUrl;
                 }
 
-                $msg .= "\n\n_Mohon ditunggu, pesanan segera kami proses. Terima kasih!_ 🙏";
+                // Penutup Beda-beda
+                if ($isLaundry) {
+                    $msg .= "\n\n_Cucian Kakak sedang kami proses. Nanti kami kabari lagi jika sudah selesai!_ ✨";
+                } else {
+                    $msg .= "\n\n_Pesanan segera kami proses. Terima kasih!_ 🙏";
+                }
 
                 $this->_sendFonnteMessage($order->customer_phone, $msg);
             }
 
             // ==========================================
-            // B. SUSUN PESAN UNTUK ADMIN (LEBIH TEGAS & RINCI)
+            // C. KIRIM PESAN KE BANYAK ADMIN
             // ==========================================
-            $adminPhone = '085745808809';
 
-            $msgAdmin  = "🔔 *ORDER BARU MASUK!* 🔔\n\n";
-            $msgAdmin .= "👤 *Customer:* {$order->customer_name}\n";
-            $msgAdmin .= "📱 *WA:* {$order->customer_phone}\n";
+            // Daftar Nomor Admin
+            $adminContacts = [
+                '085745808809', // Admin Utama
+                '08819435180',  // Admin Kedua
+            ];
+
+            // Susun Pesan Admin
+            $msgAdmin  = "🔔 *INFO {$storeName}* 🔔\n";
+            $msgAdmin .= "Ada order masuk bos!\n\n";
+            $msgAdmin .= "👤 *Cust:* {$order->customer_name}\n";
             $msgAdmin .= "🧾 *Inv:* {$order->order_number}\n";
-            $msgAdmin .= "💳 *Metode:* {$metodeText}\n";
-            $msgAdmin .= "💰 *Total:* {$formattedTotal}\n";
+            $msgAdmin .= "💳 *Via:* {$metodeText}\n";
+            $msgAdmin .= "💰 *Omzet:* {$formattedTotal}\n";
             $msgAdmin .= "🔖 *Status:* {$statusText}\n\n";
 
             $msgAdmin .= "📦 *Item:*\n";
             $msgAdmin .= $itemListText;
 
             if ($order->customer_note) {
-                $msgAdmin .= "\n📝 *Catatan:* " . $order->customer_note;
+                $msgAdmin .= "\n📝 *Note:* " . $order->customer_note;
             }
-
             if ($order->destination_address) {
-                $msgAdmin .= "\n🚚 *Kirim Ke:* " . $order->destination_address;
+                $msgAdmin .= "\n🚚 *Kirim:* " . $order->destination_address;
             }
 
-            $this->_sendFonnteMessage($adminPhone, $msgAdmin);
+            // Loop kirim ke semua admin
+            foreach ($adminContacts as $phone) {
+                $this->_sendFonnteMessage($phone, $msgAdmin);
+                sleep(1); // Aktifkan jika pesan sering gagal terkirim (opsional)
+            }
 
         } catch (\Exception $e) {
             Log::error("WA Error: " . $e->getMessage());
