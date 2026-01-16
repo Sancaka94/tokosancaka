@@ -8,44 +8,58 @@ use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
-    /**
-     * Menampilkan daftar kategori & form tambah
-     */
     public function index()
     {
+        // Urutkan terbaru
         $categories = Category::orderBy('created_at', 'desc')->paginate(10);
         return view('categories.index', compact('categories'));
     }
 
-    /**
-     * Menyimpan kategori baru
-     */
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255|unique:categories,name',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
         ]);
 
         Category::create([
             'name' => $request->name,
-            'slug' => Str::slug($request->name), // Auto generate slug
+            // Buat slug otomatis dari nama (contoh: "Laundry Kilat" -> "laundry-kilat")
+            'slug' => Str::slug($request->name),
             'description' => $request->description,
-            'is_active' => true,
+            'is_active' => $request->has('is_active'), // Checkbox handling
         ]);
 
         return redirect()->route('categories.index')->with('success', 'Kategori berhasil ditambahkan!');
     }
 
-    /**
-     * Menghapus kategori
-     */
-    public function destroy(Category $category)
+    public function update(Request $request, $id)
     {
-        try {
-            $category->delete();
-            return redirect()->route('categories.index')->with('success', 'Kategori dihapus!');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Gagal menghapus kategori (Mungkin sedang digunakan oleh produk).');
-        }
+        $category = Category::findOrFail($id);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+        ]);
+
+        $category->update([
+            'name' => $request->name,
+            // Update slug jika nama berubah, atau biarkan tetap
+            'slug' => Str::slug($request->name),
+            'description' => $request->description,
+            'is_active' => $request->has('is_active'),
+        ]);
+
+        return redirect()->route('categories.index')->with('success', 'Kategori diperbarui!');
+    }
+
+    public function destroy($id)
+    {
+        $category = Category::findOrFail($id);
+        // Opsional: Cek apakah kategori masih dipakai produk sebelum hapus
+        // if($category->products()->count() > 0) { return back()->with('error', 'Kategori sedang dipakai produk!'); }
+
+        $category->delete();
+        return redirect()->route('categories.index')->with('success', 'Kategori dihapus.');
     }
 }

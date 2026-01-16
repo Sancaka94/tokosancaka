@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
+
 class ProductController extends Controller
 {
     public function index(Request $request)
@@ -174,8 +175,13 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
-        // <--- 6. KIRIM DATA KATEGORI KE HALAMAN EDIT --->
-        $categories = Category::all();
+        // PERBAIKAN:
+        // 1. where('is_active', true) -> Agar kategori yang dimatikan tidak muncul
+        // 2. orderBy('name', 'asc')   -> Agar urutan kategori rapi A-Z
+        $categories = Category::where('is_active', true)
+                              ->orderBy('name', 'asc')
+                              ->get();
+
         return view('products.edit', compact('product', 'categories'));
     }
 }
