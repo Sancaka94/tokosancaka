@@ -1,4 +1,4 @@
-{{-- 
+{{--
 File: resources/views/customer/pesanan/index.blade.php
 Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER + EXPORT PDF.
 --}}
@@ -21,7 +21,7 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
                     Kelola dan pantau semua transaksi pengiriman Anda di sini.
                 </p>
             </div>
-            
+
             {{-- Group Tombol Aksi --}}
             <div class="flex flex-col sm:flex-row gap-3">
                 {{-- Tombol Kirim Paket Massal (BARU) --}}
@@ -39,7 +39,7 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
         {{-- FILTER & PENCARIAN SECTION --}}
         <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6">
             <form action="{{ route('customer.pesanan.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                
+
                 {{-- Input Pencarian --}}
                 <div class="md:col-span-4">
                     <label for="search" class="block text-xs font-semibold text-slate-500 uppercase mb-1">Cari Data</label>
@@ -47,8 +47,8 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fas fa-search text-slate-400"></i>
                         </div>
-                        <input type="text" name="search" id="search" value="{{ request('search') }}" 
-                               class="pl-10 block w-full rounded-lg border-slate-300 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm" 
+                        <input type="text" name="search" id="search" value="{{ request('search') }}"
+                               class="pl-10 block w-full rounded-lg border-slate-300 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm"
                                placeholder="Resi, Nama, No HP, atau Invoice...">
                     </div>
                 </div>
@@ -69,14 +69,14 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
                 {{-- Filter Tanggal Mulai --}}
                 <div class="md:col-span-2">
                     <label for="start_date" class="block text-xs font-semibold text-slate-500 uppercase mb-1">Dari Tanggal</label>
-                    <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}" 
+                    <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}"
                            class="block w-full rounded-lg border-slate-300 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm">
                 </div>
 
                 {{-- Filter Tanggal Akhir --}}
                 <div class="md:col-span-2">
                     <label for="end_date" class="block text-xs font-semibold text-slate-500 uppercase mb-1">Sampai Tanggal</label>
-                    <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}" 
+                    <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}"
                            class="block w-full rounded-lg border-slate-300 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm">
                 </div>
 
@@ -85,7 +85,7 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
                     <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-2 px-4 rounded-lg shadow transition">
                         Filter
                     </button>
-                    
+
                     {{-- Tombol Export PDF (Mengirim parameter filter saat ini) --}}
                     {{-- Pastikan Anda sudah membuat route 'customer.pesanan.export_pdf' --}}
                     <a href="{{ route('customer.pesanan.export_pdf', request()->all()) }}" target="_blank" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-sm font-bold py-2 px-3 rounded-lg shadow-sm transition" title="Export PDF">
@@ -97,7 +97,7 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
 
         {{-- TABEL DATA --}}
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
-            
+
             {{-- 1. SCROLLBAR ATAS (Dummy) --}}
             <div id="top-scroll-container" class="overflow-x-auto w-full border-b border-slate-100 hidden md:block">
                 <div id="top-scroll-content" class="h-4"></div>
@@ -128,14 +128,14 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
                                 if ($pm === 'POTONG SALDO') {$pm = 'CASH / SALDO';}
 
                                 $isCodOngkir = ($pm === 'COD');
-                                
+
                                 // Ganti otomatis jika COD
                                 if ($pm === 'COD') {$pm = 'COD ONGKIR';}
                                 $isCodBarang = ($pm === 'CODBARANG');
-                                
+
                                 // Ganti CODBARANG → COD BARANG
                                 if ($pm === 'CODBARANG') {$pm = 'COD BARANG';}
- 
+
 
                                 $badgeColor = 'bg-blue-800 text-white';
 
@@ -145,7 +145,7 @@ if ($isCodBarang) {
 elseif ($isCodOngkir) {
     $badgeColor = 'bg-yellow-400 text-grey';
 }
-elseif ($pm === 'DOMPET SANCAKA') { 
+elseif ($pm === 'DOMPET SANCAKA') {
     // Warna hijau
     $badgeColor = 'bg-green-800 text-white';
 }
@@ -163,15 +163,15 @@ elseif ($pm === 'DOMPET SANCAKA') {
                                 // Hitung Total & Label
                                 if ($isCodOngkir) {
                                     $basisBarang = ($hargaBarang > 1000000) ? 10000 : $hargaBarang;
-                                    $basisHitung = $ongkirAsli + $basisBarang; 
-                                    $feeHitung = $basisHitung * 0.03; 
+                                    $basisHitung = $ongkirAsli + $basisBarang;
+                                    $feeHitung = $basisHitung * 0.03;
                                     $feeLayanan = max(2500, ceil($feeHitung));
                                     $displayTotal = $ongkirAsli + $feeLayanan + $asuransi;
                                     $labelTotal = "Total Ongkir (COD)";
                                     $noteBawah = "*Jangan bayar harga barang lagi";
                                 } elseif ($isCodBarang) {
                                     $feeLayanan = $feeDb;
-                                    $displayTotal = $order->price; 
+                                    $displayTotal = $order->price;
                                     $labelTotal = "Total Bayar ke Kurir";
                                     $noteBawah = "";
                                 } else {
@@ -200,7 +200,7 @@ elseif ($pm === 'DOMPET SANCAKA') {
                                     <div class="font-mono font-bold text-indigo-600 mt-1">
                                         <a><strong>Order Id:</strong> {{ $order->nomor_invoice }}</a>
                                     </div>
-                                    
+
                                     @if($order->resi)
                                         <div class="mt-2 p-2 bg-green-100 border border-green-200 rounded hover:bg-green-200 cursor-pointer"
                                         onclick="navigator.clipboard.writeText('{{ $order->resi }}'); alert('Resi disalin!')">
@@ -213,6 +213,21 @@ elseif ($pm === 'DOMPET SANCAKA') {
                                             </div>
                                         </div>
                                     @endif
+
+                                    {{-- ========================================================================= --}}
+                                    {{-- 🔥 TAMBAHAN BARU: SHIPPING REF (KODE BOOKING) JIKA ADA 🔥 --}}
+                                    {{-- ========================================================================= --}}
+                                    @if(!empty($order->shipping_ref))
+                                        <div class="mt-1 p-1.5 bg-blue-50 border border-blue-200 rounded flex items-center gap-2">
+                                            <i class="fas fa-barcode text-blue-500"></i>
+                                            <div>
+                                                <div class="text-[9px] text-slate-500 uppercase leading-none">Kode Booking (Ref):</div>
+                                                <div class="font-mono font-bold text-blue-800 text-xs">{{ $order->shipping_ref }}</div>
+                                            </div>
+                                        </div>
+                                    @endif
+                                    {{-- ========================================================================= --}}
+
                                 </td>
 
                                 {{-- 3. PENGIRIM --}}
@@ -252,11 +267,11 @@ elseif ($pm === 'DOMPET SANCAKA') {
                                 {{-- 5. EKSPEDISI & TAGIHAN --}}
                                 <td class="p-4 align-top">
                                     <div class="flex items-center gap-2 mb-2">
-                                        <img src="{{ asset('public/storage/logo-ekspedisi/' . $logo . '.png') }}" 
+                                        <img src="{{ asset('public/storage/logo-ekspedisi/' . $logo . '.png') }}"
                                              class="h-5 w-auto object-contain" onerror="this.style.display='none';">
                                         <div class="text-xs font-bold uppercase">{{ $kurirName }} <span class="text-slate-400 font-normal">{{ $kurirService }}</span></div>
                                     </div>
-                                    
+
                                     {{-- Kotak Total Bayar --}}
                                     <div class="p-2 border border-red-500 rounded bg-red-100">
                                         <div class="text-[10px] font-bold text-slate-400 uppercase">{{ $labelTotal }}</div>
@@ -266,22 +281,22 @@ elseif ($pm === 'DOMPET SANCAKA') {
                                     {{-- Rincian Biaya --}}
                                     <div class="mt-2 space-y-1 text-xs text-slate-600">
                                         <div class="flex justify-between gap-4">
-                                            <span>Barang:</span> 
+                                            <span>Barang:</span>
                                             <span class="font-medium {{ $isCodOngkir ? 'line-through text-slate-400' : '' }}">
                                                 Rp {{ number_format($hargaBarang, 0, ',', '.') }}
                                             </span>
                                         </div>
                                         <div class="flex justify-between gap-4">
-                                            <span>Ongkir:</span> 
+                                            <span>Ongkir:</span>
                                             <span class="font-medium">Rp {{ number_format($ongkirAsli, 0, ',', '.') }}</span>
                                         </div>
                                         <div class="flex justify-between gap-4">
-                                            <span>Biaya Layanan:</span> 
+                                            <span>Biaya Layanan:</span>
                                             <span class="font-medium">Rp {{ number_format($feeLayanan, 0, ',', '.') }}</span>
                                         </div>
                                         @if($asuransi > 0)
                                         <div class="flex justify-between gap-4">
-                                            <span>Asuransi:</span> 
+                                            <span>Asuransi:</span>
                                             <span class="font-medium">Rp {{ number_format($asuransi, 0, ',', '.') }}</span>
                                         </div>
                                         @endif
@@ -328,10 +343,10 @@ elseif ($pm === 'DOMPET SANCAKA') {
                                             <i class="fas fa-wallet"></i> Bayar
                                         </a>
                                     @endif
-                                    
+
                                     @if ($order->resi)
                                         <a href="{{ route('customer.lacak.index', ['resi' => $order->resi]) }}"
-   class="flex items-center justify-center gap-1 w-full bg-white border border-slate-300 
+   class="flex items-center justify-center gap-1 w-full bg-white border border-slate-300
           hover:bg-slate-50 text-slate-700 text-xs font-bold py-1.5 rounded-md transition">
     <i class="fas fa-search-location"></i>
     Lacak
@@ -339,9 +354,9 @@ elseif ($pm === 'DOMPET SANCAKA') {
 
 <br>
 
-<a href="{{ url($order->resi . '/cetak_thermal') }}" 
+<a href="{{ url($order->resi . '/cetak_thermal') }}"
    target="_blank"
-   class="flex items-center justify-center gap-1 w-full bg-green-600 border border-green-700 
+   class="flex items-center justify-center gap-1 w-full bg-green-600 border border-green-700
           hover:bg-green-700 text-white text-xs font-bold py-1.5 rounded-md transition">
     <i class="fas fa-print"></i>
     Cetak Resi
@@ -365,7 +380,7 @@ elseif ($pm === 'DOMPET SANCAKA') {
                     </tbody>
                 </table>
             </div>
-            
+
         </div>
 
         {{-- PAGINATION --}}
@@ -417,14 +432,14 @@ elseif ($pm === 'DOMPET SANCAKA') {
         width: 8px;
     }
     ::-webkit-scrollbar-track {
-        background: #f1f5f9; 
+        background: #f1f5f9;
     }
     ::-webkit-scrollbar-thumb {
-        background: #cbd5e1; 
+        background: #cbd5e1;
         border-radius: 4px;
     }
     ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8; 
+        background: #94a3b8;
     }
 </style>
 @endsection
