@@ -1182,7 +1182,7 @@ class OrderController extends Controller
 
             foreach ($adminContacts as $phone) {
                 $this->_sendFonnteMessage($phone, $msgAdmin);
-                sleep(1);
+                sleep(5); // Jeda 5 detik antar kirim ke admin
             }
 
         } catch (\Exception $e) {
