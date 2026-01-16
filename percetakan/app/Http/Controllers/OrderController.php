@@ -1735,4 +1735,15 @@ public function handleDanaCallback(Request $request)
     }
 }
 
+    /**
+     * Menampilkan Halaman Invoice / Struk
+     */
+    public function invoice($id)
+    {
+        // Ambil data order beserta item produknya
+        $order = Order::with(['items', 'coupon'])->findOrFail($id);
+
+        return view('orders.invoice', compact('order'));
+    }
+
 }
