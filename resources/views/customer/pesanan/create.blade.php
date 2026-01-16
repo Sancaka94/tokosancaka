@@ -268,15 +268,10 @@
             </div>
         </div>
          <div class="md:col-span-2">
-             <label class="flex items-center text-sm text-blue-800">
-                 <input type="checkbox" id="save_receiver_checkbox" name="save_receiver" value="on" class="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 mr-2 transition-all duration-200">
-                 Simpan data penerima ini
-             </label>
+                <label class="flex items-center text-sm text-blue-800"><input type="checkbox" id="save_receiver_checkbox" name="save_receiver" value="on" class="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 mr-2 transition-all duration-200"> Simpan data penerima ini</label>
          </div>
-    </div> </div> </div> <div class="lg:col-span-1 space-y-8">
-   </div>
-
-</div> </form>
+    </div>
+</div>
 </div>
 
             <div class="lg:col-span-1 space-y-8">
