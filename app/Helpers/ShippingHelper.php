@@ -57,6 +57,7 @@ class ShippingHelper
                 'anteraja'      => ['name' => 'Anteraja', 'url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png'],
                 'sentral'       => ['name' => 'Sentral Cargo', 'url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/centralcargo.png'],
                 'borzo'         => ['name' => 'Borzo', 'url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png'],
+                'paxel'         => ['name' => 'Paxel', 'url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/paxel.jpg'],
             ];
 
             // Variabel Penampung Hasil
@@ -79,12 +80,12 @@ class ShippingHelper
                 $serviceName    = strtoupper($parts[2]);      // REG
                 $cost           = (int) $parts[3];            // 10000
                 $insuranceCost  = isset($parts[4]) ? (int) $parts[4] : 0;
-            } 
+            }
             // SKENARIO B: Format Manual / Sederhana (Contoh: "TIKI", "JNE REG", "J&T Cargo")
             else {
                 // Bersihkan input
                 $raw = trim($methodString);
-                
+
                 // Cek pemisah " - " (Spasi Strip Spasi)
                 if (str_contains($raw, ' - ')) {
                     $subParts = explode(' - ', $raw, 2);
@@ -95,7 +96,7 @@ class ShippingHelper
                 elseif (str_contains($raw, ' ')) {
                     $spaceParts = explode(' ', $raw);
                     $lastWord   = end($spaceParts);
-                    
+
                     // Jika kata terakhir pendek (<= 4 huruf), anggap Service (REG, OKE, YES, EZ)
                     if (strlen($lastWord) <= 4 && count($spaceParts) > 1) {
                         $serviceName = strtoupper($lastWord);
@@ -106,7 +107,7 @@ class ShippingHelper
                         $courierRawName = $raw;
                         $serviceName = 'Regular';
                     }
-                } 
+                }
                 // Jika cuma 1 kata (misal "TIKI")
                 else {
                     $courierRawName = $raw;
@@ -117,7 +118,7 @@ class ShippingHelper
             // 3. NORMALISASI & SMART MATCHING LOGO
             // Ubah jadi lowercase & hapus spasi untuk pencocokan (sicepat, j&texpress)
             $normalized = strtolower(str_replace(' ', '', $courierRawName));
-            
+
             $finalCourierName = ucwords($courierRawName); // Default nama (kapital di awal kata)
             $finalLogoUrl     = null;
 
