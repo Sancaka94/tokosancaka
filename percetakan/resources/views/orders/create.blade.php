@@ -314,28 +314,61 @@
 
             <div class="p-4 bg-slate-50 border-t border-slate-200 z-20 shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">
 
-                {{-- === TEMPEL KODE BARU DI SINI === --}}
-                <div x-show="activeCategory.includes('laundry')" x-transition.opacity.duration.300ms class="mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-xl space-y-2">
-                    <div class="flex items-center gap-2 mb-1">
-                        <div class="h-6 w-6 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">
-                            <i class="fas fa-tshirt"></i>
+                <div x-show="activeCategory.includes('laundry')"
+                    x-data="{ isOpen: false }"
+                    x-transition.opacity.duration.300ms
+                    class="mb-3 border border-indigo-100 rounded-xl bg-white shadow-sm overflow-hidden">
+
+                    {{-- Header Accordion (Tombol Buka/Tutup) --}}
+                    <button @click="isOpen = !isOpen"
+                            class="w-full flex items-center justify-between p-3 bg-indigo-50 hover:bg-indigo-100 transition-colors">
+                        <div class="flex items-center gap-2">
+                            <div class="h-6 w-6 rounded bg-indigo-200 text-indigo-700 flex items-center justify-center text-xs">
+                                <i class="fas fa-tshirt"></i>
+                            </div>
+                            <div class="text-left">
+                                <h3 class="text-[10px] font-bold text-indigo-700 uppercase tracking-widest leading-tight">Data Pelanggan</h3>
+                                <p class="text-[9px] text-indigo-500 font-medium" x-show="!isOpen && (customerName || customerPhone)">
+                                    <span x-text="customerName || 'Tanpa Nama'"></span>
+                                    <span x-show="customerPhone" x-text="'(' + customerPhone + ')'"></span>
+                                </p>
+                                <p class="text-[9px] text-indigo-400 font-medium italic" x-show="!isOpen && !customerName && !customerPhone">
+                                    Klik untuk isi data...
+                                </p>
+                            </div>
                         </div>
-                        <h3 class="text-[10px] font-bold text-indigo-700 uppercase tracking-widest">Data Pelanggan Laundry</h3>
-                    </div>
-                    <div>
-                        <input type="text" x-model="customerName" placeholder="Nama Pelanggan"
-                            class="w-full px-3 py-1.5 text-xs rounded-lg border border-indigo-200 focus:ring-indigo-500 focus:border-indigo-500 bg-white placeholder-slate-400">
-                    </div>
-                    <div>
-                        <input type="number" x-model="customerPhone" placeholder="Nomor WhatsApp (Wajib)"
-                            class="w-full px-3 py-1.5 text-xs rounded-lg border border-indigo-200 focus:ring-indigo-500 focus:border-indigo-500 bg-white placeholder-slate-400">
-                    </div>
-                    <div>
-                        <textarea x-model="customerAddressDetail" rows="2" placeholder="Alamat / Catatan Cucian..."
-                                class="w-full px-3 py-1.5 text-xs rounded-lg border border-indigo-200 focus:ring-indigo-500 focus:border-indigo-500 bg-white placeholder-slate-400 resize-none"></textarea>
+                        <i class="fas text-indigo-400 text-xs transition-transform duration-300"
+                        :class="isOpen ? 'fa-chevron-up rotate-180' : 'fa-chevron-down'"></i>
+                    </button>
+
+                    {{-- Isi Form (Hidden by default) --}}
+                    <div x-show="isOpen" x-collapse class="p-3 space-y-2 bg-white">
+                        <div>
+                            <label class="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Nama Pelanggan</label>
+                            <input type="text" x-model="customerName" placeholder="Contoh: Budi Santoso"
+                                class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 placeholder-slate-400 transition-all">
+                        </div>
+
+                        <div>
+                            <label class="block text-[9px] font-bold text-slate-400 mb-1 uppercase">WhatsApp (Wajib)</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-xs"><i class="fab fa-whatsapp"></i></span>
+                                <input type="number" x-model="customerPhone" placeholder="08xxxxxxxxxx"
+                                    class="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 placeholder-slate-400 transition-all">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Alamat / Catatan</label>
+                            <textarea x-model="customerAddressDetail" rows="2" placeholder="Alamat lengkap atau catatan khusus cucian..."
+                                    class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 placeholder-slate-400 resize-none transition-all"></textarea>
+                        </div>
+
+                        <button @click="isOpen = false" class="w-full py-1.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-lg hover:bg-indigo-100 transition mt-1">
+                            Simpan Data Sementara
+                        </button>
                     </div>
                 </div>
-                {{-- === BATAS KODE BARU === --}}
 
                 <div class="mb-3">
                     <div class="relative">
