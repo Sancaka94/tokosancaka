@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use App\Events\SystemModeUpdated;
-use App\Models\Api; 
+use App\Models\Api;
 
 class ApiSettingsController extends Controller
 {
@@ -60,7 +61,7 @@ class ApiSettingsController extends Controller
                 'merchant_private_key'=> Api::getValue('MERCHANT_PRIVATE_KEY', 'production'),
             ],
             // SAC ID diasumsikan global, tidak berubah per env (tapi bisa disesuaikan)
-            'sac_id' => Api::getValue('DOKU_MAIN_SAC_ID', 'global'), 
+            'sac_id' => Api::getValue('DOKU_MAIN_SAC_ID', 'global'),
         ];
 
         $fonnte = [
@@ -77,7 +78,7 @@ class ApiSettingsController extends Controller
         try {
             if ($type === 'kiriminaja') {
                 $env = $request->kiriminaja_mode; // staging atau production
-                
+
                 // Simpan Mode Global
                 Api::setValue('KIRIMINAJA_MODE', $env, 'kiriminaja', 'global');
 
@@ -95,7 +96,7 @@ class ApiSettingsController extends Controller
                 $env = $request->tripay_mode; // sandbox atau production
 
                 Api::setValue('TRIPAY_MODE', $env, 'tripay', 'global');
-                
+
                 Api::setValue('TRIPAY_MERCHANT_CODE', $request->tripay_merchant_code, 'tripay', $env);
                 Api::setValue('TRIPAY_API_KEY', $request->tripay_api_key, 'tripay', $env);
                 Api::setValue('TRIPAY_PRIVATE_KEY', $request->tripay_private_key, 'tripay', $env);
@@ -120,7 +121,7 @@ class ApiSettingsController extends Controller
             return back()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
         }
     }
-    
+
       /**
      * Method Baru: Toggle Global (Dipanggil dari Header atau Dashboard)
      * Mengubah mode semua layanan sekaligus.
@@ -131,7 +132,7 @@ class ApiSettingsController extends Controller
             // 1. Cek Mode KiriminAja saat ini sebagai acuan
             // Jika tidak ada setting, default ke 'staging'
             $currentMode = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
-            
+
             // 2. Tentukan Target Mode (Switch)
             // Jika sekarang Production, ubah semua ke Staging/Sandbox.
             // Jika sekarang Staging, ubah semua ke Production.
@@ -151,8 +152,8 @@ class ApiSettingsController extends Controller
             Api::setValue('KIRIMINAJA_MODE', $targetKA, 'kiriminaja', 'global');
             Api::setValue('TRIPAY_MODE', $targetTripay, 'tripay', 'global');
             Api::setValue('DOKU_ENV', $targetDoku, 'doku', 'global');
-            
-            
+
+
             // ✅ 4. SIARKAN EVENT REAL-TIME KE SEMUA USER
             // Ini akan mentrigger modal di dashboard customer tanpa refresh
             event(new SystemModeUpdated($targetKA));

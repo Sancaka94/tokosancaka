@@ -107,28 +107,34 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-       // ============================================================
-        // === KODE FINAL TRIPAY (DENGAN CACHE OTOMATIS) ==============
-        // ============================================================
-        $tripayChannels = \Illuminate\Support\Facades\Cache::remember('tripay_channels_list', 60 * 24, function () {
-            $apiKey  = config('tripay.api_key');
-            $mode    = config('tripay.mode');
-            $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
+       // === [1] GANTI BAGIAN INI DI FUNCTION INDEX() ===
+
+        // Ambil mode dari Database (Bukan Config/Env)
+        $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+        $cacheKey = 'tripay_channels_list_' . $currentMode;
+
+        // Cache list channel biar cepat loadingnya
+        $tripayChannels = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 24, function () use ($currentMode) {
+
+            // Tentukan URL & Key berdasarkan mode Database
+            if ($currentMode === 'production') {
+                $baseUrl = 'https://tripay.co.id/api';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
+            } else {
+                $baseUrl = 'https://tripay.co.id/api-sandbox';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            }
 
             try {
-                // Timeout 10 detik agar tidak loading lama jika Tripay gangguan
                 $response = Http::withToken($apiKey)->timeout(10)->get($baseUrl . '/merchant/payment-channel');
                 if ($response->successful()) {
                     return $response->json()['data'] ?? [];
                 }
-                Log::error('Gagal ambil channel Tripay: ' . $response->body());
             } catch (\Exception $e) {
-                Log::error('Tripay Exception: ' . $e->getMessage());
+                // Silent error
             }
             return [];
         });
-        // ============================================================
-
 
         $user = Auth::user();
 
@@ -719,7 +725,7 @@ class CheckoutController extends Controller
             "validUpTo"          => $expiryTime,
             "urlParams"          => [
                 ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "N"]
+                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
             ],
             // Opsi Pembayaran (Wajib BALANCE/Saldo agar aman tanpa Token)
             "payOptionDetails"   => [
@@ -1458,22 +1464,49 @@ TEXT;
 
     /**
      * PRIVATE HELPER: Menangani Transaksi Tripay
-     * Otomatis handle hitungan harga & request API
+     * VERSI FIX: MENGGUNAKAN DATABASE (Bukan Config/Env)
      */
     private function _createTripayTransaction($order, $methodChannel, $amount, $custName, $custEmail, $custPhone, $items)
     {
-        $apiKey       = config('tripay.api_key');
-        $privateKey   = config('tripay.private_key');
-        $merchantCode = config('tripay.merchant_code');
-        $mode         = config('tripay.mode');
+        // ==========================================================
+        // 🔥 PERBAIKAN: LOGIKA SWITCHING MODE DARI DATABASE 🔥
+        // ==========================================================
 
-        if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
-            Log::error('TRIPAY CONFIG MISSING');
-            return ['success' => false, 'message' => 'Konfigurasi Tripay belum lengkap.'];
+        // 1. Cek Mode Apa yang Aktif di Database (Sandbox / Production)
+        $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+        // 2. Siapkan variabel wadah
+        $baseUrl      = '';
+        $apiKey       = '';
+        $privateKey   = '';
+        $merchantCode = '';
+
+        // 3. Isi Kredensial Berdasarkan Mode
+        if ($mode === 'production') {
+            // MODE LIVE (PRODUCTION)
+            $baseUrl      = 'https://tripay.co.id/api/transaction/create';
+            $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
+            $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'production');
+            $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', 'production');
+        } else {
+            // MODE TEST (SANDBOX)
+            $baseUrl      = 'https://tripay.co.id/api-sandbox/transaction/create';
+            $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'sandbox');
+            $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', 'sandbox');
         }
 
-        // 1. Validasi Hitungan Total (Safety Net)
-        // Agar tidak error "Total amount mismatch" dari Tripay
+        // Validasi: Pastikan data tidak kosong sebelum request
+        if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+            Log::error('TRIPAY CONFIG MISSING (Mode: ' . $mode . ') - Cek Database Tabel API');
+            return ['success' => false, 'message' => 'Konfigurasi Tripay belum lengkap untuk mode ' . strtoupper($mode) . '.'];
+        }
+
+        // ==========================================================
+        // 🔥 LOGIKA TRANSAKSI 🔥
+        // ==========================================================
+
+        // 4. Validasi Hitungan Total (Safety Net)
         $calculatedTotalItems = 0;
         foreach ($items as $item) {
             $calculatedTotalItems += ($item['price'] * $item['quantity']);
@@ -1481,6 +1514,7 @@ TEXT;
         $amount = (int) $amount;
 
         // Jika ada selisih (misal karena pembulatan), ganti detail item jadi 1 baris invoice
+        // Ini mencegah error "Total amount mismatch" dari Tripay
         if ($calculatedTotalItems !== $amount) {
             $items = [[
                 'sku'      => 'INV-' . $order->invoice_number,
@@ -1490,12 +1524,10 @@ TEXT;
             ]];
         }
 
-        $baseUrl = ($mode === 'production')
-            ? 'https://tripay.co.id/api/transaction/create'
-            : 'https://tripay.co.id/api-sandbox/transaction/create';
-
+        // 5. Buat Signature
         $signature = hash_hmac('sha256', $merchantCode . $order->invoice_number . $amount, $privateKey);
 
+        // 6. Siapkan Payload
         $payload = [
             'method'         => $methodChannel,
             'merchant_ref'   => $order->invoice_number,
@@ -1509,7 +1541,10 @@ TEXT;
             'signature'      => $signature
         ];
 
+        // 7. Eksekusi Request ke Tripay
         try {
+            Log::info("Mengirim Request Tripay (Mode: $mode)...", ['url' => $baseUrl]);
+
             $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
                             ->timeout(30)
                             ->withoutVerifying()
@@ -1517,10 +1552,12 @@ TEXT;
 
             $body = $response->json();
 
+            // Cek sukses dari Tripay
             if ($response->successful() && ($body['success'] ?? false) === true) {
                 return ['success' => true, 'data' => $body['data']];
             }
 
+            // Jika gagal
             Log::error('Tripay API Error:', ['response' => $body]);
             return ['success' => false, 'message' => $body['message'] ?? 'Gagal membuat transaksi Tripay.'];
 

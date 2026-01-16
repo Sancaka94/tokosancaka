@@ -331,7 +331,7 @@ class PesananController extends Controller
                     // ==========================================================
                     // 🔥 UPDATE BARU: LOGIKA FIX BERDASARKAN LOG ASLI 🔥
                     // ==========================================================
-                    
+
                     // 1. Ambil Booking ID / Pickup Number (Ini yang VALID dari log Bapak)
                     $bookingId = $kiriminResponse['pickup_number']         // Prioritas 1: Pickup Number (XID-...)
                               ?? $kiriminResponse['id']                    // Prioritas 2: ID Root
@@ -341,8 +341,8 @@ class PesananController extends Controller
                               ?? null;
 
                     // 2. Ambil AWB Asli (Mungkin masih null)
-                    $awbAsli = $kiriminResponse['awb'] 
-                            ?? $kiriminResponse['data']['awb'] 
+                    $awbAsli = $kiriminResponse['awb']
+                            ?? $kiriminResponse['data']['awb']
                             ?? ($kiriminResponse['details'][0]['awb'] ?? null) // Cek di dalam array details
                             ?? ($kiriminResponse['results'][0]['awb'] ?? null);
 
@@ -356,25 +356,25 @@ class PesananController extends Controller
                     }
 
                     // 7. Update Database
-                    $pesanan->resi = $finalResi; 
-                    
+                    $pesanan->resi = $finalResi;
+
                     // Jika ada kolom shipping_ref, isi juga:
                     // $pesanan->shipping_ref = $bookingId;
 
                     $pesanan->status = 'Pesanan Dibuat';
                     $pesanan->status_pesanan = 'Pesanan Dibuat';
-                    
+
                     // 8. Simpan DULU sebelum catat keuangan
-                    $pesanan->save(); 
+                    $pesanan->save();
 
                     Log::info('KiriminAja SUCCESS', [
-                        'invoice' => $pesanan->nomor_invoice, 
+                        'invoice' => $pesanan->nomor_invoice,
                         'resi_set' => $finalResi
                     ]);
 
                     // 9. Catat Keuangan
                     if (method_exists($this, 'simpanKeKeuangan')) {
-                        $this->simpanKeKeuangan($pesanan); 
+                        $this->simpanKeKeuangan($pesanan);
                     } else {
                         self::simpanKeKeuangan($pesanan);
                     }
@@ -382,7 +382,7 @@ class PesananController extends Controller
                     if (isset($kiriminResponse['custom_warning'])) {
                         session()->flash('warning', $kiriminResponse['custom_warning']);
                     }
-                
+
                 }
                 // --- AKHIR BLOK YANG HILANG ---
             }
@@ -747,18 +747,18 @@ class PesananController extends Controller
                     // ==========================================================
                     // 🔥 LOGIKA "SUKSES BAYAR = DAPAT REF/RESI" 🔥
                     // ==========================================================
-                    
+
                     // A. Ambil SHIPPING REF (Kode Booking) - Pasti Ada
-                    $bookingId = $kiriminResponse['id'] 
-                              ?? $kiriminResponse['data']['id'] 
-                              ?? $kiriminResponse['payment_ref'] 
+                    $bookingId = $kiriminResponse['id']
+                              ?? $kiriminResponse['data']['id']
+                              ?? $kiriminResponse['payment_ref']
                               ?? null;
 
                     // B. Ambil AWB (Jika kebetulan langsung ada)
-                    $awbAsli = $kiriminResponse['awb'] 
-                            ?? $kiriminResponse['data']['awb'] 
+                    $awbAsli = $kiriminResponse['awb']
+                            ?? $kiriminResponse['data']['awb']
                             ?? ($kiriminResponse['results'][0]['awb'] ?? null);
-                    
+
                     // C. Tentukan Nilai Kolom RESI (Jangan Boleh Null)
                     // Prioritas: AWB -> Kode Booking -> Fallback Manual
                     $finalResi = !empty($awbAsli) ? $awbAsli : $bookingId;
@@ -766,14 +766,14 @@ class PesananController extends Controller
 
                     // D. UPDATE DATABASE
                     $pesanan->resi = $finalResi; // Isi Resi (Bisa Ref/AWB)
-                    
+
                     // Jika Bapak punya kolom khusus 'shipping_ref', isi juga:
-                    // $pesanan->shipping_ref = $bookingId; 
+                    // $pesanan->shipping_ref = $bookingId;
 
                     // 3. RUBAH STATUS MENJADI 'PESANAN DIBUAT'
                     $pesanan->status = 'Pesanan Dibuat';
                     $pesanan->status_pesanan = 'Pesanan Dibuat';
-                    
+
                     $pesanan->save(); // Simpan perubahan status & resi
 
                     // === INSERT KEUANGAN (Pakai new self() karena static) ===
@@ -1276,7 +1276,39 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
     // Helper internal untuk memanggil Tripay dari store()
     private function _createTripayTransactionInternal(array $data, Pesanan $pesanan, int $total, array $orderItems): array
     {
-        $apiKey = config('tripay.api_key'); $privateKey = config('tripay.private_key'); $merchantCode = config('tripay.merchant_code'); $mode = config('tripay.mode', 'sandbox');
+        // ==========================================================
+        // 🔥 PERBAIKAN LOGIKA SWITCHING MODE TRIPAY 🔥
+        // ==========================================================
+
+        // 1. Ambil Mode Global dari Database (Model Api)
+        // Pastikan namespace App\Models\Api sudah di-use di paling atas file
+        $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+        // 2. Siapkan wadah variabel
+        $baseUrl      = '';
+        $apiKey       = '';
+        $privateKey   = '';
+        $merchantCode = '';
+
+        // 3. Isi variabel berdasarkan MODE yang aktif di Database
+        if ($mode === 'production') {
+            $baseUrl      = 'https://tripay.co.id/api/transaction/create';
+            $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
+            $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'production');
+            $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', 'production');
+        } else {
+            // Fallback ke Sandbox
+            $baseUrl      = 'https://tripay.co.id/api-sandbox/transaction/create';
+            $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'sandbox');
+            $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', 'sandbox');
+        }
+
+        // ==========================================================
+        // AKHIR PERBAIKAN
+        // ==========================================================
+
+
         if ($total <= 0) return ['success' => false, 'message' => 'Jumlah tidak valid.'];
 
         // Ambil email customer jika ada, jika tidak, fallback
@@ -1484,29 +1516,29 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                     // ==========================================================
                     // 🔥 LOGIKA "SUKSES BAYAR = DAPAT REF/RESI" 🔥
                     // ==========================================================
-                    
+
                     // A. Ambil SHIPPING REF (Kode Booking)
-                    $bookingId = $kiriminResponse['id'] 
-                              ?? $kiriminResponse['data']['id'] 
-                              ?? $kiriminResponse['payment_ref'] 
+                    $bookingId = $kiriminResponse['id']
+                              ?? $kiriminResponse['data']['id']
+                              ?? $kiriminResponse['payment_ref']
                               ?? null;
 
                     // B. Ambil AWB
-                    $awbAsli = $kiriminResponse['awb'] 
-                            ?? $kiriminResponse['data']['awb'] 
+                    $awbAsli = $kiriminResponse['awb']
+                            ?? $kiriminResponse['data']['awb']
                             ?? ($kiriminResponse['results'][0]['awb'] ?? null);
-                    
+
                     // C. Tentukan Nilai Kolom RESI
                     $finalResi = !empty($awbAsli) ? $awbAsli : $bookingId;
                     if (empty($finalResi)) $finalResi = 'REF-' . $pesanan->nomor_invoice;
 
                     // D. UPDATE DATABASE
                     $pesanan->resi = $finalResi; // Berikan Kode Ref/Booking
-                    
+
                     // 3. RUBAH STATUS MENJADI 'PESANAN DIBUAT' (Atau Menunggu Pickup)
                     $pesanan->status = 'Pesanan Dibuat';
                     $pesanan->status_pesanan = 'Pesanan Dibuat';
-                    
+
                     $pesanan->save(); // Simpan
 
                     // 4. CATAT KEUANGAN
