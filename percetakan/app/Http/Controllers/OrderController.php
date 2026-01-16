@@ -1137,7 +1137,7 @@ class OrderController extends Controller
                 }
                 elseif ($order->payment_method == 'pay_later') {
                     $msg .= "\n\n⚠️ *TAGIHAN BELUM LUNAS*";
-                    $msg .= "\nMohon segera melakukan pembayaran sebesar *{$formattedTotal}* agar pesanan dapat diproses.";
+                    $msg .= "\nMohon segera melakukan pembayaran sebesar *{$formattedTotal}* agar pesanan dapat diambil.";
                 }
                 elseif ($order->payment_method == 'qris_manual') {
                     $msg .= "\n\n✅ Pembayaran via QRIS Manual Berhasil Diterima.";
@@ -1145,7 +1145,7 @@ class OrderController extends Controller
 
                 // Penutup
                 if ($isLaundry) {
-                    $msg .= "\n\n_Cucian sedang kami proses. Nanti kami kabari lagi jika sudah selesai!_ ✨";
+                    $msg .= "\n\n_Cucian sedang kami proses. Jika sudah selesai dan akan ambil Tunjukan Invoicenya Ya Kak!_ ✨";
                 } else {
                     $msg .= "\n\n_Pesanan segera kami proses. Terima kasih!_ 🙏";
                 }
