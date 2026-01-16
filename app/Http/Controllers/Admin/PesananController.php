@@ -1277,11 +1277,11 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
     private function _createTripayTransactionInternal(array $data, Pesanan $pesanan, int $total, array $orderItems): array
     {
         // ==========================================================
-        // 🔥 PERBAIKAN LOGIKA SWITCHING MODE TRIPAY 🔥
+        // 🔥 PERBAIKAN LOGIKA SWITCHING MODE TRIPAY (DB) 🔥
         // ==========================================================
 
-        // 1. Ambil Mode Global dari Database (Model Api)
-        // Pastikan namespace App\Models\Api sudah di-use di paling atas file
+        // 1. Ambil Mode Global dari Database
+        // Pastikan namespace App\Models\Api sudah di-use di atas
         $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
 
         // 2. Siapkan wadah variabel
@@ -1304,10 +1304,15 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
             $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', 'sandbox');
         }
 
+        // Cek Konfigurasi Lengkap
+        if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+            Log::error('TRIPAY CONFIG MISSING (Mode: ' . $mode . ')');
+            return ['success' => false, 'message' => 'Konfigurasi Tripay belum lengkap.'];
+        }
+
         // ==========================================================
         // AKHIR PERBAIKAN
         // ==========================================================
-
 
         if ($total <= 0) return ['success' => false, 'message' => 'Jumlah tidak valid.'];
 
