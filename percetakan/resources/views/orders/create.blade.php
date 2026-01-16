@@ -82,8 +82,15 @@
                     </button>
                 </div>
 
-                <div class="sticky top-0 z-30 bg-slate-50 pb-3 -mt-2 pt-2">
-                    <div class="flex overflow-x-auto gap-2 custom-scrollbar pb-2">
+                {{--
+                    PERBAIKAN:
+                    1. -mx-4 : Melebarkan div ke samping (melawan padding parent).
+                    2. px-4  : Mengembalikan padding dalam agar teks tidak mepet layar.
+                    3. top-0 : Menempel di paling atas saat scroll.
+                    4. bg-slate-50 : Warna background agar konten di bawahnya tidak tembus pandang.
+                --}}
+                <div class="sticky top-0 z-30 bg-slate-50 -mx-4 px-4 pt-2 pb-3 border-b border-slate-200 shadow-sm mb-3">
+                    <div class="flex overflow-x-auto gap-2 custom-scrollbar pb-1">
                         <button @click="activeCategory = 'all'"
                             class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all border shadow-sm flex items-center gap-2"
                             :class="activeCategory === 'all'
