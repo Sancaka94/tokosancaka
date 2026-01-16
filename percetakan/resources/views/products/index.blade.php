@@ -82,148 +82,127 @@
                     x-data="{
                         submitting: false,
                         imgPreview: null,
-                        categorySlug: '', // Menyimpan slug/tipe kategori
-                        unit: 'pcs', // Default unit
 
-                        // Fungsi helper untuk cek apakah laundry
-                        get isLaundry() {
-                            return this.categorySlug === 'laundry' || this.categorySlug.includes('laundry');
-                        },
+                        // State Dinamis (Diambil dari Database)
+                        isService: false,      // Apakah ini jasa? (Jika ya, stok & modal hilang)
+                        presets: [],           // Daftar menu dropdown
+                        unit: 'pcs',           // Satuan default
 
-                        // Saat kategori berubah
+                        // Logic saat memilih kategori
                         handleCategoryChange(event) {
-                            // Ambil text dari option yang dipilih (atau value jika value-nya slug)
-                            // Di sini kita asumsikan value option adalah ID, jadi kita cek text-nya atau data-slug
-                            const selectedOption = event.target.options[event.target.selectedIndex];
-                            const slug = selectedOption.getAttribute('data-slug');
+                            const option = event.target.options[event.target.selectedIndex];
 
-                            this.categorySlug = slug ? slug.toLowerCase() : '';
+                            // Ambil data logic dari atribut data- HTML
+                            this.isService = option.dataset.type === 'service';
+                            this.unit = option.dataset.unit || 'pcs';
 
-                            if (this.isLaundry) {
-                                this.unit = 'kg'; // Set otomatis ke Kg
-                            } else {
-                                this.unit = 'pcs'; // Reset ke default
-                            }
+                            // Ambil JSON Presets (Menu Dropdown)
+                            const rawPresets = option.dataset.presets;
+                            this.presets = rawPresets ? JSON.parse(rawPresets) : [];
                         }
                     }"
                     @submit="submitting = true">
 
                     @csrf
 
-                    {{-- Upload Gambar --}}
+                    {{-- Upload Gambar (Tetap) --}}
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Foto Produk</label>
                         <div class="flex items-center gap-4">
                             <div class="h-16 w-16 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
-                                <template x-if="!imgPreview">
-                                    <i class="fas fa-image text-slate-300 text-xl"></i>
-                                </template>
-                                <template x-if="imgPreview">
-                                    <img :src="imgPreview" class="h-full w-full object-cover">
-                                </template>
+                                <template x-if="imgPreview"><img :src="imgPreview" class="h-full w-full object-cover"></template>
+                                <template x-if="!imgPreview"><i class="fas fa-image text-slate-300 text-xl"></i></template>
                             </div>
-
                             <div class="flex-1">
-                                <input type="file" name="image" accept="image/*"
-                                       @change="imgPreview = URL.createObjectURL($event.target.files[0])"
-                                       class="block w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
-                                <p class="text-[10px] text-slate-400 mt-1">*Opsional. Format: JPG, PNG.</p>
+                                <input type="file" name="image" accept="image/*" class="block w-full text-xs text-slate-500"
+                                    @change="imgPreview = URL.createObjectURL($event.target.files[0])">
                             </div>
                         </div>
                     </div>
 
-                    {{-- INPUT KATEGORI (BARU) --}}
+                    {{-- KATEGORI (OTOMATIS MEMBAWA LOGIKA DB) --}}
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Kategori <span class="text-red-500">*</span></label>
-                        <select name="category_id" required
-                                @change="handleCategoryChange($event)"
-                                class="w-full px-3 py-2.5 rounded-lg border-slate-300 bg-white focus:ring-indigo-500 focus:border-indigo-500 transition text-sm">
-                            <option value="" data-slug="">-- Pilih Kategori --</option>
-                            @if(isset($categories))
-                                @foreach($categories as $cat)
-                                    {{-- Pastikan model Category punya kolom 'slug' atau gunakan Str::slug($cat->name) --}}
-                                    <option value="{{ $cat->id }}" data-slug="{{ $cat->slug ?? Str::slug($cat->name) }}">
-                                        {{ $cat->name }}
-                                    </option>
-                                @endforeach
-                            @else
-                                {{-- Opsi Dummy jika $categories belum dipassing dari controller --}}
-                                <option value="1" data-slug="retail">Retail / Barang</option>
-                                <option value="2" data-slug="laundry">Jasa Laundry</option>
-                                <option value="3" data-slug="makanan">Makanan</option>
-                            @endif
+                        <select name="category_id" required @change="handleCategoryChange($event)"
+                                class="w-full px-3 py-2.5 rounded-lg border-slate-300 bg-white focus:ring-indigo-500 transition text-sm">
+                            <option value="" data-type="physical" data-presets="[]">-- Pilih Kategori --</option>
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}"
+                                        data-type="{{ $cat->type }}"
+                                        data-unit="{{ $cat->default_unit }}"
+                                        data-presets="{{ $cat->product_presets }}"> {{ $cat->name }}
+                                </option>
+                            @endforeach
                         </select>
                     </div>
 
-                    {{-- NAMA PRODUK (DINAMIS) --}}
+                    {{-- NAMA PRODUK (BERUBAH OTOMATIS JADI DROPDOWN JIKA ADA PRESETS) --}}
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Produk / Layanan <span class="text-red-500">*</span></label>
 
-                        {{-- Tampilan Normal --}}
-                        <input type="text" name="name" x-show="!isLaundry" :required="!isLaundry"
-                               placeholder="Contoh: Kertas A4 70gsm"
-                               class="w-full px-3 py-2.5 rounded-lg border-slate-300 focus:ring-indigo-500 focus:border-indigo-500 transition text-sm font-medium">
+                        {{-- Tampil jika TIDAK ada presets (Mode Ketik Manual) --}}
+                        <input type="text" name="name" x-show="presets.length === 0" :required="presets.length === 0"
+                            placeholder="Nama Produk..."
+                            class="w-full px-3 py-2.5 rounded-lg border-slate-300 focus:ring-indigo-500 transition text-sm font-medium">
 
-                        {{-- Tampilan Khusus Laundry --}}
-                        <select name="name" x-show="isLaundry" :required="isLaundry" style="display: none;"
-                                class="w-full px-3 py-2.5 rounded-lg border-slate-300 bg-indigo-50 text-indigo-700 font-bold focus:ring-indigo-500 focus:border-indigo-500 transition text-sm">
-                            <option value="">-- Pilih Layanan Laundry --</option>
-                            <option value="CUCI KERING">CUCI KERING</option>
-                            <option value="CUCI DAN SETRIKA">CUCI DAN SETRIKA</option>
-                            <option value="SETRIKA">SETRIKA</option>
-                            <option value="KILAT">KILAT</option>
-                            <option value="STANDART">STANDART</option>
+                        {{-- Tampil jika ADA presets (Mode Pilih Menu Laundry/Jasa) --}}
+                        <select name="name" x-show="presets.length > 0" :required="presets.length > 0" style="display: none;"
+                                class="w-full px-3 py-2.5 rounded-lg border-slate-300 bg-indigo-50 text-indigo-700 font-bold focus:ring-indigo-500 transition text-sm">
+                            <option value="">-- Pilih Layanan --</option>
+                            <template x-for="p in presets">
+                                <option :value="p" x-text="p"></option>
+                            </template>
                         </select>
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Modal (Rp) <span class="text-red-500">*</span></label>
-                            <input type="number" name="base_price" required placeholder="0"
-                                   class="w-full px-3 py-2.5 rounded-lg border-slate-300 bg-slate-50 transition text-sm">
+                        {{-- MODAL (HILANG JIKA SERVICE) --}}
+                        <div x-show="!isService">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Modal (Rp)</label>
+                            <input type="number" name="base_price" :value="isService ? 0 : ''" placeholder="0"
+                                class="w-full px-3 py-2.5 rounded-lg border-slate-300 bg-slate-50 transition text-sm">
                         </div>
-                        <div>
+
+                        {{-- HARGA JUAL (SELALU ADA) --}}
+                        <div :class="isService ? 'col-span-2' : ''">
                             <label class="block text-xs font-bold text-emerald-600 uppercase mb-1">Jual (Rp) <span class="text-red-500">*</span></label>
                             <input type="number" name="sell_price" required placeholder="0"
-                                   class="w-full px-3 py-2.5 rounded-lg border-emerald-300 bg-emerald-50 text-emerald-700 font-bold transition text-sm">
+                                class="w-full px-3 py-2.5 rounded-lg border-emerald-300 bg-emerald-50 text-emerald-700 font-bold transition text-sm">
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Stok Awal <span class="text-red-500">*</span></label>
-                            <input type="number" name="stock" required placeholder="0"
-                                   class="w-full px-3 py-2.5 rounded-lg border-slate-300 transition text-sm">
+                        {{-- STOK (HILANG JIKA SERVICE, OTOMATIS 10000) --}}
+                        <div x-show="!isService">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Stok Awal</label>
+                            <input type="number" name="stock" :value="isService ? 10000 : ''" placeholder="0"
+                                class="w-full px-3 py-2.5 rounded-lg border-slate-300 transition text-sm">
                         </div>
-                        <div>
+
+                        {{-- SATUAN (OTOMATIS BERUBAH SESUAI KATEGORI) --}}
+                        <div :class="isService ? 'col-span-2' : ''">
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Satuan <span class="text-red-500">*</span></label>
-                            {{-- Input satuan diikat dengan x-model="unit" --}}
                             <select name="unit" x-model="unit" class="w-full px-3 py-2.5 rounded-lg border-slate-300 bg-white text-sm">
                                 <option value="pcs">Pcs</option>
-                                <option value="kg">Kg</option> {{-- Tambahan Kg --}}
+                                <option value="kg">Kg</option>
                                 <option value="lembar">Lembar</option>
                                 <option value="box">Box</option>
-                                <option value="rim">Rim</option>
-                                <option value="meter">Meter</option>
                                 <option value="paket">Paket</option>
+                                <option value="meter">Meter</option>
                             </select>
                         </div>
                     </div>
 
-                    <div>
+                    {{-- SUPPLIER (HILANG JIKA SERVICE) --}}
+                    <div x-show="!isService">
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Supplier</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fas fa-truck"></i></span>
-                            <input type="text" name="supplier" placeholder="Contoh: PT. Sinar Dunia"
-                                   class="w-full pl-9 pr-3 py-2.5 rounded-lg border-slate-300 focus:ring-indigo-500 transition text-sm">
-                        </div>
+                        <input type="text" name="supplier" placeholder="Contoh: PT. Sinar Dunia"
+                            class="w-full px-3 py-2.5 rounded-lg border-slate-300 transition text-sm">
                     </div>
 
-                    <button type="submit"
-                            class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold shadow-md transition flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                            :disabled="submitting">
+                    <button type="submit" class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold mt-4" :disabled="submitting">
                         <span x-show="!submitting"><i class="fas fa-save"></i> Simpan Data</span>
-                        <span x-show="submitting" style="display: none;"><i class="fas fa-spinner fa-spin"></i> Menyimpan...</span>
+                        <span x-show="submitting"><i class="fas fa-spinner fa-spin"></i> Menyimpan...</span>
                     </button>
                 </form>
             </div>
