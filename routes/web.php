@@ -263,6 +263,7 @@ Route::post('/digiflazz/webhook', [DigiflazzWebhookController::class, 'handle'])
 Route::post('/dana/notification', [DanaController::class, 'handleNotification'])->name('dana.payment.notify');
 Route::post('/callback/tripay', [CheckoutController::class, 'TripayCallback'])->name('payment.callback.tripay');
 Route::get('/pesanan/get-tripay-channels', [App\Http\Controllers\Admin\PesananController::class, 'getTripayChannels'])->name('admin.pesanan.get_channels');
+Route::get('/pesanan/get-channels', [App\Http\Controllers\Customer\PesananController::class, 'getTripayChannels'])->name('pesanan.get_channels');
 
 Route::prefix('payment')->group(function () {
     Route::post('/callback', [PaymentController::class, 'handleCallback'])->name('payment.callback');

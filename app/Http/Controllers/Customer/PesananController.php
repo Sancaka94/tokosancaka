@@ -1401,4 +1401,41 @@ public function cetakThermal($resi)
         }
     }
 
+    // Tambahkan di dalam class PesananController (Customer)
+    public function getTripayChannels()
+    {
+        // 1. Ambil Mode dari Database
+        $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+        // 2. Cache Key khusus Customer
+        $cacheKey = 'tripay_channels_customer_' . $mode;
+
+        $channels = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 24, function () use ($mode) {
+            $apiKey = '';
+            $baseUrl = '';
+
+            if ($mode === 'production') {
+                $baseUrl = 'https://tripay.co.id/api/merchant/payment-channel';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
+            } else {
+                $baseUrl = 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            }
+
+            if (empty($apiKey)) return [];
+
+            try {
+                $response = \Illuminate\Support\Facades\Http::withToken($apiKey)->get($baseUrl);
+                if ($response->successful()) {
+                    return $response->json()['data'] ?? [];
+                }
+            } catch (\Exception $e) {
+                return [];
+            }
+            return [];
+        });
+
+        return response()->json(['success' => true, 'data' => $channels]);
+    }
+
 }
