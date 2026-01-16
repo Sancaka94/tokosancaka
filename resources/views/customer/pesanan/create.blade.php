@@ -434,11 +434,16 @@
             <ul id="paymentOptionsList" class="divide-y">
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="w-8 h-8 mr-4">Potong Saldo (Tersedia: Rp {{ number_format(Auth::user()->saldo ?? 0) }})</li>
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DOKU_JOKUL" data-label="REKOMENDASI SANCAKA"><img src="https://tokosancaka.com/public/assets/doku.png" class="w-8 h-8 mr-4">Rekomendasi Sancaka Express Via VA, QRIS Dan E-Wallet</li>
+
+                {{-- 3. PEMISAH --}}
+                <li class="bg-red-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Bayar Di Tempat (Otomatis)</li>
+
+
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
 
                 {{-- 3. PEMISAH --}}
-                <li class="bg-gray-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Transfer Bank & Minimarket (Otomatis)</li>
+                <li class="bg-blue-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Transfer Bank & Minimarket (Otomatis)</li>
 
                 {{-- 4. WADAH OTOMATIS TRIPAY --}}
                 <div id="tripayChannelsContainer">
