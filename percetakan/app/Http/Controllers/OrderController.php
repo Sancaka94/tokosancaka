@@ -1163,12 +1163,12 @@ class OrderController extends Controller
             ];
 
             $msgAdmin  = "🔔 *INFO {$storeName}* 🔔\n";
-            $msgAdmin .= "Ada order masuk bos!\n\n";
-            $msgAdmin .= "👤 *Cust:* {$order->customer_name}\n";
-            $msgAdmin .= "🧾 *Inv:* {$order->order_number}\n";
-            $msgAdmin .= "💳 *Via:* {$metodeText}\n";
-            $msgAdmin .= "💰 *Omzet:* {$formattedTotal}\n";
-            $msgAdmin .= "🔖 *Status:* {$statusText}\n\n";
+            $msgAdmin .= "Ada order masuk hari ini BOS!\n\n";
+            $msgAdmin .= "👤 *Nama Pelanggan:* {$order->customer_name}\n";
+            $msgAdmin .= "🧾 *Nomor Nota:* {$order->order_number}\n";
+            $msgAdmin .= "💳 *Pembayaran Via:* {$metodeText}\n";
+            $msgAdmin .= "💰 *Omzet (Pendapatan):* {$formattedTotal}\n";
+            $msgAdmin .= "🔖 *Status (Keterangan):* {$statusText}\n\n";
 
             $msgAdmin .= "📦 *Item:*\n";
             $msgAdmin .= $itemListText;
