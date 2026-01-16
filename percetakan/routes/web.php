@@ -116,7 +116,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/invoice/{id}', [OrderController::class, 'invoice'])->name('orders.invoice');
+Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('orders.invoice');
 
 Route::middleware('auth')->group(function () {
 

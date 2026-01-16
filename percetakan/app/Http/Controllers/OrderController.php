@@ -1735,15 +1735,11 @@ public function handleDanaCallback(Request $request)
     }
 }
 
-    /**
-     * Menampilkan Halaman Invoice / Struk
-     */
-    public function invoice($id)
-    {
-        // Ambil data order beserta item produknya
-        $order = Order::with(['items', 'coupon'])->findOrFail($id);
-
-        return view('orders.invoice', compact('order'));
-    }
+   public function invoice($orderNumber) // Ganti parameter jadi orderNumber
+{
+    // Cari berdasarkan kolom 'order_number'
+    $order = Order::with(['items', 'coupon'])->where('order_number', $orderNumber)->firstOrFail();
+    return view('orders.invoice', compact('order'));
+}
 
 }

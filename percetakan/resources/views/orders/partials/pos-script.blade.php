@@ -474,7 +474,8 @@ addToCart(id, name, price, maxStock, weight = 0, image = null) {
 
                         // 2. Jika Cash / PayLater / QRIS Manual -> BUKA INVOICE
                         // result.order_id didapat dari controller yang sudah kita perbaiki
-                        window.location.href = "/orders/" + result.order_id + "/invoice";
+                        // Pastikan controller store mengembalikan 'invoice' di response JSON
+                        window.location.href = "/invoice/" + result.invoice;
 
                     } else {
                         throw new Error(result.message);
