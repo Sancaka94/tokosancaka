@@ -738,6 +738,32 @@ class OrderController extends Controller
                     $this->_sendWaNotification($order, $finalPrice, null, 'paid');
                     break;
 
+                // [TAMBAHAN BARU: BAYAR NANTI]
+                case 'pay_later':
+                    // Status tetap processing (biar diproses dapur/gudang), tapi payment unpaid
+                    $order->update([
+                        'status'         => 'processing',
+                        'payment_status' => 'unpaid',
+                        'note'           => $order->note . "\n[INFO] Bayar Nanti (Tagihan)"
+                    ]);
+
+                    // Kirim WA Tagihan (Parameter ke-4 'unpaid' memicu pesan tagihan)
+                    $this->_sendWaNotification($order, $finalPrice, null, 'unpaid');
+                    break;
+
+                // [TAMBAHAN BARU: QRIS MANUAL]
+                case 'qris_manual':
+                    // Asumsi kasir sudah cek mutasi, jadi langsung PAID
+                    $order->update([
+                        'status'         => 'processing',
+                        'payment_status' => 'paid',
+                        'note'           => $order->note . "\n[INFO] QRIS Manual (Cek Mutasi)"
+                    ]);
+
+                    // Kirim WA Lunas (Parameter ke-4 'paid' memicu pesan lunas)
+                    $this->_sendWaNotification($order, $finalPrice, null, 'paid');
+                    break;
+
                 case 'affiliate_balance':
                     if (!$request->customer_id) throw new \Exception("Member tidak terdeteksi.");
                     $affiliatePayor = Affiliate::lockForUpdate()->find($request->customer_id);
