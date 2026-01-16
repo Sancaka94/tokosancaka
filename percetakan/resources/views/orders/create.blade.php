@@ -112,6 +112,9 @@
                         @endif
                     </div>
                 </div>
+
+                {{-- KODE BARU: Tambahkan tombol "Semua" di bawah kategori --}}
+
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     @forelse($products as $product)
 
