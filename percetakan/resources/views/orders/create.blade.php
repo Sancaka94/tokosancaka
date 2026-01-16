@@ -83,7 +83,7 @@
                 </div>
 
                 {{--
-                    PERBAIKAN:
+                    PERBAIKAN STICKY:
                     1. pt-0 : Menghilangkan jarak/padding atas agar nempel ke header.
                     2. py-2 : Memberi sedikit jarak bawah saja agar rapi.
                     3. -mx-4 : Tetap digunakan untuk melebar ke samping (full width).
@@ -91,7 +91,7 @@
                 <div class="sticky top-0 z-30 bg-slate-50 -mx-4 px-4 pt-0 pb-2 border-b border-slate-200 shadow-sm mb-3">
 
                     {{-- Spacer kecil (opsional) agar tidak terlalu mepet banget dengan garis header,
-                        tapi jika ingin benar-benar nempel, hapus div mt-2 ini --}}
+                         tapi jika ingin benar-benar nempel, hapus div mt-2 ini --}}
                     <div class="mt-2"></div>
 
                     <div class="flex overflow-x-auto gap-2 custom-scrollbar pb-1">
