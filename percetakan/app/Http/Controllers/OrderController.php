@@ -1052,14 +1052,13 @@ class OrderController extends Controller
         } catch (\Exception $e) { Log::error("Gagal tambah komisi: " . $e->getMessage()); }
     }
 
+   // GANTI TOTAL FUNCTION INI
     private function _sendWaNotification($order, $finalPrice, $paymentUrl, $paymentStatus) {
         try {
-            // [UPDATE PENTING] Load relasi 'product' agar bisa baca satuan (unit)
+            // [UPDATE] Load relasi product agar bisa baca satuan (unit)
             $order->load(['items.product']);
 
-            // ============================================================
-            // A. LOGIKA CERDAS: BRANDING & KATEGORI
-            // ============================================================
+            // 1. LOGIKA BRANDING & KATEGORI
             $isLaundry = false;
 
             // Cek dari Catatan Sistem
@@ -1086,24 +1085,19 @@ class OrderController extends Controller
             $statusText = ($paymentStatus == 'paid') ? "LUNAS ✅" : "BELUM BAYAR ⏳";
             $metodeText = strtoupper(str_replace('_', ' ', $order->payment_method));
 
-            // 3. SUSUN DAFTAR ITEM DENGAN SATUAN (KG/PCS)
+            // 3. SUSUN DAFTAR ITEM
             $itemListText = "";
             foreach ($order->items as $item) {
-                // Hapus angka 0 di belakang koma (contoh: 5.00 -> 5)
                 $qty = $item->quantity + 0;
 
                 // Cari Satuan (Unit)
-                $unit = 'pcs'; // Default standard
-
+                $unit = 'pcs';
                 if ($item->product && !empty($item->product->unit)) {
-                    // Ambil dari database produk (Akurat)
                     $unit = $item->product->unit;
                 } elseif ($isLaundry) {
-                    // Jika data unit kosong tapi ini Laundry -> Paksa 'kg'
                     $unit = 'kg';
                 }
 
-                // Hasil: - Cuci Kering (5 kg)
                 $itemListText .= "- " . $item->product_name . " (" . $qty . " " . $unit . ")\n";
             }
 
@@ -1115,7 +1109,7 @@ class OrderController extends Controller
             $invoiceLink = url('/invoice/' . $order->order_number);
 
             // ==========================================
-            // B. KIRIM PESAN KE CUSTOMER
+            // A. KIRIM PESAN KE CUSTOMER
             // ==========================================
             if ($order->customer_phone) {
                 $msg  = "Halo Kak *{$order->customer_name}* 👋,\n\n";
@@ -1127,16 +1121,16 @@ class OrderController extends Controller
                 $msg .= "💰 *Status:* {$statusText}\n\n";
 
                 $msg .= "📦 *Detail Pesanan:*\n";
-                $msg .= $itemListText; // <--- SUDAH ADA SATUANNYA
+                $msg .= $itemListText;
                 $msg .= $alamatInfo;
 
                 $msg .= "\n💵 *Total: {$formattedTotal}*";
 
-                // Tambahkan Link Invoice
+                // Link Invoice
                 $msg .= "\n\n📄 *Lihat Struk Digital:*";
                 $msg .= "\n" . $invoiceLink;
 
-                // Logika Pesan Tambahan per Metode Bayar
+                // Pesan Tambahan
                 if ($paymentUrl && $paymentStatus == 'unpaid') {
                     $msg .= "\n\n👇 *Mohon selesaikan pembayaran di sini:*\n";
                     $msg .= $paymentUrl;
@@ -1149,7 +1143,7 @@ class OrderController extends Controller
                     $msg .= "\n\n✅ Pembayaran via QRIS Manual Berhasil Diterima.";
                 }
 
-                // Penutup Beda-beda
+                // Penutup
                 if ($isLaundry) {
                     $msg .= "\n\n_Cucian sedang kami proses. Nanti kami kabari lagi jika sudah selesai!_ ✨";
                 } else {
@@ -1160,52 +1154,14 @@ class OrderController extends Controller
             }
 
             // ==========================================
-            // C. KIRIM PESAN KE ADMIN
+            // B. KIRIM PESAN KE ADMIN
             // ==========================================
+            // Pastikan baris ini ada DI DALAM try { ... } dan DI DALAM function
             $adminContacts = [
                 '085745808809',
                 '08819435180',
             ];
 
-            $msgAdmin  = "🔔 *INFO {$storeName}* 🔔\n";
-            $msgAdmin .= "Ada order masuk bos!\n\n";
-            $msgAdmin .= "👤 *Cust:* {$order->customer_name}\n";
-            $msgAdmin .= "🧾 *Inv:* {$order->order_number}\n";
-            $msgAdmin .= "💳 *Via:* {$metodeText}\n";
-            $msgAdmin .= "💰 *Omzet:* {$formattedTotal}\n";
-            $msgAdmin .= "🔖 *Status:* {$statusText}\n\n";
-
-            $msgAdmin .= "📦 *Item:*\n";
-            $msgAdmin .= $itemListText; // <--- SUDAH ADA SATUANNYA
-
-            if ($order->customer_note) {
-                $msgAdmin .= "\n📝 *Note:* " . $order->customer_note;
-            }
-            if ($order->destination_address) {
-                $msgAdmin .= "\n🚚 *Kirim:* " . $order->destination_address;
-            }
-
-            foreach ($adminContacts as $phone) {
-                $this->_sendFonnteMessage($phone, $msgAdmin);
-                sleep(1);
-            }
-
-        } catch (\Exception $e) {
-            Log::error("WA Error: " . $e->getMessage());
-        }
-    }
-
-            // ==========================================
-            // C. KIRIM PESAN KE BANYAK ADMIN
-            // ==========================================
-
-            // Daftar Nomor Admin
-            $adminContacts = [
-                '085745808809', // Admin Utama
-                '085843428393',  // Admin Kedua
-            ];
-
-            // Susun Pesan Admin
             $msgAdmin  = "🔔 *INFO {$storeName}* 🔔\n";
             $msgAdmin .= "Ada order masuk bos!\n\n";
             $msgAdmin .= "👤 *Cust:* {$order->customer_name}\n";
@@ -1224,10 +1180,9 @@ class OrderController extends Controller
                 $msgAdmin .= "\n🚚 *Kirim:* " . $order->destination_address;
             }
 
-            // Loop kirim ke semua admin
             foreach ($adminContacts as $phone) {
                 $this->_sendFonnteMessage($phone, $msgAdmin);
-                sleep(1); // Aktifkan jika pesan sering gagal terkirim (opsional)
+                sleep(1);
             }
 
         } catch (\Exception $e) {
