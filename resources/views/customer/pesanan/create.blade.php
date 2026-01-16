@@ -443,7 +443,7 @@
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
 
                 {{-- 3. PEMISAH --}}
-                <li class="bg-blue-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Transfer Bank & Minimarket (Otomatis)</li>
+                <li class="bg-blue-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Transfer VA Bank, Minimarket, E-Wallet (Otomatis)</li>
 
                 {{-- 4. WADAH OTOMATIS TRIPAY --}}
                 <div id="tripayChannelsContainer">
