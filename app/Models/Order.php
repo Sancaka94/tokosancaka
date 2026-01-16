@@ -51,6 +51,7 @@ class Order extends Model
         'payment_method',
         'status',
         'shipping_address',
+        'shipping_ref', // <--- Tambahkan baris ini
         'products', // Jika Anda menyimpan detail produk sebagai JSON
         'payment_url',
         'payment_session_id',
