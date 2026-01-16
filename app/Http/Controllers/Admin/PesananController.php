@@ -359,7 +359,7 @@ class PesananController extends Controller
                     $pesanan->resi = $finalResi;
 
                     // Jika ada kolom shipping_ref, isi juga:
-                    // $pesanan->shipping_ref = $bookingId;
+                    $pesanan->shipping_ref = $bookingId;
 
                     $pesanan->status = 'Pesanan Dibuat';
                     $pesanan->status_pesanan = 'Pesanan Dibuat';
@@ -768,7 +768,7 @@ class PesananController extends Controller
                     $pesanan->resi = $finalResi; // Isi Resi (Bisa Ref/AWB)
 
                     // Jika Bapak punya kolom khusus 'shipping_ref', isi juga:
-                    // $pesanan->shipping_ref = $bookingId;
+                    $pesanan->shipping_ref = $bookingId;
 
                     // 3. RUBAH STATUS MENJADI 'PESANAN DIBUAT'
                     $pesanan->status = 'Pesanan Dibuat';
