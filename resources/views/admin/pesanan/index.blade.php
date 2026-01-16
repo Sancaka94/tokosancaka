@@ -345,6 +345,16 @@
                                 <div class="font-bold text-red-800 mt-1">RESI: Menunggu Resi</div>
                             @endif
 
+                            {{-- ========================================================================= --}}
+                            {{-- 🔥 PERBAIKAN: MENAMPILKAN SHIPPING REF (KODE BOOKING) JIKA ADA 🔥 --}}
+                            {{-- ========================================================================= --}}
+                            @if(!empty($order->shipping_ref))
+                                <div class="bg-blue-100 border border-blue-400 text-blue-800 text-xs font-semibold mt-1 p-1.5 rounded flex items-center gap-1">
+                                    <i class="fas fa-barcode"></i> Ref: {{ $order->shipping_ref }}
+                                </div>
+                            @endif
+                            {{-- ========================================================================= --}}
+
                             <div class="text-xs text-gray-500 mt-1">Invoice: <strong>{{ $order->nomor_invoice }}</strong></div>
                             <div class="text-xs text-gray-500 mt-1">{{ \Carbon\Carbon::parse($order->tanggal_pesanan)->format('d M Y, H:i') }}</div>
 
