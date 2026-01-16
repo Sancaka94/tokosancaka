@@ -1110,7 +1110,7 @@ class OrderController extends Controller
                 $msg .= "Terima kasih telah menggunakan layanan *{$storeName}*.\n";
                 $msg .= "Berikut rinciannya:\n\n";
 
-                $msg .= "🧾 *No. Nota:* {$order->order_number}\n";
+                $msg .= "🧾 *Nomor Nota:* {$order->order_number}\n";
                 $msg .= "📅 *Waktu:* {$tanggal}\n";
                 $msg .= "💰 *Status:* {$statusText}\n\n";
 
@@ -1119,11 +1119,13 @@ class OrderController extends Controller
                 $msg .= $alamatInfo;
 
                 $msg .= "\n💵 *Total: {$formattedTotal}*";
+                $msg .= "\n💵 *Link Pembayaran Via QRIS: *";
 
                 // --- TAMBAHAN LOGIKA PESAN BAYAR NANTI ---
                 if ($order->payment_method == 'pay_later') {
                     $msg .= "\n\n⚠️ *TAGIHAN BELUM LUNAS*";
-                    $msg .= "\nMohon segera melakukan pembayaran sebesar *{$formattedTotal}* agar pesanan dapat diproses/diambil.";
+                    $msg .= "\nTagihan Kakak sebesar *{$formattedTotal}* belum kami terima.";
+                    $msg .= "\nApabila Kakak Ingin Mengambil Mohon Lakukan pembayaran sebesar *{$formattedTotal}* agar pesanan dapat diambil.";
                     $msg .= "\n\nTerima kasih atas kerjasamanya! 🙏";
                 }
                 // --- PESAN QRIS MANUAL ---
@@ -1150,7 +1152,7 @@ class OrderController extends Controller
             // Daftar Nomor Admin
             $adminContacts = [
                 '085745808809', // Admin Utama
-                '08819435180',  // Admin Kedua
+                '085843428393',  // Admin Kedua
             ];
 
             // Susun Pesan Admin
