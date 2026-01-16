@@ -65,10 +65,12 @@
                 </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-50 relative">
+            {{-- HAPUS p-4 di sini agar sticky header bisa nempel ke sisi --}}
+            <div class="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 relative">
 
+                {{-- INFO PROMO: Tambahkan m-4 agar tetap punya jarak --}}
                 <div x-data="{ showInfo: true }" x-show="showInfo" x-transition.opacity.duration.300ms
-                     class="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-3 shadow-sm relative group">
+                     class="m-4 bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-3 shadow-sm relative group">
                     <div class="bg-red-100 text-red-600 rounded-lg h-8 w-8 flex items-center justify-center shrink-0">
                         <i class="fas fa-bullhorn text-sm"></i>
                     </div>
@@ -84,17 +86,11 @@
                 </div>
 
                 {{--
-                    PERBAIKAN STICKY:
-                    1. pt-0 : Menghilangkan jarak/padding atas agar nempel ke header.
-                    2. py-2 : Memberi sedikit jarak bawah saja agar rapi.
-                    3. -mx-4 : Tetap digunakan untuk melebar ke samping (full width).
+                    STICKY HEADER:
+                    1. Hapus -mx-4 karena parent sudah tidak ada padding.
+                    2. Gunakan px-4 py-2 untuk jarak dalam.
                 --}}
-                <div class="sticky top-0 z-30 bg-slate-50 -mx-4 px-4 pt-0 pb-2 border-b border-slate-200 shadow-sm mb-3">
-
-                    {{-- Spacer kecil (opsional) agar tidak terlalu mepet banget dengan garis header,
-                         tapi jika ingin benar-benar nempel, hapus div mt-2 ini --}}
-                    {{-- <div class="mt-2"></div> --}}
-
+                <div class="sticky top-0 z-30 bg-slate-50 px-4 py-2 border-b border-slate-200 shadow-sm mb-3">
                     <div class="flex overflow-x-auto gap-2 custom-scrollbar pb-1">
                         <button @click="activeCategory = 'all'"
                             class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all border shadow-sm flex items-center gap-2"
@@ -118,7 +114,8 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                {{-- GRID PRODUK: Tambahkan px-4 dan pb-4 agar ada jarak kiri/kanan/bawah --}}
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-3 px-4 pb-4">
                     @forelse($products as $product)
 
                     {{-- Logic Slug Kategori --}}
