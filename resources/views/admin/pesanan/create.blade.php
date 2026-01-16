@@ -822,7 +822,7 @@ applyStrictInsurance(true);
                             <img src="${channel.icon_url}" class="w-10 h-10 mr-4 object-contain p-1 border rounded bg-white" onerror="this.src='https://placehold.co/50'">
                             <div>
                                 <div class="font-semibold text-gray-800">${channel.name}</div>
-                                <div class="text-xs text-gray-500">${channel.group_name}</div>
+                                <div class="text-xs text-gray-500">${channel.group_name || channel.group || ''}</div>
                             </div>
                         `;
 
