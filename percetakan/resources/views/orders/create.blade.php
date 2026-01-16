@@ -187,7 +187,9 @@
 
             <div class="flex-1 overflow-y-auto custom-scrollbar bg-white">
 
-                <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+                <div class="p-4 border-b border-slate-100 bg-slate-50/50"
+                x-show="activeCategory === 'all' || (!activeCategory.includes('laundry') && !activeCategory.includes('fnb') && !activeCategory.includes('ppob'))"
+                x-transition.opacity>
                     <div class="flex justify-between items-center mb-2">
                         <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                             Berkas Cetak (<span x-text="uploadedFiles.length"></span>/10)
