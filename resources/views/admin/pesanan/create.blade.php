@@ -557,7 +557,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.classList.contains('select-ongkir-btn')) {
             document.getElementById('expedition').value = e.target.dataset.value;
             document.getElementById('selected_expedition_display').value = e.target.dataset.display;
-            const codOptions = document.querySelectorAll('.cod-payment-option');
+
+            // --- BAGIAN INI DIHAPUS/DIKOMENTARI AGAR COD TETAP MUNCUL ---
+            /* const codOptions = document.querySelectorAll('.cod-payment-option');
             if (e.target.dataset.codSupported === 'true') {
                 codOptions.forEach(opt => opt.style.display = 'flex');
             } else {
@@ -568,6 +570,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 codOptions.forEach(opt => opt.style.display = 'none');
             }
+            */
+            // -----------------------------------------------------------
+
             ongkirModalEl.classList.add('hidden');
             runValidityChecks();
         }
