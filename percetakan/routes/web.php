@@ -116,6 +116,8 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::get('/invoice/{id}', [OrderController::class, 'invoice'])->name('orders.invoice');
+
 Route::middleware('auth')->group(function () {
 
     // Tambahkan baris ini
@@ -276,9 +278,6 @@ Route::post('/join-partner/forgot-pin', [AffiliateController::class, 'forgotPin'
 
 // Pastikan baris ini ada di paling bawah untuk memuat rute Login/Register
 require __DIR__.'/auth.php';
-
-// Route untuk menampilkan Invoice / Struk
-Route::get('/orders/{id}/invoice', [OrderController::class, 'invoice'])->name('orders.invoice');
 
 // Route untuk Kategori
 Route::resource('categories', CategoryController::class);
