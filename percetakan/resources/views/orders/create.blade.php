@@ -462,7 +462,7 @@
                                 
                                 {{-- Kondisi 1: Tidak sedang loading --}}
                                 <span x-show="!isSavingCustomer" class="flex items-center gap-1">
-                                    <i class="fas fa-save"></i> Simpan DB
+                                    <i class="fas fa-save"></i> Simpan Ke Database
                                 </span>
                                 
                                 {{-- Kondisi 2: Sedang loading --}}
