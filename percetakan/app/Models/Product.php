@@ -4,47 +4,52 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str; // Wajib import ini untuk Slug
 
 class Product extends Model
 {
     use HasFactory;
 
-    /**
-     * Aktifkan timestamps agar created_at & updated_at terisi otomatis.
-     * (Di view 'show' kita menampilkan tanggal update terakhir).
-     */
-    public $timestamps = true; 
+    protected $table = 'products';
 
     /**
-     * Kolom yang boleh diisi secara massal (Mass Assignment).
+     * Kolom yang boleh diisi (Mass Assignment).
+     * Sudah disesuaikan dengan fitur Varian & Kategori.
      */
     protected $fillable = [
-        'category_id',  // Opsional (jika ada fitur kategori)
+        'category_id',
         'name',
+        'slug',         // URL ramah SEO
+        'description',  // Deskripsi produk
         'base_price',   // Harga Modal
-        'sell_price',   // Harga Jual (Baru)
-        'unit',
-        'image',
-        'stock',        // Sisa Stok (Baru)
-        'sold',         // Jumlah Terjual (Baru)
-        'supplier',     // Nama Supplier (Baru)
-        'stock_status'  // Status (available/unavailable)
+        'sell_price',   // Harga Jual
+        'stock',        // Sisa Stok
+        'sold',         // Jumlah Terjual
+        'unit',         // Satuan (pcs, kg, dll)
+        'supplier',     // Nama Supplier
+        'image',        // Path Gambar
+        'stock_status', // available / out_of_stock
+        'is_active',    // Status aktif/non-aktif
+        'type',         // physical / service
+        'has_variant',  // Penanda jika produk punya varian
     ];
 
     /**
-     * Casting tipe data untuk memastikan format angka benar.
+     * Casting tipe data agar formatnya sesuai saat diambil.
      */
     protected $casts = [
-        'base_price' => 'decimal:2',
-        'sell_price' => 'decimal:2',
-        'stock'      => 'integer',
-        'sold'       => 'integer',
+        'base_price'  => 'decimal:2',
+        'sell_price'  => 'decimal:2',
+        'stock'       => 'integer',
+        'sold'        => 'integer',
+        'is_active'   => 'boolean', // Ubah 1/0 jadi true/false
+        'has_variant' => 'boolean', // Ubah 1/0 jadi true/false
     ];
 
     // --- RELATIONSHIPS ---
 
     /**
-     * Relasi ke Kategori (Opsional)
+     * Relasi ke Kategori (Inverse One-to-Many)
      */
     public function category()
     {
@@ -52,21 +57,56 @@ class Product extends Model
     }
 
     /**
-     * Relasi ke OrderDetail (Untuk melihat riwayat transaksi produk ini)
+     * Relasi ke Varian (One-to-Many)
+     * Produk Induk bisa memiliki banyak Varian.
+     */
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class, 'product_id');
+    }
+
+    /**
+     * Relasi ke OrderDetail (History Transaksi)
      */
     public function order_details()
     {
         return $this->hasMany(OrderDetail::class);
     }
 
-    // --- ACCESSOR (Tambahan Fitur) ---
+    // --- ACCESSORS ---
 
     /**
-     * Hitung profit otomatis.
-     * Cara panggil di blade: $product->profit
+     * Hitung profit otomatis (Margin).
+     * Panggil: $product->profit
      */
     public function getProfitAttribute()
     {
         return $this->sell_price - $this->base_price;
+    }
+
+    // --- BOOT METHODS ---
+
+    /**
+     * Otomatisasi Slug saat Create & Update
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Saat Membuat (Creating)
+        static::creating(function ($product) {
+            if (empty($product->slug)) {
+                // Buat slug unik: nama-produk-acak5karakter
+                $product->slug = Str::slug($product->name) . '-' . Str::random(5);
+            }
+        });
+
+        // Saat Mengupdate (Updating)
+        static::updating(function ($product) {
+            // Jika nama berubah, update slug juga
+            if ($product->isDirty('name') && !$product->isDirty('slug')) {
+                $product->slug = Str::slug($product->name) . '-' . Str::random(5);
+            }
+        });
     }
 }
