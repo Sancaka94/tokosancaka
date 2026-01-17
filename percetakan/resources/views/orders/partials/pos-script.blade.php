@@ -36,7 +36,9 @@ function posSystem() {
         // 1. TAMBAHKAN VARIABLE STATE BARU (PENCARIAN PELANGGAN)
         isSearchingCustomer: false,
         isCustomerFound: false,
-        customerSearchResults: [],
+        customerSearchResults: [],     // Untuk hasil pencarian via WA
+        customerNameSearchResults: [], // BARU: Untuk hasil pencarian via Nama
+
 
         // --- TAMBAHKAN FUNGSI INI (AUTO KOREKSI NOMOR WA) ---
         sanitizePhone() {
@@ -147,6 +149,33 @@ function posSystem() {
         // ------------------------------------------------------------------
         // LOGIKA PENCARIAN & AUTOFILL PELANGGAN (FITUR BARU)
         // ------------------------------------------------------------------
+
+        // --- FUNGSI BARU: CARI PELANGGAN BY NAMA ---
+        async searchCustomerByName() {
+            // Kalau nama kurang dari 3 huruf, jangan cari (biar gak berat)
+            if (this.customerName.length < 3) {
+                this.customerNameSearchResults = [];
+                return;
+            }
+
+            this.isSearchingCustomer = true;
+
+            try {
+                // Panggil API Search yang sama, query-nya adalah Nama
+                const response = await fetch(`{{ route('customers.searchApi') }}?q=${this.customerName}`);
+                const data = await response.json();
+
+                if (data.length > 0) {
+                    this.customerNameSearchResults = data;
+                } else {
+                    this.customerNameSearchResults = [];
+                }
+            } catch (error) {
+                console.error("Gagal mencari pelanggan:", error);
+            } finally {
+                this.isSearchingCustomer = false;
+            }
+        },
 
         // 1. CARI PELANGGAN BY WA
         async searchCustomerByPhone() {

@@ -172,12 +172,36 @@
                                     </div>
                                 </div>
 
-                                {{-- Nama Pelanggan --}}
-                                <div>
+                                {{-- Nama Pelanggan (BARU - DENGAN PENCARIAN) --}}
+                                <div class="relative">
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nama Pelanggan <span class="text-red-500">*</span></label>
-                                    <input type="text" x-model="customerName" placeholder="Nama Pelanggan"
-                                        class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm font-bold text-slate-700 shadow-sm transition-all"
-                                        :readonly="isCustomerFound">
+
+                                    <div class="relative">
+                                        <input type="text"
+                                            x-model="customerName"
+                                            @input.debounce.500ms="searchCustomerByName()"
+                                            placeholder="Ketik Nama untuk cari..."
+                                            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm font-bold text-slate-700 shadow-sm transition-all"
+                                            :readonly="isCustomerFound">
+
+                                        {{-- Indikator Loading di Nama --}}
+                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3" x-show="isSearchingCustomer">
+                                            <i class="fas fa-circle-notch fa-spin text-slate-400"></i>
+                                        </div>
+                                    </div>
+
+                                    {{-- Dropdown Hasil Pencarian (Untuk Nama) --}}
+                                    <div x-show="customerNameSearchResults.length > 0" @click.outside="customerNameSearchResults = []"
+                                        class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                                        <template x-for="cust in customerNameSearchResults" :key="cust.id">
+                                            <div @click="fillCustomerData(cust); customerNameSearchResults = []"
+                                                class="px-4 py-2 text-xs border-b cursor-pointer hover:bg-blue-50 border-slate-50 flex flex-col">
+                                                <span class="font-bold text-slate-700" x-text="cust.name"></span>
+                                                <span class="text-[10px] text-slate-500" x-text="cust.whatsapp"></span>
+                                                <span class="text-[9px] text-slate-400 truncate" x-text="cust.address"></span>
+                                            </div>
+                                        </template>
+                                    </div>
                                 </div>
 
                                 {{-- Alamat --}}
