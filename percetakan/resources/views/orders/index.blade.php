@@ -1,12 +1,16 @@
 @extends('layouts.app')
 
-{{-- Tambahkan Style Flatpickr untuk kalender keren --}}
-@section('styles')
+@section('content')
+{{-- 1. CSS FLATPICKR (Langsung ditaruh sini biar pasti terpanggil) --}}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/airbnb.css">
-@endsection
+<style>
+    /* Fix agar kalender muncul di atas elemen lain */
+    .flatpickr-calendar {
+        z-index: 9999 !important;
+    }
+</style>
 
-@section('content')
 <div class="container mx-auto px-4 py-6 max-w-7xl">
 
     {{-- BAGIAN 1: HEADER & ACTIONS --}}
@@ -22,9 +26,8 @@
                 <i class="fas fa-trash-alt"></i> Hapus Terpilih (<span id="count-selected">0</span>)
             </button>
 
-            {{-- Tombol Export (BARU) --}}
+            {{-- Tombol Export --}}
             <div class="flex gap-2 mr-2">
-                {{-- Pastikan route export sudah dibuat di web.php --}}
                 <a href="{{ route('orders.export.pdf', request()->query()) }}" target="_blank" class="bg-white text-red-600 border border-red-200 px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-50 transition flex items-center gap-2">
                     <i class="fas fa-file-pdf"></i> PDF
                 </a>
@@ -39,7 +42,7 @@
         </div>
     </div>
 
-    {{-- BAGIAN 2: FILTER & PENCARIAN (BARU & KEREN) --}}
+    {{-- BAGIAN 2: FILTER & PENCARIAN --}}
     <div class="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-slate-200">
         <form action="{{ route('orders.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
 
@@ -62,8 +65,9 @@
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 group-focus-within:text-emerald-500 transition">
                         <i class="far fa-calendar-alt"></i>
                     </span>
+                    {{-- ID "date_range" ini yang dipanggil Javascript di bawah --}}
                     <input type="text" id="date_range" name="date_range" value="{{ request('date_range') }}" placeholder="Pilih Rentang Waktu"
-                        class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition cursor-pointer placeholder-slate-400">
+                        class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition cursor-pointer placeholder-slate-400 bg-white">
                 </div>
             </div>
 
@@ -112,12 +116,11 @@
                             <th class="px-6 py-4 w-[20%]">Ekspedisi & Ongkir</th>
                             <th class="px-6 py-4 w-[15%] text-right">Total & Bayar</th>
                             <th class="px-6 py-4 w-[10%] text-center">Status</th>
-                            <th class="px-6 py-4 w-[15%] text-center">Aksi</th> {{-- Lebar ditambah --}}
+                            <th class="px-6 py-4 w-[15%] text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @php
-                            // Mapping Logo Ekspedisi (Kode Asli Anda)
                             $courierMap = [
                                 'jne'          => ['name' => 'JNE', 'url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
                                 'tiki'         => ['name' => 'TIKI', 'url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png'],
@@ -151,7 +154,7 @@
                                 <input type="checkbox" name="ids[]" value="{{ $order->id }}" class="order-checkbox w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
                             </td>
 
-                            {{-- KOLOM 1: TRANSAKSI --}}
+                            {{-- KOLOM 1 --}}
                             <td class="px-6 py-4 align-top">
                                 <div class="flex flex-col gap-1">
                                     <span class="font-bold text-slate-800 text-xs uppercase">{{ $order->order_number }}</span>
@@ -167,7 +170,7 @@
                                 </div>
                             </td>
 
-                            {{-- KOLOM 2: PELANGGAN & ALAMAT --}}
+                            {{-- KOLOM 2 --}}
                             <td class="px-6 py-4 align-top">
                                 <div class="flex flex-col gap-1">
                                     <div class="font-bold text-slate-700 text-sm uppercase">{{ $order->customer_name }}</div>
@@ -188,7 +191,7 @@
                                 </div>
                             </td>
 
-                            {{-- KOLOM 3: EKSPEDISI & LOGO --}}
+                            {{-- KOLOM 3 --}}
                             <td class="px-6 py-4 align-top">
                                 @php
                                     $kurirKey = strtolower($order->courier_service ?? '');
@@ -217,7 +220,7 @@
                                 </div>
                             </td>
 
-                            {{-- KOLOM 4: TOTAL & BAYAR --}}
+                            {{-- KOLOM 4 --}}
                             <td class="px-6 py-4 align-top text-right">
                                 <div class="font-black text-slate-800 text-sm">Rp {{ number_format($order->final_price, 0, ',', '.') }}</div>
                                 <div class="mt-1">
@@ -227,7 +230,7 @@
                                 </div>
                             </td>
 
-                            {{-- KOLOM 5: STATUS --}}
+                            {{-- KOLOM 5 --}}
                             <td class="px-6 py-4 align-top text-center">
                                 @php
                                     $styles = [
@@ -243,21 +246,17 @@
                                 </span>
                             </td>
 
-                            {{-- KOLOM 6: AKSI LENGKAP --}}
+                            {{-- KOLOM 6: AKSI --}}
                             <td class="px-6 py-4 align-top text-center">
                                 <div class="flex items-center justify-center gap-2">
-                                    {{-- 1. SHOW (DETAIL) --}}
                                     <a href="{{ route('orders.show', $order->id) }}" class="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition shadow-sm border border-blue-100" title="Detail">
                                         <i class="fas fa-eye text-xs"></i>
                                     </a>
 
-                                    {{-- 2. EDIT --}}
                                     <a href="{{ route('orders.edit', $order->id) }}" class="w-8 h-8 flex items-center justify-center bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-500 hover:text-white transition shadow-sm border border-amber-100" title="Edit">
-                                        <i class="fas fa-edit text-xs"></i>
+                                        <i class="fas fa-pencil-alt text-xs"></i>
                                     </a>
 
-                                    {{-- 3. HAPUS (SINGLE) --}}
-                                    {{-- PENTING: Gunakan type="button" dan panggil JS confirmDelete --}}
                                     <button type="button" onclick="confirmDelete('{{ route('orders.destroy', $order->id) }}')" class="w-8 h-8 flex items-center justify-center bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition shadow-sm border border-rose-100" title="Hapus">
                                         <i class="fas fa-trash-alt text-xs"></i>
                                     </button>
@@ -281,39 +280,38 @@
             {{-- PAGINATION --}}
             @if($orders->hasPages())
                 <div class="px-6 py-4 border-t border-slate-100 bg-slate-50">
-                    {{ $orders->appends(request()->query())->links() }} {{-- Gunakan appends agar filter tidak hilang saat ganti halaman --}}
+                    {{ $orders->appends(request()->query())->links() }}
                 </div>
             @endif
         </div>
     </form>
 </div>
 
-{{-- Hidden Form untuk Single Delete (Solusi Nested Form) --}}
+{{-- Hidden Form untuk Single Delete --}}
 <form id="single-delete-form" action="" method="POST" class="hidden">
     @csrf
     @method('DELETE')
 </form>
 
-{{-- SCRIPTS --}}
+{{-- SCRIPTS (Ditaruh di sini agar pasti terpanggil) --}}
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-
-        // 1. Inisialisasi Flatpickr (Kalender Keren)
+        // Init Flatpickr (Kalender)
         flatpickr("#date_range", {
-            mode: "range",             // Mode Rentang Tanggal
-            dateFormat: "Y-m-d",       // Format kirim ke server
-            altInput: true,            // Tampilkan input alternatif yang rapi
-            altFormat: "j F Y",        // Format User (Contoh: 17 Januari 2026)
-            locale: "id",              // Bahasa Indonesia
-            theme: "airbnb",           // Tema Minimalis
-            showMonths: 2,             // Tampilkan 2 bulan sekaligus
+            mode: "range",
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "j F Y",
+            locale: "id",
+            theme: "airbnb",
+            showMonths: 2,
             allowInput: true
         });
 
-        // 2. Logic Bulk Delete
+        // Bulk Delete Logic
         const selectAll = document.getElementById('select-all');
         const checkboxes = document.querySelectorAll('.order-checkbox');
         const btnDelete = document.getElementById('btn-delete-selected');
@@ -342,7 +340,7 @@
 
         if (btnDelete) {
             btnDelete.addEventListener('click', function(e) {
-                e.preventDefault(); // Prevent default button behavior
+                e.preventDefault();
                 if (confirm('Apakah Anda yakin ingin menghapus ' + countText.innerText + ' data terpilih secara permanen?')) {
                     document.getElementById('form-bulk-delete').submit();
                 }
@@ -350,7 +348,7 @@
         }
     });
 
-    // 3. Logic Single Delete
+    // Single Delete Logic
     function confirmDelete(url) {
         if (confirm('Apakah Anda yakin ingin menghapus pesanan ini secara permanen?')) {
             const form = document.getElementById('single-delete-form');
