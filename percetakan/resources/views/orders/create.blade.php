@@ -397,8 +397,20 @@
                                     class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 placeholder-slate-400 resize-none transition-all"></textarea>
                         </div>
 
+                        {{-- Tombol 1: Simpan ke Database --}}
+                            <button @click="saveCustomerToDB()"
+                                    :disabled="isSavingCustomer"
+                                    class="w-full py-2 bg-green-600 text-white text-[10px] font-bold rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <template x-if="!isSavingCustomer">
+                                    <span><i class="fas fa-save"></i> Simpan DB</span>
+                                </template>
+                                <template x-if="isSavingCustomer">
+                                    <span><i class="fas fa-circle-notch fa-spin"></i> Proses...</span>
+                                </template>
+                            </button>
+
                         <button @click="isOpen = false" class="w-full py-1.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-lg hover:bg-indigo-100 transition mt-1">
-                            Simpan Data Sementara
+                            Simpan Sementara
                         </button>
                     </div>
                 </div>

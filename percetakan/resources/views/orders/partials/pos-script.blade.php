@@ -140,6 +140,57 @@
                 return this.cart.reduce((sum, item) => sum + parseFloat(item.qty), 0);
             },
 
+            // TAMBAHKAN FUNGSI INI:
+            async saveCustomerToDB() {
+                // 1. Validasi Sederhana
+                if (!this.customerName || !this.customerPhone) {
+                    alert('Harap isi Nama dan Nomor WhatsApp pelanggan.');
+                    return;
+                }
+
+                this.isSavingCustomer = true;
+
+                try {
+                    // Ambil CSRF Token
+                    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                    const response = await fetch("{{ route('customers.storeAjax') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name: this.customerName,
+                            whatsapp: this.customerPhone,
+                            address: this.customerAddressDetail
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        // Sukses
+                        this.customerId = result.data.id; // Simpan ID agar order tersambung ke user ini
+                        alert('Pelanggan berhasil disimpan ke database!');
+                        this.isOpen = false; // Tutup accordion otomatis (karena logic accordion ada di child scope, mungkin perlu $dispatch atau biarkan user menutup manual, tapi biasanya context ini global)
+
+                        // Jika isOpen ada di scope local x-data child, gunakan event dispatch:
+                        // window.dispatchEvent(new CustomEvent('close-customer-form'));
+                    } else {
+                        // Error Validasi Server
+                        alert('Gagal: ' + (result.message || 'Terjadi kesalahan validasi.'));
+                    }
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Terjadi kesalahan sistem saat menyimpan data.');
+                } finally {
+                    this.isSavingCustomer = false;
+                }
+            },
+
             // --- FUNGSI BARU UNTUK KIRIM LOG KE SERVER ---
             async logToServer(message, detail = {}) {
                 try {
