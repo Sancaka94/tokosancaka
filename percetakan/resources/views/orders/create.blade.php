@@ -361,7 +361,7 @@
                         <i class="fas text-indigo-400 text-xs transition-transform duration-300" :class="isOpen ? 'fa-chevron-up rotate-180' : 'fa-chevron-down'"></i>
                     </button>
 
-                    <div x-show="isOpen" x-collapse class="p-3 space-y-2 bg-white">
+                    <div x-show="isOpen" class="p-3 space-y-2 bg-white">
                         
                         <div class="relative">
                             <label class="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Nama Pelanggan</label>
