@@ -342,7 +342,7 @@
                 <div x-show="activeCategory.includes('laundry')"
                      x-data="{ isOpen: false }"
                      x-transition.opacity.duration.300ms
-                     class="mb-3 border border-indigo-100 rounded-xl bg-white shadow-sm overflow-hidden">
+                     class="mb-3 border border-indigo-100 rounded-xl bg-white shadow-sm">
 
                     <button @click="isOpen = !isOpen" class="w-full flex items-center justify-between p-3 bg-indigo-50 hover:bg-indigo-100 transition-colors">
                         <div class="flex items-center gap-2">
