@@ -180,7 +180,7 @@
                             // Kembalikan ke pickup
                             this.deliveryType = 'pickup';
                         },
-                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                        { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
                     );
                 } else {
                     alert("Browser Anda tidak mendukung Geolocation.");
