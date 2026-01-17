@@ -718,74 +718,86 @@ class OrderController extends Controller
             $paymentStatus = 'unpaid';
             $changeAmount = 0;
 
+            // Variabel trigger WA (Agar WA dikirim SETELAH database disimpan)
+            $triggerWaType = null;
+
             Log::info("[STEP 4] Processing Payment Gateway: {$metodeBayarFix}");
 
             switch ($metodeBayarFix) {
+                // --- 1. TUNAI (CASH) ---
                 case 'cash':
                     $cashReceived = (int) $request->cash_amount;
-                    if ($cashReceived < $finalPrice) throw new \Exception("Uang tunai kurang!");
+                    if ($cashReceived < $finalPrice) {
+                        throw new \Exception("Uang tunai kurang! Total: " . number_format($finalPrice));
+                    }
 
                     $changeAmount = $cashReceived - $finalPrice;
 
                     $order->update([
-                        'status' => 'processing',
+                        'status'         => 'processing',
                         'payment_status' => 'paid',
-                        'note' => $order->note . "\n[INFO KASIR] Tunai. Terima: Rp " . number_format($cashReceived,0,',','.') . "\nKembali: Rp " . number_format($changeAmount,0,',','.')
+                        'note'           => $order->note . "\n[INFO KASIR] Tunai. Terima: Rp " . number_format($cashReceived, 0, ',', '.') . "\nKembali: Rp " . number_format($changeAmount, 0, ',', '.')
                     ]);
 
                     $paymentStatus = 'paid';
-                    // Kirim WA (Hanya untuk Cash karena instan)
-                    $this->_sendWaNotification($order, $finalPrice, null, 'paid');
+                    $triggerWaType = 'paid'; // Set trigger WA Lunas
                     break;
 
-                // [TAMBAHAN BARU: BAYAR NANTI]
+                // --- 2. BAYAR NANTI (PAY LATER) ---
                 case 'pay_later':
-                    // Status tetap processing (biar diproses dapur/gudang), tapi payment unpaid
                     $order->update([
                         'status'         => 'processing',
                         'payment_status' => 'unpaid',
                         'note'           => $order->note . "\n[INFO] Bayar Nanti (Tagihan)"
                     ]);
 
-                    // Kirim WA Tagihan (Parameter ke-4 'unpaid' memicu pesan tagihan)
-                    $this->_sendWaNotification($order, $finalPrice, null, 'unpaid');
+                    $paymentStatus = 'unpaid';
+                    $triggerWaType = 'unpaid'; // Set trigger WA Tagihan
                     break;
 
-                // [TAMBAHAN BARU: QRIS MANUAL]
+                // --- 3. QRIS MANUAL ---
                 case 'qris_manual':
-                    // Asumsi kasir sudah cek mutasi, jadi langsung PAID
                     $order->update([
                         'status'         => 'processing',
                         'payment_status' => 'paid',
                         'note'           => $order->note . "\n[INFO] QRIS Manual (Cek Mutasi)"
                     ]);
 
-                    // Kirim WA Lunas (Parameter ke-4 'paid' memicu pesan lunas)
-                    $this->_sendWaNotification($order, $finalPrice, null, 'paid');
+                    $paymentStatus = 'paid';
+                    $triggerWaType = 'paid'; // Set trigger WA Lunas
                     break;
 
+                // --- 4. SALDO MEMBER (AFFILIATE) ---
                 case 'affiliate_balance':
                     if (!$request->customer_id) throw new \Exception("Member tidak terdeteksi.");
+
                     $affiliatePayor = Affiliate::lockForUpdate()->find($request->customer_id);
 
-                    if (!$affiliatePayor || !Hash::check($request->affiliate_pin, $affiliatePayor->pin)) {
-                        throw new \Exception("PIN Salah!");
+                    if (!$affiliatePayor) throw new \Exception("Data Member tidak ditemukan.");
+
+                    if (!empty($affiliatePayor->pin)) {
+                        if (!Hash::check($request->affiliate_pin, $affiliatePayor->pin)) {
+                            throw new \Exception("PIN Keamanan Salah!");
+                        }
                     }
+
                     if ($affiliatePayor->balance < $finalPrice) {
-                        throw new \Exception("Saldo Kurang.");
+                        throw new \Exception("Saldo Member Kurang. Saldo: " . number_format($affiliatePayor->balance));
                     }
 
                     $affiliatePayor->decrement('balance', $finalPrice);
+
                     $order->update([
-                        'status' => 'processing',
+                        'status'         => 'processing',
                         'payment_status' => 'paid',
-                        'note' => $order->note . "\n[INFO BAYAR] Potong Saldo Member"
+                        'note'           => $order->note . "\n[INFO BAYAR] Potong Saldo Member"
                     ]);
 
                     $paymentStatus = 'paid';
-                    $this->_sendWaNotification($order, $finalPrice, null, 'paid');
+                    $triggerWaType = 'paid'; // Set trigger WA Lunas
                     break;
 
+                // --- 5. DANA (KODE ASLI ANDA - TIDAK DIUBAH) ---
                 case 'dana':
                     Log::info("[DANA] Requesting Payment URL...");
                     try {
@@ -819,7 +831,6 @@ class OrderController extends Controller
                                     "orderTitle" => "Invoice " . $order->order_number,
                                     "merchantTransType" => "01",
                                     "scenario" => "REDIRECT",
-
                                 ],
                                 "envInfo" => [
                                     "sourcePlatform" => "IPG",
@@ -829,13 +840,10 @@ class OrderController extends Controller
                             ]
                         ];
 
-
-                        // --- [MULAI TAMBAHAN LOG] ---
                         Log::info('DANA_REQUEST_PAYLOAD', [
-                            'order_number' => $order->order_number, // Biar mudah dicari berdasarkan nomor order
+                            'order_number' => $order->order_number,
                             'payload'      => $bodyArray
                         ]);
-                        // --- [AKHIR TAMBAHAN LOG] ---
 
                         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
                         $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
@@ -863,7 +871,6 @@ class OrderController extends Controller
 
                         if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                              $paymentUrl = $result['webRedirectUrl'] ?? null;
-                             // UPDATE ORDER DENGAN LINK BAYAR
                              $order->update(['payment_url' => $paymentUrl]);
                         } else {
                              throw new \Exception("DANA API Error: " . ($result['responseMessage'] ?? 'General Error'));
@@ -874,6 +881,7 @@ class OrderController extends Controller
                     }
                     break;
 
+                // --- 6. TRIPAY ---
                 case 'tripay':
                     Log::info("[TRIPAY] Requesting Payment URL...");
                     $orderItems = [];
@@ -888,7 +896,6 @@ class OrderController extends Controller
 
                     if (empty($request->payment_channel)) throw new \Exception("Harap pilih Channel Pembayaran.");
 
-                    // Panggil fungsi Tripay (yang ada di bawah controller)
                     $tripayRes = $this->_createTripayTransaction($order, $request->payment_channel, (int)$finalPrice, $customerName, $customerEmail, $customerPhone, $orderItems);
 
                     if (!$tripayRes['success']) throw new \Exception("Tripay Gagal: " . ($tripayRes['message'] ?? 'Unknown Error'));
@@ -897,6 +904,7 @@ class OrderController extends Controller
                     $order->update(['payment_url' => $paymentUrl]);
                     break;
 
+                // --- 7. DOKU ---
                 case 'doku':
                     Log::info("[DOKU] Requesting Payment URL...");
                     $dokuData = ['name' => $customerName, 'email' => $customerEmail, 'phone' => $customerPhone];
@@ -908,15 +916,29 @@ class OrderController extends Controller
             }
 
             // ============================================================
-            // LANGKAH 5: FINALISASI & COMMIT
+            // LANGKAH 5: FINALISASI & COMMIT (PENYELAMAT INVOICE)
             // ============================================================
 
+            // 1. COMMIT DATABASE TERLEBIH DAHULU
+            // Ini wajib agar data Order tersimpan permanen sebelum sistem "sibuk" kirim WA
             DB::commit();
             Log::info("[STEP 5] Transaction Committed. Order ID: {$order->id}");
 
-            // Proses Komisi Afiliasi (Hanya jika langsung Paid/Cash/Saldo)
-            if ($request->coupon && $paymentStatus == 'paid') {
-                $this->_processAffiliateCommission($request->coupon, $finalPrice);
+            // 2. KIRIM NOTIFIKASI WA (SETELAH COMMIT)
+            // Proses ini ada sleep(5) nya, jadi harus diluar DB Transaction
+            try {
+                if ($triggerWaType) {
+                    Log::info("Mengirim WA Notification tipe: $triggerWaType");
+                    $this->_sendWaNotification($order, $finalPrice, $paymentUrl, $triggerWaType);
+                }
+
+                // Proses Komisi Afiliasi (Hanya jika kupon + paid)
+                if ($request->coupon && $paymentStatus == 'paid') {
+                    $this->_processAffiliateCommission($request->coupon, $finalPrice);
+                }
+            } catch (\Exception $e) {
+                // Error WA tidak boleh membatalkan order yang sudah sukses
+                Log::error("Warning: Order Sukses tapi WA Gagal: " . $e->getMessage());
             }
 
             return response()->json([
