@@ -866,6 +866,6 @@ function posSystem() {
             }
         }
     }
-}</script>
+}
 
 {{-- AKHIR SCRIPT POS --}}
