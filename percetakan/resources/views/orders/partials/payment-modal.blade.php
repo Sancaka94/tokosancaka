@@ -119,6 +119,11 @@
                                 <label class="text-[10px] font-bold text-slate-500">WhatsApp*</label>
                                 <input type="number" x-model="customerPhone" class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500">
                             </div>
+                            <div class="md:col-span-2">
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Alamat Lengkap (Opsional)</label>
+                                    <textarea x-model="customerAddressDetail" rows="2" placeholder="Alamat jalan, nomor rumah, patokan..."
+                                              class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-red-500 focus:border-red-500 text-sm font-medium text-slate-700 resize-none"></textarea>
+                            </div>
                         </div>
 
                         <div x-show="deliveryType === 'shipping'">
