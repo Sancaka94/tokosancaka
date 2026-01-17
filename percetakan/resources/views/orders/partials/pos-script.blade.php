@@ -103,7 +103,12 @@
 
             // PERBAIKAN: Ubah getter subtotal agar support desimal (Float)
             get subtotal() {
-                return this.cart.reduce((sum, item) => sum + (parseFloat(item.price) * parseFloat(item.qty)), 0);
+                // Gunakan parseFloat untuk qty agar desimal terbaca (misal 2.8 Kg)
+                // Math.round untuk membulatkan total per item agar tidak ada koma aneh (19999,7 jadi 20000)
+                return this.cart.reduce((sum, item) => {
+                    let itemTotal = parseInt(item.price) * parseFloat(item.qty);
+                    return sum + Math.round(itemTotal);
+                }, 0);
             },
 
             // PERBAIKAN: Ubah getter total qty agar support desimal
@@ -196,11 +201,13 @@
             },
 
             get grandTotal() {
-                // Pastikan diskon dan ongkir dianggap angka 0 jika kosong
                 let disc = parseInt(this.discountAmount) || 0;
                 let ship = parseInt(this.shippingCost) || 0;
 
-                let total = this.subtotal - disc + ship;
+                // Math.ceil memastikan pembulatan ke atas (aman untuk toko)
+                // Math.round untuk pembulatan terdekat
+                let total = Math.round(this.subtotal - disc + ship);
+
                 return total < 0 ? 0 : total;
             },
 
