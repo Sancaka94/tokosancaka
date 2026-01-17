@@ -130,66 +130,69 @@
                 }
             },
 
-            // --- UPDATE FUNGSI GPS ---
+            // --- FUNGSI GPS V2 (ANTI ERROR WINDOWS) ---
             getGeoLocation() {
-                if (navigator.geolocation) {
-                    this.isGettingLocation = true;
-                    this.latitude = '';
-                    this.longitude = '';
-
-                    // LOG 1: Mulai Request
-                    console.log("LOG: Meminta akses lokasi...");
-
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            this.latitude = position.coords.latitude;
-                            this.longitude = position.coords.longitude;
-                            this.isGettingLocation = false;
-
-                            // LOG 2: Sukses (Opsional, info saja)
-                            console.log("LOG: Lokasi ditemukan", this.latitude, this.longitude);
-                        },
-                        (error) => {
-                            this.isGettingLocation = false;
-                            let msg = "Gagal mengambil lokasi.";
-                            let detailError = "";
-
-                            if(error.code == 1) {
-                                msg = "Mohon IZINKAN akses Lokasi/GPS di browser Anda.";
-                                detailError = "PERMISSION_DENIED";
-                            }
-                            else if(error.code == 2) {
-                                msg = "Pastikan GPS HP menyala.";
-                                detailError = "POSITION_UNAVAILABLE";
-                            }
-                            else if(error.code == 3) {
-                                msg = "Waktu permintaan habis.";
-                                detailError = "TIMEOUT";
-                            }
-
-                            // Tampilkan Alert ke User
-                            alert("⚠️ " + msg + "\nFitur Antar Jemput wajib menggunakan lokasi.");
-
-                            // LOG 3: KIRIM ERROR KE LARAVEL LOG
-                            // Ini akan mencatat User Agent (Browser apa) dan Pesan Errornya
-                            this.logToServer("Gagal Get GPS: " + detailError, {
-                                error_code: error.code,
-                                error_message: error.message,
-                                user_agent: navigator.userAgent // Biar tau user pake HP apa
-                            });
-
-                            // Kembalikan ke pickup
-                            this.deliveryType = 'pickup';
-                        },
-                        { enableHighAccuracy: false, timeout: 500000, maximumAge: 0 }
-                    );
-                } else {
+                if (!navigator.geolocation) {
                     alert("Browser Anda tidak mendukung Geolocation.");
-                    this.logToServer("Browser tidak support Geolocation", {
-                        user_agent: navigator.userAgent
-                    });
                     this.deliveryType = 'pickup';
+                    return;
                 }
+
+                this.isGettingLocation = true;
+                // Reset koordinat agar terlihat prosesnya
+                this.latitude = '';
+                this.longitude = '';
+
+                // 1. Definisi Callback Sukses
+                const onGeoSuccess = (position) => {
+                    this.latitude = position.coords.latitude;
+                    this.longitude = position.coords.longitude;
+                    this.isGettingLocation = false;
+                    console.log(`LOG: Lokasi dapat! (Akurasi: ${position.coords.accuracy} meter)`);
+                };
+
+                // 2. Definisi Callback Error (Hanya dipanggil jika semua cara gagal)
+                const onGeoError = (error) => {
+                    this.isGettingLocation = false;
+                    let msg = "Gagal mengambil lokasi.";
+
+                    if(error.code == 1) {
+                        msg = "❌ Akses Lokasi DITOLAK.\n\nCARA MEMPERBAIKI:\n1. Klik ikon Gembok 🔒 di samping URL website.\n2. Klik 'Permissions' atau 'Site Settings'.\n3. Ubah Location menjadi 'Allow' / 'Izinkan'.\n4. Coba klik tombol ini lagi.";
+                    }
+                    else if(error.code == 2) msg = "⚠️ Sinyal GPS tidak ditemukan. Pastikan GPS HP menyala.";
+                    else if(error.code == 3) msg = "⚠️ Waktu habis. Sinyal GPS lemah.";
+
+                    alert(msg);
+
+                    // Kembalikan ke pickup jika gagal total
+                    this.deliveryType = 'pickup';
+                };
+
+                // 3. EKSEKUSI: Coba High Accuracy Dulu (Default HP)
+                console.log("LOG: Mencoba GPS Akurasi Tinggi...");
+
+                navigator.geolocation.getCurrentPosition(
+                    onGeoSuccess,
+                    (error) => {
+                        // JIKA GAGAL (Biasanya di Laptop/Windows), COBA LOW ACCURACY
+                        console.warn("LOG: High Accuracy gagal, mencoba Low Accuracy (Mode Laptop)...");
+
+                        navigator.geolocation.getCurrentPosition(
+                            onGeoSuccess,
+                            onGeoError, // Jika Low Accuracy pun gagal, baru error beneran
+                            {
+                                enableHighAccuracy: false, // Penting untuk Laptop
+                                timeout: 15000,            // Waktu tunggu 15 detik
+                                maximumAge: 0
+                            }
+                        );
+                    },
+                    {
+                        enableHighAccuracy: true, // Coba paksa akurat dulu
+                        timeout: 3000,            // Cuma tunggu 3 detik, kalau lama langsung switch ke Low
+                        maximumAge: 0
+                    }
+                );
             },
 
             get grandTotal() {
