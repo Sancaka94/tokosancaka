@@ -340,13 +340,11 @@
             <div class="p-4 bg-slate-50 border-t border-slate-200 z-20 shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">
 
                 <div x-show="activeCategory.includes('laundry')"
-                    x-data="{ isOpen: false }"
-                    x-transition.opacity.duration.300ms
-                    class="mb-3 border border-indigo-100 rounded-xl bg-white shadow-sm overflow-hidden">
+                     x-data="{ isOpen: false }"
+                     x-transition.opacity.duration.300ms
+                     class="mb-3 border border-indigo-100 rounded-xl bg-white shadow-sm overflow-hidden">
 
-                    {{-- Header Accordion --}}
-                    <button @click="isOpen = !isOpen"
-                            class="w-full flex items-center justify-between p-3 bg-indigo-50 hover:bg-indigo-100 transition-colors">
+                    <button @click="isOpen = !isOpen" class="w-full flex items-center justify-between p-3 bg-indigo-50 hover:bg-indigo-100 transition-colors">
                         <div class="flex items-center gap-2">
                             <div class="h-6 w-6 rounded bg-indigo-200 text-indigo-700 flex items-center justify-center text-xs">
                                 <i class="fas fa-tshirt"></i>
@@ -357,40 +355,28 @@
                                     <span x-text="customerName || 'Tanpa Nama'"></span>
                                     <span x-show="customerPhone" x-text="'(' + customerPhone + ')'"></span>
                                 </p>
-                                <p class="text-[9px] text-indigo-400 font-medium italic" x-show="!isOpen && !customerName && !customerPhone">
-                                    Klik untuk isi data...
-                                </p>
+                                <p class="text-[9px] text-indigo-400 font-medium italic" x-show="!isOpen && !customerName && !customerPhone">Klik untuk isi data...</p>
                             </div>
                         </div>
-                        <i class="fas text-indigo-400 text-xs transition-transform duration-300"
-                        :class="isOpen ? 'fa-chevron-up rotate-180' : 'fa-chevron-down'"></i>
+                        <i class="fas text-indigo-400 text-xs transition-transform duration-300" :class="isOpen ? 'fa-chevron-up rotate-180' : 'fa-chevron-down'"></i>
                     </button>
 
-                    {{-- Isi Form (Hidden by default) --}}
                     <div x-show="isOpen" x-collapse class="p-3 space-y-2 bg-white">
-
-                        {{-- INPUT NAMA (Dengan Pencarian) --}}
+                        
                         <div class="relative">
                             <label class="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Nama Pelanggan</label>
                             <div class="relative">
-                                <input type="text"
-                                    x-model="customerName"
-                                    @input.debounce.500ms="searchCustomerByName()"
-                                    placeholder="Contoh: Budi Santoso"
+                                <input type="text" x-model="customerName" @input.debounce.500ms="searchCustomerByName()" placeholder="Contoh: Budi Santoso"
                                     class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 placeholder-slate-400 transition-all">
-
-                                {{-- Loading Nama --}}
                                 <div class="absolute inset-y-0 right-0 flex items-center pr-2" x-show="isSearchingCustomer && customerName.length > 2">
                                     <i class="fas fa-circle-notch fa-spin text-slate-400 text-xs"></i>
                                 </div>
                             </div>
-
-                            {{-- Dropdown Hasil Pencarian Nama --}}
-                            <div x-show="customerNameSearchResults.length > 0" @click.outside="customerNameSearchResults = []"
-                                class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+                            <div x-show="customerNameSearchResults.length > 0" @click.outside="customerNameSearchResults = []" 
+                                 class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
                                 <template x-for="cust in customerNameSearchResults" :key="cust.id">
-                                    <div @click="fillCustomerData(cust); customerNameSearchResults = []"
-                                        class="px-3 py-2 text-xs border-b cursor-pointer hover:bg-indigo-50 border-slate-50 flex flex-col">
+                                    <div @click="fillCustomerData(cust); customerNameSearchResults = []" 
+                                         class="px-3 py-2 text-xs border-b cursor-pointer hover:bg-indigo-50 border-slate-50 flex flex-col">
                                         <span class="font-bold text-slate-700" x-text="cust.name"></span>
                                         <span class="text-[10px] text-slate-500" x-text="cust.whatsapp"></span>
                                     </div>
@@ -398,29 +384,18 @@
                             </div>
                         </div>
 
-                        {{-- INPUT WA (Dengan Pencarian & Auto-Correct) --}}
                         <div class="relative">
                             <label class="block text-[9px] font-bold text-slate-400 mb-1 uppercase">WhatsApp (Wajib)</label>
                             <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-xs">
-                                    <i class="fab fa-whatsapp"></i>
-                                </span>
-                                <input type="tel"
-                                    x-model="customerPhone"
-                                    @input.debounce.500ms="searchCustomerByPhone()"
-                                    @blur="sanitizePhone()"
-                                    placeholder="08xxxxxxxxxx"
-                                    class="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 placeholder-slate-400 transition-all form-control">
-
-                                {{-- Indikator Sukses --}}
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-xs"><i class="fab fa-whatsapp"></i></span>
+                                <input type="tel" x-model="customerPhone" @input.debounce.500ms="searchCustomerByPhone()" @blur="sanitizePhone()" placeholder="08xxxxxxxxxx"
+                                    class="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 placeholder-slate-400 transition-all">
                                 <div class="absolute inset-y-0 right-0 flex items-center pr-2" x-show="isCustomerFound">
                                     <i class="fas fa-check-circle text-emerald-500 text-xs"></i>
                                 </div>
                             </div>
-
-                            {{-- Dropdown Hasil Pencarian WA --}}
-                            <div x-show="customerSearchResults.length > 0" @click.outside="customerSearchResults = []"
-                                class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+                            <div x-show="customerSearchResults.length > 0" @click.outside="customerSearchResults = []" 
+                                 class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
                                 <template x-for="cust in customerSearchResults" :key="cust.id">
                                     <div @click="fillCustomerData(cust)" class="px-3 py-2 text-xs border-b cursor-pointer hover:bg-indigo-50 border-slate-50 flex flex-col">
                                         <span class="font-bold text-slate-700" x-text="cust.name"></span>
@@ -430,20 +405,18 @@
                             </div>
                         </div>
 
-                        {{-- INPUT ALAMAT --}}
                         <div>
                             <label class="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Alamat / Catatan</label>
-                            <textarea x-model="customerAddressDetail" rows="2" placeholder="Alamat lengkap atau catatan khusus cucian..."
+                            <textarea x-model="customerAddressDetail" rows="2" placeholder="Alamat lengkap..."
                                     class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 placeholder-slate-400 resize-none transition-all"></textarea>
                         </div>
 
-                        {{-- TOMBOL GPS --}}
                         <div class="mt-2 mb-2">
-                            <button @click="getGeoLocation()"
+                            <button @click="getGeoLocation()" 
                                     class="w-full py-1.5 border border-dashed border-green-500 text-green-600 rounded-lg text-[10px] font-bold hover:bg-green-50 flex items-center justify-center gap-1 transition">
                                 <span x-show="isGettingLocation"><i class="fas fa-circle-notch fa-spin"></i> Mencari GPS...</span>
                                 <span x-show="!isGettingLocation">
-                                    <i class="fas fa-map-marker-alt"></i>
+                                    <i class="fas fa-map-marker-alt"></i> 
                                     <span x-text="latitude ? 'Update Lokasi GPS' : 'Ambil Lokasi GPS'"></span>
                                 </span>
                             </button>
@@ -452,40 +425,25 @@
                             </div>
                         </div>
 
-                        {{-- TOMBOL AKSI (GRID 2 KOLOM) --}}
                         <div class="grid grid-cols-2 gap-2 mt-2">
-                       
-                            {{-- Tombol 1: Simpan ke Database --}}
                             <button @click="saveCustomerToDB()" 
                                     :disabled="isSavingCustomer || !customerName || !customerPhone"
                                     class="w-full py-2 bg-green-600 text-white text-[10px] font-bold rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
-                                
-                                {{-- Kondisi 1: Tidak sedang loading --}}
-                                <span x-show="!isSavingCustomer" class="flex items-center gap-1">
-                                    <i class="fas fa-save"></i> Simpan Ke Database
-                                </span>
-                                
-                                {{-- Kondisi 2: Sedang loading --}}
-                                <span x-show="isSavingCustomer" style="display: none;" class="flex items-center gap-1">
-                                    <i class="fas fa-circle-notch fa-spin"></i> Proses...
-                                </span>
+                                <span x-show="!isSavingCustomer"><i class="fas fa-save"></i> Simpan Ke Database</span>
+                                <span x-show="isSavingCustomer" style="display: none;"><i class="fas fa-circle-notch fa-spin"></i> Proses...</span>
                             </button>
-                            
 
-                            {{-- Tombol Simpan Sementara (Tutup Modal) --}}
-                            <button @click="isOpen = false"
+                            <button @click="isOpen = false" 
                                     class="w-full py-2 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-lg hover:bg-indigo-100 transition border border-indigo-100">
                                 Simpan Ke Checkout
                             </button>
                         </div>
 
-                        {{-- Tombol Reset jika data ditemukan --}}
                         <div x-show="isCustomerFound" class="pt-2 border-t border-slate-100 mt-2">
                             <button @click="resetCustomerData()" class="w-full text-[10px] text-red-400 hover:text-red-600 hover:underline text-center">
                                 Reset / Input Data Baru
                             </button>
                         </div>
-
                     </div>
                 </div>
 
