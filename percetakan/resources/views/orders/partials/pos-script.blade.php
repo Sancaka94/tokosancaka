@@ -75,12 +75,36 @@
             // COMPUTED PROPERTIES
             // ============================================================
 
-            get subtotal() {
-                return this.cart.reduce((sum, item) => sum + (parseInt(item.price) * parseInt(item.qty)), 0);
+            // FUNGSI BARU: Update jumlah berdasarkan Total Rupiah
+            updateByTotal(id, totalRupiah) {
+                let item = this.cart.find(i => i.id === id);
+                if (item) {
+                    let price = parseFloat(item.price);
+                    let total = parseFloat(totalRupiah);
+
+                    if (price > 0 && total > 0) {
+                        // Hitung Qty: Total / Harga Satuan
+                        let newQty = total / price;
+
+                        // Jika produk fisik (pcs/box), bulatkan ke bawah biar ga aneh (2.5 pcs)
+                        // Jika jasa/laundry (kg/meter), biarkan desimal 2 angka di belakang koma
+                        // Kita deteksi dari unit atau default biarkan desimal untuk fleksibilitas
+                        item.qty = parseFloat(newQty.toFixed(2));
+                    } else {
+                        item.qty = 1;
+                    }
+                }
+                if(this.couponCode) this.checkCoupon();
             },
 
+            // PERBAIKAN: Ubah getter subtotal agar support desimal (Float)
+            get subtotal() {
+                return this.cart.reduce((sum, item) => sum + (parseFloat(item.price) * parseFloat(item.qty)), 0);
+            },
+
+            // PERBAIKAN: Ubah getter total qty agar support desimal
             get cartTotalQty() {
-                return this.cart.reduce((sum, item) => sum + item.qty, 0);
+                return this.cart.reduce((sum, item) => sum + parseFloat(item.qty), 0);
             },
 
             // --- FUNGSI BARU UNTUK KIRIM LOG KE SERVER ---
