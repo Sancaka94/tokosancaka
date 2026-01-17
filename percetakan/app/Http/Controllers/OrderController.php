@@ -1863,4 +1863,24 @@ public function handleDanaCallback(Request $request)
         }
     }
 
+    /**
+     * Helper: Format Nomor HP jadi 08xxx (Hapus +62, spasi, dash)
+     */
+    private function _normalizePhoneNumber($phone)
+    {
+        // 1. Hapus semua karakter selain angka
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+
+        // 2. Koreksi awalan
+        if (substr($phone, 0, 2) == '62') {
+            // Ubah 62 jadi 0
+            $phone = '0' . substr($phone, 2);
+        } elseif (substr($phone, 0, 1) == '8') {
+            // Tambahkan 0 jika diawali 8
+            $phone = '0' . $phone;
+        }
+
+        return $phone;
+    }
+
 }
