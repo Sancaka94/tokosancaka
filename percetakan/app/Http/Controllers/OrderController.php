@@ -498,7 +498,9 @@ class OrderController extends Controller
                 $affiliateMember = Affiliate::find($request->customer_id);
                 if ($affiliateMember) {
                     $customerName  = $affiliateMember->name;
-                    $customerPhone = $affiliateMember->whatsapp;
+                    // PERBAIKAN: Bersihkan nomor HP member juga
+                    $customerPhone = $this->_normalizePhoneNumber($affiliateMember->whatsapp);
+
                     if (!empty($affiliateMember->email)) $customerEmail = $affiliateMember->email;
                 }
             }
