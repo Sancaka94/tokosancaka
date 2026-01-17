@@ -377,16 +377,17 @@
                         <div>
                             <label class="block text-[9px] font-bold text-slate-400 mb-1 uppercase">WhatsApp (Wajib)</label>
                             <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-xs"><i class="fab fa-whatsapp"></i></span>
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-xs">
+                                    <i class="fab fa-whatsapp"></i>
+                                </span>
                                 <input
                                     type="tel"
-                                    class="form-control"
                                     placeholder="08xxxxxxxxxx"
                                     x-model="customerPhone"
                                     x-on:input="customerPhone = customerPhone.replace(/[^0-9]/g, '')"
                                     x-on:blur="sanitizePhone()"
-
-                                    class="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 placeholder-slate-400 transition-all">
+                                    class="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 placeholder-slate-400 transition-all form-control"
+                                >
                             </div>
                         </div>
 
