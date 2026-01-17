@@ -33,6 +33,30 @@
             customerType: 'guest',
             customerName: '',
             customerPhone: '',
+
+            // --- TAMBAHKAN FUNGSI INI ---
+            sanitizePhone() {
+                // 1. Ambil nilai saat ini
+                let hp = this.customerPhone;
+
+                // 2. Hapus semua karakter SELAIN ANGKA (hapus spasi, strip, titik, huruf)
+                // Contoh: "+62 857-4580" menjadi "628574580"
+                hp = hp.replace(/[^0-9]/g, '');
+
+                // 3. Logika Koreksi Awalan (Prefix)
+                if (hp.startsWith('62')) {
+                    // Jika diawali 62, ganti jadi 0
+                    hp = '0' + hp.slice(2);
+                }
+                else if (hp.startsWith('8')) {
+                    // Jika diawali 8 (lupa angka 0), tambahkan 0 di depan
+                    hp = '0' + hp;
+                }
+
+                // 4. Kembalikan ke Input
+                this.customerPhone = hp;
+            },
+
             customerAddressDetail: '',
             selectedCustomerId: '',
 
