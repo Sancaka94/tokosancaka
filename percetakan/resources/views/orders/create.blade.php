@@ -276,36 +276,65 @@
                     <template x-for="item in cart" :key="item.id">
                         <div class="flex items-start gap-3 p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-red-200 transition-colors group">
 
-                            <div class="flex flex-col items-center bg-slate-50 rounded-lg border border-slate-200 shrink-0 w-10">
-                                <button @click="updateQty(item.id, 1)" class="w-full h-6 flex items-center justify-center text-slate-500 hover:text-white hover:bg-green-500 rounded-t-lg transition border-b border-slate-200">
-                                    <i class="fas fa-plus text-[8px]"></i>
+                            {{-- Kolom Qty (Kg/Pcs) --}}
+                            <div class="flex flex-col items-center bg-slate-50 rounded-lg border border-slate-200 shrink-0 w-12">
+                                <button @click="updateQty(item.id, 1)" class="w-full h-7 flex items-center justify-center text-slate-500 hover:text-white hover:bg-green-500 rounded-t-lg transition border-b border-slate-200">
+                                    <i class="fas fa-plus text-[10px]"></i>
                                 </button>
-                                <input type="number" x-model="item.qty" @change="validateManualQty(item.id)"
-                                       class="w-full text-center text-xs font-bold bg-transparent border-none p-0 focus:ring-0 text-slate-800 h-8">
-                                <button @click="updateQty(item.id, -1)" class="w-full h-6 flex items-center justify-center text-slate-500 hover:text-white hover:bg-red-500 rounded-b-lg transition border-t border-slate-200">
-                                    <i class="fas fa-minus text-[8px]"></i>
+
+                                {{-- Input Qty (Bisa Desimal) --}}
+                                <input type="number" step="0.01" x-model="item.qty" @change="validateManualQty(item.id)"
+                                    class="w-full text-center text-xs font-bold bg-transparent border-none p-0 focus:ring-0 text-slate-800 h-8"
+                                    title="Jumlah (Kg/Pcs)">
+
+                                <button @click="updateQty(item.id, -1)" class="w-full h-7 flex items-center justify-center text-slate-500 hover:text-white hover:bg-red-500 rounded-b-lg transition border-t border-slate-200">
+                                    <i class="fas fa-minus text-[10px]"></i>
                                 </button>
                             </div>
 
-                            <div class="h-10 w-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
+                            {{-- Gambar Produk --}}
+                            <div class="h-12 w-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
                                 <template x-if="item.image">
                                     <img :src="item.image" class="h-full w-full object-contain">
                                 </template>
                                 <template x-if="!item.image">
-                                    <i class="fas fa-box text-slate-300 text-xs"></i>
+                                    <i class="fas fa-box text-slate-300 text-sm"></i>
                                 </template>
                             </div>
 
+                            {{-- Detail Produk --}}
                             <div class="flex-1 min-w-0 py-0.5">
-                                <div class="font-bold text-slate-700 text-xs leading-tight mb-1" x-text="item.name"></div>
-                                <div class="flex justify-between items-center text-[10px] text-slate-400">
-                                    <span>@ <span x-text="rupiah(item.price)"></span></span>
-                                    <span class="text-slate-800 font-black text-xs" x-text="rupiah(item.price * item.qty)"></span>
+                                <div class="font-bold text-slate-700 text-xs leading-tight mb-2 truncate" x-text="item.name"></div>
+
+                                <div class="flex items-center gap-2">
+                                    {{-- Harga Satuan (Readonly) --}}
+                                    <div class="text-[9px] text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                                        @ <span x-text="rupiah(item.price)"></span>
+                                    </div>
+
+                                    <i class="fas fa-arrow-right text-[8px] text-slate-300"></i>
+
+                                    {{-- INPUT TOTAL RUPIAH (FITUR BARU) --}}
+                                    <div class="flex-1 relative">
+                                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">Rp</span>
+                                        {{--
+                                            Logika x-model:
+                                            Kita tidak bisa langsung x-model ke qty karena butuh konversi.
+                                            Jadi kita pakai :value untuk menampilkan total,
+                                            dan @input untuk mengubah qty secara mundur.
+                                        --}}
+                                        <input type="number"
+                                            :value="Math.round(item.price * item.qty)"
+                                            @input="updateByTotal(item.id, $event.target.value)"
+                                            class="w-full pl-6 pr-2 py-1 text-xs font-black text-slate-800 bg-white border border-slate-200 rounded focus:ring-1 focus:ring-red-500 focus:border-red-500 text-right shadow-sm"
+                                            placeholder="0">
+                                    </div>
                                 </div>
                             </div>
 
-                            <button @click="removeFromCart(item.id)" class="text-slate-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <i class="fas fa-trash-alt text-xs"></i>
+                            {{-- Tombol Hapus --}}
+                            <button @click="removeFromCart(item.id)" class="text-slate-300 hover:text-red-500 p-1 self-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="fas fa-trash-alt text-sm"></i>
                             </button>
                         </div>
                     </template>
