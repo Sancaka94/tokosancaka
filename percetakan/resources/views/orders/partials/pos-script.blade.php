@@ -19,6 +19,11 @@
             isProcessing: false,
             isValidatingCoupon: false,
 
+            // --- [BARU] STATE VARIAN ---
+            variantSelectorOpen: false,      // Kontrol Modal Varian
+            selectedProductForVariant: null, // Data produk induk sementara
+            productVariants: [],
+
             // --- 2. KUPON ---
             couponCode: '{{ $autoCoupon ?? "" }}',
             couponMessage: '',
@@ -250,33 +255,82 @@
                 } catch (error) { this.couponMessage = 'Gagal cek server.'; this.discountAmount = 0; } finally { this.isValidatingCoupon = false; }
             },
 
-            // PERHATIKAN URUTAN DALAM KURUNG:
-addToCart(id, name, price, maxStock, weight = 0, image = null) {
+            // ---------------------------------------------------------
+            // HAPUS function addToCart LAMA, GANTI DENGAN 3 FUNGSI INI:
+            // ---------------------------------------------------------
 
-    // Logika di bawah ini sudah BENAR, tidak perlu diubah
-    if (maxStock <= 0) { alert('Stok Habis!'); return; }
+            // 1. Method Add To Cart UTAMA
+            async addToCart(id, name, price, maxStock, weight = 0, image = null, hasVariant = false) {
+                if (hasVariant) {
+                    this.selectedProductForVariant = { id, name, image, weight };
+                    this.variantSelectorOpen = true;
+                    this.productVariants = [];
 
-    let realWeight = (parseInt(weight) > 0) ? parseInt(weight) : 5;
+                    try {
+                        let response = await fetch(`{{ url('/products') }}/${id}/variants`);
+                        let data = await response.json();
+                        this.productVariants = data.variants;
+                    } catch (e) {
+                        alert('Gagal memuat varian produk.');
+                        this.variantSelectorOpen = false;
+                    }
+                    return;
+                }
+                this.processAddItem(id, name, price, maxStock, weight, image);
+            },
 
-    let item = this.cart.find(i => i.id === id);
-    if (item) {
-        if (item.qty < maxStock) item.qty++;
-        else alert('Stok maksimal tercapai!');
-    } else {
-        this.cart.push({
-            id,
-            name,
-            price,
-            qty: 1,
-            maxStock,
-            image, // Image sudah benar masuk sini
-            weight: realWeight
-        });
-    }
+            // 2. Method Pilih Varian dari Modal
+            addVariantToCart(variant) {
+                let parent = this.selectedProductForVariant;
+                let fullName = `${parent.name} (${variant.name})`;
+                let cartId = `${parent.id}-VAR-${variant.id}`;
 
-    if(navigator.vibrate) navigator.vibrate(30);
-    if(this.couponCode) this.checkCoupon();
-},
+                this.processAddItem(
+                    cartId,
+                    fullName,
+                    variant.price,
+                    variant.stock,
+                    parent.weight,
+                    parent.image,
+                    variant.id
+                );
+
+                this.variantSelectorOpen = false;
+            },
+
+            // 3. Method Helper Masuk Keranjang
+            processAddItem(id, name, price, maxStock, weight, image, variantId = null) {
+                if (maxStock <= 0) { alert('Stok Habis!'); return; }
+
+                let realWeight = (parseInt(weight) > 0) ? parseInt(weight) : 5;
+                let item = this.cart.find(i => i.id === id);
+
+                if (item) {
+                    if (item.qty < maxStock) {
+                        item.qty++;
+                    } else {
+                        alert('Stok maksimal tercapai!');
+                    }
+                } else {
+                    this.cart.push({
+                        id,
+                        name,
+                        price,
+                        qty: 1,
+                        maxStock,
+                        image,
+                        weight: realWeight,
+                        variant_id: variantId
+                    });
+                }
+
+                if(navigator.vibrate) navigator.vibrate(30);
+                if(this.couponCode) this.checkCoupon();
+            },
+
+            // ---------------------------------------------------------
+            // AKHIR KODE BARU
+            // ---------------------------------------------------------
 
             updateQty(id, amount) {
                 let item = this.cart.find(i => i.id === id);

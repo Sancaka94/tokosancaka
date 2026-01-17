@@ -467,6 +467,7 @@
         </div>
     </div>
 
+    @include('orders.partials.variantModal')
     @include('orders.partials.noteModal')
     @include('orders.partials.payment-modal')
 
