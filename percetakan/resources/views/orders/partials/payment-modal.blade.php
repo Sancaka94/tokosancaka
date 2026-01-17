@@ -1,93 +1,92 @@
 <div x-show="showPaymentModal" style="display: none;"
-     class="fixed inset-0 z-50 bg-slate-100 flex flex-col"
+     class="fixed inset-0 z-50 flex flex-col bg-slate-100/90 backdrop-blur-sm"
      x-transition:enter="transition ease-out duration-300"
-     x-transition:enter-start="opacity-0 translate-y-full"
-     x-transition:enter-end="opacity-100 translate-y-0"
+     x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-10 sm:scale-95"
+     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
      x-transition:leave="transition ease-in duration-200"
-     x-transition:leave-start="opacity-100 translate-y-0"
-     x-transition:leave-end="opacity-0 translate-y-full">
-
-    <div class="h-16 px-6 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm shrink-0 z-20">
+     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+     x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-10 sm:scale-95"
+     style="will-change: transform, opacity;"> <div class="flex items-center justify-between h-16 px-4 bg-white border-b shadow-sm sm:px-6 border-slate-200 shrink-0 z-20">
         <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+            <div class="flex items-center justify-center w-10 h-10 text-red-600 rounded-xl bg-red-50">
                 <i class="fas fa-cash-register text-xl"></i>
             </div>
             <div>
-                <h3 class="font-black text-xl text-slate-800 leading-tight">Pembayaran</h3>
-                <p class="text-xs text-slate-500 font-medium">Selesaikan transaksi pesanan ini</p>
+                <h3 class="text-lg font-black leading-tight text-slate-800 sm:text-xl">Pembayaran</h3>
+                <p class="text-xs font-medium text-slate-500">Selesaikan transaksi pesanan ini</p>
             </div>
         </div>
 
-        <button @click="showPaymentModal = false" class="group flex items-center gap-2 px-4 py-2 rounded-full bg-red-500 hover:bg-red-600 text-slate-500 hover:text-red-100 transition border border-transparent hover:border-red-100">
-            <span class="text-xs font-bold hidden sm:block">BATAL / TUTUP</span>
+        <button @click="showPaymentModal = false" class="group flex items-center gap-2 px-4 py-2 rounded-full bg-red-500 hover:bg-red-600 text-slate-500 hover:text-red-100 transition border border-transparent hover:border-red-100 active:scale-95">
+            <span class="hidden text-xs font-bold sm:block">BATAL / TUTUP</span>
             <i class="fas fa-times text-lg"></i>
         </button>
     </div>
 
-    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+    <div class="relative flex flex-col flex-1 overflow-hidden lg:flex-row">
 
-        <div class="lg:w-[35%] bg-white border-r border-slate-200 overflow-y-auto custom-scrollbar flex flex-col order-2 lg:order-1 h-full shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10">
-            <div class="p-6 space-y-6">
-                <div class="text-center p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Total Yang Harus Dibayar</p>
-                    <h2 class="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight break-all" x-text="'Rp ' + rupiah(grandTotal)"></h2>
-                    <div x-show="discountAmount > 0" class="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">
+        <div class="lg:w-[35%] bg-white border-r border-slate-200 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col order-2 lg:order-1 h-full shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 overscroll-contain">
+            <div class="p-4 space-y-4 sm:p-6 sm:space-y-6">
+                <div class="p-4 text-center border sm:p-6 bg-slate-50 rounded-2xl border-slate-100">
+                    <p class="mb-2 text-xs font-bold tracking-widest uppercase text-slate-400">Total Yang Harus Dibayar</p>
+                    <h2 class="text-3xl font-black tracking-tight text-slate-800 sm:text-5xl break-all" x-text="'Rp ' + rupiah(grandTotal)"></h2>
+                    <div x-show="discountAmount > 0" class="inline-flex items-center gap-1 px-3 py-1 mt-2 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700">
                         <i class="fas fa-check-circle"></i> Hemat Rp <span x-text="rupiah(discountAmount)"></span>
                     </div>
                 </div>
 
                 <div class="space-y-3">
-                    <h4 class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-2">Rincian Biaya</h4>
+                    <h4 class="pb-2 text-sm font-bold border-b text-slate-700 border-slate-100">Rincian Biaya</h4>
 
-                    <div class="flex justify-between items-center text-sm text-slate-600">
+                    <div class="flex items-center justify-between text-sm text-slate-600">
                         <span>Subtotal (<span x-text="cartTotalQty"></span> Item)</span>
                         <span class="font-bold text-slate-800" x-text="'Rp ' + rupiah(subtotal)"></span>
                     </div>
 
-                    <div x-show="discountAmount > 0" class="flex justify-between items-center text-sm text-emerald-600">
+                    <div x-show="discountAmount > 0" class="flex items-center justify-between text-sm text-emerald-600">
                         <span>Potongan Diskon</span>
                         <span class="font-bold" x-text="'- Rp ' + rupiah(discountAmount)"></span>
                     </div>
 
-                    <div x-show="deliveryType === 'shipping'" class="flex justify-between items-center text-sm text-blue-600">
+                    <div x-show="deliveryType === 'shipping'" class="flex items-center justify-between text-sm text-blue-600">
                         <span>Ongkos Kirim</span>
                         <span class="font-bold" x-text="shippingCost > 0 ? '+ Rp ' + rupiah(shippingCost) : 'Rp 0'"></span>
                     </div>
 
-                    <div class="border-t border-dashed border-slate-300 my-2"></div>
+                    <div class="my-2 border-t border-dashed border-slate-300"></div>
 
-                    <div class="flex justify-between items-center text-base">
+                    <div class="flex items-center justify-between text-base">
                         <span class="font-bold text-slate-800">Total Akhir</span>
-                        <span class="font-black text-red-600 text-lg" x-text="'Rp ' + rupiah(grandTotal)"></span>
+                        <span class="text-lg font-black text-red-600" x-text="'Rp ' + rupiah(grandTotal)"></span>
                     </div>
                 </div>
             </div>
 
-            <div class="mt-auto p-6 bg-slate-50 border-t border-slate-100 hidden lg:block">
-                <div class="flex items-center gap-3 text-slate-400 text-xs">
+            <div class="hidden p-6 mt-auto border-t bg-slate-50 border-slate-100 lg:block">
+                <div class="flex items-center gap-3 text-xs text-slate-400">
                     <i class="fas fa-shield-alt text-xl"></i>
                     <p>Transaksi aman. Pastikan data sudah benar.</p>
                 </div>
             </div>
         </div>
 
-        <div class="lg:w-[65%] bg-slate-50/50 overflow-y-auto custom-scrollbar p-4 sm:p-8 order-1 lg:order-2 h-full">
+        <div class="lg:w-[65%] bg-slate-50/50 overflow-y-auto overflow-x-hidden custom-scrollbar p-4 sm:p-8 order-1 lg:order-2 h-full overscroll-contain">
             <div class="max-w-3xl mx-auto space-y-6">
 
-                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
-                        <span class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">1</span>
+                <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
+                    <label class="flex items-center gap-2 mb-4 text-xs font-bold tracking-widest uppercase text-slate-500">
+                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-600">1</span>
                         Data Pelanggan & Pengiriman
                     </label>
 
-                    <div class="flex p-1 bg-slate-100 border border-slate-200 rounded-xl mb-4 w-full sm:w-80">
+                    <div class="flex w-full p-1 mb-4 border bg-slate-100 border-slate-200 rounded-xl sm:w-80">
                         <button @click="customerType = 'guest'; selectedCustomerId = '';"
-                                class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
+                                class="flex-1 py-2 text-xs font-bold transition-all rounded-lg active:scale-95"
                                 :class="customerType === 'guest' ? 'bg-white text-red-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'">
                             Tamu (Guest)
                         </button>
                         <button @click="customerType = 'member'"
-                                class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
+                                class="flex-1 py-2 text-xs font-bold transition-all rounded-lg active:scale-95"
                                 :class="customerType === 'member' ? 'bg-white text-green-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'">
                             Member
                         </button>
@@ -101,25 +100,25 @@
                         <div class="grid grid-cols-3 gap-2">
                             {{-- 1. Ambil di Toko --}}
                             <button @click="deliveryType = 'pickup'; shippingCost = 0; selectedCourier = null"
-                                    class="py-2 px-2 rounded-lg border text-[10px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1 transition h-14 sm:h-auto"
+                                    class="py-2 px-2 rounded-lg border text-[10px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1 transition h-14 sm:h-auto active:scale-95"
                                     :class="deliveryType === 'pickup' ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'">
-                                <i class="fas fa-store text-lg sm:text-sm"></i>
+                                <i class="text-lg fas fa-store sm:text-sm"></i>
                                 <span class="text-center">Ambil di Toko</span>
                             </button>
 
-                            {{-- 2. Antar Jemput (BARU) --}}
+                            {{-- 2. Antar Jemput --}}
                             <button @click="deliveryType = 'delivery'; getGeoLocation(); shippingCost = 0; selectedCourier = null"
-                                    class="py-2 px-2 rounded-lg border text-[10px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1 transition h-14 sm:h-auto"
+                                    class="py-2 px-2 rounded-lg border text-[10px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1 transition h-14 sm:h-auto active:scale-95"
                                     :class="deliveryType === 'delivery' ? 'border-purple-500 bg-purple-50 text-purple-700 ring-1 ring-purple-500' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'">
-                                <i class="fas fa-motorcycle text-lg sm:text-sm"></i>
+                                <i class="text-lg fas fa-motorcycle sm:text-sm"></i>
                                 <span class="text-center">Antar Jemput</span>
                             </button>
 
                             {{-- 3. Ekspedisi --}}
                             <button @click="deliveryType = 'shipping'"
-                                    class="py-2 px-2 rounded-lg border text-[10px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1 transition h-14 sm:h-auto"
+                                    class="py-2 px-2 rounded-lg border text-[10px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1 transition h-14 sm:h-auto active:scale-95"
                                     :class="deliveryType === 'shipping' ? 'border-orange-500 bg-orange-50 text-orange-700 ring-1 ring-orange-500' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'">
-                                <i class="fas fa-truck text-lg sm:text-sm"></i>
+                                <i class="text-lg fas fa-truck sm:text-sm"></i>
                                 <span class="text-center">Ekspedisi</span>
                             </button>
                         </div>
@@ -127,30 +126,29 @@
 
                     {{-- INPUT DATA TAMU --}}
                     <div x-show="customerType === 'guest'" x-transition class="space-y-4 mb-6">
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200" :class="{'bg-purple-50 border-purple-200': deliveryType === 'delivery'}">
+                        <div class="p-4 border bg-slate-50 rounded-xl border-slate-200" :class="{'bg-purple-50 border-purple-200': deliveryType === 'delivery'}">
 
-                            {{-- Input Hidden GPS --}}
                             <input type="hidden" name="latitude" x-model="latitude">
                             <input type="hidden" name="longitude" x-model="longitude">
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 {{-- Nama --}}
                                 <div>
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nama Pelanggan <span class="text-red-500">*</span></label>
                                     <input type="text" x-model="customerName" placeholder="Nama Pelanggan"
-                                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-sm font-bold text-slate-700">
+                                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm font-bold text-slate-700 shadow-sm">
                                 </div>
                                 {{-- WhatsApp --}}
                                 <div>
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">WhatsApp <span class="text-red-500">*</span></label>
                                     <div class="relative">
-                                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fab fa-whatsapp"></i></span>
+                                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fab fa-whatsapp"></i></span>
                                         <input type="number" x-model="customerPhone" placeholder="08xxxxxxx"
-                                               class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-sm font-bold text-slate-700">
+                                               class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm font-bold text-slate-700 shadow-sm">
                                     </div>
                                 </div>
 
-                                {{-- Alamat (Tampil di Pickup & Delivery) --}}
+                                {{-- Alamat --}}
                                 <div class="md:col-span-2" x-show="deliveryType === 'pickup' || deliveryType === 'delivery'" x-transition>
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">
                                         <span x-text="deliveryType === 'delivery' ? 'Alamat Lengkap (Wajib)' : 'Alamat (Opsional)'"></span>
@@ -158,7 +156,7 @@
                                     </label>
                                     <textarea x-model="customerAddressDetail" rows="2"
                                               :placeholder="deliveryType === 'delivery' ? 'Mohon tulis alamat lengkap untuk kurir...' : 'Catatan tambahan (jika ada)...'"
-                                              class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-sm font-medium text-slate-700 resize-none transition-all"></textarea>
+                                              class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm font-medium text-slate-700 resize-none transition-all shadow-sm"></textarea>
 
                                     {{-- Status GPS --}}
                                     <div x-show="deliveryType === 'delivery'" class="mt-2 text-[10px] font-bold flex items-center gap-1 transition-colors"
@@ -171,60 +169,60 @@
                         </div>
                     </div>
 
-                        <div x-show="deliveryType === 'shipping'">
-                            <div class="mb-3">
-                                <label class="text-[10px] font-bold text-slate-500">Cari Kecamatan / Kelurahan*</label>
-                                <div class="relative mt-1">
-                                    <input type="text" x-model="searchQuery" @input.debounce.500ms="searchLocation()" placeholder="Ketik nama kecamatan..." class="w-full pl-8 pr-4 py-2 rounded-lg border border-slate-300 text-sm">
-                                    <i class="fas fa-search absolute left-3 top-3 text-slate-400 text-xs"></i>
+                    <div x-show="deliveryType === 'shipping'">
+                        <div class="mb-3">
+                            <label class="text-[10px] font-bold text-slate-500">Cari Kecamatan / Kelurahan*</label>
+                            <div class="relative mt-1">
+                                <input type="text" x-model="searchQuery" @input.debounce.500ms="searchLocation()" placeholder="Ketik nama kecamatan..."
+                                       class="w-full pl-8 pr-4 py-2 border rounded-lg border-slate-300 text-base sm:text-sm shadow-sm">
+                                <i class="absolute text-xs fas fa-search left-3 top-3 text-slate-400"></i>
 
-                                    <div x-show="searchResults.length > 0" @click.outside="searchResults = []" class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                                        <template x-for="loc in searchResults">
-                                            <div @click="selectLocation(loc)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-slate-50 text-xs">
-                                                <p class="font-bold text-slate-700" x-text="loc.full_address"></p>
-                                            </div>
-                                        </template>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="text-[10px] font-bold text-slate-500">Detail Alamat (Jalan, RT/RW)*</label>
-                                <textarea x-model="customerAddressDetail" rows="2" class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-300 text-sm resize-none"></textarea>
-                            </div>
-
-                            <div x-show="isLoadingShipping" class="text-center py-4 bg-slate-50 rounded-lg border border-dashed border-slate-300">
-                                <i class="fas fa-circle-notch fa-spin text-blue-500"></i> <span class="text-xs text-slate-500 ml-2">Cek Ongkir...</span>
-                            </div>
-
-                            <div x-show="!isLoadingShipping && courierList.length > 0" class="mt-4">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Pilih Layanan Pengiriman</p>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
-                                    <template x-for="courier in courierList" :key="courier.service + courier.cost">
-                                        <div @click="selectCourier(courier)"
-                                             class="flex items-center p-2 rounded-lg border cursor-pointer transition hover:bg-blue-50 relative"
-                                             :class="selectedCourier && selectedCourier.service === courier.service && selectedCourier.cost === courier.cost ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 bg-white'">
-                                            <div class="w-10 h-10 bg-white rounded border border-slate-100 flex items-center justify-center p-1 mr-3 shrink-0">
-                                                <img :src="courier.logo" alt="Logo" class="w-full h-full object-contain" x-show="courier.logo">
-                                                <i class="fas fa-box text-slate-300" x-show="!courier.logo"></i>
-                                            </div>
-                                            <div class="flex-1 min-w-0">
-                                                <div class="flex justify-between items-center">
-                                                    <p class="text-[11px] font-bold text-slate-700 truncate" x-text="courier.name"></p>
-                                                    <p class="text-xs font-black text-blue-600" x-text="rupiah(courier.cost)"></p>
-                                                </div>
-                                                <p class="text-[10px] text-slate-500 truncate" x-text="courier.service + ' (' + courier.etd + ' Hari)'"></p>
-                                            </div>
-                                            <div x-show="selectedCourier && selectedCourier.service === courier.service" class="absolute top-1 right-1 text-blue-600"><i class="fas fa-check-circle text-[10px]"></i></div>
+                                <div x-show="searchResults.length > 0" @click.outside="searchResults = []" class="absolute z-50 w-full mt-1 overflow-y-auto bg-white border shadow-xl border-slate-200 rounded-lg max-h-48">
+                                    <template x-for="loc in searchResults">
+                                        <div @click="selectLocation(loc)" class="px-4 py-2 text-xs border-b cursor-pointer hover:bg-blue-50 border-slate-50">
+                                            <p class="font-bold text-slate-700" x-text="loc.full_address"></p>
                                         </div>
                                     </template>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-[10px] font-bold text-slate-500">Detail Alamat (Jalan, RT/RW)*</label>
+                            <textarea x-model="customerAddressDetail" rows="2" class="w-full px-3 py-2 mt-1 border rounded-lg border-slate-300 text-base sm:text-sm resize-none shadow-sm"></textarea>
+                        </div>
+
+                        <div x-show="isLoadingShipping" class="py-4 text-center border border-dashed rounded-lg bg-slate-50 border-slate-300">
+                            <i class="text-blue-500 fas fa-circle-notch fa-spin"></i> <span class="ml-2 text-xs text-slate-500">Cek Ongkir...</span>
+                        </div>
+
+                        <div x-show="!isLoadingShipping && courierList.length > 0" class="mt-4">
+                            <p class="mb-2 text-[10px] font-bold text-slate-400 uppercase">Pilih Layanan Pengiriman</p>
+                            <div class="grid grid-cols-1 gap-2 p-1 overflow-y-auto sm:grid-cols-2 max-h-60 custom-scrollbar">
+                                <template x-for="courier in courierList" :key="courier.service + courier.cost">
+                                    <div @click="selectCourier(courier)"
+                                         class="relative flex items-center p-2 transition border rounded-lg cursor-pointer hover:bg-blue-50 active:scale-[0.98]"
+                                         :class="selectedCourier && selectedCourier.service === courier.service && selectedCourier.cost === courier.cost ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 bg-white'">
+                                        <div class="flex items-center justify-center w-10 h-10 p-1 mr-3 bg-white border rounded shrink-0 border-slate-100">
+                                            <img :src="courier.logo" loading="lazy" alt="Logo" class="object-contain w-full h-full" x-show="courier.logo">
+                                            <i class="text-slate-300 fas fa-box" x-show="!courier.logo"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center justify-between">
+                                                <p class="text-[11px] font-bold text-slate-700 truncate" x-text="courier.name"></p>
+                                                <p class="text-xs font-black text-blue-600" x-text="rupiah(courier.cost)"></p>
+                                            </div>
+                                            <p class="text-[10px] text-slate-500 truncate" x-text="courier.service + ' (' + courier.etd + ' Hari)'"></p>
+                                        </div>
+                                        <div x-show="selectedCourier && selectedCourier.service === courier.service" class="absolute text-blue-600 top-1 right-1"><i class="fas fa-check-circle text-[10px]"></i></div>
+                                    </div>
+                                </template>
                             </div>
                         </div>
                     </div>
 
                     <div x-show="customerType === 'member'" style="display: none;" x-transition>
                         <label class="text-[10px] font-bold text-slate-500">Cari Member Terdaftar</label>
-                        <select x-model="selectedCustomerId" class="w-full mt-1 px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 font-bold text-slate-700 focus:ring-2 focus:ring-red-500">
+                        <select x-model="selectedCustomerId" class="w-full px-4 py-3 mt-1 font-bold border border-slate-200 bg-slate-50 rounded-xl text-base sm:text-sm text-slate-700 focus:ring-2 focus:ring-red-500">
                             <option value="">-- Pilih Member --</option>
                             @foreach($customers as $c)
                                 <option value="{{ $c->id }}"
@@ -236,12 +234,12 @@
                             @endforeach
                         </select>
 
-                        <div x-show="selectedCustomerId" class="mt-3 flex gap-3">
-                            <div class="flex-1 p-3 bg-blue-50 rounded-xl border border-blue-100 flex flex-col items-center">
+                        <div x-show="selectedCustomerId" class="flex gap-3 mt-3">
+                            <div class="flex flex-col items-center flex-1 p-3 border border-blue-100 bg-blue-50 rounded-xl">
                                 <span class="text-[10px] text-blue-400 font-bold uppercase">Saldo Topup</span>
                                 <span class="text-sm font-black text-blue-700" x-text="'Rp ' + rupiah(getSelectedMemberSaldo())"></span>
                             </div>
-                            <div class="flex-1 p-3 bg-purple-50 rounded-xl border border-purple-100 flex flex-col items-center">
+                            <div class="flex flex-col items-center flex-1 p-3 border border-purple-100 bg-purple-50 rounded-xl">
                                 <span class="text-[10px] text-purple-400 font-bold uppercase">Profit Afiliasi</span>
                                 <span class="text-sm font-black text-purple-700" x-text="'Rp ' + rupiah(getSelectedAffiliateBalance())"></span>
                             </div>
@@ -249,80 +247,80 @@
                     </div>
                 </div>
 
-                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
-                        <span class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">2</span>
+                <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
+                    <label class="flex items-center gap-2 mb-4 text-xs font-bold tracking-widest uppercase text-slate-500">
+                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-600">2</span>
                         Metode Pembayaran
                     </label>
 
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
 
                         <div @click="paymentMethod = 'pay_later'"
-                            class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
+                            class="relative flex flex-col items-center justify-center h-20 gap-1 p-2 transition border-2 cursor-pointer rounded-xl group active:scale-95"
                             :class="paymentMethod === 'pay_later' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-100 bg-white hover:border-amber-200 hover:bg-slate-50'">
-                            <i class="fas fa-clock text-lg"></i>
+                            <i class="text-lg fas fa-clock"></i>
                             <span class="text-[10px] font-bold text-center">Bayar Nanti</span>
-                            <div x-show="paymentMethod === 'pay_later'" class="absolute top-1 right-1 text-amber-500"><i class="fas fa-check-circle text-[10px]"></i></div>
+                            <div x-show="paymentMethod === 'pay_later'" class="absolute text-amber-500 top-1 right-1"><i class="fas fa-check-circle text-[10px]"></i></div>
                         </div>
 
                         <div @click="paymentMethod = 'qris_manual'"
-                            class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
+                            class="relative flex flex-col items-center justify-center h-20 gap-1 p-2 transition border-2 cursor-pointer rounded-xl group active:scale-95"
                             :class="paymentMethod === 'qris_manual' ? 'border-gray-800 bg-gray-100 text-gray-900' : 'border-slate-100 bg-white hover:border-gray-400 hover:bg-slate-50'">
-                            <i class="fas fa-qrcode text-lg"></i>
+                            <i class="text-lg fas fa-qrcode"></i>
                             <span class="text-[10px] font-bold text-center">QRIS Manual</span>
-                            <div x-show="paymentMethod === 'qris_manual'" class="absolute top-1 right-1 text-gray-800"><i class="fas fa-check-circle text-[10px]"></i></div>
+                            <div x-show="paymentMethod === 'qris_manual'" class="absolute text-gray-800 top-1 right-1"><i class="fas fa-check-circle text-[10px]"></i></div>
                         </div>
 
                         <div @click="paymentMethod = 'cash'"
-                             class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
+                             class="relative flex flex-col items-center justify-center h-20 gap-1 p-2 transition border-2 cursor-pointer rounded-xl group active:scale-95"
                              :class="paymentMethod === 'cash' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200 hover:bg-slate-50'">
-                            <i class="fas fa-money-bill-wave text-lg"></i>
+                            <i class="text-lg fas fa-money-bill-wave"></i>
                             <span class="text-[10px] font-bold text-center">Tunai</span>
-                            <div x-show="paymentMethod === 'cash'" class="absolute top-1 right-1 text-red-500"><i class="fas fa-check-circle text-[10px]"></i></div>
+                            <div x-show="paymentMethod === 'cash'" class="absolute text-red-500 top-1 right-1"><i class="fas fa-check-circle text-[10px]"></i></div>
                         </div>
 
                         <div @click="paymentMethod = 'saldo'"
-                             class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
+                             class="relative flex flex-col items-center justify-center h-20 gap-1 p-2 transition border-2 cursor-pointer rounded-xl group active:scale-95"
                              :class="paymentMethod === 'saldo' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50'">
-                            <i class="fas fa-wallet text-lg"></i>
+                            <i class="text-lg fas fa-wallet"></i>
                             <span class="text-[10px] font-bold text-center">Saldo</span>
-                            <div x-show="paymentMethod === 'saldo'" class="absolute top-1 right-1 text-blue-500"><i class="fas fa-check-circle text-[10px]"></i></div>
+                            <div x-show="paymentMethod === 'saldo'" class="absolute text-blue-500 top-1 right-1"><i class="fas fa-check-circle text-[10px]"></i></div>
                         </div>
 
                         <div @click="selectAffiliatePayment()"
-                             class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
+                             class="relative flex flex-col items-center justify-center h-20 gap-1 p-2 transition border-2 cursor-pointer rounded-xl group active:scale-95"
                              :class="paymentMethod === 'affiliate_balance' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-slate-100 bg-white hover:border-purple-200 hover:bg-slate-50'">
-                            <i class="fas fa-coins text-lg"></i>
+                            <i class="text-lg fas fa-coins"></i>
                             <span class="text-[10px] font-bold text-center">Profit</span>
-                            <div x-show="paymentMethod === 'affiliate_balance'" class="absolute top-1 right-1 text-purple-500"><i class="fas fa-check-circle text-[10px]"></i></div>
+                            <div x-show="paymentMethod === 'affiliate_balance'" class="absolute text-purple-500 top-1 right-1"><i class="fas fa-check-circle text-[10px]"></i></div>
                         </div>
 
                         <div @click="paymentMethod = 'tripay'; fetchTripayChannels()"
-                             class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
+                             class="relative flex flex-col items-center justify-center h-20 gap-1 p-2 transition border-2 cursor-pointer rounded-xl group active:scale-95"
                              :class="paymentMethod === 'tripay' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200 hover:bg-slate-50'">
-                            <i class="fas fa-qrcode text-lg"></i>
+                            <i class="text-lg fas fa-qrcode"></i>
                             <span class="text-[10px] font-bold text-center">QRIS/VA</span>
-                            <div x-show="paymentMethod === 'tripay'" class="absolute top-1 right-1 text-red-500"><i class="fas fa-check-circle text-[10px]"></i></div>
+                            <div x-show="paymentMethod === 'tripay'" class="absolute text-red-500 top-1 right-1"><i class="fas fa-check-circle text-[10px]"></i></div>
                         </div>
 
                         <div @click="paymentMethod = 'doku'"
-                             class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
+                             class="relative flex flex-col items-center justify-center h-20 gap-1 p-2 transition border-2 cursor-pointer rounded-xl group active:scale-95"
                              :class="paymentMethod === 'doku' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200 hover:bg-slate-50'">
-                            <i class="fas fa-credit-card text-lg"></i>
+                            <i class="text-lg fas fa-credit-card"></i>
                             <span class="text-[10px] font-bold text-center">DOKU</span>
-                            <div x-show="paymentMethod === 'doku'" class="absolute top-1 right-1 text-red-500"><i class="fas fa-check-circle text-[10px]"></i></div>
+                            <div x-show="paymentMethod === 'doku'" class="absolute text-red-500 top-1 right-1"><i class="fas fa-check-circle text-[10px]"></i></div>
                         </div>
 
                         <div @click="paymentMethod = 'dana'"
-                            class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
+                            class="relative flex flex-col items-center justify-center h-20 gap-1 p-2 transition border-2 cursor-pointer rounded-xl group active:scale-95"
                             :class="paymentMethod === 'dana' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50'">
 
-                            <img src="https://tokosancaka.com/storage/logo/dana.png"
-                                alt="DANA" class="h-4 object-contain mb-1 transition-all group-hover:scale-110">
+                            <img src="https://tokosancaka.com/storage/logo/dana.png" loading="lazy"
+                                alt="DANA" class="object-contain h-4 mb-1 transition-all group-hover:scale-110">
 
                             <span class="text-[10px] font-bold text-center uppercase tracking-tighter">DANA</span>
 
-                            <div x-show="paymentMethod === 'dana'" class="absolute top-1 right-1 text-blue-500 animate-bounce">
+                            <div x-show="paymentMethod === 'dana'" class="absolute text-blue-500 top-1 right-1 animate-bounce">
                                 <i class="fas fa-check-circle text-[10px]"></i>
                             </div>
                         </div>
@@ -330,61 +328,61 @@
                     </div>
 
 
-                    <div class="mt-5 pt-5 border-t border-dashed border-slate-200">
+                    <div class="pt-5 mt-5 border-t border-dashed border-slate-200">
 
                         <div x-show="paymentMethod === 'cash'" x-transition>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">Nominal Diterima</label>
+                            <label class="block mb-2 text-[10px] font-bold uppercase text-slate-500">Nominal Diterima</label>
                             <div class="relative">
-                                <span class="absolute left-4 top-3.5 text-slate-400 font-bold text-lg">Rp</span>
-                                <input type="number" x-model="cashAmount" placeholder="0"
-                                       class="w-full pl-12 pr-4 py-3 text-2xl font-black text-slate-800 bg-slate-50 rounded-xl border border-slate-200 focus:ring-2 focus:ring-red-500 transition">
+                                <span class="absolute text-lg font-bold left-4 top-3.5 text-slate-400">Rp</span>
+                                <input type="number" x-model="cashAmount" placeholder="0" inputmode="numeric"
+                                       class="w-full pl-12 pr-4 py-3 text-2xl font-black transition border bg-slate-50 rounded-xl text-slate-800 border-slate-200 focus:ring-2 focus:ring-red-500">
                             </div>
 
-                            <div class="grid grid-cols-4 sm:grid-cols-7 gap-2 mt-3">
-                                 <button @click="cashAmount = 10000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">10k</button>
-                                 <button @click="cashAmount = 20000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">20k</button>
-                                 <button @click="cashAmount = 30000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">30k</button>
-                                 <button @click="cashAmount = 40000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">40k</button>
-                                 <button @click="cashAmount = 50000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">50k</button>
-                                 <button @click="cashAmount = 100000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">100k</button>
-                                 <button @click="cashAmount = grandTotal" class="col-span-2 sm:col-span-1 text-[10px] px-2 py-2 bg-slate-800 text-white border border-slate-800 rounded-lg font-bold hover:bg-black text-center">Uang Pas</button>
+                            <div class="grid grid-cols-4 gap-2 mt-3 sm:grid-cols-7">
+                                 <button @click="cashAmount = 10000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center active:scale-95 transition">10k</button>
+                                 <button @click="cashAmount = 20000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center active:scale-95 transition">20k</button>
+                                 <button @click="cashAmount = 30000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center active:scale-95 transition">30k</button>
+                                 <button @click="cashAmount = 40000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center active:scale-95 transition">40k</button>
+                                 <button @click="cashAmount = 50000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center active:scale-95 transition">50k</button>
+                                 <button @click="cashAmount = 100000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center active:scale-95 transition">100k</button>
+                                 <button @click="cashAmount = grandTotal" class="col-span-2 text-white border sm:col-span-1 text-[10px] px-2 py-2 bg-slate-800 border-slate-800 rounded-lg font-bold hover:bg-black text-center active:scale-95 transition">Uang Pas</button>
                             </div>
 
-                            <div class="mt-4 p-4 rounded-xl flex justify-between items-center transition-colors"
+                            <div class="flex items-center justify-between p-4 mt-4 transition-colors rounded-xl"
                                  :class="change < 0 ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'">
-                                <span class="font-bold text-sm">Kembalian</span>
-                                <span class="font-black text-xl" x-text="change < 0 ? 'Kurang Rp ' + rupiah(Math.abs(change)) : 'Rp ' + rupiah(change)"></span>
+                                <span class="text-sm font-bold">Kembalian</span>
+                                <span class="text-xl font-black" x-text="change < 0 ? 'Kurang Rp ' + rupiah(Math.abs(change)) : 'Rp ' + rupiah(change)"></span>
                             </div>
                         </div>
 
-                        <div x-show="paymentMethod === 'affiliate_balance'" x-transition class="text-center py-2">
-                            <label class="block text-[10px] font-bold text-purple-600 uppercase mb-2">PIN Keamanan (6 Digit)</label>
+                        <div x-show="paymentMethod === 'affiliate_balance'" x-transition class="py-2 text-center">
+                            <label class="block mb-2 text-[10px] font-bold text-purple-600 uppercase">PIN Keamanan (6 Digit)</label>
                             <div class="relative max-w-[240px] mx-auto">
-                                <input type="password" x-model="affiliatePin" placeholder="******" maxlength="6"
+                                <input type="password" x-model="affiliatePin" placeholder="******" maxlength="6" inputmode="numeric"
                                        class="w-full px-4 py-3 text-center text-3xl font-black text-purple-800 bg-white rounded-xl border border-purple-200 focus:ring-4 focus:ring-purple-100 tracking-[0.5em] transition placeholder-purple-200">
                             </div>
                         </div>
 
                         <div x-show="paymentMethod === 'tripay'" x-transition class="mt-4">
-                            <div x-show="isLoadingChannels" class="text-center py-4 text-slate-400"><i class="fas fa-circle-notch fa-spin"></i></div>
-                            <div x-show="!isLoadingChannels && tripayChannels.length > 0" class="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
+                            <div x-show="isLoadingChannels" class="py-4 text-center text-slate-400"><i class="fas fa-circle-notch fa-spin"></i></div>
+                            <div x-show="!isLoadingChannels && tripayChannels.length > 0" class="grid grid-cols-2 gap-2 p-1 overflow-y-auto sm:grid-cols-4 max-h-60 custom-scrollbar">
                                 <template x-for="channel in tripayChannels" :key="channel.code">
                                     <button @click="paymentChannel = channel.code" x-show="channel.active"
-                                            class="p-2 rounded-lg border transition flex flex-col items-center justify-center gap-1 h-16 bg-white hover:border-red-300 relative"
+                                            class="relative flex flex-col items-center justify-center h-16 gap-1 p-2 transition bg-white border rounded-lg hover:border-red-300 active:scale-95"
                                             :class="paymentChannel === channel.code ? 'border-red-600 bg-red-50 ring-1 ring-red-600' : 'border-slate-200'">
-                                        <img :src="channel.icon_url" class="h-5 object-contain">
+                                        <img :src="channel.icon_url" loading="lazy" class="object-contain h-5">
                                         <span class="text-[9px] font-bold text-slate-600 text-center leading-none" x-text="channel.name"></span>
                                     </button>
                                 </template>
                             </div>
                         </div>
 
-                        <div x-show="paymentMethod === 'qris_manual'" x-transition class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl text-center">
-                            <p class="text-xs font-bold text-gray-500 uppercase mb-2">Scan QRIS Toko</p>
-                            <div class="bg-white p-2 inline-block rounded-lg shadow-sm border">
-                                <img src="https://tokosancaka.com/storage/qris_toko.jpg" alt="QRIS Manual" class="w-48 h-48 object-contain">
+                        <div x-show="paymentMethod === 'qris_manual'" x-transition class="p-4 mt-4 text-center border bg-gray-50 border-gray-200 rounded-xl">
+                            <p class="mb-2 text-xs font-bold text-gray-500 uppercase">Scan QRIS Toko</p>
+                            <div class="inline-block p-2 bg-white border shadow-sm rounded-lg">
+                                <img src="https://tokosancaka.com/storage/qris_toko.jpg" loading="lazy" alt="QRIS Manual" class="object-contain w-48 h-48">
                             </div>
-                            <p class="text-xs text-gray-400 mt-2">Tunjukkan bukti bayar ke kasir setelah scan.</p>
+                            <p class="mt-2 text-xs text-gray-400">Tunjukkan bukti bayar ke kasir setelah scan.</p>
                         </div>
 
                     </div>
@@ -394,23 +392,23 @@
         </div>
     </div>
 
-    <div class="p-4 sm:p-6 bg-white border-t border-slate-200 shrink-0 z-20 flex justify-end gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-        <div class="hidden lg:block mr-auto">
+    <div class="flex justify-end gap-3 p-4 bg-white border-t shadow-[0_-4px_20px_rgba(0,0,0,0.05)] shrink-0 z-20 sm:p-6">
+        <div class="hidden mr-auto lg:block">
             <p class="text-xs text-slate-400">Pastikan data sudah benar sebelum memproses.</p>
         </div>
 
-        <button @click="showPaymentModal = false" class="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition">
+        <button @click="showPaymentModal = false" class="px-6 py-3 font-bold transition rounded-xl text-slate-500 hover:bg-slate-100 active:scale-95">
             Kembali
         </button>
 
         <button @click="checkout()"
             :disabled="isProcessing || (paymentMethod === 'cash' && change < 0)"
-            class="w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-lg shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            class="w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             :class="{
                 'bg-blue-600 shadow-blue-200 hover:bg-blue-700': paymentMethod === 'dana',
                 'bg-amber-500 shadow-amber-200 hover:bg-amber-600 text-white': paymentMethod === 'pay_later',
                 'bg-gray-800 shadow-gray-300 hover:bg-black text-white': paymentMethod === 'qris_manual',
-                'bg-red-600 shadow-red-200 hover:bg-red-700': !['dana', 'pay_later', 'qris_manual'].includes(paymentMethod)
+                'bg-red-600 shadow-red-200 hover:bg-red-700 text-white': !['dana', 'pay_later', 'qris_manual'].includes(paymentMethod)
             }">
 
             <span x-show="!isProcessing">
