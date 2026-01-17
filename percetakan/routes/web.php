@@ -20,8 +20,7 @@ use App\Http\Controllers\LogViewerController;
 use App\Http\Controllers\CategoryController; // <--- Jangan lupa import ini di paling atas
 use App\Http\Controllers\CustomerController;
 
-// Pastikan route ini bisa diakses (misal di dalam group middleware auth)
-Route::post('/customers/store-ajax', [CustomerController::class, 'storeAjax'])->name('customers.storeAjax');
+
 
 Route::post('/log-client-error', function (Request $request) {
     // Ambil data dari JS
@@ -322,3 +321,55 @@ require __DIR__.'/auth.php';
 // Route untuk Kategori
 Route::resource('categories', CategoryController::class);
 
+/*
+|--------------------------------------------------------------------------
+| Customer Routes
+|--------------------------------------------------------------------------
+|
+| URL Prefix: /customers
+| Name Prefix: customers.
+| Middleware: auth (Wajib Login)
+|
+*/
+
+Route::middleware(['auth'])->prefix('customers')->name('customers.')->group(function () {
+
+    // -----------------------------------------------------------
+    // 1. ROUTE KHUSUS (AJAX / API INTERNAL)
+    // -----------------------------------------------------------
+    // Wajib ditaruh DI ATAS route resource/parameter {id}
+    // agar 'store-ajax' tidak dianggap sebagai ID customer.
+
+    // Simpan Data Cepat via POS (AJAX)
+    Route::post('/store-ajax', [CustomerController::class, 'storeAjax'])->name('storeAjax');
+
+    // Pencarian Autocomplete via JSON
+    Route::get('/search-api', [CustomerController::class, 'searchApi'])->name('searchApi');
+
+
+    // -----------------------------------------------------------
+    // 2. ROUTE CRUD STANDAR (WEB UI)
+    // -----------------------------------------------------------
+
+    // Menampilkan daftar customer (Index)
+    Route::get('/', [CustomerController::class, 'index'])->name('index');
+
+    // Menampilkan Form Tambah (Create)
+    Route::get('/create', [CustomerController::class, 'create'])->name('create');
+
+    // Proses Simpan Data dari Form (Store)
+    Route::post('/', [CustomerController::class, 'store'])->name('store');
+
+    // Menampilkan Detail Customer (Show)
+    Route::get('/{id}', [CustomerController::class, 'show'])->name('show');
+
+    // Menampilkan Form Edit (Edit)
+    Route::get('/{id}/edit', [CustomerController::class, 'edit'])->name('edit');
+
+    // Proses Update Data (Update)
+    Route::put('/{id}', [CustomerController::class, 'update'])->name('update');
+
+    // Proses Hapus Data (Destroy)
+    Route::delete('/{id}', [CustomerController::class, 'destroy'])->name('destroy');
+
+});
