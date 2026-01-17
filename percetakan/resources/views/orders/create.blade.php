@@ -456,15 +456,16 @@
                         <div class="grid grid-cols-2 gap-2 mt-2">
                        
                             {{-- Tombol 1: Simpan ke Database --}}
-                            <button @click="saveCustomerToDB()"
+                            <button @click="saveCustomerToDB()" 
                                     :disabled="isSavingCustomer || !customerName || !customerPhone"
                                     class="w-full py-2 bg-green-600 text-white text-[10px] font-bold rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
-
-                                {{-- Gunakan x-show, jangan template x-if --}}
+                                
+                                {{-- Kondisi 1: Tidak sedang loading --}}
                                 <span x-show="!isSavingCustomer" class="flex items-center gap-1">
-                                    <i class="fas fa-save"></i> Simpan Ke Database
+                                    <i class="fas fa-save"></i> Simpan DB
                                 </span>
-
+                                
+                                {{-- Kondisi 2: Sedang loading --}}
                                 <span x-show="isSavingCustomer" style="display: none;" class="flex items-center gap-1">
                                     <i class="fas fa-circle-notch fa-spin"></i> Proses...
                                 </span>
