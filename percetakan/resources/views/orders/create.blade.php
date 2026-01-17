@@ -373,7 +373,7 @@
                                 </div>
                             </div>
                             <div x-show="customerNameSearchResults.length > 0" @click.outside="customerNameSearchResults = []" 
-                                 class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+                                 class="absolute z-50 w-full bottom-full mb-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                                 <template x-for="cust in customerNameSearchResults" :key="cust.id">
                                     <div @click="fillCustomerData(cust); customerNameSearchResults = []" 
                                          class="px-3 py-2 text-xs border-b cursor-pointer hover:bg-indigo-50 border-slate-50 flex flex-col">
@@ -395,7 +395,7 @@
                                 </div>
                             </div>
                             <div x-show="customerSearchResults.length > 0" @click.outside="customerSearchResults = []" 
-                                 class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+                                 class="absolute z-50 w-full bottom-full mb-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                                 <template x-for="cust in customerSearchResults" :key="cust.id">
                                     <div @click="fillCustomerData(cust)" class="px-3 py-2 text-xs border-b cursor-pointer hover:bg-indigo-50 border-slate-50 flex flex-col">
                                         <span class="font-bold text-slate-700" x-text="cust.name"></span>
