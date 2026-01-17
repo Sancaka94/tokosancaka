@@ -18,10 +18,17 @@ class Category extends Model
         'description',
         'image',
         'is_active',
+        // Tambahan kolom baru agar bisa disimpan (Mass Assignment)
+        'type',             // physical / service
+        'default_unit',     // pcs, kg, dll
+        'product_presets',  // JSON array
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        // WAJIB: Mengubah JSON di database menjadi Array PHP
+        // Agar fungsi array_slice() di view tidak error
+        'product_presets' => 'array',
     ];
 
     // Relasi: Satu Kategori punya banyak Produk
@@ -32,7 +39,6 @@ class Category extends Model
 
     /**
      * Boot function untuk auto-generate slug
-     * Jika nama diisi "Laundry Kiloan", slug otomatis jadi "laundry-kiloan"
      */
     protected static function boot()
     {
@@ -40,6 +46,13 @@ class Category extends Model
 
         static::creating(function ($category) {
             if (empty($category->slug)) {
+                $category->slug = Str::slug($category->name);
+            }
+        });
+
+        // Opsional: Update slug jika nama berubah saat edit
+        static::updating(function ($category) {
+            if ($category->isDirty('name') && !$category->isDirty('slug')) {
                 $category->slug = Str::slug($category->name);
             }
         });
