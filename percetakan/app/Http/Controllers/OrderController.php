@@ -489,7 +489,9 @@ class OrderController extends Controller
 
             // Identifikasi Customer
             $customerName  = $request->customer_name ?? 'Customer Umum';
-            $customerPhone = $request->customer_phone ?? '08819435180';
+            // PERBAIKAN: Normalisasi nomor HP sebelum disimpan
+            $rawPhone = $request->customer_phone ?? '08819435180';
+            $customerPhone = $this->_normalizePhoneNumber($rawPhone);
             $customerEmail = 'tokosancaka@gmail.com';
 
             if ($request->customer_id) {
