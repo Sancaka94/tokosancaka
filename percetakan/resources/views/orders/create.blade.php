@@ -454,7 +454,7 @@
 
                         {{-- TOMBOL AKSI (GRID 2 KOLOM) --}}
                         <div class="grid grid-cols-2 gap-2 mt-2">
-                            {{-- Tombol Simpan DB --}}
+                       
                             {{-- Tombol 1: Simpan ke Database --}}
                             <button @click="saveCustomerToDB()"
                                     :disabled="isSavingCustomer || !customerName || !customerPhone"
