@@ -34,6 +34,11 @@
             customerName: '',
             customerPhone: '',
 
+            // 1. TAMBAHKAN VARIABLE STATE BARU
+            isSearchingCustomer: false,
+            isCustomerFound: false,
+            customerSearchResults: [],
+
             // --- TAMBAHKAN FUNGSI INI ---
             sanitizePhone() {
                 // 1. Ambil nilai saat ini

@@ -124,39 +124,60 @@
                         </div>
                     </div>
 
-                    {{-- INPUT DATA TAMU --}}
+                    {{-- INPUT DATA PELANGGAN (AUTOCOMPLETE & AUTOFILL) --}}
                     <div x-show="customerType === 'guest'" x-transition class="space-y-4 mb-6">
-                        <div class="p-4 border bg-slate-50 rounded-xl border-slate-200" :class="{'bg-purple-50 border-purple-200': deliveryType === 'delivery'}">
+                        <div class="p-4 border bg-slate-50 rounded-xl border-slate-200 relative"
+                            :class="{'bg-purple-50 border-purple-200': deliveryType === 'delivery'}">
 
+                            {{-- Hidden Input untuk Data --}}
+                            <input type="hidden" name="customer_id" x-model="selectedCustomerId">
                             <input type="hidden" name="latitude" x-model="latitude">
                             <input type="hidden" name="longitude" x-model="longitude">
 
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                {{-- Nama --}}
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nama Pelanggan <span class="text-red-500">*</span></label>
-                                    <input type="text" x-model="customerName" placeholder="Nama Pelanggan"
-                                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm font-bold text-slate-700 shadow-sm">
-                                </div>
-                                {{-- WhatsApp --}}
-                                <div>
+
+                                {{-- WhatsApp (Pencarian & Validasi) --}}
+                                <div class="relative">
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">WhatsApp <span class="text-red-500">*</span></label>
                                     <div class="relative">
                                         <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                                             <i class="fab fa-whatsapp"></i>
                                         </span>
-                                        <input
-                                            type="tel"
+
+                                        {{-- Input WA dengan sanitizePhone() --}}
+                                        <input type="tel"
                                             x-model="customerPhone"
-                                            placeholder="08xxxxxxx"
+                                            @input.debounce.500ms="searchCustomerByPhone()"
+                                            @blur="sanitizePhone()"
+                                            placeholder="08xxxxxxxxxx"
+                                            class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm font-bold text-slate-700 shadow-sm transition-all"
+                                            :class="{'ring-2 ring-emerald-400 border-emerald-500': isCustomerFound}">
 
-                                            x-on:input="customerPhone = customerPhone.replace(/[^0-9]/g, '')"
-
-                                            x-on:blur="sanitizePhone()"
-
-                                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm font-bold text-slate-700 shadow-sm"
-                                        >
+                                        {{-- Indikator Loading / Sukses --}}
+                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                            <i x-show="isSearchingCustomer" class="fas fa-circle-notch fa-spin text-slate-400"></i>
+                                            <i x-show="isCustomerFound" class="fas fa-check-circle text-emerald-500" title="Data Pelanggan Ditemukan"></i>
+                                        </div>
                                     </div>
+
+                                    {{-- Dropdown Hasil Pencarian --}}
+                                    <div x-show="customerSearchResults.length > 0" @click.outside="customerSearchResults = []"
+                                        class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                                        <template x-for="cust in customerSearchResults" :key="cust.id">
+                                            <div @click="fillCustomerData(cust)" class="px-4 py-2 text-xs border-b cursor-pointer hover:bg-blue-50 border-slate-50 flex flex-col">
+                                                <span class="font-bold text-slate-700" x-text="cust.name"></span>
+                                                <span class="text-[10px] text-slate-500" x-text="cust.whatsapp"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                {{-- Nama Pelanggan --}}
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nama Pelanggan <span class="text-red-500">*</span></label>
+                                    <input type="text" x-model="customerName" placeholder="Nama Pelanggan"
+                                        class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm font-bold text-slate-700 shadow-sm transition-all"
+                                        :readonly="isCustomerFound">
                                 </div>
 
                                 {{-- Alamat --}}
@@ -166,19 +187,32 @@
                                         <span x-show="deliveryType === 'delivery'" class="text-red-500">*</span>
                                     </label>
                                     <textarea x-model="customerAddressDetail" rows="2"
-                                              :placeholder="deliveryType === 'delivery' ? 'Mohon tulis alamat lengkap untuk kurir...' : 'Catatan tambahan (jika ada)...'"
-                                              class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm font-medium text-slate-700 resize-none transition-all shadow-sm"></textarea>
+                                            :placeholder="deliveryType === 'delivery' ? 'Mohon tulis alamat lengkap untuk kurir...' : 'Catatan tambahan (jika ada)...'"
+                                            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm font-medium text-slate-700 resize-none transition-all shadow-sm"></textarea>
 
                                     {{-- Status GPS --}}
-                                    <div x-show="deliveryType === 'delivery'" class="mt-2 text-[10px] font-bold flex items-center gap-1 transition-colors"
-                                         :class="latitude ? 'text-green-600' : 'text-red-500'">
-                                        <i class="fas" :class="latitude ? 'fa-check-circle' : 'fa-map-marker-alt animate-bounce'"></i>
-                                        <span x-text="latitude ? 'Lokasi GPS Terkunci' : 'Menunggu Lokasi GPS... (Izinkan di Browser)'"></span>
+                                    <div x-show="deliveryType === 'delivery'" class="mt-2 flex items-center justify-between">
+                                        <div class="text-[10px] font-bold flex items-center gap-1 transition-colors"
+                                            :class="latitude ? 'text-green-600' : 'text-red-500'">
+                                            <i class="fas" :class="latitude ? 'fa-check-circle' : 'fa-map-marker-alt animate-bounce'"></i>
+                                            <span x-text="latitude ? 'Lokasi GPS Tersimpan' : 'Belum ada data GPS'"></span>
+                                        </div>
+                                        <button @click="getGeoLocation()" class="text-[10px] text-blue-500 hover:underline">
+                                            <i class="fas fa-sync-alt"></i> Update Lokasi Saya
+                                        </button>
                                     </div>
                                 </div>
                             </div>
+
+                            {{-- Tombol Reset --}}
+                            <button x-show="isCustomerFound" @click="resetCustomerData()"
+                                    class="absolute top-2 right-2 text-xs text-red-400 hover:text-red-600 font-bold bg-white px-2 py-1 rounded shadow-sm border border-slate-200">
+                                Reset / Baru
+                            </button>
                         </div>
                     </div>
+
+                    {{-- Alamat Pengiriman (Jika Ekspedisi) --}}
 
                     <div x-show="deliveryType === 'shipping'">
                         <div class="mb-3">
