@@ -266,6 +266,9 @@ Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
 // Agar tidak "memakan" route lain yang punya prefix /orders/
 Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
 
+// Tambahkan Route Export PDF
+Route::get('/orders/export-pdf', [OrderController::class, 'exportPdf'])->name('orders.export.pdf');
+
 // --- Route POST (Urutannya tidak terlalu berpengaruh karena methodnya beda, tapi dirapikan saja) ---
 Route::post('/orders/check-ongkir', [OrderController::class, 'checkShippingRates'])->name('orders.check-ongkir');
 Route::post('/orders/store', [OrderController::class, 'store'])->name('orders.store');
