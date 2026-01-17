@@ -4,64 +4,27 @@
     <meta charset="UTF-8">
     <title>Laporan Transaksi</title>
     <style>
-        body {
-            font-family: sans-serif;
-            font-size: 10pt;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .header h1 {
-            margin: 0;
-            padding: 0;
-            font-size: 16pt;
-            text-transform: uppercase;
-        }
-        .header p {
-            margin: 2px 0;
-            color: #555;
-        }
-        .meta-info {
-            width: 100%;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-        }
-        .meta-info td {
-            vertical-align: top;
-        }
-        table.data {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        table.data th, table.data td {
-            border: 1px solid #000;
-            padding: 6px;
-            text-align: left;
-        }
-        table.data th {
-            background-color: #f0f0f0;
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 9pt;
-        }
+        body { font-family: sans-serif; font-size: 10pt; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { margin: 0; font-size: 16pt; text-transform: uppercase; }
+        .header p { margin: 2px 0; color: #555; }
+
+        .meta-info { width: 100%; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+        .meta-info td { vertical-align: top; }
+
+        table.data { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        table.data th, table.data td { border: 1px solid #000; padding: 6px; text-align: left; vertical-align: top; }
+        table.data th { background-color: #f0f0f0; font-weight: bold; text-transform: uppercase; font-size: 9pt; }
+
         .text-right { text-align: right !important; }
         .text-center { text-align: center !important; }
+        .font-bold { font-weight: bold; }
 
-        .badge {
-            padding: 2px 5px;
-            border-radius: 4px;
-            font-size: 8pt;
-            font-weight: bold;
-            color: #000;
-        }
-        .total-row td {
-            font-weight: bold;
-            background-color: #f9f9f9;
-            border-top: 2px solid #000;
-        }
+        /* Styling untuk List Item agar rapi */
+        ul.item-list { margin: 0; padding-left: 15px; }
+        ul.item-list li { margin-bottom: 4px; }
+        .item-meta { font-size: 8pt; color: #555; }
+        .badge { padding: 2px 5px; border-radius: 4px; font-size: 8pt; color: #000; border: 1px solid #ccc; }
     </style>
 </head>
 <body>
@@ -81,10 +44,6 @@
                 @else
                     Periode: Semua Waktu
                 @endif
-                <br>
-                @if(request('status'))
-                    Status: {{ strtoupper(request('status')) }}
-                @endif
             </td>
             <td width="40%" class="text-right">
                 <strong>Total Transaksi:</strong> {{ $orders->count() }} Data<br>
@@ -96,14 +55,13 @@
     <table class="data">
         <thead>
             <tr>
-                <th width="5%">No</th>
-                <th width="15%">Waktu</th>
+                <th width="5%" class="text-center">No</th>
+                <th width="12%">Waktu</th>
                 <th width="15%">No. Invoice</th>
-                <th width="20%">Pelanggan</th>
-                <th width="10%">Status</th>
-                <th width="10%">Pembayaran</th>
-                <th width="15%">Ekspedisi</th>
-                <th width="10%" class="text-right">Total</th>
+                <th width="18%">Pelanggan</th>
+                {{-- KOLOM BARU: DETAIL ITEM --}}
+                <th width="35%">Detail Order (Produk, Qty, Harga)</th>
+                <th width="15%" class="text-right">Total Bayar</th>
             </tr>
         </thead>
         <tbody>
@@ -114,28 +72,38 @@
                     <td style="font-family: monospace;">{{ $order->order_number }}</td>
                     <td>
                         <strong>{{ $order->customer_name }}</strong><br>
-                        <span style="font-size: 8pt; color: #555;">{{ $order->customer_phone }}</span>
+                        <span style="font-size: 8pt; color: #555;">{{ $order->customer_phone }}</span><br>
+                        <span class="badge">{{ strtoupper($order->payment_method) }}</span>
                     </td>
-                    <td class="text-center">
-                        {{ strtoupper($order->status) }}
-                    </td>
-                    <td class="text-center">
-                        {{ strtoupper($order->payment_method) }}<br>
-                        <span style="font-size: 8pt;">({{ $order->payment_status }})</span>
-                    </td>
+
+                    {{-- ISI DATA DETAIL ITEM --}}
                     <td>
-                        {{ $order->courier_service ?? 'Pickup' }}<br>
-                        @if($order->shipping_ref)
-                            <span style="font-size: 8pt; font-family: monospace;">Ref: {{ $order->shipping_ref }}</span>
-                        @endif
+                        <ul class="item-list">
+                            @foreach($order->items as $item)
+                                <li>
+                                    {{-- Nama Produk (Misal: Cuci Seprei) --}}
+                                    <strong>{{ $item->product_name }}</strong>
+
+                                    <div class="item-meta">
+                                        {{-- Format: 1 kg x @7.000 = 7.000 --}}
+                                        {{ $item->quantity + 0 }} {{ $item->product->unit ?? 'pcs' }}
+                                        x @ {{ number_format($item->price_at_order, 0, ',', '.') }}
+
+                                        {{-- Subtotal per item --}}
+                                        = <strong>Rp {{ number_format($item->subtotal, 0, ',', '.') }}</strong>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
                     </td>
-                    <td class="text-right">
+
+                    <td class="text-right font-bold">
                         Rp {{ number_format($order->final_price, 0, ',', '.') }}
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" class="text-center" style="padding: 20px;">
+                    <td colspan="6" class="text-center" style="padding: 20px;">
                         Tidak ada data transaksi untuk periode ini.
                     </td>
                 </tr>
@@ -144,9 +112,11 @@
 
         @if($orders->count() > 0)
         <tfoot>
-            <tr class="total-row">
-                <td colspan="7" class="text-right">TOTAL PENDAPATAN</td>
-                <td class="text-right">Rp {{ number_format($orders->sum('final_price'), 0, ',', '.') }}</td>
+            <tr style="background-color: #f9f9f9;">
+                <td colspan="5" class="text-right font-bold">TOTAL PENDAPATAN</td>
+                <td class="text-right font-bold" style="border-top: 2px solid #000;">
+                    Rp {{ number_format($orders->sum('final_price'), 0, ',', '.') }}
+                </td>
             </tr>
         </tfoot>
         @endif
