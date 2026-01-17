@@ -80,20 +80,23 @@
                 let item = this.cart.find(i => i.id === id);
                 if (item) {
                     let price = parseFloat(item.price);
+
+                    // JIKA KOSONG/DIHAPUS: Set qty jadi 0 biar inputan bersih, JANGAN dipaksa jadi 1
+                    if (!totalRupiah || totalRupiah === '') {
+                        item.qty = 0;
+                        return;
+                    }
+
                     let total = parseFloat(totalRupiah);
 
-                    if (price > 0 && total > 0) {
+                    if (price > 0 && total >= 0) {
                         // Hitung Qty: Total / Harga Satuan
                         let newQty = total / price;
-
-                        // Jika produk fisik (pcs/box), bulatkan ke bawah biar ga aneh (2.5 pcs)
-                        // Jika jasa/laundry (kg/meter), biarkan desimal 2 angka di belakang koma
-                        // Kita deteksi dari unit atau default biarkan desimal untuk fleksibilitas
+                        // Simpan desimal 2 angka di belakang koma
                         item.qty = parseFloat(newQty.toFixed(2));
-                    } else {
-                        item.qty = 1;
                     }
                 }
+                // Cek kupon (opsional, debounce biar ga berat)
                 if(this.couponCode) this.checkCoupon();
             },
 

@@ -314,20 +314,20 @@
 
                                     <i class="fas fa-arrow-right text-[8px] text-slate-300"></i>
 
-                                    {{-- INPUT TOTAL RUPIAH (FITUR BARU) --}}
+                                    {{-- INPUT TOTAL RUPIAH (PERBAIKAN) --}}
                                     <div class="flex-1 relative">
                                         <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">Rp</span>
+
                                         {{--
-                                            Logika x-model:
-                                            Kita tidak bisa langsung x-model ke qty karena butuh konversi.
-                                            Jadi kita pakai :value untuk menampilkan total,
-                                            dan @input untuk mengubah qty secara mundur.
+                                            PERUBAHAN:
+                                            1. Hapus placeholder="0" agar bersih.
+                                            2. Logic :value -> Jika hasil hitungan 0, tampilkan '' (kosong).
                                         --}}
                                         <input type="number"
-                                            :value="Math.round(item.price * item.qty)"
+                                            :value="(item.price * item.qty) ? Math.round(item.price * item.qty) : ''"
                                             @input="updateByTotal(item.id, $event.target.value)"
-                                            class="w-full pl-6 pr-2 py-1 text-xs font-black text-slate-800 bg-white border border-slate-200 rounded focus:ring-1 focus:ring-red-500 focus:border-red-500 text-right shadow-sm"
-                                            placeholder="0">
+                                            class="w-full pl-6 pr-2 py-1 text-xs font-black text-slate-800 bg-white border border-slate-200 rounded focus:ring-1 focus:ring-red-500 focus:border-red-500 text-right shadow-sm placeholder-slate-300"
+                                            placeholder="">
                                     </div>
                                 </div>
                             </div>
