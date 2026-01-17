@@ -130,7 +130,9 @@
                                 <option value="{{ $cat->id }}"
                                         data-type="{{ $cat->type }}"
                                         data-unit="{{ $cat->default_unit }}"
-                                        data-presets="{{ $cat->product_presets }}"> {{ $cat->name }}
+                                        {{-- PERBAIKAN DI BAWAH INI: Gunakan json_encode --}}
+                                        data-presets="{{ json_encode($cat->product_presets) }}">
+                                    {{ $cat->name }}
                                 </option>
                             @endforeach
                         </select>
