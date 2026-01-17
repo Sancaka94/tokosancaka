@@ -161,15 +161,21 @@
                                     </div>
 
                                     {{-- Tampilkan Presets jika ada (Khusus Service) --}}
-                                    @if($cat->type == 'service' && !empty($cat->product_presets))
+                                    {{-- Tambahkan is_array() untuk memastikan datanya benar-benar array --}}
+                                    @if($cat->type == 'service' && !empty($cat->product_presets) && is_array($cat->product_presets))
+
                                         <div class="mt-2 flex flex-wrap gap-1">
                                             @foreach(array_slice($cat->product_presets, 0, 3) as $preset)
-                                                <span class="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">{{ $preset }}</span>
+                                                <span class="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">
+                                                    {{ $preset }}
+                                                </span>
                                             @endforeach
+
                                             @if(count($cat->product_presets) > 3)
                                                 <span class="text-[9px] text-slate-400">+{{ count($cat->product_presets) - 3 }} lainnya</span>
                                             @endif
                                         </div>
+
                                     @endif
                                 </td>
 
