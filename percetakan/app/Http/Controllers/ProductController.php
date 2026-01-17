@@ -246,10 +246,11 @@ class ProductController extends Controller
         }
     }
 
-    public function show(Product $product)
+        public function show(Product $product)
     {
-        // Load variants agar tampil di detail
-        $product->load('variants', 'category');
+        // Eager loading relasi agar efisien
+        $product->load(['category', 'variants']);
+
         return view('products.show', compact('product'));
     }
 
