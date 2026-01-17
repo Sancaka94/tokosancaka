@@ -1,9 +1,15 @@
 @extends('layouts.app')
 
-@section('styles')
+@section('content')
+{{-- 1. LOAD CSS FLATPICKR LANGSUNG DISINI --}}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/airbnb.css">
-@endsection
+<style>
+    /* Paksa kalender muncul di paling depan */
+    .flatpickr-calendar {
+        z-index: 9999 !important;
+    }
+</style>
 
 @section('content')
 <div class="container mx-auto px-4 py-6 max-w-5xl">
