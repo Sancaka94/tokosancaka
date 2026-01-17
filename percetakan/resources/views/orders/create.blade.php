@@ -372,9 +372,8 @@
                                     <i class="fas fa-circle-notch fa-spin text-slate-400 text-xs"></i>
                                 </div>
                             </div>
-                            <div x-show="customerNameSearchResults.length > 0" 
-                                @click.outside="customerNameSearchResults = []" 
-                                class="absolute z-[9999] w-full bottom-full mb-1 bg-white border-2 border-indigo-500 rounded-lg shadow-2xl max-h-60 overflow-y-auto">
+                            <div x-show="customerNameSearchResults.length > 0" @click.outside="customerNameSearchResults = []" 
+                                 class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
                                 <template x-for="cust in customerNameSearchResults" :key="cust.id">
                                     <div @click="fillCustomerData(cust); customerNameSearchResults = []" 
                                          class="px-3 py-2 text-xs border-b cursor-pointer hover:bg-indigo-50 border-slate-50 flex flex-col">
