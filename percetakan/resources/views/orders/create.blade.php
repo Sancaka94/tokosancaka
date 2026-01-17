@@ -344,7 +344,7 @@
                      x-transition.opacity.duration.300ms
                      class="mb-3 border border-indigo-100 rounded-xl bg-white shadow-sm">
 
-                    <button @click="isOpen = !isOpen" class="w-full flex items-center justify-between p-3 bg-indigo-50 hover:bg-indigo-100 transition-colors">
+                    <button @click="isOpen = !isOpen" class="w-full flex rounded-t-xl items-center justify-between p-3 bg-indigo-50 hover:bg-indigo-100 transition-colors">
                         <div class="flex items-center gap-2">
                             <div class="h-6 w-6 rounded bg-indigo-200 text-indigo-700 flex items-center justify-center text-xs">
                                 <i class="fas fa-tshirt"></i>
