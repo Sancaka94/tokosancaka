@@ -36,7 +36,7 @@ use App\Services\DanaSignatureService; // <--- TAMBAHKAN INI
 class OrderController extends Controller
 {
     // =========================================================================
-    // 1. INDEX & FILTER (FITUR BARU)
+    // 1. INDEX & DASHBOARD STATISTIK (DIPERBAIKI)
     // =========================================================================
     public function index(Request $request)
     {
@@ -56,7 +56,7 @@ class OrderController extends Controller
             $query->where('payment_status', $request->status);
         }
 
-        // 3. Filter Rentang Tanggal (Logic Flatpickr)
+        // 3. Filter Rentang Tanggal
         if ($request->filled('date_range')) {
             $dates = explode(' to ', $request->date_range);
             if (count($dates) == 2) {
@@ -66,10 +66,82 @@ class OrderController extends Controller
             }
         }
 
-        // Urutkan dan Paginate
+        // --- [MULAI HITUNG STATISTIK UNTUK DASHBOARD] ---
+
+        // Clone query agar perhitungan statistik mengikuti filter (tanggal/search)
+        $statsQuery = $query->clone();
+
+        // A. Total Pendapatan & Customer
+        $totalRevenue  = $statsQuery->sum('final_price');
+        $totalCustomer = $statsQuery->distinct('customer_phone')->count('customer_phone');
+
+        // B. Status Pembayaran
+        // Kita clone dari $query awal (sebelum di-paginate)
+        $totalLunas  = $query->clone()->where('payment_status', 'paid')->count();
+        $totalUnpaid = $query->clone()->where('payment_status', 'unpaid')->count();
+
+        // C. Best Seller Variant (Berdasarkan Item Terjual)
+        // Menggunakan subquery order_id dari filter yang aktif
+        $bestSellerVariant = OrderDetail::select('product_name as name', DB::raw('SUM(quantity) as total'))
+            ->whereIn('order_id', $statsQuery->select('id'))
+            ->groupBy('product_name')
+            ->orderByDesc('total')
+            ->first();
+
+        // D. Best Seller Category & Laundry Weight (Kg)
+        $bestSellerCategory = null;
+        $totalLaundryWeight = 0;
+
+        try {
+            // Cek apakah tabel/model category dan product tersedia relasinya
+            if (class_exists('App\Models\Category') && class_exists('App\Models\Product')) {
+
+                // 1. Cari Kategori Terlaris
+                $bestSellerCategory = DB::table('order_details')
+                    ->join('orders', 'orders.id', '=', 'order_details.order_id')
+                    ->join('products', 'products.id', '=', 'order_details.product_id')
+                    ->join('categories', 'categories.id', '=', 'products.category_id')
+                    ->whereIn('orders.id', $statsQuery->select('id'))
+                    ->select('categories.name', DB::raw('SUM(order_details.quantity) as total'))
+                    ->groupBy('categories.name')
+                    ->orderByDesc('total')
+                    ->first();
+
+                // 2. Hitung Berat Laundry (Filter kategori yang mengandung kata 'laundry')
+                // Asumsi berat di database produk dalam Gram, kita ubah ke Kg
+                $weightInGrams = DB::table('order_details')
+                    ->join('orders', 'orders.id', '=', 'order_details.order_id')
+                    ->join('products', 'products.id', '=', 'order_details.product_id')
+                    ->join('categories', 'categories.id', '=', 'products.category_id')
+                    ->whereIn('orders.id', $statsQuery->select('id'))
+                    ->where(function($q) {
+                        $q->where('categories.name', 'like', '%laundry%')
+                          ->orWhere('categories.slug', 'like', '%laundry%');
+                    })
+                    ->sum(DB::raw('order_details.quantity * products.weight'));
+
+                $totalLaundryWeight = $weightInGrams / 1000; // Konversi ke Kg
+            }
+        } catch (\Exception $e) {
+            // Fallback jika tabel kategori error/tidak ada, nilai tetap 0 atau null
+            Log::warning("Gagal hitung statistik kategori: " . $e->getMessage());
+        }
+
+        // --- [SELESAI HITUNG STATISTIK] ---
+
+        // Urutkan dan Paginate (Data Tabel Utama)
         $orders = $query->orderBy('created_at', 'desc')->paginate(10);
 
-        return view('orders.index', compact('orders'));
+        return view('orders.index', compact(
+            'orders',
+            'totalRevenue',
+            'totalCustomer',
+            'totalLunas',
+            'totalUnpaid',
+            'bestSellerVariant',
+            'bestSellerCategory',
+            'totalLaundryWeight'
+        ));
     }
 
     /**

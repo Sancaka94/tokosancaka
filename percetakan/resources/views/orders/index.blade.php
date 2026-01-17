@@ -13,20 +13,20 @@
     <div class="container mx-auto px-4 py-8 max-w-7xl">
 
         {{-- BAGIAN 1: HEADER & ACTIONS --}}
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
                 <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Riwayat Pesanan</h1>
                 <p class="text-slate-500 mt-1 text-sm">Kelola dan pantau semua transaksi yang masuk.</p>
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
-                {{-- Tombol Bulk Delete (Hidden by default) --}}
+                {{-- Tombol Bulk Delete --}}
                 <button id="btn-delete-selected" class="hidden bg-rose-600 text-white px-4 py-2.5 rounded-lg font-semibold text-sm hover:bg-rose-700 transition shadow-sm flex items-center gap-2">
                     <i class="fas fa-trash-alt"></i>
                     <span>Hapus (<span id="count-selected">0</span>)</span>
                 </button>
 
-                {{-- Group Tombol Export --}}
+                {{-- Export Buttons --}}
                 <div class="inline-flex rounded-lg shadow-sm" role="group">
                     <a href="{{ route('orders.export.pdf', request()->query()) }}" target="_blank" class="bg-white text-rose-600 border border-slate-200 px-4 py-2.5 text-sm font-semibold hover:bg-rose-50 transition flex items-center gap-2 rounded-l-lg first:border-r-0">
                         <i class="fas fa-file-pdf"></i> PDF
@@ -45,7 +45,6 @@
         {{-- BAGIAN 2: FILTER CARD --}}
         <div class="bg-white rounded-xl p-6 mb-8 shadow-sm border border-slate-200">
             <form action="{{ route('orders.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
-
                 {{-- Search Input --}}
                 <div class="md:col-span-4">
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 block">Pencarian</label>
@@ -97,7 +96,104 @@
             </form>
         </div>
 
-        {{-- BAGIAN 3: TABEL DATA --}}
+        {{-- BAGIAN 3: DASHBOARD CARDS (STATISTIK) --}}
+        {{-- CATATAN: Pastikan variabel $totalRevenue, $totalCustomer, dll dikirim dari Controller --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+
+            {{-- Card 1: Total Omset (Uang) --}}
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition">
+                <div class="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                    <i class="fas fa-money-bill-wave text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Total Pendapatan</p>
+                    <h3 class="text-xl font-black text-slate-800">Rp {{ number_format($totalRevenue ?? 0, 0, ',', '.') }}</h3>
+                    <p class="text-[10px] text-slate-500 mt-1">Sesuai periode terpilih</p>
+                </div>
+            </div>
+
+            {{-- Card 2: Total Customer --}}
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition">
+                <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                    <i class="fas fa-users text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Total Pelanggan</p>
+                    <h3 class="text-xl font-black text-slate-800">{{ number_format($totalCustomer ?? 0) }}</h3>
+                    <p class="text-[10px] text-slate-500 mt-1">Orang Transaksi</p>
+                </div>
+            </div>
+
+            {{-- Card 3: Lunas --}}
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition">
+                <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
+                    <i class="fas fa-check-circle text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Transaksi Lunas</p>
+                    <h3 class="text-xl font-black text-slate-800">{{ number_format($totalLunas ?? 0) }}</h3>
+                    <p class="text-[10px] text-slate-500 mt-1">Pesanan selesai bayar</p>
+                </div>
+            </div>
+
+            {{-- Card 4: Belum Lunas --}}
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition">
+                <div class="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                    <i class="fas fa-times-circle text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Belum Lunas</p>
+                    <h3 class="text-xl font-black text-slate-800">{{ number_format($totalUnpaid ?? 0) }}</h3>
+                    <p class="text-[10px] text-slate-500 mt-1">Perlu ditagih</p>
+                </div>
+            </div>
+
+            {{-- Card 5: Best Seller Category --}}
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition">
+                <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                    <i class="fas fa-crown text-lg"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Kategori Terlaris</p>
+                    <h3 class="text-lg font-black text-slate-800 truncate" title="{{ $bestSellerCategory->name ?? '-' }}">
+                        {{ $bestSellerCategory->name ?? '-' }}
+                    </h3>
+                    <p class="text-[10px] text-slate-500 mt-1">{{ $bestSellerCategory->total ?? 0 }} Terjual</p>
+                </div>
+            </div>
+
+            {{-- Card 6: Best Seller Varian --}}
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition">
+                <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                    <i class="fas fa-tags text-lg"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Varian Terlaris</p>
+                    <h3 class="text-lg font-black text-slate-800 truncate" title="{{ $bestSellerVariant->name ?? '-' }}">
+                        {{ $bestSellerVariant->name ?? '-' }}
+                    </h3>
+                    <p class="text-[10px] text-slate-500 mt-1">{{ $bestSellerVariant->total ?? 0 }} Pcs</p>
+                </div>
+            </div>
+
+             {{-- Card 7: Laundry Tonase (Kg) --}}
+             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition md:col-span-2 lg:col-span-2">
+                <div class="w-12 h-12 rounded-full bg-sky-100 flex items-center justify-center text-sky-600 shrink-0">
+                    <i class="fas fa-weight-hanging text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Total Berat Laundry</p>
+                    <div class="flex items-end gap-2">
+                        <h3 class="text-xl font-black text-slate-800">{{ number_format($totalLaundryWeight ?? 0, 1, ',', '.') }}</h3>
+                        <span class="text-sm font-bold text-slate-500 mb-1">Kg</span>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-1">Khusus kategori Laundry</p>
+                </div>
+            </div>
+
+        </div>
+
+        {{-- BAGIAN 4: TABEL DATA (Kode Sama Seperti Sebelumnya) --}}
         <form id="form-bulk-delete" action="{{ route('orders.bulkDestroy') }}" method="POST">
             @csrf
             @method('DELETE')
@@ -120,7 +216,7 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 text-sm">
 
-                            {{-- LOGIC PHP UNTUK MAPPING KURIR (TIDAK DIUBAH, HANYA DIRAPIKAN) --}}
+                            {{-- MAPPING LOGO KURIR --}}
                             @php
                                 $courierMap = [
                                     'jne'          => ['name' => 'JNE', 'url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
@@ -337,7 +433,7 @@
                 if (btnDelete) {
                     if (checkedCount > 0) {
                         btnDelete.classList.remove('hidden');
-                        btnDelete.classList.add('flex'); // Pastikan display flex aktif saat muncul
+                        btnDelete.classList.add('flex');
                     } else {
                         btnDelete.classList.add('hidden');
                         btnDelete.classList.remove('flex');
