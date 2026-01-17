@@ -262,13 +262,14 @@ Route::get('/orders/tripay-channels', [OrderController::class, 'getPaymentChanne
 // 3. Halaman Index
 Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
 
-// 4. Route Wildcard {id} (Show) - TARUH PALING BAWAH
-// Agar tidak "memakan" route lain yang punya prefix /orders/
-Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
+// --- BENAR (Pindahkan ke Atas) ---
 
-// 1. Export PDF & Excel
+// 1. Export PDF & Excel (Route Spesifik DULUAN)
 Route::get('/orders/export-pdf', [OrderController::class, 'exportPdf'])->name('orders.export.pdf');
 Route::get('/orders/export-excel', [OrderController::class, 'exportExcel'])->name('orders.export.excel');
+
+// 2. Baru Route Wildcard {id} (Route Umum BELAKANGAN)
+Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
 
 // 2. Bulk Delete
 Route::delete('/orders/bulk-delete', [OrderController::class, 'bulkDestroy'])->name('orders.bulkDestroy');
