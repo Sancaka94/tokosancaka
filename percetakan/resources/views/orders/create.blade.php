@@ -397,6 +397,27 @@
                                     class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 placeholder-slate-400 resize-none transition-all"></textarea>
                         </div>
 
+                        {{-- ================================================= --}}
+                        {{-- TEMPELKAN KODE TOMBOL GPS DI SINI (ANTARA ALAMAT & TOMBOL SIMPAN) --}}
+                        {{-- ================================================= --}}
+                        <div class="mt-2 mb-2">
+                            <button @click="getGeoLocation()"
+                                    class="w-full py-1.5 border border-dashed border-green-500 text-green-600 rounded-lg text-[10px] font-bold hover:bg-green-50 flex items-center justify-center gap-1 transition">
+
+                                <span x-show="isGettingLocation"><i class="fas fa-circle-notch fa-spin"></i> Mencari GPS...</span>
+
+                                <span x-show="!isGettingLocation">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span x-text="latitude ? 'Update Lokasi GPS' : 'Ambil Lokasi GPS'"></span>
+                                </span>
+                            </button>
+
+                            <div x-show="latitude" class="text-[9px] text-slate-400 mt-1 text-center">
+                                Lat: <span x-text="latitude"></span>, Long: <span x-text="longitude"></span>
+                            </div>
+                        </div>
+                        {{-- ================================================= --}}
+
                         {{-- Tombol 1: Simpan ke Database --}}
                             <button @click="saveCustomerToDB()"
                                     :disabled="isSavingCustomer"

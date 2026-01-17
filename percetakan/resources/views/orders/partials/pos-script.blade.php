@@ -165,6 +165,11 @@
                             name: this.customerName,
                             whatsapp: this.customerPhone,
                             address: this.customerAddressDetail
+                            // --- TAMBAHAN BARU DI SINI ---
+                            latitude: this.latitude,
+                            longitude: this.longitude
+                            // -----------------------------
+
                         })
                     });
 
