@@ -444,7 +444,8 @@ class OrderController extends Controller
                 if (!$product) throw new \Exception("Produk ID {$item['id']} tidak ditemukan.");
                 if ($product->stock < $item['qty']) throw new \Exception("Stok '{$product->name}' kurang (Sisa: {$product->stock}).");
 
-                $lineTotal = $product->sell_price * $item['qty'];
+                // PERBAIKAN: Gunakan ceil() agar selalu bulat ke atas (Toko tidak rugi)
+                $lineTotal = ceil($product->sell_price * $item['qty']);
                 $subtotal += $lineTotal;
 
                 $weightPerItem = ($product->weight > 0) ? $product->weight : 5;
@@ -466,13 +467,19 @@ class OrderController extends Controller
                 $couponDB = Coupon::where('code', $request->coupon)->first();
                 if ($couponDB && $couponDB->is_active) {
                     $couponId = $couponDB->id;
-                    $discount = ($couponDB->type == 'percent') ? $subtotal * ($couponDB->value / 100) : $couponDB->value;
+                    // PERBAIKAN: Bulatkan diskon ke bawah (floor) atau ke integer
+                    if ($couponDB->type == 'percent') {
+                        $rawDiscount = $subtotal * ($couponDB->value / 100);
+                        $discount = floor($rawDiscount); // Bulatkan diskon ke bawah (biar total bayar gak koma)
+                    } else {
+                        $discount = (int) $couponDB->value;
+                    }
                     $couponDB->increment('used_count');
                 }
             }
 
-            // Hitung Harga Akhir
-            $hargaSetelahDiskon = max(0, $subtotal - $discount);
+            // PERBAIKAN: Casting ke (int) atau ceil()
+            $hargaSetelahDiskon = (int) ceil(max(0, $subtotal - $discount));
             $biayaOngkir = ($request->delivery_type === 'shipping') ? (int)$request->shipping_cost : 0;
             $finalPrice = $hargaSetelahDiskon + $biayaOngkir;
 
@@ -537,7 +544,7 @@ class OrderController extends Controller
                     'base_price_at_order' => $prod->base_price,
                     'price_at_order'    => $prod->sell_price,
                     'quantity'          => $data['qty'],
-                    'subtotal'          => $data['subtotal'],
+                    'subtotal'          => (int) $data['subtotal'],
                 ]);
 
                 // Kurangi Stok & Tambah Terjual
