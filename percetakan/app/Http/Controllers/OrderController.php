@@ -2052,7 +2052,7 @@ public function handleDanaCallback(Request $request)
 
         $orders = $query->with(['items.product'])->orderBy('created_at', 'desc')->get();
 
-        $pdf = Pdf::loadView('orders.pdf', compact('orders'))->setPaper('a4', 'landscape');
+        $pdf = Pdf::loadView('orders.pdf', compact('orders'))->setPaper('f4', 'landscape');
         return $pdf->stream('laporan-transaksi.pdf');
     }
 
