@@ -63,6 +63,16 @@ Route::prefix('dana')->name('dana.')->group(function () {
 });
 
 
+// --- ROUTE KHUSUS VARIAN (AJAX / MODAL) ---
+    // 1. Untuk mengambil data varian (saat tombol modal diklik)
+    Route::get('/products/{product}/variants', [ProductController::class, 'getVariants'])
+        ->name('products.variants.get');
+
+    // 2. Untuk menyimpan perubahan varian (saat tombol simpan di modal diklik)
+    Route::post('/products/{product}/variants', [ProductController::class, 'updateVariants'])
+        ->name('products.variants.update');
+
+
 /*
 |--------------------------------------------------------------------------
 | DANA WIDGET / API / TESTING (SECONDARY)
