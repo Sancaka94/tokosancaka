@@ -1931,25 +1931,95 @@ public function handleDanaCallback(Request $request)
     }
 
     /**
-     * Update Data Order (Hanya Note, Status, dan Resi)
+     * Update Data Order (LENGKAP: Item, Harga, Stok, Status, Tanggal)
      */
     public function update(Request $request, $id)
     {
+        // 1. Validasi
         $request->validate([
-            'status' => 'required',
-            'payment_status' => 'required',
-            'shipping_ref' => 'nullable|string'
+            'customer_name'       => 'required|string',
+            'created_at'          => 'required|date',
+            'status'              => 'required',
+            'payment_status'      => 'required',
+            'items'               => 'required|array',
+            'items.*.qty'         => 'required|numeric|min:0.01',
+            'items.*.price'       => 'required|numeric|min:0',
+            'shipping_cost'       => 'nullable|numeric|min:0',
+            'discount_amount'     => 'nullable|numeric|min:0',
         ]);
 
-        $order = Order::findOrFail($id);
-        $order->update([
-            'status' => $request->status,
-            'payment_status' => $request->payment_status,
-            'shipping_ref' => $request->shipping_ref,
-            'customer_note' => $request->customer_note
-        ]);
+        DB::beginTransaction();
+        try {
+            $order = Order::findOrFail($id);
+            $subtotalBaru = 0;
 
-        return redirect()->route('orders.index')->with('success', 'Order berhasil diperbarui.');
+            // 2. Loop Items untuk Update Qty & Harga
+            foreach ($request->items as $itemId => $data) {
+                $detail = OrderDetail::findOrFail($itemId);
+                $oldQty = $detail->quantity;
+                $newQty = $data['qty'];
+                $newPrice = $data['price'];
+
+                // Update Stok Produk (Jika ada perubahan Qty)
+                if ($oldQty != $newQty) {
+                    $product = Product::find($detail->product_id);
+                    if ($product) {
+                        // Selisih: Jika qty baru lebih besar, kurangi stok. Sebaliknya tambah stok.
+                        $selisih = $newQty - $oldQty;
+                        // Kurangi stok (bisa negatif artinya nambah)
+                        $product->decrement('stock', $selisih);
+                        $product->increment('sold', $selisih);
+
+                        // Cek status stok
+                        if ($product->stock <= 0) {
+                            $product->update(['stock_status' => 'unavailable']);
+                        } else {
+                            $product->update(['stock_status' => 'available']);
+                        }
+                    }
+                }
+
+                // Hitung Subtotal Item Baru (Bulatkan ke atas)
+                $newSubtotal = ceil($newQty * $newPrice);
+
+                // Simpan Perubahan ke OrderDetail
+                $detail->update([
+                    'quantity' => $newQty,
+                    'price_at_order' => $newPrice,
+                    'subtotal' => $newSubtotal
+                ]);
+
+                $subtotalBaru += $newSubtotal;
+            }
+
+            // 3. Hitung Ulang Total Order
+            $ongkir = $request->input('shipping_cost', 0);
+            $diskon = $request->input('discount_amount', 0);
+            $finalPrice = max(0, ($subtotalBaru + $ongkir) - $diskon);
+
+            // 4. Update Data Utama Order
+            $order->update([
+                'customer_name'       => $request->customer_name,
+                'customer_phone'      => $this->_normalizePhoneNumber($request->customer_phone),
+                'destination_address' => $request->destination_address,
+                'created_at'          => $request->created_at, // Update Tanggal
+                'status'              => $request->status,
+                'payment_status'      => $request->payment_status,
+                'customer_note'       => $request->customer_note,
+                'total_price'         => $subtotalBaru,
+                'shipping_cost'       => $ongkir,
+                'discount_amount'     => $diskon,
+                'final_price'         => $finalPrice
+            ]);
+
+            DB::commit();
+            return redirect()->route('orders.edit', $order->id)->with('success', 'Data pesanan berhasil diperbarui & stok disesuaikan.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Update Order Error: " . $e->getMessage());
+            return back()->with('error', 'Gagal update pesanan: ' . $e->getMessage());
+        }
     }
 
     /**
