@@ -266,10 +266,12 @@ Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
 // Agar tidak "memakan" route lain yang punya prefix /orders/
 Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
 
-// --- ROUTE KHUSUS (Harus diatas resource agar tidak tertimpa) ---
-    Route::get('/orders/export-pdf', [OrderController::class, 'exportPdf'])->name('orders.export.pdf');
-    Route::get('/orders/export-excel', [OrderController::class, 'exportExcel'])->name('orders.export.excel');
-    Route::post('/orders/bulk-destroy', [OrderController::class, 'bulkDestroy'])->name('orders.bulk_destroy');
+// 1. Export PDF & Excel
+Route::get('/orders/export-pdf', [OrderController::class, 'exportPdf'])->name('orders.export.pdf');
+Route::get('/orders/export-excel', [OrderController::class, 'exportExcel'])->name('orders.export.excel');
+
+// 2. Bulk Delete
+Route::delete('/orders/bulk-delete', [OrderController::class, 'bulkDestroy'])->name('orders.bulkDestroy');
 
 
 
@@ -279,7 +281,7 @@ Route::post('/orders/store', [OrderController::class, 'store'])->name('orders.st
 Route::post('/orders/check-coupon', [OrderController::class, 'checkCoupon'])->name('orders.check-coupon');
 
 // --- ROUTE CRUD UTAMA (Index, Create, Store, Edit, Update, Destroy) ---
-    Route::resource('orders', OrderController::class);
+Route::resource('orders', OrderController::class);
 
 
 Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
