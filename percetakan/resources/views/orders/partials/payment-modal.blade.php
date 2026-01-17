@@ -142,9 +142,20 @@
                                 <div>
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">WhatsApp <span class="text-red-500">*</span></label>
                                     <div class="relative">
-                                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fab fa-whatsapp"></i></span>
-                                        <input type="number" x-model="customerPhone" placeholder="08xxxxxxx"
-                                               class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm font-bold text-slate-700 shadow-sm">
+                                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                                            <i class="fab fa-whatsapp"></i>
+                                        </span>
+                                        <input
+                                            type="tel"
+                                            x-model="customerPhone"
+                                            placeholder="08xxxxxxx"
+
+                                            x-on:input="customerPhone = customerPhone.replace(/[^0-9]/g, '')"
+
+                                            x-on:blur="sanitizePhone()"
+
+                                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm font-bold text-slate-700 shadow-sm"
+                                        >
                                     </div>
                                 </div>
 
