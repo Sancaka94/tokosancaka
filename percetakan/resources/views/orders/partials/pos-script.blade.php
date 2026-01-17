@@ -488,10 +488,28 @@
             validateManualQty(id) {
                 let item = this.cart.find(i => i.id === id);
                 if (!item) return;
-                let parsed = parseInt(item.qty);
-                if (isNaN(parsed) || parsed < 1) { item.qty = 1; }
-                else if (parsed > item.maxStock) { alert('Stok tidak mencukupi!'); item.qty = item.maxStock; }
-                else { item.qty = parsed; }
+
+                // 1. Ganti parseInt jadi parseFloat agar menerima desimal (koma)
+                // Tambahkan .replace(',', '.') untuk antisipasi user ngetik pakai koma Indonesia
+                let rawInput = String(item.qty).replace(',', '.');
+                let parsed = parseFloat(rawInput);
+
+                // 2. Ubah validasi: Jangan < 1, tapi <= 0.
+                // Karena laundry bisa saja cuma 0.5 Kg (kurang dari 1)
+                if (isNaN(parsed) || parsed <= 0) {
+                    item.qty = 1; // Default balik ke 1 jika input ngawur
+                }
+                else if (parsed > item.maxStock) {
+                    alert('Stok tidak mencukupi!');
+                    item.qty = item.maxStock;
+                }
+                else {
+                    // 3. Simpan angka desimalnya.
+                    // Opsional: .toFixed(4) untuk membatasi max 4 angka belakang koma biar rapi
+                    // parseFloat lagi di depannya agar nol di belakang koma hilang (cth: 2.5000 jadi 2.5)
+                    item.qty = parseFloat(parsed.toFixed(4));
+                }
+
                 if(this.couponCode) this.checkCoupon();
             },
 
