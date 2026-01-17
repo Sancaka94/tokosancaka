@@ -32,6 +32,7 @@ function posSystem() {
         customerType: 'guest',
         customerName: '',
         customerPhone: '',
+        isSavingCustomer: false, // <--- INI WAJIB ADA & FALSE
 
         // 1. TAMBAHKAN VARIABLE STATE BARU (PENCARIAN PELANGGAN)
         isSearchingCustomer: false,
