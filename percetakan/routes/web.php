@@ -266,14 +266,20 @@ Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
 // Agar tidak "memakan" route lain yang punya prefix /orders/
 Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
 
-// Tambahkan Route Export PDF
-Route::get('/orders/export-pdf', [OrderController::class, 'exportPdf'])->name('orders.export.pdf');
-Route::get('/orders/export-excel', [OrderController::class, 'exportExcel'])->name('orders.export.excel');
+// --- ROUTE KHUSUS (Harus diatas resource agar tidak tertimpa) ---
+    Route::get('/orders/export-pdf', [OrderController::class, 'exportPdf'])->name('orders.export.pdf');
+    Route::get('/orders/export-excel', [OrderController::class, 'exportExcel'])->name('orders.export.excel');
+    Route::post('/orders/bulk-destroy', [OrderController::class, 'bulkDestroy'])->name('orders.bulk_destroy');
+
+
 
 // --- Route POST (Urutannya tidak terlalu berpengaruh karena methodnya beda, tapi dirapikan saja) ---
 Route::post('/orders/check-ongkir', [OrderController::class, 'checkShippingRates'])->name('orders.check-ongkir');
 Route::post('/orders/store', [OrderController::class, 'store'])->name('orders.store');
 Route::post('/orders/check-coupon', [OrderController::class, 'checkCoupon'])->name('orders.check-coupon');
+
+// --- ROUTE CRUD UTAMA (Index, Create, Store, Edit, Update, Destroy) ---
+    Route::resource('orders', OrderController::class);
 
 
 Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
