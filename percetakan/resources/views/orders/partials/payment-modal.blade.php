@@ -93,39 +93,83 @@
                         </button>
                     </div>
 
+                    {{-- Metode Penyerahan --}}
                     <div class="mb-4">
                         <label class="text-[10px] font-bold text-slate-500 mb-1 block">Metode Penyerahan</label>
-                        <div class="grid grid-cols-2 gap-3">
+
+                        {{-- Grid 3 Tombol --}}
+                        <div class="grid grid-cols-3 gap-2">
+                            {{-- 1. Ambil di Toko --}}
                             <button @click="deliveryType = 'pickup'; shippingCost = 0; selectedCourier = null"
-                                    class="py-2 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition"
-                                    :class="deliveryType === 'pickup' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white hover:bg-slate-50'">
-                                <i class="fas fa-store"></i> Ambil di Toko
+                                    class="py-2 px-2 rounded-lg border text-[10px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1 transition h-14 sm:h-auto"
+                                    :class="deliveryType === 'pickup' ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'">
+                                <i class="fas fa-store text-lg sm:text-sm"></i>
+                                <span class="text-center">Ambil di Toko</span>
                             </button>
+
+                            {{-- 2. Antar Jemput (BARU) --}}
+                            <button @click="deliveryType = 'delivery'; getGeoLocation(); shippingCost = 0; selectedCourier = null"
+                                    class="py-2 px-2 rounded-lg border text-[10px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1 transition h-14 sm:h-auto"
+                                    :class="deliveryType === 'delivery' ? 'border-purple-500 bg-purple-50 text-purple-700 ring-1 ring-purple-500' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'">
+                                <i class="fas fa-motorcycle text-lg sm:text-sm"></i>
+                                <span class="text-center">Antar Jemput</span>
+                            </button>
+
+                            {{-- 3. Ekspedisi --}}
                             <button @click="deliveryType = 'shipping'"
-                                    class="py-2 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition"
-                                    :class="deliveryType === 'shipping' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white hover:bg-slate-50'">
-                                <i class="fas fa-truck"></i> Kirim (Ekspedisi)
+                                    class="py-2 px-2 rounded-lg border text-[10px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1 transition h-14 sm:h-auto"
+                                    :class="deliveryType === 'shipping' ? 'border-orange-500 bg-orange-50 text-orange-700 ring-1 ring-orange-500' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'">
+                                <i class="fas fa-truck text-lg sm:text-sm"></i>
+                                <span class="text-center">Ekspedisi</span>
                             </button>
                         </div>
                     </div>
 
-                    <div x-show="customerType === 'guest'" x-transition>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-500">Nama Penerima*</label>
-                                <input type="text" x-model="customerName" class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-500">WhatsApp*</label>
-                                <input type="number" x-model="customerPhone" class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            {{-- Alamat Opsional (HANYA MUNCUL JIKA AMBIL DI TOKO) --}}
-                                <div class="md:col-span-2" x-show="deliveryType === 'pickup'" x-transition>
-                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Alamat Lengkap (Opsional)</label>
-                                    <textarea x-model="customerAddressDetail" rows="2" placeholder="Alamat jalan, nomor rumah, patokan..."
-                                              class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-red-500 focus:border-red-500 text-sm font-medium text-slate-700 resize-none"></textarea>
+                    {{-- INPUT DATA TAMU --}}
+                    <div x-show="customerType === 'guest'" x-transition class="space-y-4 mb-6">
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200" :class="{'bg-purple-50 border-purple-200': deliveryType === 'delivery'}">
+
+                            {{-- Input Hidden GPS --}}
+                            <input type="hidden" name="latitude" x-model="latitude">
+                            <input type="hidden" name="longitude" x-model="longitude">
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {{-- Nama --}}
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nama Pelanggan <span class="text-red-500">*</span></label>
+                                    <input type="text" x-model="customerName" placeholder="Nama Pelanggan"
+                                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-sm font-bold text-slate-700">
                                 </div>
+                                {{-- WhatsApp --}}
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">WhatsApp <span class="text-red-500">*</span></label>
+                                    <div class="relative">
+                                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fab fa-whatsapp"></i></span>
+                                        <input type="number" x-model="customerPhone" placeholder="08xxxxxxx"
+                                               class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-sm font-bold text-slate-700">
+                                    </div>
+                                </div>
+
+                                {{-- Alamat (Tampil di Pickup & Delivery) --}}
+                                <div class="md:col-span-2" x-show="deliveryType === 'pickup' || deliveryType === 'delivery'" x-transition>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                                        <span x-text="deliveryType === 'delivery' ? 'Alamat Lengkap (Wajib)' : 'Alamat (Opsional)'"></span>
+                                        <span x-show="deliveryType === 'delivery'" class="text-red-500">*</span>
+                                    </label>
+                                    <textarea x-model="customerAddressDetail" rows="2"
+                                              :placeholder="deliveryType === 'delivery' ? 'Mohon tulis alamat lengkap untuk kurir...' : 'Catatan tambahan (jika ada)...'"
+                                              class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-blue-500 focus:border-blue-500 text-sm font-medium text-slate-700 resize-none transition-all"></textarea>
+
+                                    {{-- Status GPS --}}
+                                    <div x-show="deliveryType === 'delivery'" class="mt-2 text-[10px] font-bold flex items-center gap-1 transition-colors"
+                                         :class="latitude ? 'text-green-600' : 'text-red-500'">
+                                        <i class="fas" :class="latitude ? 'fa-check-circle' : 'fa-map-marker-alt animate-bounce'"></i>
+                                        <span x-text="latitude ? 'Lokasi GPS Terkunci' : 'Menunggu Lokasi GPS... (Izinkan di Browser)'"></span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+                    </div>
 
                         <div x-show="deliveryType === 'shipping'">
                             <div class="mb-3">

@@ -63,6 +63,11 @@
             shippingCost: 0,
             isLoadingShipping: false,
 
+            // TAMBAHKAN INI DI BAWAH VARIABEL DELIVERY TYPE
+            latitude: '',
+            longitude: '',
+            isGettingLocation: false,
+
             noteModalOpen: false,
             customerNote: '', // <--- NAMA VARIABLE BARU (Default kosong)
 
@@ -76,6 +81,43 @@
 
             get cartTotalQty() {
                 return this.cart.reduce((sum, item) => sum + item.qty, 0);
+            },
+
+            // --- FUNGSI BARU UNTUK CEK GPS ---
+            getGeoLocation() {
+                if (navigator.geolocation) {
+                    this.isGettingLocation = true;
+                    // Reset dulu biar kelihatan prosesnya
+                    this.latitude = '';
+                    this.longitude = '';
+
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            this.latitude = position.coords.latitude;
+                            this.longitude = position.coords.longitude;
+                            this.isGettingLocation = false;
+
+                            // Optional: Notifikasi kecil jika berhasil
+                            // alert('Lokasi berhasil dikunci!');
+                        },
+                        (error) => {
+                            this.isGettingLocation = false;
+                            let msg = "Gagal mengambil lokasi.";
+                            if(error.code == 1) msg = "Mohon IZINKAN akses Lokasi/GPS di browser Anda.";
+                            else if(error.code == 2) msg = "Pastikan GPS HP menyala.";
+                            else if(error.code == 3) msg = "Waktu permintaan habis.";
+
+                            alert("⚠️ " + msg + "\nFitur Antar Jemput wajib menggunakan lokasi.");
+
+                            // Kembalikan ke pickup jika gagal
+                            this.deliveryType = 'pickup';
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                } else {
+                    alert("Browser Anda tidak mendukung Geolocation.");
+                    this.deliveryType = 'pickup';
+                }
             },
 
             get grandTotal() {
@@ -407,6 +449,19 @@
                 console.log("LOG: Memulai proses Checkout...");
                 console.log("LOG: Metode Pembayaran: " + this.paymentMethod);
 
+                // Validasi Khusus Antar Jemput
+                if (this.deliveryType === 'delivery') {
+                    if (!this.customerAddressDetail || this.customerAddressDetail.length < 5) {
+                        alert('❌ Alamat Lengkap Wajib diisi untuk Antar Jemput!');
+                        return;
+                    }
+                    if (!this.latitude || !this.longitude) {
+                        alert('❌ Lokasi GPS belum ditemukan. Pastikan GPS nyala & Izinkan Browser.');
+                        this.getGeoLocation(); // Coba ambil lagi
+                        return;
+                    }
+                }
+
                 if (this.customerType === 'guest' && this.deliveryType === 'shipping') {
                     if (!this.customerName || this.customerName.trim().length < 3) {
                         alert('❌ Mohon isi NAMA PENERIMA untuk keperluan pengiriman ekspedisi!');
@@ -462,6 +517,9 @@
                 formData.append('coupon', this.couponCode);
                 formData.append('payment_method', this.paymentMethod);
                 formData.append('customer_note', this.customerNote);
+                // Tambahkan data GPS ke FormData
+                formData.append('latitude', this.latitude);
+                formData.append('longitude', this.longitude);
 
                 formData.append('delivery_type', this.deliveryType);
                 if (this.deliveryType === 'shipping') {
