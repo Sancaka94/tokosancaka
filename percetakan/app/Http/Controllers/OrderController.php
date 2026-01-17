@@ -12,6 +12,10 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 use Carbon\Carbon; // <--- Pastikan baris ini ada di paling atas file
 
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\OrdersExport;
+use Maatwebsite\Excel\Facades\Excel;
+
 // Models
 use App\Models\Order;
 use App\Models\Product;
@@ -31,10 +35,40 @@ use App\Services\DanaSignatureService; // <--- TAMBAHKAN INI
 
 class OrderController extends Controller
 {
-    // --- TEMPEL KODE index() DI SINI ---
-    public function index()
+    // =========================================================================
+    // 1. INDEX & FILTER (FITUR BARU)
+    // =========================================================================
+    public function index(Request $request)
     {
-        $orders = Order::orderBy('created_at', 'desc')->paginate(10);
+        $query = Order::query();
+
+        // 1. Filter Pencarian (No Order / Nama Customer)
+        if ($request->filled('q')) {
+            $search = $request->q;
+            $query->where(function($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhere('customer_name', 'like', "%{$search}%");
+            });
+        }
+
+        // 2. Filter Status Pembayaran
+        if ($request->filled('status')) {
+            $query->where('payment_status', $request->status);
+        }
+
+        // 3. Filter Rentang Tanggal (Logic Flatpickr)
+        if ($request->filled('date_range')) {
+            $dates = explode(' to ', $request->date_range);
+            if (count($dates) == 2) {
+                $query->whereBetween('created_at', [$dates[0] . ' 00:00:00', $dates[1] . ' 23:59:59']);
+            } elseif (count($dates) == 1) {
+                $query->whereDate('created_at', $dates[0]);
+            }
+        }
+
+        // Urutkan dan Paginate
+        $orders = $query->orderBy('created_at', 'desc')->paginate(10);
+
         return view('orders.index', compact('orders'));
     }
 
@@ -1886,5 +1920,79 @@ public function handleDanaCallback(Request $request)
 
         return $phone;
     }
+
+    /**
+     * Menampilkan Form Edit Order
+     */
+    public function edit($id)
+    {
+        $order = Order::findOrFail($id);
+        return view('orders.edit', compact('order'));
+    }
+
+    /**
+     * Update Data Order (Hanya Note, Status, dan Resi)
+     */
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required',
+            'payment_status' => 'required',
+            'shipping_ref' => 'nullable|string'
+        ]);
+
+        $order = Order::findOrFail($id);
+        $order->update([
+            'status' => $request->status,
+            'payment_status' => $request->payment_status,
+            'shipping_ref' => $request->shipping_ref,
+            'customer_note' => $request->customer_note
+        ]);
+
+        return redirect()->route('orders.index')->with('success', 'Order berhasil diperbarui.');
+    }
+
+    /**
+     * Export Laporan PDF
+     */
+    public function exportPdf(Request $request)
+    {
+        $query = Order::query();
+
+        if ($request->filled('q')) {
+            $search = $request->q;
+            $query->where(function($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhere('customer_name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('payment_status', $request->status);
+        }
+
+        if ($request->filled('date_range')) {
+            $dates = explode(' to ', $request->date_range);
+            if (count($dates) == 2) {
+                $query->whereBetween('created_at', [$dates[0] . ' 00:00:00', $dates[1] . ' 23:59:59']);
+            } elseif (count($dates) == 1) {
+                $query->whereDate('created_at', $dates[0]);
+            }
+        }
+
+        $orders = $query->orderBy('created_at', 'desc')->get();
+
+        $pdf = Pdf::loadView('orders.pdf', compact('orders'))->setPaper('a4', 'landscape');
+        return $pdf->stream('laporan-transaksi.pdf');
+    }
+
+    /**
+     * Export Laporan Excel
+     */
+    public function exportExcel(Request $request)
+    {
+        return Excel::download(new OrdersExport($request), 'laporan-transaksi.xlsx');
+    }
+    // --- [KODE BARU: END] ---
 
 }
