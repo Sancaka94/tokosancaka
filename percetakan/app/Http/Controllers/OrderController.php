@@ -2050,7 +2050,7 @@ public function handleDanaCallback(Request $request)
             }
         }
 
-        $orders = $query->orderBy('created_at', 'desc')->get();
+        $orders = $query->with(['items.product'])->orderBy('created_at', 'desc')->get();
 
         $pdf = Pdf::loadView('orders.pdf', compact('orders'))->setPaper('a4', 'landscape');
         return $pdf->stream('laporan-transaksi.pdf');
