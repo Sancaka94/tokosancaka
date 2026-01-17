@@ -75,28 +75,29 @@
             // COMPUTED PROPERTIES
             // ============================================================
 
-            // FUNGSI BARU: Update jumlah berdasarkan Total Rupiah
+            // FUNGSI BARU: Update Qty Mengikuti Total Rupiah
             updateByTotal(id, totalRupiah) {
                 let item = this.cart.find(i => i.id === id);
                 if (item) {
-                    let price = parseFloat(item.price);
-
-                    // JIKA KOSONG/DIHAPUS: Set qty jadi 0 biar inputan bersih, JANGAN dipaksa jadi 1
-                    if (!totalRupiah || totalRupiah === '') {
+                    // Jika input dikosongkan/dihapus, set Qty jadi 0
+                    if (totalRupiah === '' || totalRupiah === null) {
                         item.qty = 0;
                         return;
                     }
 
+                    let price = parseFloat(item.price);
                     let total = parseFloat(totalRupiah);
 
                     if (price > 0 && total >= 0) {
-                        // Hitung Qty: Total / Harga Satuan
+                        // Hitung Qty = Total / Harga
                         let newQty = total / price;
-                        // Simpan desimal 2 angka di belakang koma
-                        item.qty = parseFloat(newQty.toFixed(2));
+
+                        // GUNAKAN PRESISI TINGGI (4 desimal) agar Rupiah tidak meleset
+                        item.qty = parseFloat(newQty.toFixed(4));
                     }
                 }
-                // Cek kupon (opsional, debounce biar ga berat)
+
+                // Cek ulang kupon setelah total berubah
                 if(this.couponCode) this.checkCoupon();
             },
 
