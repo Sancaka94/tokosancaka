@@ -18,6 +18,10 @@ use App\Http\Controllers\DanaDashboardController;
 use App\Http\Controllers\DanaResponseCodeController;
 use App\Http\Controllers\LogViewerController;
 use App\Http\Controllers\CategoryController; // <--- Jangan lupa import ini di paling atas
+use App\Http\Controllers\CustomerController;
+
+// Pastikan route ini bisa diakses (misal di dalam group middleware auth)
+Route::post('/customers/store-ajax', [CustomerController::class, 'storeAjax'])->name('customers.storeAjax');
 
 Route::post('/log-client-error', function (Request $request) {
     // Ambil data dari JS
