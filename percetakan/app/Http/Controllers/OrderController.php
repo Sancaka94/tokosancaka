@@ -1740,11 +1740,98 @@ public function handleDanaCallback(Request $request)
     }
 }
 
-   public function invoice($orderNumber) // Ganti parameter jadi orderNumber
-{
-    // Cari berdasarkan kolom 'order_number'
-    $order = Order::with(['items', 'coupon'])->where('order_number', $orderNumber)->firstOrFail();
-    return view('orders.invoice', compact('order'));
-}
+/**
+     * Helper: Ambil Detail Transaksi Tripay (Untuk Invoice)
+     * Mengembalikan array berisi pay_code dan qr_url
+     */
+    private function _getTripayDetail($reference)
+    {
+        Log::info("LOG LOG: [Start] _getTripayDetail untuk Ref: {$reference}");
+
+        $apiKey       = config('tripay.api_key');
+        $mode         = config('tripay.mode');
+
+        // Tentukan URL berdasarkan mode
+        $baseUrl = ($mode === 'production')
+            ? 'https://tripay.co.id/api/transaction/detail'
+            : 'https://tripay.co.id/api-sandbox/transaction/detail';
+
+        try {
+            // Request ke Tripay
+            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+                            ->get($baseUrl, ['reference' => $reference]);
+
+            $body = $response->json();
+
+            // LOG LOG: Simpan respon mentah untuk debugging jika ada masalah
+            Log::info("LOG LOG: Tripay API Response: " . json_encode($body));
+
+            if ($response->successful() && ($body['success'] ?? false) === true) {
+                return ['success' => true, 'data' => $body['data']];
+            }
+
+            return ['success' => false, 'message' => $body['message'] ?? 'Gagal ambil detail Tripay'];
+
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: Tripay Connection Error: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Koneksi Error'];
+        }
+    }
+
+   public function invoice($orderNumber)
+    {
+        // LOG LOG: Penanda awal buka invoice
+        Log::info("LOG LOG: =========================================");
+        Log::info("LOG LOG: User membuka Invoice Order #{$orderNumber}");
+
+        try {
+            // 1. Cari Order
+            $order = Order::with(['items', 'coupon'])->where('order_number', $orderNumber)->firstOrFail();
+
+            // 2. Siapkan Variabel Data Pembayaran (Default Kosong)
+            $paymentData = [
+                'pay_code'     => null, // VA Number
+                'qr_url'       => null, // Gambar QRIS
+                'expired_time' => null,
+                'instructions' => []
+            ];
+
+            // 3. LOGIKA KHUSUS TRIPAY (Ambil VA / QRIS Live dari API)
+            if ($order->payment_method === 'tripay' && $order->payment_status === 'unpaid') {
+
+                Log::info("LOG LOG: Mendeteksi metode Tripay (Unpaid). Mengambil detail transaksi ke API...");
+
+                // Panggil helper function _getTripayDetail (Ada di bawah)
+                $tripayDetail = $this->_getTripayDetail($order->order_number);
+
+                if ($tripayDetail['success']) {
+                    $data = $tripayDetail['data'];
+
+                    // Isi data ke variabel
+                    $paymentData['pay_code']     = $data['pay_code'] ?? null;
+                    $paymentData['qr_url']       = $data['qr_url'] ?? null;
+                    $paymentData['expired_time'] = $data['expired_time'] ?? null;
+                    $paymentData['instructions'] = $data['instructions'] ?? [];
+
+                    Log::info("LOG LOG: Berhasil ambil data Tripay. VA: {$paymentData['pay_code']}, QR: " . ($paymentData['qr_url'] ? 'Ada' : 'Tidak Ada'));
+                } else {
+                    Log::error("LOG LOG: Gagal ambil data Tripay. Pesan: " . ($tripayDetail['message'] ?? 'Unknown'));
+                }
+            }
+
+            // 4. LOGIKA KHUSUS DOKU (Opsional, jika Doku menyediakan URL gambar statis)
+            if ($order->payment_method === 'doku' && $order->payment_status === 'unpaid') {
+                Log::info("LOG LOG: Mendeteksi metode Doku. URL Payment: {$order->payment_url}");
+                // Doku biasanya payment_url sudah mengarah ke halaman yang berisi VA/QRIS.
+                // Jika ingin parsing spesifik, perlu API check status Doku (Jokul) terpisah.
+            }
+
+            return view('orders.invoice', compact('order', 'paymentData'));
+
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: Error saat membuka invoice: " . $e->getMessage());
+            abort(404, 'Invoice tidak ditemukan atau terjadi kesalahan.');
+        }
+    }
 
 }
