@@ -83,13 +83,34 @@
                 return this.cart.reduce((sum, item) => sum + item.qty, 0);
             },
 
-            // --- FUNGSI BARU UNTUK CEK GPS ---
+            // --- FUNGSI BARU UNTUK KIRIM LOG KE SERVER ---
+            async logToServer(message, detail = {}) {
+                try {
+                    await fetch("{{ route('log.client.error') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            context: detail
+                        })
+                    });
+                } catch (e) {
+                    console.error("Gagal mengirim log ke server", e);
+                }
+            },
+
+            // --- UPDATE FUNGSI GPS ---
             getGeoLocation() {
                 if (navigator.geolocation) {
                     this.isGettingLocation = true;
-                    // Reset dulu biar kelihatan prosesnya
                     this.latitude = '';
                     this.longitude = '';
+
+                    // LOG 1: Mulai Request
+                    console.log("LOG: Meminta akses lokasi...");
 
                     navigator.geolocation.getCurrentPosition(
                         (position) => {
@@ -97,25 +118,48 @@
                             this.longitude = position.coords.longitude;
                             this.isGettingLocation = false;
 
-                            // Optional: Notifikasi kecil jika berhasil
-                            // alert('Lokasi berhasil dikunci!');
+                            // LOG 2: Sukses (Opsional, info saja)
+                            console.log("LOG: Lokasi ditemukan", this.latitude, this.longitude);
                         },
                         (error) => {
                             this.isGettingLocation = false;
                             let msg = "Gagal mengambil lokasi.";
-                            if(error.code == 1) msg = "Mohon IZINKAN akses Lokasi/GPS di browser Anda.";
-                            else if(error.code == 2) msg = "Pastikan GPS HP menyala.";
-                            else if(error.code == 3) msg = "Waktu permintaan habis.";
+                            let detailError = "";
 
+                            if(error.code == 1) {
+                                msg = "Mohon IZINKAN akses Lokasi/GPS di browser Anda.";
+                                detailError = "PERMISSION_DENIED";
+                            }
+                            else if(error.code == 2) {
+                                msg = "Pastikan GPS HP menyala.";
+                                detailError = "POSITION_UNAVAILABLE";
+                            }
+                            else if(error.code == 3) {
+                                msg = "Waktu permintaan habis.";
+                                detailError = "TIMEOUT";
+                            }
+
+                            // Tampilkan Alert ke User
                             alert("⚠️ " + msg + "\nFitur Antar Jemput wajib menggunakan lokasi.");
 
-                            // Kembalikan ke pickup jika gagal
+                            // LOG 3: KIRIM ERROR KE LARAVEL LOG
+                            // Ini akan mencatat User Agent (Browser apa) dan Pesan Errornya
+                            this.logToServer("Gagal Get GPS: " + detailError, {
+                                error_code: error.code,
+                                error_message: error.message,
+                                user_agent: navigator.userAgent // Biar tau user pake HP apa
+                            });
+
+                            // Kembalikan ke pickup
                             this.deliveryType = 'pickup';
                         },
-                        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 } // Perpanjang timeout jadi 20 detik
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                     );
                 } else {
                     alert("Browser Anda tidak mendukung Geolocation.");
+                    this.logToServer("Browser tidak support Geolocation", {
+                        user_agent: navigator.userAgent
+                    });
                     this.deliveryType = 'pickup';
                 }
             },
@@ -161,6 +205,25 @@
             // ============================================================
             // LOGIKA PENGIRIMAN
             // ============================================================
+
+            // --- FUNGSI BARU UNTUK KIRIM LOG KE SERVER ---
+            async logToServer(message, detail = {}) {
+                try {
+                    await fetch("{{ route('log.client.error') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            context: detail
+                        })
+                    });
+                } catch (e) {
+                    console.error("Gagal mengirim log ke server", e);
+                }
+            },
 
             async searchLocation() {
                 if (this.searchQuery.length < 3) {

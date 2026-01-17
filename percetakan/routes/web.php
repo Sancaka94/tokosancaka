@@ -19,6 +19,17 @@ use App\Http\Controllers\DanaResponseCodeController;
 use App\Http\Controllers\LogViewerController;
 use App\Http\Controllers\CategoryController; // <--- Jangan lupa import ini di paling atas
 
+Route::post('/log-client-error', function (Request $request) {
+    // Ambil data dari JS
+    $message = $request->input('message');
+    $context = $request->input('context', []);
+
+    // Simpan ke laravel.log
+    Log::error("CLIENT-SIDE GPS ERROR: " . $message, $context);
+
+    return response()->json(['status' => 'logged']);
+})->name('log.client.error');
+
 // Sesuaikan middleware dengan kebutuhan admin panel Anda (misal: 'auth', 'admin')
 Route::middleware(['auth'])->prefix('admin/logs')->name('admin.logs.')->group(function () {
 
