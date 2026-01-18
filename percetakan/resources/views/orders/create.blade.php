@@ -7,28 +7,26 @@
     <title>Kasir POS - Sancaka</title>
 
     <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
-    <link rel="shortcut icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
 
+    {{-- CSS & FONTS --}}
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    {{-- JS LIBRARIES --}}
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
         [x-cloak] { display: none !important; }
-        /* Scrollbar Style */
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #0073ff; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3b8dff; }
-
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=number] { -moz-appearance: textfield; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .scan-region-highlight { border-radius: 20px !important; border: 2px solid #ef4444 !important; box-shadow: 0 0 0 1000px rgba(0,0,0,0.5); }
     </style>
 </head>
 
-{{-- Inisialisasi Alpine Data --}}
 <body class="bg-slate-100 font-sans text-slate-800 h-screen overflow-hidden select-none"
       x-data="{
           ...posSystem(),
@@ -39,19 +37,22 @@
               this.scannerOpen = true;
               this.$nextTick(() => {
                   const onScanSuccess = (decodedText, decodedResult) => {
-                      this.search = decodedText; // Isi kolom pencarian
-                      this.stopScanner();        // Matikan kamera
-                      this.scanProduct();        // Cari produk ke server
+                      // 1. Masukkan hasil scan ke kolom pencarian
+                      this.search = decodedText;
+                      // 2. Matikan kamera
+                      this.stopScanner();
+                      // 3. Trigger pencarian di Alpine (posSystem)
+                      this.scanProduct();
                   };
 
                   this.scannerObj = new Html5Qrcode('reader');
                   this.scannerObj.start(
-                      { facingMode: 'environment' },
-                      { fps: 10, qrbox: { width: 250, height: 250 } },
+                      { facingMode: 'environment' }, // Kamera Belakang
+                      { fps: 15, qrbox: { width: 250, height: 250 } },
                       onScanSuccess,
-                      (error) => {}
+                      (error) => {} // Abaikan error scanning frame kosong
                   ).catch(err => {
-                      alert('Gagal membuka kamera: ' + err);
+                      alert('Gagal akses kamera: ' + err);
                       this.scannerOpen = false;
                   });
               });
@@ -69,53 +70,75 @@
 
     <div class="flex h-full w-full flex-col lg:flex-row overflow-hidden">
 
+        {{-- BAGIAN KIRI (PRODUK) --}}
         <div class="flex-1 flex flex-col h-full relative border-r border-slate-200">
-            <div class="h-16 px-4 bg-slate-300 shadow-sm z-20 flex items-center justify-between shrink-0 border-b border-slate-100">
-                <div class="flex items-center gap-2">
-                    <div class="h-8 w-8 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
-                        <i class="fas fa-print"></i>
+
+            {{-- TOP BAR --}}
+            <div class="h-16 px-4 bg-white shadow-sm z-20 flex items-center justify-between shrink-0 border-b border-slate-200">
+
+                {{-- LOGO / BRAND --}}
+                <div class="flex items-center gap-2 lg:w-48">
+                    <div class="h-9 w-9 bg-red-600 rounded-lg flex items-center justify-center text-white text-lg shadow-red-200 shadow-lg">
+                        <i class="fas fa-cash-register"></i>
                     </div>
-                    <h1 class="text-lg font-bold text-slate-800 hidden sm:block">Sancaka POS</h1>
+                    <h1 class="text-lg font-black text-slate-800 tracking-tight hidden sm:block">Sancaka<span class="text-red-600">POS</span></h1>
                 </div>
 
-                {{-- 3. KOLOM PENCARIAN + TOMBOL KAMERA --}}
-                <div class="relative w-full max-w-md mx-4">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500"><i class="fas fa-search"></i></span>
+                {{-- KOLOM PENCARIAN (YANG SUDAH DIRAPIKAN) --}}
+                <div class="flex-1 max-w-2xl px-2 lg:px-6">
+                    <div class="relative group">
 
-                    <input type="text"
-                        x-model="search"
-                        @keydown.enter.prevent="scanProduct()"
-                        autofocus
-                        placeholder="Scan / Ketik..."
-                        class="w-full pl-10 pr-20 py-2 rounded-xl bg-slate-100 border-none focus:ring-2 focus:ring-red-500 text-sm font-medium transition-all">
+                        {{-- Icon Kiri (Kaca Pembesar) --}}
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-slate-400 group-focus-within:text-red-500 transition-colors"></i>
+                        </div>
 
-                    {{-- TOMBOL DI DALAM INPUT --}}
-                    <div class="absolute inset-y-0 right-0 flex items-center pr-2 gap-1">
-                        {{-- Tombol Hapus Teks --}}
-                        <button x-show="search.length > 0" @click="search = ''" class="text-slate-400 hover:text-red-500 p-1">
-                            <i class="fas fa-times-circle"></i>
-                        </button>
+                        {{-- Input Field --}}
+                        <input type="text"
+                            x-model="search"
+                            @keydown.enter.prevent="scanProduct()"
+                            autofocus
+                            placeholder="Cari produk atau scan barcode..."
+                            class="block w-full pl-10 pr-24 py-2.5 bg-slate-100 border-2 border-transparent text-slate-700 placeholder-slate-400 focus:bg-white focus:border-red-500 focus:ring-0 rounded-xl text-sm font-medium transition-all shadow-inner focus:shadow-lg">
 
-                        {{-- TOMBOL SCANNER BARU --}}
-                        <button @click="startScanner()" class="bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-300 rounded-lg p-1.5 shadow-sm transition-colors" title="Scan Barcode via Kamera">
-                            <i class="fas fa-qrcode text-lg"></i>
-                        </button>
+                        {{-- Tombol Kanan (Clear & Scan) --}}
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-1.5 gap-1">
+
+                            {{-- Tombol X (Clear Text) - Muncul kalau ada teks --}}
+                            <button x-show="search.length > 0"
+                                    @click="search = ''; $el.parentElement.parentElement.querySelector('input').focus()"
+                                    class="p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition"
+                                    x-transition>
+                                <i class="fas fa-times text-xs"></i>
+                            </button>
+
+                            {{-- Divider Garis --}}
+                            <div class="h-6 w-px bg-slate-300 mx-1"></div>
+
+                            {{-- Tombol SCANNER --}}
+                            <button @click="startScanner()"
+                                    class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-lg transition-all shadow-sm group/scan"
+                                    title="Scan Barcode">
+                                <i class="fas fa-qrcode text-lg group-hover/scan:scale-110 transition-transform"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2 shrink-0">
-                    <a href="{{ url('/member/login') }}"
-                       class="relative p-2.5 bg-white rounded-xl text-slate-600 border border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all shadow-sm flex items-center justify-center w-10 h-10"
-                       title="Login Member">
-                        <i class="fas fa-user"></i>
+                {{-- USER & CART MOBILE --}}
+                <div class="flex items-center gap-3">
+                    <a href="{{ url('/member/login') }}" class="hidden sm:flex items-center justify-center h-10 w-10 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 hover:text-red-600 transition border border-slate-200" title="Member Login">
+                        <i class="far fa-user"></i>
                     </a>
 
-                    <button @click="mobileCartOpen = !mobileCartOpen" class="lg:hidden relative p-2.5 bg-red-50 rounded-xl text-red-600 hover:bg-red-100 transition w-10 h-10 flex items-center justify-center border border-transparent hover:border-red-200">
+                    <button @click="mobileCartOpen = !mobileCartOpen" class="lg:hidden relative h-10 w-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-100 transition border border-red-100">
                         <i class="fas fa-shopping-bag"></i>
-                        <span x-show="cartTotalQty > 0" class="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" x-text="cartTotalQty"></span>
+                        <span x-show="cartTotalQty > 0" class="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" x-text="cartTotalQty"></span>
                     </button>
                 </div>
             </div>
+
+            {{-- BAGIAN ISI PRODUK --}}
 
             {{-- HAPUS p-4 di sini agar sticky header bisa nempel ke sisi --}}
             <div class="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 relative">
@@ -177,7 +200,7 @@
                     <template x-if="itemMatchesSearch('{{ addslashes($product->name) }}') && (activeCategory === 'all' || activeCategory === '{{ $prodCatSlug }}')">
 
                         {{-- Tambahkan '{{ $prodCatSlug }}' di paling belakang --}}
-<div @click="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->sell_price }}, {{ $product->stock }}, {{ $product->weight ?? 0 }}, '{{ $product->image ? asset('storage/'.$product->image) : '' }}', {{ $product->has_variant ? 'true' : 'false' }}, '{{ $prodCatSlug }}')"
+                        <div @click="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->sell_price }}, {{ $product->stock }}, {{ $product->weight ?? 0 }}, '{{ $product->image ? asset('storage/'.$product->image) : '' }}', {{ $product->has_variant ? 'true' : 'false' }}, '{{ $prodCatSlug }}')"
                         class="relative bg-white rounded-2xl p-3 shadow-sm border border-slate-100 flex flex-col h-full group
                              {{ $product->stock <= 0 ? 'opacity-60 grayscale cursor-not-allowed' : 'cursor-pointer active:scale-95 hover:border-red-300 hover:shadow-md' }} transition-all duration-200">
 
@@ -617,19 +640,33 @@
         </div>
     </div>
 
-    {{-- 4. MODAL LAYAR HITAM UNTUK KAMERA --}}
+    {{-- === MODAL OVERLAY KAMERA === --}}
     <div x-show="scannerOpen" style="display: none;"
-         class="fixed inset-0 z-[60] bg-black/90 flex flex-col items-center justify-center p-4">
+         class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center p-4"
+         x-transition.opacity>
 
-        <div class="w-full max-w-sm bg-white rounded-2xl overflow-hidden shadow-2xl relative">
-            <div id="reader" class="w-full bg-black"></div> {{-- Area Kamera Muncul Disini --}}
+        <div class="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl relative border-4 border-slate-800">
 
-            <div class="p-4 text-center">
-                <p class="text-sm font-bold text-slate-700 mb-4">Arahkan kamera ke Barcode</p>
-                <button @click="stopScanner()"
-                        class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow-lg transition-all">
-                    Tutup Kamera
+            {{-- Header Modal --}}
+            <div class="absolute top-0 inset-x-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/50 to-transparent">
+                <span class="text-white font-bold text-sm tracking-wide flex items-center gap-2">
+                    <i class="fas fa-expand text-red-400"></i> SCANNER AKTIF
+                </span>
+                <button @click="stopScanner()" class="h-8 w-8 bg-black/40 text-white rounded-full backdrop-blur-md flex items-center justify-center hover:bg-red-600 transition">
+                    <i class="fas fa-times"></i>
                 </button>
+            </div>
+
+            {{-- Area Kamera (Library akan render di sini) --}}
+            <div id="reader" class="w-full h-auto bg-black min-h-[300px]"></div>
+
+            {{-- Footer Modal --}}
+            <div class="bg-slate-900 p-5 text-center">
+                <p class="text-slate-300 text-xs mb-3">Arahkan kamera ke barcode produk</p>
+                <div class="flex justify-center gap-2">
+                    <span class="h-1 w-1 bg-red-500 rounded-full animate-ping"></span>
+                    <span class="text-red-500 text-xs font-bold uppercase tracking-widest">Mencari Kode...</span>
+                </div>
             </div>
         </div>
     </div>
