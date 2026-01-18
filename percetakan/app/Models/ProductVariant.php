@@ -23,6 +23,7 @@ class ProductVariant extends Model
         'price',      // Harga khusus varian
         'stock',      // Stok khusus varian
         'sku',        // Kode unik varian (Opsional)
+        'barcode', // <--- TAMBAHKAN INI
     ];
 
     /**
