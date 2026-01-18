@@ -596,7 +596,7 @@ function posSystem() {
                     body: JSON.stringify({ coupon_code: this.couponCode, total_belanja: this.subtotal })
                 });
                 const data = await response.json();
-                if (data.status === 'success') { this.discountAmount = data.data.discount_amount; this.couponMessage = `✅ Kakak Hemat Rp ${this.rupiah(data.data.discount_amount)}`; }
+                if (data.status === 'success') { this.discountAmount = data.data.discount_amount; this.couponMessage = `✅ Berhasil, Kakak Hemat Rp ${this.rupiah(data.data.discount_amount)}`; }
                 else {
                     // GAGAL / TIDAK DITEMUKAN
                     this.discountAmount = 0; // Pastikan diskon jadi 0
