@@ -178,8 +178,18 @@ function posSystem() {
             }
         },
 
-        // 1. CARI PELANGGAN BY WA
         async searchCustomerByPhone() {
+            // [LOGIC BARU] Reset Status Dulu
+            this.isCustomerFound = false; // Matikan centang hijau
+            this.selectedCustomerId = ''; // Hapus ID customer lama
+
+            // Reset Kupon juga biar tidak bocor ke user baru
+            if (this.couponCode) {
+                this.couponCode = '';
+                this.discountAmount = 0;
+                this.couponMessage = '';
+            }
+
             // Bersihkan input hp
             let query = this.customerPhone.replace(/[^0-9]/g, '');
 
@@ -192,20 +202,19 @@ function posSystem() {
             this.isSearchingCustomer = true;
 
             try {
-                // Panggil API Search
                 const response = await fetch(`{{ route('customers.searchApi') }}?q=${query}`);
                 const data = await response.json();
 
                 if (data.length > 0) {
-                    // Jika ketemu 1 persis, atau user mengetik lengkap
-                    if (data.length === 1 && data[0].whatsapp.includes(query) && query.length > 9) {
-                        // Autofill langsung jika sangat yakin (opsional)
-                        // this.fillCustomerData(data[0]);
+                    // Cek Autofill: Jika hasil cuma 1 DAN nomor persis sama
+                    if (data.length === 1 && data[0].whatsapp === query) {
+                        // OPSI: Mau autofill langsung atau tunggu diklik?
+                        // Saran: Tunggu diklik biar user sadar, kecuali Anda mau UX cepat
+                        this.fillCustomerData(data[0]);
                     }
                     this.customerSearchResults = data;
                 } else {
                     this.customerSearchResults = [];
-                    // Jangan reset isCustomerFound dulu, biarkan user ngetik sampai selesai
                 }
             } catch (error) {
                 console.error("Gagal mencari pelanggan:", error);
