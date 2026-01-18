@@ -33,6 +33,7 @@
             <a href="{{ route('products.index') }}" class="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition">
                 &larr; Kembali
             </a>
+            {{-- TOMBOL EDIT --}}
             <a href="{{ route('products.edit', $product->id) }}" class="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-bold hover:bg-amber-600 shadow-lg shadow-amber-200 transition">
                 <i class="fas fa-pencil-alt mr-1"></i> Edit
             </a>
@@ -131,7 +132,7 @@
                                     <span class="text-base text-emerald-700 font-black">Rp {{ number_format($product->sell_price, 0, ',', '.') }}</span>
                                 </div>
 
-                                {{-- [BARU] TAMPILAN BARCODE --}}
+                                {{-- [BARU] TAMPILAN BARCODE (SINGLE) --}}
                                 @if($product->barcode)
                                 <div class="flex justify-between p-3 border-b border-slate-100">
                                     <span class="text-sm text-slate-500 font-medium">Barcode</span>
