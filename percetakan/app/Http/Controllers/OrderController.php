@@ -1036,6 +1036,35 @@ class OrderController extends Controller
             // LANGKAH 5: FINALISASI & COMMIT (PENYELAMAT INVOICE)
             // ============================================================
 
+            // --- [MULAI KODE BARU: AUTO SAVE KUPON KE CUSTOMER] ---
+            // Fitur: Jika ada kupon dipakai, simpan 'sticky' ke data pelanggan
+            if ($request->coupon && $customerPhone) {
+                try {
+                    // Pastikan Model Customer di-import atau panggil full namespace
+                    // Kita pakai updateOrCreate agar:
+                    // 1. Jika customer belum ada di DB -> Dibuat baru + Kupon
+                    // 2. Jika customer sudah ada -> Kupon diupdate dengan yang baru dipakai
+
+                    if (class_exists('App\Models\Customer')) {
+                        \App\Models\Customer::updateOrCreate(
+                            ['whatsapp' => $customerPhone], // Kunci pencarian (Unik)
+                            [
+                                'name' => $customerName,
+                                'assigned_coupon' => $request->coupon, // <--- INI KUNCINYA
+                                // Kita update alamat juga biar data makin lengkap
+                                'address' => $fullAddressSaved ?? DB::raw('address')
+                            ]
+                        );
+
+                        Log::info("[AUTO-SAVE] Kupon '{$request->coupon}' tersimpan untuk pelanggan: {$customerName}");
+                    }
+                } catch (\Exception $e) {
+                    // Pakai try-catch agar jika error di sini, Order TIDAK BATAL
+                    Log::warning("Gagal Auto-Save Kupon Customer: " . $e->getMessage());
+                }
+            }
+            // --- [SELESAI KODE BARU] ---
+
             // 1. COMMIT DATABASE TERLEBIH DAHULU
             // Ini wajib agar data Order tersimpan permanen sebelum sistem "sibuk" kirim WA
             DB::commit();

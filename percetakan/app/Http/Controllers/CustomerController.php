@@ -239,4 +239,18 @@ class CustomerController extends Controller
 
         return $phone;
     }
+
+    public function searchApi(Request $request)
+{
+    $q = $request->get('q');
+
+    // Pastikan 'assigned_coupon' dimasukkan dalam select
+    $customers = Customer::where('name', 'like', "%$q%")
+                ->orWhere('whatsapp', 'like', "%$q%")
+                ->select('id', 'name', 'whatsapp', 'address', 'assigned_coupon') // <--- TAMBAHKAN INI
+                ->limit(10)
+                ->get();
+
+    return response()->json($customers);
+}
 }
