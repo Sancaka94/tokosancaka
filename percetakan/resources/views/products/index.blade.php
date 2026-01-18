@@ -7,119 +7,98 @@
 {{-- 1. LOAD LIBRARY VISUAL BARCODE --}}
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
-{{-- CONTAINER UTAMA DENGAN ALPINE DATA 'productManager' --}}
-<div class="max-w-7xl mx-auto" x-data="productManager()">
+<div class="space-y-6">
 
-    {{-- HEADER HALAMAN --}}
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+    {{-- HEADER & TOMBOL AKSI UTAMA --}}
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h1 class="text-3xl font-black text-slate-800 tracking-tight">Manajemen Produk</h1>
-            <p class="text-slate-500 font-medium text-sm mt-1">Kelola stok, varian, harga modal, dan supplier Anda.</p>
+            <h1 class="text-2xl font-black text-slate-800">Manajemen Produk</h1>
+            <p class="text-slate-500 text-sm">Kelola stok, varian, harga modal, dan supplier Anda.</p>
         </div>
+        <div class="flex gap-2">
+            {{-- Tombol Cetak PDF (Menggunakan Filter Saat Ini) --}}
+            <a href="{{ route('products.downloadPdf', request()->all()) }}" target="_blank"
+               class="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-xl font-bold transition-all shadow-sm flex items-center gap-2">
+                <i class="fas fa-print"></i> <span class="hidden sm:inline">Cetak PDF</span>
+            </a>
 
-        <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <form action="{{ route('products.index') }}" method="GET" class="relative w-full sm:w-72 group">
-                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 group-focus-within:text-indigo-500 transition-colors">
-                    <i class="fas fa-search"></i>
-                </span>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari produk / supplier..."
-                       class="w-full pl-10 pr-4 py-2.5 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all shadow-sm">
-            </form>
-
-            <div x-data="{ openPdfModal: false }">
-
-    <button @click="openPdfModal = true"
-       class="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200 transition-all transform hover:-translate-y-0.5">
-        <i class="fas fa-file-pdf"></i>
-        <span>Cetak PDF</span>
-    </button>
-
-    <div x-show="openPdfModal" style="display: none;"
-         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
-         x-transition.opacity>
-
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
-             @click.outside="openPdfModal = false"
-             x-transition.scale>
-
-            <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                <h3 class="font-bold text-lg text-slate-800">
-                    <i class="fas fa-print text-red-600 mr-2"></i> Filter Cetak PDF
-                </h3>
-                <button @click="openPdfModal = false" class="text-slate-400 hover:text-red-500 transition">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-
-            <form action="{{ route('products.downloadPdf') }}" method="GET" target="_blank" @submit="openPdfModal = false">
-                <div class="p-6 space-y-4">
-
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Pilih Kategori</label>
-                        <div class="relative">
-                            <select name="category_id" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-red-500 focus:border-red-500 block p-2.5 appearance-none">
-                                <option value="all" selected>Semua Kategori</option>
-
-                                {{-- Ambil data kategori langsung (jika $categories tidak dipassing dari controller) --}}
-                                @php $categories = \App\Models\Category::all(); @endphp
-                                @foreach($categories as $cat)
-                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                                @endforeach
-                            </select>
-                            <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-slate-500">
-                                <i class="fas fa-chevron-down text-xs"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Jenis Produk</label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <label class="cursor-pointer">
-                                <input type="radio" name="type" value="all" checked class="peer sr-only">
-                                <div class="p-2 text-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 transition text-xs font-bold">
-                                    Semua
-                                </div>
-                            </label>
-
-                            <label class="cursor-pointer">
-                                <input type="radio" name="type" value="single" class="peer sr-only">
-                                <div class="p-2 text-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 transition text-xs font-bold">
-                                    Tunggal
-                                </div>
-                            </label>
-
-                            <label class="cursor-pointer">
-                                <input type="radio" name="type" value="variant" class="peer sr-only">
-                                <div class="p-2 text-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 peer-checked:bg-indigo-50 peer-checked:text-indigo-600 peer-checked:border-indigo-200 transition text-xs font-bold">
-                                    Varian
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-
-                </div>
-
-                <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
-                    <button type="button" @click="openPdfModal = false" class="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition">
-                        Batal
-                    </button>
-                    <button type="submit" class="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-lg shadow-red-200 transition flex items-center gap-2">
-                        <i class="fas fa-download"></i> Download PDF (Barcode)
-                    </button>
-                </div>
-            </form>
-
-                    </div>
-                </div>
-            </div>
-
-            <a href="{{ route('orders.create') }}"
-               class="flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5 whitespace-nowrap">
-                <i class="fas fa-cash-register"></i>
-                <span>Buka Kasir</span>
+            <a href="{{ route('orders.create') }}" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center gap-2">
+                <i class="fas fa-cash-register"></i> <span>Buka Kasir</span>
             </a>
         </div>
+    </div>
+
+    {{-- CARD FILTER & PENCARIAN --}}
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+        <form method="GET" action="{{ route('products.index') }}" class="flex flex-col lg:flex-row gap-4 items-center justify-between">
+
+            {{-- BAGIAN KIRI: FILTER KATEGORI & JENIS --}}
+            <div class="flex flex-col sm:flex-row w-full lg:w-auto gap-3">
+
+                {{-- 1. Filter Kategori --}}
+                <div class="relative min-w-[200px]">
+                    <select name="category_id" onchange="this.form.submit()"
+                            class="w-full pl-3 pr-10 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-red-500 focus:border-red-500 appearance-none font-bold cursor-pointer hover:bg-slate-100 transition">
+                        <option value="all">📂 Semua Kategori</option>
+                        @foreach($categories as $cat)
+                            <option value="{{ $cat->id }}" {{ request('category_id') == $cat->id ? 'selected' : '' }}>
+                                {{ $cat->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-500">
+                        <i class="fas fa-chevron-down text-xs"></i>
+                    </div>
+                </div>
+
+                {{-- 2. Filter Jenis (Tombol Group) --}}
+                <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                    {{-- Tombol Semua --}}
+                    <label class="cursor-pointer">
+                        <input type="radio" name="type" value="all" class="sr-only peer" onchange="this.form.submit()" {{ request('type', 'all') == 'all' ? 'checked' : '' }}>
+                        <span class="px-4 py-1.5 rounded-lg text-xs font-bold block transition-all
+                                     text-slate-500 hover:text-slate-700
+                                     peer-checked:bg-white peer-checked:text-slate-800 peer-checked:shadow-sm">
+                            Semua
+                        </span>
+                    </label>
+
+                    {{-- Tombol Tunggal --}}
+                    <label class="cursor-pointer">
+                        <input type="radio" name="type" value="single" class="sr-only peer" onchange="this.form.submit()" {{ request('type') == 'single' ? 'checked' : '' }}>
+                        <span class="px-4 py-1.5 rounded-lg text-xs font-bold block transition-all
+                                     text-slate-500 hover:text-slate-700
+                                     peer-checked:bg-white peer-checked:text-emerald-600 peer-checked:shadow-sm">
+                            Single
+                        </span>
+                    </label>
+
+                    {{-- Tombol Varian --}}
+                    <label class="cursor-pointer">
+                        <input type="radio" name="type" value="variant" class="sr-only peer" onchange="this.form.submit()" {{ request('type') == 'variant' ? 'checked' : '' }}>
+                        <span class="px-4 py-1.5 rounded-lg text-xs font-bold block transition-all
+                                     text-slate-500 hover:text-slate-700
+                                     peer-checked:bg-white peer-checked:text-indigo-600 peer-checked:shadow-sm">
+                            Varian
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            {{-- BAGIAN KANAN: PENCARIAN --}}
+            <div class="w-full lg:w-auto flex-1 max-w-md relative group">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-slate-400 group-focus-within:text-red-500 transition-colors"></i>
+                </div>
+                <input type="text" name="search" value="{{ request('search') }}"
+                       placeholder="Cari nama, SKU, atau barcode..."
+                       class="block w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 text-slate-700 placeholder-slate-400 focus:border-red-500 focus:ring-red-500 rounded-xl text-sm font-medium transition-all shadow-sm group-focus-within:shadow-md">
+
+                {{-- Tombol Submit Search (Hidden tapi perlu buat Enter) --}}
+                <button type="submit" class="hidden"></button>
+            </div>
+
+        </form>
     </div>
 
     {{-- LAYOUT GRID 2 KOLOM (KIRI: FORM, KANAN: TABEL) --}}
