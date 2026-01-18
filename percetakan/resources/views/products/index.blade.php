@@ -7,7 +7,7 @@
 {{-- 1. LOAD LIBRARY VISUAL BARCODE --}}
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
-<div class="space-y-6">
+<div class="space-y-6" x-data="productManager()">
 
     {{-- HEADER & TOMBOL AKSI UTAMA --}}
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
