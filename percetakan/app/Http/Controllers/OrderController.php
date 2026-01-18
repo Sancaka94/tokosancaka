@@ -119,7 +119,7 @@ class OrderController extends Controller
                         $q->where('categories.name', 'like', '%laundry%')
                           ->orWhere('categories.slug', 'like', '%laundry%');
                     })
-                    ->sum(DB::raw('order_details.quantity * 1000'));
+                    ->sum(DB::raw('order_details.quantity * products.weight'));
 
                 $totalLaundryWeight = $weightInGrams / 1000; // Konversi ke Kg
             }
