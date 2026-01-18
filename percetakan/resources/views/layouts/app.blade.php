@@ -4,21 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    
+
     <title>@yield('title', 'Sancaka POS') - Dashboard</title>
 
     <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
     <link rel="shortcut icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
 
     <link rel="apple-touch-icon" href="https://tokosancaka.com/storage/uploads/sancaka.png">
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
     <style>
         [x-cloak] { display: none !important; }
@@ -35,11 +36,11 @@
 <body class="bg-slate-50 text-slate-800 antialiased" x-data="{ sidebarOpen: false }">
 
     <div class="flex h-screen overflow-hidden">
-        
+
         @include('layouts.partials.sidebar')
 
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300">
-            
+
             @include('layouts.partials.header')
 
             <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 lg:p-8 custom-scrollbar">
@@ -51,7 +52,7 @@
                 @endif
 
                 @yield('content')
-            
+
                 <div class="mt-10 text-center text-xs text-slate-400 pb-4">
                     &copy; {{ date('Y') }} Sancaka POS. All rights reserved.
                 </div>

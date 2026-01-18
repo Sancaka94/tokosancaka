@@ -88,7 +88,17 @@ class ProductController extends Controller
             'variants.*.name'  => 'required_with:variants|string',
             'variants.*.price' => 'required_with:variants|numeric|min:0',
             'variants.*.stock' => 'required_with:variants|integer|min:0',
+            'barcode' => 'nullable|unique:products,barcode|unique:product_variants,barcode',
         ]);
+
+        // 2. LOGIKA AUTO-GENERATE BARCODE
+        $barcodeToSave = $request->barcode;
+
+        // Jika input barcode kosong, buatkan otomatis
+        if (empty($barcodeToSave)) {
+            // Format: PRD + Timestamp + 3 Angka Acak (Contoh: PRD1705638123999)
+            $barcodeToSave = 'PRD' . time() . rand(100, 999);
+        }
 
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput()->with('error', 'Validasi gagal, periksa inputan Anda.');
@@ -127,7 +137,8 @@ class ProductController extends Controller
                 'supplier'     => $request->supplier ?? '-',
                 'image'        => $imagePath,
                 'has_variant'  => $hasVariant,
-                'type'         => 'physical' // Default
+                'type'         => 'physical', // Default
+                'barcode'      => $barcodeToSave,
             ]);
 
             // 5. Simpan Varian (Looping)
@@ -168,9 +179,10 @@ class ProductController extends Controller
     /**
      * Update data produk
      */
-    public function update(Request $request, Product $product)
+    public function update(Request $request, $id, $product)
     {
         Log::info('[UPDATE START] ID: ' . $product->id);
+        $product = Product::findOrFail($id);
 
         $validator = Validator::make($request->all(), [
             'name'        => 'required|string|max:255',
@@ -180,7 +192,18 @@ class ProductController extends Controller
             'unit'        => 'required|string',
             'supplier'    => 'nullable|string|max:255',
             'image'       => 'nullable|file|max:2048|mimes:jpeg,png,jpg,gif',
+            'barcode' => 'nullable|unique:products,barcode,' . $id . '|unique:product_variants,barcode',
         ]);
+
+        // 2. LOGIKA AUTO-GENERATE (Jika user menghapus barcode lama dan ingin generate baru)
+        $barcodeToSave = $request->barcode;
+
+        if (empty($barcodeToSave)) {
+            // Jika sebelumnya sudah ada barcode, pertahankan yang lama?
+            // Atau jika user sengaja mengosongkan ingin generate baru?
+            // Skenario: Jika kosong, kita generate baru.
+            $barcodeToSave = 'PRD' . time() . rand(100, 999);
+        }
 
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
@@ -206,6 +229,7 @@ class ProductController extends Controller
                 'unit'        => $request->unit,
                 'supplier'    => $request->supplier,
                 'has_variant' => $hasVariant,
+                'barcode'     => $barcodeToSave,
             ];
 
             // Jika mode Single Product (Non-Varian)
