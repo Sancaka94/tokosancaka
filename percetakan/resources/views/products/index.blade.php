@@ -166,6 +166,18 @@
                         </div>
                     </div>
 
+                    {{-- Barcode (Input Scanner) --}}
+                    <div x-show="!isService">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Barcode / SKU</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fas fa-barcode"></i></span>
+                            <input type="text" name="barcode" placeholder="Scan Barcode Di Sini..."
+                                class="w-full pl-9 pr-4 py-2.5 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500 transition text-sm font-mono tracking-wide"
+                                @keydown.enter.prevent> {{-- Mencegah Enter men-submit form saat scan --}}
+                        </div>
+                        <p class="text-[9px] text-slate-400 mt-1 italic pl-1">*Kosongkan jika ingin auto-generate SKU</p>
+                    </div>
+
                     {{-- Grid Harga --}}
                     <div class="grid grid-cols-2 gap-4">
                         <div x-show="!isService">
@@ -465,6 +477,14 @@
                                            class="w-full px-3 py-2 rounded-lg border-emerald-200 text-sm focus:ring-2 focus:ring-emerald-500 text-emerald-700 font-bold bg-emerald-50/50 focus:bg-white text-right transition-all">
                                 </div>
 
+                                {{-- Barcode (Update Terbaru) --}}
+                                <div class="col-span-3 relative">
+                                    <span class="absolute inset-y-0 left-0 pl-2 flex items-center text-slate-400"><i class="fas fa-barcode text-xs"></i></span>
+                                    <input type="text" x-model="variant.barcode" placeholder="Scan..."
+                                        @keydown.enter.prevent
+                                        class="w-full pl-6 pr-2 py-2 rounded-lg border-slate-300 text-xs font-mono focus:ring-2 focus:ring-indigo-500 bg-white transition-all">
+                                </div>
+
                                 {{-- Stok --}}
                                 <div class="col-span-3">
                                     <input type="number" x-model="variant.stock" placeholder="0"
@@ -530,6 +550,7 @@
 
                     this.activeProductName = data.product_name;
                     this.variants = data.variants; // Array varian dari DB
+                    barcode: v.barcode || '' // Muat barcode jika ada
 
                 } catch (error) {
                     console.error(error);
@@ -547,6 +568,7 @@
                     price: 0,
                     stock: 0,
                     sku: ''
+                    barcode: '' // Field baru untuk barcode
                 });
                 // Scroll ke bawah otomatis agar baris baru terlihat
                 this.$nextTick(() => {
