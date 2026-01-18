@@ -107,10 +107,9 @@ class ProductController extends Controller
         // 2. LOGIKA AUTO-GENERATE BARCODE
         $barcodeToSave = $request->barcode;
 
-        // Jika input barcode kosong, buatkan otomatis
+        // Jika kosong, Auto-Generate Angka 13 Digit sesuai Kategori
         if (empty($barcodeToSave)) {
-            // Format: PRD + Timestamp + 3 Angka Acak (Contoh: PRD1705638123999)
-            $barcodeToSave = 'PRD' . time() . rand(100, 999);
+            $barcodeToSave = $this->generateNumericBarcode($request->category_id);
         }
 
         if ($validator->fails()) {
@@ -151,7 +150,7 @@ class ProductController extends Controller
                 'image'        => $imagePath,
                 'has_variant'  => $hasVariant,
                 'type'         => 'physical', // Default
-                'barcode'      => $barcodeToSave,
+                'barcode'      => $barcodeToSave, // Gunakan variabel baru ini
             ]);
 
             // 5. Simpan Varian (Looping)
@@ -217,8 +216,11 @@ class ProductController extends Controller
         // 2. LOGIKA AUTO-GENERATE
         $barcodeToSave = $request->barcode;
 
+        // Jika user mengosongkan barcode (ingin generate baru) atau memang kosong
         if (empty($barcodeToSave)) {
-            $barcodeToSave = 'PRD' . time() . rand(100, 999);
+            // Gunakan kategori dari request (jika diubah) atau kategori lama produk
+            $catId = $request->category_id ?? $product->category_id;
+            $barcodeToSave = $this->generateNumericBarcode($catId);
         }
 
         if ($validator->fails()) {
@@ -279,6 +281,11 @@ class ProductController extends Controller
 
                         // [FIX] Ambil Barcode Varian
                         $varBarcode = $variant['barcode'] ?? null;
+
+                        // Jika varian tidak punya barcode, buatkan juga sesuai kategori induk
+                        if (empty($varBarcode)) {
+                            $varBarcode = $this->generateNumericBarcode($request->category_id);
+                        }
 
                         ProductVariant::create([
                             'product_id' => $product->id,
@@ -479,5 +486,45 @@ class ProductController extends Controller
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream('laporan-stok-produk-' . date('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Generate Barcode 13 Digit (Numeric Only)
+     * Format: [ID_KATEGORI + 00] + [ANGKA_ACAK]
+     * Contoh Kategori ID 1: 1008374625192
+     */
+    private function generateNumericBarcode($categoryId)
+    {
+        // 1. Tentukan Prefix (Awalan)
+        // Misal: Kategori ID 1 jadi "100", ID 12 jadi "1200"
+        $prefix = $categoryId . '00';
+
+        // 2. Hitung sisa panjang digit yang dibutuhkan
+        // Target EAN-13 adalah 13 digit.
+        $targetLength = 13;
+        $neededLength = $targetLength - strlen($prefix);
+
+        // Jika prefix kepanjangan (jarang terjadi), batasi minimal random 3 digit
+        if ($neededLength < 3) $neededLength = 3;
+
+        do {
+            // 3. Generate Angka Random Sisa
+            $randomString = '';
+            for ($i = 0; $i < $neededLength; $i++) {
+                $randomString .= mt_rand(0, 9); // Pastikan cuma angka 0-9
+            }
+
+            $finalBarcode = $prefix . $randomString;
+
+            // Pastikan panjang total tidak melebihi 13 (potong jika lebih)
+            $finalBarcode = substr($finalBarcode, 0, 13);
+
+            // 4. Cek Unik di Database (Produk & Varian)
+            $exists = \App\Models\Product::where('barcode', $finalBarcode)->exists()
+                   || \App\Models\ProductVariant::where('barcode', $finalBarcode)->exists();
+
+        } while ($exists); // Ulangi terus sampai nemu yang belum dipakai
+
+        return $finalBarcode;
     }
 }
