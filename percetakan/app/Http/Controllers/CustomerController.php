@@ -46,16 +46,16 @@ class CustomerController extends Controller
     {
         // Validasi Input Lengkap
         $request->validate([
-            'name'             => 'required|string|max:255',
-            'whatsapp'         => 'required|string|unique:customers,whatsapp',
-            'address'          => 'nullable|string',
-            'province_id'      => 'nullable|integer',
-            'city_id'          => 'nullable|integer',
-            'district_id'      => 'nullable|integer',
-            'subdistrict_id'   => 'nullable|integer',
-            'postal_code'      => 'nullable|string|max:10',
-            'latitude'         => 'nullable|numeric',
-            'longitude'        => 'nullable|numeric',
+            'name'           => 'required|string|max:255',
+            'whatsapp'       => 'required|string|unique:customers,whatsapp',
+            'address'        => 'nullable|string',
+            'province_id'    => 'nullable|integer',
+            'city_id'        => 'nullable|integer',
+            'district_id'    => 'nullable|integer',
+            'subdistrict_id' => 'nullable|integer',
+            'postal_code'    => 'nullable|string|max:10',
+            'latitude'       => 'nullable|numeric',
+            'longitude'      => 'nullable|numeric',
         ]);
 
         try {
@@ -164,14 +164,14 @@ class CustomerController extends Controller
         $customer = Customer::findOrFail($id);
 
         $request->validate([
-            'name'             => 'required|string|max:255',
+            'name'           => 'required|string|max:255',
             // Ignore unique validation for current user's ID
-            'whatsapp'         => 'required|string|unique:customers,whatsapp,' . $id,
-            'address'          => 'nullable|string',
-            'district_id'      => 'nullable|integer',
-            'subdistrict_id'   => 'nullable|integer',
-            'latitude'         => 'nullable|numeric',
-            'longitude'        => 'nullable|numeric',
+            'whatsapp'       => 'required|string|unique:customers,whatsapp,' . $id,
+            'address'        => 'nullable|string',
+            'district_id'    => 'nullable|integer',
+            'subdistrict_id' => 'nullable|integer',
+            'latitude'       => 'nullable|numeric',
+            'longitude'      => 'nullable|numeric',
         ]);
 
         try {
@@ -203,6 +203,7 @@ class CustomerController extends Controller
 
     /**
      * Helper: Pencarian Customer via JSON (Untuk Autocomplete di POS)
+     * PERBAIKAN: Menggabungkan dua fungsi searchApi menjadi satu
      */
     public function searchApi(Request $request)
     {
@@ -215,7 +216,18 @@ class CustomerController extends Controller
         $customers = Customer::where('name', 'like', "%$keyword%")
             ->orWhere('whatsapp', 'like', "%$keyword%")
             ->limit(10)
-            ->get(['id', 'name', 'whatsapp', 'address', 'district_id', 'subdistrict_id']);
+            ->select([
+                'id',
+                'name',
+                'whatsapp',
+                'address',
+                'district_id',
+                'subdistrict_id',
+                'latitude',
+                'longitude',
+                'assigned_coupon' // <--- PENTING: Untuk fitur auto-assign kupon
+            ])
+            ->get();
 
         return response()->json($customers);
     }
@@ -239,18 +251,4 @@ class CustomerController extends Controller
 
         return $phone;
     }
-
-    public function searchApi(Request $request)
-{
-    $q = $request->get('q');
-
-    // Pastikan 'assigned_coupon' dimasukkan dalam select
-    $customers = Customer::where('name', 'like', "%$q%")
-                ->orWhere('whatsapp', 'like', "%$q%")
-                ->select('id', 'name', 'whatsapp', 'address', 'assigned_coupon') // <--- TAMBAHKAN INI
-                ->limit(10)
-                ->get();
-
-    return response()->json($customers);
-}
 }
