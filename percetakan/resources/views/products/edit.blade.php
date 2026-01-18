@@ -204,13 +204,46 @@
                                                class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500">
                                     </div>
 
-                                    {{-- [BARU] Barcode Varian --}}
-                                    <div class="col-span-3 relative">
-                                        <span class="absolute left-2 top-2.5 text-slate-400"><i class="fas fa-barcode text-xs"></i></span>
-                                        <input type="text" :name="'variants['+index+'][barcode]'" x-model="variant.barcode"
-                                               @keydown.enter.prevent
-                                               placeholder="Scan..."
-                                               class="w-full pl-6 pr-2 py-2 rounded-lg border-slate-300 text-xs font-mono bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all">
+                                    {{-- Barcode Produk Utama (Edit Mode) --}}
+                                    <div x-show="!hasVariant && !isService" x-data="{
+                                            code: '{{ $product->barcode }}', {{-- Load data lama dari DB --}}
+                                            init() { this.renderBarcode(); },
+                                            renderBarcode() {
+                                                if(this.code && this.code.length > 0) {
+                                                    this.$nextTick(() => {
+                                                        JsBarcode(this.$refs.barcodeCanvasEdit, this.code, {
+                                                            format: 'CODE128',
+                                                            lineColor: '#334155',
+                                                            width: 2,
+                                                            height: 50,
+                                                            displayValue: true
+                                                        });
+                                                    });
+                                                }
+                                            }
+                                        }">
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Barcode / SKU</label>
+
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-3 text-slate-400"><i class="fas fa-barcode"></i></span>
+
+                                            <input type="text" name="barcode"
+                                                x-model="code"
+                                                @input.debounce.300ms="renderBarcode()"
+                                                @keydown.enter.prevent="renderBarcode()"
+                                                placeholder="Scan Barcode..."
+                                                class="w-full pl-9 pr-4 py-3 rounded-xl border-slate-300 font-mono tracking-wide font-bold focus:ring-indigo-500 transition text-sm">
+                                        </div>
+
+                                        {{-- VISUAL BARCODE EDIT --}}
+                                        <div class="mt-2 flex items-center justify-center p-2 bg-slate-50 border border-slate-200 rounded-lg"
+                                            x-show="code && code.length > 0">
+                                            <svg x-ref="barcodeCanvasEdit"></svg>
+                                        </div>
+
+                                        <p class="text-[9px] text-slate-400 mt-1 italic pl-1" x-show="!code || code.length === 0">
+                                            *Kosongkan untuk auto-generate kode baru saat disimpan.
+                                        </p>
                                     </div>
 
                                     {{-- Harga --}}

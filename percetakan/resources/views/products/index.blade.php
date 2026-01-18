@@ -477,12 +477,46 @@
                                            class="w-full px-3 py-2 rounded-lg border-emerald-200 text-sm focus:ring-2 focus:ring-emerald-500 text-emerald-700 font-bold bg-emerald-50/50 focus:bg-white text-right transition-all">
                                 </div>
 
-                                {{-- Barcode (Update Terbaru) --}}
-                                <div class="col-span-3 relative">
-                                    <span class="absolute inset-y-0 left-0 pl-2 flex items-center text-slate-400"><i class="fas fa-barcode text-xs"></i></span>
-                                    <input type="text" x-model="variant.barcode" placeholder="Scan..."
-                                        @keydown.enter.prevent
-                                        class="w-full pl-6 pr-2 py-2 rounded-lg border-slate-300 text-xs font-mono focus:ring-2 focus:ring-indigo-500 bg-white transition-all">
+                                {{-- Barcode (Scanner Input dengan Visual Preview) --}}
+                                <div x-show="!isService" x-data="{
+                                        code: '',
+                                        renderBarcode() {
+                                            if(this.code.length > 0) {
+                                                this.$nextTick(() => {
+                                                    JsBarcode(this.$refs.barcodeCanvas, this.code, {
+                                                        format: 'CODE128',
+                                                        lineColor: '#334155',
+                                                        width: 2,
+                                                        height: 40,
+                                                        displayValue: true
+                                                    });
+                                                });
+                                            }
+                                        }
+                                    }">
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Barcode / SKU</label>
+
+                                    <div class="relative">
+                                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fas fa-barcode"></i></span>
+
+                                        {{-- INPUT FIELD --}}
+                                        <input type="text" name="barcode"
+                                            x-model="code"
+                                            @input.debounce.300ms="renderBarcode()"
+                                            @keydown.enter.prevent="renderBarcode()"
+                                            placeholder="Scan atau Ketik Manual..."
+                                            class="w-full pl-9 pr-4 py-2.5 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500 transition text-sm font-mono tracking-wide font-bold">
+                                    </div>
+
+                                    {{-- AREA VISUAL BARCODE --}}
+                                    <div class="mt-2 h-16 flex items-center justify-center bg-white border border-slate-100 rounded-lg overflow-hidden"
+                                        x-show="code.length > 0" x-transition>
+                                        <svg x-ref="barcodeCanvas" class="w-full h-full object-contain"></svg>
+                                    </div>
+
+                                    <p class="text-[9px] text-slate-400 mt-1 italic pl-1" x-show="code.length === 0">
+                                        *Kosongkan field ini, sistem akan membuatkan barcode otomatis saat disimpan.
+                                    </p>
                                 </div>
 
                                 {{-- Stok --}}
