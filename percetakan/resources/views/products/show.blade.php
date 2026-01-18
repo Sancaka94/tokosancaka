@@ -130,6 +130,17 @@
                                     <span class="text-sm text-emerald-700 font-bold">Harga Jual</span>
                                     <span class="text-base text-emerald-700 font-black">Rp {{ number_format($product->sell_price, 0, ',', '.') }}</span>
                                 </div>
+
+                                {{-- [BARU] TAMPILAN BARCODE --}}
+                                @if($product->barcode)
+                                <div class="flex justify-between p-3 border-b border-slate-100">
+                                    <span class="text-sm text-slate-500 font-medium">Barcode</span>
+                                    <span class="text-sm text-slate-800 font-mono font-bold tracking-wide bg-slate-100 px-2 py-0.5 rounded">
+                                        <i class="fas fa-barcode mr-1"></i> {{ $product->barcode }}
+                                    </span>
+                                </div>
+                                @endif
+
                                 <div class="flex justify-between p-3 border-b border-slate-100">
                                     <span class="text-sm text-slate-500 font-medium">Supplier</span>
                                     <span class="text-sm text-slate-800 font-bold">{{ $product->supplier ?? '-' }}</span>
@@ -149,6 +160,7 @@
                                     <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
                                         <tr>
                                             <th class="px-4 py-3">Nama Varian</th>
+                                            <th class="px-4 py-3">Barcode</th> {{-- [BARU] KOLOM BARCODE --}}
                                             <th class="px-4 py-3 text-right">Harga</th>
                                             <th class="px-4 py-3 text-center">Stok</th>
                                         </tr>
@@ -157,6 +169,18 @@
                                         @foreach($product->variants as $variant)
                                         <tr class="hover:bg-slate-50">
                                             <td class="px-4 py-3 font-bold text-slate-700">{{ $variant->name }}</td>
+
+                                            {{-- [BARU] DATA BARCODE VARIAN --}}
+                                            <td class="px-4 py-3 font-mono text-xs text-slate-500">
+                                                @if($variant->barcode)
+                                                    <span class="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                                        {{ $variant->barcode }}
+                                                    </span>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+
                                             <td class="px-4 py-3 text-right font-bold text-emerald-600">
                                                 Rp {{ number_format($variant->price, 0, ',', '.') }}
                                             </td>
