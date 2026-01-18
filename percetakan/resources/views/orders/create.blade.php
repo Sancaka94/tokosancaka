@@ -11,6 +11,7 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -29,7 +30,42 @@
 
 {{-- Inisialisasi Alpine Data --}}
 <body class="bg-slate-100 font-sans text-slate-800 h-screen overflow-hidden select-none"
-      x-data="posSystem">
+      x-data="{
+          ...posSystem(),
+          scannerOpen: false,
+          scannerObj: null,
+
+          async startScanner() {
+              this.scannerOpen = true;
+              this.$nextTick(() => {
+                  const onScanSuccess = (decodedText, decodedResult) => {
+                      this.search = decodedText; // Isi kolom pencarian
+                      this.stopScanner();        // Matikan kamera
+                      this.scanProduct();        // Cari produk ke server
+                  };
+
+                  this.scannerObj = new Html5Qrcode('reader');
+                  this.scannerObj.start(
+                      { facingMode: 'environment' },
+                      { fps: 10, qrbox: { width: 250, height: 250 } },
+                      onScanSuccess,
+                      (error) => {}
+                  ).catch(err => {
+                      alert('Gagal membuka kamera: ' + err);
+                      this.scannerOpen = false;
+                  });
+              });
+          },
+
+          async stopScanner() {
+              if (this.scannerObj) {
+                  await this.scannerObj.stop();
+                  this.scannerObj.clear();
+                  this.scannerObj = null;
+              }
+              this.scannerOpen = false;
+          }
+      }">
 
     <div class="flex h-full w-full flex-col lg:flex-row overflow-hidden">
 
@@ -42,20 +78,29 @@
                     <h1 class="text-lg font-bold text-slate-800 hidden sm:block">Sancaka POS</h1>
                 </div>
 
+                {{-- 3. KOLOM PENCARIAN + TOMBOL KAMERA --}}
                 <div class="relative w-full max-w-md mx-4">
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500"><i class="fas fa-search"></i></span>
-                    {{-- INPUT PENCARIAN & SCANNER --}}
-                    {{-- autofocus: Agar kursor langsung aktif di sini saat halaman dibuka --}}
-                    {{-- @keydown.enter.prevent: Agar saat scanner tekan Enter, jalankan fungsi scanProduct() --}}
+
                     <input type="text"
                         x-model="search"
                         @keydown.enter.prevent="scanProduct()"
                         autofocus
-                        placeholder="Scan Barcode / Ketik Nama..."
-                        class="w-full pl-10 pr-10 py-2 rounded-xl bg-slate-100 border-none focus:ring-2 focus:ring-red-500 text-sm font-medium transition-all">
-                    <button x-show="search.length > 0" @click="search = ''" class="absolute inset-y-0 right-0 pr-3 text-slate-400 hover:text-red-500">
-                        <i class="fas fa-times-circle"></i>
-                    </button>
+                        placeholder="Scan / Ketik..."
+                        class="w-full pl-10 pr-20 py-2 rounded-xl bg-slate-100 border-none focus:ring-2 focus:ring-red-500 text-sm font-medium transition-all">
+
+                    {{-- TOMBOL DI DALAM INPUT --}}
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-2 gap-1">
+                        {{-- Tombol Hapus Teks --}}
+                        <button x-show="search.length > 0" @click="search = ''" class="text-slate-400 hover:text-red-500 p-1">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+
+                        {{-- TOMBOL SCANNER BARU --}}
+                        <button @click="startScanner()" class="bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-300 rounded-lg p-1.5 shadow-sm transition-colors" title="Scan Barcode via Kamera">
+                            <i class="fas fa-qrcode text-lg"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="flex items-center gap-2 shrink-0">
