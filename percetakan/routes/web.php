@@ -176,6 +176,8 @@ Route::middleware('auth')->group(function () {
     // Hapus Produk
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
+    Route::get('/products/download-pdf', [ProductController::class, 'downloadPdf'])->name('products.downloadPdf');
+
     Route::resource('products', ProductController::class);
 
     // Resourceful Routes untuk Order
