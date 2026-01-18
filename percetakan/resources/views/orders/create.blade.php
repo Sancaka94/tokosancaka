@@ -34,21 +34,51 @@
 
           async startScanner() {
               this.scannerOpen = true;
+
               this.$nextTick(() => {
                   const onScanSuccess = (decodedText, decodedResult) => {
-                      this.search = decodedText;
+                      // Hentikan scanner setelah berhasil baca
                       this.stopScanner();
+
+                      // Masukkan hasil scan ke kotak pencarian
+                      this.search = decodedText;
+
+                      // Panggil fungsi scanProduct (yang sudah ada encodeURIComponent-nya)
                       this.scanProduct();
                   };
 
+                  // KONFIGURASI FORMAT: Aktifkan semua jenis barcode yang mendukung Huruf & Simbol
+                  const formats = [
+                      Html5QrcodeSupportedFormats.QR_CODE,
+                      Html5QrcodeSupportedFormats.CODE_128, // Paling umum untuk Huruf & Angka
+                      Html5QrcodeSupportedFormats.CODE_39,  // Mendukung Huruf, Angka, -, ., space
+                      Html5QrcodeSupportedFormats.CODE_93,
+                      Html5QrcodeSupportedFormats.EAN_13,   // Produk ritel biasa
+                      Html5QrcodeSupportedFormats.UPC_A,
+                      Html5QrcodeSupportedFormats.AZTEC,
+                      Html5QrcodeSupportedFormats.DATA_MATRIX,
+                      Html5QrcodeSupportedFormats.PDF_417
+                  ];
+
                   this.scannerObj = new Html5Qrcode('reader');
+
                   this.scannerObj.start(
                       { facingMode: 'environment' },
-                      { fps: 15, qrbox: { width: 250, height: 250 } },
+                      {
+                          fps: 15,
+                          qrbox: { width: 250, height: 250 },
+                          formatsToSupport: formats, // <--- PENTING: Supaya kenal simbol
+                          experimentalFeatures: {
+                              useBarCodeDetectorIfSupported: true
+                          }
+                      },
                       onScanSuccess,
-                      (error) => {}
+                      (error) => {
+                          // Error scanning frame biasa, abaikan saja biar console tidak penuh
+                      }
                   ).catch(err => {
-                      alert('Gagal akses kamera: ' + err);
+                      console.error('Gagal akses kamera:', err);
+                      alert('Gagal akses kamera. Pastikan izin kamera diberikan.');
                       this.scannerOpen = false;
                   });
               });
