@@ -20,29 +20,39 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        // Eager load category untuk performa
-        $query = Product::with('category')->orderBy('created_at', 'desc');
+        // 1. Ambil Data Kategori untuk Dropdown Filter
+        $categories = \App\Models\Category::orderBy('name', 'asc')->get();
 
-        if ($request->filled('search')) {
+        // 2. Mulai Query Produk
+        $query = Product::with('category')->latest();
+
+        // --- FILTER 1: PENCARIAN (Search Bar) ---
+        if ($request->has('search') && $request->filled('search')) {
             $search = $request->search;
-
-            // PENTING: Gunakan grouping (closure) agar logika OR tidak merusak query lain
             $query->where(function($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('supplier', 'like', '%' . $search . '%')
-                  ->orWhere('sku', 'like', '%' . $search . '%')
-                  // TAMBAHAN: Pencarian Barcode
-                  ->orWhere('barcode', 'like', '%' . $search . '%')
-                  // OPSI: Jika ingin scan barcode harus pas (exact match) agar akurat, aktifkan baris bawah ini:
-                  ->orWhere('barcode', $search)
-                  ;
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('sku', 'like', "%{$search}%")
+                  ->orWhere('barcode', 'like', "%{$search}%");
             });
         }
 
-        $products = $query->paginate(10);
+        // --- FILTER 2: KATEGORI (Dropdown) ---
+        if ($request->has('category_id') && $request->category_id != 'all' && $request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
 
-        // Data kategori untuk dropdown di Modal Tambah/Edit
-        $categories = Category::where('is_active', true)->orderBy('name', 'asc')->get();
+        // --- FILTER 3: JENIS PRODUK (Tombol Tab) ---
+        // type: 'all' (Semua), 'single' (Tunggal), 'variant' (Varian)
+        if ($request->has('type') && $request->type != 'all') {
+            if ($request->type == 'variant') {
+                $query->where('has_variant', 1);
+            } elseif ($request->type == 'single') {
+                $query->where('has_variant', 0);
+            }
+        }
+
+        // 3. Eksekusi Pagination (Gunakan withQueryString agar filter tidak hilang saat pindah halaman)
+        $products = $query->paginate(10)->withQueryString();
 
         return view('products.index', compact('products', 'categories'));
     }
