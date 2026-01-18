@@ -617,6 +617,23 @@
         </div>
     </div>
 
+    {{-- 4. MODAL LAYAR HITAM UNTUK KAMERA --}}
+    <div x-show="scannerOpen" style="display: none;"
+         class="fixed inset-0 z-[60] bg-black/90 flex flex-col items-center justify-center p-4">
+
+        <div class="w-full max-w-sm bg-white rounded-2xl overflow-hidden shadow-2xl relative">
+            <div id="reader" class="w-full bg-black"></div> {{-- Area Kamera Muncul Disini --}}
+
+            <div class="p-4 text-center">
+                <p class="text-sm font-bold text-slate-700 mb-4">Arahkan kamera ke Barcode</p>
+                <button @click="stopScanner()"
+                        class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow-lg transition-all">
+                    Tutup Kamera
+                </button>
+            </div>
+        </div>
+    </div>
+
     @include('orders.partials.variantModal')
     @include('orders.partials.noteModal')
     @include('orders.partials.payment-modal')
