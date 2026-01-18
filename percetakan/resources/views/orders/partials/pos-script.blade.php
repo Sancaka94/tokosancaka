@@ -750,6 +750,8 @@ function posSystem() {
                 this.checkCoupon();
             }
 
+        },
+
         confirmClearCart() {
             if(confirm('Kosongkan keranjang?')) {
                 this.cart = []; this.uploadedFiles = []; this.discountAmount = 0; this.couponMessage = '';
