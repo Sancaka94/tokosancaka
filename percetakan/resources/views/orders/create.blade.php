@@ -449,16 +449,33 @@
 
                 <div class="mb-3">
                     <div class="relative">
-                        <input type="text" x-model="couponCode" @input.debounce.500ms="checkCoupon()" placeholder="KODE PROMO..."
-                               class="w-full pl-3 pr-10 py-2 text-sm rounded-lg border border-slate-200 focus:ring-red-500 uppercase font-bold text-slate-700 transition-colors"
-                               :class="{'border-emerald-500 bg-emerald-50 text-emerald-700': discountAmount > 0, 'border-red-300 bg-red-50 text-red-700': couponMessage && discountAmount === 0}">
+                        {{--
+                            TRICK ANTI CACHE:
+                            1. autocomplete="off": Matikan saran browser standard.
+                            2. name="...": Pakai random string agar browser mengira ini input baru terus.
+                            3. spellcheck="false": Matikan garis merah ejaan.
+                        --}}
+                        <input type="text"
+                               name="coupon_input_{{ rand(1000,9999) }}"
+                               autocomplete="off"
+                               spellcheck="false"
+                               x-model="couponCode"
+                               @input.debounce.500ms="checkCoupon()"
+                               placeholder="KODE PROMO..."
+                               class="w-full pl-3 pr-10 py-2 text-sm rounded-lg border border-slate-200 focus:ring-red-500 uppercase font-bold text-slate-700 transition-colors placeholder-slate-400"
+                               :class="{
+                                   'border-emerald-500 bg-emerald-50 text-emerald-700': discountAmount > 0,
+                                   'border-red-300 bg-red-50 text-red-700': couponMessage && discountAmount === 0,
+                                   'bg-white': !couponMessage
+                               }">
 
                         <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                             <i x-show="isValidatingCoupon" class="fas fa-circle-notch fa-spin text-slate-400"></i>
-                            <i x-show="!isValidatingCoupon && discountAmount > 0" class="fas fa-check-circle text-emerald-500"></i>
-                            <i x-show="!isValidatingCoupon && couponMessage && discountAmount === 0" class="fas fa-times-circle text-red-500"></i>
+                            <i x-show="!isValidatingCoupon && discountAmount > 0" class="fas fa-check-circle text-emerald-500 text-lg"></i>
+                            <i x-show="!isValidatingCoupon && couponMessage && discountAmount === 0" class="fas fa-times-circle text-red-500 text-lg"></i>
                         </div>
                     </div>
+
                     <p x-show="couponMessage" x-text="couponMessage" class="text-[10px] font-bold mt-1 ml-1"
                        :class="discountAmount > 0 ? 'text-emerald-600' : 'text-red-500'"></p>
                 </div>
