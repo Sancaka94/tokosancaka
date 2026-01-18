@@ -22,10 +22,20 @@ class ProductController extends Controller
         // Eager load category untuk performa
         $query = Product::with('category')->orderBy('created_at', 'desc');
 
-        if ($request->has('search') && $request->search != '') {
-            $query->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('supplier', 'like', '%' . $request->search . '%')
-                  ->orWhere('sku', 'like', '%' . $request->search . '%');
+        if ($request->filled('search')) {
+            $search = $request->search;
+
+            // PENTING: Gunakan grouping (closure) agar logika OR tidak merusak query lain
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('supplier', 'like', '%' . $search . '%')
+                  ->orWhere('sku', 'like', '%' . $search . '%')
+                  // TAMBAHAN: Pencarian Barcode
+                  ->orWhere('barcode', 'like', '%' . $search . '%')
+                  // OPSI: Jika ingin scan barcode harus pas (exact match) agar akurat, aktifkan baris bawah ini:
+                  ->orWhere('barcode', $search)
+                  ;
+            });
         }
 
         $products = $query->paginate(10);

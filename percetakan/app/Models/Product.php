@@ -32,6 +32,7 @@ class Product extends Model
         'is_active',    // Status aktif/non-aktif
         'type',         // physical / service
         'has_variant',  // Penanda jika produk punya varian
+        'barcode', // <--- TAMBAHKAN INI
     ];
 
     /**
