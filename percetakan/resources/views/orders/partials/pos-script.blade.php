@@ -737,9 +737,18 @@ function posSystem() {
 
         removeFromCart(id) {
             this.cart = this.cart.filter(i => i.id !== id);
-            if(this.cart.length === 0) { this.discountAmount = 0; this.couponMessage = ''; }
-            else if(this.couponCode) { this.checkCoupon(); }
-        },
+            // Jika keranjang jadi kosong
+            if(this.cart.length === 0) {
+                this.discountAmount = 0;
+                this.couponMessage = '';
+
+                // --- [FITUR BARU: RESET KATEGORI] ---
+                this.activeCategory = 'all';
+                // ------------------------------------
+            }
+            else if(this.couponCode) {
+                this.checkCoupon();
+            }
 
         confirmClearCart() {
             if(confirm('Kosongkan keranjang?')) {
