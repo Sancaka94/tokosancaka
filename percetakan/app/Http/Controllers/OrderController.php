@@ -2176,6 +2176,10 @@ public function handleDanaCallback(Request $request)
     }
     // --- [KODE BARU: END] ---
 
+    /**
+     * API: Scan Barcode (Mencari Produk Utama & Varian)
+     * Route: /orders/scan-product?code=...
+     */
     public function scanProduct(Request $request)
     {
         $barcode = $request->query('code');
@@ -2184,48 +2188,59 @@ public function handleDanaCallback(Request $request)
             return response()->json(['status' => 'error', 'message' => 'Kode kosong']);
         }
 
-        // 1. Cek Produk Utama
-        // Pastikan 'Product' sudah di-use di atas
+        // 1. Cek Produk Utama (Berdasarkan Barcode atau SKU)
         $product = Product::where('stock_status', 'available')
             ->where(function($q) use ($barcode) {
-                $q->where('barcode', $barcode)->orWhere('sku', $barcode);
-            })->first();
+                $q->where('barcode', $barcode)
+                  ->orWhere('sku', $barcode);
+            })
+            ->first();
 
         if ($product) {
+            // Cek Stok
+            if ($product->stock <= 0) {
+                return response()->json(['status' => 'error', 'message' => 'Stok Habis!']);
+            }
+
             return response()->json([
                 'status' => 'success',
-                'type' => 'single',
-                'data' => $product
+                'type'   => 'single',
+                'data'   => $product
             ]);
         }
 
-        // 2. Cek Varian
+        // 2. Cek Produk Varian (Jika produk utama tidak ketemu)
+        // Pastikan model ProductVariant sudah di-import di atas
         try {
-            // Pastikan 'ProductVariant' sudah di-use di atas
             $variant = ProductVariant::with('product')
                 ->where('barcode', $barcode)
                 ->orWhere('sku', $barcode)
                 ->first();
 
             if ($variant && $variant->product) {
-                $data = $variant->product->toArray();
-                // Override data induk dengan data varian
-                $data['id'] = $variant->product->id;
-                $data['name'] = $variant->product->name . ' (' . $variant->name . ')';
-                $data['sell_price'] = $variant->price;
-                $data['stock'] = $variant->stock;
-                $data['variant_id'] = $variant->id; // Penting buat JS
-                $data['image'] = $variant->product->image; // Pastikan image terambil
+                // Cek Stok Varian
+                if ($variant->stock <= 0) {
+                    return response()->json(['status' => 'error', 'message' => 'Stok Varian Habis!']);
+                }
+
+                // Format data agar mirip dengan struktur produk utama untuk JS POS
+                $formattedData = $variant->product->toArray(); // Ambil data parent
+                $formattedData['name']       = $variant->product->name . ' (' . $variant->name . ')'; // Gabung nama
+                $formattedData['sell_price'] = $variant->price; // Pakai harga varian
+                $formattedData['stock']      = $variant->stock; // Pakai stok varian
+                $formattedData['weight']     = $variant->product->weight;
+                $formattedData['id']         = $variant->product->id; // ID Parent
+                $formattedData['variant_id'] = $variant->id; // ID Varian (Penting!)
+                $formattedData['image']      = $variant->product->image;
 
                 return response()->json([
                     'status' => 'success',
-                    'type' => 'variant',
-                    'data' => $data
+                    'type'   => 'variant',
+                    'data'   => $formattedData
                 ]);
             }
         } catch (\Exception $e) {
-            // Log error biar tau kenapa (Opsional)
-            Log::error("Scan Error: " . $e->getMessage());
+            // Abaikan jika tabel varian belum ada/error
         }
 
         return response()->json(['status' => 'error', 'message' => 'Produk tidak ditemukan']);
