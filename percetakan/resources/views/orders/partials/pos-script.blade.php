@@ -223,27 +223,24 @@ function posSystem() {
             this.customerPhone = data.whatsapp;
             this.customerAddressDetail = data.address || '';
 
-            // --- [FITUR BARU: AUTO ISI KUPON DARI DB] ---
-            // Cek apakah di database customer ini punya 'assigned_coupon'
             // ====================================================
-            //  PERBAIKAN: LOGIKA AUTO-FILL & RESET KUPON
+            // LOGIKA PINTAR: CEK KUPON DATABASE
             // ====================================================
 
-            // 1. Jika Customer Punya Kupon di Database -> ISI
+            // KONDISI 1: Customer Punya Kupon di Database
             if (data.assigned_coupon && data.assigned_coupon !== null && data.assigned_coupon !== "") {
+                // Isi form dengan kupon dia
                 this.couponCode = data.assigned_coupon;
                 console.log("LOG: Auto-apply kupon member: " + data.assigned_coupon);
 
-                // Cek validitas kupon ke server
-                setTimeout(() => {
-                    this.checkCoupon();
-                }, 300);
+                // Validasi ke server otomatis
+                setTimeout(() => { this.checkCoupon(); }, 300);
             }
-            // 2. [BARU] Jika Customer TIDAK Punya Kupon -> BERSIHKAN (RESET)
+            // KONDISI 2: Customer TIDAK Punya Kupon -> BERSIHKAN!
             else {
-                this.couponCode = '';      // Kosongkan input teks
-                this.discountAmount = 0;   // Nol-kan diskon
-                this.couponMessage = '';   // Hapus pesan sukses/gagal
+                this.couponCode = '';      // Kosongkan form agar bisa isi manual
+                this.discountAmount = 0;   // Reset diskon
+                this.couponMessage = '';   // Hapus pesan "Berhasil/Gagal"
             }
             // ====================================================
 
