@@ -28,6 +28,7 @@ use App\Models\TopUp;
 use App\Models\User;
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\ProductVariant; // <--- TAMBAHKAN INI
 
 // Services
 use App\Services\DokuJokulService;
@@ -43,12 +44,20 @@ class OrderController extends Controller
     {
         $query = Order::query();
 
-        // 1. Filter Pencarian (No Order / Nama Customer)
+        // 1. Filter Pencarian (No Order / Nama Customer / DAN ITEM PRODUK)
         if ($request->filled('q')) {
             $search = $request->q;
             $query->where(function($q) use ($search) {
                 $q->where('order_number', 'like', "%{$search}%")
-                  ->orWhere('customer_name', 'like', "%{$search}%");
+                  ->orWhere('customer_name', 'like', "%{$search}%")
+                  // [BARU] Cari berdasarkan Barcode/Nama Produk di dalam Order
+                  ->orWhereHas('items', function($qItem) use ($search) {
+                      $qItem->where('product_name', 'like', "%{$search}%")
+                            ->orWhereHas('product', function($qProd) use ($search) {
+                                $qProd->where('barcode', $search) // Scan Barcode
+                                      ->orWhere('sku', $search);
+                            });
+                  });
             });
         }
 
@@ -2166,5 +2175,75 @@ public function handleDanaCallback(Request $request)
         return Excel::download(new OrdersExport($request), 'laporan-transaksi.xlsx');
     }
     // --- [KODE BARU: END] ---
+
+    /**
+     * API: Scan Barcode (Mencari Produk Utama & Varian)
+     * Route: /orders/scan-product?code=...
+     */
+    public function scanProduct(Request $request)
+    {
+        $barcode = $request->query('code');
+
+        if (empty($barcode)) {
+            return response()->json(['status' => 'error', 'message' => 'Kode kosong']);
+        }
+
+        // 1. Cek Produk Utama (Berdasarkan Barcode atau SKU)
+        $product = Product::where('stock_status', 'available')
+            ->where(function($q) use ($barcode) {
+                $q->where('barcode', $barcode)
+                  ->orWhere('sku', $barcode);
+            })
+            ->first();
+
+        if ($product) {
+            // Cek Stok
+            if ($product->stock <= 0) {
+                return response()->json(['status' => 'error', 'message' => 'Stok Habis!']);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'type'   => 'single',
+                'data'   => $product
+            ]);
+        }
+
+        // 2. Cek Produk Varian (Jika produk utama tidak ketemu)
+        // Pastikan model ProductVariant sudah di-import di atas
+        try {
+            $variant = ProductVariant::with('product')
+                ->where('barcode', $barcode)
+                ->orWhere('sku', $barcode)
+                ->first();
+
+            if ($variant && $variant->product) {
+                // Cek Stok Varian
+                if ($variant->stock <= 0) {
+                    return response()->json(['status' => 'error', 'message' => 'Stok Varian Habis!']);
+                }
+
+                // Format data agar mirip dengan struktur produk utama untuk JS POS
+                $formattedData = $variant->product->toArray(); // Ambil data parent
+                $formattedData['name']       = $variant->product->name . ' (' . $variant->name . ')'; // Gabung nama
+                $formattedData['sell_price'] = $variant->price; // Pakai harga varian
+                $formattedData['stock']      = $variant->stock; // Pakai stok varian
+                $formattedData['weight']     = $variant->product->weight;
+                $formattedData['id']         = $variant->product->id; // ID Parent
+                $formattedData['variant_id'] = $variant->id; // ID Varian (Penting!)
+                $formattedData['image']      = $variant->product->image;
+
+                return response()->json([
+                    'status' => 'success',
+                    'type'   => 'variant',
+                    'data'   => $formattedData
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Abaikan jika tabel varian belum ada/error
+        }
+
+        return response()->json(['status' => 'error', 'message' => 'Produk tidak ditemukan']);
+    }
 
 }
