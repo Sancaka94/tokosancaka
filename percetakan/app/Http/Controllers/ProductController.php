@@ -181,12 +181,15 @@ class ProductController extends Controller
     }
 
     /**
-     * Update data produk
+     * Update data produk (Menggunakan Route Model Binding)
      */
-    public function update(Request $request, $id, $product)
+    public function update(Request $request, Product $product) // <--- HANYA $product
     {
         Log::info('[UPDATE START] ID: ' . $product->id);
-        $product = Product::findOrFail($id);
+
+        // TIDAK PERLU baris ini lagi:
+        // $product = Product::findOrFail($id);
+        // Karena $product sudah otomatis dicari oleh Laravel
 
         $validator = Validator::make($request->all(), [
             'name'        => 'required|string|max:255',
@@ -196,16 +199,14 @@ class ProductController extends Controller
             'unit'        => 'required|string',
             'supplier'    => 'nullable|string|max:255',
             'image'       => 'nullable|file|max:2048|mimes:jpeg,png,jpg,gif',
-            'barcode' => 'nullable|unique:products,barcode,' . $id . '|unique:product_variants,barcode',
+            // Validasi unik barcode, kecualikan ID produk ini sendiri
+            'barcode'     => 'nullable|unique:products,barcode,' . $product->id . '|unique:product_variants,barcode',
         ]);
 
-        // 2. LOGIKA AUTO-GENERATE (Jika user menghapus barcode lama dan ingin generate baru)
+        // 2. LOGIKA AUTO-GENERATE
         $barcodeToSave = $request->barcode;
 
         if (empty($barcodeToSave)) {
-            // Jika sebelumnya sudah ada barcode, pertahankan yang lama?
-            // Atau jika user sengaja mengosongkan ingin generate baru?
-            // Skenario: Jika kosong, kita generate baru.
             $barcodeToSave = 'PRD' . time() . rand(100, 999);
         }
 
@@ -218,7 +219,7 @@ class ProductController extends Controller
         try {
             $hasVariant = $request->has('has_variant') ? 1 : 0;
 
-            // Generate SKU Induk jika belum ada (untuk produk lama)
+            // Generate SKU Induk jika belum ada
             $currentSku = $product->sku;
             if (empty($currentSku)) {
                 $currentSku = $this->generateSku($request->name);
@@ -254,8 +255,7 @@ class ProductController extends Controller
 
             $product->update($data);
 
-            // 6. Logika Update Varian (Strategi: Hapus Lama -> Buat Baru)
-            // Ini untuk memastikan sinkronisasi data bersih tanpa konflik ID
+            // 6. Logika Update Varian
             if ($hasVariant) {
                 // Hapus semua varian lama
                 $product->variants()->delete();
@@ -264,8 +264,9 @@ class ProductController extends Controller
                 if ($request->filled('variants')) {
                     foreach ($request->variants as $variant) {
 
-                        // Cek SKU Varian (Gunakan yang lama jika dikirim, atau generate baru)
                         $variantSku = $variant['sku'] ?? $this->generateSku($request->name, $variant['name']);
+
+                        // [FIX] Ambil Barcode Varian
                         $varBarcode = $variant['barcode'] ?? null;
 
                         ProductVariant::create([
@@ -274,19 +275,17 @@ class ProductController extends Controller
                             'price'      => $variant['price'],
                             'stock'      => $variant['stock'] ?? 0,
                             'sku'        => $variantSku,
-                            'barcode'    => $varBarcode, // <--- PENTING: Simpan Barcode Varian
+                            'barcode'    => $varBarcode,
                         ]);
                         $totalVariantStock += ($variant['stock'] ?? 0);
                     }
                 }
 
-                // Update ulang stok induk
                 $product->update([
                     'stock' => $totalVariantStock,
                     'stock_status' => $totalVariantStock > 0 ? 'available' : 'out_of_stock'
                 ]);
             } else {
-                // Jika fitur varian dimatikan, hapus sisa data di DB
                 $product->variants()->delete();
             }
 
