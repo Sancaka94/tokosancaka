@@ -26,6 +26,7 @@ class Customer extends Model
         'postal_code',
         'latitude',
         'longitude',
+        'assigned_coupon',
     ];
 
     protected $casts = [
