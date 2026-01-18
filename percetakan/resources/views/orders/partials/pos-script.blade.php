@@ -618,7 +618,14 @@ function posSystem() {
         // ---------------------------------------------------------
 
         // 1. Method Add To Cart UTAMA
-        async addToCart(id, name, price, maxStock, weight = 0, image = null, hasVariant = false) {
+        async addToCart(id, name, price, maxStock, weight = 0, image = null, hasVariant = false, categorySlug = 'all') {
+            // --- [FITUR BARU: AUTO FOCUS KATEGORI] ---
+            // Jika slug valid dan bukan 'all', pindahkan tab aktif
+            if (categorySlug && categorySlug !== '' && categorySlug !== 'all') {
+                this.activeCategory = categorySlug;
+            }
+            // -----------------------------------------
+
             if (hasVariant) {
                 this.selectedProductForVariant = { id, name, image, weight };
                 this.variantSelectorOpen = true;
