@@ -14,6 +14,7 @@
 
     {{-- JS LIBRARIES --}}
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    {{-- Library Scanner tetap dibutuhkan --}}
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
@@ -26,73 +27,12 @@
     </style>
 </head>
 
+{{--
+    PERUBAHAN DI SINI:
+    Cukup panggil posSystem() karena startScanner sudah ada di dalamnya.
+--}}
 <body class="bg-slate-100 font-sans text-slate-800 h-screen overflow-hidden select-none"
-      x-data="{
-          ...posSystem(),
-          scannerOpen: false,
-          scannerObj: null,
-
-          async startScanner() {
-              this.scannerOpen = true;
-
-              this.$nextTick(() => {
-                  const onScanSuccess = (decodedText, decodedResult) => {
-                      // Hentikan scanner setelah berhasil baca
-                      this.stopScanner();
-
-                      // Masukkan hasil scan ke kotak pencarian
-                      this.search = decodedText;
-
-                      // Panggil fungsi scanProduct (yang sudah ada encodeURIComponent-nya)
-                      this.scanProduct();
-                  };
-
-                  // KONFIGURASI FORMAT: Aktifkan semua jenis barcode yang mendukung Huruf & Simbol
-                  const formats = [
-                      Html5QrcodeSupportedFormats.QR_CODE,
-                      Html5QrcodeSupportedFormats.CODE_128, // Paling umum untuk Huruf & Angka
-                      Html5QrcodeSupportedFormats.CODE_39,  // Mendukung Huruf, Angka, -, ., space
-                      Html5QrcodeSupportedFormats.CODE_93,
-                      Html5QrcodeSupportedFormats.EAN_13,   // Produk ritel biasa
-                      Html5QrcodeSupportedFormats.UPC_A,
-                      Html5QrcodeSupportedFormats.AZTEC,
-                      Html5QrcodeSupportedFormats.DATA_MATRIX,
-                      Html5QrcodeSupportedFormats.PDF_417
-                  ];
-
-                  this.scannerObj = new Html5Qrcode('reader');
-
-                  this.scannerObj.start(
-                      { facingMode: 'environment' },
-                      {
-                          fps: 15,
-                          qrbox: { width: 250, height: 250 },
-                          formatsToSupport: formats, // <--- PENTING: Supaya kenal simbol
-                          experimentalFeatures: {
-                              useBarCodeDetectorIfSupported: true
-                          }
-                      },
-                      onScanSuccess,
-                      (error) => {
-                          // Error scanning frame biasa, abaikan saja biar console tidak penuh
-                      }
-                  ).catch(err => {
-                      console.error('Gagal akses kamera:', err);
-                      alert('Gagal akses kamera. Pastikan izin kamera diberikan.');
-                      this.scannerOpen = false;
-                  });
-              });
-          },
-
-          async stopScanner() {
-              if (this.scannerObj) {
-                  await this.scannerObj.stop();
-                  this.scannerObj.clear();
-                  this.scannerObj = null;
-              }
-              this.scannerOpen = false;
-          }
-      }">
+      x-data="posSystem()">
 
     <div class="flex h-full w-full flex-col lg:flex-row overflow-hidden">
 
@@ -110,7 +50,7 @@
                     <h1 class="text-lg font-black text-slate-800 tracking-tight hidden md:block">Sancaka<span class="text-red-600">POS</span></h1>
                 </div>
 
-                {{-- KOLOM PENCARIAN (Bersih tanpa tombol scanner) --}}
+                {{-- KOLOM PENCARIAN --}}
                 <div class="flex-1 max-w-xl">
                     <div class="relative group">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -135,7 +75,7 @@
                 {{-- GROUP ICONS (Scanner, User, Cart) --}}
                 <div class="flex items-center gap-2 shrink-0">
 
-                    {{-- 1. TOMBOL SCANNER (Posisi Luar) --}}
+                    {{-- 1. TOMBOL SCANNER (Memanggil fungsi startScanner dari JS) --}}
                     <button @click="startScanner()"
                             class="h-10 w-10 bg-white border-2 border-slate-100 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-xl transition flex items-center justify-center shadow-sm"
                             title="Scan Barcode">
@@ -166,11 +106,9 @@
             </div>
 
             {{-- BAGIAN ISI PRODUK --}}
-
-            {{-- HAPUS p-4 di sini agar sticky header bisa nempel ke sisi --}}
             <div class="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 relative">
 
-                {{-- INFO PROMO: Tambahkan m-4 agar tetap punya jarak --}}
+                {{-- INFO PROMO --}}
                 <div x-data="{ showInfo: true }" x-show="showInfo" x-transition.opacity.duration.300ms
                      class="m-4 bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-3 shadow-sm relative group">
                     <div class="bg-red-100 text-red-600 rounded-lg h-8 w-8 flex items-center justify-center shrink-0">
@@ -187,11 +125,7 @@
                     </button>
                 </div>
 
-                {{--
-                    STICKY HEADER:
-                    1. Hapus -mx-4 karena parent sudah tidak ada padding.
-                    2. Gunakan px-4 py-2 untuk jarak dalam.
-                --}}
+                {{-- STICKY HEADER KATEGORI --}}
                 <div class="sticky top-0 z-30 bg-slate-50 px-4 py-2 border-b border-slate-200 shadow-sm mb-3">
                     <div class="flex overflow-x-auto gap-2 custom-scrollbar pb-1">
                         <button @click="activeCategory = 'all'"
@@ -216,17 +150,14 @@
                     </div>
                 </div>
 
-                {{-- GRID PRODUK: Tambahkan px-4 dan pb-4 agar ada jarak kiri/kanan/bawah --}}
+                {{-- GRID PRODUK --}}
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-3 px-4 pb-4">
                     @forelse($products as $product)
 
-                    {{-- Logic Slug Kategori --}}
                     @php $prodCatSlug = $product->category->slug ?? 'retail'; @endphp
 
-                    {{-- FILTER LOGIC: Search + Category Match --}}
                     <template x-if="itemMatchesSearch('{{ addslashes($product->name) }}') && (activeCategory === 'all' || activeCategory === '{{ $prodCatSlug }}')">
 
-                        {{-- Tambahkan '{{ $prodCatSlug }}' di paling belakang --}}
                         <div @click="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->sell_price }}, {{ $product->stock }}, {{ $product->weight ?? 0 }}, '{{ $product->image ? asset('storage/'.$product->image) : '' }}', {{ $product->has_variant ? 'true' : 'false' }}, '{{ $prodCatSlug }}')"
                         class="relative bg-white rounded-2xl p-3 shadow-sm border border-slate-100 flex flex-col h-full group
                              {{ $product->stock <= 0 ? 'opacity-60 grayscale cursor-not-allowed' : 'cursor-pointer active:scale-95 hover:border-red-300 hover:shadow-md' }} transition-all duration-200">
@@ -277,8 +208,10 @@
             </div>
         </div>
 
+        {{-- OVERLAY MOBILE CART --}}
         <div x-show="mobileCartOpen" class="fixed inset-0 bg-black/50 z-30 lg:hidden backdrop-blur-sm" @click="mobileCartOpen = false" x-transition.opacity></div>
 
+        {{-- BAGIAN KANAN (KERANJANG) --}}
         <div class="fixed inset-y-0 right-0 w-[90%] sm:w-[420px] lg:static lg:w-[400px] bg-white shadow-2xl lg:shadow-none z-40 transform transition-transform duration-300 ease-out flex flex-col h-full border-l border-slate-200"
              :class="mobileCartOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'">
 
@@ -379,13 +312,12 @@
                     <template x-for="item in cart" :key="item.id">
                         <div class="flex items-start gap-3 p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-red-200 transition-colors group">
 
-                            {{-- Kolom Qty (Kg/Pcs) --}}
+                            {{-- Kolom Qty --}}
                             <div class="flex flex-col items-center bg-slate-50 rounded-lg border border-slate-200 shrink-0 w-12">
                                 <button @click="updateQty(item.id, 1)" class="w-full h-7 flex items-center justify-center text-slate-500 hover:text-white hover:bg-green-500 rounded-t-lg transition border-b border-slate-200">
                                     <i class="fas fa-plus text-[10px]"></i>
                                 </button>
 
-                                {{-- Input Qty (Bisa Desimal) --}}
                                 <input type="number" step="0.01" x-model="item.qty" @change="validateManualQty(item.id)"
                                     class="w-full text-center text-xs font-bold bg-transparent border-none p-0 focus:ring-0 text-slate-800 h-8"
                                     title="Jumlah (Kg/Pcs)">
@@ -395,7 +327,7 @@
                                 </button>
                             </div>
 
-                            {{-- Gambar Produk --}}
+                            {{-- Gambar --}}
                             <div class="h-12 w-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
                                 <template x-if="item.image">
                                     <img :src="item.image" class="h-full w-full object-contain">
@@ -410,14 +342,13 @@
                                 <div class="font-bold text-slate-700 text-xs leading-tight mb-2 truncate" x-text="item.name"></div>
 
                                 <div class="flex items-center gap-2">
-                                    {{-- Harga Satuan (Readonly) --}}
                                     <div class="text-[9px] text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-100">
                                         @ <span x-text="rupiah(item.price)"></span>
                                     </div>
 
                                     <i class="fas fa-arrow-right text-[8px] text-slate-300"></i>
 
-                                    {{-- INPUT TOTAL RUPIAH (BEBAS INPUT) --}}
+                                    {{-- INPUT TOTAL RUPIAH --}}
                                     <div class="flex-1 relative">
                                         <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">Rp</span>
 
@@ -553,17 +484,11 @@
                 <div class="mb-3">
                     <div class="relative">
                         <input type="text"
-                               {{-- TRICK 1: Nama Acak --}}
                                name="no_cache_promo_{{ \Illuminate\Support\Str::random(10) }}"
                                id="promo_{{ \Illuminate\Support\Str::random(10) }}"
-
-                               {{-- TRICK 2: Pakai 'new-password' biar browser takut nyimpen history --}}
                                autocomplete="new-password"
-
-                               {{-- TRICK 3: Readonly saat load, baru bisa ngetik pas diklik (Anti Autofill) --}}
                                readonly
                                onfocus="this.removeAttribute('readonly');"
-
                                spellcheck="false"
                                x-model="couponCode"
                                @input.debounce.500ms="checkCoupon()"
@@ -668,6 +593,7 @@
     </div>
 
     {{-- === MODAL OVERLAY KAMERA === --}}
+    {{-- Ini akan otomatis membaca scannerOpen dari posSystem() di JS --}}
     <div x-show="scannerOpen" style="display: none;"
          class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center p-4"
          x-transition.opacity>
@@ -684,7 +610,7 @@
                 </button>
             </div>
 
-            {{-- Area Kamera (Library akan render di sini) --}}
+            {{-- Area Kamera --}}
             <div id="reader" class="w-full h-auto bg-black min-h-[300px]"></div>
 
             {{-- Footer Modal --}}
@@ -706,9 +632,9 @@
         @include('orders.partials.pos-script')
     </script>
 
-    {{-- AUDIO ELEMENTS (Disembunyikan) --}}
-<audio id="audio-success" src="https://tokosancaka.com/public/sound/beep.mp3" preload="auto"></audio>
-<audio id="audio-error" src="https://tokosancaka.com/public/sound/beep-gagal.mp3" preload="auto"></audio>
+    {{-- AUDIO ELEMENTS --}}
+    <audio id="audio-success" src="https://tokosancaka.com/public/sound/beep.mp3" preload="auto"></audio>
+    <audio id="audio-error" src="https://tokosancaka.com/public/sound/beep-gagal.mp3" preload="auto"></audio>
 
 </body>
 </html>
