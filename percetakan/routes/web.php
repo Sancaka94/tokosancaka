@@ -251,43 +251,26 @@ Route::get('/cara', function () {
 });
 
 
-// Route untuk Halaman Riwayat Pesanan
+// --- TARUH ROUTE SPESIFIK DI PALING ATAS (SEBELUM RESOURCE) ---
 
-// --- TARUH ROUTE SPESIFIK DI ATAS ---
-
-// 1. Halaman POS (Create) - HARUS DI ATAS {id}
-Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
-
-// 2. Route Autocomplete & Helper - HARUS DI ATAS {id}
-Route::get('/orders/search-location', [OrderController::class, 'searchLocation'])->name('orders.search-location');
-Route::get('/orders/tripay-channels', [OrderController::class, 'getPaymentChannels'])->name('orders.tripay-channels');
-
-// [BARU] Route Scan Barcode - Taruh di sini agar aman
+// 1. Scan Barcode (WAJIB DI ATAS)
 Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
 
-// 3. Halaman Index
-Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-
-// --- BENAR (Pindahkan ke Atas) ---
-
-// 1. Export PDF & Excel (Route Spesifik DULUAN)
+// 2. Helper Lainnya (Create, Search, dll)
+Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
+Route::get('/orders/search-location', [OrderController::class, 'searchLocation'])->name('orders.search-location');
+Route::get('/orders/tripay-channels', [OrderController::class, 'getPaymentChannels'])->name('orders.tripay-channels');
 Route::get('/orders/export-pdf', [OrderController::class, 'exportPdf'])->name('orders.export.pdf');
 Route::get('/orders/export-excel', [OrderController::class, 'exportExcel'])->name('orders.export.excel');
-
-// 2. Baru Route Wildcard {id} (Route Umum BELAKANGAN)
-Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
-
-// 2. Bulk Delete
 Route::delete('/orders/bulk-delete', [OrderController::class, 'bulkDestroy'])->name('orders.bulkDestroy');
 
-
-
-// --- Route POST (Urutannya tidak terlalu berpengaruh karena methodnya beda, tapi dirapikan saja) ---
+// 3. Post Routes
 Route::post('/orders/check-ongkir', [OrderController::class, 'checkShippingRates'])->name('orders.check-ongkir');
 Route::post('/orders/store', [OrderController::class, 'store'])->name('orders.store');
 Route::post('/orders/check-coupon', [OrderController::class, 'checkCoupon'])->name('orders.check-coupon');
 
-// --- ROUTE CRUD UTAMA (Index, Create, Store, Edit, Update, Destroy) ---
+// --- BARU TARUH RESOURCE / WILDCARD DI BAWAH ---
+// (Karena resource mengandung /orders/{id} yang bisa "memakan" route di atasnya jika ditaruh duluan)
 Route::resource('orders', OrderController::class);
 
 
