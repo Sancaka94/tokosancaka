@@ -23,7 +23,6 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        .scan-region-highlight { border-radius: 20px !important; border: 2px solid #ef4444 !important; box-shadow: 0 0 0 1000px rgba(0,0,0,0.5); }
     </style>
 </head>
 
@@ -37,20 +36,17 @@
               this.scannerOpen = true;
               this.$nextTick(() => {
                   const onScanSuccess = (decodedText, decodedResult) => {
-                      // 1. Masukkan hasil scan ke kolom pencarian
                       this.search = decodedText;
-                      // 2. Matikan kamera
                       this.stopScanner();
-                      // 3. Trigger pencarian di Alpine (posSystem)
                       this.scanProduct();
                   };
 
                   this.scannerObj = new Html5Qrcode('reader');
                   this.scannerObj.start(
-                      { facingMode: 'environment' }, // Kamera Belakang
+                      { facingMode: 'environment' },
                       { fps: 15, qrbox: { width: 250, height: 250 } },
                       onScanSuccess,
-                      (error) => {} // Abaikan error scanning frame kosong
+                      (error) => {}
                   ).catch(err => {
                       alert('Gagal akses kamera: ' + err);
                       this.scannerOpen = false;
@@ -74,68 +70,63 @@
         <div class="flex-1 flex flex-col h-full relative border-r border-slate-200">
 
             {{-- TOP BAR --}}
-            <div class="h-16 px-4 bg-white shadow-sm z-20 flex items-center justify-between shrink-0 border-b border-slate-200">
+            <div class="h-16 px-3 bg-white shadow-sm z-20 flex items-center justify-between shrink-0 border-b border-slate-200 gap-3">
 
-                {{-- LOGO / BRAND --}}
-                <div class="flex items-center gap-2 lg:w-48">
+                {{-- LOGO (Hidden on very small mobile to save space) --}}
+                <div class="flex items-center gap-2 shrink-0">
                     <div class="h-9 w-9 bg-red-600 rounded-lg flex items-center justify-center text-white text-lg shadow-red-200 shadow-lg">
                         <i class="fas fa-cash-register"></i>
                     </div>
-                    <h1 class="text-lg font-black text-slate-800 tracking-tight hidden sm:block">Sancaka<span class="text-red-600">POS</span></h1>
+                    <h1 class="text-lg font-black text-slate-800 tracking-tight hidden md:block">Sancaka<span class="text-red-600">POS</span></h1>
                 </div>
 
-                {{-- KOLOM PENCARIAN (YANG SUDAH DIRAPIKAN) --}}
-                <div class="flex-1 max-w-2xl px-2 lg:px-6">
+                {{-- KOLOM PENCARIAN (Bersih tanpa tombol scanner) --}}
+                <div class="flex-1 max-w-xl">
                     <div class="relative group">
-
-                        {{-- Icon Kiri (Kaca Pembesar) --}}
-                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fas fa-search text-slate-400 group-focus-within:text-red-500 transition-colors"></i>
                         </div>
-
-                        {{-- Input Field --}}
                         <input type="text"
                             x-model="search"
                             @keydown.enter.prevent="scanProduct()"
-                            autofocus
-                            placeholder="Cari produk atau scan barcode..."
-                            class="block w-full pl-10 pr-24 py-2.5 bg-slate-100 border-2 border-transparent text-slate-700 placeholder-slate-400 focus:bg-white focus:border-red-500 focus:ring-0 rounded-xl text-sm font-medium transition-all shadow-inner focus:shadow-lg">
+                            placeholder="Cari item..."
+                            class="block w-full pl-10 pr-8 py-2.5 bg-slate-100 border-2 border-transparent text-slate-700 placeholder-slate-400 focus:bg-white focus:border-red-500 focus:ring-0 rounded-xl text-sm font-medium transition-all shadow-inner focus:shadow-lg">
 
-                        {{-- Tombol Kanan (Clear & Scan) --}}
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-1.5 gap-1">
-
-                            {{-- Tombol X (Clear Text) - Muncul kalau ada teks --}}
-                            <button x-show="search.length > 0"
-                                    @click="search = ''; $el.parentElement.parentElement.querySelector('input').focus()"
-                                    class="p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition"
-                                    x-transition>
-                                <i class="fas fa-times text-xs"></i>
-                            </button>
-
-                            {{-- Divider Garis --}}
-                            <div class="h-6 w-px bg-slate-300 mx-1"></div>
-
-                            {{-- Tombol SCANNER --}}
-                            <button @click="startScanner()"
-                                    class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-lg transition-all shadow-sm group/scan"
-                                    title="Scan Barcode">
-                                <i class="fas fa-qrcode text-lg group-hover/scan:scale-110 transition-transform"></i>
-                            </button>
-                        </div>
+                        {{-- Tombol Clear Text --}}
+                        <button x-show="search.length > 0"
+                                @click="search = ''; $el.parentElement.querySelector('input').focus()"
+                                class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 transition"
+                                x-transition>
+                            <i class="fas fa-times-circle"></i>
+                        </button>
                     </div>
                 </div>
 
-                {{-- USER & CART MOBILE --}}
-                <div class="flex items-center gap-3">
-                    <a href="{{ url('/member/login') }}" class="hidden sm:flex items-center justify-center h-10 w-10 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 hover:text-red-600 transition border border-slate-200" title="Member Login">
-                        <i class="far fa-user"></i>
+                {{-- GROUP ICONS (Scanner, User, Cart) --}}
+                <div class="flex items-center gap-2 shrink-0">
+
+                    {{-- 1. TOMBOL SCANNER (Posisi Luar) --}}
+                    <button @click="startScanner()"
+                            class="h-10 w-10 bg-white border-2 border-slate-100 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-xl transition flex items-center justify-center shadow-sm"
+                            title="Scan Barcode">
+                        <i class="fas fa-qrcode text-lg"></i>
+                    </button>
+
+                    {{-- 2. USER LOGIN --}}
+                    <a href="{{ url('/member/login') }}"
+                       class="h-10 w-10 bg-white border-2 border-slate-100 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-xl transition flex items-center justify-center shadow-sm"
+                       title="Member Login">
+                        <i class="far fa-user text-lg"></i>
                     </a>
 
-                    <button @click="mobileCartOpen = !mobileCartOpen" class="lg:hidden relative h-10 w-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-100 transition border border-red-100">
-                        <i class="fas fa-shopping-bag"></i>
+                    {{-- 3. CART MOBILE TOGGLE --}}
+                    <button @click="mobileCartOpen = !mobileCartOpen"
+                            class="lg:hidden relative h-10 w-10 bg-red-50 text-red-600 border border-red-100 rounded-xl flex items-center justify-center hover:bg-red-100 transition shadow-sm">
+                        <i class="fas fa-shopping-bag text-lg"></i>
                         <span x-show="cartTotalQty > 0" class="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" x-text="cartTotalQty"></span>
                     </button>
                 </div>
+
             </div>
 
             {{-- BAGIAN ISI PRODUK --}}
