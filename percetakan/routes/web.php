@@ -262,6 +262,9 @@ Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.c
 Route::get('/orders/search-location', [OrderController::class, 'searchLocation'])->name('orders.search-location');
 Route::get('/orders/tripay-channels', [OrderController::class, 'getPaymentChannels'])->name('orders.tripay-channels');
 
+// [BARU] Route Scan Barcode - Taruh di sini agar aman
+Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
+
 // 3. Halaman Index
 Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
 
@@ -283,8 +286,6 @@ Route::delete('/orders/bulk-delete', [OrderController::class, 'bulkDestroy'])->n
 Route::post('/orders/check-ongkir', [OrderController::class, 'checkShippingRates'])->name('orders.check-ongkir');
 Route::post('/orders/store', [OrderController::class, 'store'])->name('orders.store');
 Route::post('/orders/check-coupon', [OrderController::class, 'checkCoupon'])->name('orders.check-coupon');
-
-Route::get('/orders/scan-product', [App\Http\Controllers\OrderController::class, 'scanProduct'])->name('orders.scan-product');
 
 // --- ROUTE CRUD UTAMA (Index, Create, Store, Edit, Update, Destroy) ---
 Route::resource('orders', OrderController::class);
