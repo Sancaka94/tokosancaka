@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str; // Wajib untuk manipulasi string/slug
+use Barryvdh\DomPDF\Facade\Pdf; // Import di atas
 
 class ProductController extends Controller
 {
@@ -410,4 +411,19 @@ class ProductController extends Controller
         $categories = Category::where('is_active', true)->get();
         return view('products.create', compact('categories'));
     }
+
+    public function downloadPdf()
+{
+    // Ambil data (Bisa difilter jika perlu)
+    $products = Product::with('category')->orderBy('name', 'asc')->get();
+
+    // Load View dan Pass Data
+    $pdf = Pdf::loadView('products.pdf_barcode', compact('products'));
+
+    // Set ukuran kertas (A4 Landscape agar muat)
+    $pdf->setPaper('a4', 'portrait');
+
+    // Download / Stream
+    return $pdf->stream('laporan-barcode-produk.pdf');
+}
 }
