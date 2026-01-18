@@ -256,6 +256,7 @@ function posSystem() {
                 this.couponCode = '';      // Kosongkan form agar bisa isi manual
                 this.discountAmount = 0;   // Reset diskon
                 this.couponMessage = '';   // Hapus pesan "Berhasil/Gagal"
+
             }
             // ====================================================
 
@@ -753,6 +754,7 @@ function posSystem() {
             if(this.cart.length === 0) {
                 this.discountAmount = 0;
                 this.couponMessage = '';
+                this.couponCode = '';
 
                 // --- [FITUR BARU: RESET KATEGORI] ---
                 this.activeCategory = 'all';
@@ -770,6 +772,7 @@ function posSystem() {
                 this.shippingCost = 0; this.deliveryType = 'pickup'; this.searchQuery = '';
                 // --- [FITUR BARU: RESET KATEGORI] ---
                 this.activeCategory = 'all';
+                this.couponCode = '';
                 // ------------------------------------
             }
         },
