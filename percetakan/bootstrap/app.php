@@ -13,10 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        
+
         // PENTING: Mengecualikan Route Webhook dari proteksi CSRF
         // Karena server luar (KiriminAja/Tripay/Doku) tidak memiliki token CSRF aplikasi kita.
         $middleware->validateCsrfTokens(except: [
+            'customers/store-ajax', // Masukkan URL route yang error di sini
             'api/kiriminaja/webhook', // Webhook KiriminAja
             //'dana/*',           // Membuka semua jalur DANA
             'dana/notify',      // Spesifik notifikasi
@@ -30,12 +31,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
     })
-    
+
     ->withSchedule(function (Schedule $schedule) {
         // INI KERNELNYA: Jalankan retry otomatis setiap menit
         $schedule->command('dana:retry-inquiry')->everyMinute();
     })
-    
+
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
