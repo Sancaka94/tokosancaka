@@ -362,7 +362,7 @@
                     </button>
 
                     <div x-show="isOpen" class="p-3 space-y-2 bg-white">
-                        
+
                         <div class="relative">
                             <label class="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Nama Pelanggan</label>
                             <div class="relative">
@@ -372,10 +372,10 @@
                                     <i class="fas fa-circle-notch fa-spin text-slate-400 text-xs"></i>
                                 </div>
                             </div>
-                            <div x-show="customerNameSearchResults.length > 0" @click.outside="customerNameSearchResults = []" 
+                            <div x-show="customerNameSearchResults.length > 0" @click.outside="customerNameSearchResults = []"
                                  class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
                                 <template x-for="cust in customerNameSearchResults" :key="cust.id">
-                                    <div @click="fillCustomerData(cust); customerNameSearchResults = []" 
+                                    <div @click="fillCustomerData(cust); customerNameSearchResults = []"
                                          class="px-3 py-2 text-xs border-b cursor-pointer hover:bg-indigo-50 border-slate-50 flex flex-col">
                                         <span class="font-bold text-slate-700" x-text="cust.name"></span>
                                         <span class="text-[10px] text-slate-500" x-text="cust.whatsapp"></span>
@@ -394,7 +394,7 @@
                                     <i class="fas fa-check-circle text-emerald-500 text-xs"></i>
                                 </div>
                             </div>
-                            <div x-show="customerSearchResults.length > 0" @click.outside="customerSearchResults = []" 
+                            <div x-show="customerSearchResults.length > 0" @click.outside="customerSearchResults = []"
                                  class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
                                 <template x-for="cust in customerSearchResults" :key="cust.id">
                                     <div @click="fillCustomerData(cust)" class="px-3 py-2 text-xs border-b cursor-pointer hover:bg-indigo-50 border-slate-50 flex flex-col">
@@ -412,11 +412,11 @@
                         </div>
 
                         <div class="mt-2 mb-2">
-                            <button @click="getGeoLocation()" 
+                            <button @click="getGeoLocation()"
                                     class="w-full py-1.5 border border-dashed border-green-500 text-green-600 rounded-lg text-[10px] font-bold hover:bg-green-50 flex items-center justify-center gap-1 transition">
                                 <span x-show="isGettingLocation"><i class="fas fa-circle-notch fa-spin"></i> Mencari GPS...</span>
                                 <span x-show="!isGettingLocation">
-                                    <i class="fas fa-map-marker-alt"></i> 
+                                    <i class="fas fa-map-marker-alt"></i>
                                     <span x-text="latitude ? 'Update Lokasi GPS' : 'Ambil Lokasi GPS'"></span>
                                 </span>
                             </button>
@@ -426,14 +426,14 @@
                         </div>
 
                         <div class="grid grid-cols-2 gap-2 mt-2">
-                            <button @click="saveCustomerToDB()" 
+                            <button @click="saveCustomerToDB()"
                                     :disabled="isSavingCustomer || !customerName || !customerPhone"
                                     class="w-full py-2 bg-green-600 text-white text-[10px] font-bold rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
                                 <span x-show="!isSavingCustomer"><i class="fas fa-save"></i> Simpan Ke Database</span>
                                 <span x-show="isSavingCustomer" style="display: none;"><i class="fas fa-circle-notch fa-spin"></i> Proses...</span>
                             </button>
 
-                            <button @click="isOpen = false" 
+                            <button @click="isOpen = false"
                                     class="w-full py-2 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-lg hover:bg-indigo-100 transition border border-indigo-100">
                                 Simpan Ke Checkout
                             </button>
@@ -450,8 +450,8 @@
                 <div class="mb-3">
                     <div class="relative">
                         <input type="text" x-model="couponCode" @input.debounce.500ms="checkCoupon()" placeholder="KODE PROMO..."
-                               class="w-full pl-3 pr-10 py-2 text-sm rounded-lg border border-slate-200 focus:ring-red-500 uppercase font-bold text-slate-700"
-                               :class="{'border-emerald-500 bg-emerald-50': discountAmount > 0, 'border-red-300 bg-red-50': couponMessage && discountAmount === 0}">
+                               class="w-full pl-3 pr-10 py-2 text-sm rounded-lg border border-slate-200 focus:ring-red-500 uppercase font-bold text-slate-700 transition-colors"
+                               :class="{'border-emerald-500 bg-emerald-50 text-emerald-700': discountAmount > 0, 'border-red-300 bg-red-50 text-red-700': couponMessage && discountAmount === 0}">
 
                         <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                             <i x-show="isValidatingCoupon" class="fas fa-circle-notch fa-spin text-slate-400"></i>
@@ -459,7 +459,7 @@
                             <i x-show="!isValidatingCoupon && couponMessage && discountAmount === 0" class="fas fa-times-circle text-red-500"></i>
                         </div>
                     </div>
-                    <p x-show="couponMessage" x-text="couponMessage" class="text-[10px] font-bold mt-1"
+                    <p x-show="couponMessage" x-text="couponMessage" class="text-[10px] font-bold mt-1 ml-1"
                        :class="discountAmount > 0 ? 'text-emerald-600' : 'text-red-500'"></p>
                 </div>
 
