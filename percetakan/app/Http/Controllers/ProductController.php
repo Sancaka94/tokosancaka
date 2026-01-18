@@ -83,12 +83,14 @@ class ProductController extends Controller
             'unit'        => 'required|string',
             'supplier'    => 'nullable|string|max:255',
             'image'       => 'nullable|file|max:2048|mimes:jpeg,png,jpg,gif',
+            'barcode'     => 'nullable|unique:products,barcode|unique:product_variants,barcode',
+
             // Validasi Array Varian
-            'variants'    => 'array',
-            'variants.*.name'  => 'required_with:variants|string',
-            'variants.*.price' => 'required_with:variants|numeric|min:0',
-            'variants.*.stock' => 'required_with:variants|integer|min:0',
-            'barcode' => 'nullable|unique:products,barcode|unique:product_variants,barcode',
+            'variants'          => 'array',
+            'variants.*.name'   => 'required_with:variants|string',
+            'variants.*.price'  => 'required_with:variants|numeric|min:0',
+            'variants.*.stock'  => 'required_with:variants|integer|min:0',
+            'variants.*.barcode'=> 'nullable|string|distinct|unique:product_variants,barcode|unique:products,barcode',
         ]);
 
         // 2. LOGIKA AUTO-GENERATE BARCODE
@@ -148,6 +150,7 @@ class ProductController extends Controller
                 foreach ($request->variants as $variant) {
                     // Generate SKU Varian otomatis
                     $variantSku = $this->generateSku($request->name, $variant['name']);
+                    $varBarcode = $variant['barcode'] ?? null;
 
                     ProductVariant::create([
                         'product_id' => $product->id,
@@ -155,6 +158,7 @@ class ProductController extends Controller
                         'price'      => $variant['price'],
                         'stock'      => $variant['stock'] ?? 0,
                         'sku'        => $variantSku,
+                        'barcode'    => $varBarcode, // <--- PENTING: Simpan Barcode Varian
                     ]);
                     $totalVariantStock += ($variant['stock'] ?? 0);
                 }
@@ -262,6 +266,7 @@ class ProductController extends Controller
 
                         // Cek SKU Varian (Gunakan yang lama jika dikirim, atau generate baru)
                         $variantSku = $variant['sku'] ?? $this->generateSku($request->name, $variant['name']);
+                        $varBarcode = $variant['barcode'] ?? null;
 
                         ProductVariant::create([
                             'product_id' => $product->id,
@@ -269,6 +274,7 @@ class ProductController extends Controller
                             'price'      => $variant['price'],
                             'stock'      => $variant['stock'] ?? 0,
                             'sku'        => $variantSku,
+                            'barcode'    => $varBarcode, // <--- PENTING: Simpan Barcode Varian
                         ]);
                         $totalVariantStock += ($variant['stock'] ?? 0);
                     }
@@ -371,11 +377,14 @@ class ProductController extends Controller
                         $variantSku = $this->generateSku($product->name, $variant['name']);
                     }
 
+                    $varBarcode = $variant['barcode'] ?? null;
+
                     $product->variants()->create([
                         'name'  => $variant['name'],
                         'price' => $variant['price'],
                         'stock' => $variant['stock'],
                         'sku'   => $variantSku,
+                        'barcode' => $varBarcode, // <--- TAMBAHKAN INI
                     ]);
                     $totalStock += $variant['stock'];
                 }

@@ -581,17 +581,15 @@
 
                     this.activeProductName = data.product_name;
 
-                    // --- PERBAIKAN DI SINI ---
-                    // Map data dari DB ke struktur JS (termasuk barcode)
+                    // CORRECT MAPPING
                     this.variants = data.variants.map(v => ({
-                        id: v.id,          // Pastikan ID varian ikut agar bisa diupdate (bukan create baru terus)
+                        id: v.id,
                         name: v.name,
                         price: v.price,
                         stock: v.stock,
                         sku: v.sku,
-                        barcode: v.barcode || '' // Load barcode jika ada
+                        barcode: v.barcode || '' // Load barcode correctly
                     }));
-                    // -------------------------
 
                 } catch (error) {
                     console.error(error);
@@ -608,7 +606,7 @@
                     name: '',
                     price: 0,
                     stock: 0,
-                    sku: ''
+                    sku: '',
                     barcode: '' // Field baru untuk barcode
                 });
                 // Scroll ke bawah otomatis agar baris baru terlihat
