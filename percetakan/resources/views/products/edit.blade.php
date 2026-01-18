@@ -3,6 +3,10 @@
 @section('title', 'Edit Produk')
 
 @section('content')
+
+{{-- 1. LOAD LIBRARY VISUAL BARCODE --}}
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
 <div class="max-w-4xl mx-auto" x-data="productEditForm()">
 
     {{-- HEADER --}}
@@ -91,17 +95,45 @@
                                    class="w-full px-4 py-3 rounded-xl border-slate-300 focus:ring-indigo-500 font-bold text-slate-700">
                         </div>
 
-                        {{-- [BARU] Barcode Produk Utama --}}
-                        <div x-show="!hasVariant && !isService">
+                        {{-- [BARU] Barcode Produk Utama dengan Visual Generator --}}
+                        <div x-show="!hasVariant && !isService" x-data="{
+                                code: '{{ $product->barcode }}',
+                                init() { this.renderBarcode(); },
+                                renderBarcode() {
+                                    if(this.code && this.code.length > 0) {
+                                        this.$nextTick(() => {
+                                            try {
+                                                JsBarcode(this.$refs.barcodeCanvasEdit, this.code, {
+                                                    format: 'CODE128',
+                                                    lineColor: '#334155',
+                                                    width: 2,
+                                                    height: 50,
+                                                    displayValue: true
+                                                });
+                                            } catch(e) {}
+                                        });
+                                    }
+                                }
+                            }">
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Barcode / SKU</label>
+
                             <div class="relative">
                                 <span class="absolute left-3 top-3 text-slate-400"><i class="fas fa-barcode"></i></span>
-                                <input type="text" name="barcode" value="{{ old('barcode', $product->barcode) }}"
+                                <input type="text" name="barcode"
+                                       x-model="code"
+                                       @input.debounce.300ms="renderBarcode()"
+                                       @keydown.enter.prevent="renderBarcode()"
                                        placeholder="Scan Barcode..."
-                                       @keydown.enter.prevent
                                        class="w-full pl-9 pr-4 py-3 rounded-xl border-slate-300 font-mono tracking-wide focus:ring-indigo-500 transition text-sm">
                             </div>
-                            <p class="text-[9px] text-slate-400 mt-1 italic pl-1">*Kosongkan untuk auto-generate</p>
+
+                            {{-- VISUAL BARCODE --}}
+                            <div class="mt-2 flex items-center justify-center p-2 bg-slate-50 border border-slate-200 rounded-lg"
+                                 x-show="code && code.length > 0">
+                                <svg x-ref="barcodeCanvasEdit"></svg>
+                            </div>
+
+                            <p class="text-[9px] text-slate-400 mt-1 italic pl-1" x-show="!code || code.length === 0">*Kosongkan untuk auto-generate</p>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
@@ -186,7 +218,7 @@
                             {{-- Header Tabel Kecil --}}
                             <div class="grid grid-cols-12 gap-3 text-[10px] font-bold text-slate-400 uppercase px-1">
                                 <div class="col-span-3">Nama Varian</div>
-                                <div class="col-span-3">Barcode</div> {{-- HEADER BARCODE --}}
+                                <div class="col-span-3">Barcode</div>
                                 <div class="col-span-3">Harga</div>
                                 <div class="col-span-2">Stok</div>
                                 <div class="col-span-1 text-center">Hapus</div>
@@ -204,46 +236,13 @@
                                                class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500">
                                     </div>
 
-                                    {{-- Barcode Produk Utama (Edit Mode) --}}
-                                    <div x-show="!hasVariant && !isService" x-data="{
-                                            code: '{{ $product->barcode }}', {{-- Load data lama dari DB --}}
-                                            init() { this.renderBarcode(); },
-                                            renderBarcode() {
-                                                if(this.code && this.code.length > 0) {
-                                                    this.$nextTick(() => {
-                                                        JsBarcode(this.$refs.barcodeCanvasEdit, this.code, {
-                                                            format: 'CODE128',
-                                                            lineColor: '#334155',
-                                                            width: 2,
-                                                            height: 50,
-                                                            displayValue: true
-                                                        });
-                                                    });
-                                                }
-                                            }
-                                        }">
-                                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Barcode / SKU</label>
-
-                                        <div class="relative">
-                                            <span class="absolute left-3 top-3 text-slate-400"><i class="fas fa-barcode"></i></span>
-
-                                            <input type="text" name="barcode"
-                                                x-model="code"
-                                                @input.debounce.300ms="renderBarcode()"
-                                                @keydown.enter.prevent="renderBarcode()"
-                                                placeholder="Scan Barcode..."
-                                                class="w-full pl-9 pr-4 py-3 rounded-xl border-slate-300 font-mono tracking-wide font-bold focus:ring-indigo-500 transition text-sm">
-                                        </div>
-
-                                        {{-- VISUAL BARCODE EDIT --}}
-                                        <div class="mt-2 flex items-center justify-center p-2 bg-slate-50 border border-slate-200 rounded-lg"
-                                            x-show="code && code.length > 0">
-                                            <svg x-ref="barcodeCanvasEdit"></svg>
-                                        </div>
-
-                                        <p class="text-[9px] text-slate-400 mt-1 italic pl-1" x-show="!code || code.length === 0">
-                                            *Kosongkan untuk auto-generate kode baru saat disimpan.
-                                        </p>
+                                    {{-- Barcode Varian --}}
+                                    <div class="col-span-3 relative">
+                                        <span class="absolute left-2 top-2.5 text-slate-400"><i class="fas fa-barcode text-xs"></i></span>
+                                        <input type="text" :name="'variants['+index+'][barcode]'" x-model="variant.barcode"
+                                               @keydown.enter.prevent
+                                               placeholder="Scan..."
+                                               class="w-full pl-6 pr-2 py-2 rounded-lg border-slate-300 text-xs font-mono bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all">
                                     </div>
 
                                     {{-- Harga --}}
