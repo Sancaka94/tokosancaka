@@ -151,9 +151,18 @@ function posSystem() {
         // LOGIKA PENCARIAN & AUTOFILL PELANGGAN (FITUR BARU)
         // ------------------------------------------------------------------
 
-        // --- FUNGSI BARU: CARI PELANGGAN BY NAMA ---
         async searchCustomerByName() {
-            // Kalau nama kurang dari 3 huruf, jangan cari (biar gak berat)
+            // [LOGIC BARU] Reset Status
+            this.isCustomerFound = false; // Matikan centang
+            this.selectedCustomerId = '';
+
+            // Reset Kupon
+            if (this.couponCode) {
+                this.couponCode = '';
+                this.discountAmount = 0;
+                this.couponMessage = '';
+            }
+
             if (this.customerName.length < 3) {
                 this.customerNameSearchResults = [];
                 return;
@@ -162,15 +171,9 @@ function posSystem() {
             this.isSearchingCustomer = true;
 
             try {
-                // Panggil API Search yang sama, query-nya adalah Nama
                 const response = await fetch(`{{ route('customers.searchApi') }}?q=${this.customerName}`);
                 const data = await response.json();
-
-                if (data.length > 0) {
-                    this.customerNameSearchResults = data;
-                } else {
-                    this.customerNameSearchResults = [];
-                }
+                this.customerNameSearchResults = data.length > 0 ? data : [];
             } catch (error) {
                 console.error("Gagal mencari pelanggan:", error);
             } finally {
@@ -231,6 +234,9 @@ function posSystem() {
             this.customerName = data.name;
             this.customerPhone = data.whatsapp;
             this.customerAddressDetail = data.address || '';
+
+              // [PENTING] Nyalakan Centang Hijau DI SINI
+            this.isCustomerFound = true;
 
             // ====================================================
             // LOGIKA PINTAR: CEK KUPON DATABASE
