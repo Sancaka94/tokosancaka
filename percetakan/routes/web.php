@@ -250,29 +250,52 @@ Route::get('/cara', function () {
     return view('cara');
 });
 
+/*
+|--------------------------------------------------------------------------
+| ROUTE ORDERS (Diurutkan berdasarkan Spesifik -> Umum)
+|--------------------------------------------------------------------------
+*/
 
-// --- TARUH ROUTE SPESIFIK DI PALING ATAS (SEBELUM RESOURCE) ---
+// --- 1. GET ROUTES (Halaman & Data Spesifik) ---
+// [PENTING] Route spesifik WAJIB diletakkan di atas route {id}
 
-// 1. Scan Barcode (WAJIB DI ATAS)
+// Fitur Scan Barcode (Prioritas Utama)
 Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
 
-// 2. Helper Lainnya (Create, Search, dll)
+// Halaman POS (Create)
 Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
+
+// Helpers (Pencarian Lokasi & Payment Channel)
 Route::get('/orders/search-location', [OrderController::class, 'searchLocation'])->name('orders.search-location');
 Route::get('/orders/tripay-channels', [OrderController::class, 'getPaymentChannels'])->name('orders.tripay-channels');
+
+// Export Data (PDF & Excel)
 Route::get('/orders/export-pdf', [OrderController::class, 'exportPdf'])->name('orders.export.pdf');
 Route::get('/orders/export-excel', [OrderController::class, 'exportExcel'])->name('orders.export.excel');
-Route::delete('/orders/bulk-delete', [OrderController::class, 'bulkDestroy'])->name('orders.bulkDestroy');
 
-// 3. Post Routes
+// Halaman Index (Daftar Pesanan)
+Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+
+
+// --- 2. POST ROUTES (Aksi Simpan & Validasi) ---
 Route::post('/orders/check-ongkir', [OrderController::class, 'checkShippingRates'])->name('orders.check-ongkir');
 Route::post('/orders/store', [OrderController::class, 'store'])->name('orders.store');
 Route::post('/orders/check-coupon', [OrderController::class, 'checkCoupon'])->name('orders.check-coupon');
 
-// --- BARU TARUH RESOURCE / WILDCARD DI BAWAH ---
-// (Karena resource mengandung /orders/{id} yang bisa "memakan" route di atasnya jika ditaruh duluan)
-Route::resource('orders', OrderController::class);
 
+// --- 3. DELETE ROUTES (Aksi Hapus) ---
+// Bulk delete harus di atas delete {id} biasa (walaupun methodnya sama, lebih baik spesifik dulu)
+Route::delete('/orders/bulk-delete', [OrderController::class, 'bulkDestroy'])->name('orders.bulkDestroy');
+
+
+// --- 4. WILDCARD & RESOURCE (Route Umum / Dinamis) ---
+// [PENTING] Bagian ini harus diletakkan PALING BAWAH agar tidak "memakan" route di atasnya
+
+// Route Detail (Show) - Menggunakan parameter {id}
+Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
+
+// Resource Controller (Menangani seluruh sisa CRUD standar)
+Route::resource('orders', OrderController::class);
 
 Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
 
