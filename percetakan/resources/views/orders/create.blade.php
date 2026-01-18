@@ -449,15 +449,18 @@
 
                 <div class="mb-3">
                     <div class="relative">
-                        {{--
-                            TRICK ANTI CACHE:
-                            1. autocomplete="off": Matikan saran browser standard.
-                            2. name="...": Pakai random string agar browser mengira ini input baru terus.
-                            3. spellcheck="false": Matikan garis merah ejaan.
-                        --}}
                         <input type="text"
-                               name="coupon_input_{{ rand(1000,9999) }}"
-                               autocomplete="off"
+                               {{-- TRICK 1: Nama Acak --}}
+                               name="no_cache_promo_{{ \Illuminate\Support\Str::random(10) }}"
+                               id="promo_{{ \Illuminate\Support\Str::random(10) }}"
+
+                               {{-- TRICK 2: Pakai 'new-password' biar browser takut nyimpen history --}}
+                               autocomplete="new-password"
+
+                               {{-- TRICK 3: Readonly saat load, baru bisa ngetik pas diklik (Anti Autofill) --}}
+                               readonly
+                               onfocus="this.removeAttribute('readonly');"
+
                                spellcheck="false"
                                x-model="couponCode"
                                @input.debounce.500ms="checkCoupon()"
