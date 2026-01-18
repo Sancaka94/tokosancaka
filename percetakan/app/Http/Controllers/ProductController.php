@@ -424,26 +424,60 @@ class ProductController extends Controller
 
     public function downloadPdf(Request $request)
     {
-        // 1. Ambil Data (Eager Load 'variants' supaya tidak berat query-nya)
-        $query = Product::with(['category', 'variants']) // <--- Penting: with variants
+        // 1. Mulai Query dengan Eager Loading (Relasi 'variants' WAJIB dibawa)
+        $query = Product::with(['category', 'variants'])
                         ->orderBy('name', 'asc');
 
-        // ... (Kode filter kategori/type Anda yang sebelumnya tetap sama di sini) ...
-        // FILTER KATEGORI & TYPE TETAP DIPERTAHANKAN
+        // --- FILTER KATEGORI ---
+        $categoryName = 'Semua Kategori';
         if ($request->has('category_id') && $request->category_id != 'all') {
             $query->where('category_id', $request->category_id);
-        }
-        if ($request->has('type')) {
-            if ($request->type == 'variant') $query->where('has_variant', 1);
-            elseif ($request->type == 'single') $query->where('has_variant', 0);
+
+            // Ambil nama kategori untuk judul di PDF
+            $cat = \App\Models\Category::find($request->category_id);
+            if ($cat) {
+                $categoryName = $cat->name;
+            }
         }
 
+        // --- FILTER JENIS PRODUK (Single / Variant) ---
+        $typeName = 'Semua Jenis Produk';
+        if ($request->has('type') && $request->type != 'all') {
+            if ($request->type == 'variant') {
+                $query->where('has_variant', 1);
+                $typeName = 'Hanya Produk Multi Varian';
+            } elseif ($request->type == 'single') {
+                $query->where('has_variant', 0);
+                $typeName = 'Hanya Produk Tunggal';
+            }
+        }
+
+        // --- FILTER PENCARIAN (Opsional: Jika ingin cetak hasil search saja) ---
+        if ($request->has('search') && $request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('sku', 'like', "%{$search}%")
+                  ->orWhere('barcode', 'like', "%{$search}%");
+            });
+        }
+
+        // 2. Eksekusi Query
         $products = $query->get();
 
-        // 2. Load View
-        $pdf = Pdf::loadView('products.pdf_barcode', compact('products'));
+        // 3. Load View PDF
+        // Pastikan Anda sudah mengimport facade PDF di paling atas file:
+        // use Barryvdh\DomPDF\Facade\Pdf;
+
+        $pdf = Pdf::loadView('products.pdf_barcode', [
+            'products' => $products,
+            'categoryName' => $categoryName,
+            'typeName' => $typeName
+        ]);
+
+        // 4. Atur Ukuran Kertas & Stream
         $pdf->setPaper('a4', 'portrait');
 
-        return $pdf->stream('laporan-stok-lengkap.pdf');
+        return $pdf->stream('laporan-stok-produk-' . date('Y-m-d') . '.pdf');
     }
 }
