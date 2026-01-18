@@ -44,8 +44,15 @@
 
                 <div class="relative w-full max-w-md mx-4">
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500"><i class="fas fa-search"></i></span>
-                    <input type="text" x-model="search" placeholder="Cari layanan / produk..."
-                           class="w-full pl-10 pr-10 py-2 rounded-xl bg-slate-100 border-none focus:ring-2 focus:ring-red-500 text-sm font-medium transition-all">
+                    {{-- INPUT PENCARIAN & SCANNER --}}
+                    {{-- autofocus: Agar kursor langsung aktif di sini saat halaman dibuka --}}
+                    {{-- @keydown.enter.prevent: Agar saat scanner tekan Enter, jalankan fungsi scanProduct() --}}
+                    <input type="text"
+                        x-model="search"
+                        @keydown.enter.prevent="scanProduct()"
+                        autofocus
+                        placeholder="Scan Barcode / Ketik Nama..."
+                        class="w-full pl-10 pr-10 py-2 rounded-xl bg-slate-100 border-none focus:ring-2 focus:ring-red-500 text-sm font-medium transition-all">
                     <button x-show="search.length > 0" @click="search = ''" class="absolute inset-y-0 right-0 pr-3 text-slate-400 hover:text-red-500">
                         <i class="fas fa-times-circle"></i>
                     </button>

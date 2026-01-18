@@ -151,6 +151,78 @@ function posSystem() {
         // LOGIKA PENCARIAN & AUTOFILL PELANGGAN (FITUR BARU)
         // ------------------------------------------------------------------
 
+        // --- FITUR BARU: SCAN BARCODE ---
+        async scanProduct() {
+            let code = this.search.trim();
+            if (!code) return;
+
+            // Jika input pendek (misal ketik nama 'cuci'), jangan scan ke server, biarkan filter lokal bekerja
+            // Anggap barcode minimal 3 karakter angka/huruf
+            if (code.length < 3) return;
+
+            this.isProcessing = true; // Tampilkan loading jika ada indikator
+
+            try {
+                // Panggil API Controller yang baru dibuat
+                let response = await fetch(`{{ route('orders.scan-product') }}?code=${code}`);
+                let result = await response.json();
+
+                if (result.status === 'success') {
+                    let p = result.data;
+
+                    // Mainkan Suara 'Beep' (Opsional, biar kayak Indomaret)
+                    // let audio = new Audio('https://www.soundjay.com/button/beep-07.wav');
+                    // audio.play();
+
+                    // LOGIKA 1: PRODUK TUNGGAL (SINGLE)
+                    if (result.type === 'single') {
+                        // Langsung tambah ke keranjang pakai fungsi yang sudah ada
+                        this.addToCart(
+                            p.id,
+                            p.name,
+                            p.sell_price,
+                            p.stock,
+                            p.weight ?? 0,
+                            p.image ? `{{ asset('storage') }}/${p.image}` : null,
+                            false, // hasVariant = false
+                            'all'
+                        );
+                    }
+                    // LOGIKA 2: PRODUK VARIAN (MULTI)
+                    else if (result.type === 'variant') {
+                        // Karena yang discan adalah barcode VARIAN SPESIFIK,
+                        // kita langsung masukkan ke keranjang (Bypassing modal varian)
+
+                        let cartId = `${p.id}-VAR-${p.variant_id}`;
+
+                        this.processAddItem(
+                            cartId,          // ID Unik di Keranjang
+                            p.name,          // Nama (Sudah digabung Controller: "Produk (Merah)")
+                            p.sell_price,    // Harga Varian
+                            p.stock,         // Stok Varian
+                            p.weight ?? 0,   // Berat Induk
+                            p.image ? `{{ asset('storage') }}/${p.image}` : null,
+                            p.variant_id     // ID Varian
+                        );
+                    }
+
+                    // Reset kolom pencarian agar siap scan barang berikutnya
+                    this.search = '';
+
+                } else {
+                    // Jika barcode tidak ditemukan di server, biarkan teks tetap ada
+                    // supaya filter pencarian lokal (nama produk) tetap jalan.
+                    // console.log("Barcode tidak ketemu, mencari by nama...");
+                }
+
+            } catch (error) {
+                console.error("Scan Error:", error);
+                alert('Terjadi kesalahan saat scan produk.');
+            } finally {
+                this.isProcessing = false;
+            }
+        },
+
         async searchCustomerByName() {
             // [LOGIC BARU] Reset Status
             this.isCustomerFound = false; // Matikan centang
