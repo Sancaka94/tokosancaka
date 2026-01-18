@@ -754,6 +754,9 @@ function posSystem() {
             if(confirm('Kosongkan keranjang?')) {
                 this.cart = []; this.uploadedFiles = []; this.discountAmount = 0; this.couponMessage = '';
                 this.shippingCost = 0; this.deliveryType = 'pickup'; this.searchQuery = '';
+                // --- [FITUR BARU: RESET KATEGORI] ---
+                this.activeCategory = 'all';
+                // ------------------------------------
             }
         },
 
