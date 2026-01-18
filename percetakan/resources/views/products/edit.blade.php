@@ -91,6 +91,19 @@
                                    class="w-full px-4 py-3 rounded-xl border-slate-300 focus:ring-indigo-500 font-bold text-slate-700">
                         </div>
 
+                        {{-- [BARU] Barcode Produk Utama --}}
+                        <div x-show="!hasVariant && !isService">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Barcode / SKU</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-3 text-slate-400"><i class="fas fa-barcode"></i></span>
+                                <input type="text" name="barcode" value="{{ old('barcode', $product->barcode) }}"
+                                       placeholder="Scan Barcode..."
+                                       @keydown.enter.prevent
+                                       class="w-full pl-9 pr-4 py-3 rounded-xl border-slate-300 font-mono tracking-wide focus:ring-indigo-500 transition text-sm">
+                            </div>
+                            <p class="text-[9px] text-slate-400 mt-1 italic pl-1">*Kosongkan untuk auto-generate</p>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-4">
                             {{-- Modal --}}
                             <div x-show="!isService">
@@ -172,30 +185,46 @@
                         <div class="space-y-3">
                             {{-- Header Tabel Kecil --}}
                             <div class="grid grid-cols-12 gap-3 text-[10px] font-bold text-slate-400 uppercase px-1">
-                                <div class="col-span-5">Nama Varian</div>
+                                <div class="col-span-3">Nama Varian</div>
+                                <div class="col-span-3">Barcode</div> {{-- HEADER BARCODE --}}
                                 <div class="col-span-3">Harga</div>
-                                <div class="col-span-3">Stok</div>
+                                <div class="col-span-2">Stok</div>
                                 <div class="col-span-1 text-center">Hapus</div>
                             </div>
 
                             {{-- Looping Input Varian --}}
                             <template x-for="(variant, index) in variants" :key="index">
                                 <div class="grid grid-cols-12 gap-3 items-center group animate-fade-in-down">
+                                    {{-- ID Varian (Hidden) --}}
+                                    <input type="hidden" :name="'variants['+index+'][id]'" x-model="variant.id">
+
                                     {{-- Nama --}}
-                                    <div class="col-span-5">
+                                    <div class="col-span-3">
                                         <input type="text" :name="'variants['+index+'][name]'" x-model="variant.name" placeholder="Cth: XL" required
                                                class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500">
                                     </div>
+
+                                    {{-- [BARU] Barcode Varian --}}
+                                    <div class="col-span-3 relative">
+                                        <span class="absolute left-2 top-2.5 text-slate-400"><i class="fas fa-barcode text-xs"></i></span>
+                                        <input type="text" :name="'variants['+index+'][barcode]'" x-model="variant.barcode"
+                                               @keydown.enter.prevent
+                                               placeholder="Scan..."
+                                               class="w-full pl-6 pr-2 py-2 rounded-lg border-slate-300 text-xs font-mono bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all">
+                                    </div>
+
                                     {{-- Harga --}}
                                     <div class="col-span-3">
                                         <input type="number" :name="'variants['+index+'][price]'" x-model="variant.price" placeholder="0" required
                                                class="w-full px-3 py-2 rounded-lg border-emerald-200 text-sm font-bold text-emerald-700 text-right focus:ring-2 focus:ring-emerald-500">
                                     </div>
+
                                     {{-- Stok --}}
-                                    <div class="col-span-3">
+                                    <div class="col-span-2">
                                         <input type="number" :name="'variants['+index+'][stock]'" x-model="variant.stock" placeholder="0" required
                                                class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm text-center focus:ring-2 focus:ring-indigo-500">
                                     </div>
+
                                     {{-- Hapus --}}
                                     <div class="col-span-1 text-center">
                                         <button type="button" @click="removeVariantRow(index)" class="text-slate-300 hover:text-red-500 transition">
@@ -243,8 +272,16 @@
             isService: {{ $product->type === 'service' ? 'true' : 'false' }},
             hasVariant: {{ $product->has_variant ? 'true' : 'false' }},
 
-            // Data Varian (Load dari DB)
-            variants: {!! $product->variants->toJson() !!},
+            // Data Varian (Load dari DB dengan mapping barcode yang benar)
+            variants: {!! $product->variants->map(function($v) {
+                return [
+                    'id' => $v->id,
+                    'name' => $v->name,
+                    'price' => $v->price,
+                    'stock' => $v->stock,
+                    'barcode' => $v->barcode ?? '' // Pastikan kolom barcode terload
+                ];
+            })->toJson() !!},
 
             handleCategoryChange(event) {
                 const option = event.target.options[event.target.selectedIndex];
@@ -253,13 +290,16 @@
 
             addVariantRow() {
                 this.variants.push({
+                    id: null, // Baru, belum ada ID
                     name: '',
                     price: 0,
-                    stock: 0
+                    stock: 0,
+                    barcode: '' // Field kosong
                 });
             },
 
             removeVariantRow(index) {
+                // Opsional: Bisa tambahkan input hidden 'delete_ids[]' jika ingin hapus di DB
                 this.variants.splice(index, 1);
             }
         }
