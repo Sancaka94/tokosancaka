@@ -669,5 +669,10 @@
     <script>
         @include('orders.partials.pos-script')
     </script>
+
+    {{-- AUDIO ELEMENTS (Disembunyikan) --}}
+<audio id="audio-success" src="https://tokosancaka.com/public/sound/beep.mp3" preload="auto"></audio>
+<audio id="audio-error" src="https://tokosancaka.com/public/sound/beep-gagal.mp3" preload="auto"></audio>
+
 </body>
 </html>

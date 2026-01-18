@@ -151,32 +151,42 @@ function posSystem() {
         // LOGIKA PENCARIAN & AUTOFILL PELANGGAN (FITUR BARU)
         // ------------------------------------------------------------------
 
-        // --- FITUR BARU: SCAN BARCODE ---
+        // 1. FUNGSI HELPER: MEMUTAR SUARA
+        playBeep(type) {
+            // Tentukan ID audio berdasarkan tipe
+            const audioId = type === 'success' ? 'audio-success' : 'audio-error';
+            const audio = document.getElementById(audioId);
+
+            if (audio) {
+                audio.currentTime = 0; // Reset durasi agar bisa diputar berulang cepat
+                audio.play().catch(e => console.log('Browser memblokir autoplay audio', e));
+            }
+        },
+
+        // 2. FUNGSI UTAMA: SCAN BARCODE
         async scanProduct() {
             let code = this.search.trim();
+
+            // Validasi dasar
             if (!code) return;
+            if (code.length < 3) return; // Jangan scan jika terlalu pendek
 
-            // Jika input pendek (misal ketik nama 'cuci'), jangan scan ke server, biarkan filter lokal bekerja
-            // Anggap barcode minimal 3 karakter angka/huruf
-            if (code.length < 3) return;
-
-            this.isProcessing = true; // Tampilkan loading jika ada indikator
+            this.isProcessing = true; // Indikator loading (jika ada)
 
             try {
-                // Panggil API Controller yang baru dibuat
-                let response = await fetch(`{{ route('orders.scan-product') }}?code=${code}`);
+                // Panggil API Backend (Gunakan encodeURIComponent untuk keamanan karakter)
+                let response = await fetch(`{{ route('orders.scan-product') }}?code=${encodeURIComponent(code)}`);
                 let result = await response.json();
 
                 if (result.status === 'success') {
-                    let p = result.data;
 
-                    // Mainkan Suara 'Beep' (Opsional, biar kayak Indomaret)
-                    // let audio = new Audio('https://www.soundjay.com/button/beep-07.wav');
-                    // audio.play();
+                    // --- [SUKSES] MAINKAN BEEP ---
+                    this.playBeep('success');
+
+                    let p = result.data;
 
                     // LOGIKA 1: PRODUK TUNGGAL (SINGLE)
                     if (result.type === 'single') {
-                        // Langsung tambah ke keranjang pakai fungsi yang sudah ada
                         this.addToCart(
                             p.id,
                             p.name,
@@ -184,25 +194,23 @@ function posSystem() {
                             p.stock,
                             p.weight ?? 0,
                             p.image ? `{{ asset('storage') }}/${p.image}` : null,
-                            false, // hasVariant = false
+                            false,
                             'all'
                         );
                     }
                     // LOGIKA 2: PRODUK VARIAN (MULTI)
                     else if (result.type === 'variant') {
-                        // Karena yang discan adalah barcode VARIAN SPESIFIK,
-                        // kita langsung masukkan ke keranjang (Bypassing modal varian)
-
                         let cartId = `${p.id}-VAR-${p.variant_id}`;
 
+                        // Asumsi function processAddItem sudah Anda buat sebelumnya
                         this.processAddItem(
-                            cartId,          // ID Unik di Keranjang
-                            p.name,          // Nama (Sudah digabung Controller: "Produk (Merah)")
-                            p.sell_price,    // Harga Varian
-                            p.stock,         // Stok Varian
-                            p.weight ?? 0,   // Berat Induk
+                            cartId,
+                            p.name,
+                            p.sell_price,
+                            p.stock,
+                            p.weight ?? 0,
                             p.image ? `{{ asset('storage') }}/${p.image}` : null,
-                            p.variant_id     // ID Varian
+                            p.variant_id
                         );
                     }
 
@@ -210,14 +218,108 @@ function posSystem() {
                     this.search = '';
 
                 } else {
-                    // Jika barcode tidak ditemukan di server, biarkan teks tetap ada
-                    // supaya filter pencarian lokal (nama produk) tetap jalan.
-                    // console.log("Barcode tidak ketemu, mencari by nama...");
+                    // --- [GAGAL] MAINKAN BEEP ---
+                    // Produk tidak ditemukan di database
+                    this.playBeep('error');
+
+                    // Opsional: Kosongkan search jika ingin memaksa input ulang
+                    // this.search = '';
                 }
 
             } catch (error) {
                 console.error("Scan Error:", error);
-                alert('Terjadi kesalahan saat scan produk.');
+
+                // --- [ERROR] MAINKAN BEEP ---
+                // Terjadi kesalahan server/koneksi
+                this.playBeep('error');
+
+            } finally {
+                this.isProcessing = false;
+            }
+        },
+
+        // 1. FUNGSI HELPER: MEMUTAR SUARA
+        playBeep(type) {
+            // Tentukan ID audio berdasarkan tipe
+            const audioId = type === 'success' ? 'audio-success' : 'audio-error';
+            const audio = document.getElementById(audioId);
+
+            if (audio) {
+                audio.currentTime = 0; // Reset durasi agar bisa diputar berulang cepat
+                audio.play().catch(e => console.log('Browser memblokir autoplay audio', e));
+            }
+        },
+
+        // 2. FUNGSI UTAMA: SCAN BARCODE
+        async scanProduct() {
+            let code = this.search.trim();
+
+            // Validasi dasar
+            if (!code) return;
+            if (code.length < 3) return; // Jangan scan jika terlalu pendek
+
+            this.isProcessing = true; // Indikator loading (jika ada)
+
+            try {
+                // Panggil API Backend (Gunakan encodeURIComponent untuk keamanan karakter)
+                let response = await fetch(`{{ route('orders.scan-product') }}?code=${encodeURIComponent(code)}`);
+                let result = await response.json();
+
+                if (result.status === 'success') {
+
+                    // --- [SUKSES] MAINKAN BEEP ---
+                    this.playBeep('success');
+
+                    let p = result.data;
+
+                    // LOGIKA 1: PRODUK TUNGGAL (SINGLE)
+                    if (result.type === 'single') {
+                        this.addToCart(
+                            p.id,
+                            p.name,
+                            p.sell_price,
+                            p.stock,
+                            p.weight ?? 0,
+                            p.image ? `{{ asset('storage') }}/${p.image}` : null,
+                            false,
+                            'all'
+                        );
+                    }
+                    // LOGIKA 2: PRODUK VARIAN (MULTI)
+                    else if (result.type === 'variant') {
+                        let cartId = `${p.id}-VAR-${p.variant_id}`;
+
+                        // Asumsi function processAddItem sudah Anda buat sebelumnya
+                        this.processAddItem(
+                            cartId,
+                            p.name,
+                            p.sell_price,
+                            p.stock,
+                            p.weight ?? 0,
+                            p.image ? `{{ asset('storage') }}/${p.image}` : null,
+                            p.variant_id
+                        );
+                    }
+
+                    // Reset kolom pencarian agar siap scan barang berikutnya
+                    this.search = '';
+
+                } else {
+                    // --- [GAGAL] MAINKAN BEEP ---
+                    // Produk tidak ditemukan di database
+                    this.playBeep('error');
+
+                    // Opsional: Kosongkan search jika ingin memaksa input ulang
+                    // this.search = '';
+                }
+
+            } catch (error) {
+                console.error("Scan Error:", error);
+
+                // --- [ERROR] MAINKAN BEEP ---
+                // Terjadi kesalahan server/koneksi
+                this.playBeep('error');
+
             } finally {
                 this.isProcessing = false;
             }
