@@ -4,6 +4,9 @@
 
 @section('content')
 
+{{-- 1. LOAD LIBRARY VISUAL BARCODE --}}
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
 {{-- CONTAINER UTAMA DENGAN ALPINE DATA 'productManager' --}}
 <div class="max-w-7xl mx-auto" x-data="productManager()">
 
@@ -120,6 +123,53 @@
                         </div>
                     </div>
 
+                    {{--
+                        2. BAGIAN INPUT BARCODE DENGAN VISUAL GENERATOR
+                        Ini yang Anda cari: Ada tempat (SVG) untuk menampilkan garis barcode
+                    --}}
+                    <div x-show="!isService" x-data="{
+                            code: '',
+                            renderBarcode() {
+                                if(this.code.length > 0) {
+                                    this.$nextTick(() => {
+                                        try {
+                                            JsBarcode(this.$refs.barcodeCanvas, this.code, {
+                                                format: 'CODE128',
+                                                lineColor: '#334155',
+                                                width: 2,
+                                                height: 40,
+                                                displayValue: true
+                                            });
+                                        } catch(e) { console.log('Barcode error', e); }
+                                    });
+                                }
+                            }
+                        }">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Barcode / SKU</label>
+
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fas fa-barcode"></i></span>
+
+                            {{-- Input Field --}}
+                            <input type="text" name="barcode"
+                                   x-model="code"
+                                   @input.debounce.300ms="renderBarcode()"
+                                   @keydown.enter.prevent="renderBarcode()"
+                                   placeholder="Scan atau Ketik Manual..."
+                                   class="w-full pl-9 pr-4 py-2.5 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500 transition text-sm font-mono tracking-wide font-bold">
+                        </div>
+
+                        {{-- AREA VISUAL (GAMBAR BARCODE MUNCUL DISINI) --}}
+                        <div class="mt-2 flex items-center justify-center bg-white border border-slate-100 rounded-lg overflow-hidden py-2"
+                             x-show="code.length > 0" x-transition>
+                            <svg x-ref="barcodeCanvas" class="w-full h-12 object-contain"></svg>
+                        </div>
+
+                        <p class="text-[9px] text-slate-400 mt-1 italic pl-1" x-show="code.length === 0">
+                            *Kosongkan field ini, sistem akan membuatkan barcode otomatis.
+                        </p>
+                    </div>
+
                     {{-- Kategori --}}
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Kategori <span class="text-red-500">*</span></label>
@@ -164,18 +214,6 @@
                                 <i class="fas fa-check-circle text-xs"></i>
                             </div>
                         </div>
-                    </div>
-
-                    {{-- Barcode (Input Scanner) --}}
-                    <div x-show="!isService">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Barcode / SKU</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fas fa-barcode"></i></span>
-                            <input type="text" name="barcode" placeholder="Scan Barcode Di Sini..."
-                                class="w-full pl-9 pr-4 py-2.5 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500 transition text-sm font-mono tracking-wide"
-                                @keydown.enter.prevent> {{-- Mencegah Enter men-submit form saat scan --}}
-                        </div>
-                        <p class="text-[9px] text-slate-400 mt-1 italic pl-1">*Kosongkan jika ingin auto-generate SKU</p>
                     </div>
 
                     {{-- Grid Harga --}}
@@ -262,7 +300,7 @@
                         <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold tracking-wider border-b border-slate-200">
                             <tr>
                                 <th class="px-6 py-4 w-16 text-center">Img</th>
-                                <th class="px-6 py-4">Nama Produk</th>
+                                <th class="px-6 py-4">Nama Produk & Barcode</th>
                                 <th class="px-6 py-4 text-center">Stok</th>
                                 <th class="px-6 py-4 text-right">Harga</th>
                                 <th class="px-6 py-4 text-center">Aksi</th>
@@ -282,11 +320,19 @@
                                     </div>
                                 </td>
 
-                                {{-- Name & Category --}}
+                                {{-- Name, Barcode & Category --}}
                                 <td class="px-6 py-4">
                                     <div class="font-bold text-slate-700 text-base group-hover:text-indigo-600 transition-colors">
                                         {{ $product->name }}
                                     </div>
+
+                                    {{-- TAMPILAN BARCODE DI TABEL --}}
+                                    @if($product->barcode)
+                                        <div class="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-fit mt-1 border border-slate-200 flex items-center gap-1">
+                                            <i class="fas fa-barcode"></i> {{ $product->barcode }}
+                                        </div>
+                                    @endif
+
                                     <div class="flex items-center gap-2 mt-1.5">
                                         @if(isset($product->category))
                                             <span class="text-[9px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded border border-indigo-100 uppercase font-bold tracking-wide">
@@ -433,7 +479,7 @@
                     <div class="flex justify-between items-end mb-4">
                         <div>
                             <h4 class="text-sm font-bold text-slate-700">Daftar Varian</h4>
-                            <p class="text-[10px] text-slate-400">Atur harga dan stok berbeda untuk setiap varian.</p>
+                            <p class="text-[10px] text-slate-400">Atur harga, stok, dan barcode berbeda untuk setiap varian.</p>
                         </div>
                         <button @click="addVariantRow()" class="px-3 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg border border-indigo-100 hover:bg-indigo-100 transition flex items-center gap-1 shadow-sm">
                             <i class="fas fa-plus"></i> Tambah Baris
@@ -455,9 +501,10 @@
                     {{-- Table Headers --}}
                     <div x-show="variants.length > 0" class="space-y-2">
                         <div class="grid grid-cols-12 gap-3 text-[9px] font-bold text-slate-400 uppercase tracking-wider px-1">
-                            <div class="col-span-5">Nama Varian <span class="text-red-500">*</span></div>
+                            <div class="col-span-3">Nama Varian <span class="text-red-500">*</span></div>
+                            <div class="col-span-3">Barcode (Scan)</div>
                             <div class="col-span-3">Harga (Rp) <span class="text-red-500">*</span></div>
-                            <div class="col-span-3">Stok</div>
+                            <div class="col-span-2">Stok</div>
                             <div class="col-span-1 text-center">Aksi</div>
                         </div>
 
@@ -466,9 +513,17 @@
                             <div class="grid grid-cols-12 gap-3 items-center group animate-fade-in-down">
 
                                 {{-- Nama --}}
-                                <div class="col-span-5">
-                                    <input type="text" x-model="variant.name" placeholder="Cth: Ukuran XL / Merah"
+                                <div class="col-span-3">
+                                    <input type="text" x-model="variant.name" placeholder="Cth: Merah"
                                            class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all">
+                                </div>
+
+                                {{-- Barcode (Input di dalam Varian) --}}
+                                <div class="col-span-3 relative">
+                                    <span class="absolute inset-y-0 left-0 pl-2 flex items-center text-slate-400"><i class="fas fa-barcode text-xs"></i></span>
+                                    <input type="text" x-model="variant.barcode" placeholder="Scan..."
+                                           @keydown.enter.prevent
+                                           class="w-full pl-6 pr-2 py-2 rounded-lg border-slate-300 text-xs font-mono focus:ring-2 focus:ring-indigo-500 bg-white transition-all">
                                 </div>
 
                                 {{-- Harga --}}
@@ -477,50 +532,8 @@
                                            class="w-full px-3 py-2 rounded-lg border-emerald-200 text-sm focus:ring-2 focus:ring-emerald-500 text-emerald-700 font-bold bg-emerald-50/50 focus:bg-white text-right transition-all">
                                 </div>
 
-                                {{-- Barcode (Scanner Input dengan Visual Preview) --}}
-                                <div x-show="!isService" x-data="{
-                                        code: '',
-                                        renderBarcode() {
-                                            if(this.code.length > 0) {
-                                                this.$nextTick(() => {
-                                                    JsBarcode(this.$refs.barcodeCanvas, this.code, {
-                                                        format: 'CODE128',
-                                                        lineColor: '#334155',
-                                                        width: 2,
-                                                        height: 40,
-                                                        displayValue: true
-                                                    });
-                                                });
-                                            }
-                                        }
-                                    }">
-                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Barcode / SKU</label>
-
-                                    <div class="relative">
-                                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fas fa-barcode"></i></span>
-
-                                        {{-- INPUT FIELD --}}
-                                        <input type="text" name="barcode"
-                                            x-model="code"
-                                            @input.debounce.300ms="renderBarcode()"
-                                            @keydown.enter.prevent="renderBarcode()"
-                                            placeholder="Scan atau Ketik Manual..."
-                                            class="w-full pl-9 pr-4 py-2.5 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500 transition text-sm font-mono tracking-wide font-bold">
-                                    </div>
-
-                                    {{-- AREA VISUAL BARCODE --}}
-                                    <div class="mt-2 h-16 flex items-center justify-center bg-white border border-slate-100 rounded-lg overflow-hidden"
-                                        x-show="code.length > 0" x-transition>
-                                        <svg x-ref="barcodeCanvas" class="w-full h-full object-contain"></svg>
-                                    </div>
-
-                                    <p class="text-[9px] text-slate-400 mt-1 italic pl-1" x-show="code.length === 0">
-                                        *Kosongkan field ini, sistem akan membuatkan barcode otomatis saat disimpan.
-                                    </p>
-                                </div>
-
                                 {{-- Stok --}}
-                                <div class="col-span-3">
+                                <div class="col-span-2">
                                     <input type="number" x-model="variant.stock" placeholder="0"
                                            class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 text-center bg-white transition-all">
                                 </div>
@@ -580,15 +593,14 @@
                     let data = await response.json();
 
                     this.activeProductName = data.product_name;
-
-                    // CORRECT MAPPING
+                    // Map data dari DB ke struktur JS (termasuk barcode)
                     this.variants = data.variants.map(v => ({
                         id: v.id,
                         name: v.name,
                         price: v.price,
                         stock: v.stock,
                         sku: v.sku,
-                        barcode: v.barcode || '' // Load barcode correctly
+                        barcode: v.barcode || '' // Load barcode jika ada
                     }));
 
                 } catch (error) {
@@ -607,9 +619,8 @@
                     price: 0,
                     stock: 0,
                     sku: '',
-                    barcode: '' // Field baru untuk barcode
+                    barcode: '' // Field baru
                 });
-                // Scroll ke bawah otomatis agar baris baru terlihat
                 this.$nextTick(() => {
                     let container = document.querySelector('.overflow-y-auto');
                     if(container) container.scrollTop = container.scrollHeight;
@@ -623,7 +634,6 @@
 
             // 4. Simpan ke Database
             async saveVariants() {
-                // Validasi Sederhana
                 if (this.variants.length > 0) {
                     for (let v of this.variants) {
                         if (!v.name || v.name.trim() === '') {
@@ -642,7 +652,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}' // Token Wajib Laravel
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
                         body: JSON.stringify({
                             variants: this.variants
@@ -654,7 +664,7 @@
                     if (result.success) {
                         alert('Berhasil! Varian dan Stok telah diperbarui.');
                         this.variantModalOpen = false;
-                        window.location.reload(); // Refresh halaman untuk update stok di tabel utama
+                        window.location.reload();
                     } else {
                         alert('Gagal: ' + (result.message || 'Terjadi kesalahan.'));
                     }
