@@ -223,6 +223,22 @@ function posSystem() {
             this.customerPhone = data.whatsapp;
             this.customerAddressDetail = data.address || '';
 
+            // --- [FITUR BARU: AUTO ISI KUPON DARI DB] ---
+            // Cek apakah di database customer ini punya 'assigned_coupon'
+            if (data.assigned_coupon && data.assigned_coupon !== null && data.assigned_coupon !== "") {
+
+                // 1. Isi kolom input
+                this.couponCode = data.assigned_coupon;
+
+                // 2. Beri jeda sedikit, lalu validasi kupon ke server otomatis
+                setTimeout(() => {
+                    this.checkCoupon();
+                }, 500);
+
+                console.log("LOG: Kupon member ditemukan: " + data.assigned_coupon);
+            }
+            // ---------------------------------------------
+
             // Isi Data Wilayah & Ongkir (Jika ada di DB)
             if (data.district_id) {
                 this.destinationDistrictId = data.district_id;
