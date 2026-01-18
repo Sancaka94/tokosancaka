@@ -27,6 +27,7 @@ use App\Models\Store;
 use App\Models\TopUp;
 use App\Models\User;
 use App\Models\Category;
+use App\Models\Customer;
 
 // Services
 use App\Services\DokuJokulService;
