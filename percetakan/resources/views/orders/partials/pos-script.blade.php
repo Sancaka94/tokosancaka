@@ -16,6 +16,8 @@ function posSystem() {
         uploadedFiles: [],
         filesToDelete: [],
         isProcessing: false,
+        scannerOpen: false,
+        scannerObj: null,
         isValidatingCoupon: false,
 
         // --- [BARU] STATE VARIAN ---
@@ -174,6 +176,45 @@ function posSystem() {
             if (audio) {
                 audio.currentTime = 0; // Reset durasi agar bisa diputar berulang cepat
                 audio.play().catch(e => console.log('Browser memblokir autoplay audio', e));
+            }
+        },
+
+        startScanner() {
+            this.scannerOpen = true;
+            this.$nextTick(() => {
+                const onScanSuccess = (decodedText, decodedResult) => {
+                    this.stopScanner();
+                    this.search = decodedText;
+                    this.scanProduct();
+                };
+
+                const formats = [
+                    Html5QrcodeSupportedFormats.QR_CODE,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.EAN_13
+                ];
+
+                this.scannerObj = new Html5Qrcode('reader');
+                this.scannerObj.start(
+                    { facingMode: 'environment' },
+                    { fps: 10, qrbox: { width: 250, height: 250 }, formatsToSupport: formats },
+                    onScanSuccess
+                ).catch(err => {
+                    alert('Gagal akses kamera.');
+                    this.scannerOpen = false;
+                });
+            });
+        },
+
+        stopScanner() {
+            if (this.scannerObj) {
+                this.scannerObj.stop().then(() => {
+                    this.scannerObj.clear();
+                    this.scannerOpen = false;
+                }).catch(err => console.log(err));
+            } else {
+                this.scannerOpen = false;
             }
         },
 
