@@ -539,18 +539,25 @@
                 this.variants = []; // Reset dulu
 
                 try {
-                    // Panggil API getVariants yang sudah dibuat di Controller
-                    // Pastikan route ini sesuai dengan web.php Anda
                     let url = `{{ url('/products') }}/${productId}/variants`;
-
                     let response = await fetch(url);
                     if (!response.ok) throw new Error('Gagal ambil data');
 
                     let data = await response.json();
 
                     this.activeProductName = data.product_name;
-                    this.variants = data.variants; // Array varian dari DB
-                    barcode: v.barcode || '' // Muat barcode jika ada
+
+                    // --- PERBAIKAN DI SINI ---
+                    // Map data dari DB ke struktur JS (termasuk barcode)
+                    this.variants = data.variants.map(v => ({
+                        id: v.id,          // Pastikan ID varian ikut agar bisa diupdate (bukan create baru terus)
+                        name: v.name,
+                        price: v.price,
+                        stock: v.stock,
+                        sku: v.sku,
+                        barcode: v.barcode || '' // Load barcode jika ada
+                    }));
+                    // -------------------------
 
                 } catch (error) {
                     console.error(error);
