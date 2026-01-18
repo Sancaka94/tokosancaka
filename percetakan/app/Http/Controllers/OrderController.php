@@ -2182,7 +2182,9 @@ public function handleDanaCallback(Request $request)
      */
     public function scanProduct(Request $request)
     {
-        $barcode = $request->query('code');
+        //$code = trim($request->query('code'));
+
+        $barcode = trim($request->query('code'));
 
         if (empty($barcode)) {
             return response()->json(['status' => 'error', 'message' => 'Kode kosong']);
