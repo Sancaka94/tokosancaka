@@ -74,6 +74,7 @@
 
     <div class="header">
         <h1>Laporan Data Produk</h1>
+        <p>Filter: <strong>{{ $categoryName }}</strong> | <strong>{{ $typeName }}</strong></p>
         <p>Tanggal Cetak: {{ date('d F Y, H:i') }}</p>
     </div>
 

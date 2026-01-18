@@ -26,12 +26,93 @@
                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all shadow-sm">
             </form>
 
-            <a href="{{ route('products.downloadPdf') }}"
-            target="_blank"
-            class="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-xl font-bold transition-all shadow-sm">
-                <i class="fas fa-print"></i>
-                <span>Cetak PDF (Barcode)</span>
-            </a>
+            <div x-data="{ openPdfModal: false }">
+
+    <button @click="openPdfModal = true"
+       class="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200 transition-all transform hover:-translate-y-0.5">
+        <i class="fas fa-file-pdf"></i>
+        <span>Cetak PDF</span>
+    </button>
+
+    <div x-show="openPdfModal" style="display: none;"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+         x-transition.opacity>
+
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+             @click.outside="openPdfModal = false"
+             x-transition.scale>
+
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="font-bold text-lg text-slate-800">
+                    <i class="fas fa-print text-red-600 mr-2"></i> Filter Cetak PDF
+                </h3>
+                <button @click="openPdfModal = false" class="text-slate-400 hover:text-red-500 transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <form action="{{ route('products.downloadPdf') }}" method="GET" target="_blank" @submit="openPdfModal = false">
+                <div class="p-6 space-y-4">
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Pilih Kategori</label>
+                        <div class="relative">
+                            <select name="category_id" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-red-500 focus:border-red-500 block p-2.5 appearance-none">
+                                <option value="all" selected>Semua Kategori</option>
+
+                                {{-- Ambil data kategori langsung (jika $categories tidak dipassing dari controller) --}}
+                                @php $categories = \App\Models\Category::all(); @endphp
+                                @foreach($categories as $cat)
+                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                @endforeach
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-slate-500">
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Jenis Produk</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="type" value="all" checked class="peer sr-only">
+                                <div class="p-2 text-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 transition text-xs font-bold">
+                                    Semua
+                                </div>
+                            </label>
+
+                            <label class="cursor-pointer">
+                                <input type="radio" name="type" value="single" class="peer sr-only">
+                                <div class="p-2 text-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 transition text-xs font-bold">
+                                    Tunggal
+                                </div>
+                            </label>
+
+                            <label class="cursor-pointer">
+                                <input type="radio" name="type" value="variant" class="peer sr-only">
+                                <div class="p-2 text-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 peer-checked:bg-indigo-50 peer-checked:text-indigo-600 peer-checked:border-indigo-200 transition text-xs font-bold">
+                                    Varian
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                    <button type="button" @click="openPdfModal = false" class="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-lg shadow-red-200 transition flex items-center gap-2">
+                        <i class="fas fa-download"></i> Download PDF (Barcode)
+                    </button>
+                </div>
+            </form>
+
+                    </div>
+                </div>
+            </div>
 
             <a href="{{ route('orders.create') }}"
                class="flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5 whitespace-nowrap">

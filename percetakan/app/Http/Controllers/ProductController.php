@@ -412,18 +412,40 @@ class ProductController extends Controller
         return view('products.create', compact('categories'));
     }
 
-    public function downloadPdf()
-{
-    // Ambil data (Bisa difilter jika perlu)
-    $products = Product::with('category')->orderBy('name', 'asc')->get();
+    public function downloadPdf(Request $request)
+    {
+        // 1. Mulai Query Dasar
+        $query = Product::with('category')->orderBy('name', 'asc');
 
-    // Load View dan Pass Data
-    $pdf = Pdf::loadView('products.pdf_barcode', compact('products'));
+        // 2. Filter Kategori (Jika user memilih kategori spesifik)
+        $categoryName = 'Semua Kategori';
+        if ($request->has('category_id') && $request->category_id != 'all') {
+            $query->where('category_id', $request->category_id);
 
-    // Set ukuran kertas (A4 Landscape agar muat)
-    $pdf->setPaper('a4', 'portrait');
+            // Ambil nama kategori untuk judul PDF
+            $cat = \App\Models\Category::find($request->category_id);
+            $categoryName = $cat ? $cat->name : 'Kategori Terpilih';
+        }
 
-    // Download / Stream
-    return $pdf->stream('laporan-barcode-produk.pdf');
-}
+        // 3. Filter Jenis Produk (Variant / Single / Semua)
+        $typeName = 'Semua Jenis';
+        if ($request->has('type')) {
+            if ($request->type == 'variant') {
+                $query->where('has_variant', 1);
+                $typeName = 'Hanya Multi Varian';
+            } elseif ($request->type == 'single') {
+                $query->where('has_variant', 0);
+                $typeName = 'Hanya Produk Tunggal';
+            }
+        }
+
+        // 4. Eksekusi Query
+        $products = $query->get();
+
+        // 5. Load View PDF dengan Data Filter
+        $pdf = Pdf::loadView('products.pdf_barcode', compact('products', 'categoryName', 'typeName'));
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream('laporan-produk.pdf');
+    }
 }
