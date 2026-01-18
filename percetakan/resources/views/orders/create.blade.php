@@ -149,11 +149,17 @@
                         <i class="far fa-user text-lg"></i>
                     </a>
 
-                    {{-- 3. CART MOBILE TOGGLE --}}
                     <button @click="mobileCartOpen = !mobileCartOpen"
                             class="lg:hidden relative h-10 w-10 bg-red-50 text-red-600 border border-red-100 rounded-xl flex items-center justify-center hover:bg-red-100 transition shadow-sm">
                         <i class="fas fa-shopping-bag text-lg"></i>
-                        <span x-show="cartTotalQty > 0" class="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" x-text="cartTotalQty"></span>
+
+                        {{-- BADGE MERAH (ANGKA) --}}
+                        <span x-show="cartTotalQty > 0"
+                            x-transition.scale
+                            class="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm"
+                            x-text="cartTotalQty">
+                            0
+                        </span>
                     </button>
                 </div>
 

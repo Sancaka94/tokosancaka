@@ -106,6 +106,20 @@ function posSystem() {
         // COMPUTED PROPERTIES
         // ============================================================
 
+        // --- FUNGSI HITUNG TOTAL QTY & HARGA ---
+        updateCartTotals() {
+            // 1. Hitung Total QTY (Jumlah Barang)
+            // Kita loop semua item di cart, lalu jumlahkan qty-nya
+            this.cartTotalQty = this.cart.reduce((total, item) => total + parseInt(item.qty), 0);
+
+            // 2. Hitung Subtotal Harga (Opsional, biar sekalian update harga)
+            this.subtotal = this.cart.reduce((total, item) => total + (parseInt(item.price) * parseInt(item.qty)), 0);
+
+            // 3. Hitung Grand Total (Subtotal - Diskon + Pajak + Ongkir dll)
+            // Sesuaikan logika ini dengan sistem Anda yang sudah ada
+            this.grandTotal = this.subtotal;
+        },
+
         // FUNGSI BARU: Update Qty Mengikuti Total Rupiah
         updateByTotal(id, totalRupiah) {
             let item = this.cart.find(i => i.id === id);
@@ -875,7 +889,7 @@ function posSystem() {
                     variant_id: variantId
                 });
             }
-
+            this.updateCartTotals(); // <--- Agar angka merah di keranjang berubah!
             if(navigator.vibrate) navigator.vibrate(30);
             if(this.couponCode) this.checkCoupon();
         },
