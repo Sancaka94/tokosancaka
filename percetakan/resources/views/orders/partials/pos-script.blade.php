@@ -225,19 +225,27 @@ function posSystem() {
 
             // --- [FITUR BARU: AUTO ISI KUPON DARI DB] ---
             // Cek apakah di database customer ini punya 'assigned_coupon'
+            // ====================================================
+            //  PERBAIKAN: LOGIKA AUTO-FILL & RESET KUPON
+            // ====================================================
+
+            // 1. Jika Customer Punya Kupon di Database -> ISI
             if (data.assigned_coupon && data.assigned_coupon !== null && data.assigned_coupon !== "") {
-
-                // 1. Isi kolom input
                 this.couponCode = data.assigned_coupon;
+                console.log("LOG: Auto-apply kupon member: " + data.assigned_coupon);
 
-                // 2. Beri jeda sedikit, lalu validasi kupon ke server otomatis
+                // Cek validitas kupon ke server
                 setTimeout(() => {
                     this.checkCoupon();
-                }, 500);
-
-                console.log("LOG: Kupon member ditemukan: " + data.assigned_coupon);
+                }, 300);
             }
-            // ---------------------------------------------
+            // 2. [BARU] Jika Customer TIDAK Punya Kupon -> BERSIHKAN (RESET)
+            else {
+                this.couponCode = '';      // Kosongkan input teks
+                this.discountAmount = 0;   // Nol-kan diskon
+                this.couponMessage = '';   // Hapus pesan sukses/gagal
+            }
+            // ====================================================
 
             // Isi Data Wilayah & Ongkir (Jika ada di DB)
             if (data.district_id) {
@@ -589,8 +597,20 @@ function posSystem() {
                 });
                 const data = await response.json();
                 if (data.status === 'success') { this.discountAmount = data.data.discount_amount; this.couponMessage = `✅ Kakak Hemat Rp ${this.rupiah(data.data.discount_amount)}`; }
-                else { this.discountAmount = 0; this.couponMessage = data.message; }
-            } catch (error) { this.couponMessage = 'Gagal cek server.'; this.discountAmount = 0; } finally { this.isValidatingCoupon = false; }
+                else {
+                    // GAGAL / TIDAK DITEMUKAN
+                    this.discountAmount = 0; // Pastikan diskon jadi 0
+                    this.couponMessage = data.message; // Tampilkan pesan error
+
+                    // OPSI: Jika ingin teks input ikut dihapus saat salah (Hati-hati, ini bisa mengganggu saat mengetik)
+                    // this.couponCode = '';
+                }
+            } catch (error) {
+                this.couponMessage = 'Gagal cek server.';
+                this.discountAmount = 0; // Reset diskon jika error sistem
+            } finally {
+                this.isValidatingCoupon = false;
+            }
         },
 
         // ---------------------------------------------------------
