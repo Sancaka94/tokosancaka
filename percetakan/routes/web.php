@@ -19,6 +19,7 @@ use App\Http\Controllers\DanaResponseCodeController;
 use App\Http\Controllers\LogViewerController;
 use App\Http\Controllers\CategoryController; // <--- Jangan lupa import ini di paling atas
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\ScannerController; // <--- Import Controller Wajib Ada
 
 
 
@@ -384,3 +385,8 @@ Route::middleware(['auth'])->prefix('customers')->name('customers.')->group(func
     Route::delete('/{id}', [CustomerController::class, 'destroy'])->name('destroy');
 
 });
+
+
+// === ROUTE KHUSUS REMOTE SCANNER ===
+Route::get('/mobile-scanner', [ScannerController::class, 'index'])->name('scanner.index');
+Route::post('/mobile-scanner/send', [ScannerController::class, 'handleScan'])->name('scanner.send');
