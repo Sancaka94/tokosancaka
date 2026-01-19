@@ -28,7 +28,6 @@
             overflow: hidden;
         }
 
-        /* Animasi Item Masuk */
         .cart-item { animation: slideIn 0.3s ease-out; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -98,29 +97,25 @@
             let isProcessing = false;
             let html5QrCode = null;
 
-            // Update UI Status
             function updateStatus(msg, type='secondary') {
                 statusMsg.innerText = msg;
                 statusAlert.className = `alert alert-${type} d-flex align-items-center`;
             }
 
-            // --- FUNGSI UTAMA: PROSES BARCODE ---
             async function processBarcode(barcode) {
                 if(isProcessing) return;
                 if(!barcode || barcode.length < 3) return;
 
                 isProcessing = true;
-                // Pause kamera sebentar saat loading agar tidak double scan
                 if(html5QrCode) html5QrCode.pause();
 
                 updateStatus("Mencari data produk...", "warning");
 
                 try {
-                    // 1. Cek ke Database via Controller scanProduct
-                    // Menggunakan fetch GET sesuai setup controller baru
+                    // Fetch ke API Controller
                     const response = await fetch(`/orders/scan-product?code=${barcode}`);
 
-                    // Cek jika response bukan JSON (misal error 404/500 html)
+                    // VALIDASI RESPONSE: Pastikan JSON
                     const contentType = response.headers.get("content-type");
                     if (!contentType || !contentType.includes("application/json")) {
                         throw new Error("Jalur server tidak ditemukan (Cek Route Web.php)");
@@ -131,9 +126,9 @@
                     if(result.status === 'success') {
                         beepSuccess.play();
                         const product = result.data;
-                        const unitLabel = result.unit || 'pcs'; // Ambil satuan dari DB
+                        const unitLabel = result.unit || 'pcs';
 
-                        // 2. Munculkan Popup Input Jumlah (SweetAlert)
+                        // Popup SweetAlert Input
                         const { value: qty } = await Swal.fire({
                             title: 'Produk Ditemukan!',
                             html: `
@@ -148,7 +143,7 @@
                             inputValue: 1,
                             inputAttributes: {
                                 min: 0.1,
-                                step: 0.1, // Agar bisa input desimal (kiloan)
+                                step: 0.1,
                                 max: product.stock
                             },
                             showCancelButton: true,
@@ -156,18 +151,16 @@
                             confirmButtonColor: '#f57224',
                             cancelButtonText: 'Batal',
                             didOpen: () => {
-                                // Auto focus ke input saat popup muncul
+                                // Auto focus agar langsung ketik
                                 const input = Swal.getInput();
                                 if(input) input.select();
                             }
                         });
 
-                        // 3. Jika User Menekan OK dan ada nilai
                         if (qty) {
                             addToCartUI(product, qty, unitLabel);
                             updateStatus("Produk berhasil ditambahkan.", "success");
 
-                            // Toast notifikasi kecil di pojok
                             const Toast = Swal.mixin({
                                 toast: true, position: 'top-end', showConfirmButton: false, timer: 2000
                             });
@@ -177,7 +170,6 @@
                         }
 
                     } else {
-                        // Produk Tidak Ditemukan
                         throw new Error(result.message || "Produk tidak terdaftar.");
                     }
 
@@ -192,13 +184,11 @@
                     });
                     updateStatus(error.message, "danger");
                 } finally {
-                    // Resume kamera setelah popup ditutup/selesai
                     isProcessing = false;
                     if(html5QrCode) html5QrCode.resume();
                 }
             }
 
-            // --- FUNGSI UI: TAMBAH KE LIST BAWAH ---
             function addToCartUI(product, qty, unit) {
                 if(emptyCart) emptyCart.style.display = 'none';
 
@@ -219,27 +209,22 @@
                     </div>
                 `;
 
-                // Tambahkan ke paling atas
                 cartList.prepend(li);
-
-                // DISINI KAMU BISA MENAMBAHKAN LOGIC UNTUK MENYIMPAN KE ARRAY 'cartItems'
-                // AGAR BISA DISUBMIT KE SERVER NANTI.
             }
 
-            // --- SETUP KAMERA ---
             function startScanner() {
                 html5QrCode = new Html5Qrcode("reader");
+                // Naikkan FPS ke 30 agar lebih smooth di HP
                 const config = { fps: 30, qrbox: 250, aspectRatio: 1.0 };
 
                 html5QrCode.start(
                     { facingMode: "environment" },
                     config,
                     (decodedText) => processBarcode(decodedText),
-                    (err) => {} // Abaikan error frame kosong
+                    (err) => {}
                 ).catch(err => updateStatus("Kamera Gagal/Izin Ditolak", "danger"));
             }
 
-            // --- EVENT MANUAL INPUT ---
             const manualInput = document.getElementById('manual-input');
             const btnManual = document.getElementById('btn-manual');
 
@@ -255,7 +240,6 @@
                 }
             });
 
-            // Jalankan
             startScanner();
         });
     </script>
