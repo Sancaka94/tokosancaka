@@ -29,20 +29,19 @@
 
             try {
                 window.Echo = new Echo({
-                    broadcaster: 'reverb',
-                    key: "{{ env('REVERB_APP_KEY') }}",
+                broadcaster: 'reverb',
+                key: "{{ env('REVERB_APP_KEY') }}",
+                wsHost: window.location.hostname,
+                wsPort: 8081,
+                // wssPort: 8081, // <-- HAPUS atau KOMENTARI baris ini
 
-                    // Hostname otomatis mengikuti domain (tokosancaka.com)
-                    wsHost: window.location.hostname,
+                // Matikan segala jenis keamanan (SSL/TLS)
+                forceTLS: false,
+                encrypted: false,
 
-                    // Port 8081 (Wajib sama dengan terminal)
-                    wsPort: 8081,
-                    wssPort: 8081,
-
-                    forceTLS: false,
-                    disableStats: true,
-                    enabledTransports: ['ws', 'wss'],
-                });
+                // HANYA izinkan 'ws' (jangan 'wss')
+                enabledTransports: ['ws'],
+            });
 
                 console.log("🚀 Sancaka Realtime: SIAP (Script Manual di Head)");
 
