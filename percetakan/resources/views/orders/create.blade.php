@@ -1,5 +1,3 @@
-<!DOCTYPE html>
-<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -12,9 +10,53 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    {{-- JS LIBRARIES --}}
+    {{-- ========================================================= --}}
+    {{-- [BAGIAN BARU: KONEKSI SERVER REALTIME (SCANNER HP)]       --}}
+    {{-- ========================================================= --}}
+
+    {{-- 1. Load Library Manual (Sesuai link yang bisa dibuka di browser Anda) --}}
+    <script src="https://tokosancaka.com/percetakan/public/libs/pusher.min.js"></script>
+    <script src="https://tokosancaka.com/percetakan/public/libs/echo.js"></script>
+
+    {{-- 2. Konfigurasi Koneksi --}}
+    <script>
+        // Cek apakah file berhasil diload
+        if (typeof Pusher === 'undefined' || typeof Echo === 'undefined') {
+            alert("❌ File JS Gagal Load! Pastikan file pusher.min.js & echo.js ada di folder public/libs");
+        } else {
+            // Setup Global
+            window.Pusher = Pusher;
+
+            try {
+                window.Echo = new Echo({
+                    broadcaster: 'reverb',
+                    key: "{{ env('REVERB_APP_KEY') }}",
+
+                    // Hostname otomatis mengikuti domain (tokosancaka.com)
+                    wsHost: window.location.hostname,
+
+                    // Port 8081 (Wajib sama dengan terminal)
+                    wsPort: 8081,
+                    wssPort: 8081,
+
+                    forceTLS: false,
+                    disableStats: true,
+                    enabledTransports: ['ws', 'wss'],
+                });
+
+                console.log("🚀 Sancaka Realtime: SIAP (Script Manual di Head)");
+
+            } catch (err) {
+                console.error("❌ Error Config:", err);
+            }
+        }
+    </script>
+    {{-- ========================================================= --}}
+
+    {{-- JS LIBRARIES (AlpineJS Wajib ditaruh SETELAH Reverb) --}}
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    {{-- Library Scanner tetap dibutuhkan --}}
+
+    {{-- Library Scanner Kamera (Laptop) --}}
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
@@ -26,7 +68,6 @@
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
-
 {{--
     PERUBAHAN DI SINI:
     Cukup panggil posSystem() karena startScanner sudah ada di dalamnya.
