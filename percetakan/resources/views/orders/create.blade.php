@@ -113,7 +113,7 @@
                     {{-- 1. TOMBOL SCANNER (Memanggil fungsi startScanner dari JS) --}}
                     <button @click="startScanner()"
                             class="h-10 w-10 bg-white border-2 border-slate-100 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-xl transition flex items-center justify-center shadow-sm"
-                            title="Scan Barcode">
+                            title="Buka Kamera">
                         <i class="fas fa-qrcode text-lg"></i>
                     </button>
 
@@ -670,6 +670,57 @@
     {{-- AUDIO ELEMENTS --}}
     <audio id="audio-success" src="https://tokosancaka.com/public/sound/beep.mp3" preload="auto"></audio>
     <audio id="audio-error" src="https://tokosancaka.com/public/sound/beep-gagal.mp3" preload="auto"></audio>
+
+<div x-show="scannerModalOpen"
+     style="display: none;"
+     class="fixed inset-0 z-[100] flex items-center justify-center px-4"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+
+    <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" @click="stopScanner()"></div>
+
+    <div class="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-slate-200 transform transition-all"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-90"
+         x-transition:enter-end="opacity-100 scale-100">
+
+        <div class="bg-slate-50 border-b border-slate-100 p-4 flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                <i class="fas fa-qrcode text-red-500"></i> Scan Barcode
+            </h3>
+            <button @click="stopScanner()" class="h-8 w-8 rounded-full bg-slate-200 text-slate-500 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="p-4 bg-black relative">
+            <div id="reader-modal" class="w-full rounded-lg overflow-hidden border-2 border-slate-700 bg-black" style="min-height: 300px;"></div>
+
+            <div class="absolute top-1/2 left-4 right-4 h-0.5 bg-red-600/80 shadow-[0_0_10px_rgba(220,38,38,0.8)] z-10 animate-pulse"></div>
+        </div>
+
+        <div class="p-4 bg-white text-center space-y-3">
+            <p class="text-xs text-slate-500 font-medium">
+                Arahkan kamera ke barcode produk. <br>
+                Pastikan cahaya cukup terang.
+            </p>
+
+            <div class="flex gap-2">
+                <input type="text" x-model="tempManualCode"
+                       @keydown.enter="handleManualModalInput()"
+                       class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                       placeholder="Atau ketik kode manual disini...">
+                <button @click="handleManualModalInput()" class="bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 text-sm font-bold">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
