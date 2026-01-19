@@ -110,14 +110,22 @@
                 if(!barcode || barcode.length < 3) return;
 
                 isProcessing = true;
-                // Pause kamera sebentar saat loading
+                // Pause kamera sebentar saat loading agar tidak double scan
                 if(html5QrCode) html5QrCode.pause();
 
                 updateStatus("Mencari data produk...", "warning");
 
                 try {
                     // 1. Cek ke Database via Controller scanProduct
+                    // Menggunakan fetch GET sesuai setup controller baru
                     const response = await fetch(`/orders/scan-product?code=${barcode}`);
+
+                    // Cek jika response bukan JSON (misal error 404/500 html)
+                    const contentType = response.headers.get("content-type");
+                    if (!contentType || !contentType.includes("application/json")) {
+                        throw new Error("Jalur server tidak ditemukan (Cek Route Web.php)");
+                    }
+
                     const result = await response.json();
 
                     if(result.status === 'success') {
@@ -125,13 +133,13 @@
                         const product = result.data;
                         const unitLabel = result.unit || 'pcs'; // Ambil satuan dari DB
 
-                        // 2. Munculkan Popup Input Jumlah
+                        // 2. Munculkan Popup Input Jumlah (SweetAlert)
                         const { value: qty } = await Swal.fire({
                             title: 'Produk Ditemukan!',
                             html: `
                                 <div class="text-start">
                                     <p class="mb-1"><strong>Nama:</strong> ${product.name}</p>
-                                    <p class="mb-1"><strong>Harga:</strong> Rp ${new Intl.NumberFormat('id-ID').format(product.sell_price)}</p>
+                                    <p class="mb-1"><strong>Harga:</strong> Rp ${new Intl.NumberFormat('id-ID').format(product.sell_price)} /${unitLabel}</p>
                                     <p class="mb-3"><strong>Sisa Stok:</strong> ${product.stock} ${unitLabel}</p>
                                     <label class="form-label">Masukkan Jumlah Order (${unitLabel}):</label>
                                 </div>
@@ -150,7 +158,7 @@
                             didOpen: () => {
                                 // Auto focus ke input saat popup muncul
                                 const input = Swal.getInput();
-                                input.select();
+                                if(input) input.select();
                             }
                         });
 
@@ -215,7 +223,7 @@
                 cartList.prepend(li);
 
                 // DISINI KAMU BISA MENAMBAHKAN LOGIC UNTUK MENYIMPAN KE ARRAY 'cartItems'
-                // AGAR BISA DISUBMIT KE FUNCTION store() DI CONTROLLER NANTI.
+                // AGAR BISA DISUBMIT KE SERVER NANTI.
             }
 
             // --- SETUP KAMERA ---
@@ -228,7 +236,7 @@
                     config,
                     (decodedText) => processBarcode(decodedText),
                     (err) => {} // Abaikan error frame kosong
-                ).catch(err => updateStatus("Kamera Gagal: " + err, "danger"));
+                ).catch(err => updateStatus("Kamera Gagal/Izin Ditolak", "danger"));
             }
 
             // --- EVENT MANUAL INPUT ---

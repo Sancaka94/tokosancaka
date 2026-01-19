@@ -393,3 +393,6 @@ Route::get('/mobile-scanner', [ScannerController::class, 'index'])->name('scanne
 
 // Proses Terima Data (INI YANG PENTING)
 Route::post('/scan-process', [ScannerController::class, 'handleScan'])->name('scanner.process');
+
+
+Route::get('/orders/scan-product', [App\Http\Controllers\OrderController::class, 'scanProduct']);
