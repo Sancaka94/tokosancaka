@@ -101,6 +101,7 @@
                 statusAlert.className = `alert alert-${type} d-flex align-items-center`;
             }
 
+            // Fungsi Utama Pemrosesan
             async function processBarcode(barcode) {
                 if(isProcessing) return;
                 if(!barcode || barcode.length < 3) return;
@@ -111,8 +112,10 @@
                 updateStatus("Mencari data produk...", "warning");
 
                 try {
-                    // 1. CARI BARANG (Hanya Lookup, Tidak Broadcast)
+                    // 1. CARI BARANG (Hanya Lookup untuk info Nama & Harga)
                     const routeUrl = "{{ route('orders.scan-product') }}";
+
+                    // Gunakan encodeURIComponent agar karakter spesial barcode aman
                     const response = await fetch(`${routeUrl}?code=${encodeURIComponent(barcode)}`, {
                         headers: { 'Accept': 'application/json' }
                     });
@@ -160,12 +163,12 @@
 
                         // 3. JIKA USER KLIK OK (QTY TERISI)
                         if (qty) {
-                            // Tampilkan di HP (Visual)
+                            // Tampilkan di HP (Visual List)
                             addToCartUI(product, qty, unitLabel);
 
-                            // ===========================================
-                            // [PENTING] KIRIM SINYAL KE LAPTOP DI SINI
-                            // ===========================================
+                            // =======================================================
+                            // [PERBAIKAN] KIRIM DATA KE LAPTOP (BROADCAST)
+                            // =======================================================
                             try {
                                 updateStatus("Mengirim ke kasir...", "info");
 
@@ -176,8 +179,11 @@
                                         "X-CSRF-TOKEN": "{{ csrf_token() }}"
                                     },
                                     body: JSON.stringify({
-                                        barcode: product.barcode || product.sku, // Kode Barang
-                                        qty: qty                                 // Jumlah Barang
+                                        // [FIXED] Gunakan variabel 'barcode' mentah dari parameter fungsi
+                                        // Jangan pakai product.barcode karena dari DB bisa saja namanya beda/null
+                                        barcode: barcode,
+
+                                        qty: qty
                                     })
                                 });
 
@@ -191,8 +197,9 @@
                             } catch (broadcastError) {
                                 console.error(broadcastError);
                                 alert("Gagal Kirim ke Laptop: " + broadcastError.message);
+                                updateStatus("Gagal Broadcast", "danger");
                             }
-                            // ===========================================
+                            // =======================================================
 
                         } else {
                             updateStatus("Input dibatalkan.", "secondary");
@@ -219,6 +226,7 @@
                 }
             }
 
+            // Fungsi UI: Menambah list di bawah layar HP
             function addToCartUI(product, qty, unit) {
                 if(emptyCart) emptyCart.style.display = 'none';
 
@@ -242,6 +250,7 @@
                 cartList.prepend(li);
             }
 
+            // Inisialisasi Kamera
             function startScanner() {
                 html5QrCode = new Html5Qrcode("reader");
                 const config = { fps: 30, qrbox: 250, aspectRatio: 1.0 };
@@ -257,6 +266,7 @@
             const manualInput = document.getElementById('manual-input');
             const btnManual = document.getElementById('btn-manual');
 
+            // Event Listeners Manual Input
             btnManual.addEventListener('click', () => {
                 processBarcode(manualInput.value.trim());
                 manualInput.value = '';
@@ -269,6 +279,7 @@
                 }
             });
 
+            // Mulai Scanner saat halaman dimuat
             startScanner();
         });
     </script>
