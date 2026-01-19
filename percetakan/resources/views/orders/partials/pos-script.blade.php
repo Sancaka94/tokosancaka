@@ -283,15 +283,20 @@ function posSystem() {
         },
 
 
+        // ============================================================
+        // FUNGSI SCAN PRODUCT (VERSI FINAL & TUNGGAL)
+        // ============================================================
         async scanProduct(manualCode = null, qtyOverride = null) {
-            // 1. Ambil Barcode
+            // 1. Tentukan sumber barcode (Dari Pusher ATAU Ketikan Manual)
             let code = manualCode || this.search.trim();
+
+            // Validasi: Jangan proses jika kosong atau kependekan
             if (!code || code.length < 3) return;
 
             this.isProcessing = true;
 
             try {
-                // 2. Request Data ke Server
+                // 2. Panggil API Server Laravel
                 const url = "{{ route('orders.scan-product') }}?code=" + encodeURIComponent(code);
                 const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
                 const result = await response.json();
@@ -299,13 +304,13 @@ function posSystem() {
                 if (result.status === 'success') {
                     let p = result.data;
 
-                    // --- [PERBAIKAN QTY] ---
-                    // Pastikan qty dibaca sebagai ANGKA (Float), bukan teks. Default 1.
+                    // 3. Olah Qty (Pastikan jadi Angka)
+                    // Jika dari HP ada qtyOverride (misal 100), pakai itu. Jika tidak, pakai 1.
                     let incomingQty = qtyOverride ? parseFloat(qtyOverride) : 1;
 
-                    console.log(`LOG: Menerima Barang: ${p.name} | Jumlah: ${incomingQty}`);
+                    console.log(`LOG POS: Barang ${p.name} | Qty Masuk: ${incomingQty}`);
 
-                    // 3. Susun ID Unik Keranjang (Samakan format dengan addToCart)
+                    // 4. Tentukan ID Unik (Varian vs Single)
                     let targetCartId;
                     if (result.type === 'variant') {
                         targetCartId = `${p.id}-VAR-${p.variant_id}`;
@@ -313,25 +318,22 @@ function posSystem() {
                         targetCartId = p.id;
                     }
 
-                    // 4. Cek apakah barang SUDAH ADA di keranjang?
-                    // Gunakan '==' agar ID angka (1) dan string ('1') dianggap sama
+                    // 5. Cek apakah barang SUDAH ADA di keranjang?
                     let existingItem = this.cart.find(item => item.id == targetCartId);
 
                     if (existingItem) {
-                        // KASUS A: BARANG SUDAH ADA -> TAMBAHKAN
-                        console.log("LOG: Barang lama, update jumlah...");
-
+                        // --- KASUS A: SUDAH ADA (TAMBAH JUMLAH) ---
                         let currentQty = parseFloat(existingItem.qty);
                         existingItem.qty = currentQty + incomingQty;
 
-                        // Notifikasi Toast
-                        const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
-                        Toast.fire({ icon: 'success', title: `+${incomingQty} ${p.name}` });
+                        // Notifikasi (Safe Mode: Cek dulu apakah Swal ada)
+                        if (typeof Swal !== 'undefined') {
+                            const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
+                            Toast.fire({ icon: 'success', title: `+${incomingQty} ${p.name}` });
+                        }
 
                     } else {
-                        // KASUS B: BARANG BARU -> MASUKKAN -> LALU TIMPA QTY
-                        console.log("LOG: Barang baru, insert...");
-
+                        // --- KASUS B: BARANG BARU (MASUKKAN) ---
                         // Masukkan ke array (Default qty function ini adalah 1)
                         if (result.type === 'single') {
                             this.addToCart(p.id, p.name, p.sell_price, p.stock, p.weight ?? 0, p.image, false, 'all');
@@ -339,33 +341,31 @@ function posSystem() {
                             this.processAddItem(targetCartId, p.name, p.sell_price, p.stock, p.weight ?? 0, p.image, p.variant_id);
                         }
 
-                        // [RAHASIANYA DISINI]
-                        // Kita beri jeda 100ms agar VueJS selesai membuat baris keranjang baru
-                        // Baru kita timpa qty-nya menjadi 100 (incomingQty)
+                        // [RAHASIA] Tunggu 100ms agar data masuk memori, lalu TIMPA qty-nya
                         setTimeout(() => {
                              let newItem = this.cart.find(item => item.id == targetCartId);
-
                              if(newItem) {
-                                 console.log(`LOG: Mengubah Qty default (1) menjadi (${incomingQty})`);
-                                 newItem.qty = incomingQty; // <-- INI YANG BIKIN JADI 100
+                                 newItem.qty = incomingQty; // Ubah dari 1 jadi 100
                              }
-
-                             // Update Total Harga setelah qty berubah
                              this.updateCartTotals();
                         }, 100);
 
-                        const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
-                        Toast.fire({ icon: 'success', title: `${p.name} (${incomingQty})` });
+                        // Notifikasi
+                        if (typeof Swal !== 'undefined') {
+                            const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
+                            Toast.fire({ icon: 'success', title: `${p.name} (${incomingQty})` });
+                        }
                     }
 
-                    // Reset Pencarian & Mainkan Suara
+                    // 6. Finishing (Reset UI)
                     if(!manualCode) this.playBeep('success');
                     this.search = '';
                     this.updateCartTotals();
 
                 } else {
+                    // Produk Tidak Ditemukan
                     this.playBeep('error');
-                    console.warn("Produk tidak ditemukan");
+                    console.warn("Produk tidak ditemukan di Database");
                 }
 
             } catch (error) {
@@ -388,80 +388,7 @@ function posSystem() {
             }
         },
 
-        // 2. FUNGSI UTAMA: SCAN BARCODE
-        async scanProduct() {
-            let code = this.search.trim();
 
-            // Validasi dasar
-            if (!code) return;
-            if (code.length < 3) return; // Jangan scan jika terlalu pendek
-
-            this.isProcessing = true; // Indikator loading (jika ada)
-
-            try {
-                // Panggil API Backend (Gunakan encodeURIComponent untuk keamanan karakter)
-                let response = await fetch(`{{ route('orders.scan-product') }}?code=${encodeURIComponent(code)}`);
-                let result = await response.json();
-
-                if (result.status === 'success') {
-
-                    // --- [SUKSES] MAINKAN BEEP ---
-                    this.playBeep('success');
-
-                    let p = result.data;
-
-                    // LOGIKA 1: PRODUK TUNGGAL (SINGLE)
-                    if (result.type === 'single') {
-                        this.addToCart(
-                            p.id,
-                            p.name,
-                            p.sell_price,
-                            p.stock,
-                            p.weight ?? 0,
-                            p.image ? `{{ asset('storage') }}/${p.image}` : null,
-                            false,
-                            'all'
-                        );
-                    }
-                    // LOGIKA 2: PRODUK VARIAN (MULTI)
-                    else if (result.type === 'variant') {
-                        let cartId = `${p.id}-VAR-${p.variant_id}`;
-
-                        // Asumsi function processAddItem sudah Anda buat sebelumnya
-                        this.processAddItem(
-                            cartId,
-                            p.name,
-                            p.sell_price,
-                            p.stock,
-                            p.weight ?? 0,
-                            p.image ? `{{ asset('storage') }}/${p.image}` : null,
-                            p.variant_id
-                        );
-                    }
-
-                    // Reset kolom pencarian agar siap scan barang berikutnya
-                    this.search = '';
-
-                } else {
-                    // --- [GAGAL] MAINKAN BEEP ---
-                    // Produk tidak ditemukan di database
-                    this.playBeep('error');
-
-                    // Opsional: Kosongkan search jika ingin memaksa input ulang
-                    // this.search = '';
-                }
-
-            } catch (error) {
-                console.error("Scan Error:", error);
-
-                // --- [ERROR] MAINKAN BEEP ---
-                // Terjadi kesalahan server/koneksi
-                this.playBeep('error');
-
-            } finally {
-                this.isProcessing = false;
-            }
-        },
 
         async searchCustomerByName() {
             // [LOGIC BARU] Reset Status
