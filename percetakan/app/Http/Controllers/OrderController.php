@@ -2194,18 +2194,6 @@ public function handleDanaCallback(Request $request)
             return response()->json(['status' => 'error', 'message' => 'Kode kosong']);
         }
 
-        // --- TAMBAHAN PENTING: BROADCAST KE PUSHER ---
-        try {
-            // Kirim sinyal ke channel 'pos-channel' agar laptop mendengar
-            // Pastikan Anda sudah membuat Event 'BarcodeScanned'
-            broadcast(new \App\Events\BarcodeScanned($barcode))->toOthers();
-            Log::info("LOG LOG: [BROADCAST] Sinyal dikirim ke Pusher: " . $barcode);
-        } catch (\Exception $e) {
-            Log::error("LOG LOG: [BROADCAST ERROR] Gagal kirim ke Pusher: " . $e->getMessage());
-            // Lanjut saja, jangan hentikan proses agar HP tetap dapat respon
-        }
-        // ---------------------------------------------
-
         // 2. Cek Produk Utama
         Log::info("LOG LOG: Mencari di tabel PRODUCTS (Single)...");
 

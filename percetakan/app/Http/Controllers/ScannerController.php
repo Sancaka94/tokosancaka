@@ -15,24 +15,26 @@ class ScannerController extends Controller
         return view('mobile-scanner');
     }
 
-    /**
-     * Menerima data scan dari HP dan memancarkannya ke Laptop.
-     */
     public function handleScan(Request $request)
     {
-        // 1. Validasi input
+        // Terima Barcode DAN Qty dari HP
         $request->validate([
-            'barcode' => 'required|string'
+            'barcode' => 'required|string',
+            'qty'     => 'required|numeric' // Wajib ada jumlah
         ]);
 
-        // 2. Kirim sinyal Realtime ke Channel 'pos-channel'
-        broadcast(new BarcodeScanned($request->barcode));
+        $barcode = $request->barcode;
+        $qty     = $request->qty;
 
-        // 3. Beri respon sukses ke HP
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Barcode terkirim: ' . $request->barcode,
-            'code' => $request->barcode
-        ]);
+        // Kirim Event BarcodeScanned dengan Data Lengkap
+        // Pastikan Event BarcodeScanned sudah support $qty (Lihat Tahap 3)
+        try {
+            broadcast(new \App\Events\BarcodeScanned($barcode, $qty))->toOthers();
+
+            return response()->json(['status' => 'success', 'message' => 'Terkirim ke Laptop!']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Gagal Broadcast']);
+        }
     }
+
 }
