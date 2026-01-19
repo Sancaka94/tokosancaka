@@ -16,45 +16,45 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    {{-- [MULAI: VERSI PERBAIKAN / HARDCODE] --}}
-    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/laravel-echo/1.16.1/echo.iife.js"></script>
+   {{-- [LOAD DARI HOSTING SENDIRI] --}}
+    <script src="{{ asset('libs/pusher.min.js') }}"></script>
+    <script src="{{ asset('libs/echo.js') }}"></script>
 
     <script>
-        // 1. Cek apakah Library sudah terdownload
+        // 1. Cek apakah file berhasil dimuat
         if (typeof Pusher === 'undefined' || typeof Echo === 'undefined') {
-            console.error("❌ ERROR CRITICAL: Library CDN Gagal Dimuat. Cek Tab Network!");
+            // Jika alert ini muncul, berarti cache browser harus diclear
+            console.error("❌ File JS lokal gagal dimuat. Coba Hard Refresh (Ctrl+F5).");
         } else {
-            console.log("✅ Library CDN Berhasil Dimuat");
+            // 2. Setup Global
+            window.Pusher = Pusher;
 
             try {
-                window.Pusher = Pusher;
-
-                // 2. Konfigurasi Manual (Tanpa env blade yang ribet)
-                // Pastikan port sesuai dengan yang jalan di terminal (8081)
+                // 3. Konfigurasi Reverb (Port 8081)
                 window.Echo = new Echo({
                     broadcaster: 'reverb',
-                    key: "{{ env('REVERB_APP_KEY') }}", // Key tetap dari env
+                    key: "{{ env('REVERB_APP_KEY') }}",
 
-                    // Gunakan hostname otomatis dari browser
+                    // Gunakan hostname browser saat ini (otomatis menyesuaikan domain)
                     wsHost: window.location.hostname,
 
-                    // HARDCODE PORT (Biar tidak error syntax)
+                    // Port Hardcode 8081 sesuai terminal
                     wsPort: 8081,
                     wssPort: 8081,
 
+                    // Force TLS false karena di http/local
                     forceTLS: false,
+                    disableStats: true,
                     enabledTransports: ['ws', 'wss'],
                 });
 
-                console.log("🚀 Echo Berhasil Diinisialisasi (Port 8081)");
+                console.log("🚀 Sancaka Realtime: SIAP (Local Mode)");
 
             } catch (err) {
-                console.error("❌ ERROR CONFIG:", err);
+                console.error("❌ Error Config:", err);
             }
         }
     </script>
-    {{-- [AKHIR PERBAIKAN] --}}
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
