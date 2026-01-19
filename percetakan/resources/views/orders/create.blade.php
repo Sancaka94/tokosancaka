@@ -31,8 +31,8 @@
                 wsHost: window.location.hostname,
 
                 // [PENTING] Pasang Port di KEDUANYA agar tidak lari ke 443
-                wsPort: 8081,
-                wssPort: 8081,
+                wsPort: 8443,
+                wssPort: 8443,
 
                 // [PENTING] Matikan paksa segala jenis keamanan SSL
                 forceTLS: false,
