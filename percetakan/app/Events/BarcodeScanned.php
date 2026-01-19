@@ -4,7 +4,7 @@ namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow; // Pakai 'Now' agar bypass antrian (Instan)
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow; // Pakai Now biar cepat
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
@@ -13,51 +13,34 @@ class BarcodeScanned implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $barcode;
-    public $qty; // <--- TAMBAHAN: Variabel untuk menyimpan jumlah
-    public $image; // <--- Variabel baru untuk menyimpan URL gambar
+    public $qty;
+    public $image; // <--- PASTIKAN INI ADA
 
-    /**
-     * Create a new event instance.
-     * Kita tambahkan parameter $qty dengan default 1
-     */
-    public function __construct($barcode, $qty = 1)
+    // KONSTRUKTOR HARUS TERIMA 3 DATA (Default null jika gambar tidak dikirim)
+    public function __construct($barcode, $qty, $image = null)
     {
         $this->barcode = $barcode;
         $this->qty = $qty;
+        $this->image = $image; // <--- PASTIKAN INI DI-ASSIGN
     }
 
-    /**
-     * Get the channels the event should broadcast on.
-     */
-    public function broadcastOn(): array
+    public function broadcastOn()
     {
-        // Nama channel harus SAMA PERSIS dengan di Javascript (Echo.channel('...'))
-        return [
-            new Channel('pos-channel'),
-        ];
+        return new Channel('pos-channel');
     }
 
-    /**
-     * Nama event yang akan didengar oleh Javascript.
-     * Penting: Di JS nanti mendengarnya sebagai '.scanned'
-     */
-    public function broadcastAs(): string
+    public function broadcastAs()
     {
         return 'scanned';
     }
 
-    /**
-     * [OPSIONAL TAPI BAGUS]
-     * Menentukan data apa saja yang dikirim ke Javascript.
-     * Ini membuat payload lebih bersih.
-     */
-    public function broadcastWith(): array
+    // DATA YANG DIKIRIM KE JS
+    public function broadcastWith()
     {
         return [
             'barcode' => $this->barcode,
             'qty'     => $this->qty,
-            'image'   => $this->image, // <--- Kirim ke JS
-            'time'    => now()->toTimeString() // Bonus: Kirim waktu scan
+            'image'   => $this->image // <--- JANGAN LUPA INI
         ];
     }
 }

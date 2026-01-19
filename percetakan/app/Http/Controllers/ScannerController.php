@@ -71,7 +71,7 @@ class ScannerController extends Controller
         try {
             // Parameter: (Barcode, Qty, ImageUrl)
             // Pastikan file App/Events/BarcodeScanned.php konstruktornya menerima 3 parameter ini!
-            broadcast(new BarcodeScanned($barcode, $qty, $imageUrl))->toOthers();
+            broadcast(new \App\Events\BarcodeScanned($barcode, $qty, $imageUrl))->toOthers();
 
             Log::info("LOG SERVER: [SUCCESS] Sinyal Broadcast Terkirim ke Laptop!");
 
