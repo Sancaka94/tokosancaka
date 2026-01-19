@@ -16,51 +16,45 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    {{-- 1. LOAD LIBRARIES (CDN) --}}
+    {{-- [MULAI: VERSI PERBAIKAN / HARDCODE] --}}
     <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/laravel-echo/1.16.1/echo.iife.js"></script>
 
-    {{-- 2. CONFIGURATION WITH DEBUGGING --}}
     <script>
-        console.log("🔄 Memulai Setup Reverb...");
-
-        // Cek apakah Library Pusher berhasil dimuat
-        if (typeof Pusher === 'undefined') {
-            console.error("❌ ERROR FATAL: Library 'Pusher' gagal dimuat. Cek koneksi internet Anda.");
-            alert("Gagal memuat Library Pusher. Pastikan Laptop terkoneksi internet.");
+        // 1. Cek apakah Library sudah terdownload
+        if (typeof Pusher === 'undefined' || typeof Echo === 'undefined') {
+            console.error("❌ ERROR CRITICAL: Library CDN Gagal Dimuat. Cek Tab Network!");
         } else {
-            console.log("✅ Library Pusher OK");
-            window.Pusher = Pusher;
-        }
-
-        // Cek apakah Library Echo berhasil dimuat
-        if (typeof Echo === 'undefined') {
-            console.error("❌ ERROR FATAL: Library 'Echo' gagal dimuat. Cek CDN.");
-            alert("Gagal memuat Library Laravel Echo.");
-        } else {
-            console.log("✅ Library Echo OK");
+            console.log("✅ Library CDN Berhasil Dimuat");
 
             try {
-                // Konfigurasi Reverb
+                window.Pusher = Pusher;
+
+                // 2. Konfigurasi Manual (Tanpa env blade yang ribet)
+                // Pastikan port sesuai dengan yang jalan di terminal (8081)
                 window.Echo = new Echo({
                     broadcaster: 'reverb',
-                    key: "{{ env('REVERB_APP_KEY') }}",
-                    wsHost: "{{ env('REVERB_HOST', request()->getHost()) }}",
-                    // Gunakan nilai default jika env kosong untuk mencegah Syntax Error
-                    wsPort: {{ env('REVERB_PORT') ? env('REVERB_PORT') : 8081 }},
-                    wssPort: {{ env('REVERB_PORT') ? env('REVERB_PORT') : 8081 }},
-                    forceTLS: {{ env('REVERB_SCHEME', 'http') === 'https' ? 'true' : 'false' }},
+                    key: "{{ env('REVERB_APP_KEY') }}", // Key tetap dari env
+
+                    // Gunakan hostname otomatis dari browser
+                    wsHost: window.location.hostname,
+
+                    // HARDCODE PORT (Biar tidak error syntax)
+                    wsPort: 8081,
+                    wssPort: 8081,
+
+                    forceTLS: false,
                     enabledTransports: ['ws', 'wss'],
                 });
 
-                console.log("🚀 Sancaka Realtime System SIAP! (Port: {{ env('REVERB_PORT', 8081) }})");
+                console.log("🚀 Echo Berhasil Diinisialisasi (Port 8081)");
 
             } catch (err) {
-                console.error("❌ ERROR KONFIGURASI:", err);
-                alert("Terjadi error pada script konfigurasi Reverb. Cek Console.");
+                console.error("❌ ERROR CONFIG:", err);
             }
         }
     </script>
+    {{-- [AKHIR PERBAIKAN] --}}
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
