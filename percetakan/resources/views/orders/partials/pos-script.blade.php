@@ -284,13 +284,14 @@ function posSystem() {
 
 
         async scanProduct(manualCode = null, qtyOverride = null) {
+            // 1. Ambil Barcode
             let code = manualCode || this.search.trim();
             if (!code || code.length < 3) return;
 
             this.isProcessing = true;
 
             try {
-                // 1. Ambil Data Produk
+                // 2. Request Data ke Server
                 const url = "{{ route('orders.scan-product') }}?code=" + encodeURIComponent(code);
                 const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
                 const result = await response.json();
@@ -298,46 +299,66 @@ function posSystem() {
                 if (result.status === 'success') {
                     let p = result.data;
 
-                    // [KUNCI] Ambil Qty dari parameter. Jika kosong/null, pakai 1.
-                    // Log ini akan muncul di Console Laptop untuk bukti
+                    // --- [PERBAIKAN QTY] ---
+                    // Pastikan qty dibaca sebagai ANGKA (Float), bukan teks. Default 1.
                     let incomingQty = qtyOverride ? parseFloat(qtyOverride) : 1;
-                    console.log(`LOG: Update Qty Menjadi -> ${incomingQty}`);
 
-                    // 2. Tentukan ID Keranjang (Samakan Format dengan addToCart)
-                    let targetCartId = (result.type === 'variant') ? `${p.id}-VAR-${p.variant_id}` : p.id;
+                    console.log(`LOG: Menerima Barang: ${p.name} | Jumlah: ${incomingQty}`);
 
-                    // 3. Cari Barang di Keranjang (Pakai == biar aman angka vs string)
+                    // 3. Susun ID Unik Keranjang (Samakan format dengan addToCart)
+                    let targetCartId;
+                    if (result.type === 'variant') {
+                        targetCartId = `${p.id}-VAR-${p.variant_id}`;
+                    } else {
+                        targetCartId = p.id;
+                    }
+
+                    // 4. Cek apakah barang SUDAH ADA di keranjang?
+                    // Gunakan '==' agar ID angka (1) dan string ('1') dianggap sama
                     let existingItem = this.cart.find(item => item.id == targetCartId);
 
                     if (existingItem) {
-                        // KASUS A: Barang Sudah Ada -> Update Qty
-                        // Logika: Qty Lama + Qty Baru Scanner
-                        // Contoh: Awal 5. Scan 100. Jadi 105.
-                        existingItem.qty = parseFloat(existingItem.qty) + incomingQty;
+                        // KASUS A: BARANG SUDAH ADA -> TAMBAHKAN
+                        console.log("LOG: Barang lama, update jumlah...");
 
+                        let currentQty = parseFloat(existingItem.qty);
+                        existingItem.qty = currentQty + incomingQty;
+
+                        // Notifikasi Toast
                         const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
                         Toast.fire({ icon: 'success', title: `+${incomingQty} ${p.name}` });
 
                     } else {
-                        // KASUS B: Barang Baru -> Masukkan -> Set Qty
+                        // KASUS B: BARANG BARU -> MASUKKAN -> LALU TIMPA QTY
+                        console.log("LOG: Barang baru, insert...");
+
+                        // Masukkan ke array (Default qty function ini adalah 1)
                         if (result.type === 'single') {
                             this.addToCart(p.id, p.name, p.sell_price, p.stock, p.weight ?? 0, p.image, false, 'all');
                         } else {
                             this.processAddItem(targetCartId, p.name, p.sell_price, p.stock, p.weight ?? 0, p.image, p.variant_id);
                         }
 
-                        // [CRUCIAL] Paksa Update Qty setelah item masuk
-                        this.$nextTick(() => {
+                        // [RAHASIANYA DISINI]
+                        // Kita beri jeda 100ms agar VueJS selesai membuat baris keranjang baru
+                        // Baru kita timpa qty-nya menjadi 100 (incomingQty)
+                        setTimeout(() => {
                              let newItem = this.cart.find(item => item.id == targetCartId);
+
                              if(newItem) {
-                                 newItem.qty = incomingQty; // Ubah dari 1 jadi 100
+                                 console.log(`LOG: Mengubah Qty default (1) menjadi (${incomingQty})`);
+                                 newItem.qty = incomingQty; // <-- INI YANG BIKIN JADI 100
                              }
-                        });
+
+                             // Update Total Harga setelah qty berubah
+                             this.updateCartTotals();
+                        }, 100);
 
                         const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
                         Toast.fire({ icon: 'success', title: `${p.name} (${incomingQty})` });
                     }
 
+                    // Reset Pencarian & Mainkan Suara
                     if(!manualCode) this.playBeep('success');
                     this.search = '';
                     this.updateCartTotals();
@@ -367,80 +388,7 @@ function posSystem() {
             }
         },
 
-        // 2. FUNGSI UTAMA: SCAN BARCODE
-        async scanProduct() {
-            let code = this.search.trim();
 
-            // Validasi dasar
-            if (!code) return;
-            if (code.length < 3) return; // Jangan scan jika terlalu pendek
-
-            this.isProcessing = true; // Indikator loading (jika ada)
-
-            try {
-                // Panggil API Backend (Gunakan encodeURIComponent untuk keamanan karakter)
-                let response = await fetch(`{{ route('orders.scan-product') }}?code=${encodeURIComponent(code)}`);
-                let result = await response.json();
-
-                if (result.status === 'success') {
-
-                    // --- [SUKSES] MAINKAN BEEP ---
-                    this.playBeep('success');
-
-                    let p = result.data;
-
-                    // LOGIKA 1: PRODUK TUNGGAL (SINGLE)
-                    if (result.type === 'single') {
-                        this.addToCart(
-                            p.id,
-                            p.name,
-                            p.sell_price,
-                            p.stock,
-                            p.weight ?? 0,
-                            p.image ? `{{ asset('storage') }}/${p.image}` : null,
-                            false,
-                            'all'
-                        );
-                    }
-                    // LOGIKA 2: PRODUK VARIAN (MULTI)
-                    else if (result.type === 'variant') {
-                        let cartId = `${p.id}-VAR-${p.variant_id}`;
-
-                        // Asumsi function processAddItem sudah Anda buat sebelumnya
-                        this.processAddItem(
-                            cartId,
-                            p.name,
-                            p.sell_price,
-                            p.stock,
-                            p.weight ?? 0,
-                            p.image ? `{{ asset('storage') }}/${p.image}` : null,
-                            p.variant_id
-                        );
-                    }
-
-                    // Reset kolom pencarian agar siap scan barang berikutnya
-                    this.search = '';
-
-                } else {
-                    // --- [GAGAL] MAINKAN BEEP ---
-                    // Produk tidak ditemukan di database
-                    this.playBeep('error');
-
-                    // Opsional: Kosongkan search jika ingin memaksa input ulang
-                    // this.search = '';
-                }
-
-            } catch (error) {
-                console.error("Scan Error:", error);
-
-                // --- [ERROR] MAINKAN BEEP ---
-                // Terjadi kesalahan server/koneksi
-                this.playBeep('error');
-
-            } finally {
-                this.isProcessing = false;
-            }
-        },
 
         async searchCustomerByName() {
             // [LOGIC BARU] Reset Status
