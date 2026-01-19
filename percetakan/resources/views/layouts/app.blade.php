@@ -16,19 +16,18 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-   {{-- [PERBAIKAN PATH: HARDCODE AGAR TIDAK NYASAR] --}}
-    {{-- Kita gunakan helper url() yang biasanya lebih akurat di subfolder --}}
-    <script src="{{ url('libs/pusher.min.js') }}"></script>
-    <script src="{{ url('libs/echo.js') }}"></script>
+   {{-- [SOLUSI FINAL: LINK HARDCODE SESUAI BROWSER] --}}
+
+    {{-- 1. Pusher JS (Kita asumsikan satu folder dengan echo.js) --}}
+    <script src="https://tokosancaka.com/percetakan/public/libs/pusher.min.js"></script>
+
+    {{-- 2. Laravel Echo (URL yang berhasil Anda buka tadi) --}}
+    <script src="https://tokosancaka.com/percetakan/public/libs/echo.js"></script>
 
     <script>
-        // DEBUGGING: Cek apakah file berhasil dimuat
-        if (typeof Pusher === 'undefined' || typeof Echo === 'undefined') {
-            console.error("❌ ERROR PATH: File JS tidak ketemu.");
-            console.error("Coba buka link ini di tab baru untuk cek:");
-            console.error("1. {{ url('libs/pusher.min.js') }}");
-            console.error("2. {{ url('libs/echo.js') }}");
-            alert("File Library tidak ditemukan. Cek Console (F12) untuk link yang error.");
+        // Cek lagi untuk memastikan
+        if (typeof Echo === 'undefined') {
+            alert("❌ Gawat! Browser masih menolak file JS. Coba matikan AdBlock/Shield di browser.");
         } else {
             // Setup Global
             window.Pusher = Pusher;
@@ -37,14 +36,21 @@
                 window.Echo = new Echo({
                     broadcaster: 'reverb',
                     key: "{{ env('REVERB_APP_KEY') }}",
+
+                    // Hostname otomatis (tokosancaka.com)
                     wsHost: window.location.hostname,
+
+                    // Port sesuai terminal (8081)
                     wsPort: 8081,
                     wssPort: 8081,
+
                     forceTLS: false,
                     disableStats: true,
                     enabledTransports: ['ws', 'wss'],
                 });
-                console.log("🚀 Sancaka Realtime: SIAP (Local Mode)");
+
+                console.log("🚀 Sancaka Realtime: SIAP (Via URL Manual)");
+
             } catch (err) {
                 console.error("❌ Error Config:", err);
             }
