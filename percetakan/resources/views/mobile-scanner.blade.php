@@ -11,7 +11,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 
     <style>
@@ -112,15 +111,16 @@
                 updateStatus("Mencari data produk...", "warning");
 
                 try {
-                    // Fetch ke API Controller
-                    // Kita minta Laravel buatkan URL lengkapnya (https://.../percetakan/public/orders/scan-product)
+                    // 1. CARI BARANG (Hanya Lookup, Tidak Broadcast)
                     const routeUrl = "{{ route('orders.scan-product') }}";
-                    const response = await fetch(`${routeUrl}?code=${barcode}`);
+                    const response = await fetch(`${routeUrl}?code=${encodeURIComponent(barcode)}`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
 
-                    // VALIDASI RESPONSE: Pastikan JSON
+                    // Validasi HTML Error (404/500)
                     const contentType = response.headers.get("content-type");
                     if (!contentType || !contentType.includes("application/json")) {
-                        throw new Error("Jalur server tidak ditemukan (Cek Route Web.php)");
+                        throw new Error("Respon Server Error (Bukan JSON). Cek Log Server.");
                     }
 
                     const result = await response.json();
@@ -130,7 +130,7 @@
                         const product = result.data;
                         const unitLabel = result.unit || 'pcs';
 
-                        // Popup SweetAlert Input
+                        // 2. MUNCULKAN POPUP KONFIRMASI JUMLAH
                         const { value: qty } = await Swal.fire({
                             title: 'Produk Ditemukan!',
                             html: `
@@ -153,25 +153,53 @@
                             confirmButtonColor: '#f57224',
                             cancelButtonText: 'Batal',
                             didOpen: () => {
-                                // Auto focus agar langsung ketik
                                 const input = Swal.getInput();
                                 if(input) input.select();
                             }
                         });
 
+                        // 3. JIKA USER KLIK OK (QTY TERISI)
                         if (qty) {
+                            // Tampilkan di HP (Visual)
                             addToCartUI(product, qty, unitLabel);
-                            updateStatus("Produk berhasil ditambahkan.", "success");
 
-                            const Toast = Swal.mixin({
-                                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000
-                            });
-                            Toast.fire({ icon: 'success', title: 'Masuk Keranjang' });
+                            // ===========================================
+                            // [PENTING] KIRIM SINYAL KE LAPTOP DI SINI
+                            // ===========================================
+                            try {
+                                updateStatus("Mengirim ke kasir...", "info");
+
+                                await fetch("{{ route('scanner.process') }}", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                    },
+                                    body: JSON.stringify({
+                                        barcode: product.barcode || product.sku, // Kode Barang
+                                        qty: qty                                 // Jumlah Barang
+                                    })
+                                });
+
+                                // Notifikasi Sukses
+                                updateStatus("Berhasil masuk ke Kasir!", "success");
+                                const Toast = Swal.mixin({
+                                    toast: true, position: 'top-end', showConfirmButton: false, timer: 2000
+                                });
+                                Toast.fire({ icon: 'success', title: 'Terkirim ke Kasir!' });
+
+                            } catch (broadcastError) {
+                                console.error(broadcastError);
+                                alert("Gagal Kirim ke Laptop: " + broadcastError.message);
+                            }
+                            // ===========================================
+
                         } else {
                             updateStatus("Input dibatalkan.", "secondary");
                         }
 
                     } else {
+                        // Jika status error (Stok habis / tidak ketemu)
                         throw new Error(result.message || "Produk tidak terdaftar.");
                     }
 
@@ -216,7 +244,6 @@
 
             function startScanner() {
                 html5QrCode = new Html5Qrcode("reader");
-                // Naikkan FPS ke 30 agar lebih smooth di HP
                 const config = { fps: 30, qrbox: 250, aspectRatio: 1.0 };
 
                 html5QrCode.start(
