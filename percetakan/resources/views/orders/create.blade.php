@@ -117,6 +117,14 @@
                         <i class="fas fa-qrcode text-lg"></i>
                     </button>
 
+                    {{-- GANTI BUTTON JADI A (LINK) --}}
+                    <a href="https://tokosancaka.com/percetakan/public/mobile-scanner"
+                    target="_blank"
+                    class="h-10 w-10 bg-white border-2 border-slate-100 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-xl transition flex items-center justify-center shadow-sm"
+                    title="Buka Scanner HP">
+                        <i class="fas fa-qrcode text-lg"></i>
+                    </a>
+
                     {{-- 2. USER LOGIN --}}
                     <a href="{{ url('/member/login') }}"
                        class="h-10 w-10 bg-white border-2 border-slate-100 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-xl transition flex items-center justify-center shadow-sm"
