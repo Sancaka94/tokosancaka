@@ -35,28 +35,48 @@ function posSystem() {
             }, 500);
         },
 
-        // 1. UPDATE FUNGSI LISTENER (Pendengar Sinyal)
         listenForRemoteScan() {
-            // Pastikan Echo sudah ada
+            // 1. CEK APAKAH SUDAH LISTENING? (Mencegah Double Listener)
+            if (this.isListening) {
+                console.log("⚠️ Listener sudah aktif, skip re-init.");
+                return;
+            }
+
             if (typeof window.Echo === 'undefined') return;
 
-            console.log("📡 Sedang mendengarkan channel: pos-channel...");
+            console.log("📡 Mengaktifkan Listener POS Channel...");
+
+            // Tandai sudah listening agar tidak didaftarkan ulang
+            this.isListening = true;
+
+            // Matikan dulu listener lama (jika ada sisa-sisa hantu) sebelum buat baru
+            window.Echo.leave('pos-channel');
 
             window.Echo.channel('pos-channel')
                 .listen('.scanned', (e) => {
-                    console.log("🔔 SINYAL DITERIMA DARI HP:", e);
+                    console.log("🔔 Sinyal Masuk:", e.barcode);
 
-                    // Validasi data
+                    // 2. CEK ANTI SPAM (DEBOUNCE)
+                    // Jika barcode SAMA persis dan diterima kurang dari 2 detik yg lalu -> ABAIKAN
+                    const now = Date.now();
+                    if (this.lastScannedCode === e.barcode && (now - this.lastScannedTime < 2000)) {
+                        console.log("⛔ Scan berulang terdeteksi (Spam Protection Active).");
+                        return;
+                    }
+
+                    // Update timestamp terakhir
+                    this.lastScannedCode = e.barcode;
+                    this.lastScannedTime = now;
+
+                    // 3. PROSES DATA
                     if (!e.barcode) return;
 
-                    // 1. Mainkan Suara 'Beep' agar kasir sadar ada scan masuk
+                    // Mainkan suara (Browser modern butuh interaksi user dulu, jadi kita try-catch)
                     this.playBeep('success');
 
-                    // 2. Isi kolom search (opsional, visual saja)
                     this.search = e.barcode;
 
-                    // 3. EKSEKUSI PENCARIAN PRODUK LANGSUNG
-                    // Kita kirim barcode langsung sebagai parameter agar tidak delay
+                    // Panggil fungsi scan
                     this.scanProduct(e.barcode);
                 });
         },
@@ -157,6 +177,10 @@ function posSystem() {
         noteModalOpen: false,
         customerNote: '', // <--- NAMA VARIABLE BARU (Default kosong)
 
+        isListening: false,
+        lastScannedCode: null,
+        lastScannedTime: 0,
+
         // ============================================================
         // COMPUTED PROPERTIES
         // ============================================================
@@ -220,15 +244,16 @@ function posSystem() {
         // LOGIKA PENCARIAN & AUTOFILL PELANGGAN (FITUR BARU)
         // ------------------------------------------------------------------
 
-        // 1. FUNGSI HELPER: MEMUTAR SUARA
         playBeep(type) {
-            // Tentukan ID audio berdasarkan tipe
-            const audioId = type === 'success' ? 'audio-success' : 'audio-error';
+            const audioId = type === 'success' ? 'beep-success' : 'beep-fail';
             const audio = document.getElementById(audioId);
 
             if (audio) {
-                audio.currentTime = 0; // Reset durasi agar bisa diputar berulang cepat
-                audio.play().catch(e => console.log('Browser memblokir autoplay audio', e));
+                audio.currentTime = 0;
+                // Tambahkan catch error agar console tidak merah penuh error
+                audio.play().catch(e => {
+                    console.warn("🔊 Audio di-blokir browser (Belum ada interaksi user).");
+                });
             }
         },
 
