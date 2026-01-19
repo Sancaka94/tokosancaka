@@ -4,145 +4,166 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Scanner Cepat - Sancaka</title>
+    <title>Scanner Sancaka v2 (Strict)</title>
 
-    {{-- CSS Framework --}}
     <script src="https://cdn.tailwindcss.com"></script>
-
-    {{-- Library Scanner (Versi Stabil) --}}
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
-        body { background-color: #000; color: white; overflow: hidden; }
+        body { background-color: #000; overflow: hidden; }
         #reader { width: 100%; height: 100vh; object-fit: cover; }
 
-        /* Hilangkan elemen UI bawaan yang jelek */
+        /* Matikan UI Bawaan Library yang jelek */
         #reader__dashboard_section_csr span,
-        #reader__dashboard_section_swaplink { display: none !important; }
+        #reader__dashboard_section_swaplink,
+        #reader__scan_region img { display: none !important; }
 
-        /* Custom Bingkai Scanner Modern */
+        /* Kotak Fokus Murni (Tanpa garis hijau library) */
         .scan-overlay {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 280px; height: 150px; /* Persegi Panjang untuk Barcode */
-            border: 2px solid rgba(255, 255, 255, 0.5);
-            border-radius: 10px;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); /* Gelapkan area luar */
+            width: 280px; height: 130px; /* Lebar & Pendek (Khusus EAN) */
+            border: 3px solid #00ff00; /* Hijau terang biar jelas */
+            border-radius: 8px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7); /* Gelap total sekeliling */
             z-index: 10;
         }
-        /* Garis Merah Laser */
-        .scan-line {
-            position: absolute; top: 0; left: 0; width: 100%; height: 2px;
-            background: red;
-            animation: scanMove 1.5s infinite linear;
-            box-shadow: 0 0 4px red;
-        }
-        @keyframes scanMove {
-            0% { top: 0; } 50% { top: 100%; } 100% { top: 0; }
-        }
 
-        /* Status Text */
+        /* Garis Laser Merah */
+        .scan-line {
+            position: absolute; top: 0; left: 0; width: 100%; height: 3px;
+            background: red; box-shadow: 0 0 10px red;
+            animation: scanMove 1.2s infinite ease-in-out;
+        }
+        @keyframes scanMove { 0% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
+
+        /* Tombol Flash & Status */
+        .controls {
+            position: absolute; bottom: 50px; left: 0; width: 100%;
+            display: flex; justify-content: center; gap: 20px; z-index: 20;
+        }
+        .btn-flash {
+            background: rgba(255,255,255,0.2); border: 1px solid white; color: white;
+            padding: 15px 25px; border-radius: 50px; font-weight: bold; backdrop-filter: blur(5px);
+        }
         .status-badge {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 20px;
-            font-size: 14px; font-weight: bold; z-index: 20; border: 1px solid #444;
+            position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); padding: 8px 20px; border-radius: 20px;
+            color: #fff; font-weight: bold; z-index: 20; border: 1px solid #555;
+            white-space: nowrap; font-family: monospace;
         }
     </style>
 </head>
 <body>
 
-    {{-- Overlay Visual --}}
-    <div class="status-badge" id="statusText">📷 Siapkan Barcode...</div>
+    <div class="status-badge" id="statusText">📷 FOKUS BARCODE...</div>
+
     <div class="scan-overlay">
         <div class="scan-line"></div>
     </div>
 
-    {{-- Area Kamera --}}
     <div id="reader"></div>
 
-    {{-- Audio Beep --}}
+    <div class="controls">
+        <button id="flashBtn" class="btn-flash">🔦 Senter: OFF</button>
+    </div>
+
     <audio id="beepSound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
 
-    {{-- SCRIPT PROSES --}}
     <script>
-        // === 1. KONFIGURASI PUSHER (JALUR LANGIT) ===
-        // Ganti dengan script Pusher Anda yang TADI SUDAH BERHASIL di Laptop
-        // (Biasanya di halaman mobile scanner ini hanya perlu KIRIM data via AJAX ke server)
-        // TAPI jika Anda pakai client-event, masukkan Pusher disini.
-
-        // PENTING: Di halaman mobile scanner, fokus utamanya adalah SCAN -> AJAX POST -> SERVER -> PUSHER -> LAPTOP
-        // Jadi kita fokus perbaiki kualitas Scannernya saja disini.
-
         let isProcessing = false;
+        let html5QrCode;
         const beep = document.getElementById('beepSound');
         const statusText = document.getElementById('statusText');
+        const flashBtn = document.getElementById('flashBtn');
+
+        // Fungsi Filter Angka Ngawur
+        function isValidBarcode(code) {
+            // Barcode barang itu panjangnya 8, 12, atau 13 digit.
+            // Kalau panjangnya aneh (misal 5 digit atau 20 digit) pasti salah baca.
+            return code.length === 8 || code.length === 12 || code.length === 13;
+        }
 
         function onScanSuccess(decodedText, decodedResult) {
-            if (isProcessing) return; // Cegah scan dobel
+            // Filter 1: Cegah spam
+            if (isProcessing) return;
+
+            // Filter 2: Buang angka ngawur (Validasi panjang karakter)
+            if (!isValidBarcode(decodedText)) {
+                console.warn("Sampah dibuang:", decodedText);
+                return;
+            }
+
             isProcessing = true;
 
-            // 1. Efek Audio & Visual
-            beep.play().catch(e => console.log('Audio blocked'));
+            // Efek Sukses
+            beep.play().catch(()=>{});
             statusText.innerHTML = "✅ " + decodedText;
             statusText.style.borderColor = "#00ff00";
             statusText.style.color = "#00ff00";
+            document.querySelector('.scan-overlay').style.borderColor = "#00ff00";
 
-            // 2. Kirim Data ke Server (Agar diteruskan ke Laptop via Pusher)
-            // GANTI URL INI dengan Route Laravel Anda yang menangani scan
-            fetch("{{ route('scanner.process') }}", { // Pastikan route ini ada
+            // Kirim ke Laptop
+            fetch("{{ route('scanner.process') }}", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
                 },
                 body: JSON.stringify({ barcode: decodedText })
             })
             .then(res => res.json())
             .then(data => {
-                console.log("Terkirim:", data);
-                // Reset setelah 1.5 detik
                 setTimeout(() => {
                     isProcessing = false;
-                    statusText.innerHTML = "📷 Siapkan Barcode...";
-                    statusText.style.borderColor = "#444";
+                    statusText.innerHTML = "📷 SIAP SCAN";
+                    statusText.style.borderColor = "#555";
                     statusText.style.color = "white";
-                }, 1500);
+                    document.querySelector('.scan-overlay').style.borderColor = "white";
+                }, 1000);
             })
             .catch(err => {
-                console.error("Gagal kirim:", err);
+                statusText.innerHTML = "❌ Gagal Kirim";
                 isProcessing = false;
             });
         }
 
-        // === 2. SETUP SCANNER CANGGIH (TURBO MODE) ===
-        const html5QrCode = new Html5Qrcode("reader");
+        // --- KONFIGURASI STRICT (HANYA EAN-13) ---
+        html5QrCode = new Html5Qrcode("reader");
 
         const config = {
-            fps: 20, // Kecepatan tinggi (Standar 10)
-            qrbox: { width: 250, height: 150 }, // Kotak Lebar (Khusus Barcode Barang)
+            fps: 20,
+            qrbox: { width: 250, height: 120 }, // Kotak lebih gepeng sesuai barcode
             aspectRatio: 1.0,
-            // [RAHASIA] Fitur Eksperimental Hardware Acceleration
-            experimentalFeatures: {
-                useBarCodeDetectorIfSupported: true
-            },
-            // Hanya cari Barcode Produk (Biar gak pusing nyari QR)
+            // PENTING: Matikan 'useBarCodeDetectorIfSupported' dulu kalau hasilnya ngawur di HP tertentu
+            // experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+
+            // HANYA EAN (Produk Retail) & UPC. Matikan Code 128/39 yang sering bikin error
             formatsToSupport: [
                 Html5QrcodeSupportedFormats.EAN_13,
-                Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.CODE_39
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.UPC_A
             ]
         };
 
-        // Mulai Kamera Belakang
-        html5QrCode.start(
-            { facingMode: "environment" }, // Paksa Kamera Belakang
-            config,
-            onScanSuccess
-        ).catch(err => {
-            console.error("Kamera Error:", err);
-            statusText.innerHTML = "❌ Kamera Gagal: " + err;
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+        .then(() => {
+            // Aktifkan Tombol Flash setelah kamera jalan
+            flashBtn.addEventListener('click', () => {
+                html5QrCode.getState() === Html5QrcodeScannerState.SCANNING
+                ? html5QrCode.applyVideoConstraints({ advanced: [{ torch: true }] }) // Coba nyalakan
+                  .then(() => flashBtn.innerText = "🔦 Senter: ON")
+                  .catch(() => {
+                      // Jika torch gagal (biasanya karena belum toggle off dulu)
+                      html5QrCode.applyVideoConstraints({ advanced: [{ torch: false }] });
+                      flashBtn.innerText = "🔦 Senter: OFF";
+                  })
+                : null;
+            });
+        })
+        .catch(err => {
+            statusText.innerHTML = "⚠️ Kamera Error: " + err;
         });
-
     </script>
 </body>
 </html>
