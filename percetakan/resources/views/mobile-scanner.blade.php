@@ -89,7 +89,7 @@
 
             // 2. Kirim Data ke Server (Agar diteruskan ke Laptop via Pusher)
             // GANTI URL INI dengan Route Laravel Anda yang menangani scan
-            fetch("{{ route('api.scan.process') }}", { // Pastikan route ini ada
+            fetch("{{ route('scanner.process') }}", { // Pastikan route ini ada
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
