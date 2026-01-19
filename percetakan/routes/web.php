@@ -296,6 +296,8 @@ Route::delete('/orders/bulk-delete', [OrderController::class, 'bulkDestroy'])->n
 // Route Detail (Show) - Menggunakan parameter {id}
 Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
 
+// Fitur Scan Barcode (Prioritas Utama)
+Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
 // Resource Controller (Menangani seluruh sisa CRUD standar)
 Route::resource('orders', OrderController::class);
 
@@ -395,4 +397,4 @@ Route::post('/scan-process', [ScannerController::class, 'handleScan'])->name('sc
 
 
 // Fitur Scan Barcode (Prioritas Utama)
-Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
+// Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
