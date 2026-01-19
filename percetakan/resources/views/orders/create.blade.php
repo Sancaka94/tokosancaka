@@ -85,11 +85,17 @@
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fas fa-search text-slate-400 group-focus-within:text-red-500 transition-colors"></i>
                         </div>
+
+                        {{-- MODIFIKASI DI SINI --}}
                         <input type="text"
+                            x-ref="searchInput"
+                            x-init="$el.focus()"
+                            autofocus
                             x-model="search"
                             @keydown.enter.prevent="scanProduct()"
                             placeholder="Cari item..."
                             class="block w-full pl-10 pr-8 py-2.5 bg-slate-100 border-2 border-transparent text-slate-700 placeholder-slate-400 focus:bg-white focus:border-red-500 focus:ring-0 rounded-xl text-sm font-medium transition-all shadow-inner focus:shadow-lg">
+                        {{-- AKHIR MODIFIKASI --}}
 
                         {{-- Tombol Clear Text --}}
                         <button x-show="search.length > 0"
