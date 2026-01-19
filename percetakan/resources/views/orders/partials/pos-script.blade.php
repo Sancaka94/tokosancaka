@@ -35,23 +35,29 @@ function posSystem() {
             }, 500);
         },
 
-        // --- FUNGSI DENGAR SINYAL DARI HP (REVERB) ---
+        // 1. UPDATE FUNGSI LISTENER (Pendengar Sinyal)
         listenForRemoteScan() {
-            // Tidak perlu cek typeof lagi di sini karena sudah dihandle di init()
+            // Pastikan Echo sudah ada
+            if (typeof window.Echo === 'undefined') return;
 
-            // Listen ke channel 'pos-channel' dan event 'scanned'
+            console.log("📡 Sedang mendengarkan channel: pos-channel...");
+
             window.Echo.channel('pos-channel')
                 .listen('.scanned', (e) => {
-                    console.log("📡 Terima Barcode dari HP:", e.barcode);
+                    console.log("🔔 SINYAL DITERIMA DARI HP:", e);
 
-                    // 1. Isi kolom search
-                    this.search = e.barcode;
+                    // Validasi data
+                    if (!e.barcode) return;
 
-                    // 2. Mainkan bunyi
+                    // 1. Mainkan Suara 'Beep' agar kasir sadar ada scan masuk
                     this.playBeep('success');
 
-                    // 3. Eksekusi pencarian
-                    this.scanProduct();
+                    // 2. Isi kolom search (opsional, visual saja)
+                    this.search = e.barcode;
+
+                    // 3. EKSEKUSI PENCARIAN PRODUK LANGSUNG
+                    // Kita kirim barcode langsung sebagai parameter agar tidak delay
+                    this.scanProduct(e.barcode);
                 });
         },
 
@@ -266,87 +272,90 @@ function posSystem() {
         },
 
 
-        // 2. FUNGSI UTAMA: SCAN BARCODE (VERSI PERBAIKAN)
-        async scanProduct() {
-            let code = this.search.trim();
+        // 2. UPDATE FUNGSI SCAN AGAR BISA TERIMA PARAMETER
+        async scanProduct(manualCode = null) {
+            // Jika ada parameter manualCode (dari Pusher), pakai itu.
+            // Jika tidak, ambil dari kotak input search.
+            let code = manualCode || this.search.trim();
 
             // Validasi dasar
-            if (!code) return;
-            if (code.length < 3) return;
+            if (!code || code.length < 3) return;
 
-            this.isProcessing = true; // Indikator loading
+            this.isProcessing = true;
 
             try {
-                // Gunakan Helper route() Laravel. Pastikan file ini berekstensi .blade.php
+                // Gunakan URL Helper Laravel
                 const url = "{{ route('orders.scan-product') }}?code=" + encodeURIComponent(code);
 
-                console.log("LOG: Mencoba Scan ke URL:", url);
+                console.log("LOG: Mencari produk ke:", url);
 
                 const response = await fetch(url, {
                     headers: {
-                        'Accept': 'application/json', // Wajib: Meminta server membalas JSON, bukan HTML error page
+                        'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 });
 
-                // --- [PERBAIKAN UTAMA DI SINI] ---
-                // Cek apakah response adalah JSON valid atau bukan (untuk mencegah error Unexpected token <)
                 const contentType = response.headers.get("content-type");
                 if (!contentType || !contentType.includes("application/json")) {
-                    // Jika Server membalas dengan HTML (biasanya halaman 404 atau 500)
-                    throw new Error("Jalur Server Salah (404). Pastikan Route Web.php sudah benar.");
+                    throw new Error("Respon Server Error (HTML). Cek Route.");
                 }
 
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    // --- [SUKSES] ---
-                    this.playBeep('success');
+                    // SUKSES KETEMU BARANG
+                    if (!manualCode) this.playBeep('success'); // Beep cuma kalau scan manual di laptop
+
                     let p = result.data;
 
-                    // LOGIKA 1: PRODUK TUNGGAL
+                    // --- [LOGIC POPUP INPUT JUMLAH (SAMA SEPERTI HP)] ---
+                    // Agar di Laptop juga muncul popup konfirmasi jumlah
+                    // Jika tidak mau popup (langsung masuk cart 1 pcs), hapus bagian Swal ini
+
+                    const unitLabel = result.unit || 'pcs';
+
+                    // Cek tipe produk
                     if (result.type === 'single') {
+                        // Langsung masuk keranjang 1 qty (Atau mau popup? Default: Langsung masuk biar cepat)
                         this.addToCart(
                             p.id, p.name, p.sell_price, p.stock, p.weight ?? 0,
                             p.image ? `{{ asset('storage') }}/${p.image}` : null,
                             false, 'all'
                         );
-                    }
-                    // LOGIKA 2: PRODUK VARIAN
-                    else if (result.type === 'variant') {
+
+                        // Notifikasi Kecil
+                        const Toast = Swal.mixin({
+                            toast: true, position: 'top-end', showConfirmButton: false, timer: 3000
+                        });
+                        Toast.fire({ icon: 'success', title: p.name + ' Masuk Keranjang!' });
+
+                    } else if (result.type === 'variant') {
+                        // Kalau varian, otomatis pilih varian tersebut
                         let cartId = `${p.id}-VAR-${p.variant_id}`;
                         this.processAddItem(
                             cartId, p.name, p.sell_price, p.stock, p.weight ?? 0,
                             p.image ? `{{ asset('storage') }}/${p.image}` : null,
                             p.variant_id
                         );
+                         const Toast = Swal.mixin({
+                            toast: true, position: 'top-end', showConfirmButton: false, timer: 3000
+                        });
+                        Toast.fire({ icon: 'success', title: p.name + ' Masuk Keranjang!' });
                     }
 
-                    // Reset kolom pencarian
+                    // Reset
                     this.search = '';
 
                 } else {
-                    // --- [GAGAL: PRODUK TIDAK DITEMUKAN] ---
                     this.playBeep('error');
-                    console.warn("Server response:", result.message);
-
-                    // Opsional: Tampilkan alert jika barang benar-benar tidak ada
+                    console.warn("Produk tidak ditemukan:", code);
                     // alert("Barang tidak ditemukan!");
                 }
 
             } catch (error) {
                 console.error("Scan Error:", error);
-
-                // --- [ERROR SISTEM] ---
                 this.playBeep('error');
-
-                // Tampilkan pesan error yang lebih jelas di layar (bukan alert pop up yang mengganggu)
-                if (error.message.includes("404")) {
-                    alert("⚠️ Error 404: Alamat Scan tidak ditemukan.\nCoba jalankan: php artisan route:clear di server.");
-                } else {
-                    // alert("Gagal Scan: " + error.message);
-                }
-
             } finally {
                 this.isProcessing = false;
             }
