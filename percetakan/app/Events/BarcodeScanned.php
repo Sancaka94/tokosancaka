@@ -14,6 +14,7 @@ class BarcodeScanned implements ShouldBroadcastNow
 
     public $barcode;
     public $qty; // <--- TAMBAHAN: Variabel untuk menyimpan jumlah
+    public $image; // <--- Variabel baru untuk menyimpan URL gambar
 
     /**
      * Create a new event instance.
@@ -55,6 +56,7 @@ class BarcodeScanned implements ShouldBroadcastNow
         return [
             'barcode' => $this->barcode,
             'qty'     => $this->qty,
+            'image'   => $this->image, // <--- Kirim ke JS
             'time'    => now()->toTimeString() // Bonus: Kirim waktu scan
         ];
     }

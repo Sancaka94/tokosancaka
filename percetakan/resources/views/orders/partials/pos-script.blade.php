@@ -63,7 +63,7 @@ function posSystem() {
                     // ========================================================
                     // Sebelumnya cuma: this.scanProduct(e.barcode);
                     // Sekarang harus:
-                    this.scanProduct(e.barcode, e.qty);
+                    this.scanProduct(e.barcode, e.qty, e.image);
                 });
         },
 
@@ -284,19 +284,18 @@ function posSystem() {
 
 
         // ============================================================
-        // FUNGSI SCAN PRODUCT (VERSI FINAL & TUNGGAL)
+        // FUNGSI SCAN PRODUCT (VERSI FINAL + GAMBAR)
         // ============================================================
-        async scanProduct(manualCode = null, qtyOverride = null) {
-            // 1. Tentukan sumber barcode (Dari Pusher ATAU Ketikan Manual)
-            let code = manualCode || this.search.trim();
+        async scanProduct(manualCode = null, qtyOverride = null, imageOverride = null) {
 
-            // Validasi: Jangan proses jika kosong atau kependekan
+            // 1. Ambil Barcode
+            let code = manualCode || this.search.trim();
             if (!code || code.length < 3) return;
 
             this.isProcessing = true;
 
             try {
-                // 2. Panggil API Server Laravel
+                // 2. Request ke API
                 const url = "{{ route('orders.scan-product') }}?code=" + encodeURIComponent(code);
                 const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
                 const result = await response.json();
@@ -304,68 +303,87 @@ function posSystem() {
                 if (result.status === 'success') {
                     let p = result.data;
 
-                    // 3. Olah Qty (Pastikan jadi Angka)
-                    // Jika dari HP ada qtyOverride (misal 100), pakai itu. Jika tidak, pakai 1.
+                    // 3. LOGIKA QTY (Pastikan Angka)
                     let incomingQty = qtyOverride ? parseFloat(qtyOverride) : 1;
 
-                    console.log(`LOG POS: Barang ${p.name} | Qty Masuk: ${incomingQty}`);
+                    console.log(`LOG POS: Barang ${p.name} | Qty: ${incomingQty}`);
 
-                    // 4. Tentukan ID Unik (Varian vs Single)
-                    let targetCartId;
-                    if (result.type === 'variant') {
-                        targetCartId = `${p.id}-VAR-${p.variant_id}`;
-                    } else {
-                        targetCartId = p.id;
+                    // 4. LOGIKA GAMBAR (PENTING!)
+                    // Prioritas 1: Gambar dari Pusher (imageOverride) karena URL-nya sudah lengkap dari server
+                    // Prioritas 2: Gambar dari API result.data (perlu dirakit path-nya)
+                    let finalImage = null;
+
+                    if (imageOverride) {
+                        finalImage = imageOverride;
+                    } else if (p.image) {
+                        // Cek apakah API mengirim full URL atau path relative
+                        if(p.image.startsWith('http')) {
+                            finalImage = p.image;
+                        } else {
+                            finalImage = `{{ asset('storage') }}/${p.image}`;
+                        }
                     }
 
-                    // 5. Cek apakah barang SUDAH ADA di keranjang?
+                    // 5. Tentukan ID Unik Cart
+                    let targetCartId = (result.type === 'variant') ? `${p.id}-VAR-${p.variant_id}` : p.id;
+
+                    // 6. Cek Keranjang
                     let existingItem = this.cart.find(item => item.id == targetCartId);
 
                     if (existingItem) {
-                        // --- KASUS A: SUDAH ADA (TAMBAH JUMLAH) ---
-                        let currentQty = parseFloat(existingItem.qty);
-                        existingItem.qty = currentQty + incomingQty;
+                        // --- KASUS A: UPDATE QTY ---
+                        existingItem.qty = parseFloat(existingItem.qty) + incomingQty;
 
-                        // Notifikasi (Safe Mode: Cek dulu apakah Swal ada)
-                        if (typeof Swal !== 'undefined') {
-                            const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
-                            Toast.fire({ icon: 'success', title: `+${incomingQty} ${p.name}` });
-                        }
+                        // Update gambar di keranjang jika sebelumnya kosong
+                        if(!existingItem.image && finalImage) existingItem.image = finalImage;
 
                     } else {
-                        // --- KASUS B: BARANG BARU (MASUKKAN) ---
-                        // Masukkan ke array (Default qty function ini adalah 1)
+                        // --- KASUS B: INSERT BARU ---
+
+                        // Masukkan ke array (Gunakan finalImage yang sudah kita proses di atas)
                         if (result.type === 'single') {
-                            this.addToCart(p.id, p.name, p.sell_price, p.stock, p.weight ?? 0, p.image, false, 'all');
+                            this.addToCart(p.id, p.name, p.sell_price, p.stock, p.weight ?? 0, finalImage, false, 'all');
                         } else {
-                            this.processAddItem(targetCartId, p.name, p.sell_price, p.stock, p.weight ?? 0, p.image, p.variant_id);
+                            this.processAddItem(targetCartId, p.name, p.sell_price, p.stock, p.weight ?? 0, finalImage, p.variant_id);
                         }
 
-                        // [RAHASIA] Tunggu 100ms agar data masuk memori, lalu TIMPA qty-nya
+                        // Update Qty (Delay 100ms agar masuk memori)
                         setTimeout(() => {
                              let newItem = this.cart.find(item => item.id == targetCartId);
-                             if(newItem) {
-                                 newItem.qty = incomingQty; // Ubah dari 1 jadi 100
-                             }
+                             if(newItem) newItem.qty = incomingQty;
                              this.updateCartTotals();
                         }, 100);
-
-                        // Notifikasi
-                        if (typeof Swal !== 'undefined') {
-                            const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
-                            Toast.fire({ icon: 'success', title: `${p.name} (${incomingQty})` });
-                        }
                     }
 
-                    // 6. Finishing (Reset UI)
+                    // 7. Notifikasi Cantik (Ada Gambarnya)
+                    if (typeof Swal !== 'undefined') {
+                        const Toast = Swal.mixin({
+                            toast: true, position: 'top-end', showConfirmButton: false, timer: 3000,
+                            didOpen: (toast) => {
+                                toast.addEventListener('mouseenter', Swal.stopTimer)
+                                toast.addEventListener('mouseleave', Swal.resumeTimer)
+                            }
+                        });
+
+                        Toast.fire({
+                            icon: 'success',
+                            title: p.name,
+                            text: `Berhasil masuk: ${incomingQty} pcs`,
+                            imageUrl: finalImage, // <--- TAMPILKAN GAMBAR DISINI
+                            imageWidth: 50,
+                            imageHeight: 50,
+                            imageAlt: 'Produk',
+                        });
+                    }
+
+                    // Reset UI
                     if(!manualCode) this.playBeep('success');
                     this.search = '';
                     this.updateCartTotals();
 
                 } else {
-                    // Produk Tidak Ditemukan
                     this.playBeep('error');
-                    console.warn("Produk tidak ditemukan di Database");
+                    console.warn("Produk tidak ditemukan");
                 }
 
             } catch (error) {
