@@ -36,48 +36,34 @@ function posSystem() {
         },
 
         listenForRemoteScan() {
-            // 1. CEK APAKAH SUDAH LISTENING? (Mencegah Double Listener)
-            if (this.isListening) {
-                console.log("⚠️ Listener sudah aktif, skip re-init.");
-                return;
-            }
-
+            if (this.isListening) return;
             if (typeof window.Echo === 'undefined') return;
 
-            console.log("📡 Mengaktifkan Listener POS Channel...");
-
-            // Tandai sudah listening agar tidak didaftarkan ulang
             this.isListening = true;
-
-            // Matikan dulu listener lama (jika ada sisa-sisa hantu) sebelum buat baru
             window.Echo.leave('pos-channel');
 
             window.Echo.channel('pos-channel')
                 .listen('.scanned', (e) => {
-                    console.log("🔔 Sinyal Masuk:", e.barcode);
+                    console.log("🔔 Sinyal Masuk:", e);
 
-                    // 2. CEK ANTI SPAM (DEBOUNCE)
-                    // Jika barcode SAMA persis dan diterima kurang dari 2 detik yg lalu -> ABAIKAN
+                    // Anti Spam Check
                     const now = Date.now();
-                    if (this.lastScannedCode === e.barcode && (now - this.lastScannedTime < 2000)) {
-                        console.log("⛔ Scan berulang terdeteksi (Spam Protection Active).");
-                        return;
-                    }
+                    if (this.lastScannedCode === e.barcode && (now - this.lastScannedTime < 2000)) return;
 
-                    // Update timestamp terakhir
                     this.lastScannedCode = e.barcode;
                     this.lastScannedTime = now;
 
-                    // 3. PROSES DATA
                     if (!e.barcode) return;
 
-                    // Mainkan suara (Browser modern butuh interaksi user dulu, jadi kita try-catch)
                     this.playBeep('success');
-
                     this.search = e.barcode;
 
-                    // Panggil fungsi scan
-                    this.scanProduct(e.barcode);
+                    // ========================================================
+                    // [PERBAIKAN DISINI] JANGAN LUPA OPER e.qty !!!
+                    // ========================================================
+                    // Sebelumnya cuma: this.scanProduct(e.barcode);
+                    // Sekarang harus:
+                    this.scanProduct(e.barcode, e.qty);
                 });
         },
 
@@ -298,15 +284,12 @@ function posSystem() {
 
 
         async scanProduct(manualCode = null, qtyOverride = null) {
-            // Gunakan kode manual/pusher atau dari input search
             let code = manualCode || this.search.trim();
-
             if (!code || code.length < 3) return;
 
             this.isProcessing = true;
 
             try {
-                // 1. Ambil data produk dari server
                 const url = "{{ route('orders.scan-product') }}?code=" + encodeURIComponent(code);
                 const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
                 const result = await response.json();
@@ -314,63 +297,51 @@ function posSystem() {
                 if (result.status === 'success') {
                     let p = result.data;
 
-                    // AMBIL QTY DARI SCANNER (Jika null, default 1)
+                    // [PENTING] Ambil Qty dari parameter, kalau kosong default 1
                     let incomingQty = qtyOverride ? parseFloat(qtyOverride) : 1;
 
-                    // ============================================================
-                    // 🚀 LOGIKA CERDAS: CEK KERANJANG DULU
-                    // ============================================================
+                    console.log(`LOG: Input Barang ${p.name} Jumlah: ${incomingQty}`); // Cek console laptop
 
-                    // Cari apakah produk ini SUDAH ADA di keranjang?
-                    let existingItem = this.cart.find(i => i.id === p.id); // Cari by ID (lebih akurat dari barcode)
+                    // 1. BUAT ID UNIK BIAR KETEMU DI CART
+                    let targetCartId = (result.type === 'variant') ? `${p.id}-VAR-${p.variant_id}` : p.id;
+
+                    // 2. CARI DI CART (Pakai == biar aman)
+                    let existingItem = this.cart.find(item => item.id == targetCartId);
 
                     if (existingItem) {
-                        // KASUS A: BARANG SUDAH ADA
-                        // JANGAN DI-REPLACE (=), TAPI DITAMBAH (+=)
-                        // Contoh: Awal 80. Scan masuk 5. Hasil = 80 + 5 = 85.
+                        // KASUS A: SUDAH ADA -> TAMBAHKAN
+                        existingItem.qty = parseFloat(existingItem.qty) + incomingQty;
 
-                        let oldQty = parseFloat(existingItem.qty);
-                        existingItem.qty = oldQty + incomingQty;
-
-                        // Efek Visual (Toast)
+                        // Efek Visual
                         const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
-                        Toast.fire({ icon: 'success', title: `+${incomingQty} ${p.name} (Total: ${existingItem.qty})` });
+                        Toast.fire({ icon: 'success', title: `+${incomingQty} ${p.name}` });
 
                     } else {
-                        // KASUS B: BARANG BARU (BELUM ADA DI KERANJANG)
-
-                        // 1. Masukkan ke keranjang (ini biasanya default qty 1)
+                        // KASUS B: BARU -> MASUKKAN -> PAKSA UPDATE QTY
                         if (result.type === 'single') {
                             this.addToCart(p.id, p.name, p.sell_price, p.stock, p.weight ?? 0, p.image, false, 'all');
                         } else {
-                            let cartId = `${p.id}-VAR-${p.variant_id}`;
-                            this.processAddItem(cartId, p.name, p.sell_price, p.stock, p.weight ?? 0, p.image, p.variant_id);
+                            this.processAddItem(targetCartId, p.name, p.sell_price, p.stock, p.weight ?? 0, p.image, p.variant_id);
                         }
 
-                        // 2. TAPI... Kita harus paksa Qty sesuai inputan Scanner!
-                        // Karena fungsi addToCart bawaan biasanya cuma kasih 1.
-                        // Kita cari lagi item yang barusan dimasukkan, lalu update qty-nya.
-
+                        // [LOGIKA CERDAS] Cari item yang barusan masuk, timpa Qty-nya
                         this.$nextTick(() => {
-                             let newItem = this.cart.find(i => i.id === p.id || i.id === `${p.id}-VAR-${p.variant_id}`);
+                             let newItem = this.cart.find(item => item.id == targetCartId);
                              if(newItem) {
-                                 newItem.qty = incomingQty; // Set awal sesuai scan (misal langsung 100)
+                                 newItem.qty = incomingQty; // <-- INI KUNCINYA
                              }
                         });
 
                         const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
                         Toast.fire({ icon: 'success', title: `${p.name} Masuk (${incomingQty})` });
                     }
-                    // ============================================================
 
-                    // Mainkan Beep & Reset Search
                     if(!manualCode) this.playBeep('success');
                     this.search = '';
                     this.updateCartTotals();
 
                 } else {
                     this.playBeep('error');
-                    console.warn("Barang tidak ditemukan");
                 }
 
             } catch (error) {
