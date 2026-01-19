@@ -290,6 +290,7 @@ function posSystem() {
             this.isProcessing = true;
 
             try {
+                // 1. Ambil Data Produk
                 const url = "{{ route('orders.scan-product') }}?code=" + encodeURIComponent(code);
                 const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
                 const result = await response.json();
@@ -297,43 +298,44 @@ function posSystem() {
                 if (result.status === 'success') {
                     let p = result.data;
 
-                    // [PENTING] Ambil Qty dari parameter, kalau kosong default 1
+                    // [KUNCI] Ambil Qty dari parameter. Jika kosong/null, pakai 1.
+                    // Log ini akan muncul di Console Laptop untuk bukti
                     let incomingQty = qtyOverride ? parseFloat(qtyOverride) : 1;
+                    console.log(`LOG: Update Qty Menjadi -> ${incomingQty}`);
 
-                    console.log(`LOG: Input Barang ${p.name} Jumlah: ${incomingQty}`); // Cek console laptop
-
-                    // 1. BUAT ID UNIK BIAR KETEMU DI CART
+                    // 2. Tentukan ID Keranjang (Samakan Format dengan addToCart)
                     let targetCartId = (result.type === 'variant') ? `${p.id}-VAR-${p.variant_id}` : p.id;
 
-                    // 2. CARI DI CART (Pakai == biar aman)
+                    // 3. Cari Barang di Keranjang (Pakai == biar aman angka vs string)
                     let existingItem = this.cart.find(item => item.id == targetCartId);
 
                     if (existingItem) {
-                        // KASUS A: SUDAH ADA -> TAMBAHKAN
+                        // KASUS A: Barang Sudah Ada -> Update Qty
+                        // Logika: Qty Lama + Qty Baru Scanner
+                        // Contoh: Awal 5. Scan 100. Jadi 105.
                         existingItem.qty = parseFloat(existingItem.qty) + incomingQty;
 
-                        // Efek Visual
                         const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
                         Toast.fire({ icon: 'success', title: `+${incomingQty} ${p.name}` });
 
                     } else {
-                        // KASUS B: BARU -> MASUKKAN -> PAKSA UPDATE QTY
+                        // KASUS B: Barang Baru -> Masukkan -> Set Qty
                         if (result.type === 'single') {
                             this.addToCart(p.id, p.name, p.sell_price, p.stock, p.weight ?? 0, p.image, false, 'all');
                         } else {
                             this.processAddItem(targetCartId, p.name, p.sell_price, p.stock, p.weight ?? 0, p.image, p.variant_id);
                         }
 
-                        // [LOGIKA CERDAS] Cari item yang barusan masuk, timpa Qty-nya
+                        // [CRUCIAL] Paksa Update Qty setelah item masuk
                         this.$nextTick(() => {
                              let newItem = this.cart.find(item => item.id == targetCartId);
                              if(newItem) {
-                                 newItem.qty = incomingQty; // <-- INI KUNCINYA
+                                 newItem.qty = incomingQty; // Ubah dari 1 jadi 100
                              }
                         });
 
                         const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
-                        Toast.fire({ icon: 'success', title: `${p.name} Masuk (${incomingQty})` });
+                        Toast.fire({ icon: 'success', title: `${p.name} (${incomingQty})` });
                     }
 
                     if(!manualCode) this.playBeep('success');
@@ -342,6 +344,7 @@ function posSystem() {
 
                 } else {
                     this.playBeep('error');
+                    console.warn("Produk tidak ditemukan");
                 }
 
             } catch (error) {
