@@ -263,7 +263,7 @@ Route::get('/cara', function () {
 // [PENTING] Route spesifik WAJIB diletakkan di atas route {id}
 
 // Fitur Scan Barcode (Prioritas Utama)
-Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
+//Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
 
 // Halaman POS (Create)
 Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
