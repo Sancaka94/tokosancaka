@@ -266,75 +266,86 @@ function posSystem() {
         },
 
 
-        // 2. FUNGSI UTAMA: SCAN BARCODE
+        // 2. FUNGSI UTAMA: SCAN BARCODE (VERSI PERBAIKAN)
         async scanProduct() {
             let code = this.search.trim();
 
             // Validasi dasar
             if (!code) return;
-            if (code.length < 3) return; // Jangan scan jika terlalu pendek
+            if (code.length < 3) return;
 
-            this.isProcessing = true; // Indikator loading (jika ada)
+            this.isProcessing = true; // Indikator loading
 
             try {
-                // Panggil API Backend (Gunakan encodeURIComponent untuk keamanan karakter)
-                let response = await fetch(`{{ route('orders.scan-product') }}?code=${encodeURIComponent(code)}`);
-                let result = await response.json();
+                // Gunakan Helper route() Laravel. Pastikan file ini berekstensi .blade.php
+                const url = "{{ route('orders.scan-product') }}?code=" + encodeURIComponent(code);
+
+                console.log("LOG: Mencoba Scan ke URL:", url);
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Accept': 'application/json', // Wajib: Meminta server membalas JSON, bukan HTML error page
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                // --- [PERBAIKAN UTAMA DI SINI] ---
+                // Cek apakah response adalah JSON valid atau bukan (untuk mencegah error Unexpected token <)
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    // Jika Server membalas dengan HTML (biasanya halaman 404 atau 500)
+                    throw new Error("Jalur Server Salah (404). Pastikan Route Web.php sudah benar.");
+                }
+
+                const result = await response.json();
 
                 if (result.status === 'success') {
-
-                    // --- [SUKSES] MAINKAN BEEP ---
+                    // --- [SUKSES] ---
                     this.playBeep('success');
-
                     let p = result.data;
 
-                    // LOGIKA 1: PRODUK TUNGGAL (SINGLE)
+                    // LOGIKA 1: PRODUK TUNGGAL
                     if (result.type === 'single') {
                         this.addToCart(
-                            p.id,
-                            p.name,
-                            p.sell_price,
-                            p.stock,
-                            p.weight ?? 0,
+                            p.id, p.name, p.sell_price, p.stock, p.weight ?? 0,
                             p.image ? `{{ asset('storage') }}/${p.image}` : null,
-                            false,
-                            'all'
+                            false, 'all'
                         );
                     }
-                    // LOGIKA 2: PRODUK VARIAN (MULTI)
+                    // LOGIKA 2: PRODUK VARIAN
                     else if (result.type === 'variant') {
                         let cartId = `${p.id}-VAR-${p.variant_id}`;
-
-                        // Asumsi function processAddItem sudah Anda buat sebelumnya
                         this.processAddItem(
-                            cartId,
-                            p.name,
-                            p.sell_price,
-                            p.stock,
-                            p.weight ?? 0,
+                            cartId, p.name, p.sell_price, p.stock, p.weight ?? 0,
                             p.image ? `{{ asset('storage') }}/${p.image}` : null,
                             p.variant_id
                         );
                     }
 
-                    // Reset kolom pencarian agar siap scan barang berikutnya
+                    // Reset kolom pencarian
                     this.search = '';
 
                 } else {
-                    // --- [GAGAL] MAINKAN BEEP ---
-                    // Produk tidak ditemukan di database
+                    // --- [GAGAL: PRODUK TIDAK DITEMUKAN] ---
                     this.playBeep('error');
+                    console.warn("Server response:", result.message);
 
-                    // Opsional: Kosongkan search jika ingin memaksa input ulang
-                    // this.search = '';
+                    // Opsional: Tampilkan alert jika barang benar-benar tidak ada
+                    // alert("Barang tidak ditemukan!");
                 }
 
             } catch (error) {
                 console.error("Scan Error:", error);
 
-                // --- [ERROR] MAINKAN BEEP ---
-                // Terjadi kesalahan server/koneksi
+                // --- [ERROR SISTEM] ---
                 this.playBeep('error');
+
+                // Tampilkan pesan error yang lebih jelas di layar (bukan alert pop up yang mengganggu)
+                if (error.message.includes("404")) {
+                    alert("⚠️ Error 404: Alamat Scan tidak ditemukan.\nCoba jalankan: php artisan route:clear di server.");
+                } else {
+                    // alert("Gagal Scan: " + error.message);
+                }
 
             } finally {
                 this.isProcessing = false;
