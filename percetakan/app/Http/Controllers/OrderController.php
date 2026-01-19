@@ -2182,13 +2182,21 @@ public function handleDanaCallback(Request $request)
      */
     public function scanProduct(Request $request)
     {
+        // 1. LOG START: Tangkap Barcode
         $barcode = trim($request->query('code'));
 
+        Log::info("LOG LOG: ===========================================");
+        Log::info("LOG LOG: [START] Scan Request Masuk.");
+        Log::info("LOG LOG: Barcode yang diterima: " . ($barcode ? $barcode : 'KOSONG'));
+
         if (empty($barcode)) {
+            Log::warning("LOG LOG: [ERROR] Barcode kosong, request ditolak.");
             return response()->json(['status' => 'error', 'message' => 'Kode kosong']);
         }
 
-        // 1. Cek Produk Utama
+        // 2. Cek Produk Utama
+        Log::info("LOG LOG: Mencari di tabel PRODUCTS (Single)...");
+
         $product = Product::where('stock_status', 'available')
             ->where(function($q) use ($barcode) {
                 $q->where('barcode', $barcode)
@@ -2197,27 +2205,43 @@ public function handleDanaCallback(Request $request)
             ->first();
 
         if ($product) {
+            Log::info("LOG LOG: [FOUND] Produk Utama Ditemukan!");
+            Log::info("LOG LOG: Nama: " . $product->name . " | ID: " . $product->id);
+            Log::info("LOG LOG: Stok Saat Ini: " . $product->stock);
+
             if ($product->stock <= 0) {
+                Log::error("LOG LOG: [STOP] Stok Produk Utama HABIS (0).");
                 return response()->json(['status' => 'error', 'message' => 'Stok Habis!']);
             }
+
+            $unit = $product->unit ?? 'pcs';
+            Log::info("LOG LOG: [SUCCESS] Mengirim data JSON (Type: Single). Satuan: " . $unit);
 
             return response()->json([
                 'status' => 'success',
                 'type'   => 'single',
                 'data'   => $product,
-                'unit'   => $product->unit ?? 'pcs' // <--- Pastikan kolom 'unit' ada di tabel products
+                'unit'   => $unit
             ]);
+        } else {
+            Log::info("LOG LOG: Tidak ditemukan di tabel Products. Lanjut cari Varian...");
         }
 
-        // 2. Cek Produk Varian
+        // 3. Cek Produk Varian
         try {
+            // Pastikan kamu sudah use App\Models\ProductVariant di atas
             $variant = ProductVariant::with('product')
                 ->where('barcode', $barcode)
                 ->orWhere('sku', $barcode)
                 ->first();
 
             if ($variant && $variant->product) {
+                Log::info("LOG LOG: [FOUND] Produk Varian Ditemukan!");
+                Log::info("LOG LOG: Parent: " . $variant->product->name . " | Variant: " . $variant->name);
+                Log::info("LOG LOG: Stok Varian: " . $variant->stock);
+
                 if ($variant->stock <= 0) {
+                    Log::error("LOG LOG: [STOP] Stok Varian HABIS.");
                     return response()->json(['status' => 'error', 'message' => 'Stok Varian Habis!']);
                 }
 
@@ -2228,8 +2252,10 @@ public function handleDanaCallback(Request $request)
                 $formattedData['id']         = $variant->product->id;
                 $formattedData['variant_id'] = $variant->id;
 
-                // Ambil satuan dari parent product (atau variant jika ada kolom unit)
+                // Ambil satuan dari parent product
                 $unit = $variant->product->unit ?? 'pcs';
+
+                Log::info("LOG LOG: [SUCCESS] Mengirim data JSON (Type: Variant). Satuan: " . $unit);
 
                 return response()->json([
                     'status' => 'success',
@@ -2237,10 +2263,16 @@ public function handleDanaCallback(Request $request)
                     'data'   => $formattedData,
                     'unit'   => $unit
                 ]);
+            } else {
+                Log::info("LOG LOG: Tidak ditemukan juga di tabel Varian.");
             }
+
         } catch (\Exception $e) {
-            // Abaikan error varian
+            Log::error("LOG LOG: [EXCEPTION] Error saat cari varian: " . $e->getMessage());
         }
+
+        // 4. Jika Sampai Sini = Tidak Ketemu
+        Log::warning("LOG LOG: [ZONK] Produk/Varian Benar-benar TIDAK DITEMUKAN untuk barcode: " . $barcode);
 
         return response()->json(['status' => 'error', 'message' => 'Produk tidak ditemukan']);
     }
