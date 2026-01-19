@@ -387,18 +387,4 @@ Route::get('/mobile-scanner', [ScannerController::class, 'index'])->name('scanne
 Route::post('/scan-process', [ScannerController::class, 'handleScan'])->name('scanner.process');
 
 
-// Fitur Scan Barcode (Prioritas Utama)
-// Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
-
-// === [TARUH INI DI PALING ATAS FILE, BARIS PERTAMA SETELAH USE] ===
-Route::get('/orders/scan-product', function () {
-    Log::info("CEK JALUR: Route Test Berhasil ditembus!");
-    return response()->json([
-        'status' => 'success',
-        'message' => 'JALUR SERVER AMAN BOS!',
-        'unit' => 'kg' // Dummy unit
-    ]);
-});
-// ==================================================================
-
 
