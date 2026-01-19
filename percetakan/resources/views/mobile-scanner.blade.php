@@ -113,7 +113,9 @@
 
                 try {
                     // Fetch ke API Controller
-                    const response = await fetch(`/orders/scan-product?code=${barcode}`);
+                    // Kita minta Laravel buatkan URL lengkapnya (https://.../percetakan/public/orders/scan-product)
+                    const routeUrl = "{{ route('orders.scan-product') }}";
+                    const response = await fetch(`${routeUrl}?code=${barcode}`);
 
                     // VALIDASI RESPONSE: Pastikan JSON
                     const contentType = response.headers.get("content-type");
