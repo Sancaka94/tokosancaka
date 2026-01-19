@@ -16,45 +16,39 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-   {{-- [LOAD DARI HOSTING SENDIRI] --}}
-    <script src="{{ asset('libs/pusher.min.js') }}"></script>
-    <script src="{{ asset('libs/echo.js') }}"></script>
+   {{-- [PERBAIKAN PATH: HARDCODE AGAR TIDAK NYASAR] --}}
+    {{-- Kita gunakan helper url() yang biasanya lebih akurat di subfolder --}}
+    <script src="{{ url('libs/pusher.min.js') }}"></script>
+    <script src="{{ url('libs/echo.js') }}"></script>
 
     <script>
-        // 1. Cek apakah file berhasil dimuat
+        // DEBUGGING: Cek apakah file berhasil dimuat
         if (typeof Pusher === 'undefined' || typeof Echo === 'undefined') {
-            // Jika alert ini muncul, berarti cache browser harus diclear
-            console.error("❌ File JS lokal gagal dimuat. Coba Hard Refresh (Ctrl+F5).");
+            console.error("❌ ERROR PATH: File JS tidak ketemu.");
+            console.error("Coba buka link ini di tab baru untuk cek:");
+            console.error("1. {{ url('libs/pusher.min.js') }}");
+            console.error("2. {{ url('libs/echo.js') }}");
+            alert("File Library tidak ditemukan. Cek Console (F12) untuk link yang error.");
         } else {
-            // 2. Setup Global
+            // Setup Global
             window.Pusher = Pusher;
 
             try {
-                // 3. Konfigurasi Reverb (Port 8081)
                 window.Echo = new Echo({
                     broadcaster: 'reverb',
                     key: "{{ env('REVERB_APP_KEY') }}",
-
-                    // Gunakan hostname browser saat ini (otomatis menyesuaikan domain)
                     wsHost: window.location.hostname,
-
-                    // Port Hardcode 8081 sesuai terminal
                     wsPort: 8081,
                     wssPort: 8081,
-
-                    // Force TLS false karena di http/local
                     forceTLS: false,
                     disableStats: true,
                     enabledTransports: ['ws', 'wss'],
                 });
-
                 console.log("🚀 Sancaka Realtime: SIAP (Local Mode)");
-
             } catch (err) {
                 console.error("❌ Error Config:", err);
             }
         }
-
     </script>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
