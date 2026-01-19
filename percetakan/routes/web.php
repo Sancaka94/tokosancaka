@@ -388,5 +388,8 @@ Route::middleware(['auth'])->prefix('customers')->name('customers.')->group(func
 
 
 // === ROUTE KHUSUS REMOTE SCANNER ===
+// Halaman Scanner HP
 Route::get('/mobile-scanner', [ScannerController::class, 'index'])->name('scanner.index');
-Route::post('/mobile-scanner/send', [ScannerController::class, 'handleScan'])->name('scanner.send');
+
+// Proses Terima Data (INI YANG PENTING)
+Route::post('/scan-process', [ScannerController::class, 'handleScan'])->name('scanner.process');
