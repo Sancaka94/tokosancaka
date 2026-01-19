@@ -16,26 +16,51 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    {{-- [MULAI: TAMBAHKAN INI UNTUK REALTIME SCANNER] --}}
+    {{-- 1. LOAD LIBRARIES (CDN) --}}
     <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/laravel-echo/1.16.1/echo.iife.js"></script>
 
+    {{-- 2. CONFIGURATION WITH DEBUGGING --}}
     <script>
-        window.Pusher = Pusher;
+        console.log("🔄 Memulai Setup Reverb...");
 
-        window.Echo = new Echo({
-            broadcaster: 'reverb',
-            key: "{{ env('REVERB_APP_KEY') }}",
-            wsHost: "{{ env('REVERB_HOST', request()->getHost()) }}",
-            wsPort: {{ env('REVERB_PORT', 8080) }},
-            wssPort: {{ env('REVERB_PORT', 443) }},
-            forceTLS: {{ env('REVERB_SCHEME', 'http') === 'https' ? 'true' : 'false' }},
-            enabledTransports: ['ws', 'wss'],
-        });
+        // Cek apakah Library Pusher berhasil dimuat
+        if (typeof Pusher === 'undefined') {
+            console.error("❌ ERROR FATAL: Library 'Pusher' gagal dimuat. Cek koneksi internet Anda.");
+            alert("Gagal memuat Library Pusher. Pastikan Laptop terkoneksi internet.");
+        } else {
+            console.log("✅ Library Pusher OK");
+            window.Pusher = Pusher;
+        }
 
-        console.log("Sancaka Realtime System Ready 🚀");
+        // Cek apakah Library Echo berhasil dimuat
+        if (typeof Echo === 'undefined') {
+            console.error("❌ ERROR FATAL: Library 'Echo' gagal dimuat. Cek CDN.");
+            alert("Gagal memuat Library Laravel Echo.");
+        } else {
+            console.log("✅ Library Echo OK");
+
+            try {
+                // Konfigurasi Reverb
+                window.Echo = new Echo({
+                    broadcaster: 'reverb',
+                    key: "{{ env('REVERB_APP_KEY') }}",
+                    wsHost: "{{ env('REVERB_HOST', request()->getHost()) }}",
+                    // Gunakan nilai default jika env kosong untuk mencegah Syntax Error
+                    wsPort: {{ env('REVERB_PORT') ? env('REVERB_PORT') : 8081 }},
+                    wssPort: {{ env('REVERB_PORT') ? env('REVERB_PORT') : 8081 }},
+                    forceTLS: {{ env('REVERB_SCHEME', 'http') === 'https' ? 'true' : 'false' }},
+                    enabledTransports: ['ws', 'wss'],
+                });
+
+                console.log("🚀 Sancaka Realtime System SIAP! (Port: {{ env('REVERB_PORT', 8081) }})");
+
+            } catch (err) {
+                console.error("❌ ERROR KONFIGURASI:", err);
+                alert("Terjadi error pada script konfigurasi Reverb. Cek Console.");
+            }
+        }
     </script>
-    {{-- [AKHIR TAMBAHAN] --}}
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
