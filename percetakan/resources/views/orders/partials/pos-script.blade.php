@@ -248,69 +248,69 @@ function posSystem() {
         },
 
         // FUNGSI 1: MULAI SCANNER (BUKA MODAL)
-    startScanner() {
-        this.scannerModalOpen = true;
-        this.tempManualCode = ''; // Reset input manual
+        startScanner() {
+            this.scannerModalOpen = true;
+            this.tempManualCode = ''; // Reset input manual
 
-        // Tunggu modal muncul (nextTick), baru nyalakan kamera
-        this.$nextTick(() => {
-            // Cek apakah scanner sudah jalan sebelumnya, kalau iya stop dulu
-            if (this.scannerObj) {
-                this.scannerObj.clear();
-            }
+            // Tunggu modal muncul (nextTick), baru nyalakan kamera
+            this.$nextTick(() => {
+                // Cek apakah scanner sudah jalan sebelumnya, kalau iya stop dulu
+                if (this.scannerObj) {
+                    this.scannerObj.clear();
+                }
 
-            const onScanSuccess = (decodedText, decodedResult) => {
-                console.log(`Scan Sukses: ${decodedText}`);
+                const onScanSuccess = (decodedText, decodedResult) => {
+                    console.log(`Scan Sukses: ${decodedText}`);
 
-                // 1. Matikan kamera & Tutup Modal
-                this.stopScanner();
+                    // 1. Matikan kamera & Tutup Modal
+                    this.stopScanner();
 
-                // 2. Panggil Logic Scan Utama (Yang sudah kita perbaiki tadi)
-                // Kirim decodedText sebagai barcode, null sebagai qty (default 1), null image
-                this.scanProduct(decodedText);
-            };
+                    // 2. Panggil Logic Scan Utama (Yang sudah kita perbaiki tadi)
+                    // Kirim decodedText sebagai barcode, null sebagai qty (default 1), null image
+                    this.scanProduct(decodedText);
+                };
 
-            const onScanFailure = (error) => {
-                // Biarkan kosong agar console tidak penuh spam error saat mencari
-            };
+                const onScanFailure = (error) => {
+                    // Biarkan kosong agar console tidak penuh spam error saat mencari
+                };
 
-            // Inisialisasi Library
-            this.scannerObj = new Html5Qrcode("reader-modal");
+                // Inisialisasi Library
+                this.scannerObj = new Html5Qrcode("reader-modal");
 
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
-            // Mulai Kamera Belakang (Environment)
-            this.scannerObj.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
-                .catch(err => {
-                    console.error("Gagal start kamera:", err);
-                    alert("Gagal akses kamera. Pastikan izin diberikan.");
-                    this.scannerModalOpen = false;
-                });
-        });
-    },
-
-    // FUNGSI 2: STOP SCANNER (TUTUP MODAL)
-    stopScanner() {
-        if (this.scannerObj) {
-            this.scannerObj.stop().then(() => {
-                this.scannerObj.clear();
-                this.scannerModalOpen = false;
-            }).catch(err => {
-                console.log("Stop error:", err);
-                this.scannerModalOpen = false; // Paksa tutup meski error stop
+                // Mulai Kamera Belakang (Environment)
+                this.scannerObj.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+                    .catch(err => {
+                        console.error("Gagal start kamera:", err);
+                        alert("Gagal akses kamera. Pastikan izin diberikan.");
+                        this.scannerModalOpen = false;
+                    });
             });
-        } else {
-            this.scannerModalOpen = false;
-        }
-    },
+        },
 
-    // FUNGSI 3: INPUT MANUAL DARI MODAL
-    handleManualModalInput() {
-        if(this.tempManualCode.trim().length > 2) {
-            this.stopScanner(); // Tutup modal dulu
-            this.scanProduct(this.tempManualCode.trim()); // Proses kode
-        }
-    },
+        // FUNGSI 2: STOP SCANNER (TUTUP MODAL)
+        stopScanner() {
+            if (this.scannerObj) {
+                this.scannerObj.stop().then(() => {
+                    this.scannerObj.clear();
+                    this.scannerModalOpen = false;
+                }).catch(err => {
+                    console.log("Stop error:", err);
+                    this.scannerModalOpen = false; // Paksa tutup meski error stop
+                });
+            } else {
+                this.scannerModalOpen = false;
+            }
+        },
+
+        // FUNGSI 3: INPUT MANUAL DARI MODAL
+        handleManualModalInput() {
+            if(this.tempManualCode.trim().length > 2) {
+                this.stopScanner(); // Tutup modal dulu
+                this.scanProduct(this.tempManualCode.trim()); // Proses kode
+            }
+        },
 
 
         // ============================================================
