@@ -20,34 +20,30 @@
 
     {{-- 2. Konfigurasi Koneksi --}}
     <script>
-        // Cek apakah file berhasil diload
         if (typeof Pusher === 'undefined' || typeof Echo === 'undefined') {
-            alert("❌ File JS Gagal Load! Pastikan file pusher.min.js & echo.js ada di folder public/libs");
+            alert("❌ File JS Gagal Load!");
         } else {
-            // Setup Global
             window.Pusher = Pusher;
 
-            try {
-                window.Echo = new Echo({
+            window.Echo = new Echo({
                 broadcaster: 'reverb',
                 key: "{{ env('REVERB_APP_KEY') }}",
                 wsHost: window.location.hostname,
-                wsPort: 8081,
-                // wssPort: 8081, // <-- HAPUS atau KOMENTARI baris ini
 
-                // Matikan segala jenis keamanan (SSL/TLS)
+                // [PENTING] Pasang Port di KEDUANYA agar tidak lari ke 443
+                wsPort: 8081,
+                wssPort: 8081,
+
+                // [PENTING] Matikan paksa segala jenis keamanan SSL
                 forceTLS: false,
                 encrypted: false,
+                disableStats: true,
 
-                // HANYA izinkan 'ws' (jangan 'wss')
+                // [PENTING] Hanya izinkan protokol biasa (ws)
                 enabledTransports: ['ws'],
             });
 
-                console.log("🚀 Sancaka Realtime: SIAP (Script Manual di Head)");
-
-            } catch (err) {
-                console.error("❌ Error Config:", err);
-            }
+            console.log("🚀 Sancaka Realtime: Configured (Force WS:8081)");
         }
     </script>
     {{-- ========================================================= --}}
