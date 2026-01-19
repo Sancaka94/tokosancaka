@@ -3,10 +3,56 @@ function posSystem() {
         activeCategory: 'all', // Pindah ke sini agar reaktif
 
         init() {
+            // 1. Logic Kupon (Tetap)
             if(this.couponCode) {
                 this.couponMessage = 'Kupon terdeteksi! Masukkan barang untuk cek diskon.';
             }
-            this.listenForRemoteScan();
+
+            // 2. Logic Watcher (Tetap)
+            this.$watch('cart', () => { this.updateCartTotals(); });
+
+            // 3. [PERBAIKAN] TUNGGU ECHO DENGAN INTERVAL
+            // Kita cek setiap 500ms (setengah detik) apakah Echo sudah siap
+            let checkCount = 0;
+            const checkEcho = setInterval(() => {
+                if (typeof window.Echo !== 'undefined') {
+                    // BERHASIL: Echo sudah ada, matikan pengecekan & jalankan listener
+                    clearInterval(checkEcho);
+                    console.log("✅ Echo ditemukan. Mengaktifkan Listener...");
+                    this.listenForRemoteScan();
+                } else {
+                    // BELUM ADA: Tunggu lagi...
+                    checkCount++;
+                    console.log(`⏳ Menunggu Library Echo... (${checkCount})`);
+
+                    // Jika sudah 20x (10 detik) masih gagal, baru menyerah
+                    if(checkCount > 20) {
+                        clearInterval(checkEcho);
+                        console.error("❌ Gagal memuat Echo. Cek koneksi internet.");
+                        alert("Gagal koneksi ke server realtime. Cek internet Anda.");
+                    }
+                }
+            }, 500);
+        },
+
+        // --- FUNGSI DENGAR SINYAL DARI HP (REVERB) ---
+        listenForRemoteScan() {
+            // Tidak perlu cek typeof lagi di sini karena sudah dihandle di init()
+
+            // Listen ke channel 'pos-channel' dan event 'scanned'
+            window.Echo.channel('pos-channel')
+                .listen('.scanned', (e) => {
+                    console.log("📡 Terima Barcode dari HP:", e.barcode);
+
+                    // 1. Isi kolom search
+                    this.search = e.barcode;
+
+                    // 2. Mainkan bunyi
+                    this.playBeep('success');
+
+                    // 3. Eksekusi pencarian
+                    this.scanProduct();
+                });
         },
 
         // --- 1. STATE UI & UMUM ---
@@ -219,32 +265,6 @@ function posSystem() {
             }
         },
 
-        // --- FUNGSI DENGAR SINYAL DARI HP (REVERB) ---
-        listenForRemoteScan() {
-            console.log("Menunggu scan dari HP...");
-
-            // Cek apakah Echo sudah jalan
-            if (typeof Echo === 'undefined') {
-                console.error("Echo belum dimuat. Pastikan script di layout app.blade.php sudah benar.");
-                return;
-            }
-
-            // Listen ke channel 'pos-channel' dan event 'scanned'
-            // Nama event harus ada titik (.) di depannya: '.scanned'
-            Echo.channel('pos-channel')
-                .listen('.scanned', (e) => {
-                    console.log("Terima Barcode dari HP:", e.barcode);
-
-                    // 1. Isi kolom search dengan data dari HP
-                    this.search = e.barcode;
-
-                    // 2. Mainkan bunyi 'Beep' Sukses (agar kasir sadar)
-                    this.playBeep('success');
-
-                    // 3. Eksekusi pencarian produk otomatis
-                    this.scanProduct();
-                });
-        },
 
         // 2. FUNGSI UTAMA: SCAN BARCODE
         async scanProduct() {
