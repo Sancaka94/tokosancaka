@@ -2,265 +2,214 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
     <title>Scanner POS - Sancaka</title>
 
-    {{-- Kita gunakan CSS Manual agar ringan (Tanpa load Bootstrap berat) --}}
+    <link rel="icon" type="image/png" href="https://tokosancaka.com/storage/uploads/sancaka.png">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <style>
-        /* === RESET & LAYOUT === */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background-color: #000;
-            color: white;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden; /* Mencegah scroll */
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8fafc;
         }
 
-        /* === AREA KAMERA === */
+        /* Tombol Orange Khas Sancaka */
+        .btn-orange {
+            background-color: #f57224;
+            border-color: #f57224;
+            color: #fff;
+            font-weight: 600;
+        }
+        .btn-orange:hover {
+            background-color: #e05b10;
+            border-color: #e05b10;
+            color: #fff;
+        }
+
+        /* Area Scanner dengan Border Putus-putus Orange */
         #reader {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
-            position: absolute;
-            top: 0; left: 0; z-index: 1;
+            border: 3px dashed #fd7e14;
+            border-radius: 0.75rem;
+            background-color: #000; /* Background hitam agar video kontras */
+            overflow: hidden;
         }
 
-        /* Sembunyikan UI Bawaan Library yang jelek */
-        #reader__dashboard_section_csr span,
-        #reader__dashboard_section_swaplink,
-        #reader__scan_region img { display: none !important; }
-
-        /* === OVERLAY KOTAK FOKUS (GAYA SPX) === */
-        .scan-overlay {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 280px;
-            height: 150px; /* Persegi Panjang untuk Barcode */
-
-            /* Border Hijau Neon khas SPX */
-            border: 3px solid #00ff00;
-            border-radius: 12px;
-
-            /* Gelapkan area luar kotak agar fokus */
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.75);
-
-            z-index: 10;
-            pointer-events: none; /* Agar klik tembus ke bawah */
+        /* Indikator Status */
+        .status-card {
+            transition: all 0.3s;
         }
-
-        /* === LASER MERAH === */
-        .scan-line {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%;
-            height: 2px;
-            background: red;
-            box-shadow: 0 0 10px red; /* Efek glowing */
-            animation: scanMove 1.5s infinite linear;
-        }
-
-        @keyframes scanMove {
-            0% { top: 0; opacity: 0; }
-            50% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
-        }
-
-        /* === STATUS BADGE (ATAS) === */
-        .status-badge {
-            position: absolute;
-            top: 40px;
-            z-index: 20;
-            background: rgba(0,0,0,0.6);
-            border: 1px solid rgba(255,255,255,0.3);
-            backdrop-filter: blur(4px);
-            padding: 8px 20px;
-            border-radius: 30px;
-            font-size: 14px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-        }
-
-        /* === TOMBOL FLASH (BAWAH) === */
-        .flash-control {
-            position: absolute;
-            bottom: 50px;
-            z-index: 20;
-            background: rgba(255,255,255,0.15);
-            border: 1px solid rgba(255,255,255,0.5);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 50px;
-            backdrop-filter: blur(4px);
-            font-weight: bold;
-            cursor: pointer;
-            display: none; /* Hidden default, muncul via JS */
-            text-transform: uppercase;
-            font-size: 13px;
-            letter-spacing: 1px;
-            transition: background 0.2s;
-        }
-        .flash-control:active { background: rgba(255,255,255,0.3); }
-
     </style>
 </head>
 <body>
 
-    <div class="status-badge" id="statusText">
-        <span>📷</span> <span id="msg">Siap Scan Barcode...</span>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 pt-4 pb-0 text-center">
+                        <h4 class="fw-bold text-dark mb-0">Scanner POS Sancaka</h4>
+                        <p class="text-muted small">Arahkan kamera ke Barcode Barang</p>
+                    </div>
+
+                    <div class="card-body p-4">
+
+                        <div id="status-alert" class="alert alert-secondary d-flex align-items-center" role="alert">
+                            <i class="fas fa-camera me-2"></i>
+                            <div id="status-msg" class="fw-medium">Siap melakukan scan...</div>
+                        </div>
+
+                        <div class="position-relative mb-3">
+                            <div id="reader"></div>
+                        </div>
+
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="fas fa-barcode text-muted"></i></span>
+                            <input type="text" id="manual-input" class="form-control border-start-0" placeholder="Atau ketik barcode...">
+                            <button class="btn btn-orange" type="button" id="btn-manual">Kirim</button>
+                        </div>
+
+                    </div>
+                    <div class="card-footer bg-light text-center py-3">
+                        <small class="text-muted">Pastikan cahaya ruangan cukup terang.</small>
+                    </div>
+                </div>
+
+            </div>
+        </div>
     </div>
 
-    <div class="scan-overlay">
-        <div class="scan-line"></div>
-    </div>
+    <audio id="beep-success" src="https://tokosancaka.com/public/sound/beep.mp3" preload="auto"></audio>
+    <audio id="beep-fail" src="https://tokosancaka.biz.id/public/sound/beep-gagal.mp3" preload="auto"></audio>
 
-    <button id="flash-toggle" class="flash-control">🔦 Flash: OFF</button>
-
-    <div id="reader"></div>
-
-    <audio id="beepSound" src="https://tokosancaka.com/public/sound/beep.mp3"></audio>
-
-    {{-- Library Scanner --}}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <script>
-        // === KONFIGURASI ===
-        const routeProcess = "{{ route('scanner.process') }}"; // Pastikan route ini ada
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        document.addEventListener('DOMContentLoaded', function () {
+            // Konfigurasi
+            const routeProcess = "{{ route('scanner.process') }}";
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-        // Elemen UI
-        const statusEl = document.getElementById('statusText');
-        const msgEl = document.getElementById('msg');
-        const flashBtn = document.getElementById('flash-toggle');
-        const beep = document.getElementById('beepSound');
+            // Elemen UI
+            const statusAlert = document.getElementById('status-alert');
+            const statusMsg = document.getElementById('status-msg');
+            const beepSuccess = document.getElementById('beep-success');
+            const beepFail = document.getElementById('beep-fail');
+            const manualInput = document.getElementById('manual-input');
 
-        let isProcessing = false;
-        let html5QrCode = null;
+            let html5QrCode = null;
+            let isProcessing = false;
 
-        // --- 1. LOGIC SAAT BARCODE TERBACA ---
-        function onScanSuccess(decodedText, decodedResult) {
-            if (isProcessing) return; // Cegah spam
+            // --- FUNGSI UPDATE UI ---
+            function updateStatus(message, type = 'secondary') {
+                statusAlert.className = `alert alert-${type} d-flex align-items-center`;
+                statusMsg.innerText = message;
 
-            // Validasi Panjang (Filter Barcode Sampah)
-            if (decodedText.length < 5) return;
+                // Icon handling sederhana
+                let iconClass = 'fa-camera';
+                if(type === 'success') iconClass = 'fa-check-circle';
+                if(type === 'danger') iconClass = 'fa-times-circle';
+                if(type === 'warning') iconClass = 'fa-spinner fa-spin';
 
-            isProcessing = true;
+                statusAlert.querySelector('i').className = `fas ${iconClass} me-2`;
+            }
 
-            // Efek UI: Sukses
-            beep.play().catch(()=>{});
-            statusEl.style.borderColor = "#00ff00";
-            statusEl.style.color = "#00ff00";
-            msgEl.innerText = "🚀 Mengirim: " + decodedText;
+            // --- CORE PROCESS (Kirim Data ke Server) ---
+            async function processBarcode(barcode) {
+                if (isProcessing) return;
+                if (!barcode || barcode.length < 3) return;
 
-            // Kirim ke Laptop via Server
-            fetch(routeProcess, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": csrfToken
-                },
-                body: JSON.stringify({ barcode: decodedText })
-            })
-            .then(res => res.json())
-            .then(data => {
-                console.log("Sukses:", data);
-                // Jeda 1.5 detik
-                setTimeout(() => {
-                    resetUI();
-                }, 1500);
-            })
-            .catch(err => {
-                console.error("Error:", err);
-                msgEl.innerText = "❌ Gagal Kirim!";
-                statusEl.style.borderColor = "red";
-                statusEl.style.color = "red";
-                setTimeout(resetUI, 2000);
-            });
-        }
+                isProcessing = true;
+                updateStatus(`Memproses: ${barcode}...`, 'warning');
 
-        function resetUI() {
-            isProcessing = false;
-            msgEl.innerText = "Siap Scan Barcode...";
-            statusEl.style.borderColor = "rgba(255,255,255,0.3)";
-            statusEl.style.color = "white";
-        }
-
-        // --- 2. SETUP KAMERA (TURBO MODE ala SPX) ---
-        function startCamera() {
-            html5QrCode = new Html5Qrcode("reader");
-
-            const config = {
-                fps: 20, // Super Cepat
-                qrbox: { width: 250, height: 130 }, // Fokus area (Persegi Panjang)
-                aspectRatio: 1.0,
-                // Fitur Wajib: Hardware Acceleration
-                experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-                // Format Lengkap (Barcode Barang + QR)
-                formatsToSupport: [
-                    Html5QrcodeSupportedFormats.EAN_13,
-                    Html5QrcodeSupportedFormats.CODE_128,
-                    Html5QrcodeSupportedFormats.QR_CODE
-                ]
-            };
-
-            // Paksa Kamera Belakang
-            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-            .then(() => {
-                // Cek Kapabilitas Flash setelah kamera jalan
-                checkFlashCapability();
-            })
-            .catch(err => {
-                msgEl.innerText = "⚠️ Kamera Error: " + err;
-                statusEl.style.borderColor = "red";
-            });
-        }
-
-        // --- 3. LOGIC FLASH / SENTER ---
-        function checkFlashCapability() {
-            // Coba ambil track video yang sedang jalan
-            const videoTrack = html5QrCode.getRunningTrackCameraCapabilities();
-
-            // Cara lain deteksi via html5QrCode (Versi baru)
-            // Biasanya kita cek manual via applyVideoConstraints
-
-            // Kita munculkan saja tombolnya, nanti logic toggle yang menentukan jalan/tidaknya
-            flashBtn.style.display = 'block';
-
-            let isFlashOn = false;
-
-            flashBtn.addEventListener('click', () => {
-                if (html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
-                    isFlashOn = !isFlashOn;
-
-                    html5QrCode.applyVideoConstraints({
-                        advanced: [{ torch: isFlashOn }]
-                    })
-                    .then(() => {
-                        flashBtn.innerText = isFlashOn ? "🔦 Flash: ON" : "🔦 Flash: OFF";
-                        flashBtn.style.background = isFlashOn ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.15)";
-                        flashBtn.style.color = isFlashOn ? "black" : "white";
-                    })
-                    .catch(err => {
-                        console.log("Flash tidak support di HP ini", err);
-                        flashBtn.style.display = 'none'; // Sembunyikan jika gagal
+                try {
+                    const response = await fetch(routeProcess, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": csrfToken,
+                            "Accept": "application/json"
+                        },
+                        body: JSON.stringify({ barcode: barcode })
                     });
+
+                    const result = await response.json();
+
+                    if (response.ok) { // Sesuaikan dengan response server Anda
+                        beepSuccess.play();
+                        updateStatus(`Sukses: ${result.message || barcode}`, 'success');
+                        // Reset status setelah 2 detik
+                        setTimeout(() => {
+                            updateStatus('Siap Scan Barcode...', 'secondary');
+                            isProcessing = false;
+                        }, 2000);
+                    } else {
+                        throw new Error(result.message || 'Gagal memproses');
+                    }
+
+                } catch (error) {
+                    console.error(error);
+                    beepFail.play();
+                    updateStatus(`Gagal: ${error.message}`, 'danger');
+
+                    setTimeout(() => {
+                        updateStatus('Siap Scan Barcode...', 'secondary');
+                        isProcessing = false;
+                    }, 2000);
+                }
+            }
+
+            // --- ENGINE SCANNER (Setelan disamakan dengan Referensi 1) ---
+            function startScanner() {
+                html5QrCode = new Html5Qrcode("reader");
+
+                // Config disamakan dengan referensi awal (FPS 10, QRBox 250)
+                // Ini lebih stabil daripada FPS 20
+                const config = {
+                    fps: 10,
+                    qrbox: 250,
+                    aspectRatio: 1.0
+                };
+
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    (decodedText, decodedResult) => {
+                        // Callback sukses scan
+                        processBarcode(decodedText);
+                    },
+                    (errorMessage) => {
+                        // Error scanning frame, biarkan kosong agar log tidak penuh
+                    }
+                ).catch(err => {
+                    updateStatus("Kamera tidak dapat diakses", 'danger');
+                });
+            }
+
+            // --- INPUT MANUAL ---
+            document.getElementById('btn-manual').addEventListener('click', () => {
+                processBarcode(manualInput.value);
+                manualInput.value = '';
+            });
+
+            manualInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    processBarcode(manualInput.value);
+                    manualInput.value = '';
                 }
             });
-        }
 
-        // Jalankan Kamera
-        startCamera();
-
+            // Jalankan Scanner
+            startScanner();
+        });
     </script>
 </body>
 </html>
