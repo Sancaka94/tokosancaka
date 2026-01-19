@@ -297,85 +297,80 @@ function posSystem() {
         },
 
 
-        // 2. UPDATE FUNGSI SCAN AGAR BISA TERIMA PARAMETER
-        async scanProduct(manualCode = null) {
-            // Jika ada parameter manualCode (dari Pusher), pakai itu.
-            // Jika tidak, ambil dari kotak input search.
+        async scanProduct(manualCode = null, qtyOverride = null) {
+            // Gunakan kode manual/pusher atau dari input search
             let code = manualCode || this.search.trim();
 
-            // Validasi dasar
             if (!code || code.length < 3) return;
 
             this.isProcessing = true;
 
             try {
-                // Gunakan URL Helper Laravel
+                // 1. Ambil data produk dari server
                 const url = "{{ route('orders.scan-product') }}?code=" + encodeURIComponent(code);
-
-                console.log("LOG: Mencari produk ke:", url);
-
-                const response = await fetch(url, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                const contentType = response.headers.get("content-type");
-                if (!contentType || !contentType.includes("application/json")) {
-                    throw new Error("Respon Server Error (HTML). Cek Route.");
-                }
-
+                const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    // SUKSES KETEMU BARANG
-                    if (!manualCode) this.playBeep('success'); // Beep cuma kalau scan manual di laptop
-
                     let p = result.data;
 
-                    // --- [LOGIC POPUP INPUT JUMLAH (SAMA SEPERTI HP)] ---
-                    // Agar di Laptop juga muncul popup konfirmasi jumlah
-                    // Jika tidak mau popup (langsung masuk cart 1 pcs), hapus bagian Swal ini
+                    // AMBIL QTY DARI SCANNER (Jika null, default 1)
+                    let incomingQty = qtyOverride ? parseFloat(qtyOverride) : 1;
 
-                    const unitLabel = result.unit || 'pcs';
+                    // ============================================================
+                    // 🚀 LOGIKA CERDAS: CEK KERANJANG DULU
+                    // ============================================================
 
-                    // Cek tipe produk
-                    if (result.type === 'single') {
-                        // Langsung masuk keranjang 1 qty (Atau mau popup? Default: Langsung masuk biar cepat)
-                        this.addToCart(
-                            p.id, p.name, p.sell_price, p.stock, p.weight ?? 0,
-                            p.image ? `{{ asset('storage') }}/${p.image}` : null,
-                            false, 'all'
-                        );
+                    // Cari apakah produk ini SUDAH ADA di keranjang?
+                    let existingItem = this.cart.find(i => i.id === p.id); // Cari by ID (lebih akurat dari barcode)
 
-                        // Notifikasi Kecil
-                        const Toast = Swal.mixin({
-                            toast: true, position: 'top-end', showConfirmButton: false, timer: 3000
+                    if (existingItem) {
+                        // KASUS A: BARANG SUDAH ADA
+                        // JANGAN DI-REPLACE (=), TAPI DITAMBAH (+=)
+                        // Contoh: Awal 80. Scan masuk 5. Hasil = 80 + 5 = 85.
+
+                        let oldQty = parseFloat(existingItem.qty);
+                        existingItem.qty = oldQty + incomingQty;
+
+                        // Efek Visual (Toast)
+                        const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
+                        Toast.fire({ icon: 'success', title: `+${incomingQty} ${p.name} (Total: ${existingItem.qty})` });
+
+                    } else {
+                        // KASUS B: BARANG BARU (BELUM ADA DI KERANJANG)
+
+                        // 1. Masukkan ke keranjang (ini biasanya default qty 1)
+                        if (result.type === 'single') {
+                            this.addToCart(p.id, p.name, p.sell_price, p.stock, p.weight ?? 0, p.image, false, 'all');
+                        } else {
+                            let cartId = `${p.id}-VAR-${p.variant_id}`;
+                            this.processAddItem(cartId, p.name, p.sell_price, p.stock, p.weight ?? 0, p.image, p.variant_id);
+                        }
+
+                        // 2. TAPI... Kita harus paksa Qty sesuai inputan Scanner!
+                        // Karena fungsi addToCart bawaan biasanya cuma kasih 1.
+                        // Kita cari lagi item yang barusan dimasukkan, lalu update qty-nya.
+
+                        this.$nextTick(() => {
+                             let newItem = this.cart.find(i => i.id === p.id || i.id === `${p.id}-VAR-${p.variant_id}`);
+                             if(newItem) {
+                                 newItem.qty = incomingQty; // Set awal sesuai scan (misal langsung 100)
+                             }
                         });
-                        Toast.fire({ icon: 'success', title: p.name + ' Masuk Keranjang!' });
 
-                    } else if (result.type === 'variant') {
-                        // Kalau varian, otomatis pilih varian tersebut
-                        let cartId = `${p.id}-VAR-${p.variant_id}`;
-                        this.processAddItem(
-                            cartId, p.name, p.sell_price, p.stock, p.weight ?? 0,
-                            p.image ? `{{ asset('storage') }}/${p.image}` : null,
-                            p.variant_id
-                        );
-                         const Toast = Swal.mixin({
-                            toast: true, position: 'top-end', showConfirmButton: false, timer: 3000
-                        });
-                        Toast.fire({ icon: 'success', title: p.name + ' Masuk Keranjang!' });
+                        const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});
+                        Toast.fire({ icon: 'success', title: `${p.name} Masuk (${incomingQty})` });
                     }
+                    // ============================================================
 
-                    // Reset
+                    // Mainkan Beep & Reset Search
+                    if(!manualCode) this.playBeep('success');
                     this.search = '';
+                    this.updateCartTotals();
 
                 } else {
                     this.playBeep('error');
-                    console.warn("Produk tidak ditemukan:", code);
-                    // alert("Barang tidak ditemukan!");
+                    console.warn("Barang tidak ditemukan");
                 }
 
             } catch (error) {
