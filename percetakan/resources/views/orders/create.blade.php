@@ -14,37 +14,30 @@
     {{-- [BAGIAN BARU: KONEKSI SERVER REALTIME (SCANNER HP)]       --}}
     {{-- ========================================================= --}}
 
-    {{-- 1. Load Library Manual (Sesuai link yang bisa dibuka di browser Anda) --}}
+   {{-- LIBRARY JS (Tetap pakai file lokal yang sudah Anda download, aman) --}}
     <script src="https://tokosancaka.com/percetakan/public/libs/pusher.min.js"></script>
     <script src="https://tokosancaka.com/percetakan/public/libs/echo.js"></script>
 
-    {{-- 2. Konfigurasi Koneksi --}}
     <script>
-        if (typeof Pusher === 'undefined' || typeof Echo === 'undefined') {
-            alert("❌ File JS Gagal Load!");
-        } else {
-            window.Pusher = Pusher;
+        // Setup Pusher Official
+        window.Pusher = Pusher;
 
-            window.Echo = new Echo({
-                broadcaster: 'reverb',
-                key: "{{ env('REVERB_APP_KEY') }}",
-                wsHost: window.location.hostname,
+        window.Echo = new Echo({
+            broadcaster: 'pusher',
+            key: '2accb7f700717ceb9424', // <-- Key dari Anda
+            cluster: 'ap1',             // <-- Cluster Singapura
+            forceTLS: true              // <-- Wajib TRUE karena website Anda HTTPS
+        });
 
-                // [PENTING] Pasang Port di KEDUANYA agar tidak lari ke 443
-                wsPort: 8443,
-                wssPort: 8443,
+        console.log("🚀 Sancaka Realtime: Connected to Pusher.com (Singapore Cloud)");
 
-                // [PENTING] Matikan paksa segala jenis keamanan SSL
-                forceTLS: false,
-                encrypted: false,
-                disableStats: true,
-
-                // [PENTING] Hanya izinkan protokol biasa (ws)
-                enabledTransports: ['ws'],
-            });
-
-            console.log("🚀 Sancaka Realtime: Configured (Force WS:8081)");
-        }
+        // Debugging: Cek koneksi
+        window.Echo.connector.pusher.connection.bind('connected', () => {
+            console.log("✅ KONEKSI SUKSES! Siap menerima scan.");
+        });
+        window.Echo.connector.pusher.connection.bind('failed', () => {
+            console.error("❌ Koneksi Gagal.");
+        });
     </script>
     {{-- ========================================================= --}}
 
