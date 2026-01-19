@@ -23,16 +23,8 @@ use App\Http\Controllers\ScannerController; // <--- Import Controller Wajib Ada
 
 
 
-Route::post('/log-client-error', function (Request $request) {
-    // Ambil data dari JS
-    $message = $request->input('message');
-    $context = $request->input('context', []);
+Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
 
-    // Simpan ke laravel.log
-    Log::error("CLIENT-SIDE GPS ERROR: " . $message, $context);
-
-    return response()->json(['status' => 'logged']);
-})->name('log.client.error');
 
 // Sesuaikan middleware dengan kebutuhan admin panel Anda (misal: 'auth', 'admin')
 Route::middleware(['auth'])->prefix('admin/logs')->name('admin.logs.')->group(function () {
@@ -409,5 +401,4 @@ Route::get('/orders/scan-product', function () {
 });
 // ==================================================================
 
-Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
 
