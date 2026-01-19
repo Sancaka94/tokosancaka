@@ -16,6 +16,27 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    {{-- [MULAI: TAMBAHKAN INI UNTUK REALTIME SCANNER] --}}
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/laravel-echo/1.16.1/echo.iife.js"></script>
+
+    <script>
+        window.Pusher = Pusher;
+
+        window.Echo = new Echo({
+            broadcaster: 'reverb',
+            key: "{{ env('REVERB_APP_KEY') }}",
+            wsHost: "{{ env('REVERB_HOST', request()->getHost()) }}",
+            wsPort: {{ env('REVERB_PORT', 8080) }},
+            wssPort: {{ env('REVERB_PORT', 443) }},
+            forceTLS: {{ env('REVERB_SCHEME', 'http') === 'https' ? 'true' : 'false' }},
+            enabledTransports: ['ws', 'wss'],
+        });
+
+        console.log("Sancaka Realtime System Ready 🚀");
+    </script>
+    {{-- [AKHIR TAMBAHAN] --}}
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
