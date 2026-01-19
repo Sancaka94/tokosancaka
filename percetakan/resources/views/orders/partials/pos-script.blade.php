@@ -388,7 +388,80 @@ function posSystem() {
             }
         },
 
+        // 2. FUNGSI UTAMA: SCAN BARCODE
+        async scanProduct() {
+            let code = this.search.trim();
 
+            // Validasi dasar
+            if (!code) return;
+            if (code.length < 3) return; // Jangan scan jika terlalu pendek
+
+            this.isProcessing = true; // Indikator loading (jika ada)
+
+            try {
+                // Panggil API Backend (Gunakan encodeURIComponent untuk keamanan karakter)
+                let response = await fetch(`{{ route('orders.scan-product') }}?code=${encodeURIComponent(code)}`);
+                let result = await response.json();
+
+                if (result.status === 'success') {
+
+                    // --- [SUKSES] MAINKAN BEEP ---
+                    this.playBeep('success');
+
+                    let p = result.data;
+
+                    // LOGIKA 1: PRODUK TUNGGAL (SINGLE)
+                    if (result.type === 'single') {
+                        this.addToCart(
+                            p.id,
+                            p.name,
+                            p.sell_price,
+                            p.stock,
+                            p.weight ?? 0,
+                            p.image ? `{{ asset('storage') }}/${p.image}` : null,
+                            false,
+                            'all'
+                        );
+                    }
+                    // LOGIKA 2: PRODUK VARIAN (MULTI)
+                    else if (result.type === 'variant') {
+                        let cartId = `${p.id}-VAR-${p.variant_id}`;
+
+                        // Asumsi function processAddItem sudah Anda buat sebelumnya
+                        this.processAddItem(
+                            cartId,
+                            p.name,
+                            p.sell_price,
+                            p.stock,
+                            p.weight ?? 0,
+                            p.image ? `{{ asset('storage') }}/${p.image}` : null,
+                            p.variant_id
+                        );
+                    }
+
+                    // Reset kolom pencarian agar siap scan barang berikutnya
+                    this.search = '';
+
+                } else {
+                    // --- [GAGAL] MAINKAN BEEP ---
+                    // Produk tidak ditemukan di database
+                    this.playBeep('error');
+
+                    // Opsional: Kosongkan search jika ingin memaksa input ulang
+                    // this.search = '';
+                }
+
+            } catch (error) {
+                console.error("Scan Error:", error);
+
+                // --- [ERROR] MAINKAN BEEP ---
+                // Terjadi kesalahan server/koneksi
+                this.playBeep('error');
+
+            } finally {
+                this.isProcessing = false;
+            }
+        },
 
         async searchCustomerByName() {
             // [LOGIC BARU] Reset Status
