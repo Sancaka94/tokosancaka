@@ -53,6 +53,15 @@ class ProductController extends Controller
 
         // 3. Eksekusi Pagination (Gunakan withQueryString agar filter tidak hilang saat pindah halaman)
         $products = $query->paginate(10)->withQueryString();
+        
+        // --- TAMBAHAN KHUSUS ELECTRON (API) ---
+        // Jika permintaan datang dari aplikasi Desktop (JSON), kirim semua data
+        if ($request->wantsJson() || $request->is('api/*')) {
+            // Ambil semua produk (tanpa pagination) agar kasir offline lancar
+            $allProducts = $query->get(); 
+            return response()->json($allProducts);
+        }
+        // --------------------------------------
 
         return view('products.index', compact('products', 'categories'));
     }
@@ -348,6 +357,12 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
+        // Jika request dari Electron, return JSON
+        if (request()->wantsJson() || request()->is('api/*')) {
+            $product->load(['variants', 'category']);
+            return response()->json($product);
+        }
+        
         $product->load(['variants', 'category']);
         return view('products.show', compact('product'));
     }
@@ -526,5 +541,66 @@ class ProductController extends Controller
         } while ($exists); // Ulangi terus sampai nemu yang belum dipakai
 
         return $finalBarcode;
+    }
+    
+    /**
+     * API KHUSUS ELECTRON: Scan Barcode
+     */
+    public function scanProduct(Request $request)
+    {
+        $keyword = $request->code;
+
+        if (!$keyword) return response()->json(['status' => 'error', 'message' => 'Kode kosong'], 400);
+
+        // 1. Cek Varian
+        $variant = ProductVariant::with('product')
+            ->where('barcode', $keyword)->orWhere('sku', $keyword)->first();
+
+        if ($variant && $variant->product) {
+            return response()->json([
+                'status' => 'success', 'type' => 'variant',
+                'data' => [
+                    'id' => $variant->product_id, 'variant_id' => $variant->id,
+                    'name' => $variant->product->name . ' - ' . $variant->name,
+                    'price' => $variant->price, 'stock' => $variant->stock,
+                    'image' => $variant->product->image,
+                    'weight' => 0
+                ]
+            ]);
+        }
+
+        // 2. Cek Produk Utama
+        $product = Product::with('variants')
+            ->where('barcode', $keyword)->orWhere('sku', $keyword)->first();
+
+        if ($product) {
+            if ($product->has_variant) {
+                return response()->json(['status' => 'success', 'type' => 'choose_variant', 'data' => $product]);
+            }
+            return response()->json([
+                'status' => 'success', 'type' => 'single',
+                'data' => [
+                    'id' => $product->id, 'variant_id' => null,
+                    'name' => $product->name, 'price' => $product->sell_price,
+                    'stock' => $product->stock, 'image' => $product->image,
+                    'weight' => 0
+                ]
+            ]);
+        }
+
+        return response()->json(['status' => 'error', 'message' => 'Produk tidak ditemukan'], 404);
+    }
+    
+    // --- FUNGSI KHUSUS API ELECTRON (PASTI JSON) ---
+    public function apiList()
+    {
+        // Ambil semua produk aktif beserta kategorinya
+        // Menggunakan get() agar tidak terpotong pagination
+        $products = Product::with('category')
+                           ->where('stock_status', 'available') // Opsional: Cuma yg ada stok
+                           ->latest()
+                           ->get();
+
+        return response()->json($products);
     }
 }
