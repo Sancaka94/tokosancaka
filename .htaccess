@@ -4,6 +4,19 @@
     # Tambahkan baris ini untuk mengabaikan folder percetakan
     # RewriteCond %{REQUEST_URI} !^/percetakan
     # RewriteCond %{REQUEST_URI} !^/indahcargo
+    
+    # --- BAGIAN PENGECUALIAN (Exclusion List) ---
+    
+    # 1. Bebaskan folder bisnis.pro
+    RewriteRule ^bisnis\.pro - [L,NC]
+
+    # 2. Bebaskan folder tokosancaka.biz.id (TAMBAHAN BARU)
+    RewriteRule ^tokosancaka\.biz\.id - [L,NC]
+    
+    # 3. Bebaskan folder sancaka.my.id (BARU)
+    RewriteRule ^sancaka\.my\.id - [L,NC]
+
+    # --------------------------------------------
 
     # Arahkan semua request ke folder public
     RewriteCond %{REQUEST_URI} !^/public/
