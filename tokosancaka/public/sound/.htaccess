@@ -1,9 +1,0 @@
-# Izinkan akses file audio
-<FilesMatch "\.(mp3|wav|ogg)$">
-    Require all granted
-</FilesMatch>
-
-# Pastikan tipe konten benar
-AddType audio/mpeg .mp3
-AddType audio/wav .wav
-AddType audio/ogg .ogg
