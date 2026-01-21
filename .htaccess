@@ -15,6 +15,9 @@
     
     # 3. Bebaskan folder sancaka.my.id (BARU)
     RewriteRule ^sancaka\.my\.id - [L,NC]
+    
+    # 4. Bebaskan folder spx.tokosancaka.com (BARU)
+    RewriteRule ^spx\.tokosancaka\.com - [L,NC]
 
     # --------------------------------------------
 
