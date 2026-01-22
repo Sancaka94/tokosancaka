@@ -20,6 +20,8 @@
     RewriteRule ^spx\.tokosancaka\.com - [L,NC]
 
     # --------------------------------------------
+    
+    RewriteRule ^scrapper($|/) - [L]
 
     # Arahkan semua request ke folder public
     RewriteCond %{REQUEST_URI} !^/public/

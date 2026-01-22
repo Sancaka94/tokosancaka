@@ -47,9 +47,12 @@ use App\Http\Controllers\DokuController;
 use App\Http\Controllers\Api\OngkirApiController; // <-- IMPORT
 use App\Http\Controllers\Customer\PesananController as CustomerPesananController; // ALIAS
 use App\Http\Controllers\TelegramPpobController;
+use App\Http\Controllers\Api\ScraperController;
 
 // Website fontend WA Integration
 //use App\Http\Controllers\WhatsappController;
+
+Route::match(['post', 'options'], '/import-scraper', [ScraperController::class, 'store']);
 
 
 Route::post('/telegram/webhook', [TelegramPpobController::class, 'handle']);

@@ -37,6 +37,8 @@ class Post extends Model
         'featured_image',
 
         'status',
+        
+        'original_url', // <--- TAMBAHKAN INI
 
     ];
 
