@@ -547,34 +547,77 @@ class OrderController extends Controller
 
         try {
             // ============================================================
-            // LANGKAH 1: KALKULASI HARGA, BERAT & CEK STOK
+            // LANGKAH 1: KALKULASI HARGA, BERAT & CEK STOK (DIPERBAIKI UNTUK VARIAN)
             // ============================================================
             $subtotal = 0;
             $finalCart = [];
             $totalWeight = 0;
 
             foreach ($cartItems as $item) {
-                // Lock for update agar stok tidak balapan
-                $product = Product::lockForUpdate()->find($item['id']);
+                // Cek apakah item ini memiliki variant_id
+                $isVariant = isset($item['variant_id']) && !empty($item['variant_id']);
 
-                if (!$product) throw new \Exception("Produk ID {$item['id']} tidak ditemukan.");
-                if ($product->stock < $item['qty']) throw new \Exception("Stok '{$product->name}' kurang (Sisa: {$product->stock}).");
+                $product = null;
+                $variant = null;
+                $qty = $item['qty'];
 
-                // PERBAIKAN: Gunakan ceil() agar selalu bulat ke atas (Toko tidak rugi)
-                $lineTotal = ceil($product->sell_price * $item['qty']);
+                if ($isVariant) {
+                    // --- LOGIKA JIKA PILIH VARIANT ---
+                    $variant = ProductVariant::lockForUpdate()->find($item['variant_id']);
+
+                    if (!$variant) throw new \Exception("Varian Produk ID {$item['variant_id']} tidak ditemukan.");
+
+                    // Ambil Induk Produknya
+                    $product = Product::find($variant->product_id); // Asumsi ada relasi product_id
+
+                    // Cek Stok Varian
+                    if ($variant->stock < $qty) {
+                         throw new \Exception("Stok Varian '{$product->name} - {$variant->name}' kurang (Sisa: {$variant->stock}).");
+                    }
+
+                    // Gunakan Harga Varian
+                    $priceToUse = $variant->price;
+
+                    // Siapkan Nama untuk disimpan (Misal: Kemeja (Merah XL))
+                    $nameToStore = $product->name . ' (' . $variant->name . ')';
+
+                } else {
+                    // --- LOGIKA JIKA PRODUK BIASA (SINGLE) ---
+                    $product = Product::lockForUpdate()->find($item['id']);
+
+                    if (!$product) throw new \Exception("Produk ID {$item['id']} tidak ditemukan.");
+
+                    // Cek Stok Produk Utama
+                    if ($product->stock < $qty) {
+                        throw new \Exception("Stok '{$product->name}' kurang (Sisa: {$product->stock}).");
+                    }
+
+                    // Gunakan Harga Produk Utama
+                    $priceToUse = $product->sell_price;
+                    $nameToStore = $product->name;
+                }
+
+                // Hitung Subtotal (Bulatkan ke atas)
+                $lineTotal = ceil($priceToUse * $qty);
                 $subtotal += $lineTotal;
 
-                $weightPerItem = ($product->weight > 0) ? $product->weight : 5;
-                $totalWeight += ($weightPerItem * $item['qty']);
+                // Hitung Berat
+                $weightPerItem = ($product->weight > 0) ? $product->weight : 5; // Berat ikut induk
+                $totalWeight += ($weightPerItem * $qty);
 
+                // Masukkan ke array finalCart untuk diproses di langkah penyimpanan
                 $finalCart[] = [
-                    'product'  => $product,
-                    'qty'      => $item['qty'],
+                    'type'     => $isVariant ? 'variant' : 'single',
+                    'product'  => $product,      // Object Product Utama
+                    'variant'  => $variant,      // Object Variant (null jika single)
+                    'name_db'  => $nameToStore,  // Nama yang sudah digabung
+                    'price_db' => $priceToUse,   // Harga yang benar
+                    'qty'      => $qty,
                     'subtotal' => $lineTotal
                 ];
             }
 
-            if ($totalWeight < 1000) $totalWeight = 1000; // Min 1kg
+            if ($totalWeight < 1000) $totalWeight = 1000;
 
             // Hitung Diskon Kupon
             $discount = 0;
