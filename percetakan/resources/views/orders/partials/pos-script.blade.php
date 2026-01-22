@@ -207,7 +207,10 @@ function posSystem() {
                     let newQty = total / price;
 
                     // GUNAKAN PRESISI TINGGI (4 desimal) agar Rupiah tidak meleset
-                    item.qty = parseFloat(newQty.toFixed(4));
+                    // Membulatkan ke BAWAH di 4 desimal.
+                    // 2.142857... menjadi 2.1428.
+                    // 2.1428 x 7000 = 14.999,6 -> Backend akan membulatkan (ceil) ini kembali ke 15.000 PAS.
+                    item.qty = Math.floor(newQty * 10000) / 10000;
                 }
             }
 
