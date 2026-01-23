@@ -344,7 +344,7 @@ width: 22px;
 
     }
 
-    
+
 
     .address-search-container .form-select,
 
@@ -364,7 +364,7 @@ width: 22px;
 
     }
 
-    
+
 
     .address-search-container .results-table {
 
@@ -377,7 +377,7 @@ width: 22px;
     }
 
     /* ===== AKHIR STYLING FITUR PENCARIAN ALAMAT BARU ===== */
-    
+
 /* Mengubah tampilan Modal */
     #cekOngkirModal .modal-content {
         border-radius: 0.75rem; /* 12px */
@@ -462,7 +462,7 @@ width: 22px;
     /* Kustomisasi Card Hasil */
     #cost-results-container .list-group-item {
         /* [PERBAIKAN] Paksa background putih (hilangkan merah) */
-        background-color: #ffffff !important; 
+        background-color: #ffffff !important;
         border-bottom: 1px solid #e5e7eb; /* Gray-200 */
     }
     #cost-results-container .list-group-item:last-child {
@@ -482,35 +482,35 @@ width: 22px;
         padding: 0.25rem 0.75rem;
         border-radius: 0.375rem;
     }
-    
+
     /* === TAMBAHKAN BLOK INI === */
     /* Perbaikan Z-Index Autocomplete */
     #cekOngkirModal #origin-results,
     #cekOngkirModal #destination-results {
         /* z-index modal Bootstrap adalah 1055 */
         /* Kita buat 1056 agar muncul di atas modal */
-        z-index: 1056 !important; 
+        z-index: 1056 !important;
     }
-    
+
     /* === TAMBAHKAN BLOK INI === */
     /* Perbaikan Teks Putih saat Hover */
     #cost-results-container .list-group-item:hover {
         /* Ganti background hover menjadi abu-abu netral */
-        background-color: #f8f9fa !important; 
+        background-color: #f8f9fa !important;
     }
-    
+
     #cost-results-container .list-group-item:hover h6,
     #cost-results-container .list-group-item:hover small {
         /* Paksa warna teks (nama layanan & estimasi) tetap gelap */
-        color: #212529 !important; 
+        color: #212529 !important;
     }
-    
+
     #cost-results-container .list-group-item:hover h5 {
         /* Paksa warna harga tetap hijau */
-        color: #198754 !important; 
+        color: #198754 !important;
     }
     /* === AKHIR BLOK TAMBAHAN === */
-    
+
 </style>
 
 @endpush
@@ -528,7 +528,7 @@ width: 22px;
         <h1 class="display-4 fw-bold">Solusi Pengiriman Terlengkap dan Terpercaya</h1>
 
         <p class="lead mt-3 col-lg-8 mx-auto">Kirim paket ke seluruh Indonesia dengan mudah, cepat, dan aman bersama Sancaka Express.</p>
-        
+
 
     </div>
 
@@ -1000,7 +1000,7 @@ width: 22px;
         <p class="text-lg text-muted mb-5 text-center">Layanan pembayaran tagihan bulanan, pulsa, paket data, PDAM , hingga top up game terlengkap dan Harga Terbaik.</p>
 
         <div class="row g-4 justify-content-center">
-            
+
             <div class="col-6 col-md-4 col-lg-2">
                 <div class="partner-logo-card">
                     <img src="https://tokosancaka.com/storage/logo-ppob/pln.png" alt="PLN" loading="lazy">
@@ -1354,7 +1354,7 @@ width: 22px;
 
             </div>
 
-            
+
 
             <!-- Borzo -->
 
@@ -1372,7 +1372,7 @@ width: 22px;
 
             </div>
 
-            
+
 
             <!-- GoSend -->
 
@@ -1390,7 +1390,7 @@ width: 22px;
 
             </div>
 
-            
+
 
             <!-- GrabExpress -->
 
@@ -1408,7 +1408,7 @@ width: 22px;
 
             </div>
 
-            
+
 
         </div>
 
@@ -1800,6 +1800,70 @@ width: 22px;
 
 </section>
 
+<section id="blog-grid" class="section bg-white">
+    <div class="container">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold m-0 text-primary">Berita & Informasi Terkini</h4>
+            <a href="{{ route('blog.posts.index') }}" class="text-decoration-none small fw-bold">Lihat Semua <i class="fas fa-arrow-right"></i></a>
+        </div>
+
+        <div class="row g-3"> @if(isset($latestPosts) && count($latestPosts) > 0)
+                @foreach($latestPosts as $post)
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card h-100 border-0 shadow-sm overflow-hidden position-relative" style="border-radius: 10px; transition: transform 0.2s;">
+
+                        <div style="height: 140px; overflow: hidden; position: relative;">
+                            <img src="{{ asset('storage/' . $post->featured_image) }}"
+                                 class="w-100 h-100"
+                                 style="object-fit: cover;"
+                                 alt="{{ $post->title }}"
+                                 onerror="this.src='https://placehold.co/300x200/eee/999?text=No+Image'">
+
+                            <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-2 shadow-sm" style="font-size: 0.65rem;">
+                                {{ $post->category->name ?? 'Info' }}
+                            </span>
+                        </div>
+
+                        <div class="card-body p-3 d-flex flex-column">
+                            <h6 class="card-title fw-bold mb-2 text-dark" style="font-size: 0.9rem; line-height: 1.3; min-height: 2.6em;">
+                                <a href="{{ route('blog.posts.show', $post->slug) }}" class="text-decoration-none text-dark stretched-link">
+                                    {{ Str::limit($post->title, 45) }}
+                                </a>
+                            </h6>
+
+                            <div class="mt-auto d-flex align-items-center text-muted" style="font-size: 0.7rem;">
+                                <div class="d-flex align-items-center me-3">
+                                    <i class="fas fa-user-circle me-1"></i>
+                                    <span class="text-truncate" style="max-width: 60px;">{{ $post->user->name ?? 'Admin' }}</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <i class="far fa-clock me-1"></i>
+                                    <span>{{ $post->created_at->diffForHumans() }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                @endforeach
+            @else
+                <div class="col-12 text-center py-4">
+                    <p class="text-muted small">Belum ada berita terbaru.</p>
+                </div>
+            @endif
+
+        </div>
+    </div>
+</section>
+
+<style>
+    #blog-grid .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+</style>
+
 
 
 <!-- Kontak & Peta Section -->
@@ -1861,7 +1925,7 @@ width: 22px;
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4 p-lg-5">
-                
+
                 <form id="shipping-form">
                     @csrf
                     <div class="row g-4">
@@ -1919,7 +1983,7 @@ width: 22px;
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="col-12 d-flex align-items-end">
                             <div class="form-check form-switch fs-6 mt-2">
                                 <input class="form-check-input" type="checkbox" id="insurance" name="insurance">
@@ -1929,7 +1993,7 @@ width: 22px;
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="d-grid mt-4">
                         <button type="submit" class="btn btn-primary btn-lg" id="submit-button">
                             <span id="btn-text">Cek Ongkos Kirim</span>
@@ -1937,7 +2001,7 @@ width: 22px;
                         </button>
                     </div>
                 </form>
-                
+
                 <div id="cost-results-container" class="mt-4"></div>
             </div>
         </div>
@@ -1991,7 +2055,7 @@ width: 22px;
 
 document.addEventListener('DOMContentLoaded', function() {
 
-    
+
 
     // Logika Tombol Scroll to Top (tetap sama)
 
@@ -2271,7 +2335,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     });
 
-    
+
 
     const fetchAndRenderDesa = async (page = 1) => {
 
@@ -2279,7 +2343,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!districtId) return;
 
-        
+
 
         wilayahResultsContainer.innerHTML = `<div class="text-center p-4">Memuat data... <div class="spinner-border spinner-border-sm ms-2"></div></div>`;
 
