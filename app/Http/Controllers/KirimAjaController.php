@@ -72,9 +72,9 @@ class KirimAjaController extends Controller
 
                 // LOGGING CHECK AWB
                 if (!empty($awb)) {
-                    Log::info("[WEBHOOK-KA] 🔍 DATA CHECK | Order: $orderId | AWB Ditemukan: $awb");
+                    Log::info("[WEBHOOK-KA] ЁЯФН DATA CHECK | Order: $orderId | AWB Ditemukan: $awb");
                 } else {
-                    Log::warning("[WEBHOOK-KA] ⚠️ DATA CHECK | Order: $orderId | AWB TIDAK ADA di payload ini.");
+                    Log::warning("[WEBHOOK-KA] тЪая╕П DATA CHECK | Order: $orderId | AWB TIDAK ADA di payload ini.");
                 }
 
                 // Ambil Waktu & Convert ke WIB
@@ -116,47 +116,67 @@ class KirimAjaController extends Controller
                     Log::info("[WEBHOOK-KA] Updated Marketplace Order: $orderId");
                 }
 
-                // 1.B. Cek Pesanan Manual (SCK) - Direct DB Update
-                $cekPesanan = DB::table('Pesanan')->where('nomor_invoice', $orderId)->first();
-                if ($cekPesanan) {
-                    $foundInMainDB = true;
-                    $updateData = ['updated_at' => now()];
+                // =========================================================================
+            // 🔥🔥🔥 INI BAGIAN YANG ANDA GANTI / PASTE 🔥🔥🔥
+            // =========================================================================
+            
+            // 1.B. Cek Pesanan Manual (SCK) - Direct DB Update
+            $cekPesanan = DB::table('Pesanan')->where('nomor_invoice', $orderId)->first();
+            if ($cekPesanan) {
+                $foundInMainDB = true;
+                $updateData = ['updated_at' => now()];
 
-                    // [FIX LOGIKA] FORCE UPDATE RESI
-                    // Timpa kolom 'resi' jika ada AWB baru dari API
-                    if ($awb) {
-                        $updateData['resi'] = $awb;
+                // [FIX LOGIKA] FORCE UPDATE RESI
+                if ($awb) {
+                    $updateData['resi'] = $awb;
+                }
+
+                // ---------------------------------------------------------
+                // 1. UPDATE STATUS (Hanya jika status berubah)
+                // ---------------------------------------------------------
+                if ($statusPesananIndo && $cekPesanan->status !== $statusPesananIndo) {
+                    $updateData['status'] = $statusPesananIndo;
+                    if (\Schema::hasColumn('Pesanan', 'status_pesanan')) {
+                        $updateData['status_pesanan'] = $statusPesananIndo;
                     }
 
-                    if ($statusPesananIndo && $cekPesanan->status !== 'Selesai') {
-                        $updateData['status'] = $statusPesananIndo;
-                        if (\Schema::hasColumn('Pesanan', 'status_pesanan')) {
-                            $updateData['status_pesanan'] = $statusPesananIndo;
+                    // Timestamp logic
+                    if ($method === 'shipped_packages' && $shippedAt) $updateData['shipped_at'] = Carbon::parse($shippedAt)->timezone('Asia/Jakarta');
+                    elseif ($method === 'finished_packages' && $finishedAt) $updateData['finished_at'] = Carbon::parse($finishedAt)->timezone('Asia/Jakarta');
+                    elseif (isset($timestampMap[$method])) $updateData[$timestampMap[$method]] = $updateTime;
+
+                    // Eksekusi Update Status
+                    DB::table('Pesanan')->where('nomor_invoice', $orderId)->update($updateData);
+                    Log::info("[WEBHOOK-KA] Updated Pesanan Manual: $orderId -> $statusPesananIndo");
+                }
+
+                // ---------------------------------------------------------
+                // 2. SIMPAN KEUANGAN (DIPISAH DARI LOGIKA STATUS)
+                // ---------------------------------------------------------
+                // Jalankan INI jika webhook adalah 'finished_packages' atau status 'Selesai'.
+                // KITA COPOT SYARAT "&& $cekPesanan->status !== 'Selesai'" AGAR TETAP JALAN.
+                if ($statusPesananIndo === 'Selesai' || $method === 'finished_packages') {
+                    try {
+                        Log::info("[WEBHOOK-KA] 🚀 Memicu Simpan Keuangan untuk: $orderId");
+                        
+                        $pesananModel = Pesanan::where('nomor_invoice', $orderId)->first();
+                        
+                        if ($pesananModel) {
+                            // Panggil fungsi di AdminController
+                            // Pastikan method di AdminController namanya 'simpanKeuangan' (tanpa Ke)
+                            \App\Http\Controllers\Admin\PesananController::simpanKeuangan($pesananModel);
+                            Log::info("[WEBHOOK-KA] 💰 Keuangan Manual Berhasil Diproses.");
+                        } else {
+                            Log::error("[WEBHOOK-KA] Model Pesanan tidak ditemukan saat mau catat keuangan.");
                         }
-
-                        // Timestamp
-                        if ($method === 'shipped_packages' && $shippedAt) $updateData['shipped_at'] = Carbon::parse($shippedAt)->timezone('Asia/Jakarta');
-                        elseif ($method === 'finished_packages' && $finishedAt) $updateData['finished_at'] = Carbon::parse($finishedAt)->timezone('Asia/Jakarta');
-                        elseif (isset($timestampMap[$method])) $updateData[$timestampMap[$method]] = $updateTime;
-
-                        // Eksekusi Update
-                        DB::table('Pesanan')->where('nomor_invoice', $orderId)->update($updateData);
-                        Log::info("[WEBHOOK-KA] Updated Pesanan Manual: $orderId -> $statusPesananIndo");
-
-                        // Keuangan Manual
-                        if ($statusPesananIndo === 'Selesai' && $cekPesanan->status !== 'Selesai') {
-                            try {
-                                $pesananModel = Pesanan::where('nomor_invoice', $orderId)->first();
-                                if ($pesananModel) {
-                                    \App\Http\Controllers\Admin\PesananController::simpanKeuangan($pesananModel);
-                                    Log::info("[WEBHOOK-KA] 💰 Keuangan Manual Disimpan.");
-                                }
-                            } catch (\Throwable $th) {
-                                Log::error("[WEBHOOK-KA] Gagal Catat Keuangan: " . $th->getMessage());
-                            }
-                        }
+                    } catch (\Throwable $th) {
+                        Log::error("[WEBHOOK-KA] ❌ Gagal Catat Keuangan: " . $th->getMessage());
                     }
                 }
+            }
+            // =========================================================================
+            // 🔥🔥🔥 AKHIR BAGIAN YANG ANDA PASTE 🔥🔥🔥
+            // =========================================================================
 
                 // 1.C. Cek OrderMarketplace (Model Lain)
                 $orderMarketplace = OrderMarketplace::where('invoice_number', $orderId)->first();
@@ -204,10 +224,10 @@ class KirimAjaController extends Controller
                                     ->where('id', $orderPercetakan->id)
                                     ->update($updateDataB);
 
-                                Log::info("[WEBHOOK-KA] ✅ Updated DB PERCETAKAN: $orderId -> $statusGeneral");
+                                Log::info("[WEBHOOK-KA] тЬЕ Updated DB PERCETAKAN: $orderId -> $statusGeneral");
                             }
                         } else {
-                            Log::warning("[WEBHOOK-KA] ⚠️ Order ID tidak ditemukan di Sancaka Utama maupun Percetakan: $orderId");
+                            Log::warning("[WEBHOOK-KA] тЪая╕П Order ID tidak ditemukan di Sancaka Utama maupun Percetakan: $orderId");
                         }
 
                     } catch (\Exception $e) {

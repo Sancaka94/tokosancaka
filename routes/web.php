@@ -100,7 +100,7 @@ use App\Http\Controllers\SellerRegisterController;
 use App\Http\Controllers\SellerReviewController;
 
 // Website fontend WA Integration
-use App\Http\Controllers\WhatsappController;
+//use App\Http\Controllers\WhatsappController;
 
 //Tools Broadcast Pesan WA
 use App\Http\Controllers\BroadcastController;

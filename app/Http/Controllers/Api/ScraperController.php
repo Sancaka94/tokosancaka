@@ -12,63 +12,61 @@ class ScraperController extends Controller
 {
     public function store(Request $request)
     {
-        // 1. VALIDASI DATA MASUK
-        if (!$request->url || !$request->title) {
-            return response()->json(['status' => 'error', 'message' => 'Data incomplete'], 400);
-        }
+        // 1. LOG AWAL (CCTV PINTU MASUK)
+        Log::emergency("🔔 [START] Request masuk dari: " . $request->ip());
 
-        // 2. CEK DUPLIKAT BERDASARKAN JUDUL (FITUR BARU)
-        // Kita cek apakah judul persis sama sudah ada di database?
-        $existingPost = Post::where('title', $request->title)->first();
+        // --- INI BAGIAN PENTING: KITA INTIP ISI DATANYA ---
+        // Kita catat semua data mentah yang dikirim JS ke dalam Log
+        // Log::info("📦 DATA MENTAH DITERIMA:", $request->all()); 
+        // --------------------------------------------------
 
-        if ($existingPost) {
-            // JIKA ADA: Catat di log dan kembalikan respon 'skipped'
-            Log::warning("⛔ [Scraper] DITOLAK: Judul Duplikat - '{$request->title}' sudah ada (ID: {$existingPost->id})");
-            
-            return response()->json([
-                'status' => 'skipped', 
-                'message' => 'Artikel ditolak karena judul sudah ada di database.',
-                'data' => $request->title
-            ], 200); // Tetap return 200 OK agar Scraper di browser tidak menganggap ini error koneksi
-        }
-
-        // 3. JIKA JUDUL AMAN (BELUM ADA), LANJUT SIMPAN
         try {
-            Log::info('📥 [Scraper] Memproses Artikel Baru: ' . $request->title);
+            // 2. SECURITY CHECK
+            $secretKey = 'SancakaRahasia123';
+            if ($request->header('X-API-KEY') !== $secretKey) {
+                Log::warning("⛔ [AUTH] Kunci Salah!");
+                throw new \Exception("Akses Ditolak: API Key Salah");
+            }
 
-            // Data Default
-            $defaultUserId = 4; 
-            $defaultCategoryId = 1; 
+            // 3. VALIDASI INPUT
+            // Gunakan null coalescing operator (??) untuk mencegah error jika key tidak ada
+            $judulBersih = trim($request->input('title') ?? '');
+            $urlBersih   = trim($request->input('url') ?? '');
 
-            // Simpan Data Baru
-            // Kita gunakan updateOrCreate berdasarkan URL untuk jaga-jaga
-            // Tapi karena judul sudah dicek di atas, ini kemungkinan besar akan create baru
-            $post = Post::updateOrCreate(
-                [
-                    'original_url' => $request->url 
-                ],
-                [
-                    'user_id'      => $defaultUserId,
-                    'category_id'  => $defaultCategoryId,
-                    'title'        => $request->title,
-                    'slug'         => Str::slug($request->title) . '-' . rand(1000, 9999),
-                    'content'      => $request->content,
-                    'status'       => 'published',
-                    'created_at'   => now(),
-                    'updated_at'   => now(),
-                ]
-            );
+            // Debugging Khusus Validasi
+            if (empty($judulBersih)) {
+                Log::error("❌ Judul Kosong! Data yang terbaca: " . json_encode($request->all()));
+            }
 
-            Log::info("✅ [Scraper] BERHASIL DISIMPAN: ID {$post->id} - {$post->title}");
+            if (empty($judulBersih) || empty($urlBersih) || $judulBersih === 'Gagal' || $judulBersih === 'Error') {
+                Log::warning("⚠️ [VALIDASI] Gagal. Judul: '$judulBersih', URL: '$urlBersih'");
+                return response()->json(['status' => 'error', 'message' => 'Data Invalid/Kosong'], 400);
+            }
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Artikel berhasil masuk database!',
-                'data' => $post->title
-            ]);
+            // 4. CEK DUPLIKAT
+            $existingPost = Post::where('title', $judulBersih)->first();
+            if ($existingPost) {
+                Log::info("⏭️ [SKIP] Duplikat: $judulBersih");
+                return response()->json(['status' => 'skipped', 'message' => 'Sudah ada.'], 200); 
+            }
+
+            // 5. SIMPAN
+            $post = new Post();
+            $post->user_id      = 4;
+            $post->category_id  = 1;
+            $post->title        = $judulBersih;
+            $post->slug         = Str::slug($judulBersih) . '-' . rand(100, 999);
+            $post->content      = $request->input('content') ?? '';
+            $post->original_url = $urlBersih;
+            $post->status       = 'published';
+            $post->save();
+
+            Log::info("✅ [SUCCESS] Tersimpan ID: {$post->id}");
+
+            return response()->json(['status' => 'success', 'message' => 'Berhasil'], 200);
 
         } catch (\Exception $e) {
-            Log::error("❌ [Scraper] ERROR SYSTEM: " . $e->getMessage());
+            Log::error("❌ [ERROR SYSTEM] " . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }

@@ -2,7 +2,9 @@
 
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 use App\Http\Middleware\RoleMiddleware;
+
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\EmailController;
 use App\Http\Controllers\Admin\SpxScanController;
@@ -22,7 +24,6 @@ use App\Http\Controllers\WilayahController;
 use App\Http\Controllers\SellerRegisterController;
 use App\Http\Controllers\CustomerOrderController;
 use App\Services\KiriminAjaService;
-use Illuminate\Http\Request;
 use App\Http\Controllers\CekOngkirController;
 use App\Http\Controllers\TrackingController; 
 use App\Http\Controllers\Admin\PesananController as AdminPesananController;
@@ -91,8 +92,8 @@ use App\Http\Controllers\WhatsappController;
 // WHATSAPP INTEGRATION
 // ==========================
 
-Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp.index');
-Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
+//Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp.index');
+//Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
 
 
 

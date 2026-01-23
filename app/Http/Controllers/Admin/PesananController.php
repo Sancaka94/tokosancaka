@@ -372,12 +372,17 @@ class PesananController extends Controller
                         'resi_set' => $finalResi
                     ]);
 
-                    // 9. Catat Keuangan
+                    // =========================================================================
+                    // HAPUS ATAU KOMENTARI BAGIAN INI DI PesananController.php method store()
+                    // =========================================================================
+                    
+                    /* // 9. Catat Keuangan  <-- HAPUS INI
                     if (method_exists($this, 'simpanKeKeuangan')) {
-                        $this->simpanKeKeuangan($pesanan);
+                        $this->simpanKeuangan($pesanan);
                     } else {
-                        self::simpanKeKeuangan($pesanan);
+                        self::simpanKeuangan($pesanan);
                     }
+                    */
 
                     if (isset($kiriminResponse['custom_warning'])) {
                         session()->flash('warning', $kiriminResponse['custom_warning']);
@@ -479,7 +484,7 @@ class PesananController extends Controller
 
     public function updateStatus(Request $request, $resi)
     {
-        $request->validate(['status' => 'required|string|in:Terkirim,Batal,Diproses,Menunggu Pickup, Kadaluarsa, Gagal Bayar']); // Tambahkan status lain jika perlu
+        $request->validate(['status' => 'required|string|in:Terkirim,Batal,Diproses,Menunggu Pickup, Kadaluarsa, Gagal Bayar, Selesai']); // Tambahkan status lain jika perlu
         $pesanan = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->firstOrFail();
         // Pertimbangkan validasi alur status (misal: tidak bisa ubah dari Terkirim ke Menunggu Pickup)
         $pesanan->update([
@@ -782,7 +787,7 @@ class PesananController extends Controller
                     $pesanan->save(); // Simpan perubahan status & resi
 
                     // === INSERT KEUANGAN (Pakai new self() karena static) ===
-                    self::simpanKeKeuangan($pesanan);
+                    self::simpanKeuangan($pesanan);
                 }
 
                 $pesanan->save();
@@ -1552,7 +1557,7 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                     $pesanan->save(); // Simpan
 
                     // 4. CATAT KEUANGAN
-                    self::simpanKeKeuangan($pesanan);
+                    self::simpanKeuangan($pesanan);
                 }
                 $pesanan->save();
                 DB::commit(); // Commit semua perubahan
@@ -1853,8 +1858,8 @@ public function cetakThermal($resi)
      * HELPER: Simpan Transaksi Keuangan (HANYA JIKA STATUS SUKSES)
      * Cash Basis: Pencatatan dilakukan saat paket benar-benar selesai.
      */
-    // Hapus 'private' dan '_', ganti jadi 'public static'
-    public static function simpanKeKeuangan(Pesanan $pesanan)
+    // Hapus "Ke" agar sesuai dengan panggilan dari Webhook
+    public static function simpanKeuangan(Pesanan $pesanan)
     {
         try {
             // ==========================================================
