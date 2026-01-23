@@ -25,7 +25,7 @@ use App\Http\Controllers\SellerRegisterController;
 use App\Http\Controllers\CustomerOrderController;
 use App\Services\KiriminAjaService;
 use App\Http\Controllers\CekOngkirController;
-use App\Http\Controllers\TrackingController; 
+use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\Admin\PesananController as AdminPesananController;
 use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\BlogController;
@@ -59,7 +59,7 @@ use App\Http\Controllers\Customer\KontakController as CustomerOldKontakControlle
 use App\Http\Controllers\NotifikasiCustomerController;
 use App\Http\Controllers\Admin\BarcodeController;
 // Impor Controller Login yang benar
-use App\Http\Controllers\Auth\Customer\CustomerLoginController; 
+use App\Http\Controllers\Auth\Customer\CustomerLoginController;
 // Anda perlu mengimpor RegisteredUserController jika ada, saya asumsikan ia ada di sini.
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Admin\Customers\DataPenggunaController; // HARUS ADA DAN BENAR
@@ -100,13 +100,13 @@ use App\Http\Controllers\WhatsappController;
 Route::middleware(['auth'])->prefix('ppob')->name('ppob.')->group(function () {
     // FINAL ROUTE SINKRONISASI TERPISAH
     // Route name yang dihasilkan akan menjadi: ppob.sync.prepaid
-    Route::get('/sync/prepaid', [PpobProductController::class, 'syncPrepaid'])->name('sync.prepaid'); 
+    Route::get('/sync/prepaid', [PpobProductController::class, 'syncPrepaid'])->name('sync.prepaid');
     // Route name yang dihasilkan akan menjadi: ppob.sync.postpaid
-    Route::get('/sync/postpaid', [PpobProductController::class, 'syncPostpaid'])->name('sync.postpaid'); 
+    Route::get('/sync/postpaid', [PpobProductController::class, 'syncPostpaid'])->name('sync.postpaid');
 });
 
     // Route untuk mengambil data kota PBB
-Route::get('/agent/ppob/cities', [AgentTransactionController::class, 'getPbbCities'])->name('admin.ppob.get-pbb-cities'); 
+Route::get('/agent/ppob/cities', [AgentTransactionController::class, 'getPbbCities'])->name('admin.ppob.get-pbb-cities');
 // Menggunakan nama route 'admin.ppob.get-pbb-cities' agar sesuai dengan panggilan di Blade
 
 
@@ -114,32 +114,32 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/agent/register', [AgentRegistrationController::class, 'index'])->name('agent.register.index');
     Route::post('/agent/register/process', [AgentRegistrationController::class, 'register'])->name('agent.register.process');
-    
+
     // Pastikan penulisannya seperti ini (Array Syntax):
     Route::get('/topup', [TopUpController::class, 'index'])->name('topup.index');
     Route::post('/topup', [TopUpController::class, 'store'])->name('topup.store');
-    
+
     // Route untuk detail/show (PENTING: Tambahkan ini juga sesuai kode controller Anda)
     Route::get('/topup/{topup}', [TopUpController::class, 'show'])->name('customer.topup.show');
-    
+
     // Route untuk upload bukti bayar (sesuai controller Anda)
     Route::post('/topup/{reference_id}/upload', [TopUpController::class, 'uploadProof'])->name('topup.upload_proof');
 
         // --- AREA KHUSUS AGEN (Terproteksi Middleware) ---
     // Tambahkan middleware 'is_agent' di sini
     Route::middleware(['is_agent'])->prefix('agent/products')->name('agent.products.')->group(function () {
-        
+
         // Route yang sudah kita buat sebelumnya
         Route::get('/', [AgentProductController::class, 'index'])->name('index');
         Route::put('/update', [AgentProductController::class, 'update'])->name('update');
         Route::post('/bulk-update', [AgentProductController::class, 'bulkUpdate'])->name('bulk_update');
-    
+
 
     });
 
     // --- AREA KHUSUS AGEN (Terproteksi Middleware) ---
 Route::middleware(['is_agent'])->prefix('agent')->name('agent.')->group(function () {
-    
+
     // ... route produk yang sudah ada (index, update, bulk-update) ...
 
     // === [BARU] RUTE KASIR / TRANSAKSI OFFLINE ===
@@ -200,10 +200,10 @@ Route::middleware(['auth', 'verified'])->prefix('customer')->group(function () {
 
     // ----------------------------------------------------------------------
     // Catatan: Jika Anda ingin mengganti rute lama, Anda bisa menimpa:
-    // Route::get('/pesanan/create', [KoliController::class, 'create'])->name('customer.pesanan.create'); 
+    // Route::get('/pesanan/create', [KoliController::class, 'create'])->name('customer.pesanan.create');
     // Route::post('/pesanan/store', [KoliController::class, 'store'])->name('customer.pesanan.store');
     // ----------------------------------------------------------------------
-    
+
     // Asumsi rute lama seperti /customer/pesanan/index dan lainnya tetap menunjuk ke PesananController.
 });
 
@@ -233,7 +233,7 @@ Route::get('/dashboard', function () {
     if ($user->role === 'Admin') {
         return redirect()->route('admin.dashboard');
     }
-    
+
     return redirect()->route('customer.dashboard');
 
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -265,11 +265,7 @@ Route::get('/test/doku/marketplace', [TestOrderController::class, 'testMarketpla
 
 
 
-Route::get('/', function () {
-
-    return view('home');
-
-})->name('home'); // <-- TAMBAHKAN INI
+// Route::get('/', function () {return view('home');})->name('home'); // <-- TAMBAHKAN INI
 
 Route::get('/privacy-policy', function () {
     return view('privacy-policy');
@@ -280,8 +276,8 @@ Route::get('/terms-and-conditions', function () {
 })->name('terms.conditions');
 
 
-require __DIR__.'/auth.php';    
-    
+require __DIR__.'/auth.php';
+
 /*
 |--------------------------------------------------------------------------
 | Rute Pembayaran DOKU
@@ -305,7 +301,7 @@ Route::get('/toko/{name}', [EtalaseController::class, 'profileToko'])->name('tok
 Route::get('/etalase/kategori/{slug}', [EtalaseController::class, 'showCategory'])->name('etalase.category-show');
 
 Route::get('/tracking/refresh', [TrackingController::class, 'refresh'])->name('tracking.refresh');
-    
+
 // Rute untuk menampilkan daftar pelanggan ke publik
 Route::get('/pelanggan', [PublicPelangganController::class, 'index'])->name('pelanggan.public.index');
 
@@ -338,7 +334,7 @@ Route::put('admin/posts/{post}', [PostController::class, 'update'])->name('admin
 // == RUTE PPOB / PRODUK DIGITAL (DIGIFLAZZ)
 // =========================================================================
 Route::middleware(['auth', 'verified'])->prefix('digital')->name('ppob.')->group(function () {
-    
+
     // 1. Halaman Utama Menu PPOB (Dashboard Digital)
     // URL: /digital
     // Route::get('/', [PpobController::class, 'index'])->name('index');
@@ -378,8 +374,8 @@ Route::middleware(['auth', 'verified'])->prefix('digital')->name('ppob.')->group
     // =====================================================================
     // == SECTION HALAMAN KATEGORI (Dynamic View)
     // =====================================================================
-    
-    // 6. Halaman Kategori Dinamis 
+
+    // 6. Halaman Kategori Dinamis
     // Menangani: /digital/kategori/pulsa, /digital/kategori/pln-pascabayar, /digital/kategori/pdam
     // PENTING: Taruh di paling bawah agar tidak bentrok dengan route statis lain
     Route::get('/kategori/{slug}', [PpobController::class, 'category'])->name('category');
@@ -390,7 +386,7 @@ Route::get('/cek-ip-hosting', function () {
     try {
         // Minta server hosting nanya ke layanan cek IP publik
         $response = Http::withoutVerifying()->get('https://api.ipify.org?format=json');
-        
+
         return response()->json([
             'message' => 'Copy IP di bawah ini dan masukkan ke Whitelist Digiflazz',
             'real_ip_hosting' => $response->json()['ip'],
@@ -410,16 +406,16 @@ Route::prefix('customer')->name('customer.')->group(function () {
     Route::patch('/cart/update', [CartController::class, 'update'])->name('cart.update');
     Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
        // INI ADALAH PERBAIKANNYA: Rute untuk halaman checkout
- 
+
     Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('marketplace.index');
-    
+
     Route::get('/pesanan/export-pdf', [PesananController::class, 'exportPdf'])->name('pesanan.export_pdf');
-    
+
     // --- RUTE CHECKOUT YANG BENAR ---
     // 1. Menampilkan halaman checkout (GET)
     // Nama route: customer.checkout.index
  Route::get('/checkout', [CustomerCheckoutController::class, 'index'])->name('checkout.index');
-    
+
     // 2. Memproses form checkout (POST)
     // Nama route: customer.checkout.store
  Route::post('/checkout', [CustomerCheckoutController::class, 'store'])->name('checkout.store'); // <-- DIPERBAIKI
@@ -427,11 +423,11 @@ Route::prefix('customer')->name('customer.')->group(function () {
     // 3. Menampilkan halaman invoice (GET)
     // Nama route: customer.checkout.invoice (Kita buat di luar prefix 'customer.' agar lebih pendek)
  Route::get('/invoice/{invoice}', [CustomerCheckoutController::class, 'invoice'])->name('checkout.invoice');
- 
+
 // ===> INI FIX UNTUK ERROR 404 ANDA <===
         // URL di browser: /customer/pesanan/create/multi-koli
         Route::get('/pesanan/create/multi-koli', [KoliController::class, 'create'])->name('koli.create');
-        
+
         // Rute Proses Simpan & Cek Ongkir Multi Koli
         Route::post('/koli/store', [KoliController::class, 'store'])->name('koli.store');
         Route::post('/koli/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
@@ -451,7 +447,7 @@ Route::prefix('customer')->name('customer.')->group(function () {
         // [CustomerProfileController::class, 'searchKiriminAjaAddress'] adalah method yang dipanggil JS
         Route::get('/api/kiriminaja/address-search', [App\Http\Controllers\Customer\ProfileController::class, 'searchKiriminAjaAddress'])
             ->name('kiriminaja.address_search'); // Nama route: customer.kiriminaja.address_search
-            
+
 
 
 
@@ -581,7 +577,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
     ->group(function () {
 
-        
+
         // Route::get('/seller/reviews', [SellerReviewController::class, 'index'])->name('seller.reviews.index');
         // 1. Menampilkan Halaman Form Multi-Koli (GET)
         // URL: /customer/pesanan/multi/create
@@ -593,20 +589,20 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
         // Nama Rute: customer.koli.store
         Route::post('/pesanan/multi/store', [KoliController::class, 'store'])->name('koli.store');
 
-        // 3. CEK ONGKIR (AJAX) 
+        // 3. CEK ONGKIR (AJAX)
         // URL: /customer/koli/cek-ongkir
         // Nama Rute: customer.koli.cek_ongkir
-        Route::post('/koli/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir'); 
+        Route::post('/koli/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
 
         // 4. STORE SINGLE KOLI (AJAX) - Rute yang digunakan untuk menyimpan per paket
         // URL: /customer/koli/store-single
         // Nama Rute: customer.koli.store_single
         Route::post('/koli/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
 
-        
+
 
         require __DIR__.'/web/customer.php';
-        
+
         // 1. Menampilkan Halaman Form (GET)
         // URL: /customer/pesanan/multi/create
         Route::get('/pesanan/multi/create', [KoliController::class, 'create'])->name('koli.create');
@@ -617,7 +613,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
         // ====================================================
 
-       
+
         Route::get('/kontak/search', [CustomerKontakController::class, 'search'])->name('kontak.search');
 
         // Customer Chat
@@ -629,14 +625,14 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
             Route::get('/messages', [CustomerChatController::class, 'fetchMessages'])->name('fetchMessages');
 
             Route::post('/messages', [CustomerChatController::class, 'sendMessage'])->name('sendMessage');
-            
- 
+
+
 
         });
 
     });
 
-    
+
 
 
 
@@ -656,15 +652,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // 1. Halaman Dashboard / Menu Utama Digital (INI YANG KURANG)
     // URL: /admin/digital
     Route::get('/digital', [AdminPpobController::class, 'index'])
-        ->name('admin.ppob.index'); 
+        ->name('admin.ppob.index');
 
-   
+
     // 2. Halaman Kategori (Pulsa, Data, dll)
     // URL: /admin/digital/{slug}
     Route::get('/digital/{slug}', [AdminPpobController::class, 'category'])
         ->name('admin.ppob.category');
 
-        
+
 
     // Rute AJAX untuk Manajemen Kategori
     Route::post('/categories/ajax-store', [App\Http\Controllers\Admin\CategoryController::class, 'storeAjax'])
@@ -673,8 +669,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::delete('/categories/ajax-delete/{id}', [App\Http\Controllers\Admin\CategoryController::class, 'destroyAjax'])
     ->name('categories.destroyAjax'); // HAPUS 'admin.' di sini
 
-   
-    
+
+
 Route::get('products/{slug}/specifications', [\App\Http\Controllers\Admin\ProductController::class, 'editSpecifications'])
     ->name('admin.products.edit.specifications');
 
@@ -691,8 +687,8 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
 
     Route::get('/wilayah/district/{district}/villages', [WilayahController::class, 'getDesa'])->name('wilayah.desa');
 
-   
-    
+
+
     // --- [BARU] RUTE UNTUK MANAJEMEN SLIDER ---
     Route::get('/sliders', [SliderController::class, 'index'])->name('sliders.index');
     Route::post('/sliders', [SliderController::class, 'store'])->name('sliders.store');
@@ -707,7 +703,7 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
         Route::get('/export-excel', [PelangganController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export-pdf', [PelangganController::class, 'exportPdf'])->name('export.pdf');
     });
-    
+
 
    // 1. (GET) Menampilkan halaman daftar produk
         Route::get('/marketplace', [MarketplaceController::class, 'index'])
@@ -740,27 +736,27 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
     Route::prefix('category-attributes')->name('category-attributes.')->group(function () {
 
         Route::post('/{category}', [App\Http\Controllers\Admin\CategoryAttributeController::class, 'store'])->name('store');
-        
+
         // Menampilkan halaman utama (daftar atribut)
         // URL: /admin/category-attributes
         // Nama Rute: admin.category-attributes.index
         Route::get('/', [CategoryAttributeController::class, 'index'])->name('index');
-        
+
         // Menyimpan atribut baru untuk kategori tertentu
         // URL: /admin/category-attributes/{category}
         // Nama Rute: admin.category-attributes.store
         Route::post('/{category}', [CategoryAttributeController::class, 'store'])->name('store');
-        
+
         // Menampilkan form untuk mengedit atribut
         // URL: /admin/category-attributes/{attribute}/edit
         // Nama Rute: admin.category-attributes.edit
         Route::get('/{attribute}/edit', [CategoryAttributeController::class, 'edit'])->name('edit');
-        
+
         // Menyimpan perubahan pada atribut yang diedit
         // URL: /admin/category-attributes/{attribute}
         // Nama Rute: admin.category-attributes.update
         Route::put('/{attribute}', [CategoryAttributeController::class, 'update'])->name('update');
-        
+
         // Menghapus atribut
         // URL: /admin/category-attributes/{attribute}
         // Nama Rute: admin.category-attributes.destroy
@@ -769,7 +765,7 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
 
         Route::get('categories/{category}/attributes', [ProductController::class, 'getAttributes'])->name('categories.attributes');
 
-   
+
 
 });
 
@@ -806,27 +802,27 @@ Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('p
 
         // Aksi Transaksi (Detail, Update, Hapus)
     // PENTING: Gunakan 'transaction' di URL agar tidak bentrok dengan ID Produk
- 
+
         Route::get('/{id}', [AdminPpobController::class, 'show'])->name('ppob.transaction.show');
         Route::put('/{id}', [AdminPpobController::class, 'update'])->name('ppob.transaction.update');
         Route::delete('/{id}', [AdminPpobController::class, 'destroy'])->name('ppob.transaction.destroy');
-        
+
         // Tambahan khusus jika Anda menggunakan link <a href> untuk hapus (seperti di screenshot 404 Anda)
         // URL: /admin/ppob/transaction/destroy/50
         Route::get('/destroy/{id}', [AdminPpobController::class, 'destroy'])->name('ppob.transaction.destroy.get');
 
         Route::post('/topup', [AdminPpobController::class, 'topup'])->name('ppob.topup');
-    
+
 
     Route::resource('customers/data/pengguna', DataPenggunaController::class)
     ->names('customers.data.pengguna');
 
     // Route Manajemen Ulasan
     Route::resource('reviews', AdminReviewController::class);
-    
+
     // Route khusus untuk membalas (Reply)
     Route::post('reviews/{review}/reply', [AdminReviewController::class, 'reply'])->name('reviews.reply');
-    
+
 // Halaman Pengaturan API All-in-One
     Route::get('/settings/api', [ApiSettingsController::class, 'index'])->name('settings.api.index');
     Route::put('/settings/api', [ApiSettingsController::class, 'update'])->name('settings.api.update');
@@ -834,10 +830,10 @@ Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('p
 
 
 Route::resource('stores', AdminMarketplaceController::class)->names('stores');
-       
+
           // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
-          
-  Route::post('/users/{user}/toggle-freeze', [App\Http\Controllers\Admin\UserController::class, 'toggleFreeze'])->name('admin.users.toggle-freeze');        
+
+  Route::post('/users/{user}/toggle-freeze', [App\Http\Controllers\Admin\UserController::class, 'toggleFreeze'])->name('admin.users.toggle-freeze');
 
 // Route untuk edit info
 Route::get('/setting-info-pesanan', [AdminController::class, 'editInfoPesanan'])->name('info.edit');
@@ -845,7 +841,7 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
     // TAMBAHKAN ROUTE INI JIKA BELUM ADA
         Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
-        
+
         // Anda mungkin juga memerlukan route lain untuk wallet
         Route::post('/wallet/topup', [WalletController::class, 'topup'])->name('wallet.topup');
         Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
@@ -870,7 +866,7 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
             Route::get('/', [WilayahController::class, 'index'])->name('index');
 
-            
+
 
             // API untuk data dinamis
 
@@ -895,13 +891,13 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
 
 
- 
+
 
         });
 
-        
 
-        
+
+
 
 // =========================================================================
 
@@ -911,7 +907,7 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
 
 
-        
+
 
         // ✅ RUTE KODE POS YANG SUDAH DIPERBAIKI
 
@@ -975,16 +971,16 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
 
 
-    
-        
 
-        
+
+
+
 
     // Route untuk halaman daftar email (inbox)
 
     Route::get('/imap', [EmailController::class, 'index'])->name('imap.index');
 
-    
+
 
     // Route untuk menampilkan detail satu email
 
@@ -996,7 +992,7 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
     Route::delete('/imap/{id}', [EmailController::class, 'destroy'])->name('imap.destroy');
 
-    
+
 
      // RUTE UNTUK LAPORAN KEUANGAN
 
@@ -1006,7 +1002,7 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
             Route::post('pemasukan', [LaporanKeuanganController::class, 'storePemasukan'])->name('pemasukan.store');
 
-            
+
 
             Route::get('pengeluaran', [LaporanKeuanganController::class, 'pengeluaran'])->name('pengeluaran');
 
@@ -1026,7 +1022,7 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
         // RUTE UNTUK MANAJEMEN KODE AKUN (COA)
 
-        
+
 
         Route::get('coa/export/excel', [CoaController::class, 'exportExcel'])->name('coa.export.excel');
 
@@ -1045,15 +1041,15 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 // =================================================================
 Route::prefix('ppob')->name('ppob.')->group(function () {
 
-    
-    
+
+
     // -------------------------------------------------------------
     // 1. DATA TRANSAKSI (HARUS PALING ATAS)
     // -------------------------------------------------------------
     // URL: /admin/ppob/data
     Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
 
-    
+
 // ===> PERBAIKAN DI SINI (Menambahkan 'data.' pada nama route) <===
     Route::get('/data/export/excel', [App\Http\Controllers\Admin\AdminPpobController::class, 'exportExcel'])->name('data.export.excel');
     Route::get('/data/export/pdf', [App\Http\Controllers\Admin\AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');
@@ -1068,15 +1064,15 @@ Route::prefix('ppob')->name('ppob.')->group(function () {
     // -------------------------------------------------------------
     // URL: /admin/ppob/ (List Produk)
     // Pastikan Controller PpobProductController sudah di-use di paling atas file ini
-    
+
     Route::post('/bulk-update', [App\Http\Controllers\PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
     Route::get('/product-export/excel', [App\Http\Controllers\PpobProductController::class, 'exportExcel'])->name('product.export.excel');
-    
+
      // ===> TAMBAHKAN INI (FIX ERROR ANDA) <===
     // Nama route harus persis 'export-excel' dan 'export-pdf' agar cocok dengan view Anda
     Route::get('/export-excel', [App\Http\Controllers\PpobProductController::class, 'exportExcel'])->name('export-excel');
     Route::get('/export-pdf', [App\Http\Controllers\PpobProductController::class, 'exportPdf'])->name('export-pdf');
-    
+
     Route::get('/{id}', [App\Http\Controllers\PpobProductController::class, 'show'])->name('show');
     Route::put('/update-price/{id}', [App\Http\Controllers\PpobProductController::class, 'updatePrice'])->name('update-price');
     Route::delete('/destroy/{id}', [App\Http\Controllers\PpobProductController::class, 'destroy'])->name('destroy');
@@ -1086,7 +1082,7 @@ Route::prefix('ppob')->name('ppob.')->group(function () {
 
 });
 
-    
+
 
 
 
@@ -1113,10 +1109,10 @@ Route::middleware(['auth'])->group(function () {
 
     // 5. Batalkan Semua (Tombol Batal Transaksi)
     Route::post('/checkout-ppob/clear', [PpobCheckoutController::class, 'clearCart'])->name('ppob.cart.clear');
-    
+
     // 4. Route Invoice
     Route::get('/invoice/{invoice}', [PpobCheckoutController::class, 'invoice'])->name('ppob.invoice');
-    
+
         // Rute untuk mengambil data notifikasi (via JavaScript/AJAX)
     // Ini yang akan kita pakai di layout Anda
     Route::get('/customer/notifications/unread', [NotifikasiCustomerController::class, 'getUnread'])
@@ -1142,7 +1138,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/checkout/{invoice}', [CheckoutController::class, 'invoice'])->name('checkout.invoice');
 
-    
+
 
     // Generic Payment Creation (Example)
 
@@ -1154,7 +1150,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('dana')->name('dana.')->group(function () {
 
-       
+
 
         Route::get('/create-payment/{order}', [DanaController::class, 'createPayment'])->name('payment.create');
 
@@ -1169,8 +1165,8 @@ Route::middleware(['auth'])->group(function () {
     // Other Payment Gateway (Redirect page for user)
 
     Route::get('/payment/finish', [PaymentController::class, 'finishPage'])->name('payment.finish');
-    
-    
+
+
     // Grup untuk Buku Alamat Customer
     Route::prefix('customer/kontak')->name('customer.kontak.')->group(function () {
         Route::get('/', [App\Http\Controllers\CustomerKontakController::class, 'index'])->name('index');
@@ -1238,17 +1234,17 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
     ->group(function () {
 
-        
+
 
         require __DIR__.'/web/customer.php';
 
-        
+
 
         //Route::get('/ongkir/address/search', [CekOngkirController::class, 'searchAddress'])->name('ongkir.address.search');
 
 
 
-        Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search'); 
+        Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');
 
         // Chat Pelanggan
 
@@ -1316,8 +1312,8 @@ Route::get('/controllers-list', function () {
     return view('controllers-list', compact('controllers'));
 });
 
-     
-     
+
+
      // ==========================================================
     // ROUTE UNTUK REGISTRASI SELLER (YANG BARU)
     // ==========================================================
@@ -1337,6 +1333,6 @@ Route::get('/controllers-list', function () {
     // 4. Rute untuk GEOCODE ALAMAT (AJAX) <-- INI JUGA HILANG
     Route::post('seller/address/geocode', [SellerRegisterController::class, 'geocodeAddress'])
          ->name('seller.address.geocode');
-         
+
     // ==========================================================
 

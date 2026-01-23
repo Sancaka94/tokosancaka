@@ -138,8 +138,7 @@ Route::post('/detect/process', [DetectionController::class, 'process'])->name('d
 
 // 1. Route Halaman Utama Scanner
 Route::get('/apps', function () {
-    return view('apps');
-})->name('apps.index');
+    return view('apps');})->name('apps.index');
 
 
 // ROUTE UTAMA CETAK THERMAL (Top Level)
