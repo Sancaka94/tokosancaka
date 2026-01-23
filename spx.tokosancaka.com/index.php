@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-site-verification" content="M5GwyjoDoCcRA93IrehnwMAWLPXZPP2HNPMYU8pnIk8" />
     <title>Sancaka Express - Kirim Paket Murah & Cepat Ngawi | Partner Resmi SPX, J&T, JNE</title>
-    
+
     <meta name="description" content="Agen Ekspedisi Termurah Ngawi mulai Rp 2.424! Partner resmi SPX Express, J&T, JNE, Lion Parcel. Melayani Jasa Konstruksi & Perizinan. Cek Ongkir Disini!">
     <meta name="keywords" content="Sancaka Express, SPX Ngawi, J&T Ngawi, Ongkir Murah Shopee, Ekspedisi Termurah, Cargo Ngawi, Jasa Kirim Paket, Konstruksi Bangunan Ngawi, CV Sancaka Karya Hutama">
     <meta name="author" content="Sancaka Team">
@@ -46,7 +46,7 @@
             display: inline-block;
         }
         .btn-shopee:hover { background: var(--shopee-dark-orange); }
-        
+
         /* --- HEADER & NAVIGATION --- */
         header {
             background: var(--shopee-orange); /* Gradient khas Shopee */
@@ -95,7 +95,7 @@
             padding: 5px 0;
             margin-top: 10px;
         }
-        
+
         .dropdown::before {
             content: "";
             position: absolute;
@@ -115,7 +115,7 @@
             padding: 20px 0;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
-        
+
         .slider-container {
             position: relative;
             width: 100%;
@@ -133,9 +133,9 @@
             background-size: cover;
             background-position: center;
         }
-        
+
         .slide.active { opacity: 1; }
-        
+
         .slide-overlay {
             position: absolute;
             bottom: 0;
@@ -174,7 +174,7 @@
             transition: 0.3s;
             height: 100px;
         }
-        
+
         .brand-card:hover {
             border-color: var(--shopee-orange);
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -223,7 +223,7 @@
             color: var(--shopee-orange);
             padding: 20px 0 5px;
         }
-        
+
         .price-desc { padding: 0 20px 20px; font-size: 0.9rem; color: var(--text-grey); }
 
         /* --- SEO TEXT & MARKETING --- */
@@ -267,7 +267,7 @@
         /* --- PAYMENT & TESTIMONI --- */
         .payment-row { display: flex; gap: 20px; justify-content: center; margin: 30px 0; flex-wrap: wrap; }
         .payment-logo { font-weight: bold; font-size: 1.5rem; color: #004d9a; display: flex; align-items: center; gap: 10px; background: #fff; padding: 10px 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        
+
         .testi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 40px; }
         .testi-card { background: var(--white); padding: 20px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .stars { color: #ffca28; margin-bottom: 10px; }
@@ -279,10 +279,10 @@
             color: var(--text-grey);
             font-size: 0.9rem;
         }
-        
+
         .footer-top { padding: 50px 0; border-bottom: 1px solid #e8e8e8; }
         .footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; }
-        
+
         .footer-title { color: var(--text-black); font-weight: 700; margin-bottom: 20px; text-transform: uppercase; font-size: 0.85rem; }
         .footer-links li { margin-bottom: 10px; }
         .footer-links a:hover { color: var(--shopee-orange); }
@@ -415,7 +415,7 @@
         <div class="container text-center">
             <h2 class="section-title">ONGKIR TERMURAH SE-JAGAT RAYA!</h2>
             <p style="margin-bottom: 30px;">Harga spesial untuk UMKM dan Seller Online.</p>
-            
+
             <div class="price-cards">
                 <div class="price-tag">
                     <div class="price-header">PAKET HEMAT</div>
@@ -477,7 +477,7 @@
                 <br><strong>- Bpk. Budi, Pengusaha</strong>
             </div>
         </div>
-        
+
         <div style="background: #e8e8e8; height: 300px; display: flex; align-items: center; justify-content: center; border-radius: 4px; margin-bottom: 50px;">
             <div class="text-center">
                 <i class="fas fa-map-marked-alt fa-3x text-orange"></i>
@@ -490,7 +490,7 @@
 
     <div class="container qa-container">
         <h2 class="section-title">PERTANYAAN SERING DIAJUKAN (Q&A)</h2>
-        
+
         <div class="accordion-item">
             <div class="accordion-header">
                 Berapa lama paket sampai jika pakai SPX Express?
@@ -563,9 +563,9 @@
                     </ul>
                 </div>
             </div>
-            
+
             <hr style="margin: 30px 0; border: 0; border-top: 1px solid #e8e8e8;">
-            
+
             <div style="display: flex; align-items: flex-start; gap: 15px;">
                 <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" style="width: 60px; border-radius: 50%;">
                 <div>
@@ -592,7 +592,7 @@
         // Slider Script
         let currentSlide = 0;
         const slides = document.querySelectorAll('.slide');
-        
+
         function nextSlide() {
             slides[currentSlide].classList.remove('active');
             currentSlide = (currentSlide + 1) % slides.length;
@@ -607,7 +607,7 @@
                 const body = header.nextElementSibling;
                 header.querySelector('i').classList.toggle('fa-chevron-up');
                 header.querySelector('i').classList.toggle('fa-chevron-down');
-                
+
                 if (body.style.maxHeight) {
                     body.style.maxHeight = null;
                 } else {
@@ -625,7 +625,7 @@
                 scrollBtn.classList.remove('show');
             }
         };
-        
+
         scrollBtn.addEventListener('click', () => {
             window.scrollTo({top: 0, behavior: 'smooth'});
         });
