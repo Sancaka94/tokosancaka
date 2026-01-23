@@ -511,6 +511,34 @@ width: 22px;
     }
     /* === AKHIR BLOK TAMBAHAN === */
 
+    /*  {{-- Style Tambahan Agar Pagination Lebih Cantik --}} */
+
+    #blog-grid .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+    /* Mempercantik Tombol Pagination */
+    .pagination .page-link {
+        color: #dc3545; /* Merah Sancaka */
+        border-radius: 50%;
+        margin: 0 3px;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        font-weight: bold;
+    }
+    .pagination .active .page-link {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: white;
+    }
+    .pagination .page-link:hover {
+        background-color: #f8f9fa;
+        color: #a71d2a;
+    }
 </style>
 
 @endpush
@@ -1805,14 +1833,20 @@ width: 22px;
 
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4 class="fw-bold m-0 text-primary">Berita & Informasi Terkini</h4>
-            <a href="{{ route('blog.posts.index') }}" class="text-decoration-none small fw-bold">Lihat Semua <i class="fas fa-arrow-right"></i></a>
+            <div class="text-muted small">
+                @if(isset($latestPosts) && $latestPosts->count() > 0)
+                    Menampilkan Halaman {{ $latestPosts->currentPage() }} dari {{ $latestPosts->lastPage() }}
+                @endif
+            </div>
         </div>
 
-        <div class="row g-3"> @if(isset($latestPosts) && count($latestPosts) > 0)
+        <div class="row g-3">
+            @if(isset($latestPosts) && $latestPosts->count() > 0)
                 @foreach($latestPosts as $post)
                 <div class="col-6 col-md-4 col-lg-3">
                     <div class="card h-100 border-0 shadow-sm overflow-hidden position-relative" style="border-radius: 10px; transition: transform 0.2s;">
 
+                        {{-- Gambar --}}
                         <div style="height: 140px; overflow: hidden; position: relative;">
                             <img src="{{ asset('storage/' . $post->featured_image) }}"
                                  class="w-100 h-100"
@@ -1848,21 +1882,24 @@ width: 22px;
                 </div>
                 @endforeach
             @else
-                <div class="col-12 text-center py-4">
-                    <p class="text-muted small">Belum ada berita terbaru.</p>
+                <div class="col-12 text-center py-5">
+                    <div class="text-muted mb-3"><i class="far fa-newspaper fa-3x"></i></div>
+                    <p class="text-muted fw-bold">Belum ada berita terbaru yang dipublikasikan.</p>
+                    <small>Pastikan status artikel di database adalah 'published'.</small>
                 </div>
             @endif
-
         </div>
+
+        {{-- BAGIAN PAGINATION OTOMATIS --}}
+        @if(isset($latestPosts) && $latestPosts->hasPages())
+        <div class="d-flex justify-content-center mt-5">
+            {{-- Menggunakan Style Pagination Bootstrap 5 Bawaan Laravel --}}
+            {{ $latestPosts->links('pagination::bootstrap-5') }}
+        </div>
+        @endif
+
     </div>
 </section>
-
-<style>
-    #blog-grid .card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
-    }
-</style>
 
 
 
