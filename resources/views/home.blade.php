@@ -511,34 +511,6 @@ width: 22px;
     }
     /* === AKHIR BLOK TAMBAHAN === */
 
-    /*  {{-- Style Tambahan Agar Pagination Lebih Cantik --}} */
-
-    #blog-grid .card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
-    }
-    /* Mempercantik Tombol Pagination */
-    .pagination .page-link {
-        color: #dc3545; /* Merah Sancaka */
-        border-radius: 50%;
-        margin: 0 3px;
-        width: 35px;
-        height: 35px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: none;
-        font-weight: bold;
-    }
-    .pagination .active .page-link {
-        background-color: #dc3545;
-        border-color: #dc3545;
-        color: white;
-    }
-    .pagination .page-link:hover {
-        background-color: #f8f9fa;
-        color: #a71d2a;
-    }
 </style>
 
 @endpush
@@ -1828,78 +1800,126 @@ width: 22px;
 
 </section>
 
-<section id="blog-grid" class="section bg-white">
+
+
+{{--
+    =======================================================
+    LOGIKA PENGAMBILAN DATA (LANGSUNG DI BLADE)
+    =======================================================
+--}}
+@php
+    // Kita panggil Model Post langsung di sini tanpa lewat Controller
+    // Pastikan class model benar (\App\Models\Post)
+
+    $latestPosts = collect(); // Default kosong agar tidak error
+
+    try {
+        if (class_exists(\App\Models\Post::class)) {
+            $latestPosts = \App\Models\Post::with(['category', 'author']) // Eager loading
+                ->where('status', 'published') // Filter hanya yang published
+                ->latest() // Urutkan terbaru
+                ->take(8)  // Ambil 8 data saja
+                ->get();
+        }
+    } catch (\Exception $e) {
+        // Diamkan error jika tabel belum ada
+    }
+@endphp
+
+{{--
+    =======================================================
+    TAMPILAN GRID BERITA
+    =======================================================
+--}}
+<section class="py-5 bg-white">
     <div class="container">
 
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="fw-bold m-0 text-primary">Berita & Informasi Terkini</h4>
-            <div class="text-muted small">
-                @if(isset($latestPosts) && $latestPosts->count() > 0)
-                    Menampilkan Halaman {{ $latestPosts->currentPage() }} dari {{ $latestPosts->lastPage() }}
-                @endif
+            <div>
+                <h4 class="fw-bold m-0" style="color: #1a253c;">Berita & Informasi</h4>
+                <p class="text-muted small m-0">Update terkini seputar layanan & bisnis</p>
             </div>
+            <a href="{{ url('/blog') }}" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">
+                Lihat Semua <i class="fas fa-arrow-right ms-1"></i>
+            </a>
         </div>
 
         <div class="row g-3">
-            @if(isset($latestPosts) && $latestPosts->count() > 0)
-                @foreach($latestPosts as $post)
-                <div class="col-6 col-md-4 col-lg-3">
-                    <div class="card h-100 border-0 shadow-sm overflow-hidden position-relative" style="border-radius: 10px; transition: transform 0.2s;">
+            @forelse($latestPosts as $post)
+            <div class="col-6 col-md-4 col-lg-3">
+                <a href="{{ url('/blog/' . $post->slug) }}" class="text-decoration-none text-dark">
+                    <div class="card h-100 border-0 shadow-sm overflow-hidden blog-card">
 
-                        {{-- Gambar --}}
-                        <div style="height: 140px; overflow: hidden; position: relative;">
+                        <div class="position-relative" style="height: 120px; background: #f8f9fa;">
                             <img src="{{ asset('storage/' . $post->featured_image) }}"
                                  class="w-100 h-100"
                                  style="object-fit: cover;"
                                  alt="{{ $post->title }}"
-                                 onerror="this.src='https://placehold.co/300x200/eee/999?text=No+Image'">
+                                 onerror="this.src='https://placehold.co/300x200/eee/999?text=Sancaka';">
 
-                            <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-2 shadow-sm" style="font-size: 0.65rem;">
+                            <span class="badge bg-warning text-dark position-absolute top-0 end-0 m-2 shadow-sm"
+                                  style="font-size: 10px; font-weight: 600;">
                                 {{ $post->category->name ?? 'Info' }}
                             </span>
                         </div>
 
-                        <div class="card-body p-3 d-flex flex-column">
-                            <h6 class="card-title fw-bold mb-2 text-dark" style="font-size: 0.9rem; line-height: 1.3; min-height: 2.6em;">
-                                <a href="{{ route('blog.posts.show', $post->slug) }}" class="text-decoration-none text-dark stretched-link">
-                                    {{ Str::limit($post->title, 45) }}
-                                </a>
+                        <div class="card-body p-2 d-flex flex-column">
+                            <h6 class="card-title fw-bold mb-2 text-truncate-2" style="font-size: 13px; line-height: 1.4; min-height: 36px;">
+                                {{ $post->title }}
                             </h6>
 
-                            <div class="mt-auto d-flex align-items-center text-muted" style="font-size: 0.7rem;">
-                                <div class="d-flex align-items-center me-3">
-                                    <i class="fas fa-user-circle me-1"></i>
-                                    <span class="text-truncate" style="max-width: 60px;">{{ $post->user->name ?? 'Admin' }}</span>
+                            <div class="mt-auto d-flex align-items-center justify-content-between text-muted" style="font-size: 10px;">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-user-circle me-1 text-primary"></i>
+                                    <span class="text-truncate" style="max-width: 60px;">
+                                        {{-- Cek Author atau User --}}
+                                        {{ $post->author->name ?? $post->user->name ?? 'Admin' }}
+                                    </span>
                                 </div>
                                 <div class="d-flex align-items-center">
                                     <i class="far fa-clock me-1"></i>
-                                    <span>{{ $post->created_at->diffForHumans() }}</span>
+                                    <span>{{ $post->created_at->diffForHumans(null, true) }}</span>
                                 </div>
                             </div>
                         </div>
 
                     </div>
+                </a>
+            </div>
+            @empty
+            <div class="col-12 text-center py-5">
+                <div class="bg-light rounded p-4 d-inline-block">
+                    <i class="far fa-newspaper text-muted mb-2" style="font-size: 30px;"></i>
+                    <p class="text-muted m-0 small">Belum ada berita terbaru.</p>
                 </div>
-                @endforeach
-            @else
-                <div class="col-12 text-center py-5">
-                    <div class="text-muted mb-3"><i class="far fa-newspaper fa-3x"></i></div>
-                    <p class="text-muted fw-bold">Belum ada berita terbaru yang dipublikasikan.</p>
-                    <small>Pastikan status artikel di database adalah 'published'.</small>
-                </div>
-            @endif
+            </div>
+            @endforelse
         </div>
-
-        {{-- BAGIAN PAGINATION OTOMATIS --}}
-        @if(isset($latestPosts) && $latestPosts->hasPages())
-        <div class="d-flex justify-content-center mt-5">
-            {{-- Menggunakan Style Pagination Bootstrap 5 Bawaan Laravel --}}
-            {{ $latestPosts->links('pagination::bootstrap-5') }}
-        </div>
-        @endif
 
     </div>
 </section>
+
+{{-- CUSTOM CSS (Wajib disertakan agar tampilan rapi) --}}
+@push('styles')
+<style>
+    /* Memotong judul jika lebih dari 2 baris */
+    .text-truncate-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    /* Efek Hover Halus */
+    .blog-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-radius: 8px;
+    }
+    .blog-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+    }
+</style>
+@endpush
 
 
 
