@@ -1864,32 +1864,39 @@ width: 22px;
                         </div>
 
                         <div class="card-body p-2 d-flex flex-column">
-                            <h6 class="card-title fw-bold mb-2 text-truncate-2" style="font-size: 13px; line-height: 1.4; min-height: 36px;">
-                                {{ $post->title }}
-                            </h6>
-                            <div class="mt-auto d-flex align-items-center justify-content-between text-muted" style="font-size: 10px;">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-user-circle me-1 text-primary"></i>
-                                    <span class="text-truncate" style="max-width: 60px;">
-                                        {{ $post->author->name ?? $post->user->name ?? 'Admin' }}
-                                    </span>
-                                </div>
 
-                                <div class="d-flex align-items-center">
-                                <span class="badge bg-primary text-white position-absolute top-0 end-0 m-2 shadow-sm"
-                                      style="font-size: 10px; font-weight: 600;">
-                                    {{ $post->category->name ?? 'Info' }}
-                                </span>
-                                </div>
-
-                                <div class="d-flex align-items-center">
-                                    <i class="far fa-clock me-1"></i>
-                                    <span>{{ $post->created_at->diffForHumans(null, true) }}</span>
-                                </div>
-
-
-                            </div>
+                        {{-- 1. BADGE KATEGORI (Dipindah ke sini & Hapus position-absolute) --}}
+                        <div class="mb-2">
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25"
+                                style="font-size: 10px; font-weight: 700;">
+                                {{ $post->category->name ?? 'Info' }}
+                            </span>
                         </div>
+
+                        {{-- 2. JUDUL BERITA --}}
+                        <h6 class="card-title fw-bold mb-2 text-truncate-2" style="font-size: 13px; line-height: 1.4; min-height: 36px;">
+                            {{ $post->title }}
+                        </h6>
+
+                        {{-- 3. META INFO (Penulis & Waktu) --}}
+                        <div class="mt-auto d-flex align-items-center justify-content-between text-muted" style="font-size: 10px;">
+
+                            {{-- Penulis --}}
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-user-circle me-1 text-primary"></i>
+                                <span class="text-truncate" style="max-width: 60px;">
+                                    {{ $post->author->name ?? $post->user->name ?? 'Admin' }}
+                                </span>
+                            </div>
+
+                            {{-- Waktu --}}
+                            <div class="d-flex align-items-center">
+                                <i class="far fa-clock me-1"></i>
+                                <span>{{ $post->created_at->diffForHumans(null, true) }}</span>
+                            </div>
+
+                        </div>
+                    </div>
 
                     </div>
                 </a>
