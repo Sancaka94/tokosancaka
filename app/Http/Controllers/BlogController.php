@@ -96,19 +96,7 @@ class BlogController extends Controller
         ));
     }
 
-    public function index()
-    {
-        // Ambil 8 artikel terbaru yang statusnya 'published'
-        // Menggunakan eager loading 'category' dan 'author' agar query ringan
-        $latestPosts = Post::with(['category', 'author'])
-            ->where('status', 'published')
-            ->latest()
-            ->take(8) // Ambil 8 data (Pas untuk layout 4 kolom x 2 baris)
-            ->get();
 
-        // Kirim variabel $latestPosts ke view 'home'
-        return view('home', compact('latestPosts'));
-    }
 
     /**
      * Menampilkan detail satu postingan.
