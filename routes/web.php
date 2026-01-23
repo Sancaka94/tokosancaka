@@ -121,6 +121,16 @@ use App\Http\Controllers\Admin\LabaRugiController;
 
 use App\Http\Controllers\Admin\AkuntansiController;
 
+use App\Http\Controllers\HomeController; // <--- Pastikan baris ini ada di paling atas
+
+
+
+
+
+
+// Panggil Controller, bukan View langsung
+Route::get('/', [HomeController::class, 'index'])->name('home');
+
 Route::any('/telegram-webhook', [TelegramPpobController::class, 'handle']);
 
 // 1. Jalur Utama AI (Menerima Gambar dari Kamera)
@@ -143,7 +153,7 @@ Route::get('/{resi}/cetak_thermal', [PesananController::class, 'cetakThermal'])
 // 2. PUBLIC ROUTES (GUEST / AKSES UMUM)
 // =========================================================================
 
-Route::get('/', function () { return view('home'); })->name('home');
+//Route::get('/', function () { return view('home'); })->name('home');
 Route::get('/privacy-policy', function () { return view('privacy-policy'); })->name('privacy.policy');
 Route::get('/terms-and-conditions', function () { return view('terms'); })->name('terms.conditions');
 
