@@ -18,6 +18,9 @@
     
     # 4. Bebaskan folder spx.tokosancaka.com (BARU)
     RewriteRule ^spx\.tokosancaka\.com - [L,NC]
+    
+    # 5. Bebaskan folder sancaka.bisnis.pro (BARU - Agar subdomain ini bisa diakses)
+    RewriteRule ^sancaka\.bisnis\.pro - [L,NC]
 
     # --------------------------------------------
     

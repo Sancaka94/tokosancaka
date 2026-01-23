@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="4IxG847KU8uhUC2VQZVSIOYJi6k1qI8PWR0yRcMe2nc" />
     <title>CV. Sancaka Karya Hutama | Solusi Perizinan Lengkap, Konstruksi, & Ekspedisi Terpercaya di Ngawi & Seluruh Indonesia</title>
     <meta name="description" content="CV. Sancaka Karya Hutama menyediakan layanan perizinan sertifikat tanah, IMB, PBG, SLF, BPOM, Halal, Merk, Paten, PIRT, pendirian CV/PT/Yayasan, jasa bangun rumah/toko/Alfamart/Indomaret, hitung RAB, pengeboran sumur SIPA, jasa ekspedisi terkemuka (J&T, JNE, Pos, Indah Cargo, SAP, ID, J&T Cargo, Lion Parcel, Anteraja), dan desain arsitek 2D/3D. Dapatkan legalitas bisnis dan properti Anda dengan harga mulai Rp 2.500.000. Konsultasi gratis sekarang! Cepat, Aman, Terpercaya.">
     <meta name="keywords" content="perizinan tanah, sertifikat tanah, IMB, PBG, SLF, BPOM, Halal, Merk, Paten, PIRT, CV, PT, Yayasan, jasa bangun rumah, RAB, sumur SIPA, ekspedisi, J&T, JNE, Pos Indonesia, Indah Cargo, SAP Express, ID Express, J&T Cargo, Lion Parcel, Anteraja, Ngawi, Jawa Timur, konsultan perizinan, legalitas bisnis, harga perizinan, tata cara perizinan, desain arsitek, denah 2D 3D, kantor pajak, solusi legalitas, lacak resi, cek ongkir, multi ekspedisi, biro jasa perizinan, kontraktor bangunan, arsitek profesional, legalitas usaha, sertifikasi produk">

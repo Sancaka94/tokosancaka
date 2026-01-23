@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="VuyWnIQA7O9C8rt_MoH-l1GDzsZGwCK7YzWIY4LJ48E" />
     <title>Sancaka Karya Hutama - Jasa Perizinan, Konstruksi & Ekspedisi Terpercaya Ngawi</title>
     <meta name="description" content="Solusi satu pintu untuk jasa perizinan (IMB, PBG, PT, CV), kontraktor bangun rumah & toko, arsitek, serta agen ekspedisi lengkap di Ngawi, Jawa Timur. Cepat, Aman, Profesional.">
     <meta name="keywords" content="Jasa Perizinan Ngawi, Kontraktor Bangunan Ngawi, Urus PBG SLF IMB, Jasa Arsitek Ngawi, Ekspedisi Murah Ngawi, Sancaka Pos, Agen JNT JNE, Biaya Bangun Rumah, Konsultan Legalitas Bisnis">

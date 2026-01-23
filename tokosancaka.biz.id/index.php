@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="l8gbY0TzOrB-5M6uNttXnJLu8gAGGAOverTTodmKW50" />
     <title>Sancaka Express - Jasa Perizinan, Kontruksi & Ekspedisi Ngawi Terlengkap</title>
     
     <meta name="description" content="Solusi Satu Pintu! Jasa Perizinan (PT, CV, PBG, SLF, BPOM), Kontraktor Bangunan, Arsitek, dan Ekspedisi Murah (JNT, JNE, Lion Parcel) di Ngawi. Cepat, Resmi, Terpercaya.">
