@@ -1853,7 +1853,7 @@ width: 22px;
         <div id="blog-content" class="row g-3">
             @forelse($latestPosts as $post)
             <div class="col-6 col-md-4 col-lg-3 fade-in-up">
-                <a href="{{ url('/blog/' . $post->slug) }}" class="text-decoration-none text-dark">
+                <a href="{{ url('/blog/posts/' . $post->slug) }}" class="text-decoration-none text-dark">
                     <div class="card h-100 border-0 shadow-sm overflow-hidden blog-card">
 
                         <div class="position-relative" style="background: #f8f9fa;">
