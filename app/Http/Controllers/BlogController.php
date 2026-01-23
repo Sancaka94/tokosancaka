@@ -96,8 +96,6 @@ class BlogController extends Controller
         ));
     }
 
-
-
     /**
      * Menampilkan detail satu postingan.
      */
