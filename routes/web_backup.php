@@ -265,7 +265,11 @@ Route::get('/test/doku/marketplace', [TestOrderController::class, 'testMarketpla
 
 
 
-// Route::get('/', function () {return view('home');})->name('home'); // <-- TAMBAHKAN INI
+Route::get('/', function () {
+
+    return view('home');
+
+})->name('home'); // <-- TAMBAHKAN INI
 
 Route::get('/privacy-policy', function () {
     return view('privacy-policy');
