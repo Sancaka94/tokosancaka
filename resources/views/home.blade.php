@@ -1804,28 +1804,24 @@ width: 22px;
 
 {{--
     =======================================================
-    LOGIKA PENGAMBILAN DATA DENGAN PAGINATION
+    LOGIKA PENGAMBILAN DATA (LANGSUNG DI BLADE)
     =======================================================
 --}}
 @php
     $latestPosts = collect();
-
     try {
         if (class_exists(\App\Models\Post::class)) {
-            // Gunakan paginate(8) agar otomatis membaca ?page=1, ?page=2 dari URL
             $latestPosts = \App\Models\Post::with(['category', 'author'])
                 ->where('status', 'published')
                 ->latest()
-                ->paginate(8);
+                ->paginate(8); // Pagination otomatis aktif
         }
-    } catch (\Exception $e) {
-        // Silent error
-    }
+    } catch (\Exception $e) {}
 @endphp
 
 {{--
     =======================================================
-    TAMPILAN GRID BERITA
+    TAMPILAN GRID BERITA (DENGAN ID UNTUK AJAX)
     =======================================================
 --}}
 <section class="py-5 bg-white" id="blog-section">
@@ -1842,14 +1838,21 @@ width: 22px;
                     @endif
                 </p>
             </div>
-            <a href="{{ url('/blog') }}" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">
+            <a href="{{ url('/blog') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">
                 Lihat Semua <i class="fas fa-arrow-right ms-1"></i>
             </a>
         </div>
 
-        <div class="row g-3">
+        <div id="blog-loader" class="text-center py-5 d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-2 small">Memuat berita...</p>
+        </div>
+
+        <div id="blog-content" class="row g-3">
             @forelse($latestPosts as $post)
-            <div class="col-6 col-md-4 col-lg-3">
+            <div class="col-6 col-md-4 col-lg-3 fade-in-up">
                 <a href="{{ url('/blog/' . $post->slug) }}" class="text-decoration-none text-dark">
                     <div class="card h-100 border-0 shadow-sm overflow-hidden blog-card">
 
@@ -1859,8 +1862,7 @@ width: 22px;
                                  style="object-fit: cover;"
                                  alt="{{ $post->title }}"
                                  onerror="this.src='https://placehold.co/300x200/eee/999?text=Sancaka';">
-
-                            <span class="badge bg-warning text-dark position-absolute top-0 end-0 m-2 shadow-sm"
+                            <span class="badge bg-primary text-white position-absolute top-0 end-0 m-2 shadow-sm"
                                   style="font-size: 10px; font-weight: 600;">
                                 {{ $post->category->name ?? 'Info' }}
                             </span>
@@ -1870,7 +1872,6 @@ width: 22px;
                             <h6 class="card-title fw-bold mb-2 text-truncate-2" style="font-size: 13px; line-height: 1.4; min-height: 36px;">
                                 {{ $post->title }}
                             </h6>
-
                             <div class="mt-auto d-flex align-items-center justify-content-between text-muted" style="font-size: 10px;">
                                 <div class="d-flex align-items-center">
                                     <i class="fas fa-user-circle me-1 text-primary"></i>
@@ -1898,14 +1899,8 @@ width: 22px;
             @endforelse
         </div>
 
-        {{--
-            =======================================================
-            TOMBOL PAGINATION (Navigasi Halaman)
-            =======================================================
-        --}}
         @if($latestPosts instanceof \Illuminate\Pagination\LengthAwarePaginator && $latestPosts->hasPages())
-        <div class="d-flex justify-content-center mt-5 custom-pagination">
-            {{-- Menggunakan style Bootstrap 5 bawaan Laravel --}}
+        <div class="d-flex justify-content-center mt-5 custom-pagination" id="pagination-wrapper">
             {{ $latestPosts->appends(request()->query())->links('pagination::bootstrap-5') }}
         </div>
         @endif
@@ -1913,9 +1908,23 @@ width: 22px;
     </div>
 </section>
 
-{{-- CUSTOM CSS --}}
+{{--
+    =======================================================
+    STYLE CSS (Design Biru & Animasi)
+    =======================================================
+--}}
 @push('styles')
 <style>
+    /* Animasi masuk halus */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in-up {
+        animation: fadeInUp 0.5s ease-out forwards;
+    }
+
+    /* Card Style */
     .text-truncate-2 {
         display: -webkit-box;
         -webkit-line-clamp: 2;
@@ -1924,34 +1933,52 @@ width: 22px;
     }
     .blog-card {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
-        border-radius: 8px;
+        border-radius: 10px;
     }
     .blog-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(13, 110, 253, 0.15) !important; /* Bayangan Biru Tipis */
     }
 
-    /* Styling Pagination agar sesuai tema Sancaka (Merah) */
-    .custom-pagination .page-link {
-        color: #dc3545;
-        border: none;
-        border-radius: 50%;
-        margin: 0 3px;
-        width: 35px;
-        height: 35px;
+    /* --- DESAIN PAGINATION BIRU KEREN --- */
+    .custom-pagination .pagination {
+        gap: 5px; /* Jarak antar tombol */
+    }
+    .custom-pagination .page-item .page-link {
+        color: #0d6efd; /* Biru Utama */
+        background-color: #fff;
+        border: 2px solid #e9ecef;
+        border-radius: 8px; /* Kotak rounded */
+        width: 40px;
+        height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: bold;
+        font-weight: 700;
+        transition: all 0.2s;
+        font-size: 14px;
     }
+
+    /* Hover Effect */
+    .custom-pagination .page-item .page-link:hover {
+        background-color: #e7f1ff;
+        border-color: #0d6efd;
+        transform: translateY(-2px);
+    }
+
+    /* Active State (Tombol yang sedang aktif) */
     .custom-pagination .page-item.active .page-link {
-        background-color: #dc3545;
-        border-color: #dc3545;
+        background: linear-gradient(135deg, #0d6efd, #0a58ca);
+        border-color: #0d6efd;
         color: white;
+        box-shadow: 0 4px 10px rgba(13, 110, 253, 0.3);
     }
-    .custom-pagination .page-link:hover {
-        background-color: #f8d7da;
-        color: #842029;
+
+    /* Disabled State */
+    .custom-pagination .page-item.disabled .page-link {
+        color: #adb5bd;
+        background-color: #f8f9fa;
+        border-color: #e9ecef;
     }
 </style>
 @endpush
@@ -3040,6 +3067,59 @@ document.addEventListener('DOMContentLoaded', function () {
 
     });
 
+</script>
+
+{{--
+    =======================================================
+    JAVASCRIPT (AJAX NO REFRESH)
+    =======================================================
+--}}
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    // Tangkap klik pada pagination di dalam #blog-section
+    $(document).on('click', '#blog-section .custom-pagination a', function(e) {
+        e.preventDefault(); // Mencegah refresh halaman
+
+        let url = $(this).attr('href');
+
+        // Efek Loading
+        $('#blog-content').addClass('d-none');
+        $('#pagination-wrapper').addClass('d-none');
+        $('#blog-loader').removeClass('d-none');
+
+        // Scroll halus ke atas section blog
+        $('html, body').animate({
+            scrollTop: $("#blog-section").offset().top - 100
+        }, 500);
+
+        // Ambil data baru via AJAX
+        $.get(url, function(data) {
+            // Ambil hanya bagian #blog-section dari respons HTML
+            let newContent = $(data).find('#blog-content').html();
+            let newPagination = $(data).find('#pagination-wrapper').html();
+            let newInfo = $(data).find('.text-muted.small.m-0').html(); // Update info halaman
+
+            // Ganti konten lama dengan yang baru
+            $('#blog-content').html(newContent).removeClass('d-none');
+            $('#pagination-wrapper').html(newPagination).removeClass('d-none');
+            $('#blog-loader').addClass('d-none');
+
+            // Update teks "Halaman X dari Y"
+            $('#blog-section .text-muted.small.m-0').html(newInfo);
+
+            // Re-apply animasi fade
+            $('#blog-content .col-6').addClass('fade-in-up');
+        }).fail(function() {
+            alert('Gagal memuat berita. Periksa koneksi internet Anda.');
+            $('#blog-content').removeClass('d-none');
+            $('#pagination-wrapper').removeClass('d-none');
+            $('#blog-loader').addClass('d-none');
+        });
+    });
+
+});
 </script>
 
 
