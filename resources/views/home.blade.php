@@ -1804,25 +1804,22 @@ width: 22px;
 
 {{--
     =======================================================
-    LOGIKA PENGAMBILAN DATA (LANGSUNG DI BLADE)
+    LOGIKA PENGAMBILAN DATA DENGAN PAGINATION
     =======================================================
 --}}
 @php
-    // Kita panggil Model Post langsung di sini tanpa lewat Controller
-    // Pastikan class model benar (\App\Models\Post)
-
-    $latestPosts = collect(); // Default kosong agar tidak error
+    $latestPosts = collect();
 
     try {
         if (class_exists(\App\Models\Post::class)) {
-            $latestPosts = \App\Models\Post::with(['category', 'author']) // Eager loading
-                ->where('status', 'published') // Filter hanya yang published
-                ->latest() // Urutkan terbaru
-                ->take(8)  // Ambil 8 data saja
-                ->get();
+            // Gunakan paginate(8) agar otomatis membaca ?page=1, ?page=2 dari URL
+            $latestPosts = \App\Models\Post::with(['category', 'author'])
+                ->where('status', 'published')
+                ->latest()
+                ->paginate(8);
         }
     } catch (\Exception $e) {
-        // Diamkan error jika tabel belum ada
+        // Silent error
     }
 @endphp
 
@@ -1831,13 +1828,19 @@ width: 22px;
     TAMPILAN GRID BERITA
     =======================================================
 --}}
-<section class="py-5 bg-white">
+<section class="py-5 bg-white" id="blog-section">
     <div class="container">
 
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h4 class="fw-bold m-0" style="color: #1a253c;">Berita & Informasi</h4>
-                <p class="text-muted small m-0">Update terkini seputar layanan & bisnis</p>
+                <p class="text-muted small m-0">
+                    @if($latestPosts instanceof \Illuminate\Pagination\LengthAwarePaginator)
+                        Halaman {{ $latestPosts->currentPage() }} dari {{ $latestPosts->lastPage() }}
+                    @else
+                        Update terkini seputar layanan & bisnis
+                    @endif
+                </p>
             </div>
             <a href="{{ url('/blog') }}" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">
                 Lihat Semua <i class="fas fa-arrow-right ms-1"></i>
@@ -1872,7 +1875,6 @@ width: 22px;
                                 <div class="d-flex align-items-center">
                                     <i class="fas fa-user-circle me-1 text-primary"></i>
                                     <span class="text-truncate" style="max-width: 60px;">
-                                        {{-- Cek Author atau User --}}
                                         {{ $post->author->name ?? $post->user->name ?? 'Admin' }}
                                     </span>
                                 </div>
@@ -1896,20 +1898,30 @@ width: 22px;
             @endforelse
         </div>
 
+        {{--
+            =======================================================
+            TOMBOL PAGINATION (Navigasi Halaman)
+            =======================================================
+        --}}
+        @if($latestPosts instanceof \Illuminate\Pagination\LengthAwarePaginator && $latestPosts->hasPages())
+        <div class="d-flex justify-content-center mt-5 custom-pagination">
+            {{-- Menggunakan style Bootstrap 5 bawaan Laravel --}}
+            {{ $latestPosts->appends(request()->query())->links('pagination::bootstrap-5') }}
+        </div>
+        @endif
+
     </div>
 </section>
 
-{{-- CUSTOM CSS (Wajib disertakan agar tampilan rapi) --}}
+{{-- CUSTOM CSS --}}
 @push('styles')
 <style>
-    /* Memotong judul jika lebih dari 2 baris */
     .text-truncate-2 {
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
-    /* Efek Hover Halus */
     .blog-card {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         border-radius: 8px;
@@ -1917,6 +1929,29 @@ width: 22px;
     .blog-card:hover {
         transform: translateY(-3px);
         box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Styling Pagination agar sesuai tema Sancaka (Merah) */
+    .custom-pagination .page-link {
+        color: #dc3545;
+        border: none;
+        border-radius: 50%;
+        margin: 0 3px;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+    .custom-pagination .page-item.active .page-link {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: white;
+    }
+    .custom-pagination .page-link:hover {
+        background-color: #f8d7da;
+        color: #842029;
     }
 </style>
 @endpush
