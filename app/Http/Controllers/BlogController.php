@@ -44,7 +44,7 @@ class BlogController extends Controller
         // A. HEADLINE (1 Artikel Utama)
         // Gunakan (clone $baseQuery) agar filter di atas tetap terbawa, tapi query aslinya tidak berubah
         $headline = (clone $baseQuery)->latest()->first();
-        
+
         // Siapkan array untuk menampung ID agar tidak muncul ganda
         $excludeIds = [];
         if ($headline) {
@@ -88,12 +88,26 @@ class BlogController extends Controller
             ->get();
 
         return view('blog.index', compact(
-            'headline', 
-            'topArticles', 
-            'latestPosts', 
-            'categories', 
+            'headline',
+            'topArticles',
+            'latestPosts',
+            'categories',
             'popularPosts'
         ));
+    }
+
+    public function index()
+    {
+        // Ambil 8 artikel terbaru yang statusnya 'published'
+        // Menggunakan eager loading 'category' dan 'author' agar query ringan
+        $latestPosts = Post::with(['category', 'author'])
+            ->where('status', 'published')
+            ->latest()
+            ->take(8) // Ambil 8 data (Pas untuk layout 4 kolom x 2 baris)
+            ->get();
+
+        // Kirim variabel $latestPosts ke view 'home'
+        return view('home', compact('latestPosts'));
     }
 
     /**
@@ -131,7 +145,7 @@ class BlogController extends Controller
     public function index()
 {
     // Jangan panggil $this->blogIndex($request);
-    
+
     // Tampilkan view landing page khusus (Anda harus buat file view-nya dulu)
     return view('home'); // Pastikan ada file resources/views/welcome.blade.php
 }
