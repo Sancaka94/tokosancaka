@@ -12,21 +12,32 @@ use Illuminate\Pagination\Paginator;
 class HomeController extends Controller
 {
     public function index()
-    {
-        $latestPosts = [];
+{
+    // --- MODE DIAGNOSA ---
 
-        try {
-            if (class_exists(Post::class)) {
-                // Gunakan paginate() bukan take()->get()
-                $latestPosts = Post::with(['category', 'user'])
-                                    ->where('status', 'published') // Pastikan data di DB statusnya 'published'
-                                    ->latest()
-                                    ->paginate(8); // Otomatis membagi 8 artikel per halaman
-            }
-        } catch (\Exception $e) {
-            // Log::error($e->getMessage());
-        }
-
-        return view('home', compact('latestPosts'));
+    // 1. Cek apakah Model Post terbaca
+    if (!class_exists(\App\Models\Post::class)) {
+        dd("ERROR: Model App\Models\Post tidak ditemukan. Pastikan file model ada.");
     }
+
+    // 2. Cek Total Semua Data (Tanpa Filter)
+    $totalSemua = \App\Models\Post::count();
+
+    // 3. Cek Data dengan Status 'published'
+    $totalPublished = \App\Models\Post::where('status', 'published')->count();
+
+    // 4. Ambil 1 contoh data untuk dicheck statusnya (jika ada)
+    $contohData = \App\Models\Post::first();
+
+    // TAMPILKAN HASIL DIAGNOSA DI LAYAR
+    dd([
+        'STATUS_KONEKSI' => 'OK (Nyambung ke Database)',
+        'TOTAL_ARTIKEL_DI_DB' => $totalSemua . ' artikel',
+        'TOTAL_YANG_PUBLISHED' => $totalPublished . ' artikel',
+        'CONTOH_DATA_PERTAMA' => $contohData,
+        'PESAN_SAYA' => $totalPublished == 0 ? 'Masalahnya di sini! Status artikel di database bukan "published" atau data kosong.' : 'Data ada, mungkin masalah di View.'
+    ]);
+
+    }
+
 }
