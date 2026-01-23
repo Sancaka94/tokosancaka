@@ -8,6 +8,8 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <meta name="google-site-verification" content="M5GwyjoDoCcRA93IrehnwMAWLPXZPP2HNPMYU8pnIk8" />
+
     <title>Sistem Manajemen Pondok Pesantren Modern - Sancaka ePesantren</title>
 
     <link rel="icon" type="image/png" href="https://tokosancaka.biz.id/storage/uploads/sancaka.png">
