@@ -1856,14 +1856,14 @@ width: 22px;
                 <a href="{{ url('/blog/' . $post->slug) }}" class="text-decoration-none text-dark">
                     <div class="card h-100 border-0 shadow-sm overflow-hidden blog-card">
 
-                        <div class="position-relative" style="height: 120px; background: #f8f9fa;">
+                        <div class="position-relative" style="background: #f8f9fa;">
                             <img src="{{ asset('storage/' . $post->featured_image) }}"
-                                 class="w-100 h-100"
-                                 style="object-fit: cover;"
-                                 alt="{{ $post->title }}"
-                                 onerror="this.src='https://placehold.co/300x200/eee/999?text=Sancaka';">
+                                class="w-100"
+                                alt="{{ $post->title }}"
+                                onerror="this.src='https://placehold.co/300x200/eee/999?text=Sancaka';">
+
                             <span class="badge bg-primary text-white position-absolute top-0 end-0 m-2 shadow-sm"
-                                  style="font-size: 10px; font-weight: 600;">
+                                style="font-size: 10px; font-weight: 600;">
                                 {{ $post->category->name ?? 'Info' }}
                             </span>
                         </div>
