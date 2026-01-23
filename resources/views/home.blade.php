@@ -1861,11 +1861,6 @@ width: 22px;
                                 class="w-100"
                                 alt="{{ $post->title }}"
                                 onerror="this.src='https://placehold.co/300x200/eee/999?text=Sancaka';">
-
-                            <span class="badge bg-primary text-white position-absolute top-0 end-0 m-2 shadow-sm"
-                                style="font-size: 10px; font-weight: 600;">
-                                {{ $post->category->name ?? 'Info' }}
-                            </span>
                         </div>
 
                         <div class="card-body p-2 d-flex flex-column">
@@ -1879,10 +1874,20 @@ width: 22px;
                                         {{ $post->author->name ?? $post->user->name ?? 'Admin' }}
                                     </span>
                                 </div>
+
+                                <div class="d-flex align-items-center">
+                                <span class="badge bg-primary text-white position-absolute top-0 end-0 m-2 shadow-sm"
+                                      style="font-size: 10px; font-weight: 600;">
+                                    {{ $post->category->name ?? 'Info' }}
+                                </span>
+                                </div>
+
                                 <div class="d-flex align-items-center">
                                     <i class="far fa-clock me-1"></i>
                                     <span>{{ $post->created_at->diffForHumans(null, true) }}</span>
                                 </div>
+
+
                             </div>
                         </div>
 
