@@ -116,7 +116,10 @@ Data Pengguna & Pelanggan
                                 <td class="px-6 py-4 text-sm text-gray-900 min-w-[150px]">{{ $data->store_name ?? '—' }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
                                     @if ($data->store_logo_path)
-                                        <img src="{{ asset('public/storage/' . $data->store_logo_path) }}" alt="Logo" class="h-8 w-8 object-cover rounded-full mx-auto" loading="lazy">
+                                    <img :src="user.store_logo_path 
+                                                ? '{{ asset('public/storage') }}/' + user.store_logo_path 
+                                                : 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.nama_lengkap || 'User') + '&color=7F9CF5&background=EBF4FF'"
+                                                 alt="Logo" class="w-10 h-10 rounded-full object-cover">
                                     @else
                                         —
                                     @endif
