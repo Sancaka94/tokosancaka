@@ -434,19 +434,10 @@ ini_set('display_errors', 1);
 
 </main>
 
-
-
 <!-- ================== FOOTER ================== -->
 
 
-
-    <div class="container text-center">
-
-        @include('blog.partials.footer_smartmag')
-
-    </div>
-
-
+@include('blog.partials.footer_smartmag')
 
 <!-- Bootstrap JS Bundle -->
 
