@@ -24,31 +24,34 @@
     .col-main-post { margin-bottom: 20px; }
 
     .col-img-wrap {
-        height: 160px;
+        /* height: 160px;  <-- DIHAPUS agar tinggi otomatis */
         width: 100%;
         overflow: hidden;
         margin-bottom: 15px;
         background: #f4f4f4;
+        border-radius: 3px;
     }
 
     .col-img {
         width: 100%;
-        height: 100%;
-        object-fit: cover; /* Cover agar rapi sesuai referensi */
+        height: auto; /* <-- DIUBAH jadi auto agar mengikuti rasio asli */
+        /* object-fit: cover; <-- DIHAPUS agar tidak di-crop */
         transition: transform 0.4s ease;
+        display: block; /* Menghilangkan celah kosong di bawah gambar */
     }
-    .col-main-post:hover .col-img { transform: scale(1.05); }
+    .col-main-post:hover .col-img { transform: scale(1.03); }
 
     .col-post-title {
         font-family: 'IBM Plex Serif', serif;
         font-weight: 700;
-        font-size: 18px; /* Ukuran font judul */
+        font-size: 17px;
         line-height: 1.3;
         margin-bottom: 8px;
         color: #111;
         display: block;
+        text-decoration: none;
     }
-    .col-post-title:hover { color: #dd0017; text-decoration: none; }
+    .col-post-title:hover { color: #dd0017; }
 
     .col-meta {
         font-family: 'Inter', sans-serif;
@@ -81,12 +84,13 @@
         margin-bottom: 5px;
         color: #111;
         display: block;
+        text-decoration: none;
     }
-    .col-list-title:hover { color: #dd0017; text-decoration: none; }
+    .col-list-title:hover { color: #dd0017; }
 </style>
 
 <div class="row">
-    {{-- Loop 4 Kategori (Misal: categori ke-2 sampai ke-5) --}}
+    {{-- Loop 4 Kategori --}}
     @foreach($categories->skip(1)->take(4) as $cat)
     <div class="col-lg-3 col-md-6 mb-5">
 
@@ -106,7 +110,7 @@
                     </a>
                 </div>
                 <a href="{{ route('blog.posts.show', $first->slug) }}" class="col-post-title">
-                    {{ $first->title }}
+                    {{ Str::limit($first->title, 50) }}
                 </a>
                 <div class="col-meta">
                     <span class="cat-label">{{ $cat->name }}</span>
@@ -119,7 +123,7 @@
             @foreach($cat->posts()->latest()->skip(1)->take(3)->get() as $listPost)
             <div class="col-list-item">
                 <a href="{{ route('blog.posts.show', $listPost->slug) }}" class="col-list-title">
-                    {{ $listPost->title }}
+                    {{ Str::limit($listPost->title, 55) }}
                 </a>
                 <div class="col-meta mb-0" style="color: #bbb; font-weight: 500;">
                     {{ $listPost->created_at->format('M d, Y') }}
