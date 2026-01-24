@@ -540,11 +540,12 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::put('/settings/api', [ApiSettingsController::class, 'update'])->name('settings.api.update');
     Route::post('/settings/api', [ApiSettingsController::class, 'toggle'])->name('settings.api.toggle');
 
+
     // Tambahkan ini SEBELUM resource
     Route::get('customers/data/pengguna/export', [DataPenggunaController::class, 'export'])->name('customers.pengguna.export');
 
     // Users
-    Route::resource('customers/data/pengguna', DataPenggunaController::class)->names('customers.data.pengguna');
+    Route::resource('customers/data/pengguna', DataPenggunaController::class)->names('customers.pengguna');
     Route::post('/users/{user}/toggle-freeze', [UserController::class, 'toggleFreeze'])->name('users.toggle-freeze');
 
     Route::resource('pelanggan', PelangganController::class);
