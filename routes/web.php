@@ -540,8 +540,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::put('/settings/api', [ApiSettingsController::class, 'update'])->name('settings.api.update');
     Route::post('/settings/api', [ApiSettingsController::class, 'toggle'])->name('settings.api.toggle');
 
-
-    // Tambahkan ini SEBELUM resource
+    Route::get('customers/data/pengguna/', [DataPenggunaController::class, 'index'])->name('customers.pengguna.index');
     Route::get('customers/data/pengguna/export', [DataPenggunaController::class, 'export'])->name('customers.pengguna.export');
 
     // Users
