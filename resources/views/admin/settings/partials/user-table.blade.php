@@ -110,10 +110,10 @@
                     <td class="px-6 py-4" x-text="user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { dateStyle: 'short' }) : '-'"></td>
                     <td class="px-6 py-4">
                         {{-- [FIX] Menggunakan asset() dan disk 'public' --}}
-                        <img :src="user.store_logo_path
-                                ? '{{ asset('storage/seller_logos') }}/' + user.store_logo_path
-                                : 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.nama_lengkap || 'User') + '&color=7F9CF5&background=EBF4FF'"
-                        alt="Logo" class="w-10 h-10 rounded-full object-cover">
+                        <img :src="user.store_logo_path ? '{{ asset('storage') }}/' + user.store_logo_path : 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.nama_lengkap)"
+                            @error="$el.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.nama_lengkap)"
+                            alt="Logo"
+                            class="w-10 h-10 rounded-full object-cover">
                     </td>
                     <td class="px-6 py-4 sticky right-0 bg-white z-10 shadow-[-2px_0_3px_rgba(0,0,0,0.05)]">
                         {{-- Kolom Aksi Sticky --}}
