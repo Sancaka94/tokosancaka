@@ -38,11 +38,11 @@
             @endif
 
             {{-- SPACER --}}
-            <div style="border-top: 1px dashed #ddd; margin: 50px 0;"></div>
+            {{-- <div style="border-top: 1px dashed #ddd; margin: 50px 0;"></div> --}}
 
             {{-- 3. BOTTOM GRID 4 KOLOM (Desain Travel, UK, Science, Economy) --}}
             {{-- Ini akan menampilkan 4 kategori berikutnya secara berjajar --}}
-            @include('blog.partials.bottom_grid')
+            {{-- @include('blog.partials.bottom_grid') --}}
 
         @endif
 
@@ -56,11 +56,5 @@
     @endif
 
 </div>
-
-{{-- 4. FOOTER (Sebaiknya letakkan kode ini di file layouts/blog.blade.php menggantikan footer lama) --}}
-{{-- Tapi jika ingin dipanggil di sini juga bisa, pastikan diluar container content utama --}}
-@section('footer')
-    @include('blog.partials.footer_smartmag')
-@endsection
 
 @endsection
