@@ -73,9 +73,9 @@
                 <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                     @if ($data->store_logo_path)
                     <img src="{{ $data->store_logo_path ? asset('public/storage/' . $data->store_logo_path) : 'https://ui-avatars.com/api/?name=' . urlencode($data->nama_lengkap ?? 'User') }}" 
-     alt="Logo Toko" 
-     class="h-10 w-10 object-cover rounded-full"
-     onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($data->nama_lengkap ?? 'User') }}'">
+                        alt="Logo Toko" 
+                        class="h-10 w-10 object-cover rounded-full"
+                        onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($data->nama_lengkap ?? 'User') }}'">
                     @else
                         —
                     @endif
