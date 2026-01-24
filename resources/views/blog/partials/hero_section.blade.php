@@ -73,7 +73,7 @@
         {{-- KANAN: 4 BERITA TERBARU LAINNYA --}}
         <div class="col-lg-5">
             <div class="d-flex flex-column h-100 justify-content-between">
-                @foreach($latestPosts->skip(1)->take(4) as $post)
+                @foreach($latestPosts->skip(1)->take(7) as $post)
                 <div class="hero-list-item">
                     <div class="hero-list-img">
                         <a href="{{ route('blog.posts.show', $post->slug) }}">
