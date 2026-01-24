@@ -141,6 +141,10 @@
 
                     </div>
 
+                    <p class="text-center text-muted">
+                        Menampilkan {{ $posts->count() }} dari total {{ $posts->total() }} artikel.
+                    </p>
+
                     {{-- PAGINATION --}}
                     {{-- Tampilkan Link --}}
                         <div class="d-flex justify-content-center mt-4">
