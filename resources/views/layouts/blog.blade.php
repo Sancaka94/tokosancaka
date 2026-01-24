@@ -250,7 +250,22 @@ ini_set('display_errors', 1);
 
         }
 
-    </style>
+    /* CLASS KHUSUS GAMBAR 1:1 UTUH (TIDAK TERPOTONG) */
+    .img-square-full {
+        width: 100%;
+        height: 100%;
+        aspect-ratio: 1 / 1;        /* Memaksa wadah menjadi kotak 1:1 */
+        object-fit: contain;        /* Memaksa gambar tampil utuh (tidak di-crop) */
+        background-color: #e0e0e0;  /* Warna background untuk mengisi ruang kosong (abu-abu) */
+        display: block;
+    }
+
+    /* Opsi: Jika ingin background hitam agar lebih elegan seperti SmartMag */
+    .img-square-dark {
+        background-color: #111;
+    }
+
+</style>
 
 </head>
 

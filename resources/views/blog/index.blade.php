@@ -7,6 +7,7 @@
 {{-- LOAD GOOGLE FONTS (Wajib agar style sesuai) --}}
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
+
 {{-- 1. TICKER (RUNNING TEXT) --}}
 @include('blog.partials.ticker')
 
