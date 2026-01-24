@@ -44,6 +44,7 @@ use App\Http\Controllers\Customer\CategoryController;
 use App\Http\Controllers\Admin\CategoryAttributeController;
 use App\Http\Controllers\Admin\SliderController;
 use App\Http\Controllers\Admin\BannerController;
+use App\Http\Controllers\CartController; // <--- TAMBAHKAN INI
 
 // Orders & Shipping
 use App\Http\Controllers\CheckoutController;
