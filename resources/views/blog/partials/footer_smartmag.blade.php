@@ -103,7 +103,7 @@
 
         {{-- LOGO & SOCIAL ROW --}}
         <div class="footer-logo-row">
-            <h2 class="footer-logo-text">The Smart Times</h2>
+            <h2 class="footer-logo-text">SANCAKA LEGAL</h2>
             <div class="footer-social">
                 <a href="#"><i class="fab fa-facebook-f"></i></a>
                 <a href="#"><i class="fab fa-twitter"></i></a>
@@ -173,7 +173,7 @@
         {{-- BOTTOM COPYRIGHT --}}
         <div class="footer-bottom">
             <div>
-                &copy; {{ date('Y') }} Sancaka Media. Designed by ThemeSphere.
+                &copy; {{ date('Y') }} Sancaka Media. Designed by <a href="https://tokosancaka.com">SancakaDev</a>.
             </div>
             <div>
                 <a href="#">Privacy Policy</a>
