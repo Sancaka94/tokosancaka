@@ -31,6 +31,20 @@
     .hero-list-title a { color: #111; text-decoration: none; }
     .hero-list-title a:hover { color: #dd0017; }
 
+    /* UPDATE BAGIAN INI */
+    .hero-main img,
+    .hero-list-img img {
+        width: 100%;
+        height: 100%;
+        aspect-ratio: 1 / 1;  /* Paksa 1:1 */
+        object-fit: contain;  /* Gambar utuh */
+        background: #000;     /* Background hitam biar rapi */
+    }
+
+    /* Revisi tinggi container agar mengikuti rasio */
+    .hero-main { height: auto; aspect-ratio: 1/1; overflow: hidden; border-radius: 3px; }
+    .hero-list-img { width: 100px; height: 100px; /* Samakan lebar tinggi */ flex-shrink: 0; }
+
     @media(max-width: 768px) { .hero-main { height: 300px; margin-bottom: 30px; } }
 </style>
 

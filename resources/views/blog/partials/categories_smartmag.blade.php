@@ -124,6 +124,32 @@
         .main-feat-img-wrap { width: 100%; height: 200px; }
         .sub-grid-item { border-right: none; border-bottom: 1px solid #eee; padding-bottom: 15px; }
     }
+
+    /* UPDATE 1: Gambar Utama (Kiri Atas) */
+    .main-feat-img-wrap {
+        flex: 1.3;
+        height: auto;           /* Biarkan tinggi otomatis mengikuti rasio */
+        aspect-ratio: 1 / 1;    /* Paksa wadah 1:1 */
+        overflow: hidden;
+        border-radius: 2px;
+        background: #f4f4f4;    /* Background abu terang */
+    }
+    .main-feat-img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;    /* Gambar utuh */
+    }
+
+    /* UPDATE 2: Gambar Sidebar (Kanan) */
+    .side-list-img {
+        width: 90px;
+        height: 90px;           /* Samakan tinggi dengan lebar (Kotak) */
+        object-fit: contain;    /* Gambar utuh */
+        background: #f4f4f4;
+        border-radius: 2px;
+        flex-shrink: 0;
+        border: 1px solid #eee;
+    }
 </style>
 
 <div class="row mb-5">
