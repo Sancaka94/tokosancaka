@@ -91,6 +91,7 @@
     }
 </style>
 
+
 <div class="hero-wrap">
     <div class="row">
         {{-- KIRI: 1 BERITA UTAMA (HEADLINE) --}}
