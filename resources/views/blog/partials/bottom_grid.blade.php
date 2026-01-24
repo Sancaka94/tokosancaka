@@ -4,15 +4,15 @@
 --}}
 
 <style>
-    /* Header Garis Hitam di Atas */
+    /* Styling Header Kategori dengan Garis Hitam Tebal */
     .col-head-style {
         border-top: 2px solid #000;
         padding-top: 15px;
-        margin-bottom: 20px;
+        margin-bottom: 25px;
     }
     .col-head-title {
         font-family: 'Inter', sans-serif;
-        font-weight: 800;
+        font-weight: 800; /* Extra Bold */
         text-transform: uppercase;
         font-size: 13px;
         color: #111;
@@ -20,33 +20,43 @@
         letter-spacing: 0.5px;
     }
 
-    /* Main Post (Gambar Atas) */
-    .col-main-post { margin-bottom: 25px; }
+    /* Styling Postingan Utama (Atas) */
+    .col-main-post { margin-bottom: 20px; }
+
     .col-img-wrap {
         height: 160px;
+        width: 100%;
         overflow: hidden;
         margin-bottom: 15px;
+        background: #f4f4f4;
     }
-    .col-img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
+
+    .col-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* Cover agar rapi sesuai referensi */
+        transition: transform 0.4s ease;
+    }
     .col-main-post:hover .col-img { transform: scale(1.05); }
 
     .col-post-title {
         font-family: 'IBM Plex Serif', serif;
         font-weight: 700;
-        font-size: 17px;
-        line-height: 1.35;
+        font-size: 18px; /* Ukuran font judul */
+        line-height: 1.3;
         margin-bottom: 8px;
         color: #111;
+        display: block;
     }
-    .col-post-title:hover { color: #dd0017; }
+    .col-post-title:hover { color: #dd0017; text-decoration: none; }
 
     .col-meta {
         font-family: 'Inter', sans-serif;
         font-size: 10px;
         color: #999;
         text-transform: uppercase;
-        font-weight: 600;
-        margin-bottom: 10px;
+        font-weight: 700;
+        margin-bottom: 12px;
     }
     .col-meta .cat-label { color: #dd0017; margin-right: 5px; }
 
@@ -58,26 +68,27 @@
         display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
     }
 
-    /* List Post (Bawah) */
+    /* Styling List Postingan (Bawah) */
     .col-list-item {
-        border-top: 1px solid #eee;
+        border-top: 1px solid #eee; /* Garis pemisah tipis */
         padding: 15px 0;
     }
     .col-list-title {
         font-family: 'IBM Plex Serif', serif;
         font-weight: 700;
-        font-size: 14px;
+        font-size: 15px;
         line-height: 1.4;
         margin-bottom: 5px;
         color: #111;
+        display: block;
     }
-    .col-list-title:hover { text-decoration: underline; }
+    .col-list-title:hover { color: #dd0017; text-decoration: none; }
 </style>
 
 <div class="row">
-    {{-- Kita ambil 4 Kategori terakhir/tertentu untuk ditampilkan --}}
+    {{-- Loop 4 Kategori (Misal: categori ke-2 sampai ke-5) --}}
     @foreach($categories->skip(1)->take(4) as $cat)
-    <div class="col-lg-3 col-md-6 mb-4">
+    <div class="col-lg-3 col-md-6 mb-5">
 
         {{-- Header Kategori --}}
         <div class="col-head-style">
@@ -94,8 +105,8 @@
                         <img src="{{ asset('/storage/' . $first->featured_image) }}" class="col-img" alt="{{ $first->title }}" onerror="this.onerror=null;this.src='https://placehold.co/400x250/eee/999?text=Image';">
                     </a>
                 </div>
-                <a href="{{ route('blog.posts.show', $first->slug) }}" class="text-decoration-none">
-                    <h3 class="col-post-title">{{ $first->title }}</h3>
+                <a href="{{ route('blog.posts.show', $first->slug) }}" class="col-post-title">
+                    {{ $first->title }}
                 </a>
                 <div class="col-meta">
                     <span class="cat-label">{{ $cat->name }}</span>
@@ -107,17 +118,17 @@
             {{-- 2. List Postingan Bawahnya (Tanpa Gambar) --}}
             @foreach($cat->posts()->latest()->skip(1)->take(3)->get() as $listPost)
             <div class="col-list-item">
-                <a href="{{ route('blog.posts.show', $listPost->slug) }}" class="text-decoration-none">
-                    <h4 class="col-list-title">{{ $listPost->title }}</h4>
+                <a href="{{ route('blog.posts.show', $listPost->slug) }}" class="col-list-title">
+                    {{ $listPost->title }}
                 </a>
-                <div class="col-meta mb-0" style="color: #bbb;">
+                <div class="col-meta mb-0" style="color: #bbb; font-weight: 500;">
                     {{ $listPost->created_at->format('M d, Y') }}
                 </div>
             </div>
             @endforeach
 
         @else
-            <p class="text-muted small">Belum ada artikel.</p>
+            <p class="text-muted small">Belum ada artikel di kategori ini.</p>
         @endif
 
     </div>
