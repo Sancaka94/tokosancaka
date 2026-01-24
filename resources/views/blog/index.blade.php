@@ -5,7 +5,7 @@
 @section('content')
 
 {{-- ====================================================================== --}}
-{{-- SMARTMAG STYLE ASSETS & CSS --}}
+{{-- SMARTMAG STYLE ASSETS & CSS (REVISED) --}}
 {{-- ====================================================================== --}}
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
@@ -19,16 +19,11 @@
         --font-body: 'Inter', sans-serif;
     }
 
-    body {
-        font-family: var(--font-body);
-        color: #333;
-        background-color: #fff;
-    }
-
+    body { font-family: var(--font-body); color: #333; background-color: #fff; }
     a { text-decoration: none; color: inherit; transition: 0.2s; }
     a:hover { color: var(--c-main); }
 
-    /* 1. TYPOGRAPHY & GLOBAL */
+    /* TYPOGRAPHY */
     h1, h2, h3, h4, h5, h6, .post-title {
         font-family: var(--font-heading);
         font-weight: 700;
@@ -42,7 +37,6 @@
         text-transform: uppercase;
         font-size: 10px;
         font-weight: 700;
-        letter-spacing: 0.5px;
         padding: 4px 8px;
         background-color: var(--c-main);
         color: white;
@@ -51,86 +45,11 @@
         margin-bottom: 8px;
     }
 
-    .post-meta {
-        font-size: 11px;
-        color: #999;
-        margin-top: 5px;
-        font-family: var(--font-body);
-        text-transform: uppercase;
-    }
-
-    /* 2. TOP TICKER (NEWS FLASH) */
-    .trending-ticker-wrap {
-        background: var(--c-dark);
-        color: #fff;
-        font-size: 13px;
-        padding: 8px 0;
-    }
-    .ticker-label {
-        font-weight: 700;
-        text-transform: uppercase;
-        color: var(--c-main);
-        margin-right: 15px;
-    }
-    .ticker-item { margin-right: 20px; color: #ddd; }
-
-    /* 3. HERO SECTION (MAGAZINE LAYOUT) */
-    .hero-grid {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 4px; /* Small gap like SmartMag */
-        margin-bottom: 40px;
-    }
-    @media(max-width: 768px) { .hero-grid { grid-template-columns: 1fr; } }
-
-    .hero-main-card {
-        position: relative;
-        height: 450px;
-        overflow: hidden;
-    }
-    .hero-main-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.5s ease;
-    }
-    .hero-main-card:hover .hero-main-img { transform: scale(1.05); }
-
-    .hero-overlay {
-        position: absolute;
-        bottom: 0; left: 0; width: 100%;
-        background: linear-gradient(to top, rgba(0,0,0,0.85) 10%, rgba(0,0,0,0.4) 50%, transparent 100%);
-        padding: 30px;
-        z-index: 2;
-    }
-    .hero-title-lg { font-size: 32px; color: white; margin-bottom: 10px; }
-    .hero-excerpt { color: rgba(255,255,255,0.8); font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: var(--font-body); }
-
-    /* Side List in Hero */
-    .hero-side-list {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-    .hero-sm-card {
-        position: relative;
-        flex: 1;
-        overflow: hidden;
-        height: 223px; /* half of main + gap */
-    }
-    .hero-sm-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
-    .hero-sm-card:hover .hero-sm-img { transform: scale(1.05); }
-    .hero-sm-overlay {
-        position: absolute; bottom: 0; left: 0; right: 0;
-        padding: 20px;
-        background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
-    }
-    .hero-title-sm { font-size: 18px; color: white; line-height: 1.3; }
-
-    /* 4. BLOCK HEADERS (GARIS JUDUL) */
+    /* HEADER BLOCK STYLE (Garis Hitam Tebal Judul) */
     .block-head {
         border-bottom: 2px solid var(--c-dark);
         margin-bottom: 25px;
+        margin-top: 40px; /* Jarak antar kategori */
         position: relative;
         display: flex;
         align-items: center;
@@ -139,47 +58,55 @@
     .block-head h4 {
         background: var(--c-dark);
         color: #fff;
-        padding: 6px 12px;
-        font-size: 14px;
+        padding: 8px 15px;
+        font-size: 16px;
         text-transform: uppercase;
         margin: 0;
-        letter-spacing: 0.05em;
     }
-    .block-head-link {
-        font-size: 12px;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: var(--c-gray);
-    }
+    .block-head-link { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--c-gray); }
 
-    /* 5. CONTENT LAYOUT (Main + Sidebar) */
+    /* POST LIST STYLE (Revisi Gambar 1:1) */
     .post-list-item {
         display: flex;
         gap: 20px;
-        margin-bottom: 25px;
-        padding-bottom: 25px;
-        border-bottom: 1px solid var(--c-border);
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--c-border); /* Garis pembatas per postingan */
     }
     .post-list-item:last-child { border-bottom: none; }
+
     .post-list-img-wrap {
-        width: 240px;
-        height: 160px;
+        /* REVISI: Ukuran fix kotak 1:1 */
+        width: 180px;
+        height: 180px;
+        aspect-ratio: 1 / 1;
         flex-shrink: 0;
         overflow: hidden;
         border-radius: 4px;
+        background: #f0f0f0;
     }
-    .post-list-img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s; }
-    .post-list-item:hover .post-list-img { opacity: 0.9; }
 
-    .post-list-content h3 { font-size: 20px; margin-bottom: 10px; }
-    .post-list-excerpt { font-size: 14px; color: #555; line-height: 1.6; margin-bottom: 10px; }
+    .post-list-img {
+        width: 100%;
+        height: 100%;
+        /* REVISI: Cover agar gambar full kotak tanpa gepeng */
+        object-fit: cover;
+        transition: transform 0.3s;
+    }
+    .post-list-item:hover .post-list-img { transform: scale(1.05); }
 
+    .post-list-content { flex: 1; }
+    .post-list-content h3 { font-size: 20px; margin-bottom: 10px; margin-top: 5px; }
+    .post-list-excerpt { font-size: 15px; color: #555; line-height: 1.6; margin-bottom: 10px; }
+    .post-meta { font-size: 12px; color: #999; margin-top: 5px; }
+
+    /* RESPONSIVE */
     @media(max-width: 768px) {
-        .post-list-item { flex-direction: column; gap: 15px; }
-        .post-list-img-wrap { width: 100%; height: 200px; }
+        .post-list-item { flex-direction: column; gap: 10px; }
+        .post-list-img-wrap { width: 100%; height: auto; aspect-ratio: 16/9; } /* Mobile landscape */
     }
 
-    /* 6. SIDEBAR WIDGETS */
+    /* SIDEBAR & WIDGETS */
     .widget { margin-bottom: 40px; }
     .widget-title {
         font-size: 16px;
@@ -188,47 +115,22 @@
         margin-bottom: 20px;
         position: relative;
     }
-    .widget-title::after {
-        content: ''; position: absolute; bottom: -1px; left: 0; width: 60px; height: 1px; background: var(--c-main);
-    }
+    .widget-title::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 60px; height: 1px; background: var(--c-main); }
 
-    .sm-list-item {
-        display: flex;
-        gap: 15px;
-        margin-bottom: 15px;
-    }
-    .sm-list-img {
-        width: 85px;
-        height: 65px;
-        object-fit: cover;
-        border-radius: 3px;
-        flex-shrink: 0;
-    }
+    .sm-list-item { display: flex; gap: 15px; margin-bottom: 15px; }
+    .sm-list-img { width: 85px; height: 65px; object-fit: cover; border-radius: 3px; flex-shrink: 0; }
     .sm-list-title { font-size: 14px; font-weight: 600; line-height: 1.4; margin-bottom: 4px; }
 
-    /* 7. PAGINATION */
-    .pagination-wrap { display: flex; justify-content: center; margin-top: 40px; }
-    .page-btn {
-        border: 1px solid #ddd;
-        color: var(--c-dark);
-        padding: 8px 16px;
-        margin: 0 4px;
-        border-radius: 2px;
-        font-weight: 600;
-        font-size: 12px;
-        text-transform: uppercase;
-    }
-    .page-btn.active, .page-btn:hover {
-        background: var(--c-dark);
-        color: #fff;
-        border-color: var(--c-dark);
-    }
+    /* HERO GRID (Opsional jika ingin dipakai) */
+    .hero-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 4px; margin-bottom: 40px; }
+    .hero-main-card { position: relative; height: 400px; overflow: hidden; }
+    .hero-main-img { width: 100%; height: 100%; object-fit: cover; }
+    .hero-overlay { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%); padding: 20px; }
+    .hero-title-lg { color: white; font-size: 28px; }
 
-    /* Category Filter */
-    .cat-nav { display: flex; gap: 15px; overflow-x: auto; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-    .cat-link { font-weight: 600; font-size: 13px; color: #555; text-transform: uppercase; white-space: nowrap; }
-    .cat-link.active { color: var(--c-main); }
-
+    /* TICKER */
+    .trending-ticker-wrap { background: var(--c-dark); color: #fff; font-size: 13px; padding: 8px 0; margin-bottom: 30px; }
+    .ticker-label { font-weight: 700; text-transform: uppercase; color: var(--c-main); margin-right: 15px; }
 </style>
 
 {{-- 1. TICKER SECTION (TOP BAR) --}}
@@ -238,7 +140,7 @@
         <span class="ticker-label"><i class="fas fa-bolt me-1"></i> Trending</span>
         <marquee behavior="scroll" direction="left" onmouseover="this.stop();" onmouseout="this.start();">
             @foreach($latestPosts->take(5) as $post)
-                <a href="{{ route('blog.posts.show', $post->slug) }}" class="ticker-item hover-underline">
+                <a href="{{ route('blog.posts.show', $post->slug) }}" class="me-4 text-white">
                     {{ $post->title }}
                 </a>
             @endforeach
@@ -247,13 +149,13 @@
 </div>
 @endif
 
-<section class="py-5">
+<section class="py-3">
     <div class="container">
 
-        {{-- 2. HERO SECTION (Mag Layout) --}}
+        {{-- 2. HERO SECTION (OPTIONAL - Jika ingin featured post besar di atas) --}}
         @if(isset($latestPosts) && $latestPosts->count() > 0)
-        <div class="hero-grid">
-            {{-- Main Big Post (Left) --}}
+        <div class="d-none d-lg-grid hero-grid">
+            {{-- Main Big Post --}}
             @php $heroMain = $latestPosts->first(); @endphp
             <div class="hero-main-card">
                 <a href="{{ route('blog.posts.show', $heroMain->slug) }}">
@@ -261,25 +163,17 @@
                     <div class="hero-overlay">
                         <span class="badge-category">{{ $heroMain->category->name ?? 'Utama' }}</span>
                         <h2 class="hero-title-lg">{{ $heroMain->title }}</h2>
-                        <div class="post-meta text-white-50 mb-2">
-                            <span><i class="far fa-user me-1"></i> {{ $heroMain->user->name ?? 'Admin' }}</span>
-                            <span class="mx-2">&bull;</span>
-                            <span>{{ $heroMain->created_at->format('d M, Y') }}</span>
-                        </div>
-                        <p class="hero-excerpt d-none d-md-block">{{ Str::limit(strip_tags($heroMain->content), 120) }}</p>
                     </div>
                 </a>
             </div>
-
-            {{-- Stacked Side Posts (Right) --}}
-            <div class="hero-side-list">
+            {{-- Side Small Posts --}}
+            <div class="d-flex flex-column gap-1">
                 @foreach($latestPosts->skip(1)->take(2) as $sidePost)
-                <div class="hero-sm-card">
+                <div style="position: relative; flex: 1; overflow: hidden;">
                     <a href="{{ route('blog.posts.show', $sidePost->slug) }}">
-                        <img src="{{ asset('/storage/' . $sidePost->featured_image) }}" class="hero-sm-img" alt="{{ $sidePost->title }}" onerror="this.onerror=null;this.src='https://placehold.co/400x300/333/fff?text=News';">
-                        <div class="hero-sm-overlay">
-                            <span class="badge-category" style="font-size: 9px; padding: 2px 6px;">{{ $sidePost->category->name ?? 'Info' }}</span>
-                            <h3 class="hero-title-sm mt-1">{{ Str::limit($sidePost->title, 50) }}</h3>
+                        <img src="{{ asset('/storage/' . $sidePost->featured_image) }}" style="width: 100%; height: 100%; object-fit: cover;" alt="{{ $sidePost->title }}">
+                        <div class="hero-overlay" style="padding: 10px;">
+                            <h3 style="color: white; font-size: 16px; margin: 0;">{{ Str::limit($sidePost->title, 50) }}</h3>
                         </div>
                     </a>
                 </div>
@@ -288,105 +182,104 @@
         </div>
         @endif
 
-        {{-- 3. CONTENT AREA (2 Columns) --}}
+        {{-- 3. CONTENT AREA --}}
         <div class="row">
 
-            {{-- LEFT COLUMN: LATEST NEWS --}}
+            {{-- KOLOM KIRI (BERITA UTAMA & KATEGORI) --}}
             <div class="col-lg-8">
 
-                {{-- Category Filter --}}
+                {{-- A. BAGIAN BERITA TERBARU (10 POST) --}}
                 <div class="block-head">
                     <h4>Berita Terbaru</h4>
-                    <div class="d-none d-md-block">
-                        @if(isset($categories))
-                            @foreach($categories->take(4) as $cat)
-                                <a href="{{ route('blog.posts.index', ['category' => $cat->slug]) }}" class="block-head-link ms-3">{{ $cat->name }}</a>
-                            @endforeach
-                        @endif
-                    </div>
                 </div>
 
                 <div class="latest-news-list">
-                    @forelse($latestPosts->skip(3) as $post)
+                    @forelse($latestPosts->take(10) as $post)
                     <article class="post-list-item">
                         <div class="post-list-img-wrap">
                             <a href="{{ route('blog.posts.show', $post->slug) }}">
-                                <img src="{{ asset('/storage/' . $post->featured_image) }}" class="post-list-img" alt="{{ $post->title }}" onerror="this.onerror=null;this.src='https://placehold.co/300x200/eee/999?text=Image';">
+                                {{-- REVISI: Gambar 1:1 Object Cover --}}
+                                <img src="{{ asset('/storage/' . $post->featured_image) }}" class="post-list-img" alt="{{ $post->title }}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/eee/999?text=Image';">
                             </a>
                         </div>
                         <div class="post-list-content">
-                            <a href="{{ route('blog.posts.index', ['category' => $post->category->slug ?? '']) }}" class="text-decoration-none">
-                                <span class="badge-category bg-white text-danger border border-danger p-1" style="font-size: 9px; padding: 2px 5px;">{{ $post->category->name ?? 'Umum' }}</span>
+                            <a href="#" class="text-decoration-none">
+                                <span class="badge-category">{{ $post->category->name ?? 'Umum' }}</span>
                             </a>
                             <h3 class="post-title">
                                 <a href="{{ route('blog.posts.show', $post->slug) }}">{{ $post->title }}</a>
                             </h3>
                             <div class="post-meta mb-2">
-                                <span class="me-2">By <strong>{{ $post->user->name ?? 'Admin' }}</strong></span>
+                                <span class="me-2 text-danger fw-bold">SANCAKA</span>
                                 <span><i class="far fa-clock"></i> {{ $post->created_at->format('d M Y') }}</span>
                             </div>
                             <p class="post-list-excerpt d-none d-md-block">
-                                {{ Str::limit(strip_tags($post->content), 140) }}
+                                {{ Str::limit(strip_tags($post->content), 120) }}
                             </p>
                         </div>
                     </article>
                     @empty
-                        <div class="alert alert-light border">Tidak ada berita lainnya.</div>
+                        <div class="alert alert-light border">Tidak ada berita terbaru.</div>
                     @endforelse
                 </div>
 
-                {{-- PAGINATION --}}
-                @if ($latestPosts->hasPages())
-                <div class="pagination-wrap">
-                    @if ($latestPosts->onFirstPage())
-                        <span class="page-btn disabled" style="opacity: 0.5">Prev</span>
-                    @else
-                        <a href="{{ $latestPosts->previousPageUrl() }}" class="page-btn">Prev</a>
-                    @endif
+                {{-- B. BAGIAN PER KATEGORI (5 POST PER KATEGORI) --}}
+                @if(isset($categories))
+                    @foreach($categories as $category)
+                        {{-- Cek jika kategori memiliki postingan --}}
+                        @if($category->posts && $category->posts->count() > 0)
 
-                    {{-- Simple Page Numbers --}}
-                    @foreach ($latestPosts->links()->elements as $element)
-                        @if (is_array($element))
-                            @foreach ($element as $page => $url)
-                                @if ($page == $latestPosts->currentPage())
-                                    <span class="page-btn active">{{ $page }}</span>
-                                @else
-                                    <a href="{{ $url }}" class="page-btn">{{ $page }}</a>
-                                @endif
-                            @endforeach
+                            <div class="block-head">
+                                <h4>{{ $category->name }}</h4>
+                                <a href="{{ route('blog.posts.index', ['category' => $category->slug]) }}" class="block-head-link">Lihat Semua <i class="fas fa-angle-right"></i></a>
+                            </div>
+
+                            <div class="category-news-list">
+                                {{-- Loop 5 Postingan per Kategori --}}
+                                @foreach($category->posts()->latest()->take(5)->get() as $post)
+                                <article class="post-list-item">
+                                    <div class="post-list-img-wrap">
+                                        <a href="{{ route('blog.posts.show', $post->slug) }}">
+                                            <img src="{{ asset('/storage/' . $post->featured_image) }}" class="post-list-img" alt="{{ $post->title }}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/eee/999?text=Image';">
+                                        </a>
+                                    </div>
+                                    <div class="post-list-content">
+                                        <h3 class="post-title" style="font-size: 18px;">
+                                            <a href="{{ route('blog.posts.show', $post->slug) }}">{{ $post->title }}</a>
+                                        </h3>
+                                        <div class="post-meta mb-2">
+                                            <span><i class="far fa-clock"></i> {{ $post->created_at->format('d M Y') }}</span>
+                                        </div>
+                                        <p class="post-list-excerpt d-none d-md-block">
+                                            {{ Str::limit(strip_tags($post->content), 100) }}
+                                        </p>
+                                    </div>
+                                </article>
+                                @endforeach
+                            </div>
+
                         @endif
                     @endforeach
-
-                    @if ($latestPosts->hasMorePages())
-                        <a href="{{ $latestPosts->nextPageUrl() }}" class="page-btn">Next</a>
-                    @else
-                        <span class="page-btn disabled" style="opacity: 0.5">Next</span>
-                    @endif
-                </div>
                 @endif
 
             </div>
 
-            {{-- RIGHT COLUMN: SIDEBAR --}}
+            {{-- KOLOM KANAN (SIDEBAR) --}}
             <div class="col-lg-4 ps-lg-5">
 
-                {{-- Widget: Social / Subscribe --}}
+                {{-- Widget: Social --}}
                 <div class="widget">
-                    <div class="p-4 bg-light border rounded text-center">
-                        <h5 class="fw-bold mb-3" style="font-family: var(--font-heading);">Tetap Terhubung</h5>
-                        <div class="d-flex justify-content-center gap-2 mb-3">
-                            <a href="#" class="btn btn-sm btn-outline-dark"><i class="fab fa-facebook-f"></i></a>
-                            <a href="#" class="btn btn-sm btn-outline-dark"><i class="fab fa-twitter"></i></a>
-                            <a href="#" class="btn btn-sm btn-outline-dark"><i class="fab fa-instagram"></i></a>
-                            <a href="#" class="btn btn-sm btn-outline-dark"><i class="fab fa-youtube"></i></a>
-                        </div>
-                        <p class="small text-muted mb-0">Ikuti kami untuk update berita terbaru setiap hari.</p>
+                    <h5 class="widget-title">Stay Connected</h5>
+                    <div class="d-flex gap-2">
+                        <a href="#" class="btn btn-dark w-100"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="btn btn-danger w-100"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="btn btn-info text-white w-100"><i class="fab fa-twitter"></i></a>
                     </div>
                 </div>
 
-                {{-- Widget: Populer / Editor's Pick --}}
+                {{-- Widget: Editor's Picks / Popular --}}
                 <div class="widget">
-                    <h5 class="widget-title">Editor's Picks</h5>
+                    <h5 class="widget-title">Terpopuler</h5>
                     <div class="widget-content">
                         @if(isset($topArticles))
                             @foreach($topArticles->take(5) as $article)
@@ -406,25 +299,10 @@
                     </div>
                 </div>
 
-                {{-- Widget: Kategori --}}
+                {{-- Widget: Iklan --}}
                 <div class="widget">
-                    <h5 class="widget-title">Kategori</h5>
-                    <div class="list-group list-group-flush">
-                        @if(isset($categories))
-                            @foreach($categories as $cat)
-                            <a href="{{ route('blog.posts.index', ['category' => $cat->slug]) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom">
-                                <span class="fw-semibold text-secondary">{{ $cat->name }}</span>
-                                <span class="badge bg-light text-dark border rounded-pill">{{ $cat->posts_count ?? 0 }}</span>
-                            </a>
-                            @endforeach
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Widget: Iklan / Banner Space --}}
-                <div class="widget text-center">
-                    <div style="background: #f8f9fa; border: 1px dashed #ccc; height: 250px; display: flex; align-items: center; justify-content: center; color: #999;">
-                        <span>Space Iklan 300x250</span>
+                    <div style="background: #f8f9fa; border: 1px dashed #ccc; height: 300px; display: flex; align-items: center; justify-content: center; color: #999;">
+                        <span>Space Iklan Sidebar</span>
                     </div>
                 </div>
 
