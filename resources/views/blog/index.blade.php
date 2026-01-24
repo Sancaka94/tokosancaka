@@ -5,265 +5,432 @@
 @section('content')
 
 {{-- ====================================================================== --}}
-{{-- CUSTOM CSS --}}
+{{-- SMARTMAG STYLE ASSETS & CSS --}}
 {{-- ====================================================================== --}}
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
 <style>
-    /* 1. Carousel Hero Styling */
-    .hero-img {
-        height: 500px;
+    :root {
+        --c-main: #dd0017; /* SmartMag Red */
+        --c-dark: #161616;
+        --c-gray: #777;
+        --c-border: #e8e8e8;
+        --font-heading: 'IBM Plex Serif', serif;
+        --font-body: 'Inter', sans-serif;
+    }
+
+    body {
+        font-family: var(--font-body);
+        color: #333;
+        background-color: #fff;
+    }
+
+    a { text-decoration: none; color: inherit; transition: 0.2s; }
+    a:hover { color: var(--c-main); }
+
+    /* 1. TYPOGRAPHY & GLOBAL */
+    h1, h2, h3, h4, h5, h6, .post-title {
+        font-family: var(--font-heading);
+        font-weight: 700;
+        line-height: 1.3;
+        color: var(--c-dark);
+        letter-spacing: -0.025em;
+    }
+
+    .badge-category {
+        font-family: var(--font-body);
+        text-transform: uppercase;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        padding: 4px 8px;
+        background-color: var(--c-main);
+        color: white;
+        border-radius: 2px;
+        display: inline-block;
+        margin-bottom: 8px;
+    }
+
+    .post-meta {
+        font-size: 11px;
+        color: #999;
+        margin-top: 5px;
+        font-family: var(--font-body);
+        text-transform: uppercase;
+    }
+
+    /* 2. TOP TICKER (NEWS FLASH) */
+    .trending-ticker-wrap {
+        background: var(--c-dark);
+        color: #fff;
+        font-size: 13px;
+        padding: 8px 0;
+    }
+    .ticker-label {
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--c-main);
+        margin-right: 15px;
+    }
+    .ticker-item { margin-right: 20px; color: #ddd; }
+
+    /* 3. HERO SECTION (MAGAZINE LAYOUT) */
+    .hero-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 4px; /* Small gap like SmartMag */
+        margin-bottom: 40px;
+    }
+    @media(max-width: 768px) { .hero-grid { grid-template-columns: 1fr; } }
+
+    .hero-main-card {
+        position: relative;
+        height: 450px;
+        overflow: hidden;
+    }
+    .hero-main-img {
+        width: 100%;
+        height: 100%;
         object-fit: cover;
-        /* filter: brightness(0.6);  <-- BARIS INI DIHAPUS AGAR GAMBAR CERAH */
+        transition: transform 0.5s ease;
     }
-    .carousel-caption {
-        /* Gradient diperkuat agar teks tetap terbaca di atas gambar terang */
-        background: linear-gradient(to top, rgba(0,0,0,0.9) 20%, rgba(0,0,0,0.6) 60%, transparent 100%);
-        bottom: 0; left: 0; width: 100%; padding: 40px 20px 20px 20px; text-align: left;
+    .hero-main-card:hover .hero-main-img { transform: scale(1.05); }
+
+    .hero-overlay {
+        position: absolute;
+        bottom: 0; left: 0; width: 100%;
+        background: linear-gradient(to top, rgba(0,0,0,0.85) 10%, rgba(0,0,0,0.4) 50%, transparent 100%);
+        padding: 30px;
+        z-index: 2;
+    }
+    .hero-title-lg { font-size: 32px; color: white; margin-bottom: 10px; }
+    .hero-excerpt { color: rgba(255,255,255,0.8); font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: var(--font-body); }
+
+    /* Side List in Hero */
+    .hero-side-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .hero-sm-card {
+        position: relative;
+        flex: 1;
+        overflow: hidden;
+        height: 223px; /* half of main + gap */
+    }
+    .hero-sm-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+    .hero-sm-card:hover .hero-sm-img { transform: scale(1.05); }
+    .hero-sm-overlay {
+        position: absolute; bottom: 0; left: 0; right: 0;
+        padding: 20px;
+        background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
+    }
+    .hero-title-sm { font-size: 18px; color: white; line-height: 1.3; }
+
+    /* 4. BLOCK HEADERS (GARIS JUDUL) */
+    .block-head {
+        border-bottom: 2px solid var(--c-dark);
+        margin-bottom: 25px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .block-head h4 {
+        background: var(--c-dark);
+        color: #fff;
+        padding: 6px 12px;
+        font-size: 14px;
+        text-transform: uppercase;
+        margin: 0;
+        letter-spacing: 0.05em;
+    }
+    .block-head-link {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--c-gray);
     }
 
-    /* 2. Scrollable List (Kolom Kanan) */
-    .scroll-list-container { height: 500px; overflow-y: auto; }
-    .scroll-list-container::-webkit-scrollbar { width: 5px; }
-    .scroll-list-container::-webkit-scrollbar-track { background: #f1f1f1; }
-    .scroll-list-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-    .scroll-list-container::-webkit-scrollbar-thumb:hover { background: #aaa; }
+    /* 5. CONTENT LAYOUT (Main + Sidebar) */
+    .post-list-item {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 25px;
+        padding-bottom: 25px;
+        border-bottom: 1px solid var(--c-border);
+    }
+    .post-list-item:last-child { border-bottom: none; }
+    .post-list-img-wrap {
+        width: 240px;
+        height: 160px;
+        flex-shrink: 0;
+        overflow: hidden;
+        border-radius: 4px;
+    }
+    .post-list-img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s; }
+    .post-list-item:hover .post-list-img { opacity: 0.9; }
 
-    /* 3. Category Horizontal Scroll */
-    .category-scroll {
-        display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px; padding-bottom: 10px;
-        -webkit-overflow-scrolling: touch;
-    }
-    .category-scroll::-webkit-scrollbar { height: 4px; }
-    .category-scroll::-webkit-scrollbar-thumb { background: #0d6efd; border-radius: 10px; }
-    .cat-pill {
-        white-space: nowrap; padding: 8px 20px; border-radius: 50px; background: #fff;
-        border: 1px solid #dee2e6; color: #333; text-decoration: none; transition: 0.3s;
-    }
-    .cat-pill:hover, .cat-pill.active {
-        background: #0d6efd; color: white; border-color: #0d6efd;
-    }
+    .post-list-content h3 { font-size: 20px; margin-bottom: 10px; }
+    .post-list-excerpt { font-size: 14px; color: #555; line-height: 1.6; margin-bottom: 10px; }
 
-    /* 4. Card & Image Fixes */
-    .card-hover:hover {
-        transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; transition: all 0.3s ease;
-    }
-    .img-hover-zoom { overflow: hidden; }
-    .img-hover-zoom img { transition: transform 0.5s ease; }
-    .card-hover:hover .img-hover-zoom img { transform: scale(1.02); }
-    
-    .card-img-grid {
-        width: 100%; height: auto; min-height: 200px; object-fit: contain; background-color: #f8f9fa;
+    @media(max-width: 768px) {
+        .post-list-item { flex-direction: column; gap: 15px; }
+        .post-list-img-wrap { width: 100%; height: 200px; }
     }
 
-    /* 5. Pagination Styling */
-    .custom-pagination-wrapper { display: flex; justify-content: center; margin-top: 30px; margin-bottom: 50px; font-family: sans-serif; }
-    .custom-pagination { display: flex; list-style: none; padding: 0; margin: 0; gap: 6px; align-items: center; }
-    .custom-pagination li a, .custom-pagination li span {
-        display: flex; align-items: center; justify-content: center; min-width: 36px; height: 36px;
-        padding: 0 12px; font-size: 14px; font-weight: 500; color: #555; background-color: #fff;
-        border: 1px solid #e0e0e0; border-radius: 50px; text-decoration: none; transition: all 0.2s ease;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    /* 6. SIDEBAR WIDGETS */
+    .widget { margin-bottom: 40px; }
+    .widget-title {
+        font-size: 16px;
+        border-bottom: 1px solid var(--c-border);
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        position: relative;
     }
-    .custom-pagination li a:hover { border-color: #3b82f6; color: #3b82f6; background-color: #f0f7ff; transform: translateY(-1px); }
-    .custom-pagination li.active span { background-color: #3b82f6; color: #fff; border-color: #3b82f6; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3); }
-    .custom-pagination li.disabled span { background-color: #f9fafb; color: #ccc; cursor: not-allowed; border-color: #eee; }
+    .widget-title::after {
+        content: ''; position: absolute; bottom: -1px; left: 0; width: 60px; height: 1px; background: var(--c-main);
+    }
 
-    /* 6. STYLE RUNNING SLIDER */
-    .running-news-container {
-        overflow: hidden; position: relative; width: 100%; background: #fff;
-        border-top: 4px solid #dc3545; border-bottom: 1px solid #dee2e6; padding: 20px 0;
+    .sm-list-item {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
     }
-    .running-label {
-        position: absolute; top: 0; left: 0; background: #dc3545; color: white;
-        padding: 2px 10px; font-size: 10px; font-weight: bold; text-transform: uppercase;
-        z-index: 10; border-bottom-right-radius: 5px;
+    .sm-list-img {
+        width: 85px;
+        height: 65px;
+        object-fit: cover;
+        border-radius: 3px;
+        flex-shrink: 0;
     }
-    .running-track {
-        display: flex; gap: 15px; width: max-content; animation: scroll-left 40s linear infinite;
+    .sm-list-title { font-size: 14px; font-weight: 600; line-height: 1.4; margin-bottom: 4px; }
+
+    /* 7. PAGINATION */
+    .pagination-wrap { display: flex; justify-content: center; margin-top: 40px; }
+    .page-btn {
+        border: 1px solid #ddd;
+        color: var(--c-dark);
+        padding: 8px 16px;
+        margin: 0 4px;
+        border-radius: 2px;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
     }
-    .running-track:hover { animation-play-state: paused; }
-    @keyframes scroll-left {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
+    .page-btn.active, .page-btn:hover {
+        background: var(--c-dark);
+        color: #fff;
+        border-color: var(--c-dark);
     }
-    .news-box {
-        width: 180px;
-        flex-shrink: 0; border: 1px solid #f1f1f1; border-radius: 8px;
-        overflow: hidden; background: #fff; transition: transform 0.2s;
-    }
-    .news-box:hover { transform: scale(1.05); border-color: #dc3545; z-index: 5; }
-    
-    .news-box-img { 
-        width: 100%; height: 100px; object-fit: contain; background: #f8f9fa;
-    }
-    
-    .news-box-body { padding: 8px; }
-    .news-box-title {
-        font-size: 11px; font-weight: bold; line-height: 1.3; color: #333; margin-bottom: 0;
-        display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-    }
+
+    /* Category Filter */
+    .cat-nav { display: flex; gap: 15px; overflow-x: auto; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .cat-link { font-weight: 600; font-size: 13px; color: #555; text-transform: uppercase; white-space: nowrap; }
+    .cat-link.active { color: var(--c-main); }
+
 </style>
 
-<section class="py-4 bg-light">
+{{-- 1. TICKER SECTION (TOP BAR) --}}
+@if(isset($latestPosts) && $latestPosts->count() > 0)
+<div class="trending-ticker-wrap">
+    <div class="container d-flex align-items-center overflow-hidden">
+        <span class="ticker-label"><i class="fas fa-bolt me-1"></i> Trending</span>
+        <marquee behavior="scroll" direction="left" onmouseover="this.stop();" onmouseout="this.start();">
+            @foreach($latestPosts->take(5) as $post)
+                <a href="{{ route('blog.posts.show', $post->slug) }}" class="ticker-item hover-underline">
+                    {{ $post->title }}
+                </a>
+            @endforeach
+        </marquee>
+    </div>
+</div>
+@endif
+
+<section class="py-5">
     <div class="container">
 
-        {{-- 1. HERO CAROUSEL --}}
+        {{-- 2. HERO SECTION (Mag Layout) --}}
         @if(isset($latestPosts) && $latestPosts->count() > 0)
-        <div id="heroCarousel" class="carousel slide mb-5 shadow rounded overflow-hidden" data-bs-ride="carousel">
-            <div class="carousel-indicators">
-                @foreach($latestPosts->take(5) as $key => $post)
-                    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="{{ $key }}" class="{{ $key == 0 ? 'active' : '' }}" aria-current="true"></button>
-                @endforeach
+        <div class="hero-grid">
+            {{-- Main Big Post (Left) --}}
+            @php $heroMain = $latestPosts->first(); @endphp
+            <div class="hero-main-card">
+                <a href="{{ route('blog.posts.show', $heroMain->slug) }}">
+                    <img src="{{ asset('/storage/' . $heroMain->featured_image) }}" class="hero-main-img" alt="{{ $heroMain->title }}" onerror="this.onerror=null;this.src='https://placehold.co/800x500/333/fff?text=Headline';">
+                    <div class="hero-overlay">
+                        <span class="badge-category">{{ $heroMain->category->name ?? 'Utama' }}</span>
+                        <h2 class="hero-title-lg">{{ $heroMain->title }}</h2>
+                        <div class="post-meta text-white-50 mb-2">
+                            <span><i class="far fa-user me-1"></i> {{ $heroMain->user->name ?? 'Admin' }}</span>
+                            <span class="mx-2">&bull;</span>
+                            <span>{{ $heroMain->created_at->format('d M, Y') }}</span>
+                        </div>
+                        <p class="hero-excerpt d-none d-md-block">{{ Str::limit(strip_tags($heroMain->content), 120) }}</p>
+                    </div>
+                </a>
             </div>
-            <div class="carousel-inner">
-                @foreach($latestPosts->take(5) as $key => $post)
-                <div class="carousel-item {{ $key == 0 ? 'active' : '' }}">
-                    <a href="{{ route('blog.posts.show', $post->slug) }}">
-                        {{-- HERO IMG TIDAK LAGI GELAP --}}
-                        <img src="{{ asset('/storage/' . $post->featured_image) }}" class="d-block w-100 hero-img" alt="{{ $post->title }}" onerror="this.onerror=null;this.src='https://placehold.co/1200x500/1a73e8/ffffff?text=Sancaka+News';">
-                        <div class="carousel-caption">
-                            <span class="badge bg-danger mb-2">{{ $post->category->name ?? 'Info' }}</span>
-                            <h2 class="fw-bold text-white">{{ $post->title }}</h2>
-                            <p class="d-none d-md-block text-light">{{ Str::limit(strip_tags($post->content), 120) }}</p>
+
+            {{-- Stacked Side Posts (Right) --}}
+            <div class="hero-side-list">
+                @foreach($latestPosts->skip(1)->take(2) as $sidePost)
+                <div class="hero-sm-card">
+                    <a href="{{ route('blog.posts.show', $sidePost->slug) }}">
+                        <img src="{{ asset('/storage/' . $sidePost->featured_image) }}" class="hero-sm-img" alt="{{ $sidePost->title }}" onerror="this.onerror=null;this.src='https://placehold.co/400x300/333/fff?text=News';">
+                        <div class="hero-sm-overlay">
+                            <span class="badge-category" style="font-size: 9px; padding: 2px 6px;">{{ $sidePost->category->name ?? 'Info' }}</span>
+                            <h3 class="hero-title-sm mt-1">{{ Str::limit($sidePost->title, 50) }}</h3>
                         </div>
                     </a>
                 </div>
                 @endforeach
             </div>
-            <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev"><span class="carousel-control-prev-icon" aria-hidden="true"></span><span class="visually-hidden">Previous</span></button>
-            <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next"><span class="carousel-control-next-icon" aria-hidden="true"></span><span class="visually-hidden">Next</span></button>
         </div>
         @endif
 
-        {{-- 2. MAIN SECTION (SPLIT LAYOUT) --}}
-        <div class="row g-4 mb-5">
-            <div class="col-12"><h3 class="fw-bold border-start border-5 border-primary ps-3 mb-0">Berita Pilihan</h3></div>
+        {{-- 3. CONTENT AREA (2 Columns) --}}
+        <div class="row">
+
+            {{-- LEFT COLUMN: LATEST NEWS --}}
             <div class="col-lg-8">
-                @if($headline)
-                <div class="card bg-dark text-white border-0 shadow h-100 overflow-hidden card-hover">
-                    <a href="{{ route('blog.posts.show', $headline->slug) }}" class="text-white">
-                        {{-- Opacity 0.7 dihapus agar gambar cerah --}}
-                        <img src="{{ asset('/storage/' . $headline->featured_image) }}" class="card-img h-100" style="object-fit: cover; height: 500px;" alt="{{ $headline->title }}" onerror="this.onerror=null;this.src='https://placehold.co/800x500/333/fff?text=Headline';">
-                        {{-- Gradient overlay dipertahankan agar teks terbaca --}}
-                        <div class="card-img-overlay d-flex flex-column justify-content-end p-4" style="background: linear-gradient(to top, rgba(0,0,0,0.9) 10%, rgba(0,0,0,0.5) 50%, transparent 100%);">
-                            <span class="badge bg-primary w-auto align-self-start mb-2">{{ $headline->category->name ?? 'Utama' }}</span>
-                            <h2 class="card-title fw-bold display-6">{{ $headline->title }}</h2>
-                            <p class="card-text d-none d-md-block">{{ Str::limit(strip_tags($headline->content), 150) }}</p>
-                            <small><i class="fas fa-clock me-1"></i> {{ $headline->created_at->diffForHumans() }}</small>
-                        </div>
-                    </a>
-                </div>
-                @else <div class="alert alert-info">Belum ada berita utama.</div> @endif
-            </div>
-            <div class="col-lg-4">
-                <div class="card border-0 shadow h-100">
-                    <div class="card-header bg-white fw-bold py-3 border-bottom">Terpopuler & Terbaru</div>
-                    <div class="card-body p-0 scroll-list-container">
-                        <div class="list-group list-group-flush">
-                            @foreach($topArticles as $article)
-                            <a href="{{ route('blog.posts.show', $article->slug) }}" class="list-group-item list-group-item-action d-flex gap-3 py-3 border-bottom-0">
-                                <img src="{{ asset('/storage/' . $article->featured_image) }}" alt="img" class="rounded flex-shrink-0" width="80" height="80" style="object-fit: cover;" onerror="this.onerror=null;this.src='https://placehold.co/80x80/eee/999?text=Img';">
-                                <div class="w-100">
-                                    <h6 class="mb-1 fw-bold small text-dark">{{ Str::limit($article->title, 55) }}</h6>
-                                    <small class="text-muted" style="font-size: 0.75rem;">{{ $article->created_at->format('d M, H:i') }}</small>
-                                </div>
-                            </a>
+
+                {{-- Category Filter --}}
+                <div class="block-head">
+                    <h4>Berita Terbaru</h4>
+                    <div class="d-none d-md-block">
+                        @if(isset($categories))
+                            @foreach($categories->take(4) as $cat)
+                                <a href="{{ route('blog.posts.index', ['category' => $cat->slug]) }}" class="block-head-link ms-3">{{ $cat->name }}</a>
                             @endforeach
-                        </div>
+                        @endif
                     </div>
                 </div>
-            </div>
-        </div>
 
-        {{-- 3. RUNNING SLIDER (POSISI DI ATAS KATEGORI) --}}
-        <div class="mb-5">
-            <div class="running-news-container">
-                <div class="running-label">Berita Lainnya</div>
-                <div class="running-track">
-                    {{-- LOOP 1 --}}
-                    @foreach($latestPosts->take(10) as $post)
-                    <a href="{{ route('blog.posts.show', $post->slug) }}" class="text-decoration-none">
-                        <div class="news-box shadow-sm">
-                            <img src="{{ asset('/storage/' . $post->featured_image) }}" class="news-box-img" alt="{{ $post->title }}" onerror="this.onerror=null;this.src='https://placehold.co/180x100/eee/999?text=News';">
-                            <div class="news-box-body">
-                                <p class="news-box-title" title="{{ $post->title }}">{{ Str::limit($post->title, 50) }}</p>
-                                <small class="text-muted" style="font-size: 9px;">{{ $post->created_at->diffForHumans() }}</small>
+                <div class="latest-news-list">
+                    @forelse($latestPosts->skip(3) as $post)
+                    <article class="post-list-item">
+                        <div class="post-list-img-wrap">
+                            <a href="{{ route('blog.posts.show', $post->slug) }}">
+                                <img src="{{ asset('/storage/' . $post->featured_image) }}" class="post-list-img" alt="{{ $post->title }}" onerror="this.onerror=null;this.src='https://placehold.co/300x200/eee/999?text=Image';">
+                            </a>
+                        </div>
+                        <div class="post-list-content">
+                            <a href="{{ route('blog.posts.index', ['category' => $post->category->slug ?? '']) }}" class="text-decoration-none">
+                                <span class="badge-category bg-white text-danger border border-danger p-1" style="font-size: 9px; padding: 2px 5px;">{{ $post->category->name ?? 'Umum' }}</span>
+                            </a>
+                            <h3 class="post-title">
+                                <a href="{{ route('blog.posts.show', $post->slug) }}">{{ $post->title }}</a>
+                            </h3>
+                            <div class="post-meta mb-2">
+                                <span class="me-2">By <strong>{{ $post->user->name ?? 'Admin' }}</strong></span>
+                                <span><i class="far fa-clock"></i> {{ $post->created_at->format('d M Y') }}</span>
                             </div>
+                            <p class="post-list-excerpt d-none d-md-block">
+                                {{ Str::limit(strip_tags($post->content), 140) }}
+                            </p>
                         </div>
-                    </a>
-                    @endforeach
-                    {{-- LOOP 2 (Duplikasi) --}}
-                    @foreach($latestPosts->take(10) as $post)
-                    <a href="{{ route('blog.posts.show', $post->slug) }}" class="text-decoration-none">
-                        <div class="news-box shadow-sm">
-                            <img src="{{ asset('/storage/' . $post->featured_image) }}" class="news-box-img" alt="{{ $post->title }}" onerror="this.onerror=null;this.src='https://placehold.co/180x100/eee/999?text=News';">
-                            <div class="news-box-body">
-                                <p class="news-box-title" title="{{ $post->title }}">{{ Str::limit($post->title, 50) }}</p>
-                                <small class="text-muted" style="font-size: 9px;">{{ $post->created_at->diffForHumans() }}</small>
-                            </div>
-                        </div>
-                    </a>
-                    @endforeach
+                    </article>
+                    @empty
+                        <div class="alert alert-light border">Tidak ada berita lainnya.</div>
+                    @endforelse
                 </div>
-            </div>
-        </div>
 
-        {{-- 4. CATEGORY SLIDER --}}
-        <div class="mb-5">
-            <h5 class="fw-bold mb-3">Jelajahi Kategori</h5>
-            <div class="category-scroll">
-                @if(isset($categories))
-                    <a href="{{ route('blog.posts.index') }}" class="cat-pill active">Semua</a>
-                    @foreach($categories as $cat)
-                        <a href="{{ route('blog.posts.index', ['category' => $cat->slug]) }}" class="cat-pill">{{ $cat->name }}</a>
-                    @endforeach
-                @endif
-            </div>
-        </div>
+                {{-- PAGINATION --}}
+                @if ($latestPosts->hasPages())
+                <div class="pagination-wrap">
+                    @if ($latestPosts->onFirstPage())
+                        <span class="page-btn disabled" style="opacity: 0.5">Prev</span>
+                    @else
+                        <a href="{{ $latestPosts->previousPageUrl() }}" class="page-btn">Prev</a>
+                    @endif
 
-        {{-- 5. ARTIKEL LAINNYA (GRID SYSTEM) --}}
-        <div class="row g-4">
-            <div class="col-12"><h4 class="fw-bold border-start border-5 border-danger ps-3">Artikel Lainnya</h4></div>
-            @forelse($latestPosts->skip(5) as $post)
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 shadow-sm card-hover">
-                    <div class="img-hover-zoom">
-                        <a href="{{ route('blog.posts.show', $post->slug) }}">
-                            <img src="{{ asset('/storage/' . $post->featured_image) }}" class="card-img-top card-img-grid" alt="{{ $post->title }}" onerror="this.onerror=null;this.src='https://placehold.co/400x220/eee/999?text=Artikel';">
-                        </a>
-                    </div>
-                    <div class="card-body d-flex flex-column">
-                        <div class="mb-2"><span class="badge bg-light text-primary border">{{ $post->category->name ?? 'Umum' }}</span></div>
-                        <h5 class="card-title fw-bold">
-                            <a href="{{ route('blog.posts.show', $post->slug) }}" class="text-decoration-none text-dark stretched-link">{{ Str::limit($post->title, 60) }}</a>
-                        </h5>
-                        <p class="card-text text-muted small flex-grow-1">{{ Str::limit(strip_tags($post->content), 100) }}</p>
-                    </div>
-                    <div class="card-footer bg-white border-0 pt-0 pb-3"><small class="text-muted"><i class="far fa-clock me-1"></i> {{ $post->created_at->diffForHumans() }}</small></div>
-                </div>
-            </div>
-            @empty
-            <div class="col-12 py-5 text-center"><p class="text-muted">Belum ada artikel tambahan.</p></div>
-            @endforelse
-
-            {{-- PAGINATION --}}
-            @if ($latestPosts->hasPages())
-            <div class="custom-pagination-wrapper">
-                <ul class="custom-pagination">
-                    @if ($latestPosts->onFirstPage()) <li class="disabled" aria-disabled="true"><span>&lsaquo; Prev</span></li> @else <li><a href="{{ $latestPosts->previousPageUrl() }}" rel="prev">&lsaquo; Prev</a></li> @endif
+                    {{-- Simple Page Numbers --}}
                     @foreach ($latestPosts->links()->elements as $element)
-                        @if (is_string($element)) <li class="disabled" aria-disabled="true"><span>{{ $element }}</span></li> @endif
                         @if (is_array($element))
                             @foreach ($element as $page => $url)
-                                @if ($page == $latestPosts->currentPage()) <li class="active" aria-current="page"><span>{{ $page }}</span></li> @else <li><a href="{{ $url }}">{{ $page }}</a></li> @endif
+                                @if ($page == $latestPosts->currentPage())
+                                    <span class="page-btn active">{{ $page }}</span>
+                                @else
+                                    <a href="{{ $url }}" class="page-btn">{{ $page }}</a>
+                                @endif
                             @endforeach
                         @endif
                     @endforeach
-                    @if ($latestPosts->hasMorePages()) <li><a href="{{ $latestPosts->nextPageUrl() }}" rel="next">Next &rsaquo;</a></li> @else <li class="disabled" aria-disabled="true"><span>Next &rsaquo;</span></li> @endif
-                </ul>
+
+                    @if ($latestPosts->hasMorePages())
+                        <a href="{{ $latestPosts->nextPageUrl() }}" class="page-btn">Next</a>
+                    @else
+                        <span class="page-btn disabled" style="opacity: 0.5">Next</span>
+                    @endif
+                </div>
+                @endif
+
             </div>
-            @endif
+
+            {{-- RIGHT COLUMN: SIDEBAR --}}
+            <div class="col-lg-4 ps-lg-5">
+
+                {{-- Widget: Social / Subscribe --}}
+                <div class="widget">
+                    <div class="p-4 bg-light border rounded text-center">
+                        <h5 class="fw-bold mb-3" style="font-family: var(--font-heading);">Tetap Terhubung</h5>
+                        <div class="d-flex justify-content-center gap-2 mb-3">
+                            <a href="#" class="btn btn-sm btn-outline-dark"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#" class="btn btn-sm btn-outline-dark"><i class="fab fa-twitter"></i></a>
+                            <a href="#" class="btn btn-sm btn-outline-dark"><i class="fab fa-instagram"></i></a>
+                            <a href="#" class="btn btn-sm btn-outline-dark"><i class="fab fa-youtube"></i></a>
+                        </div>
+                        <p class="small text-muted mb-0">Ikuti kami untuk update berita terbaru setiap hari.</p>
+                    </div>
+                </div>
+
+                {{-- Widget: Populer / Editor's Pick --}}
+                <div class="widget">
+                    <h5 class="widget-title">Editor's Picks</h5>
+                    <div class="widget-content">
+                        @if(isset($topArticles))
+                            @foreach($topArticles->take(5) as $article)
+                            <div class="sm-list-item">
+                                <a href="{{ route('blog.posts.show', $article->slug) }}">
+                                    <img src="{{ asset('/storage/' . $article->featured_image) }}" class="sm-list-img" alt="img" onerror="this.onerror=null;this.src='https://placehold.co/100x100/eee/999?text=Img';">
+                                </a>
+                                <div>
+                                    <h6 class="sm-list-title">
+                                        <a href="{{ route('blog.posts.show', $article->slug) }}">{{ Str::limit($article->title, 50) }}</a>
+                                    </h6>
+                                    <div class="post-meta">{{ $article->created_at->format('M d, Y') }}</div>
+                                </div>
+                            </div>
+                            @endforeach
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Widget: Kategori --}}
+                <div class="widget">
+                    <h5 class="widget-title">Kategori</h5>
+                    <div class="list-group list-group-flush">
+                        @if(isset($categories))
+                            @foreach($categories as $cat)
+                            <a href="{{ route('blog.posts.index', ['category' => $cat->slug]) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom">
+                                <span class="fw-semibold text-secondary">{{ $cat->name }}</span>
+                                <span class="badge bg-light text-dark border rounded-pill">{{ $cat->posts_count ?? 0 }}</span>
+                            </a>
+                            @endforeach
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Widget: Iklan / Banner Space --}}
+                <div class="widget text-center">
+                    <div style="background: #f8f9fa; border: 1px dashed #ccc; height: 250px; display: flex; align-items: center; justify-content: center; color: #999;">
+                        <span>Space Iklan 300x250</span>
+                    </div>
+                </div>
+
+            </div>
         </div>
-        
+
     </div>
 </section>
 
