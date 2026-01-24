@@ -1,105 +1,109 @@
 {{--
     FILE: resources/views/blog/partials/ticker.blade.php
-    FITUR: FULL WIDTH, STICKY, & NEMPEL HEADER
+    FITUR: FORCE STICKY & REMOVE GAP
 --}}
 
 <style>
-    .trending-ticker-wrapper-full {
-        /* 1. Agar Sticky / Menempel saat scroll */
+    /* Wrapper Utama untuk memaksa Sticky dan Full Width */
+    .ticker-sticky-wrapper {
+        /* 1. AGAR STICKY (Menempel saat scroll) */
+        position: -webkit-sticky; /* Support Safari */
         position: sticky;
-        top: 0; /* Sesuaikan jika Header Anda juga sticky (misal: top: 70px;) */
-        z-index: 999;
+        top: 0;
+        z-index: 9999; /* Pastikan layer paling atas menutupi konten lain saat scroll */
 
-        /* 2. Warna & Border */
-        background-color: #161616;
-        border-bottom: 1px solid #333;
-        color: #fff;
-        font-family: 'Inter', sans-serif;
-        font-size: 13px;
-        height: 44px; /* Tinggi Bar Tetap */
-        overflow: hidden;
-
-        /* 3. TEKNIK NEMPEL & FULL WIDTH (Breakout Container) */
-        /* Ini memaksa ticker melebar 100% layar meski di dalam container */
+        /* 2. MEMAKSA FULL WIDTH (Melebar ke tepi layar) */
         width: 100vw;
         margin-left: calc(50% - 50vw);
         margin-right: calc(50% - 50vw);
 
-        /* 4. HILANGKAN JARAK (Negative Margin) */
-        /* Tarik ke atas untuk menutup celah putih */
-        margin-top: -24px; /* Sesuaikan nilai ini jika masih ada celah! */
-        margin-bottom: 30px;
+        /* 3. MENGHILANGKAN JARAK PUTIH (Negative Margin) */
+        /* Kita tarik ke atas secara paksa untuk menutupi padding container */
+        margin-top: -2.5rem; /* Sesuaikan angka ini jika header Anda tingginya beda (misal: -40px) */
+        margin-bottom: 30px; /* Jarak ke konten bawah */
+
+        background: #161616; /* Background Hitam */
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
 
     .ticker-inner {
-        /* Mengembalikan konten ke tengah (Container) */
-        max-width: 1320px; /* Sesuai container-xxl Bootstrap */
+        max-width: 1320px; /* Sesuaikan dengan container website Anda */
         margin: 0 auto;
-        padding: 0 12px;
+        padding: 0;
         display: flex;
-        align-items: center;
-        height: 100%;
+        align-items: stretch; /* Agar tinggi sama rata */
+        height: 46px; /* Tinggi Bar Ticker */
     }
 
-    /* LABEL MERAH (Sancaka Style) */
+    /* LABEL MERAH (Gaya Miring/Skew) */
     .ticker-label {
         background-color: #dd0017;
         color: #fff;
         text-transform: uppercase;
+        font-family: 'Inter', sans-serif;
         font-weight: 800;
-        font-size: 11px;
+        font-size: 12px;
         letter-spacing: 1px;
-        padding: 0 20px;
-        height: 100%;
+        padding: 0 25px;
         display: flex;
         align-items: center;
+        justify-content: center;
         position: relative;
-        margin-right: 20px;
-        clip-path: polygon(0 0, 100% 0, 90% 100%, 0% 100%); /* Efek miring kanan */
+        z-index: 2;
+        /* Membuat efek miring di sisi kanan */
+        clip-path: polygon(0 0, 100% 0, 90% 100%, 0% 100%);
+        min-width: 140px;
     }
 
-    .ticker-label i { margin-right: 8px; font-size: 12px; }
+    .ticker-label i { margin-right: 8px; font-size: 13px; }
 
-    /* RUNNING TEXT AREA */
+    /* KONTEN TEKS BERJALAN */
     .ticker-content {
         flex-grow: 1;
         overflow: hidden;
         white-space: nowrap;
         display: flex;
         align-items: center;
+        background-color: #161616;
+        border-bottom: 2px solid #dd0017; /* Garis merah tipis di bawah sepanjang bar */
     }
 
     .ticker-item {
-        color: #ddd;
+        color: #e0e0e0;
         text-decoration: none;
         margin-right: 40px;
+        font-family: 'Inter', sans-serif;
         font-weight: 500;
         font-size: 13px;
         display: inline-flex;
         align-items: center;
         transition: 0.2s;
+        line-height: 46px;
     }
-    .ticker-item:hover { color: #fff; text-decoration: none; }
+    .ticker-item:hover { color: #fff; text-decoration: underline; }
+
+    /* Bullet Point Merah antar berita */
     .ticker-item::before {
-        content: '\2022'; /* Bullet point */
+        content: '\2022'; /* Bullet Entity */
         color: #dd0017;
-        font-size: 18px;
+        font-size: 20px;
         margin-right: 10px;
         line-height: 0;
+        position: relative;
+        top: 1px;
     }
 </style>
 
 @if(isset($latestPosts) && $latestPosts->count() > 0)
-<div class="trending-ticker-wrapper-full">
+<div class="ticker-sticky-wrapper">
     <div class="ticker-inner">
 
-        {{-- LABEL --}}
+        {{-- LABEL MERAH --}}
         <div class="ticker-label">
             <i class="fas fa-bolt"></i> TRENDING
         </div>
 
-        {{-- MARQUEE --}}
+        {{-- TEKS BERJALAN --}}
         <div class="ticker-content">
             <marquee behavior="scroll" direction="left" scrollamount="6" onmouseover="this.stop();" onmouseout="this.start();">
                 @foreach($latestPosts->take(5) as $post)
