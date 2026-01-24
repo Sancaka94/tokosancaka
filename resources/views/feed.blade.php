@@ -54,7 +54,28 @@
 
                             <tbody>
 
-                                @forelse ($posts as $post)
+                                @php
+                                    // Konfigurasi Manual
+                                    $perPage = 10; // Jumlah data per halaman
+                                    $currentPage = request()->get('page', 1);
+
+                                    // Jika $posts bukan instance paginator, kita buat manual dari collection
+                                    if (!($posts instanceof \Illuminate\Pagination\LengthAwarePaginator)) {
+                                        $items = collect($posts);
+                                        $currentItems = $items->forPage($currentPage, $perPage);
+                                        $postsPagination = new \Illuminate\Pagination\LengthAwarePaginator(
+                                            $currentItems,
+                                            $items->count(),
+                                            $perPage,
+                                            $currentPage,
+                                            ['path' => request()->url(), 'query' => request()->query()]
+                                        );
+                                    } else {
+                                        $postsPagination = $posts;
+                                    }
+                                @endphp
+
+                                @forelse ($postsPagination as $post)
 
                                     <tr>
 
@@ -121,11 +142,10 @@
                     </div>
 
                     {{-- PAGINATION --}}
-                    <div class="d-flex justify-content-center mt-4">
-                        @if ($posts instanceof \Illuminate\Pagination\LengthAwarePaginator || $posts instanceof \Illuminate\Pagination\Paginator)
-                            {{ $posts->links('pagination::bootstrap-5') }}
-                        @endif
-                    </div>
+                    {{-- Tampilkan Link --}}
+                        <div class="d-flex justify-content-center mt-4">
+                            {{ $postsPagination->links('pagination::bootstrap-5') }}
+                        </div>
 
                 </div>
 
