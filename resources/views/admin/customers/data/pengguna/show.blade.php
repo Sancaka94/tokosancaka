@@ -72,7 +72,12 @@
                 <dt class="text-sm font-medium text-gray-500">Logo Toko</dt>
                 <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                     @if ($data->store_logo_path)
-                        <img src="{{ asset('public/storage/' . $data->store_logo_path) }}" alt="Logo Toko" class="h-10 w-10 object-cover rounded-full">
+
+                    <img :src="user.store_logo_path 
+                                                ? '{{ asset('public/storage') }}/' + user.store_logo_path 
+                                                : 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.nama_lengkap || 'User') + '&color=7F9CF5&background=EBF4FF'"
+                                                 alt="Logo" class="w-10 h-10 rounded-full object-cover">
+
                     @else
                         —
                     @endif
