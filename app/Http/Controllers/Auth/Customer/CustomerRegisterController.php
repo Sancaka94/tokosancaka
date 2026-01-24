@@ -13,7 +13,7 @@ use App\Services\FonnteService;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
 
-use App\Notifications\NotifikasiUmum; 
+use App\Notifications\NotifikasiUmum;
 
 
 class CustomerRegisterController extends Controller
@@ -67,17 +67,17 @@ class CustomerRegisterController extends Controller
         $token = Str::random(40);
         $user->setup_token = $token;
         $user->save();
-        
+
         // --- Notifikasi ke Admin (Kode Tetap) ---
         try {
-            $admins = User::where('role', 'admin')->get();
+            $admins = User::where('role', 'Admin')->get();
 
             if ($admins->isNotEmpty()) {
                 $dataNotifAdmin = [
                     'tipe'        => 'Registrasi',
                     'judul'       => 'Pendaftaran Pelanggan Baru',
                     'pesan_utama' => $user->nama_lengkap . ' telah mendaftar (Status: Tidak Aktif).',
-                    'url'         => route('admin.customers.index'), 
+                    'url'         => route('admin.customers.index'),
                     'icon'        => 'fas fa-user-plus',
                 ];
                 Notification::send($admins, new NotifikasiUmum($dataNotifAdmin));
@@ -86,7 +86,7 @@ class CustomerRegisterController extends Controller
             Log::error('Gagal mengirim notifikasi pendaftaran: ' . $e->getMessage());
         }
         // --- SELESAI TAMBAHAN KODE ---
-        
+
         // 🔑 PERBAIKAN: Gunakan fungsi route() untuk membuat link yang dinamis
         // Route Name: 'customer.profile.setup' harus ada di file routing Anda.
         $setup_url = route('customer.profile.setup', ['token' => $token]);
@@ -104,18 +104,18 @@ Lanjutkan Pendaftaran Dengan Klik Link Dibawah ini:
 
 Link Setup Profile: {$setup_url}
 
-Hormat kami,  
-*Manajemen Sancaka* CV Sancaka Karya Hutama  
+Hormat kami,
+*Manajemen Sancaka* CV Sancaka Karya Hutama
 *Jl.Dr.Wahidin No.18A RT.22 RW.05 Ketanggi Ngawi Jawa Timur 63211* Website: tokosancaka.com
 TEXT;
 
         $noWa = preg_replace('/^0/', '62', $user->no_wa);
-        
+
         // 🔑 PERBAIKAN: Panggil FonnteService langsung dari class yang sudah di-import
         FonnteService::sendMessage($noWa, $message);
         FonnteService::sendMessage('085745808809', $message);
 
-        return $user;  
+        return $user;
     }
 
     /**
