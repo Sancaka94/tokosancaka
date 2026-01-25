@@ -2,7 +2,7 @@
     {{-- KIRI: KONTEN UTAMA (GRID VIEW) --}}
     <div class="col-lg-8">
         <div class="block-head">
-            <h4 style="background: #0d6efd;">{{ $category->name }}</h4> {{-- Warna beda dikit --}}
+            <h4 style="background: #000000;">{{ $category->name }}</h4> {{-- Warna beda dikit --}}
             <a href="{{ route('blog.posts.index', ['category' => $category->slug]) }}" class="block-head-link">Semua</a>
         </div>
 
