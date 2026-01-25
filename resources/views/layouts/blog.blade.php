@@ -320,9 +320,9 @@ ini_set('display_errors', 1);
     }
 
     .btn-cat-nav:hover {
-        background-color: #f8f9fa;
-        color: #333;
-        border-color: #ccc;
+        background-color: #ff0000;
+        color: #ff0000;
+        border-color: #ff0000;
     }
 
     .btn-cat-nav.active {
