@@ -75,6 +75,16 @@
 
     @include('blog.partials.ticker')
 
+    {{-- 3. LOOP CATEGORIES --}}
+        @foreach($categories as $category)
+            @if($category->posts_count > 0)
+                @include('blog.partials.categories_smartmag', ['category' => $category])
+                @if(!$loop->last)
+                    <div style="border-top: 1px dashed #ccc; margin: 50px 0;"></div>
+                @endif
+            @endif
+        @endforeach
+
     {{-- BOTTOM GRID SECTION --}}
 
     @include('blog.partials.bottom_grid')
