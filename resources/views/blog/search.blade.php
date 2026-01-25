@@ -18,7 +18,7 @@
 
             {{-- FORM PENCARIAN ULANG --}}
             <div class="mt-4">
-                <form action="{{ route('blog.index') }}" method="GET" class="d-flex gap-2 justify-content-center">
+                <form action="{{ url('/blog') }}" method="GET" class="d-flex gap-2 justify-content-center">
                     <input type="text" name="search" class="form-control w-50"
                            placeholder="Cari artikel lain..." value="{{ request('search') }}">
                     <button type="submit" class="btn btn-danger" style="background-color: #dd0017;">
@@ -63,7 +63,7 @@
             <div class="col-12 text-center py-5">
                 <i class="fas fa-search-minus fa-4x text-muted mb-3"></i>
                 <h4 class="text-muted">Tidak ada artikel yang cocok dengan "{{ request('search') }}"</h4>
-                <a href="{{ route('blog.index') }}" class="btn btn-outline-secondary mt-3">Kembali ke Beranda Blog</a>
+                <a href="{{ url('/blog') }}" class="btn btn-outline-secondary mt-3">Kembali ke Beranda Blog</a>
             </div>
         @endforelse
     </div>
