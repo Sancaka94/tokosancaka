@@ -13,7 +13,8 @@
 
     {{-- 1. SEARCH SECTION (Pindahkan ke sini agar rapi) --}}
     <div class="search-section">
-        <form action="{{ route('blog.index') }}" method="GET">
+        {{-- Ganti baris form menjadi seperti ini --}}
+        <form action="{{ url('/blog') }}" method="GET">
             <div class="row g-2">
                 <div class="col-md-9">
                     <div class="search-box">
