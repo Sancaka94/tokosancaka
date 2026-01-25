@@ -233,7 +233,8 @@
                 <div class="px-4 py-3 border-b">
                     <p class="text-sm text-gray-600">Masuk sebagai</p>
                     <p class="text-sm font-medium text-gray-900 truncate">
-                        {{ Auth::user()->nama_lengkap ?? 'User' }}
+                        {{-- PERBAIKAN: Gunakan fallback 'User' jika nama kosong --}}
+                        {{ Auth::user()?->nama_lengkap ?? 'User' }}
                     </p>
                 </div>
 
