@@ -89,10 +89,72 @@
         .hero-main { height: 300px; margin-bottom: 30px; }
         .hero-right-scroll { height: auto; max-height: 400px; }
     }
+
+    /* SEARCH FORM STYLES */
+    .search-wrap {
+        margin-bottom: 40px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        border-left: 4px solid #dd0017; /* Aksen merah Sancaka */
+    }
+
+    .search-form .input-group {
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .search-form input {
+        border: 1px solid #eee;
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+
+    .search-form input:focus {
+        border-color: #dd0017;
+        box-shadow: none;
+    }
+
+    .search-form .btn-search {
+        background: #dd0017;
+        color: #fff;
+        padding: 0 25px;
+        text-transform: uppercase;
+        font-weight: 700;
+        font-size: 13px;
+        transition: 0.3s;
+    }
+
+    .search-form .btn-search:hover {
+        background: #b00012;
+        color: #fff;
+    }
+
 </style>
 
 
 <div class="hero-wrap">
+
+    <div class="search-wrap">
+        <div class="row align-items-center">
+            <div class="col-md-4 mb-3 mb-md-0">
+                <h5 class="mb-0" style="font-family: 'IBM Plex Serif', serif; font-weight: 700;">
+                    Cari Artikel
+                </h5>
+                <p class="text-muted small mb-0">Temukan informasi terbaru dari Sancaka Express</p>
+            </div>
+            <div class="col-md-8">
+                <form action="{{ route('blog.posts.index') }}" method="GET" class="search-form">
+                    <div class="input-group">
+                        <input type="text" name="search" class="form-control" placeholder="Masukkan kata kunci judul atau isi artikel..." value="{{ request('search') }}">
+                        <button class="btn btn-search" type="submit">
+                            <i class="fas fa-search me-2"></i> Cari
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         {{-- KIRI: 1 BERITA UTAMA (HEADLINE) --}}
         <div class="col-lg-7">
