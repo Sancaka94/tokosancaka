@@ -72,6 +72,13 @@
     <div class="d-flex justify-content-center mt-5">
         {{ $latestPosts->withQueryString()->links('pagination::bootstrap-5') }}
     </div>
+
+    @include('blog.partials.ticker')
+
+    {{-- BOTTOM GRID SECTION --}}
+
+    @include('blog.partials.bottom_grid')
+
 </div>
 
 {{-- LOG LOG --}}
