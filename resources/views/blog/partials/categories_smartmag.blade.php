@@ -43,6 +43,7 @@
         font-weight: 700;
         line-height: 1.2;
         margin-bottom: 10px;
+        color: #000
     }
     .meta-line {
         font-size: 11px;
