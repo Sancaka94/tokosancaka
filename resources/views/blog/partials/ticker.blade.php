@@ -8,11 +8,11 @@
     .ticker-sticky-wrapper {
     position: -webkit-sticky;
     position: sticky;
-    top: 60px;
+    top: 65px;
     z-index: 999;
 
     /* TARIK KE ATAS UNTUK MENGHILANGKAN CELAH */
-    margin-top: -15px; /* Sesuaikan angka ini (-1px s/d -10px) sampai rapat */
+    margin-top: -65px; /* Sesuaikan angka ini (-1px s/d -10px) sampai rapat */
 
     width: 100vw;
     margin-left: calc(50% - 50vw);
