@@ -42,14 +42,17 @@
             <div class="mt-4">
                 <form action="{{ url('/blog') }}" method="GET" class="d-flex gap-2 justify-content-center">
                     <input type="text" name="search" class="form-control w-50"
-                           placeholder="Cari artikel lain..." value="{{ request('search') }}">
-                    <button type="submit" class="btn btn-danger" style="background-color: #dd0017;">
+                        placeholder="Cari artikel lain..." value="{{ request('search') }}">
+
+                    {{-- Tombol Biru Baru --}}
+                    <button type="submit" class="btn btn-primary" style="background-color: #0051ff; border-color: #0051ff; font-weight: bold;">
                         CARI
                     </button>
 
-                    <button type="submit" class="btn btn-primary" style="background-color: #0051ff;">
-                        Beranda
-                    </button>
+                    {{-- Tombol Beranda Biru --}}
+                    <a href="{{ url('/blog') }}" class="btn btn-primary" style="background-color: #0051ff; border-color: #0051ff; font-weight: bold;">
+                        BERANDA
+                    </a>
                 </form>
 
             </div>
