@@ -6,18 +6,20 @@
 <style>
     /* Wrapper Utama untuk memaksa Sticky dan Full Width */
     .ticker-sticky-wrapper {
-        position: -webkit-sticky;
-        position: sticky;
-        top: 60px; /* GANTI SESUAI TINGGI HEADER ANDA */
-        z-index: 999; /* Kecilkan sedikit agar tetap di bawah dropdown header jika ada */
+    position: -webkit-sticky;
+    position: sticky;
+    top: 60px;
+    z-index: 999;
 
-        /* Hapus atau sesuaikan margin-top negatif jika menyebabkan tumpang tindih */
-        margin-top: 0;
+    /* TARIK KE ATAS UNTUK MENGHILANGKAN CELAH */
+    margin-top: -5px; /* Sesuaikan angka ini (-1px s/d -10px) sampai rapat */
 
-        width: 100vw;
-        margin-left: calc(50% - 50vw);
-        margin-right: calc(50% - 50vw);
-        background: #161616;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    background: #161616;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+
     }
 
     .ticker-inner {
