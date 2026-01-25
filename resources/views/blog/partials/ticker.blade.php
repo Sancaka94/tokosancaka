@@ -8,7 +8,7 @@
     .ticker-sticky-wrapper {
         position: -webkit-sticky;
         position: sticky;
-        top: 40px; /* GANTI SESUAI TINGGI HEADER ANDA */
+        top: 60px; /* GANTI SESUAI TINGGI HEADER ANDA */
         z-index: 999; /* Kecilkan sedikit agar tetap di bawah dropdown header jika ada */
 
         /* Hapus atau sesuaikan margin-top negatif jika menyebabkan tumpang tindih */
