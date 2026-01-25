@@ -35,7 +35,7 @@
         @if(request('search'))
             <div class="mt-3 small text-muted">
                 Menampilkan hasil pencarian untuk: <strong>"{{ request('search') }}"</strong>
-                <a href="{{ url('/blog') }}" class="text-danger ms-2 text-decoration-none">
+                <a href="{{ url('/blog/search/') }}" class="text-danger ms-2 text-decoration-none">
                     <i class="fas fa-times-circle"></i> Bersihkan
                 </a>
             </div>

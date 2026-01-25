@@ -29,14 +29,17 @@ class BlogController extends Controller
             });
         }
 
-        // 3. FILTER PENCARIAN
-        // Jika ada parameter ?search=keyword di URL
+        // Filter Pencarian
         if ($request->filled('search')) {
             $search = trim($request->query('search'));
             $baseQuery->where(function($q) use ($search) {
                 $q->where('title', 'like', '%' . $search . '%')
-                  ->orWhere('content', 'like', '%' . $search . '%');
+                ->orWhere('content', 'like', '%' . $search . '%');
             });
+
+            // JIKA SEDANG MENCARI, GUNAKAN VIEW KHUSUS
+            $latestPosts = $baseQuery->latest()->paginate(12)->withQueryString();
+            return view('blog.search', compact('latestPosts')); // Mengarah ke view baru
         }
 
         // --- BAGIAN LAYOUT ---
