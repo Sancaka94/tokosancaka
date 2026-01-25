@@ -22,6 +22,23 @@
         outline: none;
     }
 
+    /* Menghilangkan garis bawah pada semua tautan judul */
+    .main-feat-title a,
+    .sub-grid-title a,
+    .side-list-title a {
+        text-decoration: none !important;
+        color: inherit; /* Agar warna tetap hitam mengikuti parent */
+        display: block;
+    }
+
+    /* Memastikan tidak muncul garis bawah saat kursor di atas judul (hover) */
+    .main-feat-title a:hover,
+    .sub-grid-title a:hover,
+    .side-list-title a:hover {
+        text-decoration: none !important;
+        color: #dd0017 !important; /* Berubah jadi merah Sancaka saat di-hover */
+    }
+
     /* Main Featured Post (Atas Kiri) */
     .main-feat-box {
         display: flex;
