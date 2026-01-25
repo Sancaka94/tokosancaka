@@ -30,6 +30,9 @@ class BlogController extends Controller
         }
 
         // --- Ambil Kategori UNTUK SEMUA VIEW (Pencarian maupun Normal) ---
+    $categories = Category::withCount(['posts' => function($q) {
+        $q->where('status', 'published');
+    }])->having('posts_count', '>', 0)->orderBy('posts_count', 'desc')->limit(15)->get();
 
     if ($request->filled('search')) {
         $search = trim($request->query('search'));
