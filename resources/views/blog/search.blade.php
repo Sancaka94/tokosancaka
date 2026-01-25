@@ -12,7 +12,7 @@
         width: 100%;
         padding-top: 100%; /* Rasio 1:1 */
         overflow: hidden;
-        background-color: #f8f9fa; /* Warna background jika gambar tidak memenuhi kotak */
+        background-color: #f8f9fa;
     }
 
     .img-container-1to1 img {
@@ -22,7 +22,7 @@
         width: 100%;
         height: 100%;
         object-fit: contain; /* Gambar utuh, tidak terpotong */
-        padding: 5px; /* Sedikit ruang agar tidak menempel ke tepi */
+        padding: 5px;
     }
 </style>
 
@@ -37,7 +37,6 @@
                 Menampilkan artikel untuk kata kunci: <span class="text-danger fw-bold">"{{ request('search') }}"</span>
             </p>
 
-            {{-- FORM PENCARIAN ULANG --}}
             <div class="mt-4">
                 <form action="{{ url('/blog') }}" method="GET" class="d-flex gap-2 justify-content-center">
                     <input type="text" name="search" class="form-control w-50"
@@ -58,7 +57,6 @@
             <div class="col-md-4 mb-4">
                 <div class="card h-100 shadow-sm border-0">
                     <a href="{{ route('blog.posts.show', $post->slug) }}">
-                        {{-- FIX: Menggunakan kontainer khusus rasio 1:1 --}}
                         <div class="img-container-1to1">
                             <img src="{{ asset('/storage/' . $post->featured_image) }}"
                                  alt="{{ $post->title }}"
@@ -93,10 +91,13 @@
     </div>
 
     {{-- PAGINATION --}}
+    @if(method_exists($latestPosts, 'links'))
     <div class="d-flex justify-content-center mt-5">
         {{ $latestPosts->withQueryString()->links('pagination::bootstrap-5') }}
     </div>
+    @endif
 
+    {{-- BAGIAN BAWAH (Hanya ticker dan grid jika diperlukan) --}}
     @include('blog.partials.ticker')
     @include('blog.partials.bottom_grid')
 
