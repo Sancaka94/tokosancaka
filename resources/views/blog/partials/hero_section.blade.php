@@ -133,36 +133,6 @@
 
 <div class="hero-wrap">
 
-    <div class="search-section">
-        <form action="{{ route('blog.index') }}" method="GET">
-            <div class="row g-2">
-                <div class="col-md-9">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" name="search" class="form-control"
-                            placeholder="Cari judul artikel atau konten..."
-                            value="{{ request('search') }}">
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-sancaka w-100 h-100">
-                        CARI ARTIKEL
-                    </button>
-                </div>
-            </div>
-        </form>
-
-        {{-- Notifikasi Hasil Pencarian --}}
-        @if(request('search'))
-            <div class="mt-3 small text-muted">
-                Menampilkan hasil pencarian untuk: <strong>"{{ request('search') }}"</strong>
-                <a href="{{ route('blog.index') }}" class="text-danger ms-2 text-decoration-none">
-                    <i class="fas fa-times-circle"></i> Bersihkan
-                </a>
-            </div>
-        @endif
-    </div>
-
     <div class="row">
         {{-- KIRI: 1 BERITA UTAMA (HEADLINE) --}}
         <div class="col-lg-7">
