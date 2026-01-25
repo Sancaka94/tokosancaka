@@ -20,7 +20,7 @@
 
         /* Support Firefox */
         scrollbar-width: thin;
-        scrollbar-color: #888 #f1f1f1;
+        scrollbar-color: #ff0000 #f1f1f1;
     }
 
     /* --- 2. KUSTOMISASI SCROLLBAR (Chrome, Edge, Safari) --- */
@@ -37,13 +37,13 @@
 
     /* Batang Geser (Thumb) */
     .category-nav-scroll::-webkit-scrollbar-thumb {
-        background: #888; /* Warna Abu Gelap (Biar kontras) */
+        background: #ff0000; /* Warna Abu Gelap (Biar kontras) */
         border-radius: 4px;
     }
 
     /* Batang Geser saat disorot Mouse */
     .category-nav-scroll::-webkit-scrollbar-thumb:hover {
-        background: #555;
+        background: #ff0000;
     }
 
     /* --- 3. STYLE TOMBOL --- */
@@ -70,9 +70,9 @@
 
     /* Status Aktif */
     .btn-cat-nav.active {
-        background-color: #2563eb;
+        background-color: #eb2525;
         color: #fff;
-        border-color: #2563eb;
+        border-color: #eb2525;
         box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
     }
 </style>
