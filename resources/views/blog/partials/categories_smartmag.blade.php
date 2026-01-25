@@ -2,7 +2,7 @@
     /* --- Category Header --- */
     .smart-head-cat {
         border-top: 2px solid #000;
-        margin-bottom: 20px;
+        margin-bottom: 25px;
         padding-top: 10px;
     }
     .smart-head-cat h4 {
@@ -14,19 +14,9 @@
         margin: 0;
     }
 
-    /* --- Universal Links --- */
-    .main-feat-title a, .sub-grid-title a, .side-list-title a {
-        text-decoration: none !important;
-        color: #000 !important;
-        transition: color 0.2s;
-    }
-    .main-feat-title a:hover, .sub-grid-title a:hover, .side-list-title a:hover {
-        color: #dd0017 !important;
-    }
-
-    /* --- Sidebar Scroll (Max 10) --- */
+    /* --- Sidebar Scroll (Kanan - Max 10) --- */
     .side-list-container {
-        max-height: 750px;
+        max-height: 800px;
         overflow-y: auto;
         padding-right: 12px;
     }
@@ -35,33 +25,29 @@
     .side-list-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
 
     .side-list-item {
-        display: flex; justify-content: space-between;
+        display: flex; gap: 12px;
         padding-bottom: 15px; margin-bottom: 15px;
         border-bottom: 1px solid #f0f0f0;
     }
-    .side-list-img {
-        width: 85px; height: 85px; object-fit: contain;
-        background: #f4f4f4; border-radius: 2px; flex-shrink: 0;
+    .side-list-title a {
+        text-decoration: none !important;
+        color: #000; font-size: 14px; font-weight: 600;
+        transition: 0.2s;
     }
+    .side-list-title a:hover { color: #dd0017; }
 
-    /* --- Left Content Layout --- */
-    .main-feat-box { display: flex; gap: 20px; margin-bottom: 30px; }
-    .main-feat-img-wrap { flex: 1.3; aspect-ratio: 1/1; background: #f4f4f4; overflow: hidden; }
-    .main-feat-img { width: 100%; height: 100%; object-fit: contain; }
-    .sub-grid-item { border-right: 1px solid #eee; padding-right: 15px; margin-bottom: 20px; }
-
-    /* --- AJAX Overlay Loading --- */
+    /* --- Loading State --- */
     #left-content-wrapper { position: relative; min-height: 400px; }
-    .loading-overlay {
+    .ajax-loader {
         display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(255,255,255,0.7); z-index: 10; justify-content: center; align-items: flex-start; padding-top: 100px;
+        background: rgba(255,255,255,0.8); z-index: 5; justify-content: center; align-items: flex-start; padding-top: 50px;
     }
 </style>
 
 @php
-    // LOG LOG: Pengambilan data awal
-    $paginatedPosts = $category->posts()->latest()->paginate(7); // 1 main + 6 sub
+    // LOG LOG: Ambil 10 post terbaru untuk sidebar kanan (statis)
     $sidePosts = $category->posts()->latest()->take(10)->get();
+    // Data kiri menggunakan pagination (diterima dari Controller sebagai $latestPosts)
 @endphp
 
 <div class="row mb-5">
@@ -69,53 +55,49 @@
         <div class="smart-head-cat"><h4>{{ $category->name }}</h4></div>
     </div>
 
-    {{-- KIRI: Konten dengan AJAX Wrapper --}}
+    {{-- KIRI: Grid Content (AJAX) --}}
     <div class="col-lg-8" id="left-content-wrapper">
-        <div class="loading-overlay"><span>Memuat...</span></div>
-
+        <div class="ajax-loader"><strong>Memuat...</strong></div>
         <div id="ajax-content-area">
-            @include('blog.partials.post_grid', ['posts' => $paginatedPosts])
+            @include('blog.partials.post_grid', ['latestPosts' => $latestPosts])
         </div>
     </div>
 
-    {{-- KANAN: Scroll Sidebar (Tetap Statis) --}}
+    {{-- KANAN: Scroll Sidebar --}}
     <div class="col-lg-4 border-start ps-lg-4">
         <div class="side-list-container">
             @foreach($sidePosts as $sidePost)
             <article class="side-list-item">
-                <div class="side-list-content">
-                    <h5 class="side-list-title" style="font-size: 14px; font-weight: 600;">
-                        <a href="{{ route('blog.posts.show', $sidePost->slug) }}">{{ Str::limit($sidePost->title, 50) }}</a>
+                <div class="side-list-content flex-grow-1">
+                    <h5 class="side-list-title">
+                        <a href="{{ route('blog.posts.show', $sidePost->slug) }}">{{ Str::limit($sidePost->title, 55) }}</a>
                     </h5>
                     <small class="text-muted" style="font-size: 10px;">{{ $sidePost->created_at->format('M d, Y') }}</small>
                 </div>
-                <img src="{{ asset('/storage/' . $sidePost->featured_image) }}" class="side-list-img" onerror="this.src='https://placehold.co/85x85?text=Img'">
+                <img src="{{ asset('/storage/' . $sidePost->featured_image) }}"
+                     style="width: 70px; height: 70px; object-fit: cover; border-radius: 2px;"
+                     onerror="this.src='https://placehold.co/70x70?text=Img'">
             </article>
             @endforeach
         </div>
     </div>
 </div>
 
-{{-- SCRIPT AJAX PAGINATION --}}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-$(document).ready(function() {
-    $(document).on('click', '.custom-pagination a', function(e) {
-        e.preventDefault();
-        let url = $(this).attr('href');
+$(document).on('click', '.pagination a', function(e) {
+    e.preventDefault();
+    let url = $(this).attr('href');
 
-        $('.loading-overlay').css('display', 'flex');
+    $('.ajax-loader').css('display', 'flex');
 
-        $.ajax({
-            url: url,
-            success: function(data) {
-                // Pastikan controller mengembalikan view partial
-                $('#ajax-content-area').html(data);
-                $('.loading-overlay').hide();
-                // Scroll ke atas section kategori
-                $('html, body').animate({ scrollTop: $(".smart-head-cat").offset().top - 100 }, 500);
-            }
-        });
+    $.ajax({
+        url: url,
+        success: function(data) {
+            $('#ajax-content-area').html(data);
+            $('.ajax-loader').hide();
+            $('html, body').animate({ scrollTop: $(".smart-head-cat").offset().top - 50 }, 300);
+        }
     });
 });
 </script>
