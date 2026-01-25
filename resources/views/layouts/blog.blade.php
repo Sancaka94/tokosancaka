@@ -265,65 +265,6 @@ ini_set('display_errors', 1);
         background-color: #111;
     }
 
-   /* Container Scroll Horizontal */
-    .category-nav-scroll {
-        display: flex;
-        flex-wrap: nowrap;
-
-        /* Ganti 'auto' jadi 'scroll' -> INI MEMAKSA SCROLLBAR SELALU MUNCUL */
-        overflow-x: scroll !important;
-
-        -webkit-overflow-scrolling: touch;
-        gap: 10px;
-        padding-bottom: 20px; /* Jarak bawah diperlebar */
-        margin-bottom: 20px;
-        width: 100%; /* Pastikan lebar full */
-
-        /* Border merah tipis untuk cek area container (Hapus nanti kalau sudah fix) */
-        border-bottom: 1px dashed red;
-    }
-
-    /* --- GAYA SCROLLBAR (CHROME/SAFARI/EDGE) --- */
-
-    .category-nav-scroll::-webkit-scrollbar {
-        height: 12px !important; /* Dibuat TEBAL biar kelihatan */
-        display: block !important;
-        background-color: #f0f0f0; /* Warna background track */
-    }
-
-    .category-nav-scroll::-webkit-scrollbar-track {
-        background: #e1e1e1 !important;
-        border-radius: 0px;
-    }
-
-    .category-nav-scroll::-webkit-scrollbar-thumb {
-        /* Warna MERAH biar kelihatan jelas dulu (Debug Mode) */
-        background-color: red !important;
-        border-radius: 10px;
-        border: 2px solid #ffffff;
-    }
-
-    /* --- GAYA TOMBOL (Sama seperti sebelumnya) --- */
-    .btn-cat-nav {
-        flex: 0 0 auto;
-        background-color: #fff;
-        border: 1px solid #e0e0e0;
-        color: #4a4a4a;
-        padding: 8px 20px;
-        border-radius: 50px;
-        font-weight: 600;
-        font-size: 13px;
-        text-transform: uppercase;
-        text-decoration: none;
-        white-space: nowrap; /* Wajib ada biar tombol tidak turun */
-    }
-
-    .btn-cat-nav.active {
-        background-color: #2563eb;
-        color: #fff;
-        border-color: #2563eb;
-    }
-
     </style>
 
 </head>
