@@ -42,8 +42,6 @@
         @endif
     </div>
 
-     @include('blog.partials.hero_section')
-
     {{-- 2. LOGIKA TAMPILAN (Mencegah Syntax Error) --}}
     @if(isset($latestPosts) && $latestPosts->count() > 0)
 
