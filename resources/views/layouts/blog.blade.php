@@ -265,45 +265,42 @@ ini_set('display_errors', 1);
         background-color: #111;
     }
 
-    /* Container Scroll Horizontal */
+   /* Container Scroll Horizontal */
     .category-nav-scroll {
         display: flex;
         flex-wrap: nowrap;
-        overflow-x: auto;
+        overflow-x: auto; /* Wajib ada agar bisa scroll */
         -webkit-overflow-scrolling: touch;
         gap: 10px;
-        padding-bottom: 10px; /* Tambah jarak bawah agar scrollbar tidak mepet */
+        padding-bottom: 8px; /* Memberi jarak antara teks tombol dan scrollbar */
         margin-bottom: 20px;
-
-        /* HAPUS baris 'scrollbar-width: none;' yang lama */
+        /* HAPUS 'scrollbar-width: none' agar muncul di Firefox */
     }
 
-    /* --- STYLE SCROLLBAR BARU (Agar muncul tapi cantik) --- */
-
-    /* Ukuran Scrollbar */
+    /* --- MEMUNCULKAN SCROLLBAR (Chrome/Safari/Edge) --- */
     .category-nav-scroll::-webkit-scrollbar {
-        height: 6px; /* Tinggi scrollbar horizontal */
+        height: 5px; /* Tinggi scrollbar (jangan terlalu tebal) */
         display: block; /* Pastikan MUNCUL */
     }
 
-    /* Warna Track (Latar belakang scrollbar) */
+    /* Warna jalur scrollbar (Track) */
     .category-nav-scroll::-webkit-scrollbar-track {
         background: #f1f1f1;
-        border-radius: 10px;
+        border-radius: 4px;
     }
 
-    /* Warna Handle (Bagian yang digeser) */
+    /* Warna batang geser (Thumb) */
     .category-nav-scroll::-webkit-scrollbar-thumb {
-        background: #ccc;
-        border-radius: 10px;
+        background: #c1c1c1; /* Warna abu-abu */
+        border-radius: 4px;
     }
 
-    /* Warna saat disorot mouse */
+    /* Warna saat mouse diarahkan ke scrollbar */
     .category-nav-scroll::-webkit-scrollbar-thumb:hover {
-        background: #aaa;
+        background: #a8a8a8;
     }
 
-    /* --- STYLE TOMBOL (Tetap sama) --- */
+    /* --- STYLE TOMBOL --- */
     .btn-cat-nav {
         flex: 0 0 auto;
         background-color: #fff;
@@ -312,24 +309,25 @@ ini_set('display_errors', 1);
         padding: 8px 20px;
         border-radius: 50px;
         font-weight: 600;
-        font-size: 14px;
+        font-size: 13px;
         text-transform: uppercase;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
         text-decoration: none;
-        white-space: nowrap; /* Mencegah teks turun Oke ke bawah */
+        white-space: nowrap;
     }
 
     .btn-cat-nav:hover {
-        background-color: #ff0000;
-        color: #ff0000;
-        border-color: #ff0000;
+        background-color: #f8f9fa;
+        color: #333;
+        border-color: #ccc;
     }
 
+    /* Warna Tombol Aktif (Biru) */
     .btn-cat-nav.active {
-        background-color: #eb2525;
+        background-color: #2563eb;
         color: #fff;
-        border-color: #ff0000;
-        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+        border-color: #2563eb;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
     }
 
 </style>

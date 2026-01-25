@@ -118,28 +118,30 @@
 {{-- SCRIPT SCROLL & ACTIVE STATE --}}
 <script>
     function scrollToCategory(e, targetId) {
-        e.preventDefault(); // Mencegah refresh halaman/link standar
+        e.preventDefault();
 
-        // 1. Logic Active State (Pindah warna biru)
-        // Hapus class 'active' dari semua tombol
+        // 1. ACTIVE STATE: Pindahkan warna biru
         document.querySelectorAll('.btn-cat-nav').forEach(el => el.classList.remove('active'));
+        let clickedButton = e.currentTarget;
+        clickedButton.classList.add('active');
 
-        // Tambah class 'active' ke tombol yang diklik
-        e.currentTarget.classList.add('active');
+        // 2. MENU SCROLL: Geser menu navigasi agar tombol yang diklik berada di tengah
+        clickedButton.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center' // KUNCI: Membuat tombol aktif geser ke tengah layar
+        });
 
-        // 2. Logic Scroll
+        // 3. PAGE SCROLL: Geser halaman ke konten artikel di bawah
         if (targetId === 'top') {
-            // Jika klik SEMUA, scroll ke atas container kategori
-            const container = document.querySelector('.hero-wrap'); // Atau elemen lain yg cocok
+            const container = document.querySelector('.hero-wrap');
             if(container) {
                 container.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         } else {
-            // Cari elemen section kategori berdasarkan ID
             const targetElement = document.getElementById(targetId);
             if (targetElement) {
-                // Scroll smooth ke elemen tersebut
-                // offsetTop - 100 gunanya memberi jarak napas di atas agar tidak terlalu mepet
+                // Offset -120px supaya tidak tertutup header
                 const y = targetElement.getBoundingClientRect().top + window.pageYOffset - 120;
                 window.scrollTo({top: y, behavior: 'smooth'});
             }
