@@ -46,9 +46,7 @@
                     <button type="submit" class="btn btn-danger" style="background-color: #dd0017;">
                         CARI
                     </button>
-                </form>
 
-                <form action="{{ url('/blog') }}" method="GET" class="d-flex gap-2 justify-content-center">
                     <button type="submit" class="btn btn-danger" style="background-color: #0051ff;">
                         Kembali ke Beranda Blog
                     </button>
