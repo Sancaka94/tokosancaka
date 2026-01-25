@@ -92,6 +92,8 @@
         @endforelse
     </div>
 
+    @include('blog.partials.hero_section')
+
     {{-- PAGINATION --}}
     @if(method_exists($latestPosts, 'links'))
     <div class="d-flex justify-content-center mt-5">
