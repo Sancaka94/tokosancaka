@@ -29,18 +29,23 @@ class BlogController extends Controller
             });
         }
 
-        // Filter Pencarian
-        if ($request->filled('search')) {
-            $search = trim($request->query('search'));
-            $baseQuery->where(function($q) use ($search) {
-                $q->where('title', 'like', '%' . $search . '%')
-                ->orWhere('content', 'like', '%' . $search . '%');
-            });
+        // --- Ambil Kategori UNTUK SEMUA VIEW (Pencarian maupun Normal) ---
+    $categories = Category::withCount(['posts' => function($q) {
+        $q->where('status', 'published');
+    }])->having('posts_count', '>', 0)->orderBy('posts_count', 'desc')->limit(15)->get();
 
-            // JIKA SEDANG MENCARI, GUNAKAN VIEW KHUSUS
-            $latestPosts = $baseQuery->latest()->paginate(12)->withQueryString();
-            return view('blog.search', compact('latestPosts')); // Mengarah ke view baru
-        }
+    if ($request->filled('search')) {
+        $search = trim($request->query('search'));
+        $baseQuery->where(function($q) use ($search) {
+            $q->where('title', 'like', '%' . $search . '%')
+              ->orWhere('content', 'like', '%' . $search . '%');
+        });
+
+        $latestPosts = $baseQuery->latest()->paginate(12)->withQueryString();
+
+        // Kirim $categories juga di sini agar partial tidak error
+        return view('blog.search', compact('latestPosts', 'categories'));
+    }
 
         // --- BAGIAN LAYOUT ---
 
