@@ -53,31 +53,6 @@
                 <div class="col-lg-7">
                     @include('blog.partials.hero_section')
                 </div>
-
-                {{-- KANAN: LIST SCROLLABLE --}}
-                <div class="col-lg-5">
-                    <div class="hero-right-scroll">
-                        <div class="d-flex flex-column">
-                            @foreach($latestPosts->skip(1) as $post)
-                                <div class="hero-list-item">
-                                    <div class="hero-list-img">
-                                        <a href="{{ route('blog.posts.show', $post->slug) }}">
-                                            <img src="{{ asset('/storage/' . $post->featured_image) }}" alt="{{ $post->title }}" onerror="this.onerror=null;this.src='https://placehold.co/200x200/000/fff?text=Img';">
-                                        </a>
-                                    </div>
-                                    <div>
-                                        <h4 class="hero-list-title">
-                                            <a href="{{ route('blog.posts.show', $post->slug) }}">{{ Str::limit($post->title, 60) }}</a>
-                                        </h4>
-                                        <div class="text-muted small" style="font-size: 10px; text-transform: uppercase;">
-                                            <span class="text-danger fw-bold">{{ $post->category->name ?? 'Info' }}</span> • {{ $post->created_at->diffForHumans() }}
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 
