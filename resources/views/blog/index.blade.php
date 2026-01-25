@@ -75,6 +75,47 @@
         border-color: #eb2525;
         box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
     }
+
+    /* --- 3. STYLE FLOATING BUTTON (WA & UP) --- */
+    .floating-container {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 9999; /* Agar selalu di paling atas layer */
+        display: flex;
+        flex-direction: column; /* Susun vertikal */
+        gap: 15px; /* Jarak antar tombol */
+    }
+
+    .btn-float {
+        width: 55px;
+        height: 55px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        color: white !important;
+        text-decoration: none;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .btn-float:hover {
+        transform: scale(1.1); /* Efek membesar saat hover */
+        box-shadow: 0 6px 14px rgba(0,0,0,0.4);
+    }
+
+    /* Warna Tombol WA */
+    .btn-wa {
+        background-color: #25D366;
+    }
+
+    /* Warna Tombol Panah Atas */
+    .btn-up {
+        background-color: #2563eb; /* Biru tema */
+    }
+
 </style>
 
 @include('blog.partials.ticker')
@@ -175,8 +216,31 @@
 
 </div>
 
+{{-- === FLOATING BUTTONS SECTION (WA & SCROLL TOP) === --}}
+<div class="floating-container">
+    {{-- 1. Tombol Scroll Top --}}
+    <a href="#" onclick="scrollToTop(event)" class="btn-float btn-up" title="Kembali ke Atas">
+        <i class="fas fa-arrow-up"></i>
+    </a>
+
+    {{-- 2. Tombol WhatsApp --}}
+    {{-- Format nomor: 628... (tanpa 0 di depan) --}}
+    <a href="https://wa.me/6285745808809?text=Halo,%20saya%20ingin%20bertanya%20mengenai%20artikel..."
+       target="_blank"
+       class="btn-float btn-wa"
+       title="Hubungi via WhatsApp">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+</div>
+
 {{-- SCRIPT --}}
 <script>
+    // Fungsi untuk Scroll ke Paling Atas
+    function scrollToTop(e) {
+        e.preventDefault();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     function scrollToCategory(e, targetId) {
         e.preventDefault();
 
