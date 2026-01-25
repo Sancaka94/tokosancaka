@@ -55,27 +55,25 @@
                             <tbody>
 
                                 @php
-                                    // Konfigurasi Manual
-                                    $perPage = 10; // Jumlah data per halaman
+                                    // 1. Konfigurasi
+                                    $perPage = 10; // Jumlah item per halaman
                                     $currentPage = request()->get('page', 1);
+                                    $itemCollection = collect($posts); // Memastikan $posts adalah collection
 
-                                    // Jika $posts bukan instance paginator, kita buat manual dari collection
-                                    if (!($posts instanceof \Illuminate\Pagination\LengthAwarePaginator)) {
-                                        $items = collect($posts);
-                                        $currentItems = $items->forPage($currentPage, $perPage);
-                                        $postsPagination = new \Illuminate\Pagination\LengthAwarePaginator(
-                                            $currentItems,
-                                            $items->count(),
-                                            $perPage,
-                                            $currentPage,
-                                            ['path' => request()->url(), 'query' => request()->query()]
-                                        );
-                                    } else {
-                                        $postsPagination = $posts;
-                                    }
+                                    // 2. Potong data sesuai halaman saat ini (Manual Slicing)
+                                    $currentPageItems = $itemCollection->slice(($currentPage - 1) * $perPage, $perPage)->all();
+
+                                    // 3. Buat Instance Paginator Manual
+                                    $paginatedItems = new \Illuminate\Pagination\LengthAwarePaginator(
+                                        $currentPageItems,
+                                        $itemCollection->count(),
+                                        $perPage,
+                                        $currentPage,
+                                        ['path' => request()->url(), 'query' => request()->query()]
+                                    );
                                 @endphp
 
-                                @forelse ($postsPagination as $post)
+                                @forelse ($paginatedItems as $post)
 
                                     <tr>
 
@@ -141,15 +139,15 @@
 
                     </div>
 
-                    <p class="text-center text-muted">
-                        Menampilkan {{ $posts->count() }} dari total {{ $posts->total() }} artikel.
-                    </p>
+                    {{-- 5. Tampilkan Navigasi --}}
+                    <div class="d-flex justify-content-center mt-4">
+                        {{ $paginatedItems->links('pagination::bootstrap-5') }}
+                    </div>
 
-                    {{-- PAGINATION --}}
-                    {{-- Tampilkan Link --}}
-                        <div class="d-flex justify-content-center mt-4">
-                            {{ $postsPagination->links('pagination::bootstrap-5') }}
-                        </div>
+                    <div class="text-center small text-muted">
+                        Menampilkan {{ $paginatedItems->firstItem() }} sampai {{ $paginatedItems->lastItem() }}
+                        dari {{ $paginatedItems->total() }} total artikel.
+                    </div>
 
                 </div>
 
