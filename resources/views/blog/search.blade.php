@@ -47,8 +47,8 @@
                         CARI
                     </button>
 
-                    <button type="submit" class="btn btn-danger" style="background-color: #0051ff;">
-                        Kembali ke Beranda Blog
+                    <button type="submit" class="btn btn-primary" style="background-color: #0051ff;">
+                        Beranda
                     </button>
                 </form>
 
