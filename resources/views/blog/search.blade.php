@@ -26,6 +26,8 @@
     }
 </style>
 
+@include('blog.partials.ticker')
+
 <div class="container py-5">
     {{-- HEADER PENCARIAN --}}
     <div class="row justify-content-center mb-5">
@@ -98,7 +100,7 @@
     @endif
 
     {{-- BAGIAN BAWAH (Hanya ticker dan grid jika diperlukan) --}}
-    @include('blog.partials.ticker')
+
     @include('blog.partials.bottom_grid')
 
 </div>
