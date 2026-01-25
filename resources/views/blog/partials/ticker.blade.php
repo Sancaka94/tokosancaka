@@ -12,7 +12,7 @@
     z-index: 999;
 
     /* TARIK KE ATAS UNTUK MENGHILANGKAN CELAH */
-    margin-top: -5px; /* Sesuaikan angka ini (-1px s/d -10px) sampai rapat */
+    margin-top: -15px; /* Sesuaikan angka ini (-1px s/d -10px) sampai rapat */
 
     width: 100vw;
     margin-left: calc(50% - 50vw);
