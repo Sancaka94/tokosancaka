@@ -43,7 +43,8 @@
         font-weight: 700;
         line-height: 1.2;
         margin-bottom: 10px;
-        color: #000
+        color: #000;
+        text-decoration: none !important;
     }
     .meta-line {
         font-size: 11px;
@@ -89,6 +90,8 @@
         font-weight: 700;
         line-height: 1.3;
         margin-bottom: 8px;
+        color: #000;
+        text-decoration: none !important;
     }
     .sub-grid-excerpt {
         font-size: 13px;
@@ -114,6 +117,8 @@
         font-weight: 600;
         line-height: 1.4;
         margin-bottom: 5px;
+        color: #000;
+        text-decoration: none !important;
     }
     .side-list-img {
         width: 80px; height: 60px; object-fit: cover; border-radius: 2px; flex-shrink: 0;
