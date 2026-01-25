@@ -17,6 +17,9 @@
         font-size: 14px;
         letter-spacing: 0.5px;
         margin: 0;
+        text-decoration: none !important;
+        color: #ff0000 !important; /* Memaksa warna tetap merah, bukan biru link */
+        outline: none;
     }
 
     /* Main Featured Post (Atas Kiri) */
