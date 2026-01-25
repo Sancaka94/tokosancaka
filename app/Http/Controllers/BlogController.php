@@ -167,29 +167,21 @@ class BlogController extends Controller
         return view('feed', compact('posts'));
     }
 
-    public function loadMore(Request $request) {
-    $offset = 14 + (($request->page - 1) * 10);
-    $posts = Post::where('category_id', $request->category_id)
-                 ->latest()
-                 ->skip($offset)
-                 ->take(10)
-                 ->get();
+    public function showCategory($slug, Request $request) {
+    // 1. Ambil Kategori
+    $category = Category::where('slug', $slug)->firstOrFail();
 
-    $html = "";
-    foreach($posts as $post) {
-        $html .= '
-        <article class="side-list-item">
-            <div class="side-list-content">
-                <h5 class="side-list-title">
-                    <a href="'.route('blog.posts.show', $post->slug).'">'.Str::limit($post->title, 45).'</a>
-                </h5>
-                <small class="text-muted">'.$post->created_at->format('M d, Y').'</small>
-            </div>
-            <img src="'.asset('/storage/'.$post->featured_image).'" class="side-list-img">
-        </article>';
+    // 2. Ambil Postingan (10 per halaman: 4 Grid + 6 List)
+    $posts = $category->posts()->latest()->paginate(10);
+
+    // 3. LOGIKA AJAX (PENTING!)
+    // Jika request datang dari klik pagination, hanya kirim file partial (Langkah 1)
+    if ($request->ajax()) {
+        return view('blog.partials.content_grid', compact('posts', 'category'))->render();
     }
 
-    return response()->json(['html' => $html]);
+    // 4. Jika load biasa, kirim halaman utama (Langkah 3)
+    return view('blog.category', compact('category', 'posts'));
 }
 
 }
