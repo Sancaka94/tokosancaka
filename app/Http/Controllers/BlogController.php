@@ -151,8 +151,9 @@ class BlogController extends Controller
     {
         $posts = Post::where('status', 'published')
                      ->latest()
-                     ->limit(50)
-                     ->get();
+                     //->limit(50)
+                     //->get();
+                     ->paginate(10);
 
         return view('feed', compact('posts'));
     }
