@@ -75,8 +75,6 @@
             @endforeach
         </div>
 
-        @include('blog.category')
-
         {{-- 3. LOOP CATEGORIES (Target Scroll) --}}
         <div id="category-container">
             @foreach($categories as $category)
