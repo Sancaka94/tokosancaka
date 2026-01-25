@@ -53,6 +53,7 @@
 
     <hr class="mb-5">
 
+<div id="search-results-wrapper">
     {{-- DAFTAR HASIL --}}
     <div class="row">
         @forelse($latestPosts as $post)
@@ -107,6 +108,56 @@
     @include('blog.partials.bottom_grid')
 
 </div>
+
+</div>
+
+{{-- JAVASCRIPT UNTUK AJAX PAGINATION --}}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const wrapper = document.getElementById('search-results-wrapper');
+
+    // Gunakan event delegation agar klik pada elemen yang baru di-load tetap berfungsi
+    wrapper.addEventListener('click', function(e) {
+        const link = e.target.closest('.pagination a');
+
+        if (link) {
+            e.preventDefault();
+            const url = link.getAttribute('href');
+
+            // Efek transisi halus (opsional)
+            wrapper.style.opacity = '0.5';
+
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                // Parsing HTML yang diterima
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newContent = doc.getElementById('search-results-wrapper').innerHTML;
+
+                // Ganti konten lama dengan konten baru
+                wrapper.innerHTML = newContent;
+                wrapper.style.opacity = '1';
+
+                // Geser tampilan kembali ke atas daftar artikel (Smooth Scroll)
+                wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                // Update URL di browser tanpa refresh (opsional)
+                window.history.pushState({}, '', url);
+            })
+            .catch(error => {
+                console.error('Error fetching pagination:', error);
+                wrapper.style.opacity = '1';
+            });
+        }
+    });
+});
+</script>
 
 {{-- LOG LOG --}}
 @endsection
