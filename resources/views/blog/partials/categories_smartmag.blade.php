@@ -22,21 +22,23 @@
         outline: none;
     }
 
-    /* Menghilangkan garis bawah pada semua tautan judul */
+    /* 1. FORCE REMOVE BLUE & UNDERLINE PADA SEMUA LINK JUDUL */
     .main-feat-title a,
     .sub-grid-title a,
     .side-list-title a {
         text-decoration: none !important;
-        color: inherit; /* Agar warna tetap hitam mengikuti parent */
+        color: #000000 !important; /* Paksa Hitam, bukan biru */
         display: block;
+        border: none !important;
+        box-shadow: none !important;
     }
 
-    /* Memastikan tidak muncul garis bawah saat kursor di atas judul (hover) */
+    /* 2. EFEK HOVER: BERUBAH MERAH SAAT DISENTUH (TANPA GARIS) */
     .main-feat-title a:hover,
     .sub-grid-title a:hover,
     .side-list-title a:hover {
         text-decoration: none !important;
-        color: #dd0017 !important; /* Berubah jadi merah Sancaka saat di-hover */
+        color: #dd0017 !important; /* Merah Sancaka */
     }
 
     /* Main Featured Post (Atas Kiri) */
