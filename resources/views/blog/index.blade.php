@@ -53,6 +53,8 @@
 
         </div>
 
+        @include('blog.category')
+
         {{-- 3. LOOP CATEGORIES --}}
         @foreach($categories as $category)
             @if($category->posts_count > 0)
