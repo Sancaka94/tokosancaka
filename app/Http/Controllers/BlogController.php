@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\Str;
 use App\Models\Post;
 use App\Models\Category;
 
@@ -165,4 +166,30 @@ class BlogController extends Controller
 
         return view('feed', compact('posts'));
     }
+
+    public function loadMore(Request $request) {
+    $offset = 14 + (($request->page - 1) * 10);
+    $posts = Post::where('category_id', $request->category_id)
+                 ->latest()
+                 ->skip($offset)
+                 ->take(10)
+                 ->get();
+
+    $html = "";
+    foreach($posts as $post) {
+        $html .= '
+        <article class="side-list-item">
+            <div class="side-list-content">
+                <h5 class="side-list-title">
+                    <a href="'.route('blog.posts.show', $post->slug).'">'.Str::limit($post->title, 45).'</a>
+                </h5>
+                <small class="text-muted">'.$post->created_at->format('M d, Y').'</small>
+            </div>
+            <img src="'.asset('/storage/'.$post->featured_image).'" class="side-list-img">
+        </article>';
+    }
+
+    return response()->json(['html' => $html]);
+}
+
 }

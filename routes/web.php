@@ -235,6 +235,7 @@ Route::post('/ppob/check-pln-prabayar', [PpobController::class, 'checkPlnPrabaya
 // Blog & Content
 Route::get('/feed', [BlogController::class, 'generateFeed'])->name('feed');
 Route::get('/blog/posts/{post}', [BlogController::class, 'show']);
+Route::get('/load-more-posts', [BlogController::class, 'loadMore'])->name('blog.posts.loadMore');
 Route::get('/pondok', [PondokController::class, 'index'])->name('pondok.index');
 
 // Utilities
