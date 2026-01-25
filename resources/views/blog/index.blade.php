@@ -48,12 +48,9 @@
     @if(isset($latestPosts) && $latestPosts->count() > 0)
 
         <div class="hero-wrap">
-            <div class="row">
-                {{-- KIRI: HEADLINE --}}
-                <div class="col-lg-7">
+
                     @include('blog.partials.hero_section')
-                </div>
-            </div>
+
         </div>
 
         {{-- 3. LOOP CATEGORIES --}}
