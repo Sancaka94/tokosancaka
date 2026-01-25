@@ -265,7 +265,54 @@ ini_set('display_errors', 1);
         background-color: #111;
     }
 
+    /* Container untuk tombol scroll horizontal */
+    .category-nav-scroll {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth scroll di mobile */
+        gap: 10px;
+        padding-bottom: 5px; /* Ruang untuk scrollbar jika ada */
+        margin-bottom: 20px;
+        scrollbar-width: none; /* Sembunyikan scrollbar Firefox */
+    }
+
+    /* Sembunyikan scrollbar Chrome/Safari */
+    .category-nav-scroll::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Style Tombol Dasar */
+    .btn-cat-nav {
+        flex: 0 0 auto; /* Mencegah tombol mengecil */
+        background-color: #fff;
+        border: 1px solid #e0e0e0;
+        color: #4a4a4a;
+        padding: 8px 20px;
+        border-radius: 50px; /* Bentuk Pill */
+        font-weight: 600;
+        font-size: 14px;
+        text-transform: uppercase;
+        transition: all 0.3s ease;
+        text-decoration: none;
+    }
+
+    .btn-cat-nav:hover {
+        background-color: #f8f9fa;
+        color: #333;
+        border-color: #ccc;
+    }
+
+    /* Style Tombol AKTIF (Seperti 'SEMUA' di gambar) */
+    .btn-cat-nav.active {
+        background-color: #2563eb; /* Warna Biru sesuai gambar */
+        color: #fff;
+        border-color: #2563eb;
+        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+    }
 </style>
+
+
 
 </head>
 
