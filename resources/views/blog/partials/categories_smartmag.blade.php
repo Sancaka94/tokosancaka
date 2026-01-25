@@ -70,7 +70,7 @@
             <article class="side-list-item">
                 <div class="side-list-content flex-grow-1">
                     <h5 class="side-list-title">
-                        <a href="{{ route('blog.posts.show', $sidePost->slug) }}">{{ Str::limit($sidePost->title, 4) }}</a>
+                        <a href="{{ route('blog.posts.show', $sidePost->slug) }}">{{ Str::limit($sidePost->title, 100) }}</a>
                     </h5>
                     <small class="text-muted" style="font-size: 10px;">{{ $sidePost->created_at->format('M d, Y') }}</small>
                 </div>

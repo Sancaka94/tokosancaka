@@ -18,7 +18,7 @@
                  onerror="this.src='https://placehold.co/400x225?text=No+Image'">
         </a>
         <h4 class="sub-grid-title mt-2">
-            <a href="{{ route('blog.posts.show', $post->slug) }}">{{ Str::limit($post->title, 60) }}</a>
+            <a href="{{ route('blog.posts.show', $post->slug) }}">{{ Str::limit($post->title, 100) }}</a>
         </h4>
         <div class="meta-line mb-2" style="font-size: 11px; color: #999;">
             {{ $post->created_at->format('M d, Y') }}
