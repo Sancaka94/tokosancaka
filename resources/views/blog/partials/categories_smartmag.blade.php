@@ -91,7 +91,7 @@
 @php
     // Query Sidebar: Mengambil 10 post terbaru
     // Pastikan variabel $category tersedia dari controller
-    $sidePosts = $category->posts()->latest()->take(10)->get();
+    $sidePosts = $category->posts()->latest()->take(20)->get();
 @endphp
 
 <div class="row mb-5">
