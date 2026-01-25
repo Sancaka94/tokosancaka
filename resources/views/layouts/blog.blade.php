@@ -316,7 +316,7 @@ ini_set('display_errors', 1);
         text-transform: uppercase;
         transition: all 0.3s ease;
         text-decoration: none;
-        white-space: nowrap; /* Mencegah teks turun ke bawah */
+        white-space: nowrap; /* Mencegah teks turun Oke ke bawah */
     }
 
     .btn-cat-nav:hover {
