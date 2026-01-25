@@ -98,6 +98,45 @@
         .hero-main { height: 300px; margin-bottom: 20px; }
         .hero-scroll-wrap, .cat-list-wrap { height: auto; max-height: 350px; margin-bottom: 20px; }
     }
+
+    /* Desain Form Pencarian Sancaka */
+    .search-section {
+        background: #fff;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        margin-bottom: 30px;
+        border-left: 5px solid #dd0017; /* Aksen Merah Sancaka */
+    }
+    .search-box {
+        position: relative;
+    }
+    .search-box input {
+        height: 50px;
+        border-radius: 5px;
+        padding-left: 45px;
+        border: 1px solid #ddd;
+        font-size: 15px;
+    }
+    .search-box i {
+        position: absolute;
+        left: 15px;
+        top: 17px;
+        color: #888;
+    }
+    .btn-sancaka {
+        background: #dd0017;
+        color: white;
+        font-weight: 700;
+        padding: 0 30px;
+        border-radius: 5px;
+        transition: 0.3s;
+    }
+    .btn-sancaka:hover {
+        background: #000;
+        color: white;
+    }
+
 </style>
 
 <div class="hero-wrap">
