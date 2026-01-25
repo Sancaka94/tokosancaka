@@ -6,24 +6,18 @@
 <style>
     /* Wrapper Utama untuk memaksa Sticky dan Full Width */
     .ticker-sticky-wrapper {
-        /* 1. AGAR STICKY (Menempel saat scroll) */
-        position: -webkit-sticky; /* Support Safari */
+        position: -webkit-sticky;
         position: sticky;
-        top: 0;
-        z-index: 9999; /* Pastikan layer paling atas menutupi konten lain saat scroll */
+        top: 80px; /* GANTI SESUAI TINGGI HEADER ANDA */
+        z-index: 999; /* Kecilkan sedikit agar tetap di bawah dropdown header jika ada */
 
-        /* 2. MEMAKSA FULL WIDTH (Melebar ke tepi layar) */
+        /* Hapus atau sesuaikan margin-top negatif jika menyebabkan tumpang tindih */
+        margin-top: 0;
+
         width: 100vw;
         margin-left: calc(50% - 50vw);
         margin-right: calc(50% - 50vw);
-
-        /* 3. MENGHILANGKAN JARAK PUTIH (Negative Margin) */
-        /* Kita tarik ke atas secara paksa untuk menutupi padding container */
-        margin-top: -2.5rem; /* Sesuaikan angka ini jika header Anda tingginya beda (misal: -40px) */
-        margin-bottom: 30px; /* Jarak ke konten bawah */
-
-        background: #161616; /* Background Hitam */
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        background: #161616;
     }
 
     .ticker-inner {
