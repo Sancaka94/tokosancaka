@@ -138,7 +138,7 @@ Route::get('/apps', function () {
 Route::get('/{resi}/cetak_thermal', [PesananController::class, 'cetakThermal'])
     ->name('cetak.thermal.clean');
 
-
+Route::get('/blog', [BlogController::class, 'blogIndex'])->name('blog.index');
 
 // =========================================================================
 // 2. PUBLIC ROUTES (GUEST / AKSES UMUM)
