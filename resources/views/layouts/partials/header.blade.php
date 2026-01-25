@@ -1,7 +1,7 @@
 {{--
     File: resources/views/layouts/partials/header.blade.php
     Deskripsi: Header admin panel dengan dropdown notifikasi dinamis dan Toggle API Mode Robust.
-    
+
     MODIFIKASI:
     1. Desain Header di-set ZOOM 80%.
     2. Lebar (Width) di-set 125% agar tetap full-screen saat di-zoom out.
@@ -21,18 +21,18 @@
     }
 </style>
 
-{{-- 
+{{--
     PERUBAHAN DISINI:
-    style="zoom: 80%; width: 125%;" 
+    style="zoom: 80%; width: 125%;"
     - zoom: 80% untuk mengecilkan ukuran.
     - width: 125% untuk memastikan background tetap full layar (100/0.8 = 125).
 --}}
-<header class="flex justify-between items-center p-4 bg-gray-700 border-b shadow-sm sticky top-0 z-40" 
+<header class="flex justify-between items-center p-4 bg-gray-700 border-b shadow-sm sticky top-0 z-40"
         style="zoom: 80%; width: 100%;">
-    
+
     <div class="flex items-center">
         {{-- Tombol toggle sidebar --}}
-        <button type="button" id="btn-toggle-sidebar" 
+        <button type="button" id="btn-toggle-sidebar"
         class="p-2 rounded-md text-white hover:bg-gray-600 lg:hidden focus:outline-none">
     <span class="sr-only">Toggle sidebar</span>
     <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -47,7 +47,7 @@
     </div>
 
     <div class="ml-auto flex items-center space-x-2 sm:space-x-4 mr-6">
-        
+
         {{-- =================================================================== --}}
         {{-- TOGGLE API MODE (ALPINE JS VERSION - ROBUST)                        --}}
         {{-- =================================================================== --}}
@@ -56,27 +56,27 @@
             $currentMode = \App\Models\Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
             $isProd = ($currentMode === 'production');
         @endphp
-        
-        <div x-data="{ 
+
+        <div x-data="{
                 isProd: {{ $isProd ? 'true' : 'false' }},
                 isLoading: false,
                 async toggleMode() {
                     this.isLoading = true;
                     // Tentukan target mode selanjutnya
                     const targetMode = this.isProd ? 'staging' : 'production';
-                    
+
                     try {
                         const response = await fetch('{{ route('admin.settings.api.toggle') }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'Accept': 'application/json', 
+                                'Accept': 'application/json',
                                 'X-Requested-With': 'XMLHttpRequest', // Wajib untuk AJAX Laravel
                                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
                             },
                             body: JSON.stringify({ mode: targetMode })
                         });
-                        
+
                         // Cek Tipe Konten Response
                         const contentType = response.headers.get('content-type');
 
@@ -85,11 +85,11 @@
                             const result = await response.json();
                             if (response.ok) {
                                 this.isProd = !this.isProd;
-                                window.location.reload(); 
+                                window.location.reload();
                             } else {
                                 throw new Error(result.message || 'Terjadi kesalahan.');
                             }
-                        } 
+                        }
                         // SKENARIO 2: Response HTML tapi Sukses 200 OK (Fallback return back())
                         else if (response.ok) {
                             console.log('Response HTML (Redirect sukses), reloading page...');
@@ -111,20 +111,20 @@
                         this.isLoading = false;
                     }
                 }
-             }" 
+             }"
              class="hidden md:flex items-center mr-4 bg-white/10 rounded-lg p-1 border border-white/20">
-            
+
             <span class="text-[10px] font-bold text-white mr-2 ml-2 uppercase" x-text="isProd ? 'MODE AKTIF' : 'NON AKTIF'"></span>
 
             <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
                 <input type="checkbox" x-ref="apiToggle"
                        class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 border-gray-300 appearance-none cursor-pointer transition-transform duration-300"
                        :class="isProd ? 'translate-x-5 border-red-500' : 'translate-x-0 border-red-500'"
-                       @click.prevent="toggleMode()" 
+                       @click.prevent="toggleMode()"
                        :checked="isProd"/>
                 <label class="toggle-label block overflow-hidden h-5 rounded-full cursor-pointer bg-gray-300 shadow-inner"></label>
             </div>
-            
+
             {{-- Loading Spinner Kecil --}}
             <div x-show="isLoading" class="ml-2" x-cloak>
                 <svg class="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -144,7 +144,7 @@
 
             <a href="{{ route('admin.saldo.requests.index') }}"
                 class="ml-2 inline-flex items-center gap-x-1.5 px-3 py-1.5
-                       bg-blue-600 hover:bg-blue-700 
+                       bg-blue-600 hover:bg-blue-700
                        text-white text-sm font-medium rounded-md
                        focus:outline-none">
                 <i class="fas fa-money-bill-wave text-white text-base"></i>
@@ -157,7 +157,7 @@
                 <i class="fas fa-store text-lg text-white"></i>
             </a>
         </div>
-        
+
         <div x-data="{ open: false }" class="relative">
             <button @click="open = !open; if(open) loadInitialNotifications();"
                     class="p-2 rounded-full text-gray-500 hover:bg-red-700 focus:outline-none relative">
@@ -181,7 +181,7 @@
                 x-transition:leave-start="transform opacity-100 scale-100"
                 x-transition:leave-end="transform opacity-0 scale-95"
                 class="origin-top-right absolute right-0 mt-2 w-80 sm:w-96 rounded-xl shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
-                
+
                 <div class="py-1">
                     <div class="px-4 py-2 text-sm font-semibold text-gray-900 border-b">
                         Notifikasi
@@ -215,11 +215,11 @@
             <button @click="open = !open"
                 class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                 <span class="sr-only">Buka menu pengguna</span>
+{{-- PERBAIKAN: Menambahkan operator null safe (?->) dan fallback default --}}
                 <img class="h-8 w-8 rounded-full object-cover"
-                    src="{{ Auth::user()->store_logo_path
-                    ? asset('public/storage/' . Auth::user()->store_logo_path) 
-                    : 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->nama_lengkap ?? 'User') . '&color=7F9CF5&background=EBF4FF' }}">
-            </button>
+                    src="{{ Auth::user()?->store_logo_path
+                    ? asset('public/storage/' . Auth::user()->store_logo_path)
+                    : 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()?->nama_lengkap ?? 'User') . '&color=7F9CF5&background=EBF4FF' }}">            </button>
 
             <div x-show="open" @click.away="open = false" x-cloak
                 x-transition:enter="transition ease-out duration-100"
