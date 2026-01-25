@@ -2,7 +2,7 @@
     {{-- KIRI: KONTEN UTAMA (LAYOUT CAMPURAN) --}}
     <div class="col-lg-8">
         <div class="block-head">
-            <h4 style="background: #198754;">{{ $category->name }}</h4>
+            <h4 style="background: #000000;">{{ $category->name }}</h4>
             <a href="{{ route('blog.posts.index', ['category' => $category->slug]) }}" class="block-head-link">Lihat</a>
         </div>
 
