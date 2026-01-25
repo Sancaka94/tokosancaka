@@ -35,7 +35,7 @@
         @if(request('search'))
             <div class="mt-3 small text-muted">
                 Menampilkan hasil pencarian untuk: <strong>"{{ request('search') }}"</strong>
-                <a href="{{ route('blog.index') }}" class="text-danger ms-2 text-decoration-none">
+                <a href="{{ url('/blog') }}" class="text-danger ms-2 text-decoration-none">
                     <i class="fas fa-times-circle"></i> Bersihkan
                 </a>
             </div>
@@ -113,18 +113,21 @@
             </div>
             <h5>Maaf, artikel tidak ditemukan</h5>
             <p class="text-muted">Coba gunakan kata kunci lain atau periksa ejaan Anda.</p>
-            <a href="{{ route('blog.index') }}" class="btn btn-outline-danger">Lihat Semua Artikel</a>
+            <a href="{{ url('/blog') }}" class="btn btn-outline-danger">Lihat Semua Artikel</a>
         </div>
     @endif
 
-    {{-- 4. PAGINATION --}}
+    {{-- 4. BOTTOM GRID SECTION --}}
+
+    @include('blog.partials.bottom_grid')
+
+    {{-- 5. PAGINATION --}}
+
     @if(method_exists($latestPosts, 'links'))
         <div class="d-flex justify-content-center mt-5">
             {{ $latestPosts->withQueryString()->links('pagination::bootstrap-5') }}
         </div>
     @endif
-
-    @include('blog.partials.bottom_grid')
 
 </div>
 
