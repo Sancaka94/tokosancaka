@@ -1,15 +1,14 @@
 <style>
     /* DESAIN: SMARTMAG FOCUS LAYOUT
-       Note: LOG LOG tetap dipertahankan
+       Note: LOG LOG Tetap Dipertahankan
     */
 
-    /* --- Base Styles & Reset --- */
+    /* --- Category Header --- */
     .smart-head-cat {
         border-top: 2px solid #000;
         margin-bottom: 20px;
         padding-top: 10px;
     }
-
     .smart-head-cat h4 {
         font-family: 'Inter', sans-serif;
         font-weight: 800;
@@ -20,25 +19,22 @@
         color: #ff0000 !important;
     }
 
-    /* --- Link Management --- */
+    /* --- Universal Title & Links --- */
     .main-feat-title a,
     .sub-grid-title a,
     .side-list-title a {
         text-decoration: none !important;
         color: #000000 !important;
         display: block;
-        border: none !important;
-        box-shadow: none !important;
         transition: color 0.2s ease-in-out;
     }
-
     .main-feat-title a:hover,
     .sub-grid-title a:hover,
     .side-list-title a:hover {
         color: #dd0017 !important;
     }
 
-    /* --- Typography & Meta --- */
+    /* --- Meta Info --- */
     .meta-line {
         font-size: 11px;
         color: #888;
@@ -46,23 +42,16 @@
         text-transform: uppercase;
         margin-bottom: 15px;
     }
+    .cat-text { color: #dd0017; font-weight: 700; margin-right: 5px; }
 
-    .cat-text {
-        color: #dd0017;
-        font-weight: 700;
-        margin-right: 5px;
-    }
-
-    /* --- 1. Main Featured Post --- */
+    /* --- 1. Main Featured (Kiri Atas) --- */
     .main-feat-box {
         display: flex;
         gap: 20px;
         margin-bottom: 30px;
         align-items: flex-start;
     }
-
     .main-feat-content { flex: 1; }
-
     .main-feat-img-wrap {
         flex: 1.3;
         aspect-ratio: 1 / 1;
@@ -70,16 +59,10 @@
         border-radius: 2px;
         background: #f4f4f4;
     }
-
     .main-feat-img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        transition: transform 0.4s;
+        width: 100%; height: 100%; object-fit: contain; transition: transform 0.4s;
     }
-
     .main-feat-box:hover .main-feat-img { transform: scale(1.05); }
-
     .main-feat-title {
         font-family: 'IBM Plex Serif', serif;
         font-size: 28px;
@@ -87,19 +70,14 @@
         line-height: 1.2;
         margin-bottom: 10px;
     }
-
     .feat-excerpt {
         font-family: 'Inter', sans-serif;
         font-size: 14px;
         color: #555;
         line-height: 1.6;
         margin-bottom: 20px;
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
+        display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
     }
-
     .btn-read-more {
         display: inline-block;
         padding: 8px 20px;
@@ -112,22 +90,15 @@
         text-decoration: none;
         transition: 0.2s;
     }
+    .btn-read-more:hover { border-color: #000; background: #000; color: #fff; }
 
-    .btn-read-more:hover {
-        border-color: #000;
-        background: #000;
-        color: #fff;
-    }
-
-    /* --- 2. Sub Grid --- */
+    /* --- 2. Sub Grid (Kiri Bawah) --- */
     .sub-grid-item {
         border-right: 1px solid #eee;
         padding-right: 15px;
         margin-bottom: 20px;
     }
-
     .sub-grid-item:last-child { border-right: none; }
-
     .sub-grid-title {
         font-family: 'IBM Plex Serif', serif;
         font-size: 17px;
@@ -135,18 +106,24 @@
         line-height: 1.3;
         margin-bottom: 8px;
     }
-
     .sub-grid-excerpt {
-        font-size: 13px;
-        color: #666;
-        line-height: 1.5;
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
+        font-size: 13px; color: #666; line-height: 1.5;
+        display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
     }
 
-    /* --- 3. Sidebar List --- */
+    /* --- 3. Sidebar dengan Scrollbar (Kanan) --- */
+    .side-list-container {
+        max-height: 650px; /* Menyesuaikan tinggi rata-rata kolom kiri */
+        overflow-y: auto;
+        padding-right: 10px;
+    }
+
+    /* Custom Scrollbar Styling */
+    .side-list-container::-webkit-scrollbar { width: 4px; }
+    .side-list-container::-webkit-scrollbar-track { background: #f9f9f9; }
+    .side-list-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+    .side-list-container::-webkit-scrollbar-thumb:hover { background: #dd0017; }
+
     .side-list-item {
         display: flex;
         justify-content: space-between;
@@ -155,11 +132,8 @@
         margin-bottom: 15px;
         border-bottom: 1px solid #f0f0f0;
     }
-
     .side-list-item:last-child { border-bottom: none; }
-
     .side-list-content { padding-right: 10px; flex: 1; }
-
     .side-list-title {
         font-family: 'IBM Plex Serif', serif;
         font-size: 15px;
@@ -167,15 +141,10 @@
         line-height: 1.4;
         margin-bottom: 5px;
     }
-
     .side-list-img {
-        width: 90px;
-        height: 90px;
-        object-fit: contain;
-        background: #f4f4f4;
-        border-radius: 2px;
-        flex-shrink: 0;
-        border: 1px solid #eee;
+        width: 90px; height: 90px;
+        object-fit: contain; background: #f4f4f4;
+        border-radius: 2px; flex-shrink: 0; border: 1px solid #eee;
     }
 
     /* --- Responsive --- */
@@ -183,29 +152,28 @@
         .main-feat-box { flex-direction: column-reverse; }
         .main-feat-img-wrap { width: 100%; aspect-ratio: 16/9; }
         .sub-grid-item { border-right: none; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-        .border-start-lg { border-left: none !important; padding-left: 0 !important; }
+        .side-list-container { max-height: 400px; margin-top: 20px; }
     }
 </style>
 
 @php
-    // LOG LOG: Pengambilan data terpusat untuk efisiensi
-    $allPosts = $category->posts()->latest()->take(8)->get();
+    // LOG LOG: Mengambil data tanpa batasan take untuk sisi kanan
+    $allPosts = $category->posts()->latest()->get();
     $mainPost = $allPosts->first();
     $subPosts = $allPosts->slice(1, 3);
-    $sidePosts = $allPosts->slice(4, 4);
+    $sidePosts = $allPosts->slice(4);
 @endphp
 
 <div class="row mb-5">
-    {{-- Header Category --}}
+    {{-- Header --}}
     <div class="col-12">
         <div class="smart-head-cat">
             <h4>{{ $category->name }}</h4>
         </div>
     </div>
 
-    {{-- KOLOM KIRI (MAIN CONTENT) --}}
+    {{-- KIRI: Konten Utama --}}
     <div class="col-lg-8">
-        {{-- 1. FEATURED POST --}}
         @if($mainPost)
         <div class="main-feat-box">
             <div class="main-feat-content">
@@ -233,7 +201,6 @@
         </div>
         @endif
 
-        {{-- 2. SUB GRID --}}
         <div class="row">
             @foreach($subPosts as $subPost)
             <div class="col-md-4 sub-grid-item">
@@ -251,25 +218,29 @@
         </div>
     </div>
 
-    {{-- KOLOM KANAN (SIDEBAR LIST) --}}
+    {{-- KANAN: Scrollable Sidebar --}}
     <div class="col-lg-4 border-start ps-lg-4">
-        @foreach($sidePosts as $sidePost)
-        <article class="side-list-item">
-            <div class="side-list-content">
-                <h5 class="side-list-title">
-                    <a href="{{ route('blog.posts.show', $sidePost->slug) }}">{{ Str::limit($sidePost->title, 50) }}</a>
-                </h5>
-                <div class="meta-line mb-0" style="font-size: 10px;">
-                    {{ $sidePost->created_at->format('M d, Y') }}
+        <div class="side-list-container">
+            @forelse($sidePosts as $sidePost)
+            <article class="side-list-item">
+                <div class="side-list-content">
+                    <h5 class="side-list-title">
+                        <a href="{{ route('blog.posts.show', $sidePost->slug) }}">{{ Str::limit($sidePost->title, 50) }}</a>
+                    </h5>
+                    <div class="meta-line mb-0" style="font-size: 10px;">
+                        {{ $sidePost->created_at->format('M d, Y') }}
+                    </div>
                 </div>
-            </div>
-            <a href="{{ route('blog.posts.show', $sidePost->slug) }}">
-                <img src="{{ asset('/storage/' . $sidePost->featured_image) }}"
-                     class="side-list-img"
-                     alt="thumb"
-                     onerror="this.onerror=null;this.src='https://placehold.co/100x100/eee/999?text=Img';">
-            </a>
-        </article>
-        @endforeach
+                <a href="{{ route('blog.posts.show', $sidePost->slug) }}">
+                    <img src="{{ asset('/storage/' . $sidePost->featured_image) }}"
+                         class="side-list-img"
+                         alt="thumb"
+                         onerror="this.onerror=null;this.src='https://placehold.co/100x100/eee/999?text=Img';">
+                </a>
+            </article>
+            @empty
+                <p class="text-muted small">Tidak ada postingan tambahan.</p>
+            @endforelse
+        </div>
     </div>
 </div>
