@@ -4,16 +4,77 @@
 
 @section('content')
 
-{{-- LOAD GOOGLE FONTS & STYLES --}}
+{{-- LOAD GOOGLE FONTS --}}
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-{{-- Masukkan Style CSS di sini atau di layout head --}}
 <style>
-    .category-nav-scroll { display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 10px; padding: 10px 0; scrollbar-width: none; }
-    .category-nav-scroll::-webkit-scrollbar { display: none; }
-    .btn-cat-nav { flex: 0 0 auto; background-color: #fff; border: 1px solid #e0e0e0; color: #4a4a4a; padding: 8px 20px; border-radius: 50px; font-weight: 700; font-size: 13px; text-transform: uppercase; transition: all 0.2s ease; cursor: pointer; text-decoration: none; }
-    .btn-cat-nav:hover { background-color: #f1f1f1; }
-    .btn-cat-nav.active { background-color: #2563eb; color: #fff; border-color: #2563eb; }
+    /* --- 1. CONTAINER SCROLL --- */
+    .category-nav-scroll {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto; /* Wajib auto/scroll agar bisa digeser */
+        -webkit-overflow-scrolling: touch; /* Smooth scroll di HP */
+        gap: 10px;
+        padding-bottom: 15px; /* Ruang untuk scrollbar */
+        margin-bottom: 20px;
+
+        /* Support Firefox */
+        scrollbar-width: thin;
+        scrollbar-color: #888 #f1f1f1;
+    }
+
+    /* --- 2. KUSTOMISASI SCROLLBAR (Chrome, Edge, Safari) --- */
+    .category-nav-scroll::-webkit-scrollbar {
+        height: 8px; /* Tinggi scrollbar (Cukup tebal biar terlihat) */
+        display: block; /* Pastikan MUNCUL */
+    }
+
+    /* Jalur Scrollbar (Track) */
+    .category-nav-scroll::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    /* Batang Geser (Thumb) */
+    .category-nav-scroll::-webkit-scrollbar-thumb {
+        background: #888; /* Warna Abu Gelap (Biar kontras) */
+        border-radius: 4px;
+    }
+
+    /* Batang Geser saat disorot Mouse */
+    .category-nav-scroll::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    /* --- 3. STYLE TOMBOL --- */
+    .btn-cat-nav {
+        flex: 0 0 auto; /* Supaya ukuran tombol tidak menyusut */
+        background-color: #fff;
+        border: 1px solid #e0e0e0;
+        color: #4a4a4a;
+        padding: 8px 20px;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 13px;
+        text-transform: uppercase;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        text-decoration: none;
+        white-space: nowrap; /* Teks satu baris */
+    }
+
+    .btn-cat-nav:hover {
+        background-color: #f1f1f1;
+        color: #333;
+    }
+
+    /* Status Aktif */
+    .btn-cat-nav.active {
+        background-color: #2563eb;
+        color: #fff;
+        border-color: #2563eb;
+        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+    }
 </style>
 
 @include('blog.partials.ticker')
@@ -57,8 +118,7 @@
             @include('blog.partials.hero_section')
         </div>
 
-        {{-- BAGIAN BARU: BUTTON NAVIGATION (Seperti Gambar) --}}
-        {{-- Tombol ini akan men-trigger scroll via Javascript di bawah --}}
+        {{-- BAGIAN NAVIGASI KATEGORI --}}
         <div class="category-nav-scroll mb-4">
             {{-- Tombol SEMUA --}}
             <a href="#" class="btn-cat-nav active" onclick="scrollToCategory(event, 'top')">
@@ -75,11 +135,11 @@
             @endforeach
         </div>
 
-        {{-- 3. LOOP CATEGORIES (Target Scroll) --}}
+        {{-- 3. LOOP KONTEN KATEGORI --}}
         <div id="category-container">
             @foreach($categories as $category)
                 @if($category->posts_count > 0)
-                    {{-- Tambahkan ID di sini agar bisa ditemukan oleh tombol --}}
+                    {{-- Anchor ID --}}
                     <div id="cat-{{ $category->id }}" class="category-section-wrapper">
                         @include('blog.partials.categories_smartmag', ['category' => $category])
                     </div>
@@ -103,7 +163,7 @@
         </div>
     @endif
 
-    {{-- 4. BOTTOM GRID SECTION --}}
+    {{-- 4. BOTTOM GRID --}}
     @include('blog.partials.bottom_grid')
 
     {{-- 5. PAGINATION --}}
@@ -115,24 +175,24 @@
 
 </div>
 
-{{-- SCRIPT SCROLL & ACTIVE STATE --}}
+{{-- SCRIPT --}}
 <script>
     function scrollToCategory(e, targetId) {
         e.preventDefault();
 
-        // 1. ACTIVE STATE: Pindahkan warna biru
+        // 1. ACTIVE STATE (Pindah Warna Biru)
         document.querySelectorAll('.btn-cat-nav').forEach(el => el.classList.remove('active'));
         let clickedButton = e.currentTarget;
         clickedButton.classList.add('active');
 
-        // 2. MENU SCROLL: Geser menu navigasi agar tombol yang diklik berada di tengah
+        // 2. MENU SCROLL (Auto Center Button)
         clickedButton.scrollIntoView({
             behavior: 'smooth',
             block: 'nearest',
-            inline: 'center' // KUNCI: Membuat tombol aktif geser ke tengah layar
+            inline: 'center'
         });
 
-        // 3. PAGE SCROLL: Geser halaman ke konten artikel di bawah
+        // 3. PAGE SCROLL (Scroll ke Konten)
         if (targetId === 'top') {
             const container = document.querySelector('.hero-wrap');
             if(container) {
@@ -141,7 +201,6 @@
         } else {
             const targetElement = document.getElementById(targetId);
             if (targetElement) {
-                // Offset -120px supaya tidak tertutup header
                 const y = targetElement.getBoundingClientRect().top + window.pageYOffset - 120;
                 window.scrollTo({top: y, behavior: 'smooth'});
             }
