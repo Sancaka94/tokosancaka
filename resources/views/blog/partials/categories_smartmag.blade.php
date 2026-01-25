@@ -14,9 +14,9 @@
         margin: 0;
     }
 
-    /* --- Sidebar Scroll (Kanan - Max 10) --- */
+    /* --- Sidebar Kanan (Statis - Max 10) --- */
     .side-list-container {
-        max-height: 800px;
+        max-height: 850px;
         overflow-y: auto;
         padding-right: 12px;
     }
@@ -31,23 +31,20 @@
     }
     .side-list-title a {
         text-decoration: none !important;
-        color: #000; font-size: 14px; font-weight: 600;
-        transition: 0.2s;
+        color: #000; font-size: 13px; font-weight: 600;
     }
-    .side-list-title a:hover { color: #dd0017; }
 
-    /* --- Loading State --- */
-    #left-content-wrapper { position: relative; min-height: 400px; }
+    /* --- Loading Effect --- */
+    #left-content-wrapper { position: relative; min-height: 500px; }
     .ajax-loader {
         display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(255,255,255,0.8); z-index: 5; justify-content: center; align-items: flex-start; padding-top: 50px;
+        background: rgba(255,255,255,0.8); z-index: 10; justify-content: center; align-items: flex-start; padding-top: 100px;
     }
 </style>
 
 @php
-    // LOG LOG: Ambil 10 post terbaru untuk sidebar kanan (statis)
+    // LOG LOG: Ambil 10 post terbaru untuk sidebar kanan
     $sidePosts = $category->posts()->latest()->take(10)->get();
-    // Data kiri menggunakan pagination (diterima dari Controller sebagai $latestPosts)
 @endphp
 
 <div class="row mb-5">
@@ -55,7 +52,7 @@
         <div class="smart-head-cat"><h4>{{ $category->name }}</h4></div>
     </div>
 
-    {{-- KIRI: Grid Content (AJAX) --}}
+    {{-- KIRI: Konten Berita (AJAX) --}}
     <div class="col-lg-8" id="left-content-wrapper">
         <div class="ajax-loader"><strong>Memuat...</strong></div>
         <div id="ajax-content-area">
@@ -70,13 +67,13 @@
             <article class="side-list-item">
                 <div class="side-list-content flex-grow-1">
                     <h5 class="side-list-title">
-                        <a href="{{ route('blog.posts.show', $sidePost->slug) }}">{{ Str::limit($sidePost->title, 100) }}</a>
+                        <a href="{{ route('blog.posts.show', $sidePost->slug) }}">{{ Str::limit($sidePost->title, 50) }}</a>
                     </h5>
                     <small class="text-muted" style="font-size: 10px;">{{ $sidePost->created_at->format('M d, Y') }}</small>
                 </div>
                 <img src="{{ asset('/storage/' . $sidePost->featured_image) }}"
-                     style="width: 70px; height: 70px; object-fit: cover; border-radius: 2px;"
-                     onerror="this.src='https://placehold.co/70x70?text=Img'">
+                     style="width: 60px; height: 60px; object-fit: cover; background: #eee;"
+                     onerror="this.src='https://placehold.co/60x60?text=Img'">
             </article>
             @endforeach
         </div>
@@ -88,7 +85,6 @@
 $(document).on('click', '.pagination a', function(e) {
     e.preventDefault();
     let url = $(this).attr('href');
-
     $('.ajax-loader').css('display', 'flex');
 
     $.ajax({
