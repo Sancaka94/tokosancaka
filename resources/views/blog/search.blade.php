@@ -5,6 +5,27 @@
 @endsection
 
 @section('content')
+<style>
+    /* Menjamin bingkai gambar tetap kotak 1:1 */
+    .img-container-1to1 {
+        position: relative;
+        width: 100%;
+        padding-top: 100%; /* Rasio 1:1 */
+        overflow: hidden;
+        background-color: #f8f9fa; /* Warna background jika gambar tidak memenuhi kotak */
+    }
+
+    .img-container-1to1 img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain; /* Gambar utuh, tidak terpotong */
+        padding: 5px; /* Sedikit ruang agar tidak menempel ke tepi */
+    }
+</style>
+
 <div class="container py-5">
     {{-- HEADER PENCARIAN --}}
     <div class="row justify-content-center mb-5">
@@ -37,9 +58,12 @@
             <div class="col-md-4 mb-4">
                 <div class="card h-100 shadow-sm border-0">
                     <a href="{{ route('blog.posts.show', $post->slug) }}">
-                        <img src="{{ asset('/storage/' . $post->featured_image) }}"
-                             class="card-img-top" style="height: 200px; object-fit: cover;"
-                             onerror="this.src='https://placehold.co/600x400?text=No+Image'">
+                        {{-- FIX: Menggunakan kontainer khusus rasio 1:1 --}}
+                        <div class="img-container-1to1">
+                            <img src="{{ asset('/storage/' . $post->featured_image) }}"
+                                 alt="{{ $post->title }}"
+                                 onerror="this.src='https://placehold.co/800x800?text=No+Image'">
+                        </div>
                     </a>
                     <div class="card-body">
                         <span class="badge bg-danger mb-2" style="font-size: 10px;">
@@ -74,19 +98,6 @@
     </div>
 
     @include('blog.partials.ticker')
-
-    {{-- 3. LOOP CATEGORIES --}}
-        @foreach($categories as $category)
-            @if($category->posts_count > 0)
-                @include('blog.partials.categories_smartmag', ['category' => $category])
-                @if(!$loop->last)
-                    <div style="border-top: 1px dashed #ccc; margin: 50px 0;"></div>
-                @endif
-            @endif
-        @endforeach
-
-    {{-- BOTTOM GRID SECTION --}}
-
     @include('blog.partials.bottom_grid')
 
 </div>
