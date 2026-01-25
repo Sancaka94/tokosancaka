@@ -269,44 +269,41 @@ ini_set('display_errors', 1);
     .category-nav-scroll {
         display: flex;
         flex-wrap: nowrap;
-        overflow-x: auto !important; /* PAKSA ada scroll horizontal */
+
+        /* Ganti 'auto' jadi 'scroll' -> INI MEMAKSA SCROLLBAR SELALU MUNCUL */
+        overflow-x: scroll !important;
+
         -webkit-overflow-scrolling: touch;
         gap: 10px;
-        padding-bottom: 15px; /* Beri jarak agak lebar di bawah untuk scrollbar */
+        padding-bottom: 20px; /* Jarak bawah diperlebar */
         margin-bottom: 20px;
+        width: 100%; /* Pastikan lebar full */
 
-        /* --- KHUSUS FIREFOX (Wajib ada biar muncul di Mozilla) --- */
-        scrollbar-width: thin;
-        scrollbar-color: #555 #f1f1f1; /* Warna Thumb (Gelap) & Track (Terang) */
+        /* Border merah tipis untuk cek area container (Hapus nanti kalau sudah fix) */
+        border-bottom: 1px dashed red;
     }
 
-    /* --- KHUSUS CHROME, EDGE, SAFARI --- */
+    /* --- GAYA SCROLLBAR (CHROME/SAFARI/EDGE) --- */
 
-    /* 1. Paksa area scrollbar muncul */
     .category-nav-scroll::-webkit-scrollbar {
-        height: 8px !important; /* Sedikit lebih tebal biar kelihatan */
+        height: 12px !important; /* Dibuat TEBAL biar kelihatan */
         display: block !important;
+        background-color: #f0f0f0; /* Warna background track */
     }
 
-    /* 2. Warna latar belakang jalur scroll (Track) */
     .category-nav-scroll::-webkit-scrollbar-track {
-        background: #f1f1f1 !important;
-        border-radius: 4px;
+        background: #e1e1e1 !important;
+        border-radius: 0px;
     }
 
-    /* 3. Warna batang geser (Thumb) - SAYA BUAT GELAP BIAR KELIHATAN */
     .category-nav-scroll::-webkit-scrollbar-thumb {
-        background-color: #555 !important; /* Abu-abu gelap */
-        border-radius: 4px;
-        border: 1px solid #fff; /* Sedikit border putih biar rapi */
+        /* Warna MERAH biar kelihatan jelas dulu (Debug Mode) */
+        background-color: red !important;
+        border-radius: 10px;
+        border: 2px solid #ffffff;
     }
 
-    /* 4. Warna saat disorot */
-    .category-nav-scroll::-webkit-scrollbar-thumb:hover {
-        background-color: #333 !important; /* Lebih gelap lagi saat hover */
-    }
-
-    /* --- STYLE TOMBOL (Tidak berubah) --- */
+    /* --- GAYA TOMBOL (Sama seperti sebelumnya) --- */
     .btn-cat-nav {
         flex: 0 0 auto;
         background-color: #fff;
@@ -317,25 +314,17 @@ ini_set('display_errors', 1);
         font-weight: 600;
         font-size: 13px;
         text-transform: uppercase;
-        transition: all 0.2s ease;
         text-decoration: none;
-        white-space: nowrap;
-    }
-
-    .btn-cat-nav:hover {
-        background-color: #f8f9fa;
-        color: #333;
-        border-color: #ccc;
+        white-space: nowrap; /* Wajib ada biar tombol tidak turun */
     }
 
     .btn-cat-nav.active {
         background-color: #2563eb;
         color: #fff;
         border-color: #2563eb;
-        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
     }
 
-</style>
+    </style>
 
 </head>
 
