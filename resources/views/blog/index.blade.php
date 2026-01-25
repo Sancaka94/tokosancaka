@@ -42,6 +42,8 @@
         @endif
     </div>
 
+
+
     {{-- 2. LOGIKA TAMPILAN (Mencegah Syntax Error) --}}
     @if(isset($latestPosts) && $latestPosts->count() > 0)
 
@@ -49,21 +51,7 @@
             <div class="row">
                 {{-- KIRI: HEADLINE --}}
                 <div class="col-lg-7">
-                    @php $headline = $latestPosts->first(); @endphp
-                    <div class="hero-main">
-                        <a href="{{ route('blog.posts.show', $headline->slug) }}">
-                            <img src="{{ asset('/storage/' . $headline->featured_image) }}" alt="{{ $headline->title }}" onerror="this.onerror=null;this.src='https://placehold.co/800x800/000/fff?text=Headline';">
-                            <div class="hero-overlay">
-                                <span class="hero-cat">{{ $headline->category->name ?? 'News' }}</span>
-                                <h2 class="hero-title">{{ Str::limit($headline->title, 70) }}</h2>
-                                <div class="hero-meta">
-                                    <i class="far fa-clock me-1"></i> {{ $headline->created_at->format('d M Y') }}
-                                    <span class="mx-2">•</span>
-                                    By {{ $headline->author->nama_lengkap ?? 'Admin' }}
-                                </div>
-                            </div>
-                        </a>
-                    </div>
+                    @include('blog.partials.hero_section')
                 </div>
 
                 {{-- KANAN: LIST SCROLLABLE --}}
