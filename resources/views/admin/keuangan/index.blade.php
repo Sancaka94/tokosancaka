@@ -583,6 +583,7 @@
 {{-- =========================================================== --}}
 {{-- 6. MODAL EDIT DATA (UPDATE) --}}
 {{-- =========================================================== --}}
+
 <div id="modalEdit" class="fixed inset-0 z-[100] hidden overflow-y-auto">
     <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div class="fixed inset-0 bg-gray-900 bg-opacity-60 transition-opacity backdrop-blur-sm" onclick="closeModal('modalEdit')"></div>
