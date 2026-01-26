@@ -343,7 +343,42 @@ class KeuanganController extends Controller
     }
 
     // CRUD Manual (SAMA SEPERTI LAMA)
-    public function store(Request $request) { Keuangan::create($request->all()); return back()->with('success','Disimpan'); }
+    // SIMPAN DATA (CREATE)
+    public function store(Request $request)
+    {
+        // 1. Validasi Input
+        $request->validate([
+            'tanggal'   => 'required|date',
+            'jenis'     => 'required|in:Pemasukan,Pengeluaran',
+            'kategori'  => 'required|string',
+            'jumlah'    => 'required|numeric|min:0',
+            'keterangan'=> 'nullable|string',
+        ]);
+
+        // 2. Logic Simpan Dinamis
+        // Kita gunakan 'updateOrCreate' agar jika ada ID, dia update. Jika tidak, dia create baru.
+        // Ini trik agar satu fungsi bisa dipakai buat Tambah & Edit sekaligus.
+        
+        $id = $request->input('id'); // Ambil ID dari hidden input (jika ada)
+
+        $data = \App\Models\Keuangan::updateOrCreate(
+            ['id' => $id], // Kunci pencarian (jika null, buat baru)
+            [
+                'tanggal'       => $request->tanggal,
+                'jenis'         => $request->jenis,     // Pemasukan/Pengeluaran
+                'kategori'      => $request->kategori,  // Aset Tetap, Hutang, Modal, dll
+                'keterangan'    => $request->keterangan,
+                'jumlah'        => $request->jumlah,
+                
+                // DATA TAMBAHAN OTOMATIS
+                'unit_usaha'    => 'Pusat', 
+                'nomor_invoice' => 'NERACA-' . date('ymdHis'), // Invoice Unik
+                'kode_akun'     => 'NERACA', // FLAG PENTING: Penanda ini data Neraca
+            ]
+        );
+
+        return back()->with('success', 'Data Neraca berhasil disimpan/diperbarui.');
+    }
 
     public function update(Request $request, $id) { Keuangan::find($id)->update($request->all()); return back()->with('success','Diupdate'); }
 
