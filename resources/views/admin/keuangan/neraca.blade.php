@@ -60,20 +60,23 @@
                         {{-- A. ASET LANCAR (KAS MANUAL) --}}
                         <tr><td colspan="2" class="bg-emerald-50/50 font-bold text-xs text-emerald-700 py-1 px-4 mt-2">ASET LANCAR (KAS & BANK)</td></tr>
                         @forelse($neraca['aset_lancar'] as $nama => $nilai)
-                        <tr class="hover:bg-gray-50 transition">
-                            <td class="py-3 pl-6 font-medium text-gray-700">
-                                <i class="fas fa-money-bill-wave text-emerald-400 w-5"></i> {{ $nama }}
-                            </td>
-                            <td class="py-3 pr-6 text-right font-bold text-gray-800">
-                                Rp{{ number_format($nilai, 0, ',', '.') }}
-                            </td>
-                        </tr>
+                            {{-- LOGIKA: Jangan tampilkan Perubahan Modal disini, kita pindah ke bawah --}}
+                            @if($nama == 'Perubahan Modal (Penyeimbang)') @continue @endif
+
+                            <tr class="hover:bg-gray-50 transition">
+                                <td class="py-3 pl-6 font-medium text-gray-700">
+                                    <i class="fas fa-money-bill-wave text-emerald-400 w-5"></i> {{ $nama }}
+                                </td>
+                                <td class="py-3 pr-6 text-right font-bold text-gray-800">
+                                    Rp{{ number_format($nilai, 0, ',', '.') }}
+                                </td>
+                            </tr>
                         @empty
                         <tr><td colspan="2" class="py-3 px-6 text-center italic text-gray-400">Belum ada inputan Kas.</td></tr>
                         @endforelse
 
                         {{-- B. ASET TETAP --}}
-                        <tr><td colspan="2" class="bg-gray-100 font-bold text-xs text-gray-500 py-1 px-4">ASET TETAP (INVENTARIS)</td></tr>
+                        <tr><td colspan="2" class="bg-gray-100 font-bold text-xs text-gray-500 py-1 px-4 mt-2">ASET TETAP (INVENTARIS)</td></tr>
                         @forelse($neraca['aset_tetap'] as $nama => $nilai)
                         <tr class="hover:bg-gray-50 transition">
                             <td class="py-3 pl-6 font-medium text-gray-700">
@@ -86,6 +89,25 @@
                         @empty
                          <tr><td colspan="2" class="py-3 px-6 text-center italic text-gray-400">Belum ada aset tetap.</td></tr>
                         @endforelse
+
+                        {{-- C. PERUBAHAN MODAL (PENYEIMBANG) - DI SINI POSISINYA --}}
+                        {{-- Ambil nilai dari array aset_lancar index 'Perubahan Modal' --}}
+                        @php
+                            $nilaiPenyeimbang = $neraca['aset_lancar']['Perubahan Modal (Penyeimbang)'] ?? 0;
+                        @endphp
+
+                        @if($nilaiPenyeimbang != 0)
+                            <tr><td colspan="2" class="bg-amber-50 font-bold text-xs text-amber-700 py-1 px-4 mt-2 border-t border-amber-100">PENYESUAIAN (BALANCE)</td></tr>
+                            <tr class="hover:bg-amber-50 transition">
+                                <td class="py-3 pl-6 font-medium text-gray-700">
+                                    <i class="fas fa-balance-scale-left text-amber-500 w-5"></i> Perubahan Modal (Penyeimbang)
+                                </td>
+                                <td class="py-3 pr-6 text-right font-bold text-amber-700">
+                                    Rp{{ number_format($nilaiPenyeimbang, 0, ',', '.') }}
+                                </td>
+                            </tr>
+                        @endif
+
                     </tbody>
                     
                     {{-- TOTAL ASET --}}
@@ -167,11 +189,13 @@
                         </tr>
                         {{-- INDIKATOR BALANCE --}}
                         @if(isset($selisih) && $selisih != 0)
+                        {{-- Note: Karena selisih sudah masuk ke "Perubahan Modal", baris ini mungkin tidak akan merah lagi, 
+                             kecuali ada error hitung di controller. Tapi tetap kita biarkan untuk safety --}}
                         <tr>
                             <td colspan="2" class="py-2 px-2 bg-red-100 text-red-700 text-xs text-center font-bold border-t border-red-200">
                                 <i class="fas fa-exclamation-triangle me-1"></i> 
                                 TIDAK BALANCE: Selisih Rp{{ number_format($selisih, 0, ',', '.') }} 
-                                <span class="font-normal">(Cek Inputan Kas Manual Anda)</span>
+                                <span class="font-normal">(Hubungi Developer)</span>
                             </td>
                         </tr>
                         @else
@@ -215,9 +239,9 @@
                     @php
                         // Ambil Data Manual Khusus Table ini (kode_akun = NERACA)
                         $listNeraca = \App\Models\Keuangan::where('kode_akun', 'NERACA')
-                                        ->whereBetween('tanggal', [$startDate, $endDate])
-                                        ->orderBy('tanggal', 'desc')
-                                        ->get();
+                                                ->whereBetween('tanggal', [$startDate, $endDate])
+                                                ->orderBy('tanggal', 'desc')
+                                                ->get();
                     @endphp
 
                     @forelse($listNeraca as $item)
