@@ -74,9 +74,32 @@
                 {{-- Pencarian --}}
                 <div class="w-full lg:w-1/2">
                     <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Cari Transaksi</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fas fa-search"></i></span>
-                        <input type="text" name="search" value="{{ request('search') }}" class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 text-sm" placeholder="No. Invoice, Resi, atau Keterangan...">
+                    {{-- Tambahkan x-data untuk menangani state pencarian --}}
+                    <div class="relative" x-data="{ searchQuery: '{{ request('search') }}' }">
+                        
+                        {{-- Icon Search (Kiri) --}}
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                            <i class="fas fa-search"></i>
+                        </span>
+
+                        {{-- Input Search --}}
+                        {{-- Perubahan: Tambahkan x-model, dan ubah pr-4 menjadi pr-10 agar teks tidak menabrak tombol X --}}
+                        <input type="text" 
+                            name="search" 
+                            x-model="searchQuery"
+                            class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 text-sm placeholder-gray-400" 
+                            placeholder="No. Invoice, Resi, atau Keterangan...">
+
+                        {{-- Tombol X (Kanan) --}}
+                        {{-- Muncul hanya jika searchQuery ada isinya --}}
+                        <button type="button" 
+                                @click="searchQuery = ''; $el.closest('form').submit()" 
+                                x-show="searchQuery.length > 0" 
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 cursor-pointer transition-colors"
+                                style="display: none;"> {{-- style display none agar tidak kedip saat loading --}}
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+
                     </div>
                 </div>
                 {{-- Tanggal --}}
