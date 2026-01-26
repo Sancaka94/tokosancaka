@@ -184,4 +184,20 @@ class BlogController extends Controller
     return view('blog.category', compact('category', 'posts'));
 }
 
+/**
+     * Menampilkan daftar semua kategori.
+     * Mengatasi error: Call to undefined method ...::categories()
+     */
+    public function categories()
+    {
+        $categories = Category::withCount(['posts' => function($q) {
+            $q->where('status', 'published');
+        }])
+        ->having('posts_count', '>', 0)
+        ->orderBy('posts_count', 'desc')
+        ->get();
+
+        return view('blog.categories_list', compact('categories'));
+    }
+
 }
