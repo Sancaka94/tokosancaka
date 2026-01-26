@@ -389,6 +389,8 @@ class KeuanganController extends Controller
 
     public function neraca(Request $request)
 {
+
+    
     // 1. SETUP TANGGAL
     if (!$request->has('date_start')) {
         $request->merge(['date_start' => date('Y-01-01')]);
@@ -433,11 +435,14 @@ class KeuanganController extends Controller
         ->sum(DB::raw("CASE WHEN jenis = 'Pemasukan' THEN jumlah ELSE -jumlah END"));
 
 
-    // =========================================================================
-    // 3. AMBIL DATA NERACA MANUAL (KHUSUS KODE 'NERACA')
-    // =========================================================================
+    // --- TEMPEL KODE INI ---
+    $dataDashboard = $this->getDataLengkap($request);
+    $profitReal = $dataDashboard->sum('profit'); 
+    // -----------------------
+
+    // Ambil Data Manual (Kas/Bank) buat pelengkap aja
     $dataNeracaManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
-                        ->whereBetween('tanggal', [$startDate, $endDate])
+                        ->whereBetween('tanggal', [$request->date_start ?? date('Y-01-01'), $request->date_end ?? date('Y-m-d')])
                         ->get();
 
     // A. KAS & BANK (Manual)
@@ -485,7 +490,7 @@ class KeuanganController extends Controller
 
     $selisih = $neraca['total_aset'] - $neraca['total_pasiva'];
 
-    return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate', 'selisih'));
+    return view('admin.keuangan.neraca', compact('profitReal', 'dataNeracaManual', 'startDate', 'endDate'));
 }
     
 }
