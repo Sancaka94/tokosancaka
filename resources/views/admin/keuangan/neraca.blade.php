@@ -50,38 +50,17 @@
                     </tr>
                     @endforeach
 
-                    {{-- =================================================== --}}
-                    {{-- PERUBAHAN MODAL (PENYEIMBANG) --}}
-                    {{-- =================================================== --}}
-                    @if($selisih != 0)
-                        <tr>
-                            <td colspan="2" class="bg-amber-50 font-bold text-xs text-amber-700 py-1 px-4 mt-2 border-t border-amber-100">
-                                PENYESUAIAN (BALANCE)
-                            </td>
-                        </tr>
-                        {{-- Gunakan Logic Warna: Kalau Positif (Menambah Aset) jadi Biru/Hitam, Kalau Minus Merah --}}
-                        <tr class="{{ $selisih > 0 ? 'bg-blue-50/30' : 'bg-red-50/30' }}">
-                            <td class="py-3 pl-6 font-bold {{ $selisih > 0 ? 'text-blue-700' : 'text-red-700' }}">
-                                <i class="fas fa-balance-scale-left me-2"></i> Perubahan Modal
-                            </td>
-                            <td class="py-3 pr-6 text-right font-bold {{ $selisih > 0 ? 'text-blue-700' : 'text-red-700' }}">
-                                Rp{{ number_format($selisih, 0, ',', '.') }}
-                            </td>
-                        </tr>
-                    @endif
-
                 </tbody>
                 
-                {{-- TOTAL ASET --}}
-                <tfoot class="bg-emerald-50 border-t-2 border-emerald-200">
-                    <tr>
-                        <td class="py-4 pl-6 font-extrabold text-emerald-900 text-base">TOTAL ASET</td>
-                        <td class="py-4 pr-6 text-right font-extrabold text-emerald-700 text-lg">
-                            {{-- LOGIKA FINAL: Aset Asli + Selisih = Total Pasiva --}}
-                            Rp{{ number_format($neraca['total_aset'] + $selisih, 0, ',', '.') }}
-                        </td>
-                    </tr>
-                </tfoot>
+                {{-- FOOTER TABEL KIRI --}}
+                    <tfoot class="bg-emerald-50 border-t-2 border-emerald-200">
+                        <tr>
+                            <td class="py-4 pl-6 font-extrabold text-emerald-900 text-base">TOTAL ASET</td>
+                            <td class="py-4 pr-6 text-right font-extrabold text-emerald-700 text-lg">
+                                Rp{{ number_format($neraca['total_aset'], 0, ',', '.') }}
+                            </td>
+                        </tr>
+                    </tfoot>
             </table>
         </div>
 
@@ -116,15 +95,34 @@
                     @endforeach
 
                 </tbody>
+                {{-- PENYEIMBANG (PERUBAHAN MODAL) --}}
+                    {{-- Ditaruh di kanan agar Total Pasiva mengejar Total Aset --}}
+                    @if($selisih != 0)
+                        <tr>
+                            <td colspan="2" class="bg-amber-50 font-bold text-xs text-amber-700 py-1 px-4 mt-2 border-t border-amber-100">
+                                PENYESUAIAN (BALANCE)
+                            </td>
+                        </tr>
+                        <tr class="bg-amber-50/30">
+                            <td class="py-3 pl-6 font-bold text-amber-700">
+                                <i class="fas fa-balance-scale-right me-2"></i> Perubahan Modal / Laba Ditahan
+                            </td>
+                            <td class="py-3 pr-6 text-right font-bold text-amber-700">
+                                Rp{{ number_format($selisih, 0, ',', '.') }}
+                            </td>
+                        </tr>
+                    @endif
+
+                </tbody> {{-- Tutup Tbody Pasiva --}}
+                
                 <tfoot class="bg-blue-50 border-t-2 border-blue-200">
                     <tr>
                         <td class="py-4 pl-6 font-extrabold text-blue-900">TOTAL PASIVA</td>
                         <td class="py-4 pr-6 text-right font-extrabold text-blue-700 text-lg">
+                            {{-- Total Pasiva otomatis sudah ditambah selisih di Controller --}}
                             Rp{{ number_format($neraca['total_pasiva'], 0, ',', '.') }}
                         </td>
                     </tr>
-                    
-                    {{-- INDIKATOR BALANCE (Pasti Hijau Karena Sudah Disesuaikan) --}}
                     <tr>
                         <td colspan="2" class="py-2 px-2 bg-green-100 text-green-700 text-xs text-center font-bold border-t border-green-200">
                             <i class="fas fa-check-circle me-1"></i> BALANCE (Seimbang)
