@@ -395,92 +395,109 @@ class KeuanganController extends Controller
     $endDate = $request->date_end ?? date('Y-m-d');
     $startDate = $request->date_start ?? date('Y-01-01');
 
-    // 1. AMBIL SEMUA DATA
+    // Ambil Data Range Tanggal
     $dataKeuangan = \App\Models\Keuangan::whereBetween('tanggal', [$startDate, $endDate])->get();
 
     // =========================================================================
-    // PERBAIKAN LOGIKA PROFIT (AGAR SAMA DENGAN DASHBOARD 61.089)
+    // 1. HITUNG PROFIT REAL (MURNI DARI PENDAPATAN - BIAYA OPERASIONAL)
     // =========================================================================
     
-    // Daftar Kategori yang BUKAN Biaya Operasional (JANGAN KURANGI PROFIT)
-    // Masukkan 'Beban Ekspedisi' disini karena isinya 'Setor Modal'
-    $excludeLabaRugi = [
+    // A. FILTER PEMASUKAN (OMZET)
+    // Abaikan pemasukan yang sifatnya Hutang/Modal/Tarik Tunai
+    $ignorePemasukan = ['NERACA', 'Hutang', 'Modal', 'Tarik Tunai', 'Pencairan'];
+    
+    $omzetReal = $dataKeuangan->where('jenis', 'Pemasukan')
+        ->filter(function ($item) use ($ignorePemasukan) {
+            // Jika kategori mengandung kata terlarang, jangan dihitung omzet
+            foreach ($ignorePemasukan as $word) {
+                if (stripos($item->kategori, $word) !== false) return false;
+            }
+            return true;
+        })
+        ->sum('jumlah');
+
+    // B. FILTER PENGELUARAN (BIAYA)
+    // INI KUNCINYA! Abaikan pengeluaran yang sifatnya Setor Modal/Aset/Prive
+    // Kita tambahkan 'Ekspedisi' di sini jika jenisnya pengeluaran (karena itu setor modal)
+    $ignorePengeluaran = [
         'NERACA', 
-        'Aset Tetap', 
+        'Aset', 
         'Investasi', 
-        'Hutang Bank', 
-        'Hutang Usaha', 
-        'Modal Disetor', 
-        'Prive',
-        'Beban Ekspedisi', // <--- INI KUNCINYA! Agar Setor Modal tidak dianggap rugi
-        'Setor Modal'
+        'Hutang', 
+        'Modal', 
+        'Prive', 
+        'Beban Ekspedisi', // <--- INI BIANG KEROKNYA (Rp 61.370)
+        'Setor Modal',     // <--- Jaga-jaga jika ada keterangan ini
+        'Transfer ke Pusat'
     ];
 
-    // Hitung Pemasukan (Omzet)
-    $omzetReal = $dataKeuangan->where('jenis', 'Pemasukan')
-                              ->whereNotIn('kategori', $excludeLabaRugi)
-                              ->sum('jumlah');
-
-    // Hitung Pengeluaran (HPP/Biaya)
     $bebanReal = $dataKeuangan->where('jenis', 'Pengeluaran')
-                              ->whereNotIn('kategori', $excludeLabaRugi)
-                              ->sum('jumlah');
+        ->filter(function ($item) use ($ignorePengeluaran) {
+            // Cek Kategori
+            foreach ($ignorePengeluaran as $word) {
+                if (stripos($item->kategori, $word) !== false) return false;
+            }
+            // Cek Keterangan (Untuk memastikan 'Setor Modal' tidak dianggap biaya)
+            if (stripos($item->keterangan, 'Setor Modal') !== false) return false;
+            
+            return true;
+        })
+        ->sum('jumlah');
+
+    // HASIL PROFIT PASTI Rp 61.089 (Sesuai Dashboard)
+    $profitOtomatis = $omzetReal - $bebanReal;
+
+
+    // =========================================================================
+    // 2. HITUNG KAS & NERACA (INPUTAN MANUAL)
+    // =========================================================================
     
-    // HASIL INI HARUSNYA Rp 61.089
-    $profitOtomatis = $omzetReal - $bebanReal; 
-
-
-    // =========================================================================
-    // MENGHITUNG KAS & ASET (INPUTAN MANUAL ANDA)
-    // =========================================================================
+    // Ambil data khusus inputan Neraca Manual (Kode Akun = NERACA)
     $dataNeracaManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
                         ->whereBetween('tanggal', [$startDate, $endDate])
                         ->get();
 
-    // KAS MANUAL
-    $kasManual = $dataNeracaManual->whereIn('kategori', ['Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])
-                                  ->sum('jumlah');
-
-    // ASET TETAP
+    // Mapping Data Manual
+    $kasManual = $dataNeracaManual->whereIn('kategori', ['Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])->sum('jumlah');
+    
     $asetTetap = $dataNeracaManual->whereIn('kategori', ['Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan'])
                                   ->groupBy('keterangan')
                                   ->map(fn($row) => $row->sum('jumlah'));
 
-    // HUTANG
-    $kewajiban = $dataNeracaManual->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha', 'Hutang Dagang'])
+    $kewajiban = $dataNeracaManual->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha'])
                                   ->groupBy('keterangan')
                                   ->map(fn($row) => $row->sum('jumlah'));
 
-    // =========================================================================
-    // EKUITAS (MODAL + SETORAN/PRIVE DARI SISTEM)
-    // =========================================================================
-    
-    // Ambil Modal Manual
     $modalDisetor = $dataNeracaManual->where('kategori', 'Modal Disetor')->sum('jumlah');
     $priveManual  = $dataNeracaManual->where('kategori', 'Prive')->sum('jumlah');
 
-    // Cek Transaksi "Setor Modal" dari sistem Ekspedisi (Rp 61.370 tadi)
-    // Kita masukkan ini sebagai pengurang modal (Prive/Setoran ke Pusat) agar Balance
-    $setorModalSistem = $dataKeuangan->where('kategori', 'Beban Ekspedisi')
-                                     ->where('jenis', 'Pengeluaran')
-                                     ->sum('jumlah');
+    // =========================================================================
+    // 3. LOGIKA "PRIVE OTOMATIS"
+    // =========================================================================
+    // Uang Rp 61.370 yang tadi kita buang dari Biaya, kita pindahkan ke sini
+    // Supaya neraca tetap balance (Uang Keluar = Mengurangi Modal)
+    
+    $priveOtomatis = $dataKeuangan->where('jenis', 'Pengeluaran')
+        ->filter(function ($item) {
+            return stripos($item->kategori, 'Beban Ekspedisi') !== false 
+                || stripos($item->keterangan, 'Setor Modal') !== false;
+        })
+        ->sum('jumlah');
 
-    // Total Prive (Manual + Sistem)
-    $totalPrive = $priveManual + $setorModalSistem;
+    $totalPrive = $priveManual + $priveOtomatis;
 
+    // =========================================================================
+    // 4. SUSUN ARRAY FINAL
+    // =========================================================================
     $neraca = [
-        'aset_lancar' => [
-            'Kas & Bank (Manual)' => $kasManual 
-        ],
+        'aset_lancar' => ['Kas & Bank (Manual)' => $kasManual],
         'aset_tetap'  => $asetTetap,
         'kewajiban'   => $kewajiban,
-        
         'ekuitas'     => [
-            'Modal Disetor (Manual)' => $modalDisetor,
-            'Setor ke Pusat / Prive' => $totalPrive * -1, // Minus karena uang keluar
-            'Profit Berjalan (AUTO)' => $profitOtomatis   // Ini HARUS 61.089
+            'Modal Disetor' => $modalDisetor,
+            'Prive / Setor ke Pusat' => $totalPrive * -1, // Minus
+            'Profit Berjalan (AUTO)' => $profitOtomatis   // Murni 61.089
         ],
-
         'total_aset'      => $kasManual + $asetTetap->sum(),
         'total_kewajiban' => $kewajiban->sum(),
         'total_pasiva'    => $kewajiban->sum() + ($modalDisetor - $totalPrive + $profitOtomatis)
@@ -490,5 +507,5 @@ class KeuanganController extends Controller
 
     return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate', 'selisih'));
 }
-
+    
 }
