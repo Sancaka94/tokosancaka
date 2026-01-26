@@ -399,11 +399,20 @@ class KeuanganController extends Controller
     $startDate = $request->date_start;
     $endDate   = $request->date_end;
 
-    // 2. AMBIL PROFIT REAL (MURNI DATABASE)
-    // Ini nanti akan kita taruh di KIRI sebagai "ASET PROFIT"
+    // 2. AMBIL PROFIT REAL (HANYA DARI TRANSAKSI OPERASIONAL)
     $allData = $this->getDataLengkap($request);
-    $dataDashboard = $allData->whereBetween('tanggal', [$startDate, $endDate]);
-    $profitReal = $dataDashboard->sum('profit'); 
+
+    // FIX LOGIKA:
+    // Kita filter dulu. Buang semua data yang kode_akun-nya 'NERACA'.
+    // Supaya inputan Kas Manual & Saldo Bank TIDAK dianggap sebagai Profit/Omzet.
+    $dataOperasional = $allData->filter(function ($item) {
+        // Pastikan kolom kode_akun ada, jika tidak anggap kosong
+        $kode = isset($item->kode_akun) ? $item->kode_akun : ''; 
+        return $kode !== 'NERACA';
+    });
+
+    // Baru kita filter tanggal & sum profitnya
+    $profitReal = $dataOperasional->whereBetween('tanggal', [$startDate, $endDate])->sum('profit');
 
     // 3. AMBIL DATA INPUTAN MANUAL
     $dataNeracaManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
