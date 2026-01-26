@@ -650,6 +650,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('keuangan/export-excel', [KeuanganController::class, 'exportExcel'])->name('keuangan.export_excel');
     Route::get('keuangan/export-pdf', [KeuanganController::class, 'exportPdf'])->name('keuangan.export_pdf');
     Route::post('keuangan/sync-today', [App\Http\Controllers\Admin\KeuanganController::class, 'syncHariIni'])->name('keuangan.sync');
+    Route::get('keuangan/neraca', [App\Http\Controllers\Admin\KeuanganController::class, 'neraca'])->name('keuangan.neraca');
 
     // DATA LAPORAN KEUANGAN
     Route::resource('keuangan', KeuanganController::class)->except(['create', 'show', 'edit']);
