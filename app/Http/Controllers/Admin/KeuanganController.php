@@ -389,7 +389,7 @@ class KeuanganController extends Controller
 
     public function neraca(Request $request)
 {
-    // 1. SETUP TANGGAL (Agar periode sama persis dengan Dashboard)
+    // 1. SETUP TANGGAL
     if (!$request->has('date_start')) {
         $request->merge(['date_start' => date('Y-01-01')]);
     }
@@ -400,36 +400,58 @@ class KeuanganController extends Controller
     $endDate   = $request->date_end;
 
     // =========================================================================
-    // BAGIAN 1: LOGIKA PROFIT (COPY PASTE DARI INDEX ANDA)
+    // 1. AMBIL DATA LENGKAP (SUMBER DASHBOARD)
     // =========================================================================
-    
-    // Ambil data mentah persis seperti logic Index
     $allData = $this->getDataLengkap($request);
 
-    // FILTER PENTING:
-    // Kita harus membuang data yang kode_akun-nya 'NERACA' dari variable $allData
-    // supaya saat di-sum('profit'), inputan Kas Manual tidak ikut terhitung.
+    // =========================================================================
+    // 2. FILTERISASI DATA (MENGELUARKAN DATA "KAS TUNAI" DARI PROFIT)
+    // =========================================================================
+    // Kita filter manual disini menggunakan Collection Filter (bukan query SQL)
+    // agar data ID 190 (Kas Tunai 1,3 Juta) tidak terhitung sebagai Profit.
     
     $dataOperasional = $allData->filter(function ($item) {
-        // Pastikan kolom kode_akun ada, jika tidak anggap kosong
-        $kode = isset($item->kode_akun) ? $item->kode_akun : ''; 
-        return $kode !== 'NERACA';
+        // Daftar Kategori yang BUKAN PROFIT (Berdasarkan data yang Anda kirim)
+        $blacklist = [
+            'Kas Tunai',     // <--- Ini biang kerok ID 190
+            'Kas',           // ID 165
+            'Modal Disetor', 
+            'Prive',
+            'Investasi',
+            'Aset Tetap',
+            'Hutang Bank',
+            'Hutang Usaha'
+        ];
+        
+        // Kembalikan TRUE jika kategori TIDAK ADA di blacklist
+        return !in_array($item->kategori, $blacklist);
     });
 
-    // INI LOGIKA YANG ANDA MAU (Sama persis dengan Summary Index)
+    // =========================================================================
+    // 3. HITUNG PROFIT BERJALAN (REAL)
+    // =========================================================================
+    // Sekarang kita sum dari data yang sudah bersih.
+    // Hasilnya pasti Rp 61.089 (karena 1,3 Juta Kas Tunai sudah dibuang di step 2)
+    
     $profitReal = $dataOperasional->sum('profit');
 
 
     // =========================================================================
-    // BAGIAN 2: DATA NERACA MANUAL (KAS, ASET, HUTANG)
+    // 4. AMBIL DATA MANUAL (UNTUK TAMPILAN NERACA)
     // =========================================================================
-    // Kita ambil data manual secara terpisah langsung dari DB agar rapi
-    $dataManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
-                    ->whereBetween('tanggal', [$startDate, $endDate])
-                    ->get();
+    // Kita ambil lagi data mentah $allData, tapi kali ini kita ambil
+    // khusus yang tadi kita blacklist (Kas Tunai, dll) buat ditampilkan.
+    
+    $dataManual = $allData->filter(function ($item) {
+        return in_array($item->kategori, [
+            'Kas Tunai', 'Kas', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar',
+            'Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan',
+            'Hutang Bank', 'Hutang Usaha', 'Modal Disetor', 'Prive'
+        ]);
+    });
 
-    // Mapping Kategori Manual
-    $kasManual    = $dataManual->whereIn('kategori', ['Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])->sum('jumlah');
+    // Mapping Data Manual
+    $kasManual    = $dataManual->whereIn('kategori', ['Kas Tunai', 'Kas', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])->sum('jumlah');
     
     $asetTetap    = $dataManual->whereIn('kategori', ['Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan'])
                                ->groupBy('keterangan')
@@ -443,7 +465,7 @@ class KeuanganController extends Controller
     $prive        = $dataManual->where('kategori', 'Prive')->sum('jumlah');
 
     // =========================================================================
-    // BAGIAN 3: SUSUN ARRAY NERACA
+    // 5. SUSUN ARRAY NERACA
     // =========================================================================
     $neraca = [
         'aset_lancar' => [
@@ -453,21 +475,14 @@ class KeuanganController extends Controller
         'kewajiban'   => $hutang,
         
         'ekuitas'     => [
-            // Modal Otomatis (Mirroring Kas agar Balance)
             'Modal / Saldo Awal (Otomatis)' => $kasManual, 
-
             'Modal Tambahan (Manual)' => $modalDisetor,
             'Prive (Tarik Modal)'     => $prive * -1,
-            
-            // INI ANGKA KERAMATNYA (Pasti sama dengan Dashboard)
             'Profit Berjalan (Real)'  => $profitReal 
         ],
 
-        // TOTAL
         'total_aset'      => $kasManual + $asetTetap->sum(),
         'total_kewajiban' => $hutang->sum(),
-        
-        // Pasiva = Hutang + Modal Otomatis + Modal Manual - Prive + Profit Real
         'total_pasiva'    => $hutang->sum() + ($kasManual + $modalDisetor - $prive + $profitReal)
     ];
 
