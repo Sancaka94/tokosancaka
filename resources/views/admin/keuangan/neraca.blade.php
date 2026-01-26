@@ -162,8 +162,8 @@
                             <tr>
                                 <td class="py-4 font-extrabold text-gray-800 text-base">TOTAL EKUITAS + KEWAJIBAN</td>
                                 <td class="py-4 text-right font-extrabold text-blue-600 text-lg">
-                                    {{-- Rumus Neraca: Aset = Kewajiban + Ekuitas --}}
-                                    Rp{{ number_format($neraca['total_kewajiban'] + $neraca['ekuitas'], 0, ',', '.') }}
+                                    {{-- BENAR: Gunakan 'total_ekuitas' yang berupa angka --}}
+                                    Rp{{ number_format($neraca['total_kewajiban'] + $neraca['total_ekuitas'], 0, ',', '.') }}
                                 </td>
                             </tr>
                         </tfoot>
