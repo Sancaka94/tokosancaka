@@ -352,6 +352,6 @@ class KeuanganController extends Controller
     // Pakai forceDelete() biar data benar-benar musnah dari muka bumi
     \App\Models\Keuangan::where('id', $id)->forceDelete();
 
-    return redirect()->back()->with('success', 'Data dimusnahkan permanen.');
+    return redirect()->back()->with('success', 'Data berhasil dihapus.');
 }
 }
