@@ -399,10 +399,14 @@ class KeuanganController extends Controller
         $startDate = $request->date_start;
         $endDate   = $request->date_end;
 
-        // 1. AMBIL PROFIT REAL (DARI FUNGSI getDataLengkap YANG SUDAH DIFILTER)
-        // Sekarang Profit ini MURNI hasil jualan, tidak tercampur Cash Manual.
+        // 1. AMBIL PROFIT REAL
+        // Pastikan $request membawa input yang sama dengan dashboard
         $dataDashboard = $this->getDataLengkap($request);
-        $profitReal = $dataDashboard->sum('profit'); 
+
+        // Debugging: Cek apakah dataDashboard ada isinya
+        dd($dataDashboard->sum('profit')); 
+
+        $profitReal = $dataDashboard->sum('profit');
 
         // 2. AMBIL DATA NERACA MANUAL (KAS, HUTANG, DLL)
         $dataNeracaManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
