@@ -5,209 +5,126 @@
 @section('content')
 <div class="container mx-auto px-4 py-6">
 
-    {{-- =========================================================== --}}
-    {{-- 1. HEADER & FILTER TANGGAL --}}
-    {{-- =========================================================== --}}
+    {{-- HEADER & FILTER --}}
     <div class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
             <h1 class="text-2xl font-extrabold text-gray-800">Neraca Keuangan</h1>
-            <p class="text-sm text-gray-500">
-                Periode: <span class="font-bold">{{ \Carbon\Carbon::parse($startDate)->format('d M Y') }}</span> s.d. 
-                <span class="font-bold">{{ \Carbon\Carbon::parse($endDate)->format('d M Y') }}</span>
-            </p>
+            <p class="text-sm text-gray-500">Periode: {{ \Carbon\Carbon::parse($startDate)->format('d M Y') }} - {{ \Carbon\Carbon::parse($endDate)->format('d M Y') }}</p>
         </div>
-
         <div class="flex items-center gap-2">
             <form action="{{ route('admin.keuangan.neraca') }}" method="GET" class="flex items-center gap-2">
-                <input type="date" name="date_start" value="{{ $startDate }}" class="border-gray-300 rounded-lg text-sm focus:ring-emerald-500">
-                <span class="text-gray-400">-</span>
-                <input type="date" name="date_end" value="{{ $endDate }}" class="border-gray-300 rounded-lg text-sm focus:ring-emerald-500">
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
-                    <i class="fas fa-filter me-1"></i> Filter
-                </button>
+                <input type="date" name="date_start" value="{{ $startDate }}" class="border-gray-300 rounded-lg text-sm">
+                <input type="date" name="date_end" value="{{ $endDate }}" class="border-gray-300 rounded-lg text-sm">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Filter</button>
             </form>
-
-            {{-- TOMBOL INPUT MANUAL --}}
-            <button type="button" onclick="openModal('modalNeraca')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
-                <i class="fas fa-plus-circle me-1"></i> Input Data Neraca
-            </button>
+            <button onclick="openModal('modalNeraca')" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700">Input Data</button>
         </div>
     </div>
 
-    {{-- =========================================================== --}}
-    {{-- 2. GRID NERACA (TAMPILAN UTAMA) --}}
-    {{-- =========================================================== --}}
+    {{-- GRID NERACA --}}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        {{-- KOLOM KIRI: AKTIVA (ASET) --}}
+        {{-- KOLOM KIRI: ASET --}}
         <div class="bg-white rounded-xl shadow-lg border-t-4 border-emerald-500 overflow-hidden">
-            <div class="bg-emerald-50 px-6 py-4 border-b border-emerald-100 flex justify-between items-center">
-                <h3 class="font-bold text-emerald-800 uppercase tracking-wide">
-                    <i class="fas fa-wallet me-2"></i> AKTIVA (ASET / HARTA)
-                </h3>
+            <div class="bg-emerald-50 px-6 py-4 border-b border-emerald-100">
+                <h3 class="font-bold text-emerald-800">AKTIVA (ASET)</h3>
             </div>
-            
-            <div class="p-0">
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">
-                        <tr>
-                            <th class="text-left py-3 px-6">Akun Aset</th>
-                            <th class="text-right py-3 px-6">Nilai (IDR)</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 text-gray-700">
-                        
-                        {{-- A. ASET LANCAR (KAS MANUAL) --}}
-                        <tr><td colspan="2" class="bg-emerald-50/50 font-bold text-xs text-emerald-700 py-1 px-4 mt-2">ASET LANCAR (KAS & BANK)</td></tr>
-                        @forelse($neraca['aset_lancar'] as $nama => $nilai)
-                            {{-- LOGIKA: Jangan tampilkan Perubahan Modal disini, kita pindah ke bawah --}}
-                            @if($nama == 'Perubahan Modal (Penyeimbang)') @continue @endif
-
-                            <tr class="hover:bg-gray-50 transition">
-                                <td class="py-3 pl-6 font-medium text-gray-700">
-                                    <i class="fas fa-money-bill-wave text-emerald-400 w-5"></i> {{ $nama }}
-                                </td>
-                                <td class="py-3 pr-6 text-right font-bold text-gray-800">
-                                    Rp{{ number_format($nilai, 0, ',', '.') }}
-                                </td>
-                            </tr>
-                        @empty
-                        <tr><td colspan="2" class="py-3 px-6 text-center italic text-gray-400">Belum ada inputan Kas.</td></tr>
-                        @endforelse
-
-                        {{-- B. ASET TETAP --}}
-                        <tr><td colspan="2" class="bg-gray-100 font-bold text-xs text-gray-500 py-1 px-4 mt-2">ASET TETAP (INVENTARIS)</td></tr>
-                        @forelse($neraca['aset_tetap'] as $nama => $nilai)
-                        <tr class="hover:bg-gray-50 transition">
-                            <td class="py-3 pl-6 font-medium text-gray-700">
-                                <i class="fas fa-box text-gray-400 w-5"></i> {{ $nama }}
-                            </td>
-                            <td class="py-3 pr-6 text-right font-bold text-gray-800">
-                                Rp{{ number_format($nilai, 0, ',', '.') }}
-                            </td>
-                        </tr>
-                        @empty
-                         <tr><td colspan="2" class="py-3 px-6 text-center italic text-gray-400">Belum ada aset tetap.</td></tr>
-                        @endforelse
-
-                        {{-- C. PERUBAHAN MODAL (PENYEIMBANG) - DI SINI POSISINYA --}}
-                        {{-- Ambil nilai dari array aset_lancar index 'Perubahan Modal' --}}
-                        @php
-                            $nilaiPenyeimbang = $neraca['aset_lancar']['Perubahan Modal (Penyeimbang)'] ?? 0;
-                        @endphp
-
-                        @if($nilaiPenyeimbang != 0)
-                            <tr><td colspan="2" class="bg-amber-50 font-bold text-xs text-amber-700 py-1 px-4 mt-2 border-t border-amber-100">PENYESUAIAN (BALANCE)</td></tr>
-                            <tr class="hover:bg-amber-50 transition">
-                                <td class="py-3 pl-6 font-medium text-gray-700">
-                                    <i class="fas fa-balance-scale-left text-amber-500 w-5"></i> Perubahan Modal (Penyeimbang)
-                                </td>
-                                <td class="py-3 pr-6 text-right font-bold text-amber-700">
-                                    Rp{{ number_format($nilaiPenyeimbang, 0, ',', '.') }}
-                                </td>
-                            </tr>
-                        @endif
-
-                    </tbody>
+            <table class="w-full text-sm">
+                <tbody class="divide-y divide-gray-100 text-gray-700">
                     
-                    {{-- TOTAL ASET --}}
-                    <tfoot class="bg-emerald-50 border-t-2 border-emerald-200">
-                        <tr>
-                            <td class="py-4 pl-6 font-extrabold text-emerald-900 text-base">TOTAL ASET</td>
-                            <td class="py-4 pr-6 text-right font-extrabold text-emerald-700 text-lg">
-                                Rp{{ number_format($neraca['total_aset'], 0, ',', '.') }}
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+                    {{-- Aset Lancar --}}
+                    <tr><td colspan="2" class="bg-emerald-50/50 font-bold text-xs text-emerald-700 py-1 px-4 mt-2">ASET LANCAR</td></tr>
+                    @foreach($neraca['aset_lancar'] as $nama => $nilai)
+                    <tr>
+                        <td class="py-2 pl-6">{{ $nama }}</td>
+                        <td class="py-2 pr-6 text-right font-bold">Rp{{ number_format($nilai, 0, ',', '.') }}</td>
+                    </tr>
+                    @endforeach
+
+                    {{-- Aset Tetap --}}
+                    <tr><td colspan="2" class="bg-gray-100 font-bold text-xs text-gray-500 py-1 px-4 mt-2">ASET TETAP</td></tr>
+                    @foreach($neraca['aset_tetap'] as $nama => $nilai)
+                    <tr>
+                        <td class="py-2 pl-6">{{ $nama }}</td>
+                        <td class="py-2 pr-6 text-right font-bold">Rp{{ number_format($nilai, 0, ',', '.') }}</td>
+                    </tr>
+                    @endforeach
+
+                    {{-- =================================================== --}}
+                    {{-- PERUBAHAN MODAL (DARI SELISIH) --}}
+                    {{-- =================================================== --}}
+                    @if($selisih != 0)
+                    <tr><td colspan="2" class="bg-amber-50 font-bold text-xs text-amber-700 py-1 px-4 mt-2 border-t border-amber-100">PENYESUAIAN</td></tr>
+                    <tr class="bg-amber-50/30">
+                        <td class="py-3 pl-6 font-bold text-amber-700">
+                            <i class="fas fa-balance-scale-left me-2"></i> Perubahan Modal
+                        </td>
+                        <td class="py-3 pr-6 text-right font-bold text-amber-700">
+                            Rp{{ number_format($selisih, 0, ',', '.') }}
+                        </td>
+                    </tr>
+                    @endif
+
+                </tbody>
+                <tfoot class="bg-emerald-50 border-t-2 border-emerald-200">
+                    <tr>
+                        <td class="py-4 pl-6 font-extrabold text-emerald-900">TOTAL ASET</td>
+                        <td class="py-4 pr-6 text-right font-extrabold text-emerald-700 text-lg">
+                            {{-- Kita tambahkan selisih ke Total Aset agar Balance dengan Pasiva --}}
+                            Rp{{ number_format($neraca['total_aset'] + $selisih, 0, ',', '.') }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
 
-        {{-- KOLOM KANAN: PASIVA (HUTANG & MODAL) --}}
+        {{-- KOLOM KANAN: PASIVA --}}
         <div class="bg-white rounded-xl shadow-lg border-t-4 border-blue-500 overflow-hidden">
             <div class="bg-blue-50 px-6 py-4 border-b border-blue-100">
-                <h3 class="font-bold text-blue-800 uppercase tracking-wide">
-                    <i class="fas fa-balance-scale-right me-2"></i> PASIVA (KEWAJIBAN & MODAL)
-                </h3>
+                <h3 class="font-bold text-blue-800">PASIVA (KEWAJIBAN & MODAL)</h3>
             </div>
-            <div class="p-0">
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">
-                        <tr>
-                            <th class="text-left py-3 px-6">Akun Pasiva</th>
-                            <th class="text-right py-3 px-6">Nilai (IDR)</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 text-gray-700">
-                        
-                        {{-- A. KEWAJIBAN (HUTANG) --}}
-                        <tr><td colspan="2" class="bg-red-50 font-bold text-xs text-red-700 py-1 px-4">KEWAJIBAN (HUTANG)</td></tr>
-                        @forelse($neraca['kewajiban'] as $nama => $nilai)
-                        <tr class="hover:bg-gray-50 transition">
-                            <td class="py-3 pl-6 font-medium text-gray-700">
-                                <i class="fas fa-file-invoice text-red-300 w-5"></i> {{ $nama }}
-                            </td>
-                            <td class="py-3 pr-6 text-right font-bold text-gray-800">
-                                Rp{{ number_format($nilai, 0, ',', '.') }}
-                            </td>
-                        </tr>
-                        @empty
-                        <tr><td colspan="2" class="py-3 px-6 text-center italic text-gray-400">Tidak ada hutang.</td></tr>
-                        @endforelse
+            <table class="w-full text-sm">
+                <tbody class="divide-y divide-gray-100 text-gray-700">
+                    
+                    {{-- Kewajiban --}}
+                    <tr><td colspan="2" class="bg-red-50 font-bold text-xs text-red-700 py-1 px-4">KEWAJIBAN</td></tr>
+                    @forelse($neraca['kewajiban'] as $nama => $nilai)
+                    <tr>
+                        <td class="py-2 pl-6">{{ $nama }}</td>
+                        <td class="py-2 pr-6 text-right font-bold">Rp{{ number_format($nilai, 0, ',', '.') }}</td>
+                    </tr>
+                    @empty
+                    <tr><td colspan="2" class="py-2 px-6 text-center italic text-gray-400">Tidak ada hutang.</td></tr>
+                    @endforelse
 
-                        {{-- B. EKUITAS (MODAL) --}}
-                            <tr><td colspan="2" class="bg-blue-50/50 font-bold text-xs text-blue-700 py-1 px-4 border-l-4 border-blue-500 mt-2">EKUITAS (MODAL)</td></tr>
-                            
-                            @foreach($neraca['ekuitas'] as $nama => $nilai)
-                            <tr class="hover:bg-gray-50 transition">
-                                <td class="py-3 pl-6 font-medium text-gray-700 flex items-center">
-                                    {{-- LOGIKA ICON & WARNA --}}
-                                    @if(str_contains($nama, '(Otomatis)'))
-                                        <i class="fas fa-magic text-purple-500 w-5"></i> 
-                                        <span class="text-purple-700 font-bold">{{ $nama }}</span>
-                                    @elseif(str_contains($nama, '(Real)'))
-                                        <i class="fas fa-chart-line text-green-600 w-5"></i>
-                                        <span class="text-green-700 font-bold">{{ $nama }}</span>
-                                    @else
-                                        <i class="fas fa-coins text-gray-400 w-5"></i> {{ $nama }}
-                                    @endif
-                                </td>
-                                <td class="py-3 pr-6 text-right font-bold {{ $nilai < 0 ? 'text-red-600' : 'text-blue-600' }}">
-                                    Rp{{ number_format($nilai, 0, ',', '.') }}
-                                </td>
-                            </tr>
-                            @endforeach
-                    </tbody>
+                    {{-- Ekuitas --}}
+                    <tr><td colspan="2" class="bg-blue-50/50 font-bold text-xs text-blue-700 py-1 px-4 mt-2">EKUITAS</td></tr>
+                    @foreach($neraca['ekuitas'] as $nama => $nilai)
+                    <tr>
+                        <td class="py-2 pl-6">{{ $nama }}</td>
+                        <td class="py-2 pr-6 text-right font-bold {{ $nilai < 0 ? 'text-red-600' : 'text-blue-600' }}">
+                            Rp{{ number_format($nilai, 0, ',', '.') }}
+                        </td>
+                    </tr>
+                    @endforeach
 
-                    {{-- TOTAL PASIVA --}}
-                    <tfoot class="bg-blue-50 border-t-2 border-blue-200">
-                        <tr>
-                            <td class="py-4 pl-6 font-extrabold text-blue-900 text-base">TOTAL PASIVA</td>
-                            <td class="py-4 pr-6 text-right font-extrabold text-blue-700 text-lg">
-                                Rp{{ number_format($neraca['total_pasiva'], 0, ',', '.') }}
-                            </td>
-                        </tr>
-                        {{-- INDIKATOR BALANCE --}}
-                        @if(isset($selisih) && $selisih != 0)
-                        {{-- Note: Karena selisih sudah masuk ke "Perubahan Modal", baris ini mungkin tidak akan merah lagi, 
-                             kecuali ada error hitung di controller. Tapi tetap kita biarkan untuk safety --}}
-                        <tr>
-                            <td colspan="2" class="py-2 px-2 bg-red-100 text-red-700 text-xs text-center font-bold border-t border-red-200">
-                                <i class="fas fa-exclamation-triangle me-1"></i> 
-                                TIDAK BALANCE: Selisih Rp{{ number_format($selisih, 0, ',', '.') }} 
-                                <span class="font-normal">(Hubungi Developer)</span>
-                            </td>
-                        </tr>
-                        @else
-                        <tr>
-                            <td colspan="2" class="py-2 px-2 bg-green-100 text-green-700 text-xs text-center font-bold border-t border-green-200">
-                                <i class="fas fa-check-circle me-1"></i> BALANCE (Seimbang)
-                            </td>
-                        </tr>
-                        @endif
-                    </tfoot>
-                </table>
-            </div>
+                </tbody>
+                <tfoot class="bg-blue-50 border-t-2 border-blue-200">
+                    <tr>
+                        <td class="py-4 pl-6 font-extrabold text-blue-900">TOTAL PASIVA</td>
+                        <td class="py-4 pr-6 text-right font-extrabold text-blue-700 text-lg">
+                            Rp{{ number_format($neraca['total_pasiva'], 0, ',', '.') }}
+                        </td>
+                    </tr>
+                    
+                    {{-- INDIKATOR BALANCE (Pasti Hijau Karena Sudah Disesuaikan) --}}
+                    <tr>
+                        <td colspan="2" class="py-2 px-2 bg-green-100 text-green-700 text-xs text-center font-bold border-t border-green-200">
+                            <i class="fas fa-check-circle me-1"></i> BALANCE (Seimbang)
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
     </div>
 
