@@ -435,28 +435,38 @@ class KeuanganController extends Controller
     $totalAsetTetap = $dataNeracaManual->whereIn('kategori', ['Aset Tetap', 'Investasi'])->sum('jumlah');
     $totalKewajiban = $dataNeracaManual->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha'])->sum('jumlah');
 
-    // 5. HITUNG MODAL AWAL DINAMIS
-    // Rumus: Modal = Kas Sekarang - (Modal Tambahan - Prive + Profit)
-    // Logika: Sisa uang di kas yang bukan berasal dari suntikan modal/profit adalah modal awal
-    $modalAwalDinamis = $kasManual + $modalDisetor; //- ($modalDisetor - $prive + $profitReal);
+    // 1. BERSIHKAN PROFIT DARI KAS MANUAL
+    // Masalah: Saat ini Total Profit tercampur dengan Kas Manual yang dianggap pendapatan.
+    $totalProfitSistem = $dataDashboard->sum('profit'); // Ini yang bernilai 1,4 Juta
+    
+    // Kita murnikan profitnya:
+    $profitRealBersih = $totalProfitSistem - $kasManual; // Hasilnya akan kembali 61rb
 
-    // 6. SUSUN NERACA FINAL
+    // 2. HITUNG MODAL AWAL (PENYEIMBANG)
+    // Rumus Akuntansi: Aset = Kewajiban + Modal + Profit
+    // Karena Kewajiban 0, maka: Kas = Modal + Profit
+    // Jadi: Modal = Kas - Profit
+    $modalAwalOtomatis = $kasManual - $profitRealBersih;
+
+    // 3. SUSUN DATA NERACA
     $neraca = [
         'aset_lancar' => ['Kas & Bank (Manual)' => $kasManual],
         'aset_tetap'  => $asetTetapList,
         'kewajiban'   => $kewajibanList,
         
         'ekuitas'     => [
-            'Modal / Saldo Awal (Otomatis)' => $modalAwalDinamis, 
+            // Modal ini otomatis menampung sisa uang kas yang bukan profit
+            'Modal / Saldo Awal (Otomatis)' => $modalAwalOtomatis, 
+            
             'Modal Tambahan (Manual)'       => $modalDisetor,
-            'Prive (Tarik Modal)'           => $prive * -1, // Tampilkan minus di UI
-            'Profit Berjalan (Real)'        => $profitReal
+            'Prive (Tarik Modal)'           => $prive * -1,
+            
+            // Profit ini sekarang murni hasil usaha (61rb)
+            'Profit Berjalan (Real)'        => $profitRealBersih 
         ],
 
         'total_aset'      => $kasManual + $totalAsetTetap,
-        
-        // Total Pasiva: Kewajiban + (Modal Awal + Modal Tambahan - Prive + Profit)
-        'total_pasiva'    => $totalKewajiban + ($modalAwalDinamis + $modalDisetor + $profitReal) - $prive
+        'total_pasiva'    => $totalKewajiban + ($modalAwalOtomatis + $modalDisetor - $prive + $profitRealBersih)
     ];
 
     $selisih = $neraca['total_aset'] - $neraca['total_pasiva'];
