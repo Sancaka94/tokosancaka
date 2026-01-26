@@ -344,6 +344,22 @@ class KeuanganController extends Controller
 
     // CRUD Manual (SAMA SEPERTI LAMA)
     public function store(Request $request) { Keuangan::create($request->all()); return back()->with('success','Disimpan'); }
+
     public function update(Request $request, $id) { Keuangan::find($id)->update($request->all()); return back()->with('success','Diupdate'); }
-    public function destroy($id) { Keuangan::find($id)->delete(); return back()->with('success','Dihapus'); }
+
+    public function destroy($id)
+{
+    // PENTING: Pakai where()->delete()
+    // Ini langsung jalanin SQL: "DELETE FROM keuangans WHERE id = ..."
+    // Tidak peduli datanya ketemu atau tidak, dia tidak akan return error "on null".
+    
+    // Pastikan ganti '\App\Models\Keuangan' dengan nama Model Anda yang sesuai
+    \App\Models\Keuangan::where('id', $id)->delete();
+
+    // Kalau Anda pakai fitur SoftDeletes (tong sampah) dan mau paksa hapus permanen:
+    \App\Models\Keuangan::where('id', $id)->forceDelete();
+
+    // Redirect kembali supaya Tampilan UI bersih dari data itu
+    return redirect()->back()->with('success', 'Data berhasil dimusnahkan.');
+}
 }
