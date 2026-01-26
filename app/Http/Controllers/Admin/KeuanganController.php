@@ -390,53 +390,53 @@ class KeuanganController extends Controller
     public function neraca(Request $request)
 {
     // 1. SETUP TANGGAL
-    if (!$request->has('date_start')) $request->merge(['date_start' => date('Y-01-01')]);
-    if (!$request->has('date_end')) $request->merge(['date_end' => date('Y-m-d')]);
-    
-    $startDate = $request->date_start;
-    $endDate   = $request->date_end;
+    $startDate = $request->input('date_start', date('Y-01-01'));
+    $endDate   = $request->input('date_end', date('Y-m-d'));
 
-    // 1. AMBIL DATA LENGKAP
+    // 2. AMBIL SEMUA DATA LENGKAP
     $allData = $this->getDataLengkap($request);
 
     // =========================================================================
-    // 2. LOGIKA WHITELIST PROFIT (Hanya Transaksi Bisnis)
+    // 3. LOGIKA FILTER PROFIT (HANYA OPERASIONAL)
     // =========================================================================
+    // Filter data agar Profit Berjalan HANYA menghitung transaksi bisnis.
+    // Data dengan kode_akun 'NERACA' (inputan manual Anda) dibuang dari Profit.
+    
     $dataProfit = $allData->filter(function ($item) {
-        // Daftar kategori yang SAH masuk ke perhitungan Laba/Rugi
-        $kategoriOperasional = ['PPOB', 'Ekspedisi', 'Marketplace', 'Top Up Saldo', 'Pemasukan', 'Pengeluaran'];
+        $kategoriOperasional = ['Ekspedisi', 'PPOB', 'Marketplace', 'Top Up Saldo'];
+        $isManualNeraca = isset($item->kode_akun) && $item->kode_akun === 'NERACA';
         
-        // Data yang mengandung kata 'Kas', 'Bank', atau 'Modal' harus dibuang dari Profit
-        $isKasAtauModal = preg_match('/(Kas|Bank|Modal|Prive|Hutang|Aset Tetap)/i', $item->kategori);
-        
-        return in_array($item->kategori, $kategoriOperasional) && !$isKasAtauModal;
+        return in_array($item->kategori, $kategoriOperasional) && !$isManualNeraca;
     });
 
-    // Hitung Total Profit dari hasil filter di atas
     $profitReal = $dataProfit->sum('profit');
 
     // =========================================================================
-    // 3. LOGIKA ASET & EKUITAS (DATA NERACA)
+    // 4. LOGIKA FILTER NERACA (HARTA & MODAL)
     // =========================================================================
+    // Ambil data yang khusus Anda input secara manual (kategori Kas, Bank, dll)
     
-    // Ambil saldo Kas & Bank (ID 190, 165, dll)
-    $kasBank = $allData->filter(function($item) {
-        return preg_match('/(Kas|Bank|E-Wallet)/i', $item->kategori);
-    })->sum('jumlah');
+    $dataManual = $allData->filter(function ($item) {
+        return isset($item->kode_akun) && $item->kode_akun === 'NERACA';
+    });
 
-    // Ambil Modal Disetor & Prive
-    $modalDisetor = $allData->where('kategori', 'Modal Disetor')->sum('jumlah');
-    $prive = $allData->where('kategori', 'Prive')->sum('jumlah');
+    // Hitung Kelompok Aset
+    $kasBank = $dataManual->whereIn('kategori', ['Kas Tunai', 'Kas', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])->sum('jumlah');
+    
+    $asetTetap = $dataManual->whereIn('kategori', ['Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan'])
+                            ->groupBy('keterangan')
+                            ->map(fn($row) => $row->sum('jumlah'));
 
-    // Ambil Aset Tetap & Hutang
-    $asetTetap = $allData->whereIn('kategori', ['Aset Tetap', 'Bangunan', 'Kendaraan'])
-                         ->groupBy('keterangan')->map(fn($row) => $row->sum('jumlah'));
-                         
-    $hutang = $allData->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha'])
-                      ->groupBy('keterangan')->map(fn($row) => $row->sum('jumlah'));
+    // Hitung Kelompok Pasiva
+    $hutang = $dataManual->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha'])
+                         ->groupBy('keterangan')
+                         ->map(fn($row) => $row->sum('jumlah'));
+
+    $modalDisetor = $dataManual->where('kategori', 'Modal Disetor')->sum('jumlah');
+    $prive = $dataManual->where('kategori', 'Prive')->sum('jumlah');
 
     // =========================================================================
-    // 4. SUSUN STRUKTUR NERACA
+    // 5. SUSUN ARRAY FINAL UNTUK VIEW
     // =========================================================================
     $neraca = [
         'aset_lancar' => [
@@ -444,23 +444,21 @@ class KeuanganController extends Controller
         ],
         'aset_tetap'  => $asetTetap,
         'kewajiban'   => $hutang,
-        
         'ekuitas'     => [
             'Modal Disetor'          => $modalDisetor,
             'Prive (Tarik Modal)'    => $prive * -1,
             'Profit Berjalan (Real)' => $profitReal 
         ],
-
         'total_aset'      => $kasBank + $asetTetap->sum(),
         'total_kewajiban' => $hutang->sum(),
     ];
 
-    // Total Pasiva = Hutang + Modal + Profit - Prive
+    // Total Pasiva = Hutang + Modal - Prive + Profit
     $neraca['total_pasiva'] = $neraca['total_kewajiban'] + $modalDisetor - $prive + $profitReal;
     
     $selisih = $neraca['total_aset'] - $neraca['total_pasiva'];
 
-    return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate', 'selisih'));
+    return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate', 'selisih', 'dataManual'));
 }
     
 }
