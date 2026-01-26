@@ -399,94 +399,94 @@ class KeuanganController extends Controller
     $startDate = $request->date_start;
     $endDate   = $request->date_end;
 
-    // 2. AMBIL PROFIT REAL (MURNI TRANSAKSI)
+    // 2. AMBIL PROFIT REAL (MURNI DATABASE - STEP INI SAMA SPT SEBELUMNYA)
+    // Filter manual kategori agar inputan neraca tidak dianggap omzet
     $allData = $this->getDataLengkap($request);
-
-    // DAFTAR KATEGORI MANUAL YANG HARUS DIBUANG DARI PROFIT
-    // Ini adalah kategori-kategori Neraca yang bikin profit jadi kacau
     $blackListKategori = [
-        'Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar', // Aset Lancar
-        'Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan', 'Inventaris', // Aset Tetap
-        'Hutang Bank', 'Hutang Usaha', // Kewajiban
-        'Modal Disetor', 'Prive', 'Modal / Saldo Awal', 'NERACA' // Modal
+        'Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar', 
+        'Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan', 'Inventaris', 
+        'Hutang Bank', 'Hutang Usaha', 'Modal Disetor', 'Prive', 'Modal / Saldo Awal', 'NERACA'
     ];
-
-    // FILTER: Hanya ambil data yang KATEGORI-nya TIDAK ADA di blacklist
     $dataOperasional = $allData->filter(function ($item) use ($blackListKategori) {
         return !in_array($item->kategori, $blackListKategori);
     });
+    $profitReal = $dataOperasional->whereBetween('tanggal', [$startDate, $endDate])->sum('profit'); 
 
-    // Baru kita sum profitnya
-    $profitReal = $dataOperasional->whereBetween('tanggal', [$startDate, $endDate])->sum('profit');
 
     // 3. AMBIL DATA INPUTAN MANUAL
     $dataNeracaManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
                         ->whereBetween('tanggal', [$startDate, $endDate])
                         ->get();
 
+    // FUNGSI HELPER KECIL UNTUK AMBIL SALDO PER KATEGORI
+    $getSaldo = function($kategoriList) use ($dataNeracaManual) {
+        if(!is_array($kategoriList)) $kategoriList = [$kategoriList];
+        return $dataNeracaManual->whereIn('kategori', $kategoriList)->sum('jumlah');
+    };
 
-    // 4. PILAH DATA ASET (KAS vs BANK)
-    // Grup 1: Kas Tunai
-    $kasList = $dataNeracaManual->where('kategori', 'Kas Tunai')
-                                ->groupBy('keterangan')->map(fn($row) => $row->sum('jumlah'));
-    $totalKas = $dataNeracaManual->where('kategori', 'Kas Tunai')->sum('jumlah');
+    // =========================================================================
+    // 4. DEFINISI STRUKTUR BAKU (Supaya Nama Akun Selalu Muncul Walau 0)
+    // =========================================================================
+    
+    // A. AKTIVA LANCAR
+    $aktivaLancar = [
+        'Kas Tunai'          => $getSaldo(['Kas Tunai', 'Kas Besar']),
+        'Bank (BCA/BRI)'     => $getSaldo(['Bank BCA', 'Bank BRI', 'E-Wallet']),
+        'Piutang Usaha'      => $getSaldo(['Piutang', 'Piutang Usaha']), // Jika nanti ada fitur piutang
+        'Persediaan Barang'  => $getSaldo(['Persediaan', 'Stok']),       // Jika nanti ada nilai stok
+        'Perlengkapan'       => $getSaldo(['Perlengkapan']),
+        'Profit / Laba (DB)' => $profitReal // Profit masuk sini sesuai request
+    ];
+    $totalLancar = array_sum($aktivaLancar);
 
-    // Grup 2: Bank & E-Wallet
-    $bankList = $dataNeracaManual->whereIn('kategori', ['Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])
-                                 ->groupBy('keterangan')->map(fn($row) => $row->sum('jumlah'));
-    $totalBank = $dataNeracaManual->whereIn('kategori', ['Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])->sum('jumlah');
+    // B. AKTIVA TETAP
+    $aktivaTetap = [
+        'Tanah & Bangunan'   => $getSaldo(['Tanah', 'Bangunan']),
+        'Kendaraan'          => $getSaldo(['Kendaraan']),
+        'Mesin & Peralatan'  => $getSaldo(['Mesin', 'Peralatan', 'Inventaris', 'Aset Tetap']),
+        'Aset Lainnya'       => $getSaldo(['Investasi', 'Aset Lainnya'])
+    ];
+    $totalTetap = array_sum($aktivaTetap);
 
-    // Grup 3: Aset Tetap
-    $asetTetapList = $dataNeracaManual->whereIn('kategori', ['Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan', 'Inventaris'])
-                                      ->groupBy('keterangan')->map(fn($row) => $row->sum('jumlah'));
-    $totalAsetTetap = $dataNeracaManual->whereIn('kategori', ['Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan', 'Inventaris'])->sum('jumlah');
+    // C. KEWAJIBAN (HUTANG)
+    $kewajiban = [
+        'Hutang Dagang'      => $getSaldo(['Hutang Usaha', 'Hutang Dagang']),
+        'Hutang Bank'        => $getSaldo(['Hutang Bank', 'Pinjaman']),
+        'Hutang Lain-lain'   => $getSaldo(['Hutang Lainnya'])
+    ];
+    $totalKewajiban = array_sum($kewajiban);
 
-    // HITUNG TOTAL ASET (KAS + BANK + PROFIT + ASET TETAP)
-    // Profit kita masukkan sebagai komponen ASET
-    $totalAsetFinal = $totalKas + $totalBank + $profitReal + $totalAsetTetap;
-
-
-    // 5. HITUNG PASIVA (MODAL & KEWAJIBAN)
-    $kewajibanList = $dataNeracaManual->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha'])
-                                      ->groupBy('keterangan')->map(fn($row) => $row->sum('jumlah'));
-    $totalKewajiban = $dataNeracaManual->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha'])->sum('jumlah');
-
-    // Modal Dasar (Input Manual)
-    // Catatan: Modal Awal Otomatis kita matikan logikanya, kita pakai inputan murni DB saja
-    // Jika tidak ada inputan Modal Awal, ya 0.
-    $modalAwalDB  = $dataNeracaManual->where('kategori', 'Modal / Saldo Awal')->sum('jumlah'); 
-    $modalDisetor = $dataNeracaManual->where('kategori', 'Modal Disetor')->sum('jumlah');
-    $prive        = $dataNeracaManual->where('kategori', 'Prive')->sum('jumlah');
-
-    // Hitung Total Pasiva Dasar (Sebelum Penyeimbang)
-    // Perhatikan: Profit tidak dimasukkan disini, karena Profit sudah ada di Kiri (Aset)
-    $totalPasivaDasar = $totalKewajiban + ($modalAwalDB + $modalDisetor - $prive);
-
-
-    // 6. HITUNG SELISIH (PERUBAHAN MODAL)
-    // Rumus: Total Aset - Total Pasiva Dasar
-    $perubahanModal = $totalAsetFinal - $totalPasivaDasar;
+    // D. EKUITAS (MODAL)
+    $ekuitas = [
+        'Modal Disetor'      => $getSaldo(['Modal Disetor', 'Modal Awal', 'Modal / Saldo Awal']),
+        'Prive (Ambilan)'    => $getSaldo(['Prive']) * -1, // Prive mengurangi modal
+    ];
+    // Hitung total ekuitas dasar dulu
+    $totalEkuitasDasar = array_sum($ekuitas);
 
 
-    // 7. SUSUN ARRAY UNTUK VIEW
+    // 5. HITUNG TOTAL & PENYEIMBANG
+    $totalAset   = $totalLancar + $totalTetap;
+    $totalPasiva = $totalKewajiban + $totalEkuitasDasar;
+
+    // Selisih masuk ke "Laba Ditahan / Perubahan Modal"
+    $perubahanModal = $totalAset - $totalPasiva;
+
+    // Masukkan Perubahan Modal ke array Ekuitas agar tampil di list
+    $ekuitas['Laba Ditahan / Penyeimbang'] = $perubahanModal;
+    
+    // Update Total Pasiva Final
+    $totalPasivaFinal = $totalKewajiban + $totalEkuitasDasar + $perubahanModal;
+
+    // 6. KIRIM KE VIEW
     $neraca = [
-        // SISI KIRI (ASET)
-        'aset_kas'    => $kasList,       // List Kas Tunai
-        'aset_bank'   => $bankList,      // List Bank
-        'aset_profit' => $profitReal,    // Nilai Profit
-        'aset_tetap'  => $asetTetapList, // List Aset Tetap
+        'aktiva_lancar' => $aktivaLancar,
+        'aktiva_tetap'  => $aktivaTetap,
+        'kewajiban'     => $kewajiban,
+        'ekuitas'       => $ekuitas,
         
-        // SISI KANAN (PASIVA)
-        'kewajiban'   => $kewajibanList,
-        'ekuitas'     => [
-            'Modal Awal'        => $modalAwalDB,
-            'Modal Tambahan'    => $modalDisetor,
-            'Prive'             => $prive * -1,
-            // Profit tidak ditampilkan di list ekuitas karena sudah jadi aset di kiri
-        ],
-
-        'total_aset'   => $totalAsetFinal,
-        'total_pasiva' => $totalPasivaDasar + $perubahanModal // Balance
+        'total_aset'    => $totalAset,
+        'total_pasiva'  => $totalPasivaFinal
     ];
 
     return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate', 'perubahanModal'));
