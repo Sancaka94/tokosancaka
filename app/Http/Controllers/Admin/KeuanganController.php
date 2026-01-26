@@ -424,28 +424,30 @@ class KeuanganController extends Controller
         $prive        = $dataNeracaManual->where('kategori', 'Prive')->sum('jumlah');
 
         // 4. SUSUN NERACA FINAL
+        // Hitung Modal Awal agar tidak double counting dengan profit
+        $modalAwalDinamis = $kasManual - $profitReal; 
+
         $neraca = [
             'aset_lancar' => ['Kas & Bank (Manual)' => $kasManual],
             'aset_tetap'  => $asetTetap,
             'kewajiban'   => $kewajiban,
             
             'ekuitas'     => [
-                // MODAL OTOMATIS (Mirroring dari Kas)
-                'Modal / Saldo Awal (Otomatis)' => $kasManual, 
+                // Modal Awal dikunci agar selisihnya pas dengan Profit
+                'Modal / Saldo Awal (Otomatis)' => $modalAwalDinamis, 
                 
-                // DATA MANUAL LAINNYA
                 'Modal Tambahan (Manual)' => $modalDisetor,
                 'Prive (Tarik Modal)'     => $prive * -1,
                 
-                // PROFIT MURNI (Sesuai Dashboard)
+                // Profit tetap murni dari sistem
                 'Profit Berjalan (Real)'  => $profitReal 
             ],
 
             'total_aset'      => $kasManual + $asetTetap->sum(),
             'total_kewajiban' => $kewajiban->sum(),
             
-            // TOTAL PASIVA = Hutang + Modal Otomatis + Modal Manual - Prive + Profit Real
-            'total_pasiva'    => $kewajiban->sum() + ($kasManual + $modalDisetor - $prive + $profitReal)
+            // Sekarang Total Pasiva akan sama dengan Total Aset
+            'total_pasiva'    => $kewajiban->sum() + ($modalAwalDinamis + $modalDisetor - $prive + $profitReal)
         ];
 
         $selisih = $neraca['total_aset'] - $neraca['total_pasiva'];
