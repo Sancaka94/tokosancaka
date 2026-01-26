@@ -391,10 +391,10 @@ class KeuanganController extends Controller
 {
     // 1. ATUR TANGGAL OTOMATIS (Awal bulan s/d Akhir bulan ini)
     if (!$request->has('date_start')) {
-        $request->merge(['date_start' => date('Y-m-01')]); // Tanggal 1 bulan ini
+        $request->merge(['date_start' => date('Y-m-01')]); 
     }
     if (!$request->has('date_end')) {
-        $request->merge(['date_end' => date('Y-m-t')]);    // Tanggal terakhir bulan ini
+        $request->merge(['date_end' => date('Y-m-t')]);   
     }
 
     $startDate = $request->date_start;
@@ -402,40 +402,54 @@ class KeuanganController extends Controller
 
     // 2. AMBIL PROFIT REAL SESUAI BULAN TERSEBUT
     $dataDashboard = $this->getDataLengkap($request);
-    $profitReal = $dataDashboard->sum('profit'); 
+    $profitReal    = $dataDashboard->sum('profit'); 
 
     // 3. AMBIL DATA NERACA MANUAL
     $dataNeracaManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
                         ->whereBetween('tanggal', [$startDate, $endDate])
                         ->get();
 
-    // 4. MAPPING DATA
-    $kasManual = $dataNeracaManual->whereIn('kategori', ['Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])->sum('jumlah');
+    // 4. MAPPING DATA (Semua harus di-sum)
+    $kasManual    = $dataNeracaManual->whereIn('kategori', ['Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])->sum('jumlah');
+    $modalDisetor = $dataNeracaManual->where('kategori', 'Modal Disetor')->sum('jumlah');
+    $prive        = $dataNeracaManual->where('kategori', 'Prive')->sum('jumlah');
     
-    // Logika Modal agar Balance: Modal = Kas saat ini - Untung bulan ini
-    $modalAwalDinamis = $kasManual - $profitReal;
+    // Aset Tetap & Kewajiban (Untuk List Rincian)
+    $asetTetapList = $dataNeracaManual->whereIn('kategori', ['Aset Tetap', 'Investasi'])
+                                      ->groupBy('keterangan')
+                                      ->map(fn($row) => $row->sum('jumlah'));
 
-    // 5. SUSUN NERACA FINAL
+    $kewajibanList = $dataNeracaManual->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha'])
+                                      ->groupBy('keterangan')
+                                      ->map(fn($row) => $row->sum('jumlah'));
+
+    // Hitung Total Aset Tetap & Kewajiban (Angka Murni)
+    $totalAsetTetap = $dataNeracaManual->whereIn('kategori', ['Aset Tetap', 'Investasi'])->sum('jumlah');
+    $totalKewajiban = $dataNeracaManual->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha'])->sum('jumlah');
+
+    // 5. HITUNG MODAL AWAL DINAMIS
+    // Rumus: Modal = Kas Sekarang - (Modal Tambahan - Prive + Profit)
+    // Logika: Sisa uang di kas yang bukan berasal dari suntikan modal/profit adalah modal awal
+    $modalAwalDinamis = $kasManual - ($modalDisetor - $prive + $profitReal);
+
+    // 6. SUSUN NERACA FINAL
     $neraca = [
         'aset_lancar' => ['Kas & Bank (Manual)' => $kasManual],
-        'aset_tetap'  => $dataNeracaManual->whereIn('kategori', ['Aset Tetap', 'Investasi'])->groupBy('keterangan')->map(fn($row) => $row->sum('jumlah')),
-        'kewajiban'   => $dataNeracaManual->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha'])->groupBy('keterangan')->map(fn($row) => $row->sum('jumlah')),
+        'aset_tetap'  => $asetTetapList,
+        'kewajiban'   => $kewajibanList,
         
         'ekuitas'     => [
             'Modal / Saldo Awal (Otomatis)' => $modalAwalDinamis, 
-            'Modal Tambahan (Manual)'       => $dataNeracaManual->where('kategori', 'Modal Disetor')->sum('jumlah'),
-            'Prive (Tarik Modal)'           => $dataNeracaManual->where('kategori', 'Prive')->sum('jumlah') * -1,
+            'Modal Tambahan (Manual)'       => $modalDisetor,
+            'Prive (Tarik Modal)'           => $prive * -1, // Tampilkan minus di UI
             'Profit Berjalan (Real)'        => $profitReal 
         ],
 
-        'total_aset'      => $kasManual + $dataNeracaManual->whereIn('kategori', ['Aset Tetap', 'Investasi'])->sum('jumlah'),
-        'total_pasiva'    => $kasManual + $dataNeracaManual->whereIn('kategori', ['Modal Disetor']) // dst disesuaikan
+        'total_aset'      => $kasManual + $totalAsetTetap,
+        
+        // Total Pasiva: Kewajiban + (Modal Awal + Modal Tambahan - Prive + Profit)
+        'total_pasiva'    => $totalKewajiban + ($modalAwalDinamis + $modalDisetor - $prive + $profitReal)
     ];
-
-    // Hitung ulang total pasiva agar sinkron
-    $neraca['total_pasiva'] = $neraca['kewajiban']->sum() + 
-                             ($modalAwalDinamis + $neraca['ekuitas']['Modal Tambahan (Manual)'] + 
-                              $neraca['ekuitas']['Prive (Tarik Modal)'] + $profitReal);
 
     $selisih = $neraca['total_aset'] - $neraca['total_pasiva'];
 
