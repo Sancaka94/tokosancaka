@@ -392,74 +392,69 @@ class KeuanganController extends Controller
 
     public function neraca(Request $request)
 {
-    // 1. SET DEFAULT TANGGAL (Agar sama dengan filter Dashboard)
-    // Jika user tidak pilih tanggal, defaultkan ke bulan ini/tahun ini sesuai logic index Anda
     if (!$request->has('date_start')) {
         $request->merge(['date_start' => date('Y-01-01')]);
     }
     if (!$request->has('date_end')) {
         $request->merge(['date_end' => date('Y-m-d')]);
     }
-    
     $startDate = $request->date_start;
     $endDate   = $request->date_end;
 
-    // =========================================================================
-    // 2. AMBIL PROFIT DARI LOGIC INDEX (COPY PASTE LOGIC DASHBOARD)
-    // =========================================================================
-    // Kita panggil fungsi sakti 'getDataLengkap' yang dipakai halaman Index.
-    // Apapun yang tampil di Dashboard, pasti tampil disini.
-    
+    // 1. AMBIL PROFIT REAL (DARI DASHBOARD)
     $dataDashboard = $this->getDataLengkap($request);
-    
-    // AMBIL ANGKA PROFIT FINAL DARI DATA TERSEBUT
     $profitSesuaiDashboard = $dataDashboard->sum('profit'); 
 
-
-    // =========================================================================
-    // 3. AMBIL DATA NERACA MANUAL (KAS, HUTANG, ASET)
-    // =========================================================================
-    // Ini data Inputan Manual Anda (Code: NERACA)
+    // 2. AMBIL DATA NERACA MANUAL
     $dataNeracaManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
                         ->whereBetween('tanggal', [$startDate, $endDate])
                         ->get();
 
-    // Mapping Data Manual
+    // 3. HITUNG POS-POS
+    // A. KAS & BANK
     $kasManual = $dataNeracaManual->whereIn('kategori', ['Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])->sum('jumlah');
-    
+
+    // B. ASET TETAP
     $asetTetap = $dataNeracaManual->whereIn('kategori', ['Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan'])
                                   ->groupBy('keterangan')
                                   ->map(fn($row) => $row->sum('jumlah'));
 
+    // C. KEWAJIBAN
     $kewajiban = $dataNeracaManual->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha'])
                                   ->groupBy('keterangan')
                                   ->map(fn($row) => $row->sum('jumlah'));
 
+    // D. EKUITAS MANUAL
     $modalDisetor = $dataNeracaManual->where('kategori', 'Modal Disetor')->sum('jumlah');
     $prive        = $dataNeracaManual->where('kategori', 'Prive')->sum('jumlah');
 
-
-    // =========================================================================
-    // 4. SUSUN NERACA FINAL
-    // =========================================================================
+    // =================================================================
+    // 4. SUSUN NERACA FINAL (DENGAN MODAL OTOMATIS)
+    // =================================================================
+    
     $neraca = [
         'aset_lancar' => ['Kas & Bank (Manual)' => $kasManual],
         'aset_tetap'  => $asetTetap,
         'kewajiban'   => $kewajiban,
         
         'ekuitas'     => [
-            'Modal Disetor' => $modalDisetor,
-            'Prive'         => $prive * -1,
+            // 1. INI FITUR BARU: Modal Otomatis (Mirroring dari Kas)
+            // Jadi kalau punya Kas 100jt, otomatis dianggap Modal 100jt
+            'Modal / Saldo Awal (Otomatis)' => $kasManual, 
+
+            // 2. Modal Tambahan (Jika user input manual)
+            'Modal Tambahan (Manual)' => $modalDisetor,
+            'Prive (Tarik Modal)'     => $prive * -1,
             
-            // DISINI KITA TEMPEL ANGKA DARI DASHBOARD
-            'Profit Berjalan (Sesuai Dashboard)' => $profitSesuaiDashboard 
+            // 3. Profit Real
+            'Profit Berjalan (Real)'  => $profitSesuaiDashboard 
         ],
 
         'total_aset'      => $kasManual + $asetTetap->sum(),
         'total_kewajiban' => $kewajiban->sum(),
         
-        // Total Pasiva = Hutang + Modal - Prive + Profit Dashboard
-        'total_pasiva'    => $kewajiban->sum() + ($modalDisetor - $prive + $profitSesuaiDashboard)
+        // Total Pasiva = Hutang + (KasManual + ModalManual - Prive + Profit)
+        'total_pasiva'    => $kewajiban->sum() + ($kasManual + $modalDisetor - $prive + $profitSesuaiDashboard)
     ];
 
     $selisih = $neraca['total_aset'] - $neraca['total_pasiva'];
