@@ -435,7 +435,7 @@ class KeuanganController extends Controller
         'Piutang Usaha'      => $getSaldo(['Piutang', 'Piutang Usaha']), // Jika nanti ada fitur piutang
         'Persediaan Barang'  => $getSaldo(['Persediaan', 'Stok']),       // Jika nanti ada nilai stok
         'Perlengkapan'       => $getSaldo(['Perlengkapan']),
-        'Profit / Laba (DB)' => $profitReal // Profit masuk sini sesuai request
+        'Profit / Laba'      => $profitReal // Profit masuk sini sesuai request
     ];
     $totalLancar = array_sum($aktivaLancar);
 
