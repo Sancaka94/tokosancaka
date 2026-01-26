@@ -446,7 +446,7 @@ class KeuanganController extends Controller
     // Rumus Akuntansi: Aset = Kewajiban + Modal + Profit
     // Karena Kewajiban 0, maka: Kas = Modal + Profit
     // Jadi: Modal = Kas - Profit
-    $modalAwalOtomatis = $kasManual - $profitRealBersih;
+    $modalAwalOtomatis = $kasManual; //- $profitRealBersih;
 
     // 3. SUSUN DATA NERACA
     $neraca = [
