@@ -400,19 +400,16 @@ class KeuanganController extends Controller
     $startDate = $request->date_start;
     $endDate   = $request->date_end;
 
-    // DEBUGGING START
-$dataDashboard = $this->getDataLengkap($request);
+    // 1. AMBIL DATA LENGKAP
+        $allData = $this->getDataLengkap($request);
 
-// Kita cari siapa yang bikin minus
-$biangKerok = $dataDashboard->where('profit', '<', 0);
+        // 2. FILTER PAKSA BERDASARKAN TANGGAL (PENTING!)
+        // Kita saring ulang di sini untuk membuang data Desember yang bocor
+        $dataDashboard = $allData->whereBetween('tanggal', [$startDate, $endDate]);
 
-dd([
-    'Total Profit Dashboard (Harusnya)' => $dataDashboard->sum('profit'),
-    'Rincian Yang Bikin Minus (Pengeluaran)' => $biangKerok->values()->toArray()
-]);
-// DEBUGGING END
-
-$profitReal = $dataDashboard->sum('profit');
+        // 3. HITUNG PROFIT REAL
+        // Sekarang isinya murni Profit Januari (Pendapatan - Modal Resi - Biaya Ops Bulan Ini)
+        $profitReal = $dataDashboard->sum('profit');
 
 
     // 3. AMBIL DATA NERACA MANUAL
