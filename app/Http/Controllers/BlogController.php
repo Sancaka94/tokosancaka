@@ -9,32 +9,26 @@ use App\Models\Category;
 
 class BlogController extends Controller
 {
-    /**
-     * Menampilkan halaman index blog (Halaman /blog).
-     * Menangani: Slider Kategori, Pencarian, Headline, Top Articles, dan Paginasi.
-     */
     public function blogIndex(Request $request)
-    {
-        // 1. QUERY DASAR
-        // Kita mulai dengan query post yang statusnya published
-        // Menggunakan with() untuk Eager Loading (mencegah N+1 query problem)
-        $baseQuery = Post::where('status', 'published')
-                         ->with(['category', 'author']);
+{
+    // 1. QUERY DASAR
+    $baseQuery = Post::where('status', 'published')->with(['category', 'author']);
 
-        // 2. FILTER KATEGORI (PENTING untuk Slider)
-        // Jika ada parameter ?category=slug di URL
-        if ($request->filled('category')) {
-            $categorySlug = $request->query('category');
-            $baseQuery->whereHas('category', function($q) use ($categorySlug) {
-                $q->where('slug', $categorySlug);
-            });
-        }
+    // 2. FILTER KATEGORI (Jika ada)
+    if ($request->filled('category')) {
+        $categorySlug = $request->query('category');
+        $baseQuery->whereHas('category', function($q) use ($categorySlug) {
+            $q->where('slug', $categorySlug);
+        });
+    }
 
-        // --- Ambil Kategori UNTUK SEMUA VIEW (Pencarian maupun Normal) ---
+    // 3. AMBIL KATEGORI SIDEBAR (Pindahkan ke atas agar bisa dipakai Search & Normal)
+    // Ini dipindah ke sini agar tidak perlu ditulis ulang di dalam blok if($search)
     $categories = Category::withCount(['posts' => function($q) {
         $q->where('status', 'published');
     }])->having('posts_count', '>', 0)->orderBy('posts_count', 'desc')->limit(15)->get();
 
+    // 4. LOGIKA PENCARIAN
     if ($request->filled('search')) {
         $search = trim($request->query('search'));
         $baseQuery->where(function($q) use ($search) {
@@ -44,66 +38,34 @@ class BlogController extends Controller
 
         $latestPosts = $baseQuery->latest()->paginate(12)->withQueryString();
 
-        // Kirim $categories juga di sini agar partial tidak error
+        // Return view khusus search
         return view('blog.search', compact('latestPosts', 'categories'));
     }
 
-        // --- BAGIAN LAYOUT ---
+    // 5. LOGIKA TAMPILAN NORMAL (Headline, Top, Latest)
 
-        // A. HEADLINE (1 Artikel Utama)
-        // Gunakan (clone $baseQuery) agar filter di atas tetap terbawa, tapi query aslinya tidak berubah
-        $headline = (clone $baseQuery)->latest()->first();
+    // A. Headline
+    $headline = (clone $baseQuery)->latest()->first();
+    $excludeIds = $headline ? [$headline->id] : [];
 
-        // Siapkan array untuk menampung ID agar tidak muncul ganda
-        $excludeIds = [];
-        if ($headline) {
-            $excludeIds[] = $headline->id;
-        }
+    // B. Top Articles (5 artikel)
+    $topArticles = (clone $baseQuery)->whereNotIn('id', $excludeIds)->latest()->limit(5)->get(); // Saya ubah limit jadi 5 (biasanya Top tidak sampai 20)
+    $excludeIds = array_merge($excludeIds, $topArticles->pluck('id')->toArray());
 
-        // B. TOP ARTICLES (List di samping Headline)
-        // Ambil 5 artikel berikutnya, kecuali headline
-        $topArticles = (clone $baseQuery)
-            ->whereNotIn('id', $excludeIds)
-            ->latest()
-            ->limit(20)
-            ->get();
+    // C. Latest Posts (Sisanya)
+    $latestPosts = (clone $baseQuery)
+        ->whereNotIn('id', $excludeIds)
+        ->latest()
+        ->paginate(17)
+        ->withQueryString();
 
-        // Masukkan ID topArticles ke daftar pengecualian
-        $excludeIds = array_merge($excludeIds, $topArticles->pluck('id')->toArray());
+    // D. Popular Posts (Opsional)
+    $popularPosts = Post::where('status', 'published')->inRandomOrder()->limit(5)->get();
 
-        // C. LATEST POSTS (Grid di bawah & Paginasi)
-        // Ambil sisanya, kecuali Headline & Top Articles
-        $latestPosts = (clone $baseQuery)
-            ->whereNotIn('id', $excludeIds)
-            ->latest()
-            ->paginate(17) // Tampilkan 6 per halaman (kelipatan 3 agar rapi di grid)
-            ->withQueryString(); // Agar parameter search/category tidak hilang saat klik page 2
-
-        // --- BAGIAN SIDEBAR & MENU ---
-
-        // Kategori untuk Slider (Urutkan berdasarkan jumlah post terbanyak)
-        $categories = Category::withCount(['posts' => function($q) {
-            $q->where('status', 'published');
-        }])
-        ->having('posts_count', '>', 0) // Hanya kategori yang ada isinya
-        ->orderBy('posts_count', 'desc')
-        ->limit(15)
-        ->get();
-
-        // Artikel Populer (Opsional, misalnya random atau berdasarkan views jika ada)
-        $popularPosts = Post::where('status', 'published')
-            ->inRandomOrder()
-            ->limit(5)
-            ->get();
-
-        return view('blog.index', compact(
-            'headline',
-            'topArticles',
-            'latestPosts',
-            'categories',
-            'popularPosts'
-        ));
-    }
+    return view('blog.index', compact(
+        'headline', 'topArticles', 'latestPosts', 'categories', 'popularPosts'
+    ));
+}
 
     /**
      * Menampilkan detail satu postingan.
