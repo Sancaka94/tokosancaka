@@ -480,7 +480,7 @@ class KeuanganController extends Controller
         'total_kewajiban' => $kewajiban->sum(),
         
         // Total Pasiva = Hutang + ModalOtomatis + ModalManual - Prive + ProfitReal
-        'total_pasiva'    => $kewajiban->sum() + ($kasManual + $modalDisetor - $prive + $profitReal)
+        'total_pasiva'    => $kewajiban->sum() + ($kasManual + $modalDisetor + $profitReal) - $prive
     ];
 
     $selisih = $neraca['total_aset'] - $neraca['total_pasiva'];
