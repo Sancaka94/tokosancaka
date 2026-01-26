@@ -72,9 +72,31 @@ class KeuanganController extends Controller
                 DB::raw('0 as profit')
             );
 
+        // 1. QUERY TABLE
+        $query = DB::table('keuangans')
+            ->select(
+                'id',
+                'tanggal',
+                'jenis',
+                'kategori',
+                'nomor_invoice',
+                'keterangan',
+                DB::raw("CASE WHEN jenis = 'Pemasukan' THEN jumlah ELSE 0 END as omzet"),
+                DB::raw("CASE WHEN jenis = 'Pengeluaran' THEN jumlah ELSE 0 END as modal"),
+                DB::raw("CASE WHEN jenis = 'Pemasukan' THEN jumlah ELSE -jumlah END as profit")
+            );
+
         // ==================================================================================
         // 2. SEARCH & FILTER (SAMA PERSIS SEPERTI KODE LAMA)
         // ==================================================================================
+        // =================================================================
+        // FILTER WAJIB: JANGAN HITUNG DATA MANUAL NERACA SEBAGAI PROFIT!
+        // =================================================================
+        $query->where(function($q) {
+            $q->where('kode_akun', '!=', 'NERACA') // Buang data Neraca Manual
+              ->orWhereNull('kode_akun');          // Ambil data transaksi biasa (yg null)
+        });
+
 
         if ($request->filled('search')) {
             $keyword = $request->search;
