@@ -490,7 +490,7 @@ class KeuanganController extends Controller
 
     $selisih = $neraca['total_aset'] - $neraca['total_pasiva'];
 
-    return view('admin.keuangan.neraca', compact('profitReal', 'dataNeracaManual', 'startDate', 'endDate'));
+    return view('admin.keuangan.neraca', compact('profitReal', 'dataNeracaManual', 'startDate', 'endDate', 'neraca'));
 }
     
 }
