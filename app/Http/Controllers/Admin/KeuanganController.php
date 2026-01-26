@@ -399,76 +399,82 @@ class KeuanganController extends Controller
     $startDate = $request->date_start;
     $endDate   = $request->date_end;
 
-    // 2. AMBIL PROFIT REAL (MURNI DARI SISTEM)
+    // 2. AMBIL PROFIT REAL (MURNI DATABASE)
+    // Ini nanti akan kita taruh di KIRI sebagai "ASET PROFIT"
     $allData = $this->getDataLengkap($request);
     $dataDashboard = $allData->whereBetween('tanggal', [$startDate, $endDate]);
-    
-    // Total Profit (Kotor) dari sistem
-    $profitSystem = $dataDashboard->sum('profit'); 
+    $profitReal = $dataDashboard->sum('profit'); 
 
-    // 3. AMBIL DATA NERACA MANUAL
+    // 3. AMBIL DATA INPUTAN MANUAL
     $dataNeracaManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
                         ->whereBetween('tanggal', [$startDate, $endDate])
                         ->get();
 
-    // 4. HITUNG POS-POS HARTA (ASET) - INI ADALAH "RAJA"
-    // Harta tidak boleh dipengaruhi rumus aneh-aneh.
-    $kasManual = $dataNeracaManual->whereIn('kategori', ['Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])->sum('jumlah');
-    
-    // Aset Tetap
+    // 4. PILAH DATA ASET (KAS vs BANK)
+    // Grup 1: Kas Tunai
+    $kasList = $dataNeracaManual->where('kategori', 'Kas Tunai')
+                                ->groupBy('keterangan')->map(fn($row) => $row->sum('jumlah'));
+    $totalKas = $dataNeracaManual->where('kategori', 'Kas Tunai')->sum('jumlah');
+
+    // Grup 2: Bank & E-Wallet
+    $bankList = $dataNeracaManual->whereIn('kategori', ['Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])
+                                 ->groupBy('keterangan')->map(fn($row) => $row->sum('jumlah'));
+    $totalBank = $dataNeracaManual->whereIn('kategori', ['Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])->sum('jumlah');
+
+    // Grup 3: Aset Tetap
     $asetTetapList = $dataNeracaManual->whereIn('kategori', ['Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan', 'Inventaris'])
                                       ->groupBy('keterangan')->map(fn($row) => $row->sum('jumlah'));
     $totalAsetTetap = $dataNeracaManual->whereIn('kategori', ['Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan', 'Inventaris'])->sum('jumlah');
 
-    // TOTAL ASET FINAL (ANGKA KUNCI)
-    $totalAsetReal = $kasManual + $totalAsetTetap;
+    // HITUNG TOTAL ASET (KAS + BANK + PROFIT + ASET TETAP)
+    // Profit kita masukkan sebagai komponen ASET
+    $totalAsetFinal = $totalKas + $totalBank + $profitReal + $totalAsetTetap;
 
 
-    // 5. HITUNG POS-POS PASIVA (KEWAJIBAN & MODAL DASAR)
+    // 5. HITUNG PASIVA (MODAL & KEWAJIBAN)
     $kewajibanList = $dataNeracaManual->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha'])
                                       ->groupBy('keterangan')->map(fn($row) => $row->sum('jumlah'));
     $totalKewajiban = $dataNeracaManual->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha'])->sum('jumlah');
 
+    // Modal Dasar (Input Manual)
+    // Catatan: Modal Awal Otomatis kita matikan logikanya, kita pakai inputan murni DB saja
+    // Jika tidak ada inputan Modal Awal, ya 0.
+    $modalAwalDB  = $dataNeracaManual->where('kategori', 'Modal / Saldo Awal')->sum('jumlah'); 
     $modalDisetor = $dataNeracaManual->where('kategori', 'Modal Disetor')->sum('jumlah');
     $prive        = $dataNeracaManual->where('kategori', 'Prive')->sum('jumlah');
 
-    // Kita kunci Modal Awal Otomatis sama dengan KAS (Sesuai request awal)
-    $modalAwalOtomatis = $kasManual; 
-
-    // Kita bersihkan profit dari unsur Kas Manual (biar ga double)
-    // Asumsi: Profit System mengandung angka Kas Manual yang dianggap pemasukan
-    $profitBersih = $profitSystem - $kasManual;
+    // Hitung Total Pasiva Dasar (Sebelum Penyeimbang)
+    // Perhatikan: Profit tidak dimasukkan disini, karena Profit sudah ada di Kiri (Aset)
+    $totalPasivaDasar = $totalKewajiban + ($modalAwalDB + $modalDisetor - $prive);
 
 
-    // 6. HITUNG PENYEIMBANG (SELISIH)
-    // Rumus: Total Aset - (Hutang + Modal + Profit)
-    // Sisa-nya kita sebut "Perubahan Modal Ditahan"
-    $totalPasivaSementara = $totalKewajiban + ($modalAwalOtomatis + $modalDisetor - $prive + $profitBersih);
-    
-    $selisih = $totalAsetReal - $totalPasivaSementara;
+    // 6. HITUNG SELISIH (PERUBAHAN MODAL)
+    // Rumus: Total Aset - Total Pasiva Dasar
+    $perubahanModal = $totalAsetFinal - $totalPasivaDasar;
 
 
-    // 7. SUSUN ARRAY NERACA
+    // 7. SUSUN ARRAY UNTUK VIEW
     $neraca = [
-        'aset_lancar' => ['Kas & Bank (Manual)' => $kasManual],
-        'aset_tetap'  => $asetTetapList,
-        'kewajiban'   => $kewajibanList,
+        // SISI KIRI (ASET)
+        'aset_kas'    => $kasList,       // List Kas Tunai
+        'aset_bank'   => $bankList,      // List Bank
+        'aset_profit' => $profitReal,    // Nilai Profit
+        'aset_tetap'  => $asetTetapList, // List Aset Tetap
         
+        // SISI KANAN (PASIVA)
+        'kewajiban'   => $kewajibanList,
         'ekuitas'     => [
-            'Modal / Saldo Awal (Otomatis)' => $modalAwalOtomatis, 
-            'Modal Tambahan (Manual)'       => $modalDisetor,
-            'Prive (Tarik Modal)'           => $prive * -1,
-            'Profit Berjalan (Real)'        => $profitBersih 
+            'Modal Awal'        => $modalAwalDB,
+            'Modal Tambahan'    => $modalDisetor,
+            'Prive'             => $prive * -1,
+            // Profit tidak ditampilkan di list ekuitas karena sudah jadi aset di kiri
         ],
 
-        // TOTAL ASET ADALAH MUTLAK DARI INPUTAN
-        'total_aset'      => $totalAsetReal,
-        
-        // TOTAL PASIVA DITAMBAH SELISIH AGAR SAMA DENGAN ASET
-        'total_pasiva'    => $totalPasivaSementara + $selisih
+        'total_aset'   => $totalAsetFinal,
+        'total_pasiva' => $totalPasivaDasar + $perubahanModal // Balance
     ];
 
-    return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate', 'selisih'));
+    return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate', 'perubahanModal'));
 }
     
 }

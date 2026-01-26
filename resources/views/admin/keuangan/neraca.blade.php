@@ -5,7 +5,7 @@
 @section('content')
 <div class="container mx-auto px-4 py-6">
 
-    {{-- HEADER & FILTER --}}
+    {{-- HEADER & FILTER (Sama seperti sebelumnya) --}}
     <div class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
             <h1 class="text-2xl font-extrabold text-gray-800">Neraca Keuangan</h1>
@@ -24,25 +24,51 @@
     {{-- GRID NERACA --}}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        {{-- KOLOM KIRI: ASET --}}
+        {{-- =================================================== --}}
+        {{-- KOLOM KIRI: ASET (KAS + BANK + PROFIT) --}}
+        {{-- =================================================== --}}
         <div class="bg-white rounded-xl shadow-lg border-t-4 border-emerald-500 overflow-hidden">
             <div class="bg-emerald-50 px-6 py-4 border-b border-emerald-100">
-                <h3 class="font-bold text-emerald-800">AKTIVA (ASET)</h3>
+                <h3 class="font-bold text-emerald-800">AKTIVA (ASET / HARTA)</h3>
             </div>
             <table class="w-full text-sm">
                 <tbody class="divide-y divide-gray-100 text-gray-700">
                     
-                    {{-- Aset Lancar --}}
-                    <tr><td colspan="2" class="bg-emerald-50/50 font-bold text-xs text-emerald-700 py-1 px-4 mt-2">ASET LANCAR</td></tr>
-                    @foreach($neraca['aset_lancar'] as $nama => $nilai)
+                    {{-- 1. KAS TUNAI (MANUAL) --}}
+                    <tr><td colspan="2" class="bg-emerald-50/50 font-bold text-xs text-emerald-700 py-1 px-4 mt-2">I. KAS TUNAI (MANUAL)</td></tr>
+                    @forelse($neraca['aset_kas'] as $nama => $nilai)
                     <tr>
                         <td class="py-2 pl-6">{{ $nama }}</td>
                         <td class="py-2 pr-6 text-right font-bold">Rp{{ number_format($nilai, 0, ',', '.') }}</td>
                     </tr>
-                    @endforeach
+                    @empty
+                    <tr><td colspan="2" class="py-2 px-6 text-center italic text-gray-400">Belum ada kas tunai.</td></tr>
+                    @endforelse
 
-                    {{-- Aset Tetap --}}
-                    <tr><td colspan="2" class="bg-gray-100 font-bold text-xs text-gray-500 py-1 px-4 mt-2">ASET TETAP</td></tr>
+                    {{-- 2. SALDO BANK (MANUAL) --}}
+                    <tr><td colspan="2" class="bg-blue-50/50 font-bold text-xs text-blue-700 py-1 px-4 mt-2">II. SALDO BANK (MANUAL)</td></tr>
+                    @forelse($neraca['aset_bank'] as $nama => $nilai)
+                    <tr>
+                        <td class="py-2 pl-6">{{ $nama }}</td>
+                        <td class="py-2 pr-6 text-right font-bold">Rp{{ number_format($nilai, 0, ',', '.') }}</td>
+                    </tr>
+                    @empty
+                    <tr><td colspan="2" class="py-2 px-6 text-center italic text-gray-400">Belum ada saldo bank.</td></tr>
+                    @endforelse
+
+                    {{-- 3. PROFIT KAS (AUTO) - INI PERMINTAAN ANDA --}}
+                    <tr><td colspan="2" class="bg-green-50/50 font-bold text-xs text-green-700 py-1 px-4 mt-2">III. PROFIT / LABA (AUTO)</td></tr>
+                    <tr class="bg-green-50/30">
+                        <td class="py-3 pl-6 font-medium text-green-800">
+                            <i class="fas fa-chart-line me-2"></i> Profit Bersih (Database)
+                        </td>
+                        <td class="py-3 pr-6 text-right font-bold text-green-700">
+                            Rp{{ number_format($neraca['aset_profit'], 0, ',', '.') }}
+                        </td>
+                    </tr>
+
+                    {{-- 4. ASET TETAP --}}
+                    <tr><td colspan="2" class="bg-gray-100 font-bold text-xs text-gray-500 py-1 px-4 mt-2">IV. ASET TETAP</td></tr>
                     @foreach($neraca['aset_tetap'] as $nama => $nilai)
                     <tr>
                         <td class="py-2 pl-6">{{ $nama }}</td>
@@ -52,19 +78,20 @@
 
                 </tbody>
                 
-                {{-- FOOTER TABEL KIRI --}}
-                    <tfoot class="bg-emerald-50 border-t-2 border-emerald-200">
-                        <tr>
-                            <td class="py-4 pl-6 font-extrabold text-emerald-900 text-base">TOTAL ASET</td>
-                            <td class="py-4 pr-6 text-right font-extrabold text-emerald-700 text-lg">
-                                Rp{{ number_format($neraca['total_aset'], 0, ',', '.') }}
-                            </td>
-                        </tr>
-                    </tfoot>
+                <tfoot class="bg-emerald-50 border-t-2 border-emerald-200">
+                    <tr>
+                        <td class="py-4 pl-6 font-extrabold text-emerald-900 text-base">TOTAL ASET</td>
+                        <td class="py-4 pr-6 text-right font-extrabold text-emerald-700 text-lg">
+                            Rp{{ number_format($neraca['total_aset'], 0, ',', '.') }}
+                        </td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
 
+        {{-- =================================================== --}}
         {{-- KOLOM KANAN: PASIVA --}}
+        {{-- =================================================== --}}
         <div class="bg-white rounded-xl shadow-lg border-t-4 border-blue-500 overflow-hidden">
             <div class="bg-blue-50 px-6 py-4 border-b border-blue-100">
                 <h3 class="font-bold text-blue-800">PASIVA (KEWAJIBAN & MODAL)</h3>
@@ -94,10 +121,9 @@
                     </tr>
                     @endforeach
 
-                </tbody>
-                {{-- PENYEIMBANG (PERUBAHAN MODAL) --}}
-                    {{-- Ditaruh di kanan agar Total Pasiva mengejar Total Aset --}}
-                    @if($selisih != 0)
+                    {{-- PENYEIMBANG (PERUBAHAN MODAL) --}}
+                    {{-- Ini yang menyeimbangkan Aset Kiri dan Pasiva Kanan --}}
+                    @if($perubahanModal != 0)
                         <tr>
                             <td colspan="2" class="bg-amber-50 font-bold text-xs text-amber-700 py-1 px-4 mt-2 border-t border-amber-100">
                                 PENYESUAIAN (BALANCE)
@@ -105,21 +131,19 @@
                         </tr>
                         <tr class="bg-amber-50/30">
                             <td class="py-3 pl-6 font-bold text-amber-700">
-                                <i class="fas fa-balance-scale-right me-2"></i> Perubahan Modal / Laba Ditahan
+                                <i class="fas fa-balance-scale-right me-2"></i> Perubahan Modal (Penyeimbang)
                             </td>
                             <td class="py-3 pr-6 text-right font-bold text-amber-700">
-                                Rp{{ number_format($selisih, 0, ',', '.') }}
+                                Rp{{ number_format($perubahanModal, 0, ',', '.') }}
                             </td>
                         </tr>
                     @endif
 
-                </tbody> {{-- Tutup Tbody Pasiva --}}
-                
+                </tbody>
                 <tfoot class="bg-blue-50 border-t-2 border-blue-200">
                     <tr>
                         <td class="py-4 pl-6 font-extrabold text-blue-900">TOTAL PASIVA</td>
                         <td class="py-4 pr-6 text-right font-extrabold text-blue-700 text-lg">
-                            {{-- Total Pasiva otomatis sudah ditambah selisih di Controller --}}
                             Rp{{ number_format($neraca['total_pasiva'], 0, ',', '.') }}
                         </td>
                     </tr>
