@@ -392,67 +392,34 @@ class KeuanganController extends Controller
 
     public function neraca(Request $request)
 {
-    $endDate = $request->date_end ?? date('Y-m-d');
-    $startDate = $request->date_start ?? date('Y-01-01');
-
-    // Ambil Data Range Tanggal
-    $dataKeuangan = \App\Models\Keuangan::whereBetween('tanggal', [$startDate, $endDate])->get();
-
-    // =========================================================================
-    // 1. HITUNG PROFIT REAL (MURNI DARI PENDAPATAN - BIAYA OPERASIONAL)
-    // =========================================================================
+    // 1. SET DEFAULT TANGGAL (Agar sama dengan filter Dashboard)
+    // Jika user tidak pilih tanggal, defaultkan ke bulan ini/tahun ini sesuai logic index Anda
+    if (!$request->has('date_start')) {
+        $request->merge(['date_start' => date('Y-01-01')]);
+    }
+    if (!$request->has('date_end')) {
+        $request->merge(['date_end' => date('Y-m-d')]);
+    }
     
-    // A. FILTER PEMASUKAN (OMZET)
-    // Abaikan pemasukan yang sifatnya Hutang/Modal/Tarik Tunai
-    $ignorePemasukan = ['NERACA', 'Hutang', 'Modal', 'Tarik Tunai', 'Pencairan'];
+    $startDate = $request->date_start;
+    $endDate   = $request->date_end;
+
+    // =========================================================================
+    // 2. AMBIL PROFIT DARI LOGIC INDEX (COPY PASTE LOGIC DASHBOARD)
+    // =========================================================================
+    // Kita panggil fungsi sakti 'getDataLengkap' yang dipakai halaman Index.
+    // Apapun yang tampil di Dashboard, pasti tampil disini.
     
-    $omzetReal = $dataKeuangan->where('jenis', 'Pemasukan')
-        ->filter(function ($item) use ($ignorePemasukan) {
-            // Jika kategori mengandung kata terlarang, jangan dihitung omzet
-            foreach ($ignorePemasukan as $word) {
-                if (stripos($item->kategori, $word) !== false) return false;
-            }
-            return true;
-        })
-        ->sum('jumlah');
-
-    // B. FILTER PENGELUARAN (BIAYA)
-    // INI KUNCINYA! Abaikan pengeluaran yang sifatnya Setor Modal/Aset/Prive
-    // Kita tambahkan 'Ekspedisi' di sini jika jenisnya pengeluaran (karena itu setor modal)
-    $ignorePengeluaran = [
-        'NERACA', 
-        'Aset', 
-        'Investasi', 
-        'Hutang', 
-        'Modal', 
-        'Prive', 
-        'Beban Ekspedisi', // <--- INI BIANG KEROKNYA (Rp 61.370)
-        'Setor Modal',     // <--- Jaga-jaga jika ada keterangan ini
-        'Transfer ke Pusat'
-    ];
-
-    $bebanReal = $dataKeuangan->where('jenis', 'Pengeluaran')
-        ->filter(function ($item) use ($ignorePengeluaran) {
-            // Cek Kategori
-            foreach ($ignorePengeluaran as $word) {
-                if (stripos($item->kategori, $word) !== false) return false;
-            }
-            // Cek Keterangan (Untuk memastikan 'Setor Modal' tidak dianggap biaya)
-            if (stripos($item->keterangan, 'Setor Modal') !== false) return false;
-            
-            return true;
-        })
-        ->sum('jumlah');
-
-    // HASIL PROFIT PASTI Rp 61.089 (Sesuai Dashboard)
-    $profitOtomatis = $omzetReal - $bebanReal;
+    $dataDashboard = $this->getDataLengkap($request);
+    
+    // AMBIL ANGKA PROFIT FINAL DARI DATA TERSEBUT
+    $profitSesuaiDashboard = $dataDashboard->sum('profit'); 
 
 
     // =========================================================================
-    // 2. HITUNG KAS & NERACA (INPUTAN MANUAL)
+    // 3. AMBIL DATA NERACA MANUAL (KAS, HUTANG, ASET)
     // =========================================================================
-    
-    // Ambil data khusus inputan Neraca Manual (Kode Akun = NERACA)
+    // Ini data Inputan Manual Anda (Code: NERACA)
     $dataNeracaManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
                         ->whereBetween('tanggal', [$startDate, $endDate])
                         ->get();
@@ -469,38 +436,30 @@ class KeuanganController extends Controller
                                   ->map(fn($row) => $row->sum('jumlah'));
 
     $modalDisetor = $dataNeracaManual->where('kategori', 'Modal Disetor')->sum('jumlah');
-    $priveManual  = $dataNeracaManual->where('kategori', 'Prive')->sum('jumlah');
+    $prive        = $dataNeracaManual->where('kategori', 'Prive')->sum('jumlah');
+
 
     // =========================================================================
-    // 3. LOGIKA "PRIVE OTOMATIS"
-    // =========================================================================
-    // Uang Rp 61.370 yang tadi kita buang dari Biaya, kita pindahkan ke sini
-    // Supaya neraca tetap balance (Uang Keluar = Mengurangi Modal)
-    
-    $priveOtomatis = $dataKeuangan->where('jenis', 'Pengeluaran')
-        ->filter(function ($item) {
-            return stripos($item->kategori, 'Beban Ekspedisi') !== false 
-                || stripos($item->keterangan, 'Setor Modal') !== false;
-        })
-        ->sum('jumlah');
-
-    $totalPrive = $priveManual + $priveOtomatis;
-
-    // =========================================================================
-    // 4. SUSUN ARRAY FINAL
+    // 4. SUSUN NERACA FINAL
     // =========================================================================
     $neraca = [
         'aset_lancar' => ['Kas & Bank (Manual)' => $kasManual],
         'aset_tetap'  => $asetTetap,
         'kewajiban'   => $kewajiban,
+        
         'ekuitas'     => [
             'Modal Disetor' => $modalDisetor,
-            'Prive / Setor ke Pusat' => $totalPrive * -1, // Minus
-            'Profit Berjalan (AUTO)' => $profitOtomatis   // Murni 61.089
+            'Prive'         => $prive * -1,
+            
+            // DISINI KITA TEMPEL ANGKA DARI DASHBOARD
+            'Profit Berjalan (Sesuai Dashboard)' => $profitSesuaiDashboard 
         ],
+
         'total_aset'      => $kasManual + $asetTetap->sum(),
         'total_kewajiban' => $kewajiban->sum(),
-        'total_pasiva'    => $kewajiban->sum() + ($modalDisetor - $totalPrive + $profitOtomatis)
+        
+        // Total Pasiva = Hutang + Modal - Prive + Profit Dashboard
+        'total_pasiva'    => $kewajiban->sum() + ($modalDisetor - $prive + $profitSesuaiDashboard)
     ];
 
     $selisih = $neraca['total_aset'] - $neraca['total_pasiva'];
