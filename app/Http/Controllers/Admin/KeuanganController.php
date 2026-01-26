@@ -357,7 +357,7 @@ class KeuanganController extends Controller
     \App\Models\Keuangan::where('id', $id)->delete();
 
     // Kalau Anda pakai fitur SoftDeletes (tong sampah) dan mau paksa hapus permanen:
-    \App\Models\Keuangan::where('id', $id)->forceDelete();
+    //\App\Models\Keuangan::where('id', $id)->forceDelete();
 
     // Redirect kembali supaya Tampilan UI bersih dari data itu
     return redirect()->back()->with('success', 'Data berhasil dimusnahkan.');
