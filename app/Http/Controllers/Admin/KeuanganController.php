@@ -395,71 +395,100 @@ class KeuanganController extends Controller
     $endDate = $request->date_end ?? date('Y-m-d');
     $startDate = $request->date_start ?? date('Y-01-01');
 
-    // 1. HITUNG PROFIT NETTO (OTOMATIS / TIDAK BISA DIRUBAH)
-    // Ambil semua transaksi 'Pemasukan' dan 'Pengeluaran' yang BUKAN transaksi Neraca
-    // Ini murni hasil keringat (Omzet - HPP - Operasional)
-    
-    $transaksiOperasional = \App\Models\Keuangan::whereBetween('tanggal', [$startDate, $endDate])
-                            ->where('kode_akun', '!=', 'NERACA') // Abaikan inputan manual neraca
-                            ->get();
+    // 1. AMBIL SEMUA DATA
+    $dataKeuangan = \App\Models\Keuangan::whereBetween('tanggal', [$startDate, $endDate])->get();
 
-    $omzetReal   = $transaksiOperasional->where('jenis', 'Pemasukan')->sum('jumlah');
-    $bebanReal   = $transaksiOperasional->where('jenis', 'Pengeluaran')->sum('jumlah');
+    // =========================================================================
+    // PERBAIKAN LOGIKA PROFIT (AGAR SAMA DENGAN DASHBOARD 61.089)
+    // =========================================================================
     
-    $profitOtomatis = $omzetReal - $bebanReal; // INI ANGKA YANG DIAMBIL DARI PENDAPATAN REAL
+    // Daftar Kategori yang BUKAN Biaya Operasional (JANGAN KURANGI PROFIT)
+    // Masukkan 'Beban Ekspedisi' disini karena isinya 'Setor Modal'
+    $excludeLabaRugi = [
+        'NERACA', 
+        'Aset Tetap', 
+        'Investasi', 
+        'Hutang Bank', 
+        'Hutang Usaha', 
+        'Modal Disetor', 
+        'Prive',
+        'Beban Ekspedisi', // <--- INI KUNCINYA! Agar Setor Modal tidak dianggap rugi
+        'Setor Modal'
+    ];
 
-    // 2. AMBIL DATA NERACA MANUAL (KAS, HUTANG, ASET)
-    // Ini data yang Anda input sendiri lewat Modal (Fleksibel)
+    // Hitung Pemasukan (Omzet)
+    $omzetReal = $dataKeuangan->where('jenis', 'Pemasukan')
+                              ->whereNotIn('kategori', $excludeLabaRugi)
+                              ->sum('jumlah');
+
+    // Hitung Pengeluaran (HPP/Biaya)
+    $bebanReal = $dataKeuangan->where('jenis', 'Pengeluaran')
+                              ->whereNotIn('kategori', $excludeLabaRugi)
+                              ->sum('jumlah');
+    
+    // HASIL INI HARUSNYA Rp 61.089
+    $profitOtomatis = $omzetReal - $bebanReal; 
+
+
+    // =========================================================================
+    // MENGHITUNG KAS & ASET (INPUTAN MANUAL ANDA)
+    // =========================================================================
     $dataNeracaManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
                         ->whereBetween('tanggal', [$startDate, $endDate])
                         ->get();
 
-    // Grouping Data Manual
-    // KAS (Manual)
+    // KAS MANUAL
     $kasManual = $dataNeracaManual->whereIn('kategori', ['Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])
                                   ->sum('jumlah');
 
-    // ASET TETAP (Manual)
+    // ASET TETAP
     $asetTetap = $dataNeracaManual->whereIn('kategori', ['Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan'])
                                   ->groupBy('keterangan')
                                   ->map(fn($row) => $row->sum('jumlah'));
 
-    // HUTANG (Manual)
+    // HUTANG
     $kewajiban = $dataNeracaManual->whereIn('kategori', ['Hutang Bank', 'Hutang Usaha', 'Hutang Dagang'])
                                   ->groupBy('keterangan')
                                   ->map(fn($row) => $row->sum('jumlah'));
 
-    // MODAL DISETOR (Manual)
+    // =========================================================================
+    // EKUITAS (MODAL + SETORAN/PRIVE DARI SISTEM)
+    // =========================================================================
+    
+    // Ambil Modal Manual
     $modalDisetor = $dataNeracaManual->where('kategori', 'Modal Disetor')->sum('jumlah');
-    $prive        = $dataNeracaManual->where('kategori', 'Prive')->sum('jumlah');
+    $priveManual  = $dataNeracaManual->where('kategori', 'Prive')->sum('jumlah');
 
-    // 3. SUSUN ARRAY NERACA
+    // Cek Transaksi "Setor Modal" dari sistem Ekspedisi (Rp 61.370 tadi)
+    // Kita masukkan ini sebagai pengurang modal (Prive/Setoran ke Pusat) agar Balance
+    $setorModalSistem = $dataKeuangan->where('kategori', 'Beban Ekspedisi')
+                                     ->where('jenis', 'Pengeluaran')
+                                     ->sum('jumlah');
+
+    // Total Prive (Manual + Sistem)
+    $totalPrive = $priveManual + $setorModalSistem;
+
     $neraca = [
-        // Kas sekarang murni dari inputan manual Anda
         'aset_lancar' => [
-            'Total Kas & Bank (Manual)' => $kasManual 
+            'Kas & Bank (Manual)' => $kasManual 
         ],
         'aset_tetap'  => $asetTetap,
-        
         'kewajiban'   => $kewajiban,
         
         'ekuitas'     => [
             'Modal Disetor (Manual)' => $modalDisetor,
-            'Prive Owner (Manual)'   => $prive * -1,
-            'Profit Berjalan (AUTO)' => $profitOtomatis // INI YANG DIAMBIL DARI REAL
+            'Setor ke Pusat / Prive' => $totalPrive * -1, // Minus karena uang keluar
+            'Profit Berjalan (AUTO)' => $profitOtomatis   // Ini HARUS 61.089
         ],
 
-        // Hitung Total
         'total_aset'      => $kasManual + $asetTetap->sum(),
         'total_kewajiban' => $kewajiban->sum(),
-        // Total Pasiva = Hutang + Modal + Profit Real
-        'total_pasiva'    => $kewajiban->sum() + ($modalDisetor - $prive + $profitOtomatis)
+        'total_pasiva'    => $kewajiban->sum() + ($modalDisetor - $totalPrive + $profitOtomatis)
     ];
 
-    // Cek Balance (Hanya info, tidak wajib balance buat UMKM)
     $selisih = $neraca['total_aset'] - $neraca['total_pasiva'];
 
-    return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate', 'selisih', 'profitOtomatis'));
+    return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate', 'selisih'));
 }
 
 }
