@@ -399,26 +399,31 @@ class KeuanganController extends Controller
     $startDate = $request->date_start;
     $endDate   = $request->date_end;
 
-    // 2. AMBIL PROFIT REAL (HANYA DARI TRANSAKSI OPERASIONAL)
+    // 2. AMBIL PROFIT REAL (MURNI TRANSAKSI)
     $allData = $this->getDataLengkap($request);
 
-    // FIX LOGIKA:
-    // Kita filter dulu. Buang semua data yang kode_akun-nya 'NERACA'.
-    // Supaya inputan Kas Manual & Saldo Bank TIDAK dianggap sebagai Profit/Omzet.
-    $dataOperasional = $allData->filter(function ($item) {
-        // Pastikan kolom kode_akun ada, jika tidak anggap kosong
-        $kode = isset($item->kode_akun) ? $item->kode_akun : ''; 
-        return $kode !== 'NERACA';
+    // DAFTAR KATEGORI MANUAL YANG HARUS DIBUANG DARI PROFIT
+    // Ini adalah kategori-kategori Neraca yang bikin profit jadi kacau
+    $blackListKategori = [
+        'Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar', // Aset Lancar
+        'Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan', 'Inventaris', // Aset Tetap
+        'Hutang Bank', 'Hutang Usaha', // Kewajiban
+        'Modal Disetor', 'Prive', 'Modal / Saldo Awal', 'NERACA' // Modal
+    ];
+
+    // FILTER: Hanya ambil data yang KATEGORI-nya TIDAK ADA di blacklist
+    $dataOperasional = $allData->filter(function ($item) use ($blackListKategori) {
+        return !in_array($item->kategori, $blackListKategori);
     });
 
-    // Baru kita filter tanggal & sum profitnya
+    // Baru kita sum profitnya
     $profitReal = $dataOperasional->whereBetween('tanggal', [$startDate, $endDate])->sum('profit');
 
     // 3. AMBIL DATA INPUTAN MANUAL
     $dataNeracaManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
                         ->whereBetween('tanggal', [$startDate, $endDate])
                         ->get();
-                        
+
 
     // 4. PILAH DATA ASET (KAS vs BANK)
     // Grup 1: Kas Tunai
