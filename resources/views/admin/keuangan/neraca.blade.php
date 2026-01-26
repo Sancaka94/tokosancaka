@@ -27,12 +27,16 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-0 border border-gray-300 bg-white shadow-lg">
 
         {{-- ====================== KOLOM KIRI (AKTIVA) ====================== --}}
-        <div class="border-r border-gray-300">
+        {{-- Tambahkan 'flex flex-col' agar footer bisa didorong ke bawah --}}
+        <div class="border-r border-gray-300 flex flex-col">
+            
+            {{-- HEADER --}}
             <div class="bg-gray-100 p-3 border-b border-gray-300 text-center font-bold text-lg text-gray-800">
                 AKTIVA
             </div>
             
-            <div class="p-4">
+            {{-- CONTENT WRAPPER (Tambahkan 'flex-1' agar mengisi ruang kosong) --}}
+            <div class="p-4 flex-1">
                 {{-- AKTIVA LANCAR --}}
                 <div class="mb-6">
                     <h3 class="font-bold text-gray-700 underline mb-2">Aktiva Lancar</h3>
@@ -45,7 +49,7 @@
                             </td>
                         </tr>
                         @endforeach
-                        {{-- Subtotal Aktiva Lancar --}}
+                        {{-- Subtotal --}}
                         <tr class="bg-gray-50 font-bold">
                             <td class="py-2 pl-2 text-gray-800 italic">Total Aktiva Lancar</td>
                             <td class="py-2 pr-2 text-right text-gray-900 border-t border-gray-300">
@@ -67,7 +71,7 @@
                             </td>
                         </tr>
                         @endforeach
-                        {{-- Subtotal Aktiva Tetap --}}
+                        {{-- Subtotal --}}
                         <tr class="bg-gray-50 font-bold">
                             <td class="py-2 pl-2 text-gray-800 italic">Total Aktiva Tetap</td>
                             <td class="py-2 pr-2 text-right text-gray-900 border-t border-gray-300">
@@ -78,7 +82,7 @@
                 </div>
             </div>
 
-            {{-- TOTAL AKTIVA (FOOTER KIRI) --}}
+            {{-- FOOTER TOTAL (Akan selalu di bawah sejajar) --}}
             <div class="bg-emerald-50 p-4 border-t border-emerald-200 flex justify-between items-center mt-auto">
                 <span class="font-bold text-lg text-emerald-900">TOTAL AKTIVA</span>
                 <span class="font-bold text-xl text-emerald-700">Rp{{ number_format($neraca['total_aset'], 0, ',', '.') }}</span>
@@ -87,13 +91,17 @@
 
 
         {{-- ====================== KOLOM KANAN (PASIVA) ====================== --}}
-        <div>
+        {{-- Tambahkan 'flex flex-col' --}}
+        <div class="flex flex-col">
+            
+            {{-- HEADER --}}
             <div class="bg-gray-100 p-3 border-b border-gray-300 text-center font-bold text-lg text-gray-800">
                 PASIVA
             </div>
 
-            <div class="p-4">
-                {{-- KEWAJIBAN / HUTANG --}}
+            {{-- CONTENT WRAPPER (Tambahkan 'flex-1') --}}
+            <div class="p-4 flex-1">
+                {{-- KEWAJIBAN --}}
                 <div class="mb-6">
                     <h3 class="font-bold text-gray-700 underline mb-2">Kewajiban (Utang)</h3>
                     <table class="w-full text-sm">
@@ -105,7 +113,7 @@
                             </td>
                         </tr>
                         @endforeach
-                        {{-- Subtotal Kewajiban --}}
+                        {{-- Subtotal --}}
                         <tr class="bg-gray-50 font-bold">
                             <td class="py-2 pl-2 text-gray-800 italic">Total Kewajiban</td>
                             <td class="py-2 pr-2 text-right text-gray-900 border-t border-gray-300">
@@ -115,7 +123,7 @@
                     </table>
                 </div>
 
-                {{-- EKUITAS / MODAL --}}
+                {{-- EKUITAS --}}
                 <div class="mb-4">
                     <h3 class="font-bold text-gray-700 underline mb-2">Ekuitas (Modal)</h3>
                     <table class="w-full text-sm">
@@ -132,7 +140,7 @@
                             </td>
                         </tr>
                         @endforeach
-                        {{-- Subtotal Ekuitas --}}
+                        {{-- Subtotal --}}
                         <tr class="bg-gray-50 font-bold">
                             <td class="py-2 pl-2 text-gray-800 italic">Total Ekuitas</td>
                             <td class="py-2 pr-2 text-right text-gray-900 border-t border-gray-300">
@@ -143,7 +151,7 @@
                 </div>
             </div>
 
-            {{-- TOTAL PASIVA (FOOTER KANAN) --}}
+            {{-- FOOTER TOTAL (Akan selalu di bawah sejajar) --}}
             <div class="bg-blue-50 p-4 border-t border-blue-200 flex justify-between items-center mt-auto">
                 <span class="font-bold text-lg text-blue-900">TOTAL PASIVA</span>
                 <span class="font-bold text-xl text-blue-700">Rp{{ number_format($neraca['total_pasiva'], 0, ',', '.') }}</span>
