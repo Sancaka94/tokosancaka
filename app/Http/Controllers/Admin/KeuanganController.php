@@ -469,7 +469,7 @@ class KeuanganController extends Controller
         'total_pasiva'    => $totalKewajiban + ($modalAwalOtomatis + $modalDisetor - $prive + $profitRealBersih)
     ];
 
-    $selisih = $neraca['total_aset'] - $neraca['total_pasiva'];
+    $selisih = $neraca['total_pasiva'] - $neraca['total_aset'];
 
     return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate', 'selisih'));
 }
