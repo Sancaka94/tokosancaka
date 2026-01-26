@@ -268,35 +268,48 @@
                             <input type="date" name="tanggal" id="edit_tanggal" value="{{ date('Y-m-d') }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 text-sm" required>
                         </div>
 
-                        {{-- KATEGORI (FLEXIBEL SESUAI PERMINTAAN) --}}
+                        {{-- KATEGORI (DISESUAIKAN DENGAN FORMAT LAPORAN BARU) --}}
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Posisi Neraca</label>
                             <select id="edit_kategori" name="kategori" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 text-sm bg-gray-50 font-medium" onchange="adjustNeracaType(this)" required>
-                                <option value="" disabled selected>-- Pilih Jenis Akun --</option>
+                                <option value="" disabled selected>-- Pilih Akun Neraca --</option>
                                 
-                                <optgroup label="KAS & BANK (Aktiva Lancar)">
-                                    <option value="Kas Tunai" data-jenis="Pemasukan" data-desc="Uang Cash Fisik">Kas Tunai (Cash in Hand)</option>
-                                    <option value="Bank BCA" data-jenis="Pemasukan" data-desc="Saldo Rekening BCA">Bank BCA</option>
-                                    <option value="Bank BRI" data-jenis="Pemasukan" data-desc="Saldo Rekening BRI">Bank BRI</option>
-                                    <option value="E-Wallet" data-jenis="Pemasukan" data-desc="Dana/Ovo/Gopay">E-Wallet</option>
+                                {{-- 1. AKTIVA LANCAR --}}
+                                <optgroup label="I. AKTIVA LANCAR">
+                                    <option value="Kas Tunai" data-jenis="Pemasukan" data-desc="Uang tunai di tangan / kasir">Kas Tunai</option>
+                                    <option value="Kas Besar" data-jenis="Pemasukan" data-desc="Brankas utama / Kas Besar">Kas Besar</option>
+                                    <option value="Bank BCA" data-jenis="Pemasukan" data-desc="Rekening BCA Perusahaan">Bank BCA</option>
+                                    <option value="Bank BRI" data-jenis="Pemasukan" data-desc="Rekening BRI Perusahaan">Bank BRI</option>
+                                    <option value="E-Wallet" data-jenis="Pemasukan" data-desc="GoPay, OVO, Dana, ShopeePay">E-Wallet</option>
+                                    <option value="Piutang Usaha" data-jenis="Pemasukan" data-desc="Tagihan ke pelanggan (Bon)">Piutang Usaha</option>
+                                    <option value="Persediaan" data-jenis="Pemasukan" data-desc="Nilai stok barang dagang">Persediaan Barang</option>
+                                    <option value="Perlengkapan" data-jenis="Pemasukan" data-desc="Perlengkapan habis pakai (ATK/Plastik)">Perlengkapan</option>
                                 </optgroup>
 
-                                <optgroup label="ASET TETAP (Aktiva Tetap)">
-                                    <option value="Aset Tetap" data-jenis="Pengeluaran" data-desc="Tanah, Bangunan, Mesin">Aset Tetap Umum</option>
-                                    <option value="Kendaraan" data-jenis="Pengeluaran" data-desc="Mobil/Motor Operasional">Kendaraan</option>
-                                    <option value="Investasi" data-jenis="Pengeluaran" data-desc="Investasi Jangka Panjang">Investasi</option>
+                                {{-- 2. AKTIVA TETAP --}}
+                                <optgroup label="II. AKTIVA TETAP">
+                                    <option value="Tanah" data-jenis="Pengeluaran" data-desc="Tanah hak milik perusahaan">Tanah</option>
+                                    <option value="Bangunan" data-jenis="Pengeluaran" data-desc="Gedung / Ruko permanen">Bangunan</option>
+                                    <option value="Kendaraan" data-jenis="Pengeluaran" data-desc="Mobil Box, Motor Operasional">Kendaraan</option>
+                                    <option value="Mesin" data-jenis="Pengeluaran" data-desc="Mesin produksi / cetak">Mesin</option>
+                                    <option value="Peralatan" data-jenis="Pengeluaran" data-desc="Laptop, AC, Meja, Kursi">Peralatan Kantor</option>
+                                    <option value="Inventaris" data-jenis="Pengeluaran" data-desc="Inventaris lainnya">Inventaris Lainnya</option>
                                 </optgroup>
 
-                                <optgroup label="KEWAJIBAN (Hutang)">
-                                    <option value="Hutang Usaha" data-jenis="Pemasukan" data-desc="Hutang Dagang ke Supplier">Hutang Usaha (Supplier)</option>
-                                    <option value="Hutang Bank" data-jenis="Pemasukan" data-desc="Pinjaman Bank">Hutang Bank</option>
+                                {{-- 3. KEWAJIBAN (HUTANG) --}}
+                                <optgroup label="III. KEWAJIBAN (HUTANG)">
+                                    <option value="Hutang Dagang" data-jenis="Pemasukan" data-desc="Hutang ke Supplier / Vendor">Hutang Dagang</option>
+                                    <option value="Hutang Bank" data-jenis="Pemasukan" data-desc="Pinjaman Bank (KUR/Modal Kerja)">Hutang Bank</option>
+                                    <option value="Hutang Lainnya" data-jenis="Pemasukan" data-desc="Hutang ke pihak lain">Hutang Lain-lain</option>
                                 </optgroup>
 
-                                <optgroup label="MODAL (Ekuitas)">
-                                    <option value="Modal Disetor" data-jenis="Pemasukan" data-desc="Setoran Modal Awal Owner">Modal Disetor</option>
-                                    <option value="Prive" data-jenis="Pengeluaran" data-desc="Pengambilan Pribadi Owner">Prive (Tarik Modal)</option>
+                                {{-- 4. MODAL (EKUITAS) --}}
+                                <optgroup label="IV. MODAL (EKUITAS)">
+                                    <option value="Modal Disetor" data-jenis="Pemasukan" data-desc="Setoran tambahan dari pemilik">Modal Disetor (Tambah Modal)</option>
+                                    <option value="Prive" data-jenis="Pengeluaran" data-desc="Pengambilan uang untuk pribadi">Prive (Ambil Modal)</option>
                                 </optgroup>
                             </select>
+                            
                             {{-- Hint Kecil --}}
                             <p id="neraca_hint" class="text-[10px] text-emerald-600 mt-1 italic font-bold hidden"></p>
                         </div>
