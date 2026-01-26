@@ -418,6 +418,7 @@ class KeuanganController extends Controller
     $dataNeracaManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
                         ->whereBetween('tanggal', [$startDate, $endDate])
                         ->get();
+                        
 
     // 4. PILAH DATA ASET (KAS vs BANK)
     // Grup 1: Kas Tunai
