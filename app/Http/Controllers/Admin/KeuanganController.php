@@ -438,7 +438,7 @@ class KeuanganController extends Controller
     // 5. HITUNG MODAL AWAL DINAMIS
     // Rumus: Modal = Kas Sekarang - (Modal Tambahan - Prive + Profit)
     // Logika: Sisa uang di kas yang bukan berasal dari suntikan modal/profit adalah modal awal
-    $modalAwalDinamis = $kasManual; //- ($modalDisetor - $prive + $profitReal);
+    $modalAwalDinamis = $kasManual + $modalDisetor; //- ($modalDisetor - $prive + $profitReal);
 
     // 6. SUSUN NERACA FINAL
     $neraca = [
