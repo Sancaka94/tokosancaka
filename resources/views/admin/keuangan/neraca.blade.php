@@ -143,20 +143,27 @@
                 </div>
                 <div class="p-6">
                     <table class="w-full text-sm">
-                        <tbody class="divide-y divide-gray-50">
+                        {{-- BAGIAN EKUITAS (UPDATE) --}}
+                        <tbody>
+                            {{-- Header Kecil --}}
                             <tr>
-                                <td class="py-3 font-medium text-gray-600">Modal Disetor</td>
-                                <td class="py-3 text-right font-bold text-gray-800">Rp0</td> {{-- Bisa diganti dinamis jika ada fitur input modal awal --}}
+                                <td colspan="2" class="bg-gray-50 font-bold text-xs text-gray-500 py-1 px-2 mt-2">EKUITAS (MODAL SENDIRI)</td>
                             </tr>
-                            <tr>
-                                <td class="py-3 font-medium text-gray-600">
-                                    Laba Bersih (Tahun Berjalan)
-                                    <div class="text-[10px] text-gray-400">(Aset - Kewajiban)</div>
+
+                            {{-- Looping Rincian Ekuitas --}}
+                            @foreach($neraca['ekuitas'] as $nama => $nilai)
+                            <tr class="hover:bg-gray-50 transition">
+                                {{-- Nama Akun (Misal: Modal Disetor, Prive, Laba Ditahan) --}}
+                                <td class="py-2 pl-4 text-gray-700 font-medium">
+                                    {{ $nama }}
                                 </td>
-                                <td class="py-3 text-right font-bold {{ $neraca['ekuitas'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    Rp{{ number_format($neraca['ekuitas'], 0, ',', '.') }}
+
+                                {{-- Nilai Rupiah (Gunakan $nilai, JANGAN $neraca['ekuitas']) --}}
+                                <td class="py-2 text-right font-bold {{ $nilai < 0 ? 'text-red-600' : 'text-blue-600' }}">
+                                    Rp{{ number_format($nilai, 0, ',', '.') }}
                                 </td>
                             </tr>
+                            @endforeach
                         </tbody>
                         <tfoot class="border-t-2 border-gray-200">
                             <tr>
