@@ -133,24 +133,28 @@
                         <tr><td colspan="2" class="py-3 px-6 text-center italic text-gray-400">Tidak ada hutang.</td></tr>
                         @endforelse
 
-                        {{-- B. EKUITAS (MODAL + PROFIT) --}}
-                        <tr><td colspan="2" class="bg-blue-50/50 font-bold text-xs text-blue-700 py-1 px-4">EKUITAS (MODAL)</td></tr>
-                        @foreach($neraca['ekuitas'] as $nama => $nilai)
-                        <tr class="hover:bg-gray-50 transition {{ str_contains($nama, 'AUTO') ? 'bg-yellow-50' : '' }}">
-                            <td class="py-3 pl-6 font-medium text-gray-700 flex items-center">
-                                @if(str_contains($nama, 'AUTO'))
-                                    <i class="fas fa-chart-line text-yellow-600 w-5"></i> 
-                                    <span>{{ $nama }}</span>
-                                    <span class="ml-2 bg-yellow-400 text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wide">REAL</span>
-                                @else
-                                    <i class="fas fa-coins text-blue-300 w-5"></i> {{ $nama }}
-                                @endif
-                            </td>
-                            <td class="py-3 pr-6 text-right font-bold {{ $nilai < 0 ? 'text-red-600' : 'text-blue-600' }}">
-                                Rp{{ number_format($nilai, 0, ',', '.') }}
-                            </td>
-                        </tr>
-                        @endforeach
+                        {{-- B. EKUITAS (MODAL) --}}
+                            <tr><td colspan="2" class="bg-blue-50/50 font-bold text-xs text-blue-700 py-1 px-4 border-l-4 border-blue-500 mt-2">EKUITAS (MODAL)</td></tr>
+                            
+                            @foreach($neraca['ekuitas'] as $nama => $nilai)
+                            <tr class="hover:bg-gray-50 transition">
+                                <td class="py-3 pl-6 font-medium text-gray-700 flex items-center">
+                                    {{-- LOGIKA ICON & WARNA --}}
+                                    @if(str_contains($nama, '(Otomatis)'))
+                                        <i class="fas fa-magic text-purple-500 w-5"></i> 
+                                        <span class="text-purple-700 font-bold">{{ $nama }}</span>
+                                    @elseif(str_contains($nama, '(Real)'))
+                                        <i class="fas fa-chart-line text-green-600 w-5"></i>
+                                        <span class="text-green-700 font-bold">{{ $nama }}</span>
+                                    @else
+                                        <i class="fas fa-coins text-gray-400 w-5"></i> {{ $nama }}
+                                    @endif
+                                </td>
+                                <td class="py-3 pr-6 text-right font-bold {{ $nilai < 0 ? 'text-red-600' : 'text-blue-600' }}">
+                                    Rp{{ number_format($nilai, 0, ',', '.') }}
+                                </td>
+                            </tr>
+                            @endforeach
                     </tbody>
 
                     {{-- TOTAL PASIVA --}}
