@@ -407,18 +407,19 @@
                         </td>
 
                         {{-- AKSI --}}
-                        <td class="px-4 py-3 text-center">
-                            {{-- Hanya tampilkan tombol edit/hapus jika data MANUAL --}}
+                        <td class="px-4 py-3 text-center" id="action-cell-{{ $item->id }}">
+                            {{-- Logika cek apakah data otomatis --}}
                             @php
                                 $isAuto = in_array($item->kategori, ['PPOB', 'Ekspedisi', 'Top Up Saldo', 'Marketplace']);
                             @endphp
 
+                            {{-- KONDISI 1: Data Manual (Langsung tampil tombol Edit/Hapus) --}}
                             @if(!$isAuto)
                                 <div class="inline-flex rounded-md shadow-sm" role="group">
                                     <button onclick='editData(@json($item))' class="bg-amber-400 hover:bg-amber-500 text-white px-2 py-1.5 text-xs rounded-l border-r border-amber-500 transition" title="Edit Manual">
                                         <i class="fas fa-pencil-alt"></i>
                                     </button>
-                                    <form action="{{ route('admin.keuangan.destroy', $item->id) }}" method="POST" onsubmit="return confirm('PERINGATAN: Yakin hapus data manual ini? Data yang dihapus tidak bisa dikembalikan.')" class="inline">
+                                    <form action="{{ route('admin.keuangan.destroy', $item->id) }}" method="POST" onsubmit="return confirm('PERINGATAN: Yakin hapus data ini?')" class="inline">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 text-xs rounded-r transition" title="Hapus Manual">
@@ -426,10 +427,13 @@
                                         </button>
                                     </form>
                                 </div>
+
+                            {{-- KONDISI 2: Data Otomatis (Tampil Gembok yang bisa diklik) --}}
                             @else
-                                <span class="text-gray-300 cursor-help" title="Data Otomatis dari Sistem (Tidak bisa diedit manual)">
-                                    <i class="fas fa-lock"></i> Auto
-                                </span>
+                                <button onclick='openPinModal(@json($item))' class="group flex items-center justify-center gap-1 mx-auto text-gray-400 hover:text-red-500 transition px-2 py-1 border border-transparent hover:border-red-200 rounded bg-gray-50 hover:bg-red-50" title="Klik untuk membuka akses edit (Butuh PIN)">
+                                    <i class="fas fa-lock group-hover:fa-lock-open transition-all"></i>
+                                    <span class="text-[10px] font-bold">Auto</span>
+                                </button>
                             @endif
                         </td>
                     </tr>
@@ -670,6 +674,45 @@
     </div>
 </div>
 
+{{-- =========================================================== --}}
+{{-- 7. MODAL PIN SECURITY --}}
+{{-- =========================================================== --}}
+<div id="modalPin" class="fixed inset-0 z-[110] hidden overflow-y-auto">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        {{-- Overlay --}}
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-70 transition-opacity backdrop-blur-sm" onclick="closeModal('modalPin')"></div>
+
+        <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-sm w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
+                <div class="text-center">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                        <i class="fas fa-user-lock text-red-600 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg leading-6 font-bold text-gray-900">Keamanan Admin</h3>
+                    <p class="text-xs text-gray-500 mt-2">
+                        Data ini dibuat otomatis oleh sistem. <br> Masukkan <b>PIN 6 Digit</b> untuk mengubah atau menghapusnya secara paksa.
+                    </p>
+
+                    <div class="mt-4">
+                        <input type="password" id="input_pin" maxlength="6"
+                            class="text-center tracking-[0.5em] text-2xl font-bold w-full border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500"
+                            placeholder="••••••" oninput="validateNumeric(this)">
+                        <p id="pin_error" class="text-red-600 text-xs mt-2 hidden font-bold"><i class="fas fa-times-circle"></i> PIN Salah!</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 flex gap-2">
+                <button type="button" onclick="submitPin()" class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:text-sm">
+                    Buka Gembok
+                </button>
+                <button type="button" onclick="closeModal('modalPin')" class="w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:text-sm">
+                    Batal
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 {{-- =========================================================== --}}
@@ -774,5 +817,101 @@
 
         openModal('modalEdit');
     }
+
+    // Variabel Global untuk menyimpan data item sementara
+    let currentLockedItem = null;
+    const ADMIN_PIN = "110622"; // GANTI DENGAN PIN YANG ANDA INGINKAN (Atau gunakan AJAX ke server untuk lebih aman)
+
+    // 1. Fungsi Membuka Modal PIN
+    function openPinModal(item) {
+        currentLockedItem = item; // Simpan data item yang sedang diklik
+
+        // Reset Input
+        document.getElementById('input_pin').value = '';
+        document.getElementById('pin_error').classList.add('hidden');
+
+        openModal('modalPin');
+
+        // Auto focus ke input pin setelah modal muncul
+        setTimeout(() => {
+            document.getElementById('input_pin').focus();
+        }, 100);
+    }
+
+    // 2. Validasi Hanya Angka
+    function validateNumeric(input) {
+        input.value = input.value.replace(/[^0-9]/g, '');
+    }
+
+    // 3. Submit PIN Logic
+    function submitPin() {
+        const inputPin = document.getElementById('input_pin').value;
+        const errorMsg = document.getElementById('pin_error');
+
+        // Cek PIN
+        if (inputPin === ADMIN_PIN) {
+            // PIN BENAR
+            closeModal('modalPin');
+            unlockRowAction(currentLockedItem); // Panggil fungsi ubah tampilan
+
+            // Opsional: Tampilkan notifikasi kecil
+            alert('Akses Diberikan. Anda sekarang bisa mengedit data ini.');
+        } else {
+            // PIN SALAH
+            errorMsg.classList.remove('hidden');
+            document.getElementById('input_pin').classList.add('border-red-500');
+
+            // Animasi shake (opsional)
+            const inputField = document.getElementById('input_pin');
+            inputField.classList.add('animate-pulse');
+            setTimeout(() => inputField.classList.remove('animate-pulse'), 500);
+        }
+    }
+
+    // 4. Fungsi Render Ulang Kolom Aksi (Gembok -> Tombol Edit/Hapus)
+    function unlockRowAction(item) {
+        const cellId = 'action-cell-' + item.id;
+        const cell = document.getElementById(cellId);
+
+        if (cell) {
+            // URL untuk form delete
+            let deleteUrl = "{{ route('admin.keuangan.destroy', ':id') }}";
+            deleteUrl = deleteUrl.replace(':id', item.id);
+
+            // Kita inject HTML tombol Edit & Hapus ke dalam cell tersebut
+            // Perhatikan: onclick='editData(${JSON.stringify(item)})' harus di-handle hati-hati di JS string
+
+            // Simpan item di window object sementara agar string HTML lebih bersih
+            window['temp_item_' + item.id] = item;
+
+            const newHtml = `
+                <div class="inline-flex rounded-md shadow-sm fade-in" role="group">
+                    <button onclick='editData(window["temp_item_${item.id}"])'
+                        class="bg-amber-400 hover:bg-amber-500 text-white px-2 py-1.5 text-xs rounded-l border-r border-amber-500 transition"
+                        title="Edit Paksa">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <form action="${deleteUrl}" method="POST" onsubmit="return confirm('PERINGATAN ADMIN: Anda menghapus data otomatis. Ini mungkin mempengaruhi laporan sinkronisasi. Lanjutkan?')" class="inline">
+                        <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="_method" value="DELETE">
+                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 text-xs rounded-r transition" title="Hapus Paksa">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </form>
+                </div>
+            `;
+
+            cell.innerHTML = newHtml;
+        }
+    }
+
+    // Tambahkan listener Enter key pada input PIN
+    document.getElementById('input_pin').addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            submitPin();
+        }
+    });
+
 </script>
 @endpush
