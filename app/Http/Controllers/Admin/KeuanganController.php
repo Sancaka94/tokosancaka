@@ -400,9 +400,20 @@ class KeuanganController extends Controller
     $startDate = $request->date_start;
     $endDate   = $request->date_end;
 
-    // 2. AMBIL PROFIT REAL SESUAI BULAN TERSEBUT
-    $dataDashboard = $this->getDataLengkap($request);
-    $profitReal    = $dataDashboard->sum('profit'); 
+    // DEBUGGING START
+$dataDashboard = $this->getDataLengkap($request);
+
+// Kita cari siapa yang bikin minus
+$biangKerok = $dataDashboard->where('profit', '<', 0);
+
+dd([
+    'Total Profit Dashboard (Harusnya)' => $dataDashboard->sum('profit'),
+    'Rincian Yang Bikin Minus (Pengeluaran)' => $biangKerok->values()->toArray()
+]);
+// DEBUGGING END
+
+$profitReal = $dataDashboard->sum('profit');
+
 
     // 3. AMBIL DATA NERACA MANUAL
     $dataNeracaManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
