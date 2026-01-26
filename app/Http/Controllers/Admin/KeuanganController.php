@@ -391,63 +391,102 @@ class KeuanganController extends Controller
     }
 
     public function neraca(Request $request)
-    {
-        // 1. Tentukan Tanggal (Default: Sampai Hari Ini)
-        $endDate = $request->date_end ?? date('Y-m-d');
-        $startDate = $request->date_start ?? date('Y-01-01'); // Default awal tahun
+{
+    $endDate = $request->date_end ?? date('Y-m-d');
+    $startDate = $request->date_start ?? date('Y-01-01');
 
-        // 2. AMBIL DATA DARI TABEL KEUANGAN (Pusat Data Bersih)
-        // Asumsi: Anda sudah melakukan SYNC untuk Ekspedisi, PPOB, dll ke tabel ini.
-        // Jika belum sync, data diambil dari tabel mentah (opsional, tapi lebih baik dari satu sumber).
+    // Ambil Data Keuangan
+    $dataKeuangan = \App\Models\Keuangan::whereBetween('tanggal', [$startDate, $endDate])->get();
+
+    // ============================================================
+    // 1. KLASIFIKASI DATA (PISAHKAN NERACA VS LABA RUGI)
+    // ============================================================
+    
+    // A. Daftar Kategori yang MASUK NERACA (Bukan Laba Rugi)
+    $kategoriAsetTetap = ['Aset Tetap', 'Investasi', 'Kendaraan', 'Bangunan', 'Tanah'];
+    $kategoriHutang    = ['Hutang Bank', 'Hutang Usaha', 'Hutang Jangka Panjang'];
+    $kategoriModal     = ['Modal Disetor', 'Prive'];
+
+    // B. HITUNG ASET TETAP (Ambil dari inputan Manual tadi)
+    $asetTetap = $dataKeuangan->whereIn('kategori', $kategoriAsetTetap)
+                              ->where('jenis', 'Pengeluaran') // Beli Aset = Uang Keluar
+                              ->groupBy('keterangan') // Group by Nama Aset
+                              ->map(fn($row) => $row->sum('jumlah'));
+
+    // C. HITUNG KEWAJIBAN / HUTANG (Ambil dari inputan Manual)
+    // Hutang bertambah jika Pemasukan (Terima Pinjaman), berkurang jika Pengeluaran (Bayar Cicilan Pokok)
+    // Logic sederhana: Kita ambil saldo hutang yang tercatat
+    $kewajiban = $dataKeuangan->whereIn('kategori', $kategoriHutang)
+                              ->where('jenis', 'Pemasukan')
+                              ->groupBy('keterangan')
+                              ->map(fn($row) => $row->sum('jumlah'));
+
+    // D. HITUNG MODAL DISETOR (Manual)
+    $modalDisetor = $dataKeuangan->where('kategori', 'Modal Disetor')->sum('jumlah');
+    $prive        = $dataKeuangan->where('kategori', 'Prive')->sum('jumlah');
+
+    // ============================================================
+    // 2. HITUNG ASET LANCAR (KAS & BANK) - HASIL OPERASIONAL
+    // ============================================================
+    
+    // Aset Lancar = (Semua Pemasukan - Pemasukan Hutang/Modal) - (Semua Pengeluaran - Beli Aset/Bayar Hutang)
+    
+    $totalPemasukanAll = $dataKeuangan->where('jenis', 'Pemasukan')->sum('jumlah');
+    $totalPengeluaranAll = $dataKeuangan->where('jenis', 'Pengeluaran')->sum('jumlah');
+
+    // Kita harus 'membersihkan' Kas dari transaksi Neraca agar Balance
+    // Contoh: Terima Hutang 100jt. Kas nambah 100jt, Hutang nambah 100jt. Balance.
+    // Jadi Logic Aset Lancar di Neraca adalah SALDO AKHIR KAS (Total Masuk - Total Keluar)
+    
+    $kasTersedia = $totalPemasukanAll - $totalPengeluaranAll;
+    
+    // Pecah Aset Lancar (Kas)
+    $asetLancar = collect([
+        'Kas & Setara Kas' => $kasTersedia
+    ]);
+
+    // Jika Anda punya Piutang (Fitur lanjutan), masukkan disini.
+
+    // ============================================================
+    // 3. HITUNG LABA DITAHAN (PROFIT OPERASIONAL)
+    // ============================================================
+    
+    // Laba Berjalan = (Omzet Operasional) - (Beban Operasional)
+    // Kita exclude kategori neraca dari perhitungan laba rugi
+    $excludeKategori = array_merge($kategoriAsetTetap, $kategoriHutang, $kategoriModal);
+    
+    $omzetOps = $dataKeuangan->where('jenis', 'Pemasukan')
+                             ->whereNotIn('kategori', $excludeKategori)
+                             ->sum('jumlah');
+                             
+    $bebanOps = $dataKeuangan->where('jenis', 'Pengeluaran')
+                             ->whereNotIn('kategori', $excludeKategori)
+                             ->sum('jumlah');
+
+    $labaDitahan = $omzetOps - $bebanOps;
+
+    // ============================================================
+    // 4. SUSUN STRUKTUR AKHIR
+    // ============================================================
+    
+    $neraca = [
+        'aset_lancar' => $asetLancar,
+        'aset_tetap'  => $asetTetap,
         
-        $query = \App\Models\Keuangan::whereBetween('tanggal', [$startDate, $endDate]);
+        'kewajiban'   => $kewajiban,
         
-        // Ambil Data Raw untuk kalkulasi
-        $dataKeuangan = $query->get();
+        'ekuitas'     => [
+            'Modal Disetor' => $modalDisetor,
+            'Prive (Minus)' => $prive * -1, // Prive mengurangi modal
+            'Laba Ditahan'  => $labaDitahan
+        ],
 
-        // 3. HITUNG ASET LANCAR (Kas Masuk / Omzet)
-        // Kita kelompokkan berdasarkan Kategori untuk detail
-        $asetLancar = $dataKeuangan->where('jenis', 'Pemasukan')->groupBy('kategori')->map(function ($row) {
-            return $row->sum('jumlah');
-        });
+        'total_aset'      => $kasTersedia + $asetTetap->sum(),
+        'total_kewajiban' => $kewajiban->sum(),
+        'total_ekuitas'   => $modalDisetor - $prive + $labaDitahan
+    ];
 
-        // 4. HITUNG KEWAJIBAN & BEBAN (Pengeluaran / Modal)
-        // Kelompokkan modal per kategori (HPP) dan Biaya Operasional
-        $beban = $dataKeuangan->where('jenis', 'Pengeluaran')->groupBy('kategori')->map(function ($row) {
-            return $row->sum('jumlah');
-        });
+    return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate'));
+}
 
-        // 5. DATA TAMBAHAN (Jika ingin mengambil data mentah yang BELUM di-sync)
-        // Contoh: Cek PPOB yang sukses tapi belum masuk Keuangan (Opsional, untuk akurasi tinggi)
-        $ppobReal = \Illuminate\Support\Facades\DB::table('ppob_transactions')
-                    ->whereIn('status', ['Success', 'Lunas'])
-                    ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
-                    ->sum('price'); // Modal PPOB
-        
-        // Jika data keuangan PPOB kosong (belum sync), pakai data real
-        if (!isset($beban['PPOB']) || $beban['PPOB'] == 0) {
-            $beban['PPOB'] = $ppobReal;
-            // Hitung omzet PPOB kasar (misal margin otomatis atau ambil column price + fee)
-            $asetLancar['PPOB'] = \Illuminate\Support\Facades\DB::table('ppob_transactions')
-                    ->whereIn('status', ['Success', 'Lunas'])
-                    ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
-                    ->sum(DB::raw('price + 50')); // Asumsi margin 50 perak (sesuaikan logic Anda)
-        }
-
-        // 6. TOTALISASI
-        $totalAset = $asetLancar->sum();
-        $totalBeban = $beban->sum();
-        $labaBersih = $totalAset - $totalBeban; // Ini akan masuk ke Ekuitas (Laba Ditahan)
-
-        // Struktur Data untuk View
-        $neraca = [
-            'aset' => $asetLancar->sortDesc(),
-            'kewajiban' => $beban->sortDesc(),
-            'total_aset' => $totalAset,
-            'total_kewajiban' => $totalBeban,
-            'ekuitas' => $labaBersih
-        ];
-
-        return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate'));
-    }
 }
