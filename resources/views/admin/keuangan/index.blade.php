@@ -869,30 +869,29 @@
         }
     }
 
-    // 4. Fungsi Render Ulang Kolom Aksi (Gembok -> Tombol Edit/Hapus)
     function unlockRowAction(item) {
-        const cellId = 'action-cell-' + item.id;
-        const cell = document.getElementById(cellId);
+    const cellId = 'action-cell-' + item.id;
+    const cell = document.getElementById(cellId);
 
         if (cell) {
-            // URL untuk form delete
             let deleteUrl = "{{ route('admin.keuangan.destroy', ':id') }}";
             deleteUrl = deleteUrl.replace(':id', item.id);
-
-            // Kita inject HTML tombol Edit & Hapus ke dalam cell tersebut
-            // Perhatikan: onclick='editData(${JSON.stringify(item)})' harus di-handle hati-hati di JS string
-
-            // Simpan item di window object sementara agar string HTML lebih bersih
+            
             window['temp_item_' + item.id] = item;
 
             const newHtml = `
                 <div class="inline-flex rounded-md shadow-sm fade-in" role="group">
-                    <button onclick='editData(window["temp_item_${item.id}"])'
-                        class="bg-amber-400 hover:bg-amber-500 text-white px-2 py-1.5 text-xs rounded-l border-r border-amber-500 transition"
+                    <button onclick='editData(window["temp_item_${item.id}"])' 
+                        class="bg-amber-400 hover:bg-amber-500 text-white px-2 py-1.5 text-xs rounded-l border-r border-amber-500 transition" 
                         title="Edit Paksa">
                         <i class="fas fa-pencil-alt"></i>
                     </button>
-                    <form action="${deleteUrl}" method="POST" onsubmit="return confirm('PERINGATAN ADMIN: Anda menghapus data otomatis. Ini mungkin mempengaruhi laporan sinkronisasi. Lanjutkan?')" class="inline">
+                    
+                    {{-- PERUBAHAN DISINI: Tambahkan logic untuk menghapus baris TR seketika --}}
+                    <form action="${deleteUrl}" method="POST" 
+                        onsubmit="if(confirm('Hapus paksa data ini?')) { this.closest('tr').remove(); return true; } else { return false; }" 
+                        class="inline">
+                        
                         <input type="hidden" name="_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="_method" value="DELETE">
                         <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 text-xs rounded-r transition" title="Hapus Paksa">
@@ -901,7 +900,6 @@
                     </form>
                 </div>
             `;
-
             cell.innerHTML = newHtml;
         }
     }
