@@ -450,13 +450,13 @@ class KeuanganController extends Controller
             'Modal / Saldo Awal (Otomatis)' => $modalAwalDinamis, 
             'Modal Tambahan (Manual)'       => $modalDisetor,
             'Prive (Tarik Modal)'           => $prive * -1, // Tampilkan minus di UI
-            'Profit Berjalan (Real)'        => $profitReal 
+            'Profit Berjalan (Real)'        => $profitReal
         ],
 
         'total_aset'      => $kasManual + $totalAsetTetap,
         
         // Total Pasiva: Kewajiban + (Modal Awal + Modal Tambahan - Prive + Profit)
-        'total_pasiva'    => $totalKewajiban + ($modalAwalDinamis + $modalDisetor - $prive + $profitReal)
+        'total_pasiva'    => $totalKewajiban + ($modalAwalDinamis + $modalDisetor + $profitReal) - $prive
     ];
 
     $selisih = $neraca['total_aset'] - $neraca['total_pasiva'];
