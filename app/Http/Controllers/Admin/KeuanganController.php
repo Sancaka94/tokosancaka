@@ -389,7 +389,7 @@ class KeuanganController extends Controller
 
     public function neraca(Request $request)
 {
-    // 1. SETUP TANGGAL
+    // 1. SETUP TANGGAL (Agar periode sama persis dengan Dashboard)
     if (!$request->has('date_start')) {
         $request->merge(['date_start' => date('Y-01-01')]);
     }
@@ -399,28 +399,36 @@ class KeuanganController extends Controller
     $startDate = $request->date_start;
     $endDate   = $request->date_end;
 
-    // ==============================================================
-    // BAGIAN 1: AMBIL PROFIT DASHBOARD (YANG SUDAH DIBERSIHKAN)
-    // ==============================================================
+    // =========================================================================
+    // BAGIAN 1: LOGIKA PROFIT (COPY PASTE DARI INDEX ANDA)
+    // =========================================================================
     
-    // Ambil data mentah dari fungsi Dashboard (Ini datanya masih kecampur Kas Manual)
-    $dataKotor = $this->getDataLengkap($request);
+    // Ambil data mentah persis seperti logic Index
+    $allData = $this->getDataLengkap($request);
 
-    // KITA FILTER DISINI (PENTING!!!)
-    // Kita buang semua baris yang kode_akun-nya 'NERACA'
-    // Jadi sisa-nya murni transaksi operasional (Jualan, Ongkir, PPOB)
-    $profitDashboard = $dataKotor->where('kode_akun', '!=', 'NERACA')->sum('profit');
+    // FILTER PENTING:
+    // Kita harus membuang data yang kode_akun-nya 'NERACA' dari variable $allData
+    // supaya saat di-sum('profit'), inputan Kas Manual tidak ikut terhitung.
+    
+    $dataOperasional = $allData->filter(function ($item) {
+        // Pastikan kolom kode_akun ada, jika tidak anggap kosong
+        $kode = isset($item->kode_akun) ? $item->kode_akun : ''; 
+        return $kode !== 'NERACA';
+    });
+
+    // INI LOGIKA YANG ANDA MAU (Sama persis dengan Summary Index)
+    $profitReal = $dataOperasional->sum('profit');
 
 
-    // ==============================================================
-    // BAGIAN 2: AMBIL DATA MANUAL (KAS, HUTANG, DLL) UNTUK TAMPILAN
-    // ==============================================================
-    // Ini query khusus mengambil data yang kita buang tadi (untuk ditampilkan di list Aset)
+    // =========================================================================
+    // BAGIAN 2: DATA NERACA MANUAL (KAS, ASET, HUTANG)
+    // =========================================================================
+    // Kita ambil data manual secara terpisah langsung dari DB agar rapi
     $dataManual = \App\Models\Keuangan::where('kode_akun', 'NERACA')
                     ->whereBetween('tanggal', [$startDate, $endDate])
                     ->get();
 
-    // Pecah data manual biar rapi saat dikirim ke Blade
+    // Mapping Kategori Manual
     $kasManual    = $dataManual->whereIn('kategori', ['Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar'])->sum('jumlah');
     
     $asetTetap    = $dataManual->whereIn('kategori', ['Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan'])
@@ -434,9 +442,9 @@ class KeuanganController extends Controller
     $modalDisetor = $dataManual->where('kategori', 'Modal Disetor')->sum('jumlah');
     $prive        = $dataManual->where('kategori', 'Prive')->sum('jumlah');
 
-    // ==============================================================
-    // BAGIAN 3: SUSUN ARRAY DATA (RACIKAN TAMPILAN)
-    // ==============================================================
+    // =========================================================================
+    // BAGIAN 3: SUSUN ARRAY NERACA
+    // =========================================================================
     $neraca = [
         'aset_lancar' => [
             'Kas & Bank (Manual)' => $kasManual
@@ -445,20 +453,22 @@ class KeuanganController extends Controller
         'kewajiban'   => $hutang,
         
         'ekuitas'     => [
-            // Modal Otomatis (Supaya Balance dengan Kas yang diinput)
+            // Modal Otomatis (Mirroring Kas agar Balance)
             'Modal / Saldo Awal (Otomatis)' => $kasManual, 
 
             'Modal Tambahan (Manual)' => $modalDisetor,
             'Prive (Tarik Modal)'     => $prive * -1,
             
-            // INI ANGKA KERAMATNYA (PASTI SAMA DENGAN DASHBOARD)
-            'Profit Berjalan (Sesuai Dashboard)' => $profitDashboard 
+            // INI ANGKA KERAMATNYA (Pasti sama dengan Dashboard)
+            'Profit Berjalan (Real)'  => $profitReal 
         ],
 
-        // RUMUS TOTAL (Hutang + Modal Otomatis + Modal Manual - Prive + Profit Real)
+        // TOTAL
         'total_aset'      => $kasManual + $asetTetap->sum(),
         'total_kewajiban' => $hutang->sum(),
-        'total_pasiva'    => $hutang->sum() + ($kasManual + $modalDisetor - $prive + $profitDashboard)
+        
+        // Pasiva = Hutang + Modal Otomatis + Modal Manual - Prive + Profit Real
+        'total_pasiva'    => $hutang->sum() + ($kasManual + $modalDisetor - $prive + $profitReal)
     ];
 
     $selisih = $neraca['total_aset'] - $neraca['total_pasiva'];
