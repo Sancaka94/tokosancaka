@@ -473,7 +473,7 @@ class KeuanganController extends Controller
     $perubahanModal = $totalAset - $totalPasiva;
 
     // Masukkan Perubahan Modal ke array Ekuitas agar tampil di list
-    $ekuitas['Laba Ditahan / Penyeimbang'] = $perubahanModal;
+    $ekuitas['Laba Ditahan'] = $perubahanModal;
     
     // Update Total Pasiva Final
     $totalPasivaFinal = $totalKewajiban + $totalEkuitasDasar + $perubahanModal;
