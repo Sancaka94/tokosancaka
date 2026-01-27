@@ -47,13 +47,22 @@ class DokuSacService
         return $this->sendRequest('POST', $endpoint, $body);
     }
 
-    /**
-     * Cek Saldo Real di DOKU
-     * Penting untuk validasi sebelum payout.
-     */
     public function getBalance($sacId)
     {
-        $endpoint = "/sac-merchant/v1/balances/{$sacId}";
+        // 1. Bersihkan ID dari spasi yang tidak sengaja
+        $cleanSacId = trim($sacId);
+
+        // 2. Pastikan Endpoint Benar
+        $endpoint = "/sac-merchant/v1/balances/{$cleanSacId}";
+
+        // 3. LOG DEBUGGING (Cek di storage/logs/laravel.log)
+        Log::info("DEBUG DOKU BALANCE:", [
+            'Target Environment' => config('doku.is_production') ? 'PRODUCTION' : 'SANDBOX',
+            'Base URL' => $this->baseUrl,
+            'SAC ID yang dikirim' => $cleanSacId,
+            'Full URL' => $this->baseUrl . $endpoint
+        ]);
+
         return $this->sendRequest('GET', $endpoint, null);
     }
 
