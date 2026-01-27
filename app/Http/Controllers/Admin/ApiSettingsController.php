@@ -62,6 +62,7 @@ class ApiSettingsController extends Controller
             ],
             // SAC ID diasumsikan global, tidak berubah per env (tapi bisa disesuaikan)
             'sac_id' => Api::getValue('DOKU_MAIN_SAC_ID', 'global'),
+
         ];
 
         $fonnte = [
@@ -110,6 +111,12 @@ class ApiSettingsController extends Controller
                 Api::setValue('DOKU_SECRET_KEY', $request->doku_secret_key, 'doku', $env);
                 Api::setValue('DOKU_PUBLIC_KEY', $request->doku_public_key, 'doku', $env);
                 Api::setValue('MERCHANT_PRIVATE_KEY', $request->merchant_private_key, 'doku', $env);
+
+                // ✅ 3. TAMBAHAN: Simpan DOKU MAIN SAC ID (Disimpan sebagai global)
+                // Pastikan input di blade bernama: name="doku_main_sac_id"
+                if ($request->has('doku_main_sac_id')) {
+                    Api::setValue('DOKU_MAIN_SAC_ID', $request->doku_main_sac_id, 'doku', 'global');
+                }
 
             } elseif ($type === 'fonnte') {
                 Api::setValue('FONNTE_API_KEY', $request->fonnte_api_key, 'fonnte', 'global');
