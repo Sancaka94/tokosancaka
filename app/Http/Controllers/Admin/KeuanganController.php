@@ -355,7 +355,7 @@ class KeuanganController extends Controller
         // 2. Logic Simpan Dinamis
         // Kita gunakan 'updateOrCreate' agar jika ada ID, dia update. Jika tidak, dia create baru.
         // Ini trik agar satu fungsi bisa dipakai buat Tambah & Edit sekaligus.
-        
+
         $id = $request->input('id'); // Ambil ID dari hidden input (jika ada)
 
         $data = \App\Models\Keuangan::updateOrCreate(
@@ -366,9 +366,9 @@ class KeuanganController extends Controller
                 'kategori'      => $request->kategori,  // Aset Tetap, Hutang, Modal, dll
                 'keterangan'    => $request->keterangan,
                 'jumlah'        => $request->jumlah,
-                
+
                 // DATA TAMBAHAN OTOMATIS
-                'unit_usaha'    => 'Pusat', 
+                'unit_usaha'    => 'Pusat',
                 'nomor_invoice' => 'NERACA-' . date('ymdHis'), // Invoice Unik
                 'kode_akun'     => 'NERACA', // FLAG PENTING: Penanda ini data Neraca
             ]
@@ -391,10 +391,10 @@ class KeuanganController extends Controller
 {
     // 1. SETUP TANGGAL
     if (!$request->has('date_start')) {
-        $request->merge(['date_start' => date('Y-m-01')]); 
+        $request->merge(['date_start' => date('Y-m-01')]);
     }
     if (!$request->has('date_end')) {
-        $request->merge(['date_end' => date('Y-m-t')]);   
+        $request->merge(['date_end' => date('Y-m-t')]);
     }
     $startDate = $request->date_start;
     $endDate   = $request->date_end;
@@ -403,14 +403,14 @@ class KeuanganController extends Controller
     // Filter manual kategori agar inputan neraca tidak dianggap omzet
     $allData = $this->getDataLengkap($request);
     $blackListKategori = [
-        'Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar', 
-        'Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan', 'Inventaris', 
+        'Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar',
+        'Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan', 'Inventaris',
         'Hutang Bank', 'Hutang Usaha', 'Modal Disetor', 'Prive', 'Modal / Saldo Awal', 'NERACA'
     ];
     $dataOperasional = $allData->filter(function ($item) use ($blackListKategori) {
         return !in_array($item->kategori, $blackListKategori);
     });
-    $profitReal = $dataOperasional->whereBetween('tanggal', [$startDate, $endDate])->sum('profit'); 
+    $profitReal = $dataOperasional->whereBetween('tanggal', [$startDate, $endDate])->sum('profit');
 
 
     // 3. AMBIL DATA INPUTAN MANUAL
@@ -427,7 +427,7 @@ class KeuanganController extends Controller
     // =========================================================================
     // 4. DEFINISI STRUKTUR BAKU (Supaya Nama Akun Selalu Muncul Walau 0)
     // =========================================================================
-    
+
     // A. AKTIVA LANCAR
     $aktivaLancar = [
         'Kas Tunai'          => $getSaldo(['Kas Tunai', 'Kas Besar']),
@@ -474,7 +474,7 @@ class KeuanganController extends Controller
 
     // Masukkan Perubahan Modal ke array Ekuitas agar tampil di list
     $ekuitas['Laba Ditahan'] = $perubahanModal;
-    
+
     // Update Total Pasiva Final
     $totalPasivaFinal = $totalKewajiban + $totalEkuitasDasar + $perubahanModal;
 
@@ -484,12 +484,81 @@ class KeuanganController extends Controller
         'aktiva_tetap'  => $aktivaTetap,
         'kewajiban'     => $kewajiban,
         'ekuitas'       => $ekuitas,
-        
+
         'total_aset'    => $totalAset,
         'total_pasiva'  => $totalPasivaFinal
     ];
 
     return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate', 'perubahanModal'));
 }
-    
+
+// ... (method neraca sebelumnya) ...
+
+    public function labaRugi(Request $request)
+    {
+        // 1. SETUP TANGGAL
+        if (!$request->has('date_start')) {
+            $request->merge(['date_start' => date('Y-m-01')]);
+        }
+        if (!$request->has('date_end')) {
+            $request->merge(['date_end' => date('Y-m-t')]);
+        }
+        $startDate = $request->date_start;
+        $endDate   = $request->date_end;
+
+        // 2. AMBIL DATA LENGKAP & FILTER
+        // Gunakan Blacklist yang sama dengan Neraca agar konsisten
+        // Kita hanya butuh data OPERASIONAL (Jualan & Biaya)
+        $allData = $this->getDataLengkap($request);
+
+        $blackListKategori = [
+            'Kas Tunai', 'Bank BCA', 'Bank BRI', 'E-Wallet', 'Kas Besar',
+            'Aset Tetap', 'Investasi', 'Bangunan', 'Kendaraan', 'Inventaris',
+            'Hutang Bank', 'Hutang Usaha', 'Modal Disetor', 'Prive', 'Modal / Saldo Awal', 'NERACA'
+        ];
+
+        // Filter: Buang data Neraca, Ambil yang sesuai Tanggal
+        $dataLaporan = $allData->filter(function ($item) use ($blackListKategori) {
+            return !in_array($item->kategori, $blackListKategori);
+        })->whereBetween('tanggal', [$startDate, $endDate]);
+
+        // 3. HITUNG PENDAPATAN (REVENUE)
+        // Syarat: Jenis = Pemasukan
+        // Kita ambil 'omzet' sebagai nilai Pendapatan Kotor
+        $pendapatan = $dataLaporan->where('jenis', 'Pemasukan')
+                                  ->groupBy('kategori')
+                                  ->map(fn($row) => $row->sum('omzet'));
+
+        $totalPendapatan = $dataLaporan->where('jenis', 'Pemasukan')->sum('omzet');
+
+        // 4. HITUNG HPP (HARGA POKOK PENJUALAN)
+        // Syarat: Jenis = Pemasukan (Modal yang melekat pada penjualan)
+        $hpp = $dataLaporan->where('jenis', 'Pemasukan')->sum('modal');
+
+        // 5. HITUNG BEBAN OPERASIONAL (EXPENSES)
+        // Syarat: Jenis = Pengeluaran (Gaji, Listrik, Sewa, dll)
+        // Kita ambil 'modal' (jumlah pengeluaran)
+        $beban = $dataLaporan->where('jenis', 'Pengeluaran')
+                             ->groupBy('kategori')
+                             ->map(fn($row) => $row->sum('modal')); // Di DB biasanya kolom modal menampung nilai pengeluaran
+
+        $totalBeban = $dataLaporan->where('jenis', 'Pengeluaran')->sum('modal');
+
+        // 6. HITUNG LABA BERSIH
+        // Rumus: Total Pendapatan - HPP - Total Beban
+        // (Sama dengan sum('profit') di dashboard)
+        $labaBersih = $totalPendapatan - $hpp - $totalBeban;
+
+        return view('admin.laporan.laba-rugi', compact(
+            'startDate',
+            'endDate',
+            'pendapatan',
+            'totalPendapatan',
+            'hpp',
+            'beban',
+            'totalBeban',
+            'labaBersih'
+        ));
+    }
+
 }
