@@ -31,37 +31,37 @@ class DokuRegistrationController extends Controller
     public function index()
     {
         $user = Auth::user();
-        
+
         if (!$user) {
             return redirect()->route('login')
                 ->with('error', 'Sesi Anda telah berakhir. Harap login kembali.');
         }
-        
+
         $store = $user->store;
-        
+
         if (!$store) {
             return redirect()->route('seller.dashboard') // Ganti ke route dashboard seller Anda
                 ->with('error', 'Anda harus melengkapi profil toko Anda terlebih dahulu.');
         }
-        
+
         // ==========================================================
         // === LOGIKA CACHE SALDO (Sudah Benar) ===
         // ==========================================================
-        $isCacheStale = $store->doku_balance_last_updated ? 
-                        Carbon::parse($store->doku_balance_last_updated)->addMinutes(15)->isPast() : 
+        $isCacheStale = $store->doku_balance_last_updated ?
+                        Carbon::parse($store->doku_balance_last_updated)->addMinutes(15)->isPast() :
                         true;
 
         if ($store->doku_sac_id && $isCacheStale && $store->doku_status == 'ACTIVE') { // <-- BARU: Hanya cek jika status ACTIVE
             Log::info("DOKU CACHE: Saldo untuk toko $store->id sudah basi, mengambil data baru...");
             try {
                 $balanceResponse = $this->dokuService->getBalance($store->doku_sac_id);
-                
+
                 if ($balanceResponse['success'] ?? false) {
-                    
+
                     $store->doku_balance_available = $balanceResponse['data']['balance']['available'] ?? 0;
                     $store->doku_balance_pending = $balanceResponse['data']['balance']['pending'] ?? 0;
                     $store->doku_balance_last_updated = now();
-                    $store->save(); 
+                    $store->save();
                     Log::info("DOKU CACHE: Saldo toko $store->id berhasil diperbarui di DB.");
 
                 } else {
@@ -84,14 +84,14 @@ class DokuRegistrationController extends Controller
     public function register(Request $request)
     {
         $user = Auth::user();
-        
+
         if (!$user) {
             return redirect()->route('login')
                 ->with('error', 'Sesi Anda telah berakhir. Harap login kembali.');
         }
 
         $store = $user->store;
-        
+
         if (!$store) {
             return redirect()->back()->with('error', 'Profil toko tidak ditemukan.');
         }
@@ -99,15 +99,15 @@ class DokuRegistrationController extends Controller
         if ($store->doku_sac_id) {
             return redirect()->back()->with('info', 'Toko Anda sudah terdaftar di DOKU.');
         }
-        
-        
+
+
 
         try {
             if (empty($store->name) || empty($user->email)) {
                 return redirect()->back()->with('error', 'Nama Toko dan Email Pendaftar tidak boleh kosong.');
             }
 
-            $phone = $user->no_wa; 
+            $phone = $user->no_wa;
 
             if (empty($phone)) {
                 return redirect()->back()->with('error', 'Nomor HP Anda di profil (akun) belum diisi. Harap lengkapi profil Anda terlebih dahulu.');
@@ -118,17 +118,17 @@ class DokuRegistrationController extends Controller
             if (Str::startsWith($phone, '0')) {
                 $phone = '62' . substr($phone, 1);
             }
-            
+
             $response = $this->dokuService->createSubAccount(
-                $user, 
-                $store, 
+                $user,
+                $store,
                 $phone
             );
-            
+
             if (is_array($response) && !empty($response['success'])) {
-                
+
                 $sac_id = $response['data']['profileId'] ?? null;
-                
+
                 if (!$sac_id) {
                      return redirect()->back()->with('error', 'Pendaftaran DOKU Gagal: ID Sub Account (profileId) tidak ditemukan dalam respons DOKU.');
                 }
@@ -145,12 +145,12 @@ class DokuRegistrationController extends Controller
                 // ==========================================================
 
                 return redirect()->back()->with('success', 'Toko Anda berhasil didaftarkan ke DOKU! Sub Account ID Anda adalah: ' . $sac_id);
-            
+
             } else {
-                $errorMessage = (is_array($response) && !empty($response['message'])) 
-                    ? $response['message'] 
+                $errorMessage = (is_array($response) && !empty($response['message']))
+                    ? $response['message']
                     : 'Terjadi kesalahan tidak terduga saat mendaftar.';
-                
+
                 Log::error('DOKU Sub-Account Gagal (Respon API): ' . $errorMessage, ['store_id' => $store->id, 'response' => $response]);
                 return redirect()->back()->with('error', 'Pendaftaran DOKU Gagal: ' . $errorMessage);
             }
@@ -175,7 +175,7 @@ class DokuRegistrationController extends Controller
     public function refreshBalance(Request $request)
     {
         $store = Auth::user()->store;
-        
+
         if (!$store || !$store->doku_sac_id) {
             return redirect()->back()->with('error', 'Akun DOKU tidak ditemukan.');
         }
@@ -186,13 +186,13 @@ class DokuRegistrationController extends Controller
         Log::info("DOKU MANUAL REFRESH: Memaksa refresh saldo untuk toko $store->id...");
         try {
             $balanceResponse = $this->dokuService->getBalance($store->doku_sac_id);
-            
+
             if ($balanceResponse['success'] ?? false) {
                 // Langsung simpan ke DB
                 $store->doku_balance_available = $balanceResponse['data']['balance']['available'] ?? 0;
                 $store->doku_balance_pending = $balanceResponse['data']['balance']['pending'] ?? 0;
                 $store->doku_balance_last_updated = now();
-                $store->save(); 
+                $store->save();
                 Log::info("DOKU MANUAL REFRESH: Saldo toko $store->id berhasil diperbarui.");
                 return redirect()->route('seller.doku.index')->with('success', 'Saldo berhasil disinkronkan!');
 
@@ -209,7 +209,7 @@ class DokuRegistrationController extends Controller
         // ==========================================================
     }
 
-    /**
+   /**
      * (BARU) Menangani form Payout (Withdrawal)
      */
     public function handlePayout(Request $request)
@@ -218,29 +218,33 @@ class DokuRegistrationController extends Controller
         $store = $user->store;
 
         $validator = Validator::make($request->all(), [
-            'amount' => 'required|numeric|min:10000', // Minimal payout 10.000
+            'amount' => 'required|numeric|min:10000',
             'bank_code' => 'required|string|max:10',
-            'bank_account_number' => 'required|string|numeric',
+            'bank_account_number' => 'required|string', // Jangan numeric strict di validasi awal, kita sanitize nanti
             'bank_account_name' => 'required|string|max:100',
         ]);
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput()->with('activeTab', 'payout');
         }
-        
-        // Cek jika saldo mencukupi
+
         $amount = (int) $request->input('amount');
         if ($store->doku_balance_available < $amount) {
-             return redirect()->back()->with('error', 'Saldo Tersedia tidak mencukupi untuk melakukan payout.')->with('activeTab', 'payout');
+             return redirect()->back()->with('error', 'Saldo Tersedia tidak mencukupi.')->with('activeTab', 'payout');
         }
 
         try {
+            // --- PERBAIKAN 1: Sanitasi Nomor Rekening ---
+            $cleanRekening = preg_replace('/[^0-9]/', '', $request->input('bank_account_number'));
+
             $beneficiary = [
                 'bank_code' => $request->input('bank_code'),
-                'bank_account_number' => $request->input('bank_account_number'),
+                'bank_account_number' => $cleanRekening, // Kirim yang bersih
                 'bank_account_name' => $request->input('bank_account_name'),
             ];
-            $invoice_number = 'PAYOUT-' . $store->id . '-' . time();
+
+            // --- PERBAIKAN 2: Invoice Lebih Unik ---
+            $invoice_number = 'WD-' . $store->id . '-' . time() . '-' . Str::random(4);
 
             $response = $this->dokuService->sendPayout(
                 $store->doku_sac_id,
@@ -254,7 +258,7 @@ class DokuRegistrationController extends Controller
                 $store->doku_balance_available -= $amount;
                 $store->doku_balance_last_updated = now(); // Set cache baru
                 $store->save();
-                
+
                 return redirect()->back()->with('success', 'Permintaan Payout berhasil dikirim! Status: ' . $response['data']['payout']['status'])->with('activeTab', 'payout');
             } else {
                 return redirect()->back()->with('error', 'Payout Gagal: ' . $response['message'])->with('activeTab', 'payout');
@@ -282,12 +286,12 @@ class DokuRegistrationController extends Controller
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput()->with('activeTab', 'transfer');
         }
-        
+
         $amount = (int) $request->input('amount');
         if ($store->doku_balance_available < $amount) {
              return redirect()->back()->with('error', 'Saldo Tersedia tidak mencukupi untuk melakukan transfer.')->with('activeTab', 'transfer');
         }
-        
+
         $destination_sac_id = $request->input('destination_sac_id');
         if ($destination_sac_id == $store->doku_sac_id) {
              return redirect()->back()->with('error', 'Anda tidak bisa transfer ke akun Anda sendiri.')->with('activeTab', 'transfer');
@@ -305,7 +309,7 @@ class DokuRegistrationController extends Controller
                 $store->doku_balance_available -= $amount;
                 $store->doku_balance_last_updated = now(); // Set cache baru
                 $store->save();
-                
+
                 return redirect()->back()->with('success', 'Transfer berhasil dikirim! Status: ' . $response['data']['transfer']['status'])->with('activeTab', 'transfer');
             } else {
                 return redirect()->back()->with('error', 'Transfer Gagal: ' . $response['message'])->with('activeTab', 'transfer');
@@ -316,7 +320,7 @@ class DokuRegistrationController extends Controller
             return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat Transfer: ' . $e->getMessage())->with('activeTab', 'transfer');
         }
     }
-    
+
      // =================================================================
     // === FITUR BARU: PENCAIRAN SALDO UTAMA KE DOMPET ===
     // =================================================================
@@ -334,18 +338,18 @@ class DokuRegistrationController extends Controller
         $validator = Validator::make($request->all(), [
             'amount_cairkan' => 'required|numeric|min:1000', // Minimal transfer
         ]);
-        
+
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput()->with('tab', 'ringkasan');
         }
-        
+
         $amount = (int) $request->input('amount_cairkan');
 
         // 2. Validasi Bisnis
         if (!$store || !$store->doku_sac_id) {
              return redirect()->back()->with('error', 'Dompet Sancaka Express Anda tidak terdaftar.')->with('tab', 'ringkasan');
         }
-        
+
         if ($store->doku_status !== 'ACTIVE') {
              return redirect()->back()->with('error', 'Akun Dompet Sancaka Express Anda harus aktif untuk menerima pencairan.')->with('tab', 'ringkasan');
         }
@@ -372,17 +376,17 @@ class DokuRegistrationController extends Controller
             );
 
             if ($response['success'] ?? false) {
-                
+
                 // Jika DOKU berhasil, kurangi Saldo Utama
                 $user->decrement('saldo', $amount);
-                
+
                 // Tambahkan ke Saldo Tertunda (karena transfer DOKU butuh waktu)
                 // ATAU langsung tambah ke Saldo Tersedia (tergantung respons DOKU)
                 // Kita anggap masuk ke Tersedia untuk saat ini.
                 $store->doku_balance_available += $amount;
                 $store->doku_balance_last_updated = now();
                 $store->save();
-                
+
                 // Catat transaksi internal
                 Transaction::create([
                     'user_id' => $user->id_pengguna,
