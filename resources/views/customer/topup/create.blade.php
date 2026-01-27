@@ -87,7 +87,12 @@
                                     <input type="radio" name="payment_method" value="TRANSFER_MANUAL" class="peer sr-only">
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-500 peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all flex flex-col items-center text-center">
                                         <div class="h-10 w-10 bg-gray-100 rounded-md flex items-center justify-center mb-2">
-                                            <i class="fas fa-university text-gray-600 text-lg"></i>
+                                            <img
+                                                src="https://tokosancaka.com/public/assets/saldo.png"
+                                                alt="Saldo"
+                                                class="w-5 h-5"
+                                            />
+
                                         </div>
                                         <span class="text-sm font-bold text-gray-700">Transfer Bank</span>
                                         <span class="text-[10px] text-gray-400">Cek Manual Admin</span>
