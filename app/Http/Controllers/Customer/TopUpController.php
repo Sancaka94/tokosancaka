@@ -195,7 +195,10 @@ class TopUpController extends Controller
                     $apiKey       = config('tripay.api_key');
                     $privateKey   = config('tripay.private_key');
                     $merchantCode = config('tripay.merchant_code');
-                    $mode         = config('tripay.mode', 'sandbox');
+                    // [PERBAIKAN CERDAS]
+                    // Langsung ambil status REAL dari Database.
+                    // Parameter ke-3 ('sandbox') adalah fallback otomatis jika DB kosong.
+                    $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
 
                     $payload = [
                         'method'         => $validated['payment_method'],
