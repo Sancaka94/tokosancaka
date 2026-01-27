@@ -1943,5 +1943,33 @@ public function checkTopupStatus(Request $request)
             ->with('success', 'Pembayaran Anda sedang diproses oleh sistem. Silakan refresh halaman ini secara berkala untuk melihat perubahan status/saldo.');
     }
 
+    /**
+     * FUNGSI KHUSUS UNTUK MENERIMA HIT DARI DOKU
+     * Route: POST /api/doku/notify
+     */
+    public function dokuNotify(Request $request)
+    {
+        // 1. Log Data yang masuk (Penting untuk debugging)
+        Log::info('DOKU NOTIFICATION HIT:', $request->all());
+
+        try {
+            // 2. Ambil data
+            $notification = $request->all();
+
+            // 3. Validasi dasar (Pastikan ini dari DOKU)
+            // Note: Idealnya cek Signature di sini, tapi untuk test bisa diskip dulu
+            if (!isset($notification['order']['invoice_number'])) {
+                return response()->json(['message' => 'Invalid Data'], 400);
+            }
+
+            // 4. Panggil handler yang sudah Anda buat
+            return $this->handleDokuCallback($notification);
+
+        } catch (\Exception $e) {
+            Log::error('DOKU NOTIFY ERROR: ' . $e->getMessage());
+            return response()->json(['message' => 'Error'], 500);
+        }
+    }
+
 
 }

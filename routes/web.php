@@ -787,3 +787,5 @@ Route::post('/dana/notify', [TopUpController::class, 'handleNotify'])->name('dan
 // Route untuk cek manual (misal oleh Admin)
 Route::get('/dana/check-gateway/{orderId}', [TopUpController::class, 'checkDanaGatewayStatus'])
     ->name('dana.check_gateway');
+
+Route::post('/doku/notify', [TopUpController::class, 'dokuNotify'])->name('doku.notify');
