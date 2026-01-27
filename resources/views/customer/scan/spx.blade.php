@@ -715,67 +715,71 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-    if (suratJalanBtn) suratJalanBtn.addEventListener('click', async () => {
-
-        if (scannedResiArray.length === 0) {
-
-            showAlert('Belum ada resi yang di-scan.', 'warning');
-
-            return;
-
-        }
-
-        suratJalanBtn.disabled = true;
-
-        suratJalanBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Mencetak...';
-
-        try {
-
-            const response = await fetch("{{ route('customer.suratjalan.create') }}", {
-
-                method: 'POST',
-
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-
-                body: JSON.stringify({ resi_list: scannedResiArray })
-
-            });
-
-            const result = await response.json();
-
-            if (response.ok && result.success) {
-
-                showAlert('Surat Jalan berhasil dibuat!', 'success');
-
-                window.open(result.pdf_url, '_blank');
-
-                suratJalanData = result;
-
-                suratJalanBtn.classList.add('hidden');
-
-                whatsappBtn.classList.remove('hidden');
-
-                playSuccess();
-
-            } else {
-
-                throw new Error(result.message || 'Gagal membuat surat jalan.');
-
+    // --- LOGIKA TOMBOL CETAK SURAT JALAN ---
+    if (suratJalanBtn) {
+        suratJalanBtn.addEventListener('click', async () => {
+            // Cek jika array kosong
+            if (scannedResiArray.length === 0) {
+                showAlert('Belum ada resi yang di-scan.', 'warning');
+                return;
             }
 
-        } catch (error) {
+            // Loading state
+            suratJalanBtn.disabled = true;
+            suratJalanBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mencetak...';
 
-            showAlert(error.message, 'danger');
+            try {
+                // Kirim Data ke Backend
+                const response = await fetch("{{ route('customer.suratjalan.create') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify({ resi_list: scannedResiArray })
+                });
+                const result = await response.json();
 
-            suratJalanBtn.disabled = false;
+                if (response.ok && result.success) {
+                    // 1. Notifikasi Sukses
+                    showAlert('Surat Jalan berhasil dibuat!', 'success');
+                    playSound(successSound);
 
-            suratJalanBtn.innerHTML = '<i class="fas fa-print mr-2"></i>Langkah 2: Cetak Surat Jalan';
+                    // 2. Buka PDF di tab baru
+                    window.open(result.pdf_url, '_blank');
 
-            playFail();
+                    // 3. Simpan data untuk WA (sebelum di-clear)
+                    suratJalanData = result;
 
-        }
+                    // =======================================================
+                    // BAGIAN INI YANG MENGHAPUS RIWAYAT DI MONITOR
+                    // =======================================================
 
-    });
+                    // A. Kosongkan Tampilan List HTML (Monitor)
+                    if(recentScansContainer) {
+                        recentScansContainer.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">Riwayat scan telah dicetak & dibersihkan.</div>';
+                    }
+
+                    // B. Kosongkan Array Memory (Agar scan berikutnya mulai dari 0 lagi)
+                    // Kita simpan dulu backupnya untuk WA jika perlu, lalu kosongkan array utama
+                    const lastBatchResis = [...scannedResiArray];
+                    scannedResiArray = [];
+
+                    // C. Reset Tampilan Tombol
+                    suratJalanBtn.classList.add('hidden'); // Sembunyikan tombol cetak
+                    suratJalanBtn.innerHTML = '<i class="fas fa-print mr-2"></i>Langkah 2: Cetak Surat Jalan'; // Reset teks
+
+                    // D. Tampilkan Tombol WA
+                    whatsappBtn.classList.remove('hidden');
+
+                } else {
+                    throw new Error(result.message || 'Gagal membuat surat jalan.');
+                }
+            } catch (error) {
+                showAlert(error.message, 'danger');
+                suratJalanBtn.disabled = false;
+                suratJalanBtn.innerHTML = '<i class="fas fa-print mr-2"></i>Langkah 2: Cetak Surat Jalan';
+                playSound(failSound);
+            }
+        });
+    }
 
 
 
