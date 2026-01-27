@@ -62,9 +62,11 @@
                     <ul role="list" class="divide-y divide-gray-200 border-b border-t border-gray-200">
                         <li class="flex py-4 items-center">
                             <div class="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-blue-50 flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-500" fill="none" viewBox="0-0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
+                                <img
+                                    src="https://tokosancaka.com/public/assets/saldo.png"
+                                    alt="Icon Wallet"
+                                    class="h-8 w-8"
+                                />
                             </div>
                             <div class="ml-4 flex flex-1 flex-col text-sm">
                                 <h4 class="font-medium text-gray-800">Top Up Saldo</h4>
