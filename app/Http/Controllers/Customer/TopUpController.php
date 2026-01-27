@@ -6,6 +6,8 @@ use App\Events\AdminNotificationEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache; // Untuk menyimpan data sementara biar gak lemot
+use App\Models\Api; // Untuk ambil settingan database
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -48,9 +50,53 @@ class TopUpController extends Controller
     /**
      * Menampilkan halaman form top up.
      */
+    /**
+     * Menampilkan halaman form top up dengan Metode Pembayaran Dinamis.
+     */
     public function create()
     {
-        return view('customer.topup.create');
+        // 1. Ambil Channel dari Tripay (Otomatis)
+        $tripayChannels = $this->getTripayChannels();
+
+        // 2. Kelompokkan berdasarkan Group (Virtual Account, E-Wallet, dll)
+        $groupedChannels = collect($tripayChannels)->groupBy('group');
+
+        return view('customer.topup.create', compact('groupedChannels'));
+    }
+
+    /**
+     * Helper: Ambil Channel Pembayaran dari API Tripay
+     * Disimpan di Cache selama 24 jam agar website cepat (tidak loading terus ke Tripay)
+     */
+    private function getTripayChannels()
+    {
+        $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+        // Gunakan Cache agar tidak nembak API setiap kali refresh halaman
+        return Cache::remember('tripay_channels_' . $mode, 60 * 24, function () use ($mode) {
+
+            $apiKey = ($mode === 'production')
+                ? Api::getValue('TRIPAY_API_KEY', 'production')
+                : Api::getValue('TRIPAY_API_KEY', 'sandbox');
+
+            $baseUrl = ($mode === 'production')
+                ? 'https://tripay.co.id/api/merchant/payment-channel'
+                : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
+
+            if (empty($apiKey)) return [];
+
+            try {
+                $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->get($baseUrl);
+
+                if ($response->successful()) {
+                    return $response->json()['data'] ?? [];
+                }
+            } catch (\Exception $e) {
+                Log::error('Gagal ambil channel Tripay: ' . $e->getMessage());
+            }
+
+            return [];
+        });
     }
 
     /**
