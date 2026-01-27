@@ -54,7 +54,8 @@ use App\Http\Controllers\Api\ScraperController;
 
 
 // Endpoint untuk DOKU Notification
-Route::post('/doku/notify', [TopUpController::class, 'dokuNotify'])->name('doku.notify');
+// Route::post('/doku/notify', [TopUpController::class, 'dokuNotify'])->name('doku.notify');
+Route::post('/doku/notify', [DokuWebhookController::class, 'handle'])->name('doku.notify');
 
 Route::match(['post', 'options'], '/import-scraper', [ScraperController::class, 'store']);
 
