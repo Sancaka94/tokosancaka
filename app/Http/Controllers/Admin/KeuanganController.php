@@ -492,9 +492,7 @@ class KeuanganController extends Controller
     return view('admin.keuangan.neraca', compact('neraca', 'startDate', 'endDate', 'perubahanModal'));
 }
 
-// ... (method neraca sebelumnya) ...
-
-    public function labaRugi(Request $request)
+public function labaRugi(Request $request)
     {
         // 1. SETUP TANGGAL
         if (!$request->has('date_start')) {
@@ -506,9 +504,7 @@ class KeuanganController extends Controller
         $startDate = $request->date_start;
         $endDate   = $request->date_end;
 
-        // 2. AMBIL DATA LENGKAP & FILTER
-        // Gunakan Blacklist yang sama dengan Neraca agar konsisten
-        // Kita hanya butuh data OPERASIONAL (Jualan & Biaya)
+        // 2. AMBIL DATA & FILTER (MURNI OPERASIONAL)
         $allData = $this->getDataLengkap($request);
 
         $blackListKategori = [
@@ -517,45 +513,80 @@ class KeuanganController extends Controller
             'Hutang Bank', 'Hutang Usaha', 'Modal Disetor', 'Prive', 'Modal / Saldo Awal', 'NERACA'
         ];
 
-        // Filter: Buang data Neraca, Ambil yang sesuai Tanggal
+        // Filter Data Laporan
         $dataLaporan = $allData->filter(function ($item) use ($blackListKategori) {
             return !in_array($item->kategori, $blackListKategori);
         })->whereBetween('tanggal', [$startDate, $endDate]);
 
-        // 3. HITUNG PENDAPATAN (REVENUE)
-        // Syarat: Jenis = Pemasukan
-        // Kita ambil 'omzet' sebagai nilai Pendapatan Kotor
-        $pendapatan = $dataLaporan->where('jenis', 'Pemasukan')
-                                  ->groupBy('kategori')
-                                  ->map(fn($row) => $row->sum('omzet'));
+        // =================================================================
+        // 3. DEFINISI AKUN BAKU (Supaya Tetap Muncul Walau 0)
+        // =================================================================
 
-        $totalPendapatan = $dataLaporan->where('jenis', 'Pemasukan')->sum('omzet');
+        // A. DAFTAR AKUN PENDAPATAN STANDARD
+        $standardPendapatan = [
+            'Ekspedisi'         => 0,
+            'Top Up Saldo'      => 0,
+            'PPOB'              => 0,
+            'Marketplace'       => 0,
+            'Penjualan Toko'    => 0,
+            'Jasa Service'      => 0,
+            'Pendapatan Lainnya'=> 0
+        ];
 
-        // 4. HITUNG HPP (HARGA POKOK PENJUALAN)
-        // Syarat: Jenis = Pemasukan (Modal yang melekat pada penjualan)
+        // Ambil Data Real dari DB
+        $realPendapatan = $dataLaporan->where('jenis', 'Pemasukan')
+                                      ->groupBy('kategori')
+                                      ->map(fn($row) => $row->sum('omzet'))
+                                      ->toArray();
+
+        // Gabungkan: Data Real akan menimpa 0, Sisanya tetap 0
+        $pendapatanFinal = array_merge($standardPendapatan, $realPendapatan);
+
+        // Hitung Total Pendapatan
+        $totalPendapatan = array_sum($pendapatanFinal);
+
+
+        // B. HITUNG HPP (AUTO)
         $hpp = $dataLaporan->where('jenis', 'Pemasukan')->sum('modal');
 
-        // 5. HITUNG BEBAN OPERASIONAL (EXPENSES)
-        // Syarat: Jenis = Pengeluaran (Gaji, Listrik, Sewa, dll)
-        // Kita ambil 'modal' (jumlah pengeluaran)
-        $beban = $dataLaporan->where('jenis', 'Pengeluaran')
-                             ->groupBy('kategori')
-                             ->map(fn($row) => $row->sum('modal')); // Di DB biasanya kolom modal menampung nilai pengeluaran
 
-        $totalBeban = $dataLaporan->where('jenis', 'Pengeluaran')->sum('modal');
+        // C. DAFTAR AKUN BEBAN STANDARD
+        $standardBeban = [
+            'Gaji Karyawan'     => 0,
+            'Listrik & Air'     => 0,
+            'Internet & Wifi'   => 0,
+            'Sewa Tempat'       => 0,
+            'Perlengkapan Toko' => 0,
+            'Biaya Packing'     => 0,
+            'Transportasi'      => 0,
+            'Promosi & Iklan'   => 0,
+            'Maintenance'       => 0,
+            'Beban Lainnya'     => 0
+        ];
 
-        // 6. HITUNG LABA BERSIH
-        // Rumus: Total Pendapatan - HPP - Total Beban
-        // (Sama dengan sum('profit') di dashboard)
+        // Ambil Data Real Beban dari DB
+        $realBeban = $dataLaporan->where('jenis', 'Pengeluaran')
+                                 ->groupBy('kategori')
+                                 ->map(fn($row) => $row->sum('modal')) // Pengeluaran pakai kolom modal
+                                 ->toArray();
+
+        // Gabungkan
+        $bebanFinal = array_merge($standardBeban, $realBeban);
+
+        // Hitung Total Beban
+        $totalBeban = array_sum($bebanFinal);
+
+
+        // 4. HITUNG LABA BERSIH
         $labaBersih = $totalPendapatan - $hpp - $totalBeban;
 
         return view('admin.laporan.laba-rugi', compact(
             'startDate',
             'endDate',
-            'pendapatan',
+            'pendapatanFinal', // Kirim array final
             'totalPendapatan',
             'hpp',
-            'beban',
+            'bebanFinal',      // Kirim array final
             'totalBeban',
             'labaBersih'
         ));
