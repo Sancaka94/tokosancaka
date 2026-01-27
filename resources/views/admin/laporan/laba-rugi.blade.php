@@ -12,7 +12,7 @@
             <h2 class="text-lg font-bold text-gray-600">LAPORAN LABA RUGI</h2>
             <p class="text-sm text-gray-500">Periode: {{ \Carbon\Carbon::parse($startDate)->format('d F Y') }} s.d. {{ \Carbon\Carbon::parse($endDate)->format('d F Y') }}</p>
         </div>
-        
+
         <div class="flex items-center gap-2 print:hidden">
             <form action="{{ route('admin.laporan.labaRugi') }}" method="GET" class="flex items-center gap-2">
                 <input type="date" name="date_start" value="{{ $startDate }}" class="border-gray-300 rounded-lg text-sm focus:ring-emerald-500">
@@ -36,7 +36,7 @@
             <div class="bg-emerald-50 p-3 border-b border-emerald-100 text-center font-bold text-lg text-emerald-800 border-t-4 border-emerald-500">
                 PENDAPATAN (INCOME)
             </div>
-            
+
             <div class="p-6 flex-1">
                 <table class="w-full text-sm">
                     <tbody class="divide-y divide-gray-100">
