@@ -14,9 +14,12 @@
             <h2 class="text-lg font-bold text-gray-600">LAPORAN LABA RUGI</h2>
             <p class="text-sm text-gray-500">Periode: {{ \Carbon\Carbon::parse($startDate)->format('d F Y') }} s.d. {{ \Carbon\Carbon::parse($endDate)->format('d F Y') }}</p>
         </div>
-        
+
         <div class="flex items-center gap-2 print:hidden">
-            <form action="{{ route('admin.laporan.laba_rugi') }}" method="GET" class="flex items-center gap-2">
+            {{-- Perhatikan: gunakan 'labaRugi' (huruf R besar), bukan 'laba_rugi' --}}
+            {{-- Pastikan prefix route admin Anda sesuai, biasanya admin.laporan.labaRugi --}}
+
+            <form action="{{ route('admin.laporan.labaRugi') }}" method="GET" class="flex items-center gap-2">
                 <input type="date" name="date_start" value="{{ $startDate }}" class="border-gray-300 rounded-lg text-sm focus:ring-emerald-500">
                 <span class="text-gray-400">-</span>
                 <input type="date" name="date_end" value="{{ $endDate }}" class="border-gray-300 rounded-lg text-sm focus:ring-emerald-500">
@@ -41,7 +44,7 @@
             <div class="bg-emerald-50 p-3 border-b border-emerald-100 text-center font-bold text-lg text-emerald-800 border-t-4 border-emerald-500">
                 PENDAPATAN (INCOME)
             </div>
-            
+
             <div class="p-6 flex-1">
                 <table class="w-full text-sm">
                     <tbody class="divide-y divide-gray-100">
@@ -125,7 +128,7 @@
     {{-- =========================================================== --}}
     <div class="mt-0 border-x border-b border-gray-300 shadow-lg rounded-b-xl overflow-hidden">
         <div class="p-6 flex flex-col md:flex-row justify-between items-center gap-4 {{ $labaBersih >= 0 ? 'bg-gradient-to-r from-emerald-600 to-green-500' : 'bg-gradient-to-r from-red-600 to-pink-600' }}">
-            
+
             <div class="text-white">
                 <h3 class="text-2xl font-extrabold uppercase tracking-widest">
                     {{ $labaBersih >= 0 ? 'LABA BERSIH (NET PROFIT)' : 'RUGI BERSIH (NET LOSS)' }}
