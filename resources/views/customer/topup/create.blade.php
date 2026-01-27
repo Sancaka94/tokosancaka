@@ -137,7 +137,7 @@
                                                     </span>
 
                                                     <span class="text-[10px] text-gray-500 mt-1 bg-gray-100 px-2 py-0.5 rounded-md">
-                                                        Admin: Rp {{ number_format($channel['total_fee']['flat'] ?? 0, 0, ',', '.') }}
+                                                        Admin Bank: Rp {{ number_format($channel['total_fee']['flat'] ?? 0, 0, ',', '.') }}
                                                     </span>
 
                                                     {{-- Checkmark --}}
