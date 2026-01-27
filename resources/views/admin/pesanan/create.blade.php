@@ -901,5 +901,28 @@ applyStrictInsurance(true);
 
 });
 </script>
+
+@if(session('tripay_error_modal'))
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        Swal.fire({
+            icon: 'error',
+            title: 'Pembayaran Gagal!',
+            html: `
+                <div class="text-left">
+                    <p class="mb-2">Tripay menolak permintaan ini dengan alasan:</p>
+                    <div class="p-3 bg-red-50 border border-red-200 rounded text-red-700 font-mono text-sm">
+                        {{ session('tripay_error_modal') }}
+                    </div>
+                    <p class="mt-2 text-xs text-gray-500">Silakan periksa nominal ongkir atau item tambahan.</p>
+                </div>
+            `,
+            confirmButtonText: 'Perbaiki Pesanan',
+            confirmButtonColor: '#d33'
+        });
+    });
+</script>
+@endif
+
 @endpush
 

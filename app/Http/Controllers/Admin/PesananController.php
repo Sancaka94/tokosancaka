@@ -8,6 +8,7 @@ use App\Models\Kontak;
 use App\Models\User;
 use App\Models\Keuangan; // <--- WAJIB ADA
 use App\Models\TopUp; // Tetap import jika diperlukan di fungsi lain
+use App\Models\Api; // <--- WAJIB TAMBAHKAN INI AGAR TRIPAY JALAN
 use App\Services\FonnteService;
 use App\Services\KiriminAjaService;
 use App\Services\DokuJokulService; // <-- PANGGIL SERVICE BARU
@@ -278,9 +279,20 @@ class PesananController extends Controller
                     $orderItemsPayload = $this->_prepareOrderItemsPayload($shipping_cost, $insurance_cost, $validatedData['ansuransi']);
                     $tripayResponse = $this->_createTripayTransactionInternal($validatedData, $pesanan, $total_paid_ongkir, $orderItemsPayload);
 
+                    // ======================================================
+                    // 🔥 MODIFIKASI: TANGKAP ERROR DAN KIRIM KE UI 🔥
+                    // ======================================================
                     if (empty($tripayResponse['success'])) {
-                        throw new Exception('Gagal membuat transaksi pembayaran Tripay. Pesan: ' . ($tripayResponse['message'] ?? 'Tidak ada pesan.'));
+                        DB::rollBack(); // Batalkan database transaction
+
+                        $pesanErrorTripay = $tripayResponse['message'] ?? 'Unknown Error from Tripay';
+
+                        // Kembalikan ke form dengan Variable Spesifik untuk Modal
+                        return redirect()->back()
+                            ->withInput()
+                            ->with('tripay_error_modal', $pesanErrorTripay);
                     }
+                    // ======================================================
                     $paymentUrl = $tripayResponse['data']['checkout_url'] ?? null;
                     $pesanan->payment_url = $paymentUrl;
                 }
@@ -375,7 +387,7 @@ class PesananController extends Controller
                     // =========================================================================
                     // HAPUS ATAU KOMENTARI BAGIAN INI DI PesananController.php method store()
                     // =========================================================================
-                    
+
                     /* // 9. Catat Keuangan  <-- HAPUS INI
                     if (method_exists($this, 'simpanKeKeuangan')) {
                         $this->simpanKeuangan($pesanan);
