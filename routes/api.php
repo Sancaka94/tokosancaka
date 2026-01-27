@@ -52,6 +52,10 @@ use App\Http\Controllers\Api\ScraperController;
 // Website fontend WA Integration
 //use App\Http\Controllers\WhatsappController;
 
+
+// Endpoint untuk DOKU Notification
+Route::post('/doku/notify', [TopUpController::class, 'dokuNotify'])->name('doku.notify');
+
 Route::match(['post', 'options'], '/import-scraper', [ScraperController::class, 'store']);
 
 
@@ -167,7 +171,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', fn(Request $request) => $request->user());
     Route::get('/dashboard', [DashboardController::class, 'index']);
-    
+
     // Profil Pengguna
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile', [ProfileController::class, 'update']);
