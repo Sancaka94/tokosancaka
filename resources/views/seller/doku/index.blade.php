@@ -47,32 +47,32 @@
 
     {{-- Cek apakah sudah terdaftar atau belum --}}
     @if($store->doku_sac_id)
-        
+
         {{-- ========================================================== --}}
         {{-- == 3. TAMPILAN JIKA SUDAH TERDAFTAR (KONTROL PANEL) == --}}
         {{-- ========================================================== --}}
-        
+
         <div x-data="{ tab: '{{ session('tab', 'ringkasan') }}' }" class="bg-white rounded-lg shadow-md">
-            
+
             <!-- Navigasi Tab -->
             <div class="border-b border-gray-200">
                 <nav class="flex flex-wrap -mb-px px-6" aria-label="Tabs">
-                    <button @click="tab = 'ringkasan'" 
+                    <button @click="tab = 'ringkasan'"
                             :class="{ 'border-blue-500 text-blue-600': tab === 'ringkasan', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'ringkasan' }"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm mr-8 focus:outline-none">
                         Ringkasan
                     </button>
-                    <button @click="tab = 'payout'" 
+                    <button @click="tab = 'payout'"
                             :class="{ 'border-blue-500 text-blue-600': tab === 'payout', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'payout' }"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm mr-8 focus:outline-none">
                         Kirim Payout (Withdrawal)
                     </button>
-                    <button @click="tab = 'transfer'" 
+                    <button @click="tab = 'transfer'"
                             :class="{ 'border-blue-500 text-blue-600': tab === 'transfer', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'transfer' }"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm mr-8 focus:outline-none">
                         Transfer Antar Akun
                     </button>
-                    <button @click="tab = 'info'" 
+                    <button @click="tab = 'info'"
                             :class="{ 'border-blue-500 text-blue-600': tab === 'info', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'info' }"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm mr-8 focus:outline-none">
                         Info Terima Pembayaran
@@ -82,15 +82,15 @@
 
             <!-- Konten Tab -->
             <div class="p-6 md:p-8">
-                
+
                 {{-- ====================================== --}}
                 {{-- == KONTEN TAB 1: RINGKASAN == --}}
                 {{-- ====================================== --}}
                 <div x-show="tab === 'ringkasan'" x-transition:enter="transition-opacity duration-300" x-transition:enter-start="opacity-0">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Status Akun Dompet Anda</h2>
-                    
+
                     <div class="space-y-4">
-                        
+
                         <div class="flex flex-col sm:flex-row sm:space-x-8">
                             <div>
                                 <span class="block text-sm font-medium text-gray-500">Status Registrasi</span>
@@ -121,12 +121,12 @@
                             <span class="block text-sm font-medium text-gray-500">Sub Account ID</span>
                             <span class="text-lg font-semibold text-gray-900">{{ $store->doku_sac_id }}</span>
                         </div>
-                        
+
                         {{-- Saldo Dompet Sancaka (DOKU) --}}
                         <div class="pt-4 border-t">
                             <div class="flex justify-between items-center mb-2">
                                 <h3 class="text-lg font-medium text-gray-900">Saldo Dompet Anda (SANCAKA EXPRESS)</h3>
-                                
+
                                 <form action="{{ route('seller.doku.refreshBalance') }}" method="POST"
                                       x-data="{ isRefreshing: false }"
                                       @submit="isRefreshing = true">
@@ -175,7 +175,7 @@
 
                             @if($store->doku_status !== 'ACTIVE')
                                 <div class="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md" role="alert">
-                                    Fitur Pencairan Saldo Utama hanya dapat digunakan setelah akun Dompet Sancaka Express Anda berstatus 
+                                    Fitur Pencairan Saldo Utama hanya dapat digunakan setelah akun Dompet Sancaka Express Anda berstatus
                                     <span class="inline-block px-3 py-1 text-sm font-semibold text-white bg-green-600 rounded-md">Aktif</span>
 
                                 </div>
@@ -195,7 +195,7 @@
                                                 <p class="mt-2 text-xs text-gray-500">Minimal pencairan adalah Rp 1.000.</p>
                                             </div>
                                             <div class="pt-2">
-                                                <button type="submit" 
+                                                <button type="submit"
                                                         class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors
                                                                disabled:bg-gray-400 disabled:cursor-not-allowed">
                                                     Cairkan Saldo Utama ke Dompet
@@ -216,7 +216,7 @@
                 {{-- ====================================== --}}
                 <div x-show="tab === 'payout'" x-transition:enter="transition-opacity duration-300" x-transition:enter-start="opacity-0" style="display: none;">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Kirim Payout (Withdrawal)</h2>
-                    
+
                     @if($store->doku_status !== 'ACTIVE')
                         <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md" role="alert">
                             Fitur Payout hanya dapat digunakan setelah akun Dompet Sancaka Express Anda berstatus
@@ -239,7 +239,7 @@
                                     </div>
                                     <p class="mt-2 text-xs text-gray-500">Minimal payout adalah Rp 10.000. Saldo Tersedia Anda: Rp {{ number_format($store->doku_balance_available, 0, ',', '.') }}</p>
                                 </div>
-                                
+
                                 <div>
                                     <label for="bank_code" class="block text-sm font-medium text-gray-700">Kode Bank (Contoh: BRINIDJA)</label>
                                     <input type="text" name="bank_code" id="bank_code" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required value="{{ old('bank_code', $user->bank_name) }}">
@@ -252,9 +252,9 @@
                                     <label for="bank_account_name" class="block text-sm font-medium text-gray-700">Nama Pemilik Rekening</label>
                                     <input type="text" name="bank_account_name" id="bank_account_name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required value="{{ old('bank_account_name', $user->bank_account_name) }}">
                                 </div>
-                                
+
                                 <div class="pt-4">
-                                    <button type="submit" 
+                                    <button type="submit"
                                             class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors
                                                    disabled:bg-gray-400 disabled:cursor-not-allowed">
                                         Kirim Payout Sekarang
@@ -264,13 +264,13 @@
                         </fieldset>
                     </form>
                 </div>
-                
+
                 {{-- ====================================== --}}
                 {{-- == KONTEN TAB 3: TRANSFER ANTAR AKUN == --}}
                 {{-- ====================================== --}}
                 <div x-show="tab === 'transfer'" x-transition:enter="transition-opacity duration-300" x-transition:enter-start="opacity-0" style="display: none;">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Transfer Antar Akun Dompet Sancaka Express</h2>
-                    
+
                     @if($store->doku_status !== 'ACTIVE')
                         <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md" role="alert">
                             Fitur Transfer hanya dapat digunakan setelah akun Dompet Sancaka Express Anda berstatus
@@ -297,7 +297,7 @@
                                     <p class="mt-2 text-xs text-gray-500">Minimal transfer adalah Rp 1.000. Saldo Tersedia Anda: Rp {{ number_format($store->doku_balance_available, 0, ',', '.') }}</p>
                                 </div>
                                 <div class="pt-4">
-                                    <button type="submit" 
+                                    <button type="submit"
                                             class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors
                                                    disabled:bg-gray-400 disabled:cursor-not-allowed">
                                         Transfer Sekarang
@@ -325,13 +325,13 @@
                         </p>
                         <p>Secara teknis, saat pembayaran pesanan toko Anda, kami menambahkan JSON berikut ke API DOKU:</p>
                         <pre class="bg-gray-800 text-white rounded-md p-4 overflow-x-auto"><code>
-{
-  "additional_info": {
-    "account": {
-      "id": "{{ $store->doku_sac_id }}"
-    }
-  }
-}
+                            {
+                            "additional_info": {
+                                "account": {
+                                "id": "{{ $store->doku_sac_id }}"
+                                }
+                            }
+                            }
                         </code></pre>
                         <p>Anda tidak perlu melakukan apa-apa, semua pembayaran yang berhasil akan otomatis masuk ke <strong>Saldo Tertunda</strong> Anda. Saldo akan pindah ke <strong>Saldo Tersedia</strong> setelah proses rekonsiliasi DOKU (biasanya H+1).</p>
                     </div>
@@ -341,7 +341,7 @@
         </div>
 
     @else
-        
+
         {{-- ========================================================== --}}
         {{-- == 4. TAMPILAN JIKA BELUM TERDAFTAR == --}}
         {{-- ========================================================== --}}
@@ -351,7 +351,7 @@
                 Daftarkan toko Anda ke sistem pembayaran Sancaka Express untuk mulai menerima pembayaran dari pelanggan
                 dan mencairkan dana (payout). Kami akan mendaftarkan data toko Anda secara otomatis.
             </p>
-            
+
             <div class="space-y-4 mb-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Nama Toko</label>
@@ -374,7 +374,7 @@
                 <form action="{{ route('seller.doku.register') }}" method="POST">
                     @csrf
                     <div class="mt-6">
-                        <button type="submit" 
+                        <button type="submit"
                                 class="w-full bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 transition-colors">
                             Daftarkan Toko Saya ke Dompet Sancaka Express
                         </button>
@@ -382,7 +382,7 @@
                 </form>
             @else
                 <div class="mt-6">
-                    <button type="button" 
+                    <button type="button"
                             class="w-full bg-gray-400 text-white font-bold py-3 px-6 rounded-lg cursor-not-allowed">
                         Daftarkan Toko Saya ke Dompet Sancaka Express
                     </button>
@@ -390,7 +390,7 @@
                 </div>
             @endif
         </div>
-        
+
     @endif
 </div>
 @endsection
