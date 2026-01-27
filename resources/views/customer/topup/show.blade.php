@@ -8,7 +8,7 @@
     <div class="bg-gradient-to-br from-gray-50 to-gray-200 min-h-screen flex items-center justify-center p-4 sm:p-6 font-sans">
 
         {{-- Invoice Card --}}
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden relative">
 
             {{-- Header Section with Branding --}}
             <div class="p-6 border-b border-gray-200">
@@ -27,7 +27,7 @@
                             </div>
                             <div class="flex items-center text-xs text-gray-500 mt-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 flex-shrink-0" fill="none" viewBox="0-0 24 24" stroke="currentColor">
-                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                 </svg>
                                 <span>085745808809 / 08819435180</span>
                             </div>
@@ -62,7 +62,7 @@
                     <ul role="list" class="divide-y divide-gray-200 border-b border-t border-gray-200">
                         <li class="flex py-4 items-center">
                             <div class="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-blue-50 flex items-center justify-center">
-                                <svg xmlns="https://tokosancaka.com/public/assets/saldo.png" class="h-8 w-8 text-blue-500" fill="none" viewBox="0-0 24 24" stroke="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-500" fill="none" viewBox="0-0 24 24" stroke="currentColor">
                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                                 </svg>
                             </div>
@@ -117,7 +117,7 @@
 
                                 @php
                                     $method = trim(strtoupper($topUp->payment_method));
-                                    $description = trim(strtoupper($topUp->description)); // <-- KITA TAMBAHKAN INI
+                                    $description = trim(strtoupper($topUp->description));
                                     $url    = $topUp->payment_url;
                                     $virtualAccounts = [
                                         'PERMATAVA','BNIVA','BRIVA','MANDIRIVA','BCAVA','MUAMALATVA',
@@ -127,8 +127,8 @@
 
                                 <div class="text-center">
 
-                                    {{-- 1. QRIS --}}
-                                    @if (str_contains($method, 'QRIS'))
+                                    {{-- 1. QRIS (Dynamic from Gateway) --}}
+                                    @if (str_contains($method, 'QRIS') && !str_contains($description, 'MANUAL'))
                                         <p class="text-gray-600 mb-4">Scan QR di bawah ini:</p>
                                         <div class="flex justify-center p-2 bg-white rounded-lg shadow-inner">
                                             <img src="{{ $url }}" alt="QRIS Payment" class="w-48 h-48 rounded-md">
@@ -137,7 +137,6 @@
 
                                     {{-- 2. DOKU / E-Wallet (Redirect) --}}
                                     @elseif (str_contains($method, 'DOKU_JOKUL') || in_array($method, ['OVO', 'DANA', 'SHOPEEPAY', 'LINKAJA']))
-                                        {{-- DOKU atau E-Wallet redirect --}}
                                         <script>
                                             window.location.href = "{{ $url }}";
                                         </script>
@@ -158,62 +157,69 @@
                                         </div>
                                         <p class="mt-4 text-xs text-gray-500">Status akan diperbarui secara otomatis.</p>
 
-                                    {{-- 4. TRANSFER MANUAL (Info Rekening & Form Upload) --}}
-@elseif ($method === 'TRANSFER_MANUAL' || str_contains($description, 'TRANSFER MANUAL'))
-    {{-- Transfer Manual --}}
-    <h3 class="text-base font-semibold text-gray-700 mb-3">Transfer Manual</h3>
-    <p class="text-sm text-gray-600 mb-4">Silakan transfer ke salah satu rekening resmi kami:</p>
+                                    {{-- 4. TRANSFER MANUAL (Info Rekening & QRIS Sancaka) --}}
+                                    @elseif ($method === 'TRANSFER_MANUAL' || str_contains($description, 'TRANSFER MANUAL'))
+                                        <h3 class="text-base font-semibold text-gray-700 mb-3">Transfer Manual</h3>
+                                        <p class="text-sm text-gray-600 mb-4">Silakan transfer ke salah satu rekening resmi atau Scan QRIS:</p>
 
-    <div class="text-left space-y-3 p-4 bg-white rounded-lg border border-gray-200 shadow-inner">
+                                        <div class="text-left space-y-3 p-4 bg-white rounded-lg border border-gray-200 shadow-inner">
 
-        {{-- BCA --}}
-        <div class="flex justify-between items-center account-row">
-            <p class="font-bold text-gray-800">
-                BCA: <span class="font-mono text-blue-600 account-number" data-account="7790480494">7790480494</span>
-            </p>
-            <button class="copy-btn px-3 py-1 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition"
-                    data-clipboard-target="7790480494">
-                <i class="fas fa-copy mr-1"></i> Copy
-            </button>
-        </div>
+                                            {{-- BCA --}}
+                                            <div class="flex justify-between items-center account-row">
+                                                <p class="font-bold text-gray-800">
+                                                    BCA: <span class="font-mono text-blue-600 account-number" data-account="7790480494">7790480494</span>
+                                                </p>
+                                                <button class="copy-btn px-3 py-1 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition"
+                                                        data-clipboard-target="7790480494">
+                                                    <i class="fas fa-copy mr-1"></i> Copy
+                                                </button>
+                                            </div>
 
-        {{-- BRI --}}
-        <div class="flex justify-between items-center account-row">
-            <p class="font-bold text-gray-800">
-                BRI: <span class="font-mono text-blue-600 account-number" data-account="005701004162308">005701004162308</span>
-            </p>
-            <button class="copy-btn px-3 py-1 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition"
-                    data-clipboard-target="005701004162308">
-                <i class="fas fa-copy mr-1"></i> Copy
-            </button>
-        </div>
+                                            {{-- BRI --}}
+                                            <div class="flex justify-between items-center account-row">
+                                                <p class="font-bold text-gray-800">
+                                                    BRI: <span class="font-mono text-blue-600 account-number" data-account="005701004162308">005701004162308</span>
+                                                </p>
+                                                <button class="copy-btn px-3 py-1 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition"
+                                                        data-clipboard-target="005701004162308">
+                                                    <i class="fas fa-copy mr-1"></i> Copy
+                                                </button>
+                                            </div>
 
-        {{-- MANDIRI --}}
-        <div class="flex justify-between items-center account-row">
-            <p class="font-bold text-gray-800">
-                MANDIRI: <span class="font-mono text-blue-600 account-number" data-account="1710018351539">1710018351539</span>
-            </p>
-            <button class="copy-btn px-3 py-1 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition"
-                    data-clipboard-target="1710018351539">
-                <i class="fas fa-copy mr-1"></i> Copy
-            </button>
-        </div>
+                                            {{-- MANDIRI --}}
+                                            <div class="flex justify-between items-center account-row">
+                                                <p class="font-bold text-gray-800">
+                                                    MANDIRI: <span class="font-mono text-blue-600 account-number" data-account="1710018351539">1710018351539</span>
+                                                </p>
+                                                <button class="copy-btn px-3 py-1 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition"
+                                                        data-clipboard-target="1710018351539">
+                                                    <i class="fas fa-copy mr-1"></i> Copy
+                                                </button>
+                                            </div>
 
-        <p class="text-center font-semibold text-gray-800 pt-2 border-t border-gray-100">a/n CV. SANCAKA KARYA HUTAMA</p>
-    </div>
+                                            {{-- QRIS SANCAKA (Tombol Modal) --}}
+                                            <div class="flex justify-between items-center account-row pt-2 border-t border-gray-100">
+                                                <div class="flex items-center">
+                                                    <img src="https://tokosancaka.com/public/storage/logo/qris-sancaka.jpeg" class="h-6 w-6 rounded mr-2" onerror="this.style.display='none'">
+                                                    <p class="font-bold text-gray-800">QRIS Sancaka</p>
+                                                </div>
+                                                <button type="button" onclick="openQrisModal()" class="px-3 py-1 bg-purple-600 text-white text-xs rounded-full hover:bg-purple-700 transition shadow-sm">
+                                                    <i class="fas fa-qrcode mr-1"></i> Lihat QR
+                                                </button>
+                                            </div>
 
+                                            <p class="text-center font-semibold text-gray-800 pt-2 text-xs">a/n CV. SANCAKA KARYA HUTAMA</p>
+                                        </div>
 
                                         {{-- Pesan Peringatan --}}
                                         <div class="mt-4 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 text-sm text-left">
                                             <p class="font-bold">Mohon kerjasamanya,</p>
                                             <p>Transfer Lunas Akan Di Anggap Sah Apabila Bapak/Ibu Melampirkan Bukti Transfer. Terima kasih Banyak.</p>
-                                            <p class="font-medium mt-1">- Menejemen Sancaka Express</p>
+                                            <p class="font-medium mt-1">- Manajemen Sancaka Express</p>
                                         </div>
 
-                                        {{-- Form Upload Bukti (Alur Baru) --}}
-
+                                        {{-- Form Upload Bukti --}}
                                         @if($topUp->payment_proof_path)
-                                            {{-- Jika SUDAH upload --}}
                                             <div class="mt-4">
                                                 <p class="text-sm font-medium text-gray-700 mb-2">Bukti Transfer Anda (Sedang ditinjau):</p>
                                                 <img src="{{ asset('public/storage/' . $topUp->payment_proof_path) }}" alt="Bukti Bayar" class="w-full max-w-xs mx-auto rounded-lg shadow-md border border-gray-300">
@@ -221,45 +227,27 @@
                                             </div>
                                         @endif
 
-                                        {{-- Form untuk UPLOAD BARU atau UPLOAD ULANG --}}
                                         <form action="{{ route('customer.topup.upload_proof', $topUp->reference_id) }}" method="POST" enctype="multipart/form-data" class="mt-4 space-y-3 p-4 border border-gray-200 rounded-lg bg-white shadow-inner">
                                             @csrf
-
                                             <div>
                                                 <label for="proof_of_payment" class="block text-sm font-medium text-gray-700 text-left">
                                                     {{ $topUp->payment_proof_path ? 'Upload Ulang Bukti Transfer' : 'Upload Bukti Transfer Anda' }}
                                                 </label>
-                                                <input type="file" name="proof_of_payment" id="proof_of_payment"
-                                                       required
-                                                       accept="image/png, image/jpeg, image/jpg"
-                                                       class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                                <input type="file" name="proof_of_payment" id="proof_of_payment" required accept="image/png, image/jpeg, image/jpg" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                                                 @error('proof_of_payment')
                                                     <p class="text-red-500 text-xs mt-1 text-left">{{ $message }}</p>
                                                 @enderror
                                             </div>
-
                                             <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                                 Kirim Bukti Transfer
                                             </button>
                                         </form>
-
-                                    {{-- 5. Fallback/Lainnya (Mis. Alfamart/Indomaret) --}}
-                                    @else
-                                        <p class="text-gray-600 mb-2">Gunakan Kode Pembayaran berikut:</p>
-                                        <div class="bg-white p-4 rounded-lg border-2 border-dashed">
-                                            <strong class="text-2xl font-mono tracking-widest text-blue-600">
-                                                {{ $url }}
-                                            </strong>
-                                        </div>
-                                        <p class="mt-4 text-xs text-gray-500">Status akan diperbarui secara otomatis.</p>
                                     @endif
                                 </div>
                             </div>
-
-                        {{-- Tampilkan ini jika pembayaran SUDAH LUNAS/GAGAL (bukan 'pending') --}}
                         @else
+                            {{-- Jika status SUDAH LUNAS / GAGAL --}}
                             <div class="h-full flex flex-col justify-center items-center text-center">
-
                                 @if($status === 'success')
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-500" fill="none" viewBox="0-0 24 24" stroke="currentColor">
                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -267,7 +255,6 @@
                                     <h2 class="text-xl font-semibold text-gray-800 mt-3">Top Up Berhasil</h2>
                                     <p class="text-gray-600 mt-2">Saldo Anda telah berhasil ditambahkan.</p>
                                 @else
-                                    {{-- Gagal, Kadaluwarsa, dll. --}}
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500" fill="none" viewBox="0-0 24 24" stroke="currentColor">
                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
@@ -280,87 +267,98 @@
                                 </a>
                             </div>
                         @endif
-
                 </div>
             </div>
         </div>
     </div>
+
+    {{-- MODAL QRIS SANCAKA --}}
+    <div id="qrisModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+
+            {{-- Background Overlay --}}
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeQrisModal()"></div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            {{-- Modal Panel --}}
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 text-center">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 mb-4">
+                        <i class="fas fa-qrcode text-purple-600 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg leading-6 font-bold text-gray-900" id="modal-title">
+                        QRIS Sancaka Express
+                    </h3>
+                    <p class="text-sm text-gray-500 mb-4">Scan menggunakan E-Wallet atau M-Banking</p>
+
+                    {{-- Gambar QRIS --}}
+                    <div class="p-2 border rounded-lg shadow-sm bg-gray-50 inline-block">
+                        <img src="https://tokosancaka.com/public/storage/logo/qris-sancaka.jpeg" alt="QRIS Sancaka" class="max-w-full h-auto max-h-80 mx-auto rounded">
+                    </div>
+                </div>
+
+                {{-- Tombol Aksi Modal --}}
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse justify-center gap-2">
+                    <a href="https://tokosancaka.com/public/storage/logo/qris-sancaka.jpeg" download="QRIS-Sancaka.jpeg" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm items-center">
+                        <i class="fas fa-download mr-2"></i> Download QRIS
+                    </a>
+                    <button type="button" onclick="closeQrisModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
-{{-- ========================================================== --}}
-{{-- === 3. SCRIPT BARU UNTUK AUTO-REFRESH (POLLING) === --}}
-{{-- ========================================================== --}}
 @push('scripts')
 <script>
-    // Pastikan kita hanya menjalankan poller jika status HANYA 'pending'
+    // === FUNGSI MODAL QRIS ===
+    function openQrisModal() {
+        document.getElementById('qrisModal').classList.remove('hidden');
+    }
+
+    function closeQrisModal() {
+        document.getElementById('qrisModal').classList.add('hidden');
+    }
+
+    // === POLLING STATUS & COPY TEXT ===
     @if(strtolower($topUp->status) === 'pending')
-
-        // Fungsi untuk mengecek status
         const checkStatus = () => {
-            // URL API yang kita buat di Langkah 2
             const statusCheckUrl = "{{ route('customer.topup.check_status', $topUp->reference_id) }}";
-
             fetch(statusCheckUrl)
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
+                    if (!response.ok) throw new Error('Network response was not ok');
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Current status:', data.status);
-
-                    // Jika status dari server BUKAN 'pending' lagi
                     if (data.status !== 'pending') {
-                        // Hentikan interval polling
-                        clearInterval(pollingInterval);
-                        // Muat ulang halaman untuk menampilkan status baru (Success/Failed)
                         window.location.reload();
                     }
-                    // Jika masih 'pending', biarkan saja, interval akan berjalan lagi
                 })
-                .catch(error => {
-                    console.error('Error polling status:', error);
-                    // Hentikan polling jika ada error
-                    clearInterval(pollingInterval);
-                });
+                .catch(error => clearInterval(pollingInterval));
         };
-
-        // Mulai polling: Panggil fungsi checkStatus() setiap 5 detik (5000 ms)
         const pollingInterval = setInterval(checkStatus, 3000);
-
     @endif
 
-    // ==========================================================
-    // === FUNGSI COPY NOMOR REKENING (Vanilla JS) ===
-    // ==========================================================
     document.addEventListener('DOMContentLoaded', () => {
         const copyButtons = document.querySelectorAll('.copy-btn');
-
         copyButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
+            button.addEventListener('click', () => {
                 const accountNumber = button.getAttribute('data-clipboard-target');
-
                 if (accountNumber) {
-                    // Gunakan Clipboard API modern untuk menyalin
                     navigator.clipboard.writeText(accountNumber).then(() => {
-                        // Feedback visual setelah berhasil copy
                         const originalText = button.innerHTML;
                         button.innerHTML = '<i class="fas fa-check"></i> Disalin!';
                         button.classList.remove('bg-green-500');
                         button.classList.add('bg-blue-500');
-
-                        // Kembalikan tombol ke kondisi semula setelah 2 detik
                         setTimeout(() => {
                             button.innerHTML = originalText;
                             button.classList.remove('bg-blue-500');
                             button.classList.add('bg-green-500');
                         }, 2000);
-
-                    }).catch(err => {
-                        // Fallback jika API gagal (jarang terjadi di browser modern)
-                        alert("Gagal menyalin nomor rekening: " + accountNumber);
-                        console.error('Could not copy text: ', err);
                     });
                 }
             });
