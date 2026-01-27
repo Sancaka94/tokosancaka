@@ -68,7 +68,7 @@
 
                                 <option value="" disabled selected>-- Pilih Metode Pembayaran --</option>
 
-                                {{-- Opsi DANA Direct Debit (BARU) --}}
+                                {{-- Opsi DANA Direct Debit --}}
                                 <optgroup label="E-Wallet & Direct Debit (Rekomendasi)">
                                     <option value="DANA">DANA (Saldo, Kartu Debit/Kredit, Virtual Account)</option>
                                 </optgroup>
@@ -78,16 +78,31 @@
                                     <option value="TRANSFER_MANUAL">Transfer Bank (Upload Bukti)</option>
                                 </optgroup>
 
-                                {{-- Opsi Tripay --}}
-                                <optgroup label="Tripay - Virtual Account & Retail">
-                                    <option value="QRIS">QRIS (All E-Wallet)</option>
-                                    <option value="BCAVA">BCA Virtual Account</option>
-                                    <option value="BNIVA">BNI Virtual Account</option>
-                                    <option value="BRIVA">BRI Virtual Account</option>
-                                    <option value="MANDIRIVA">Mandiri Virtual Account</option>
-                                    <option value="ALFAMART">Alfamart</option>
-                                    <option value="INDOMARET">Indomaret</option>
-                                </optgroup>
+                                {{-- Opsi Tripay (DINAMIS DARI API) --}}
+                                @if(isset($groupedChannels) && count($groupedChannels) > 0)
+                                    @foreach($groupedChannels as $groupName => $channels)
+                                        <optgroup label="{{ $groupName }} (Tripay)">
+                                            @foreach($channels as $channel)
+                                                @if($channel['active'])
+                                                    <option value="{{ $channel['code'] }}">
+                                                        {{ $channel['name'] }} (Biaya: Rp {{ number_format($channel['total_fee']['flat'] ?? 0, 0, ',', '.') }})
+                                                    </option>
+                                                @endif
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                @else
+                                    {{-- Fallback jika API Tripay Gagal Load --}}
+                                    <optgroup label="Tripay (Fallback)">
+                                        <option value="QRIS">QRIS</option>
+                                        <option value="BCAVA">BCA Virtual Account</option>
+                                        <option value="BNIVA">BNI Virtual Account</option>
+                                        <option value="BRIVA">BRI Virtual Account</option>
+                                        <option value="MANDIRIVA">Mandiri Virtual Account</option>
+                                        <option value="ALFAMART">Alfamart</option>
+                                        <option value="INDOMARET">Indomaret</option>
+                                    </optgroup>
+                                @endif
 
                                 {{-- Opsi DOKU --}}
                                 <optgroup label="Payment Gateway Lain">
