@@ -242,12 +242,14 @@ class ScanController extends Controller
     }
 
     /**
-     * Helper method untuk mengambil data scan hari ini.
+     * Helper method untuk mengambil data scan hari ini
+     * HANYA YANG BELUM DICETAK SURAT JALANNYA.
      */
     private function getTodaysScans()
     {
         return ScannedPackage::where('user_id', Auth::user()->id_pengguna)
                              ->whereDate('created_at', today())
+                             ->whereNull('surat_jalan_id') // <--- TAMBAHAN PENTING: Filter yang belum ada SJ
                              ->latest()
                              ->get();
     }
