@@ -62,33 +62,26 @@
                 <div class="bg-white p-6 shadow-md rounded-xl h-full relative">
                     <h2 class="text-2xl font-bold text-gray-800 mb-6">Daftarkan Paket SPX Anda</h2>
 
-                    {{-- Info Saldo (Agar user tahu sisa saldo) --}}
-                    <div class="mb-6 p-4 bg-indigo-50 rounded-lg flex justify-between items-center">
-                        <div>
-                            <span class="text-xs font-bold text-indigo-500 uppercase">Sisa Saldo</span>
-                            <div class="text-xl font-bold text-indigo-700">Rp {{ number_format($customer->saldo, 0, ',', '.') }}</div>
+                    <div id="init-scan-wrapper" class="text-center py-10">
+                        <div class="mb-6 inline-block bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-100">
+                            <p class="text-xs text-gray-500">Sisa Saldo: <span class="font-bold text-indigo-700">Rp {{ number_format($customer->saldo, 0, ',', '.') }}</span></p>
                         </div>
-                        <div class="text-right">
-                            <span class="text-xs text-gray-500">Biaya Scan (Tanpa Cetak)</span>
-                            <div class="font-bold text-gray-700">Rp 1.000</div>
+
+                        <div class="block">
+                            <button type="button" id="btn-scan-sekarang" class="inline-flex items-center justify-center px-8 py-4 border border-transparent text-lg font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none shadow-lg transition-transform transform hover:scale-105">
+                                <i class="fas fa-barcode mr-3"></i> MULAI SCAN BARU
+                            </button>
+                            <p class="mt-3 text-sm text-gray-400">Klik tombol di atas untuk membuka formulir scan</p>
                         </div>
                     </div>
 
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700">Pelanggan Terdaftar</label>
-                        <input type="text" class="mt-1 block w-full bg-gray-100 border-gray-300 rounded-md shadow-sm" value="{{ $customer->nama_lengkap }} ({{ $customer->no_wa }})" readonly>
-                    </div>
+                    <div id="scan-interface" class="hidden transition-opacity duration-300">
 
-                    {{-- STATE 1: Tombol Awal (Gatekeeper) --}}
-                    <div id="init-scan-wrapper" class="text-center py-6 border-2 border-dashed border-gray-200 rounded-lg">
-                        <button type="button" id="btn-scan-sekarang" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
-                            <i class="fas fa-qrcode mr-2"></i> Scan Sekarang
-                        </button>
-                        <p class="mt-2 text-sm text-gray-500">Klik untuk memulai proses scan resi</p>
-                    </div>
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700">Pelanggan Terdaftar</label>
+                            <input type="text" class="mt-1 block w-full bg-gray-100 border-gray-300 rounded-md shadow-sm text-gray-600 cursor-not-allowed" value="{{ $customer->nama_lengkap }} ({{ $customer->no_wa }})" readonly>
+                        </div>
 
-                    {{-- STATE 2: Form Input & Kamera (Awalnya Disembunyikan) --}}
-                    <div id="scan-interface" class="hidden mt-4">
                         <form id="scan-form" class="mb-4">
                             <div>
                                 <label for="resi-spx" class="block text-sm font-medium text-gray-700">Langkah 1: Input Resi</label>
@@ -114,10 +107,13 @@
                             </div>
                         </div>
 
-                        <div class="mt-4 text-center">
-                            <button type="button" id="btn-cancel-scan" class="text-sm text-red-500 hover:text-red-700 underline">Selesai / Tutup Sesi</button>
+                        <div class="mt-6 text-center border-t pt-4">
+                            <button type="button" id="btn-cancel-scan" class="text-sm text-red-500 hover:text-red-700 font-medium">
+                                <i class="fas fa-times mr-1"></i> Selesai / Tutup Sesi
+                            </button>
                         </div>
                     </div>
+
                 </div>
             </div>
 
@@ -295,23 +291,23 @@
 
 </div>
 
-<div id="print-check-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
-    <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
+<div id="print-check-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden" style="z-index: 9999;">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center transform transition-all">
         <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 mb-4">
             <i class="fas fa-print text-indigo-600 text-lg"></i>
         </div>
         <h3 class="text-lg font-bold text-gray-900 mb-2">Konfirmasi Cetak Resi</h3>
-        <p class="text-sm text-gray-500 mb-6">Apakah Kakak sudah mencetak resi fisik untuk paket ini?</p>
+        <p class="text-sm text-gray-500 mb-6">Apakah Kakak sudah mencetak resi fisik?</p>
 
         <div class="space-y-3">
-            <button type="button" id="btn-sudah-print" class="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700">
-                SUDAH <span class="font-normal text-xs ml-1">(Buka Scanner)</span>
+            <button type="button" id="btn-sudah-print" class="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-md">
+                SUDAH <span class="font-normal text-xs ml-1 opacity-80">(Buka Scanner)</span>
             </button>
-            <button type="button" id="btn-belum-print" class="w-full py-3 bg-red-50 text-red-700 rounded-lg font-bold border border-red-200 hover:bg-red-100">
-                BELUM <span class="font-normal text-xs ml-1">(Cek Saldo -Rp1.000)</span>
+            <button type="button" id="btn-belum-print" class="w-full py-3 bg-white text-red-600 border border-red-200 rounded-lg font-bold hover:bg-red-50">
+                BELUM <span class="font-normal text-xs ml-1 text-red-400">(Cek Saldo -Rp1.000)</span>
             </button>
         </div>
-        <button type="button" id="close-check-modal" class="mt-4 text-xs text-gray-400 hover:text-gray-600">Batal</button>
+        <button type="button" id="close-check-modal" class="mt-4 text-xs text-gray-400 hover:text-gray-600 underline">Batal</button>
     </div>
 </div>
 
