@@ -608,14 +608,21 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::post('/wallet/topup', [WalletController::class, 'topup'])->name('wallet.topup');
     Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
 
+    // Laporan Keuangan Lengkap
+
     Route::prefix('laporan')->name('laporan.')->group(function () {
-        Route::get('pemasukan', [LaporanKeuanganController::class, 'pemasukan'])->name('pemasukan');
-        Route::post('pemasukan', [LaporanKeuanganController::class, 'storePemasukan'])->name('pemasukan.store');
-        Route::get('pengeluaran', [LaporanKeuanganController::class, 'pengeluaran'])->name('pengeluaran');
-        Route::post('pengeluaran', [LaporanKeuanganController::class, 'storePengeluaran'])->name('pengeluaran.store');
-        Route::get('laba-rugi', [LaporanKeuanganController::class, 'labaRugi'])->name('labaRugi');
-        Route::get('neraca-saldo', [LaporanKeuanganController::class, 'neracaSaldo'])->name('neracaSaldo');
-        Route::get('neraca', [LaporanKeuanganController::class, 'neraca'])->name('neraca');
+    // Pemasukan
+    Route::get('pemasukan', [KeuanganController::class, 'pemasukan'])->name('pemasukan');
+    Route::post('pemasukan', [KeuanganController::class, 'storePemasukan'])->name('pemasukan.store');
+
+    // Pengeluaran
+    Route::get('pengeluaran', [KeuanganController::class, 'pengeluaran'])->name('pengeluaran');
+    Route::post('pengeluaran', [KeuanganController::class, 'storePengeluaran'])->name('pengeluaran.store');
+
+    // Laporan Keuangan
+    Route::get('laba-rugi', [KeuanganController::class, 'labaRugi'])->name('labaRugi');
+    Route::get('neraca-saldo', [KeuanganController::class, 'neracaSaldo'])->name('neracaSaldo');
+    Route::get('neraca', [KeuanganController::class, 'neraca'])->name('neraca');
     });
 
     Route::get('coa/export/excel', [CoaController::class, 'exportExcel'])->name('coa.export.excel');
