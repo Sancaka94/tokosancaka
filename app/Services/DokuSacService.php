@@ -129,4 +129,30 @@ class DokuSacService
 
         return "HMACSHA256=" . $signature; //
     }
+
+    /**
+     * FUNGSI: Membuat Sub Account Baru (Create Account)
+     * Dokumentasi: Step 1. Create Account
+     */
+    public function createAccount($name, $email)
+    {
+        $endpoint = '/sac-merchant/v1/accounts';
+
+        // Validasi panjang karakter sesuai dokumentasi DOKU
+        // Name max 100, Email max 40
+        $cleanName = substr(trim($name), 0, 100);
+        $cleanEmail = substr(trim($email), 0, 40);
+
+        $body = [
+            "account" => [
+                "email" => $cleanEmail,
+                "type"  => "STANDARD", // Wajib STANDARD untuk Sub Account Marketplace
+                "name"  => $cleanName
+            ]
+        ];
+
+        // Gunakan fungsi sendRequest yang sudah ada di Service ini
+        // (Pastikan method sendRequest Anda sudah mendukung method POST dan Signature)
+        return $this->sendRequest('POST', $endpoint, $body);
+    }
 }
