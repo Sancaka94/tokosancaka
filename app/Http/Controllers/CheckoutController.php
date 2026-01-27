@@ -584,10 +584,25 @@ class CheckoutController extends Controller
 
                 if ($paymentGateway === 'doku') {
                     Log::info('Memulai proses DOKU (Jokul) Marketplace untuk ' . $order->invoice_number);
-                    $vendorSacId = $store->doku_sac_id;
-                    if (empty($vendorSacId)) {
-                        Log::error('DOKU GAGAL: Toko tidak memiliki DOKU Sub-Account ID (doku_sac_id).', ['store_id' => $store->id]);
-                        throw new \Exception('Toko ini belum terdaftar di sistem pembayaran DOKU.');
+
+                    // ==============================================================
+                    // 🔥🔥 LOGIKA ROUTING DANA (UPDATE: CUKUP CEK ID SAJA) 🔥🔥
+                    // ==============================================================
+                    $targetSacId = null;
+
+                    // 1. Cek apakah Toko punya ID Sub Account DOKU
+                    // (HAPUS cek status 'ACTIVE' sesuai info dari DOKU)
+                    if (!empty($store->doku_sac_id)) {
+                        // KONDISI A: Toko SUDAH punya SAC ID
+                        // Dana akan langsung masuk ke dompet DOKU Toko Penjual
+                        // Status akun akan otomatis aktif saat terima dana pertama
+                        $targetSacId = $store->doku_sac_id;
+                        Log::info("DOKU Routing: Dana diarahkan ke Toko (SAC: {$targetSacId})");
+                    } else {
+                        // KONDISI B: Toko BELUM punya akun DOKU sama sekali
+                        // Dana masuk ke Master Account (Rekening Admin Sancaka)
+                        $targetSacId = null;
+                        Log::info("DOKU Routing: Toko tidak punya SAC ID. Dana cair ke Admin Sancaka (Master Account).");
                     }
 
                     $dokuService = new DokuJokulService();
@@ -597,16 +612,21 @@ class CheckoutController extends Controller
                         'phone' => $user->no_wa
                     ];
 
-                    $additionalInfo = [
-                        'account' => [ 'id' => $vendorSacId ]
-                    ];
+                    // 2. Siapkan Data Routing (Additional Info)
+                    $additionalInfo = [];
+                    if (!empty($targetSacId)) {
+                        $additionalInfo = [
+                            'account' => [ 'id' => $targetSacId ]
+                        ];
+                    }
 
+                    // 3. Panggil Service Create Payment
                     $paymentUrl = $dokuService->createPayment(
                         $order->invoice_number,
                         $grand_total,
                         $customerData,
                         $orderItemsPayload,
-                        $additionalInfo
+                        $additionalInfo     // <-- Data routing dikirim di sini
                     );
 
                     if (empty($paymentUrl)) {

@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log; 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Exception;
@@ -27,7 +27,7 @@ class DokuJokulService
     protected $clientId;
     protected $secretKey;
     protected $baseUrlCheckout;
-    
+
     // Kredensial untuk API SAC Merchant (Dompet Toko & Payout)
     protected $sacClientId;
     protected $sacSecretKey;
@@ -43,25 +43,25 @@ class DokuJokulService
         // 1. Kredensial CHECKOUT (dari config 'doku.client_id')
         $this->clientId = config('doku.client_id');
         $this->secretKey = config('doku.secret_key');
-        
+
         // 2. Kredensial SAC MERCHANT (dari config 'doku.sac_client_id')
-        $this->sacClientId = config('doku.sac_client_id'); 
+        $this->sacClientId = config('doku.sac_client_id');
         $this->sacSecretKey = config('doku.sac_secret_key');
-        
+
         // 3. SAC ID Utama Admin (Penampung Dana)
-        $this->sacIdUtama = config('doku.main_sac_id'); 
+        $this->sacIdUtama = config('doku.main_sac_id');
 
         // --- Membaca URL dari config ---
         $productionUrl = config('doku.production_url');
         $sandboxUrl = config('doku.sandbox_url');
-        
+
         // Membaca mode dari config (bukan env() langsung)
-        $mode = config('doku.mode'); 
-        
-        $baseUrl = ($mode === 'production') 
+        $mode = config('doku.mode');
+
+        $baseUrl = ($mode === 'production')
             ? $productionUrl
             : $sandboxUrl;
-            
+
         // Terapkan ke KEDUA URL
         $this->baseUrlCheckout = $baseUrl;
         $this->baseUrlSac = $baseUrl;
@@ -95,37 +95,37 @@ class DokuJokulService
                 'payment_due_date' => 60 // 60 menit
             ]
         ];
-        
+
         // Tambahkan Redirect URL jika ada
         if ($redirectUrl) {
             $requestBody['payment']['redirect_url'] = $redirectUrl;
         }
-        
+
         if (!empty($lineItems)) {
             $requestBody['order']['line_items'] = $lineItems;
         }
-        
+
         // Alur Escrow: $additionalInfo sengaja dikosongkan oleh CheckoutController
         // agar uang masuk ke Akun Utama Admin.
         if (!empty($additionalInfo) && isset($additionalInfo['account']['id'])) {
             $requestBody['additional_info'] = $additionalInfo;
         }
-        
+
         $requestId = (string) Str::uuid();
         $requestTimestamp = now()->utc()->format('Y-m-d\TH:i:s\Z'); // Format 'Z'
-        
+
         // 2. Buat Signature (Protokol Checkout - Longgar)
         $signature = $this->generateSignatureCheckout(
             json_encode($requestBody),
-            $requestId, 
-            $requestTimestamp, 
+            $requestId,
+            $requestTimestamp,
             $endpoint
         );
 
         Log::info('DOKU CHECKOUT Request:', [
             'url' => $url, 'body' => $requestBody, 'timestamp' => $requestTimestamp
         ]);
-        
+
         try {
             // 3. Kirim API Request
             $response = Http::withHeaders([
@@ -141,7 +141,7 @@ class DokuJokulService
             // 4. Proses Respon
             if ($response->successful() && isset($response->json()['response']['payment']['url'])) {
                 Log::info("DOKU CHECKOUT: Create Payment Sukses", $response->json());
-                return $response->json()['response']['payment']['url']; 
+                return $response->json()['response']['payment']['url'];
             } else {
                 Log::error("DOKU CHECKOUT: Create Payment Gagal", $response->json() ?? ['body' => $response->body()]);
                 return null;
@@ -159,17 +159,17 @@ class DokuJokulService
     private function generateSignatureCheckout($requestBodyString, $requestId, $requestTimestamp, $requestTarget)
     {
         $digest = base64_encode(hash('sha256', $requestBodyString, true));
-        
+
         // String-to-Sign (Protokol Longgar: "Digest:" SAJA)
         $stringToSign = "Client-Id:" . $this->clientId . "\n"
                       . "Request-Id:" . $requestId . "\n"
                       . "Request-Timestamp:" . $requestTimestamp . "\n"
                       . "Request-Target:" . $requestTarget . "\n"
                       . "Digest:" . $digest; // <-- Beda di sini
-        
+
         $hmac = hash_hmac('sha256', $stringToSign, $this->secretKey, true);
         $signature = base64_encode($hmac);
-        
+
         return "HMACSHA256=" . $signature;
     }
 
@@ -184,7 +184,7 @@ class DokuJokulService
     public function createSubAccount(User $user, Store $store, $phone)
     {
         $endpoint = '/sac-merchant/v1/accounts';
-        $url = $this->baseUrlSac . $endpoint; 
+        $url = $this->baseUrlSac . $endpoint;
 
         // Body HANYA berisi objek 'account'
         $body = [
@@ -199,7 +199,7 @@ class DokuJokulService
         try {
             // 1. Buat Header (Protokol SAC - Ketat)
             $headers = $this->_generateHeadersSac($endpoint, $bodyJson);
-            
+
             Log::info('DOKU SAC Request (MERCHANT)', ['url' => $url, 'headers' => $headers, 'body' => $bodyJson]);
 
             // 2. Kirim Request
@@ -242,7 +242,7 @@ class DokuJokulService
         try {
             // Header untuk GET (Tanpa Content-Type dan Digest)
             $headers = $this->_generateHeadersSac($endpoint, $bodyJson);
-            
+
             Log::info('DOKU Get Balance Request', ['url' => $url, 'headers' => $headers]);
 
             $response = Http::withHeaders($headers)->get($url);
@@ -284,7 +284,7 @@ class DokuJokulService
                 'bank_account_name' => $beneficiary['bank_account_name']
             ]
         ];
-        
+
         $bodyJson = json_encode($body);
 
         try {
@@ -294,7 +294,7 @@ class DokuJokulService
             $response = Http::withHeaders($headers)
                 ->withBody($bodyJson, 'application/json')
                 ->post($url);
-            
+
             $responseData = $response->json();
             Log::info('DOKU SAC Payout Response', $responseData ?? ['message' => $response->body()]);
 
@@ -329,7 +329,7 @@ class DokuJokulService
                 'invoice_number' => 'TRANSFER-' . Str::uuid() // Buat invoice unik
             ]
         ];
-        
+
         $bodyJson = json_encode($body);
 
         try {
@@ -339,7 +339,7 @@ class DokuJokulService
             $response = Http::withHeaders($headers)
                 ->withBody($bodyJson, 'application/json')
                 ->post($url);
-            
+
             $responseData = $response->json();
             Log::info('DOKU SAC Transfer Response', $responseData ?? ['message' => $response->body()]);
 
@@ -369,9 +369,9 @@ class DokuJokulService
         // Sesuai Section 4 dokumentasi Anda.
         $endpoint = '/sac-merchant/v1/transfers';
         $url = $this->baseUrlSac . $endpoint; // <-- Pake base URL SAC
-        
+
         // Payout SELALU dari Akun Utama Admin
-        $sourceSacId = $this->sacIdUtama; 
+        $sourceSacId = $this->sacIdUtama;
 
         if(empty($sourceSacId)) {
             Log::critical('DOKU PAYOUT GAGAL: SAC_ID_UTAMA (Admin) belum di-setting di .env');
@@ -391,7 +391,7 @@ class DokuJokulService
             ]
         ];
         $bodyJson = json_encode($body);
-        
+
         try {
             // ✅ PERBAIKAN 3: Gunakan helper "_generateHeadersSac"
             // karena ini adalah API SAC Merchant
@@ -435,11 +435,11 @@ class DokuJokulService
     {
         $requestId = (string) Str::uuid();
         $timestamp = Carbon::now('UTC')->format('Y-m-d\TH:i:s\Z');
-        
+
         // ==========================================================
         // === ✅ PERBAIKKAN DARI LOG ANDA: Gunakan Kredensial SAC ===
         // ==========================================================
-        
+
         // 1. Siapkan header dasar
         $headers = [
             'Client-Id' => $this->sacClientId, // <-- PERBAIKAN
@@ -448,7 +448,7 @@ class DokuJokulService
         ];
 
         // 2. Buat String-to-Sign dasar (4 baris)
-        $signatureComponent = 
+        $signatureComponent =
             "Client-Id:" . $this->sacClientId . "\n" . // <-- PERBAIKAN
             "Request-Id:" . $requestId . "\n" .
             "Request-Timestamp:" . $timestamp . "\n" .
@@ -458,10 +458,10 @@ class DokuJokulService
         if (!empty($bodyJson)) {
             // Ini request POST (Create, Payout, Transfer)
             $digest = base64_encode(hash('sha256', $bodyJson, true));
-            
+
             // 3a. Tambahkan Digest (baris ke-5) ke string-to-sign
             $signatureComponent .= "\n" . "Digest:" . $digest;
-            
+
             // 3b. Tambahkan Content-Type ke header
             $headers['Content-Type'] = 'application/json';
 
@@ -474,7 +474,106 @@ class DokuJokulService
         // 4. Buat Signature dari string-to-sign yang sudah benar
         $signature = base64_encode(hash_hmac('sha256', $signatureComponent, $this->sacSecretKey, true)); // <-- PERBAIKAN
         $headers['Signature'] = "HMACSHA256=" . $signature;
-        
+
         return $headers;
+    }
+
+    /**
+     * =================================================================
+     * HELPER: SEND REQUEST UNTUK API CHECKOUT / VA (BUKAN SAC)
+     * =================================================================
+     * Method ini menangani request standar DOKU (VA, QRIS, Checkout)
+     * yang menggunakan protokol Signature "Longgar" (Digest Wajib Ada).
+     */
+    private function sendRequest($method, $endpoint, $body = [])
+    {
+        $url = $this->baseUrlCheckout . $endpoint;
+
+        $requestId = (string) Str::uuid();
+        $requestTimestamp = now()->utc()->format('Y-m-d\TH:i:s\Z');
+
+        $bodyJson = json_encode($body);
+
+        // Generate Signature (Protokol Checkout/VA)
+        // Gunakan kredensial Checkout ($this->clientId, $this->secretKey)
+        $signature = $this->generateSignatureCheckout(
+            $bodyJson,
+            $requestId,
+            $requestTimestamp,
+            $endpoint
+        );
+
+        $headers = [
+            'Client-Id' => $this->clientId,
+            'Request-Id' => $requestId,
+            'Request-Timestamp' => $requestTimestamp,
+            'Signature' => $signature,
+            'Content-Type' => 'application/json', // Wajib untuk VA/Checkout
+        ];
+
+        try {
+            Log::info("DOKU API Request ({$endpoint})", ['url' => $url, 'body' => $body]);
+
+            if (strtoupper($method) === 'POST') {
+                $response = Http::withHeaders($headers)->post($url, $body);
+            } else {
+                $response = Http::withHeaders($headers)->get($url);
+            }
+
+            $responseData = $response->json();
+            Log::info("DOKU API Response ({$endpoint})", $responseData ?? ['raw' => $response->body()]);
+
+            if ($response->successful()) {
+                return ['success' => true, 'data' => $responseData];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => $responseData['error']['message'] ?? 'API Error: ' . $response->status()
+                ];
+            }
+
+        } catch (Exception $e) {
+            Log::error("DOKU API Exception ({$endpoint})", ['error' => $e->getMessage()]);
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Generate Virtual Account (Support Sub Account Marketplace)
+     */
+    public function generateDokuVa($invoiceNumber, $amount, $customerData, $expiredTime = 60, $targetSacId = null)
+    {
+        $path = '/virtual-accounts/bind'; // Sesuaikan endpoint VA Anda
+
+        $body = [
+            "order" => [
+                "invoice_number" => $invoiceNumber,
+                "amount" => $amount
+            ],
+            "virtual_account_info" => [
+                "expired_time" => $expiredTime,
+                "reusable_status" => false,
+                "info1" => "Pembayaran",
+                "info2" => "Toko Sancaka",
+                "info3" => "Terima Kasih"
+            ],
+            "customer" => [
+                "name" => $customerData['name'],
+                "email" => $customerData['email']
+            ]
+        ];
+
+        // === LOGIKA MARKETPLACE (SUB ACCOUNT) ===
+        // Jika transaksi ini milik Seller tertentu, arahkan uang ke dompet mereka
+        if (!empty($targetSacId)) {
+            $body['additional_info'] = [
+                'account' => [
+                    'id' => $targetSacId // ID SAC Penjual (Contoh: SAC-222-XXXX)
+                ]
+            ];
+        }
+        // ========================================
+
+        return $this->sendRequest('POST', $path, $body);
     }
 }
