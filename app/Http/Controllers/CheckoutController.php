@@ -1095,12 +1095,41 @@ class CheckoutController extends Controller
         // -----------------------------------------------------------
         // 3. PROSES UTAMA (LUNAS)
         // -----------------------------------------------------------
+        // -----------------------------------------------------------
+        // 3. PROSES UTAMA (LUNAS)
+        // -----------------------------------------------------------
         if ($status === 'PAID') {
 
             // A. Update Status Database
             $order->status = 'paid';
             $order->save();
-            Log::info("Order {$merchantRef} PAID. Memulai proses booking KiriminAja...");
+            Log::info("Order {$merchantRef} PAID.");
+
+            // ==========================================================
+            // 🔥 TAMBAHAN BARU: AUTO SYNC SALDO TOKO (REALTIME) 🔥
+            // ==========================================================
+            try {
+                $store = $order->store;
+                // Cek apakah order ini menggunakan DOKU dan Toko punya SAC ID
+                if ($store && !empty($store->doku_sac_id)) {
+                    Log::info("Webhook: Mencoba sync saldo terbaru untuk Toko ID: {$store->id} (SAC: {$store->doku_sac_id})");
+
+                    // Panggil Service DOKU
+                    $dokuService = new \App\Services\DokuJokulService(); // Pastikan Service SAC diload
+                    $balance = $dokuService->getBalance($store->doku_sac_id);
+
+                    if ($balance['success'] ?? false) {
+                        $store->doku_balance_available = $balance['data']['balance']['available'] ?? 0;
+                        $store->doku_balance_pending = $balance['data']['balance']['pending'] ?? 0;
+                        $store->doku_balance_last_updated = now();
+                        $store->save();
+                        Log::info("Webhook: Saldo toko berhasil diupdate. Available: {$store->doku_balance_available}");
+                    }
+                }
+            } catch (Exception $e) {
+                Log::warning("Webhook: Gagal auto-sync saldo toko. User perlu refresh manual. Error: " . $e->getMessage());
+            }
+            // ==========================================================
 
             // B. Proses Logika Pengiriman (KiriminAja)
             try {
