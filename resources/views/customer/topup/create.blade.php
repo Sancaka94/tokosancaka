@@ -47,7 +47,7 @@
                         {{-- Area Preview Consult Pay DANA (AJAX) - JANGAN UBAH --}}
                         <div id="payment-methods-preview" class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100 hidden">
                             <div class="flex items-center mb-3">
-                                <img src="https://a.m.dana.id/resource/imgs/skywalker/logo/dana-logo-blue.png" class="h-6 mr-2" alt="DANA">
+                                <img src="https://tokosancaka.com/public/storage/logo/dana.png" class="h-6 mr-2" alt="DANA">
                                 <span class="text-xs font-bold text-blue-800 uppercase tracking-wide">
                                      ESTIMASI PROMO (JIKA BAYAR PAKAI DANA):
                                 </span>
@@ -99,7 +99,7 @@
                                 <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="DOKU_JOKUL" class="peer sr-only">
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-500 peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all flex flex-col items-center text-center">
-                                        <img src="https://doku.com/Logo_DOKU-01.png" class="h-8 object-contain mb-2 mt-2 rounded-md">
+                                        <img src="https://tokosancaka.com/public/storage/logo/doku-ewallet.png" class="h-8 object-contain mb-2 mt-2 rounded-md">
                                         <span class="text-sm font-bold text-gray-700">DOKU</span>
                                         <span class="text-[10px] text-gray-400">Payment Gateway</span>
                                         <div class="absolute top-2 right-2 text-blue-600 opacity-0 peer-checked:opacity-100"><i class="fas fa-check-circle"></i></div>
