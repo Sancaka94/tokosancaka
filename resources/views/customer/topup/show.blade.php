@@ -203,7 +203,7 @@
                                             <div class="flex justify-between items-center account-row pt-2 border-t border-gray-100">
                                                 <div class="flex items-center">
                                                     <img src="https://tokosancaka.com/public/storage/logo/qris-sancaka.jpeg" class="h-6 w-6 rounded mr-2" onerror="this.style.display='none'">
-                                                    <p class="font-bold text-gray-800">QRIS Sancaka</p>
+                                                    <p class="font-bold text-gray-800">QRIS SANCAKA</p>
                                                 </div>
                                                 <button type="button" onclick="openQrisModal()" class="px-3 py-1 bg-purple-600 text-white text-xs rounded-full hover:bg-purple-700 transition shadow-sm">
                                                     <i class="fas fa-qrcode mr-1"></i> Lihat QR
