@@ -107,6 +107,14 @@ class AppServiceProvider extends ServiceProvider
 
                 // --- C. INJECT TRIPAY ---
                 $tpMode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+                // === PERBAIKAN DI SINI ===
+                // Kita harus ubah URL sasaran berdasarkan mode
+                if ($tpMode === 'production') {
+                    Config::set('tripay.api_sandbox', false); // Matikan mode sandbox (Pakai URL Asli)
+                } else {
+                    Config::set('tripay.api_sandbox', true);  // Nyalakan mode sandbox (Pakai URL Simulator)
+                }
+                // =========================
                 Config::set('tripay.api_key', Api::getValue('TRIPAY_API_KEY', $tpMode));
                 Config::set('tripay.private_key', Api::getValue('TRIPAY_PRIVATE_KEY', $tpMode));
                 Config::set('tripay.merchant_code', Api::getValue('TRIPAY_MERCHANT_CODE', $tpMode));
