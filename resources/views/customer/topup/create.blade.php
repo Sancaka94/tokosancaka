@@ -12,7 +12,7 @@
                 {{-- Alert Error --}}
                 @if ($errors->any())
                     <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                        <strong class="font-bold">Oops! Terjadi kesalahan.</strong>
+                        <strong class="font-bold">Oops!</strong>
                         <ul class="mt-2 list-disc list-inside">
                             @foreach ($errors->all() as $error)
                                 <li>{{ $error }}</li>
@@ -44,15 +44,22 @@
 
                         {{-- Area Preview Consult Pay DANA (AJAX) --}}
                         <div id="payment-methods-preview" class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100 hidden transition-all">
-                            <div class="flex items-center mb-2">
-                                <img src="{{ asset('assets/dana.webp') }}" class="h-5 mr-2" onerror="this.style.display='none'">
+                            <div class="flex items-center mb-3">
+                                {{-- Logo DANA Header --}}
+                                <img src="https://tokosancaka.com/public/storage/logo/dana.png" class="h-5 mr-2" alt="DANA">
                                 <span class="text-xs font-bold text-blue-800 uppercase tracking-wide">
-                                    Estimasi Promo DANA (Jika bayar pakai DANA):
+                                    Estimasi Promo (Jika bayar pakai DANA):
                                 </span>
                             </div>
+
+                            {{-- Container Icon --}}
                             <div id="payment-icons" class="flex flex-wrap gap-2">
                                 {{-- Icon Logo Bank akan muncul di sini via AJAX --}}
                             </div>
+
+                            <p class="text-[10px] text-blue-400 mt-2 italic">
+                                *Metode di atas akan muncul otomatis di aplikasi DANA saat pembayaran.
+                            </p>
                         </div>
                     </div>
 
@@ -60,7 +67,7 @@
                     <div class="mb-8">
                         <label class="block text-gray-700 font-bold mb-4">Pilih Metode Pembayaran</label>
 
-                        {{-- Opsi Transfer Manual (Hardcoded) --}}
+                        {{-- Opsi Transfer Manual --}}
                         <div class="mb-6">
                             <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Transfer Manual</h3>
                             <label class="cursor-pointer relative group block">
@@ -77,14 +84,14 @@
                             </label>
                         </div>
 
-                        {{-- Opsi DOKU (Hardcoded) --}}
+                        {{-- Opsi DOKU --}}
                         <div class="mb-6">
                             <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">DOKU Payment Gateway</h3>
                             <label class="cursor-pointer relative group block">
                                 <input type="radio" name="payment_method" value="DOKU_JOKUL" class="peer sr-only">
                                 <div class="p-4 border border-gray-200 rounded-xl hover:bg-gray-50 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:ring-1 peer-checked:ring-indigo-600 transition-all flex items-center">
                                     <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                        <img src="https://doku.com/Logo_DOKU-01.png" class="h-6 object-contain" alt="DOKU">
+                                        <img src="https://tokosancaka.com/public/storage/logo/doku-ewallet.png" class="h-6 object-contain" alt="DOKU">
                                     </div>
                                     <div>
                                         <h4 class="font-bold text-gray-800 text-sm">DOKU Checkout</h4>
@@ -146,24 +153,48 @@
         </div>
     </div>
 
-    {{-- SCRIPT AJAX CONSULT PAY --}}
+    {{-- SCRIPT AJAX CONSULT PAY DENGAN LOGO MAPPING --}}
     @push('scripts')
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
             let typingTimer;
-            const doneTypingInterval = 800; // Tunggu 0.8 detik setelah ketik
+            const doneTypingInterval = 800;
             const $input = $('#amount');
             const $previewArea = $('#payment-methods-preview');
             const $iconArea = $('#payment-icons');
 
-            // Event saat mengetik nominal
+            // --- 1. KAMUS LOGO (MENGEMBALIKAN GAMBAR ANDA) ---
+            const logoMap = {
+                'VIRTUAL_ACCOUNT_BCA':      'bca.webp',
+                'VIRTUAL_ACCOUNT_BNI':      'bni.webp',
+                'VIRTUAL_ACCOUNT_BRI':      'bri.webp',
+                'VIRTUAL_ACCOUNT_MANDIRI':  'mandiri.webp',
+                'VIRTUAL_ACCOUNT_PERMATA':  'permata.webp',
+                'VIRTUAL_ACCOUNT_CIMB':     'cimb.svg',
+                'VIRTUAL_ACCOUNT_DANAMON':  'danamon.png',
+                'VIRTUAL_ACCOUNT_BSI':      'bsi.png',
+                'VIRTUAL_ACCOUNT_MUAMALAT': 'muamalat.png',
+                'VIRTUAL_ACCOUNT_BTPN':     'btpn.png',
+
+                'NETWORK_PAY_PG_OVO':       'ovo.webp',
+                'NETWORK_PAY_PG_GOPAY':     'gopay.webp',
+                'NETWORK_PAY_PG_SHOPEEPAY': 'shopeepay.webp',
+                'NETWORK_PAY_PG_LINKAJA':   'linkaja.png',
+                'NETWORK_PAY_PG_DANA':      'dana.webp',
+                'NETWORK_PAY_PG_CARD':      'card.png',
+
+                'BALANCE':                  'saldo.png',
+                'CARD':                     'card.png',
+                'CREDIT_CARD':              'card.png',
+                'DEBIT_CARD':               'card.png'
+            };
+
             $input.on('keyup', function () {
                 clearTimeout(typingTimer);
                 if ($input.val()) typingTimer = setTimeout(cekPromoDana, doneTypingInterval);
             });
 
-            // Event saat selesai ubah nilai
             $input.on('change', function () {
                 clearTimeout(typingTimer);
                 cekPromoDana();
@@ -177,11 +208,9 @@
                     return;
                 }
 
-                // Tampilkan loading di area preview
                 $previewArea.removeClass('hidden');
-                $iconArea.html('<span class="text-xs text-gray-500"><i class="fas fa-spinner fa-spin"></i> Mengecek...</span>');
+                $iconArea.html('<span class="text-xs text-gray-500"><i class="fas fa-spinner fa-spin"></i> Mengecek metode DANA...</span>');
 
-                // Panggil Route Consult Pay Anda
                 $.ajax({
                     url: "{{ route('topup.consult') }}",
                     method: "POST",
@@ -195,27 +224,46 @@
 
                         if(response.success && response.data.length > 0) {
 
-                            // Tampilkan hasil promo/metode
                             $.each(response.data, function(index, item) {
-                                let badgeColor = (item.promo === 'Ada Promo') ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-gray-600 border-gray-200';
-                                let cleanName = item.method.replace(/_/g, ' ');
+                                let badgeColor = (item.promo === 'Ada Promo') ? 'bg-green-100 text-green-700 border-green-200 ring-1 ring-green-400' : 'bg-white text-gray-600 border-gray-200';
+
+                                // Bersihkan Nama Metode
+                                let cleanName = item.method.replace(/_/g, ' ')
+                                                           .replace('VIRTUAL ACCOUNT', 'VA')
+                                                           .replace('NETWORK PAY PG', '')
+                                                           .replace('DIRECT DEBIT', '')
+                                                           .trim();
+
+                                // Cari Gambar dari LogoMap
+                                let filename = logoMap[item.method];
+                                let iconHtml = '';
+
+                                if (filename) {
+                                    // Jika ada gambar di map, tampilkan gambar
+                                    let assetUrl = "{{ asset('assets') }}/" + filename;
+                                    iconHtml = `<img src="${assetUrl}" class="h-4 mr-1 object-contain" onerror="this.style.display='none'">`;
+                                } else {
+                                    // Jika tidak ada, tampilkan icon default
+                                    iconHtml = `<i class="fas fa-credit-card mr-1 text-gray-400"></i>`;
+                                }
 
                                 let html = `
-                                    <div class="px-2 py-1 border rounded text-[10px] font-bold ${badgeColor} flex items-center">
+                                    <div class="px-2 py-1 border rounded text-[10px] font-bold ${badgeColor} flex items-center shadow-sm">
+                                        ${iconHtml}
                                         <span>${cleanName}</span>
-                                        ${item.promo === 'Ada Promo' ? '<i class="fas fa-tag ml-1 text-green-600"></i>' : ''}
+                                        ${item.promo === 'Ada Promo' ? '<i class="fas fa-tag ml-1 text-green-600 animate-pulse"></i>' : ''}
                                     </div>
                                 `;
                                 $iconArea.append(html);
                             });
 
                         } else {
-                            $iconArea.html('<span class="text-[10px] text-gray-400 italic">Tidak ada info promo khusus.</span>');
+                            $iconArea.html('<span class="text-[10px] text-gray-400 italic">Metode pembayaran standar tersedia.</span>');
                         }
                     },
                     error: function(xhr) {
                         console.error("Consult Pay Error:", xhr.responseText);
-                        $iconArea.html('<span class="text-[10px] text-red-300">Gagal cek promo.</span>');
+                        $iconArea.html('<span class="text-[10px] text-red-300">Gagal cek promo DANA.</span>');
                     }
                 });
             }
