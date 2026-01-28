@@ -1,5 +1,6 @@
 {{--
 File: resources/views/customer/pesanan/riwayat_belanja.blade.php
+Updated: Fix Path Image (public/storage) & Status
 --}}
 
 @extends('layouts.customer')
@@ -46,9 +47,21 @@ File: resources/views/customer/pesanan/riwayat_belanja.blade.php
 
                                 {{-- LOGO TOKO --}}
                                 <div class="w-10 h-10 rounded-full bg-white border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                                    @if($order->store && $order->store->logo_path)
-                                        <img src="{{ asset('storage/' . $order->store->logo_path) }}" alt="Logo Toko" class="w-full h-full object-cover">
+                                    @php
+                                        // Cek apakah ada logo di DB
+                                        $logoPathRaw = $order->store->logo_path ?? null;
+                                    @endphp
+
+                                    @if($logoPathRaw)
+                                        {{-- Fix Path Logo Toko --}}
+                                        <img src="{{ asset('public/storage/' . $logoPathRaw) }}"
+                                             alt="Logo Toko"
+                                             class="w-full h-full object-cover"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                        {{-- Fallback jika gambar error/hilang --}}
+                                        <i class="fas fa-store text-indigo-400 hidden"></i>
                                     @else
+                                        {{-- Fallback jika NULL di database --}}
                                         <i class="fas fa-store text-indigo-400"></i>
                                     @endif
                                 </div>
@@ -56,7 +69,6 @@ File: resources/views/customer/pesanan/riwayat_belanja.blade.php
                                 <div>
                                     <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
                                         {{ $order->store?->name ?? 'Toko Tidak Tersedia' }}
-                                        <span class="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">Penjual</span>
                                     </h4>
                                     <p class="text-xs text-gray-500 font-mono mt-0.5">
                                         {{ $order->invoice_number }} • {{ $order->created_at->format('d M Y') }}
@@ -101,20 +113,17 @@ File: resources/views/customer/pesanan/riwayat_belanja.blade.php
                                 @foreach($items->take(2) as $item)
                                     <div class="flex items-start gap-4 p-2 hover:bg-gray-50 rounded-lg transition">
 
-                                        {{-- GAMBAR PRODUK --}}
-                                        {{-- GAMBAR PRODUK (FIXED PATH: public/storage/products/...) --}}
+                                        {{-- GAMBAR PRODUK (FIXED PATH) --}}
                                         <div class="w-20 h-20 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden border border-gray-200 relative group">
                                             @if($item->product && $item->product->images && $item->product->images->count() > 0)
                                                 @php
                                                     $rawPath = $item->product->images->first()->path;
 
-                                                    // 1. Cek apakah di database sudah ada awalan 'products/'
-                                                    // Jika belum, kita tambahkan manual.
-                                                    $cleanPath = \Illuminate\Support\Str::startsWith($rawPath, 'products/')
-                                                                 ? $rawPath
-                                                                 : 'products/' . $rawPath;
+                                                    // Fix Path: Pastikan mengarah ke public/storage/products/...
+                                                    // Hapus 'public/' jika double di database (opsional, jaga-jaga)
+                                                    $cleanPath = str_replace('public/', '', $rawPath);
 
-                                                    // 2. Generate URL sesuai request Anda (pakai 'public/storage/')
+                                                    // URL Final
                                                     $imageUrl = asset('public/storage/' . $cleanPath);
                                                 @endphp
 
@@ -135,7 +144,6 @@ File: resources/views/customer/pesanan/riwayat_belanja.blade.php
                                                 {{ $item->product?->name ?? 'Produk Dihapus' }}
                                             </h5>
 
-                                            {{-- Info Varian (Jika Ada) --}}
                                             @if($item->variant)
                                                 <p class="text-xs text-gray-500 mt-1">
                                                     Varian: {{ $item->variant->sku_code ?? 'Default' }}
@@ -164,22 +172,21 @@ File: resources/views/customer/pesanan/riwayat_belanja.blade.php
                                     <p class="text-xs text-gray-500 uppercase font-bold mb-2 tracking-wider">KURIR PENGIRIMAN</p>
 
                                     <div class="flex items-center gap-3">
-                                        {{-- LOGIKA PARSING LOGO EKSPEDISI --}}
                                         @php
-                                            // Format: regular-anteraja-REG...
+                                            // Parse nama kurir (contoh: anteraja, jne)
                                             $parts = explode('-', $order->shipping_method);
                                             $courierName = $parts[1] ?? 'Kurir';
-                                            // Mapping manual nama file logo jika perlu (contoh: jne -> jne.png)
-                                            $logoPath = strtolower($courierName);
+                                            // Path Logo Ekspedisi
+                                            $logoExpedition = asset('public/storage/logo-ekspedisi/' . strtolower($courierName) . '.png');
                                         @endphp
 
                                         <div class="w-12 h-auto bg-white rounded border border-gray-200 p-1">
-                                            {{-- Coba load logo ekspedisi, jika gagal tampilkan icon truck --}}
-                                            <img src="{{ asset('storage/logo-ekspedisi/' . $logoPath . '.png') }}"
+                                            <img src="{{ $logoExpedition }}"
                                                  alt="{{ $courierName }}"
                                                  class="w-full h-full object-contain"
                                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                            <i class="fas fa-truck text-gray-400 text-lg hidden text-center w-full"></i>
+                                            {{-- Fallback Icon --}}
+                                            <i class="fas fa-truck text-gray-400 text-lg hidden text-center w-full mt-1"></i>
                                         </div>
 
                                         <div>
@@ -192,7 +199,7 @@ File: resources/views/customer/pesanan/riwayat_belanja.blade.php
                                         </div>
                                     </div>
 
-                                    {{-- INFO RESI --}}
+                                    {{-- STATUS PENGIRIMAN --}}
                                     @if($order->shipping_resi)
                                         <div class="mt-3 bg-green-50 border border-green-200 rounded p-2 flex justify-between items-center group cursor-pointer" onclick="navigator.clipboard.writeText('{{ $order->shipping_resi }}'); alert('Resi disalin!')">
                                             <div>
@@ -209,7 +216,7 @@ File: resources/views/customer/pesanan/riwayat_belanja.blade.php
                                     @endif
                                 </div>
 
-                                {{-- TOTAL & TOMBOL AKSI --}}
+                                {{-- TOTAL & TOMBOL --}}
                                 <div>
                                     <div class="flex justify-between items-end mb-4 border-t border-dashed border-gray-200 pt-3">
                                         <span class="text-xs text-gray-500">Total Belanja</span>
@@ -217,6 +224,7 @@ File: resources/views/customer/pesanan/riwayat_belanja.blade.php
                                     </div>
 
                                     <div class="grid gap-2">
+                                        {{-- LOGIKA TOMBOL BERDASARKAN STATUS --}}
                                         @if(in_array($status, ['pending', 'unpaid', 'menunggu_pembayaran']))
                                             @if(!empty($order->invoice_number))
                                                 <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-indigo-600 text-white text-sm font-bold py-2.5 rounded-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
