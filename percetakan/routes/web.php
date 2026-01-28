@@ -20,6 +20,7 @@ use App\Http\Controllers\LogViewerController;
 use App\Http\Controllers\CategoryController; // <--- Jangan lupa import ini di paling atas
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ScannerController; // <--- Import Controller Wajib Ada
+use App\Http\Controllers\RegisterTenantController;
 
 Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
 
@@ -396,3 +397,10 @@ Route::get('/mobile-scanner', [ScannerController::class, 'index'])->name('scanne
 Route::post('/scan-process', [ScannerController::class, 'handleScan'])->name('scanner.process');
 
 
+// --------------------------------------- Multi Tenant------------------------------------------- //
+// --------------------------------------- Multi Tenant------------------------------------------- //
+// --------------------------------------- Multi Tenant------------------------------------------- //
+
+// URL Hasilnya: tokosancaka.com/percetakan/daftar-percetakan
+Route::get('/daftar-percetakan', [RegisterTenantController::class, 'showForm'])->name('daftar.percetakan');
+Route::post('/daftar-percetakan', [RegisterTenantController::class, 'register'])->name('daftar.percetakan.store');
