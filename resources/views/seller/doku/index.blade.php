@@ -115,16 +115,13 @@
                                     </span>
                                 @endif
 
-                                {{-- TOMBOL REFRESH STATUS DOKU --}}
-                                @if($store->doku_status !== 'ACTIVE')
-                                    <form action="{{ route('seller.doku.refresh_status') }}" method="POST" class="inline-block ml-2">
-                                        @csrf
-                                        <button type="submit" class="inline-flex items-center px-2 py-1 bg-blue-50 border border-blue-200 rounded text-xs font-medium text-blue-700 hover:bg-blue-100 focus:outline-none transition ease-in-out duration-150" title="Cek Status Terbaru ke DOKU">
-                                            <svg class="w-3 h-3 mr-1 animate-spin-hover" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                                            Cek Status
-                                        </button>
-                                    </form>
-                                @endif
+                                <form action="{{ route('seller.doku.refresh_status') }}" method="POST" class="inline-block ml-2">
+                                    @csrf
+                                    {{-- Tambahkan ID="btn-auto-status" disini --}}
+                                    <button type="submit" id="btn-auto-status" class="...">
+                                        <i class="fas fa-sync-alt"></i> Cek Status
+                                    </button>
+                                </form>
                             </div>
                         </div>
 
@@ -138,16 +135,11 @@
                             <div class="flex justify-between items-center mb-2">
                                 <h3 class="text-lg font-medium text-gray-900">Saldo Dompet Anda (SANCAKA EXPRESS)</h3>
 
-                                <form action="{{ route('seller.doku.refreshBalance') }}" method="POST"
-                                      x-data="{ isRefreshing: false }"
-                                      @submit="isRefreshing = true">
+                                <form action="{{ route('seller.doku.refresh_balance') }}" method="POST">
                                     @csrf
-                                    <button type="submit"
-                                            :disabled="isRefreshing"
-                                            class="text-sm text-blue-600 hover:text-blue-800 transition-colors"
-                                            :class="{ 'opacity-50 cursor-not-allowed': isRefreshing }">
-                                        <i class="fas fa-sync-alt fa-fw" :class="{ 'fa-spin': isRefreshing }"></i>
-                                        <span x-text="isRefreshing ? 'Menyinkronkan...' : 'Refresh Saldo'"></span>
+                                    {{-- Tambahkan ID="btn-auto-saldo" --}}
+                                    <button type="submit" id="btn-auto-saldo" class="...">
+                                        Refresh Saldo
                                     </button>
                                 </form>
                             </div>
@@ -404,4 +396,52 @@
 
     @endif
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // --- LOGIKA 1: AUTO REFRESH STATUS (Prioritas Utama) ---
+        // Kita gunakan variabel PHP untuk mentrigger JS hanya jika status BUKAN Active
+        @if($store->doku_status !== 'ACTIVE')
+            console.log('Status belum ACTIVE, melakukan auto-refresh status...');
+
+            var btnStatus = document.getElementById('btn-auto-status');
+            if (btnStatus) {
+                // Beri jeda sedikit agar user sadar ada proses
+                setTimeout(function() {
+                    btnStatus.click();
+                    // Tampilkan loading text (opsional)
+                    btnStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+                    btnStatus.disabled = true;
+                }, 1000);
+            }
+        @endif
+
+        // --- LOGIKA 2: AUTO REFRESH SALDO (Opsional & Aman) ---
+        // Hanya jalan jika status SUDAH Active DAN kita ingin memaksa update saat pertama buka
+        // Menggunakan SessionStorage agar tidak looping (reload terus menerus)
+        @if($store->doku_status === 'ACTIVE')
+            // Cek apakah kita sudah pernah auto-refresh saldo di sesi ini?
+            if (!sessionStorage.getItem('doku_saldo_refreshed')) {
+                console.log('Status ACTIVE, melakukan auto-refresh saldo sekali...');
+
+                var btnSaldo = document.getElementById('btn-auto-saldo');
+                if (btnSaldo) {
+                    // Tandai bahwa kita sudah refresh, supaya tidak looping setelah reload
+                    sessionStorage.setItem('doku_saldo_refreshed', 'true');
+
+                    setTimeout(function() {
+                        btnSaldo.click();
+                    }, 500);
+                }
+            } else {
+                console.log('Saldo sudah di-refresh sebelumnya (Session Check).');
+                // Opsional: Clear session jika ingin reset setiap kali tutup browser tab
+                // sessionStorage.removeItem('doku_saldo_refreshed');
+            }
+        @endif
+    });
+</script>
+@endpush
+
 @endsection
