@@ -298,7 +298,7 @@
                         <a href="{{ route('katalog.index') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200">
                             <i class="fas fa-book-open fa-fw w-4 mr-2"></i> Katalog
                         </a>
-                        <a href="{{ route('etalase.index') }}" target="_blank" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200">
+                        <a href="{{ url('/etalase') }}" target="_blank" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200">
                             <i class="fas fa-store fa-fw w-4 mr-2"></i> Etalase
                         </a>
                         <a href="/customer/pesanan/riwayat" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200">
