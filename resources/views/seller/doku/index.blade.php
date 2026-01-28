@@ -408,37 +408,64 @@
 <script>
     document.addEventListener("DOMContentLoaded", function() {
 
-        // --- LOGIKA 1: PRIORITAS STATUS (Jika belum ACTIVE) ---
-        // Jika status masih PENDING, sistem akan otomatis klik "Cek Status" duluan.
+        // 1. CEK DATA SAC ID (PHP ke JS)
+        // Jika tidak ada SAC ID, hentikan semua proses otomatis.
+        var hasSacId = "{{ $store->doku_sac_id ?? '' }}";
+        if (!hasSacId) {
+            console.log('Auto-Refresh: SAC ID tidak ditemukan. Membatalkan proses.');
+            return;
+        }
+
+        // --- LOGIKA 1: AUTO REFRESH STATUS (ANTI LOOP) ---
         @if($store->doku_status !== 'ACTIVE')
-            var btnStatus = document.getElementById('btn-auto-status');
-            if (btnStatus) {
-                console.log('Auto-Refresh: Status belum Active, checking status...');
-                // Klik tombol status (ini akan reload halaman)
-                setTimeout(function(){ btnStatus.click(); }, 1000);
+
+            // Cek apakah kita sudah pernah mencoba refresh status di sesi browser ini?
+            // Jika SUDAH pernah (ada di storage), jangan klik lagi (Stop Loop).
+            if (!sessionStorage.getItem('doku_status_auto_checked')) {
+
+                var btnStatus = document.getElementById('btn-auto-status');
+                if (btnStatus) {
+                    console.log('Auto-Refresh: Status belum Active, mencoba cek ke API (Percobaan 1)...');
+
+                    // PENTING: Tandai bahwa kita sudah mencoba cek status
+                    sessionStorage.setItem('doku_status_auto_checked', 'true');
+
+                    // Klik tombol
+                    setTimeout(function() {
+                        btnStatus.click();
+                        // Ubah tampilan tombol biar user tau lagi loading
+                        btnStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+                        btnStatus.disabled = true;
+                    }, 1000);
+                }
+            } else {
+                console.log('Auto-Refresh: Status masih Pending, tapi sistem sudah mencoba cek otomatis sebelumnya. Stop Loop untuk keamanan.');
             }
+
         @else
 
-        // --- LOGIKA 2: PRIORITAS SALDO (Jika sudah ACTIVE) ---
-        // Hanya jalan jika Status sudah ACTIVE + Belum pernah refresh saldo di sesi ini
+        // --- LOGIKA 2: AUTO REFRESH SALDO (ANTI LOOP) ---
+        // Hanya jalan jika Status SUDAH ACTIVE.
 
             var sessionKey = 'doku_saldo_auto_refreshed';
 
-            // Cek apakah sudah pernah auto-refresh?
+            // Cek apakah sudah pernah auto-refresh saldo?
             if (!sessionStorage.getItem(sessionKey)) {
+
                 var btnSaldo = document.getElementById('btn-auto-saldo');
-
+                // Cek apakah tombol ada (berarti user punya akses saldo)
                 if (btnSaldo) {
-                    console.log('Auto-Refresh: Status Active, syncing balance...');
+                    console.log('Auto-Refresh: Status Active, menyinkronkan saldo satu kali...');
 
-                    // Tandai bahwa kita sudah melakukan refresh (agar tidak looping setelah reload)
+                    // Tandai sudah refresh agar tidak reload terus menerus
                     sessionStorage.setItem(sessionKey, 'true');
 
-                    // Klik tombol saldo
-                    setTimeout(function(){ btnSaldo.click(); }, 500);
+                    setTimeout(function(){
+                        btnSaldo.click();
+                    }, 500);
                 }
             } else {
-                console.log('Auto-Refresh: Saldo sudah disinkronkan sebelumnya.');
+                console.log('Auto-Refresh: Saldo sudah disinkronkan di sesi ini. Tidak perlu refresh lagi.');
             }
         @endif
     });
