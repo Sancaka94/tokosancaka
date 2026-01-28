@@ -795,16 +795,5 @@ Route::get('/dana/check-gateway/{orderId}', [TopUpController::class, 'checkDanaG
 
 // Route untuk halaman Pusat Bisnis
 Route::get('/customer/business-center', function () {
-
-    // 1. Ambil Data User
-    $user = auth()->user();
-
-    // 2. Ambil Data Toko DANA (Opsional, agar tidak error jika view memanggilnya)
-    $danaShop = \Illuminate\Support\Facades\DB::table('dana_shops')
-                    ->where('user_id', $user->id_pengguna ?? $user->id)
-                    ->first();
-
-    // 3. Kirim Variable $user dan $danaShop ke View
-    return view('customer.business.index', compact('user', 'danaShop'));
-
+    return view('customer.business.index');
 })->middleware(['auth', 'verified'])->name('customer.business.index');
