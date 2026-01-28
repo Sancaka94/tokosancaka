@@ -7,77 +7,73 @@ use Illuminate\Http\Request;
 use App\Services\DokuJokulService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Config;
-use App\Models\Api; // Wajib import Model API
+use App\Models\Api;
 
 class DokuBalanceController extends Controller
 {
     public function index()
     {
-        // ------------------------------------------------------------------
-        // LANGKAH 1: AMBIL KONFIGURASI MENTAH DARI DATABASE
-        // ------------------------------------------------------------------
-
-        // Cek Mode (Default ke Sandbox jika tidak ada)
+        // 1. AMBIL KONFIGURASI DARI DATABASE
         $dbEnv = Api::where('key', 'DOKU_ENV')->value('value');
         $mode = (strtolower($dbEnv) === 'production') ? 'production' : 'sandbox';
 
-        // Logika Cerdas: Ambil Main SAC ID (Cari di Scope dulu, lalu Global)
+        // Ambil ID Akun Utama (Cari di Scope dulu, lalu Global)
         $mainSacId = Api::where('key', 'DOKU_MAIN_SAC_ID')->where('environment', $mode)->value('value');
         if (empty($mainSacId)) {
-            // Fallback: Jika di production/sandbox kosong, ambil dari global (Baris 23 DB Anda)
             $mainSacId = Api::where('key', 'DOKU_MAIN_SAC_ID')->where('environment', 'global')->value('value');
         }
 
-        // ------------------------------------------------------------------
-        // LANGKAH 2: PAKSA CONFIG LARAVEL (OVERRIDE APPSERVICEPROVIDER)
-        // ------------------------------------------------------------------
+        // 2. TERAPKAN KONFIGURASI AWAL (Biasanya Production sesuai DB Anda)
         $this->applyDokuConfig($mode);
 
-        // ------------------------------------------------------------------
-        // LANGKAH 3: EKSEKUSI API DENGAN LOGIKA "AUTO-RETRY"
-        // ------------------------------------------------------------------
-
-        // Buat instance service BARU agar membaca config yang baru kita set
+        // 3. EKSEKUSI API & LOGIKA AUTO-SWITCH
         $dokuService = new DokuJokulService();
         $balanceData = null;
         $error = null;
         $isAutoSwitched = false;
 
         if (empty($mainSacId)) {
-            $error = "ID Akun Utama (DOKU_MAIN_SAC_ID) tidak ditemukan di Database (Scope: $mode/Global).";
+            $error = "ID Akun Utama (DOKU_MAIN_SAC_ID) tidak ditemukan.";
         } else {
             try {
-                // PERCOBAAN PERTAMA (Sesuai Database)
+                // COBA REQUEST PERTAMA
                 $response = $dokuService->getBalance($mainSacId);
 
-                // --- LOGIKA CERDAS: AUTO-SWITCH KE SANDBOX JIKA GAGAL DI PRODUCTION ---
+                // --- LOGIKA CERDAS V2 (LEBIH FLEKSIBEL) ---
+                // Cek jika GAGAL + Mode PRODUCTION + Pesan Error mengandung "not found"
+                $pesanError = $response['message'] ?? '';
+
                 if (
                     $mode === 'production' &&
                     (!isset($response['success']) || !$response['success']) &&
-                    (isset($response['data']['error']['code']) && $response['data']['error']['code'] == 'not_found')
+                    (stripos($pesanError, 'not found') !== false) // <--- PERBAIKAN DI SINI
                 ) {
-                    Log::warning("DOKU Balance: Gagal di Production (404). Mencoba beralih otomatis ke Sandbox...");
+                    Log::warning("DOKU Balance: Gagal di Production (404 Not Found). Mengaktifkan AUTO-SWITCH ke Sandbox...");
 
-                    // 1. Ubah Mode ke Sandbox secara paksa
+                    // 1. Paksa ubah config ke SANDBOX
                     $this->applyDokuConfig('sandbox');
-                    $mode = 'sandbox'; // Update variabel untuk View
+                    $mode = 'sandbox';
                     $isAutoSwitched = true;
 
-                    // 2. Re-create Service & Retry
+                    // 2. Buat Service Baru & Coba Lagi
                     $dokuService = new DokuJokulService();
-                    $response = $dokuService->getBalance($mainSacId);
+
+                    // 3. Cari ID Sandbox (jika ID Production beda dengan Sandbox)
+                    // Fallback lagi ke global jika di sandbox kosong
+                    $sandboxId = Api::where('key', 'DOKU_MAIN_SAC_ID')->where('environment', 'sandbox')->value('value');
+                    if(empty($sandboxId)) {
+                         $sandboxId = Api::where('key', 'DOKU_MAIN_SAC_ID')->where('environment', 'global')->value('value');
+                    }
+
+                    $response = $dokuService->getBalance($sandboxId);
+                    $mainSacId = $sandboxId; // Update ID untuk tampilan View
                 }
-                // -----------------------------------------------------------------------
+                // ------------------------------------------
 
                 if (($response['success'] ?? false) === true && isset($response['data']['balance'])) {
                     $balanceData = $response['data'];
                 } else {
                     $error = $response['message'] ?? 'Gagal mengambil data saldo.';
-
-                    // Cek detail error
-                    if (isset($response['data']['error']['message'])) {
-                        $error .= " (" . $response['data']['error']['message'] . ")";
-                    }
                 }
 
             } catch (\Exception $e) {
@@ -85,36 +81,26 @@ class DokuBalanceController extends Controller
             }
         }
 
-        // ------------------------------------------------------------------
-        // LANGKAH 4: KIRIM KE VIEW
-        // ------------------------------------------------------------------
+        // 4. KIRIM KE VIEW
         return view('admin.doku.balance', [
             'mainSacId'   => $mainSacId,
             'mode'        => $mode,
             'balanceData' => $balanceData,
             'error'       => $error,
-            'autoSwitched'=> $isAutoSwitched // Info tambahan untuk View
+            'autoSwitched'=> $isAutoSwitched
         ]);
     }
 
-    /**
-     * Helper Private untuk Memaksa Config DOKU di Runtime
-     */
     private function applyDokuConfig($scope)
     {
-        // Set URL
         if ($scope === 'production') {
             Config::set('doku.url', 'https://api.doku.com');
-            Config::set('doku.production_url', 'https://api.doku.com');
         } else {
             Config::set('doku.url', 'https://api-sandbox.doku.com');
-            Config::set('doku.sandbox_url', 'https://api-sandbox.doku.com');
         }
-
-        // Set Mode
         Config::set('doku.mode', $scope);
 
-        // Ambil Credential dari DB sesuai scope yang diminta
+        // Ambil Credential DB
         Config::set('doku.client_id', Api::where('key', 'DOKU_CLIENT_ID')->where('environment', $scope)->value('value'));
         Config::set('doku.secret_key', Api::where('key', 'DOKU_SECRET_KEY')->where('environment', $scope)->value('value'));
 
