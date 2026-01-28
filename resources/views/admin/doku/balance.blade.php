@@ -18,11 +18,19 @@
         </div>
     @endif
 
+    @if(isset($autoSwitched) && $autoSwitched)
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Perhatian:</strong> Database Anda diset ke <b>Production</b>, tetapi ID Akun tidak ditemukan.
+        Sistem secara cerdas beralih ke <b>Sandbox</b> untuk menampilkan data ini.
+    </div>
+    @endif
+
     <!-- Tampilkan Saldo -->
     @if ($balanceData)
         <div class="p-6 bg-white shadow-md rounded-lg">
             <h2 class="text-lg font-semibold text-gray-800">Saldo Akun: <span class="font-mono text-blue-600">{{ $mainSacId }}</span></h2>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <!-- Saldo Tersedia -->
                 <div class="p-6 bg-green-50 border border-green-200 rounded-xl">
@@ -32,7 +40,7 @@
                     </p>
                     <p class="mt-1 text-xs text-gray-500">Saldo ini yang digunakan untuk Payout ke seller.</p>
                 </div>
-                
+
                 <!-- Saldo Tertunda -->
                 <div class="p-6 bg-yellow-50 border border-yellow-200 rounded-xl">
                     <p class="text-sm font-medium text-yellow-700">Saldo Tertunda (Pending)</p>
