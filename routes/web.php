@@ -792,4 +792,7 @@ Route::post('/dana/notify', [TopUpController::class, 'handleNotify'])->name('dan
 Route::get('/dana/check-gateway/{orderId}', [TopUpController::class, 'checkDanaGatewayStatus'])
     ->name('dana.check_gateway');
 
-Route::post('/doku/notify', [TopUpController::class, 'dokuNotify'])->name('doku.notify');
+// Route untuk halaman Pusat Bisnis
+Route::get('/customer/business-center', function () {
+    return view('customer.business.index');
+})->middleware(['auth', 'verified'])->name('customer.business.index');
