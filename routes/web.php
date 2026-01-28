@@ -290,8 +290,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return redirect()->route('customer.dashboard');
     })->name('dashboard');
 
-      // Ganti route riwayat yang lama dengan ini:
-    Route::get('/customer/riwayat-belanja', [App\Http\Controllers\Customer\PesananController::class, 'riwayatBelanja'])
+    // ✅ 1. ROUTE KHUSUS (WAJIB DI ATAS)
+    // URL: /customer/pesanan/riwayat-belanja
+    Route::get('/customer/pesanan/riwayat-belanja', [App\Http\Controllers\Customer\PesananController::class, 'riwayatBelanja'])
         ->name('customer.pesanan.riwayat_belanja');
 
     Route::get('/customer/dashboard', function () { return view('dashboard'); })
