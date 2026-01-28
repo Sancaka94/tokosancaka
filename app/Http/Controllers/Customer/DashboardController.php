@@ -28,15 +28,36 @@ class DashboardController extends Controller
 {
 public function index()
     {
-        // 1. AMBIL USER & ID SECARA EKSPLISIT
+        // 1. Identifikasi User
         $user = Auth::user();
+        $userId = $user->id_pengguna;
 
-        // Kita ambil ID langsung dari atribut model untuk memastikan tidak salah ambil
-        $userId = $user->getAttribute('id_pengguna');
+        // ==========================================================
+        // 🛑 AREA DIAGNOSA (HAPUS NANTI SETELAH KETEMU MASALAHNYA)
+        // ==========================================================
 
-        // --- DEBUGGING (OPSIONAL) ---
-        // Jika masih error, HAPUS tanda // di bawah ini untuk melihat ID siapa yang terbaca
-        dd("ID Yang Login: " . $userId, "Role: " . $user->role);
+        // Cek 1: Berapa order yang benar-benar punya ID 52?
+        $cekCount = Pesanan::where('id_pengguna_pembeli', $userId)->count();
+
+        // Cek 2: Ambil 1 contoh order sembarang, siapa pemilik aslinya?
+        $randomOrder = Pesanan::first();
+
+        // Cek 3: Lihat Query SQL Aslinya (Apakah WHERE-nya hilang?)
+        DB::enableQueryLog();
+        Pesanan::where('id_pengguna_pembeli', $userId)->get();
+        $queryLog = DB::getQueryLog();
+
+        dd([
+            'ID LOGIN ANDA' => $userId,
+            'TOTAL SEMUA ORDER DI DB' => Pesanan::count(),
+            'TOTAL ORDER MILIK ID 52' => $cekCount,
+            'CONTOH DATA ORDER PERTAMA' => [
+                'Nomor Invoice' => $randomOrder->nomor_invoice ?? '-',
+                'Pemilik (id_pengguna_pembeli)' => $randomOrder->id_pengguna_pembeli ?? 'KOSONG',
+            ],
+            'QUERY SQL YANG DIJALANKAN' => $queryLog
+        ]);
+        // ==========================================================
 
         $saldo = $user->saldo;
 
