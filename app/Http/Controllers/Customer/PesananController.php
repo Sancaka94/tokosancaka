@@ -1490,4 +1490,25 @@ public function cetakThermal($resi)
         return view('customer.pesanan.index', compact('pesanans'));
     }
 
+    /**
+     * Menampilkan halaman Riwayat Belanja Marketplace.
+     */
+    public function riwayatBelanja()
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+
+        // Ambil ID User (Prioritas id_pengguna, fallback ke id)
+        $customerId = $user->id_pengguna ?? $user->id;
+
+        // Ambil data dari tabel orders (Marketplace)
+        // Kita load relasi 'store' dan 'items' agar tidak error N+1 di view
+        $pesanans = \App\Models\Order::where('user_id', $customerId)
+                            ->with(['store', 'items.product', 'items.variant'])
+                            ->latest()
+                            ->paginate(10);
+
+        // Arahkan ke file view baru: riwayat_belanja.blade.php
+        return view('customer.pesanan.riwayat_belanja', compact('pesanans'));
+    }
+
 }

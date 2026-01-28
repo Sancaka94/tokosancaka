@@ -302,6 +302,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/seller/register', [SellerRegisterController::class, 'store'])->name('seller.register.submit');
     Route::get('customer/seller/register', [SellerRegisterController::class, 'create'])->name('customer.seller.register.form'); // Alias
 
+    // Ganti route riwayat yang lama dengan ini:
+    Route::get('/customer/riwayat-belanja', [App\Http\Controllers\Customer\PesananController::class, 'riwayatBelanja'])
+        ->name('customer.pesanan.riwayat_belanja');
 
     // User Profile
     Route::get('/user/profile', function () { return view('profile.show'); })->name('profile.show');
