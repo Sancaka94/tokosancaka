@@ -163,7 +163,13 @@
 
                             <div class="mb-4">
                                 <label for="address_detail" class="block text-sm font-medium text-gray-700">Detail Alamat (Nama Jalan, No. Rumah, RT/RW) <span class="text-red-500">*</span></label>
-                                <textarea name="address_detail" id="address_detail" rows="3" x-model="fields.address_detail" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500" required placeholder="Contoh: Jl. Dr. Wahidin No.18A RT.22 RW.05">{{ old('address_detail', $user->address_detail) }}</textarea>
+                                    <textarea name="address_detail"
+                                            id="address_detail"
+                                            rows="3"
+                                            x-model="fields.address_detail"
+                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
+                                            required
+                                            placeholder="Contoh: Jl. Dr. Wahidin No.18A RT.22 RW.05">{{ old('address_detail', auth()->user()->address_detail) }}</textarea>
                             </div>
 
                             <div class="mb-4">
