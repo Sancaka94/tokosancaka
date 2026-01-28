@@ -89,32 +89,59 @@ class DokuWebhookController extends Controller
                 // =================================================================
                 // A. PENANGANAN TENANT (PREFIX SEWA-)
                 // =================================================================
+                // =================================================================
+                // 1. PENANGANAN TENANT (PREFIX SEWA-)
+                // =================================================================
                 if (Str::startsWith($orderId, 'SEWA-')) {
                     Log::info("LOG LOG: Detected Tenant Payment: $orderId");
 
-                    $tenantMain = Tenant::where('subdomain', explode('-', $orderId)[1] ?? '')->first(); // controller ada di DB kedua
+                    // Kita ambil nama subdomain dari invoice (Contoh: SEWA-APP-xxx -> app)
+                    $subdomain = strtolower(explode('-', $orderId)[1] ?? '');
+
+                    // STEP 1: Tanya Database Pertama (Utama)
+                    $tenantMain = \Illuminate\Support\Facades\DB::table('tenants')
+                                    ->where('subdomain', $subdomain)
+                                    ->first();
+
                     if ($tenantMain) {
-                        Log::info("LOG LOG: ✅ Tenant ditemukan di DB UTAMA.");
-                        return App::make(RegisterTenantController::class)->handleDokuWebhook($request);
-                    }
-
-                    Log::info("LOG LOG: 🔍 Mencari di mysql_second...");
-                    try {
-                        $percetakanDB = DB::connection('mysql_second');
-                        $subdomain = strtolower(explode('-', $orderId)[1] ?? '');
-                        $tenantSecond = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
-
-                        if ($tenantSecond) {
-                            $percetakanDB->table('tenants')->where('id', $tenantSecond->id)->update([
+                        Log::info("LOG LOG: ✅ Tenant ditemukan di DB UTAMA. Mengaktifkan...");
+                        \Illuminate\Support\Facades\DB::table('tenants')
+                            ->where('id', $tenantMain->id)
+                            ->update([
                                 'status' => 'active',
                                 'updated_at' => now()->timezone('Asia/Jakarta')
                             ]);
-                            Log::info("LOG LOG: ✅ Tenant AKTIF di DB PERCETAKAN.");
+                        return response()->json(['message' => 'Activated in Main DB']);
+                    }
+
+                    // STEP 2: Jika tidak ada di pertama, Tanya Database Kedua (Percetakan)
+                    Log::info("LOG LOG: 🔍 Tidak ada di DB Utama, lari ke mysql_second...");
+                    try {
+                        $percetakanDB = \Illuminate\Support\Facades\DB::connection('mysql_second');
+                        $tenantSecond = $percetakanDB->table('tenants')
+                                        ->where('subdomain', $subdomain)
+                                        ->first();
+
+                        if ($tenantSecond) {
+                            Log::info("LOG LOG: ✅ Tenant ditemukan di DB PERCETAKAN. Mengaktifkan...");
+                            $percetakanDB->table('tenants')
+                                ->where('id', $tenantSecond->id)
+                                ->update([
+                                    'status' => 'active',
+                                    'updated_at' => now()->timezone('Asia/Jakarta')
+                                ]);
+
+                            Log::info("LOG LOG: 🚀 Status Tenant '$subdomain' Sukses Aktif di DB Kedua.");
+
+                            // Panggil Notif WA (Optional)
                             $this->_sendFonnteNotification($subdomain);
+
                             return response()->json(['message' => 'Activated in Secondary DB']);
+                        } else {
+                            Log::warning("LOG LOG: ❌ Tenant '$subdomain' tidak ditemukan di database manapun!");
                         }
                     } catch (\Exception $e) {
-                        Log::error("LOG LOG: ❌ Gagal akses DB Percetakan: " . $e->getMessage());
+                        Log::error("LOG LOG: ❌ Gagal koneksi/query ke DB Percetakan: " . $e->getMessage());
                     }
                 }
 
