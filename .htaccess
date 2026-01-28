@@ -1,38 +1,37 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
-    # Tambahkan baris ini untuk mengabaikan folder percetakan
-    # RewriteCond %{REQUEST_URI} !^/percetakan
-    # RewriteCond %{REQUEST_URI} !^/indahcargo
+    # --- 1. BAGIAN PENGECUALIAN (Exclusion List) ---
+    # Agar folder-folder ini tidak ikut terlempar ke subdomain atau public
     
-    # --- BAGIAN PENGECUALIAN (Exclusion List) ---
-    
-    # 1. Bebaskan folder bisnis.pro
     RewriteRule ^bisnis\.pro - [L,NC]
-
-    # 2. Bebaskan folder tokosancaka.biz.id (TAMBAHAN BARU)
     RewriteRule ^tokosancaka\.biz\.id - [L,NC]
-    
-    # 3. Bebaskan folder sancaka.my.id (BARU)
     RewriteRule ^sancaka\.my\.id - [L,NC]
-    
-    # 4. Bebaskan folder spx.tokosancaka.com (BARU)
     RewriteRule ^spx\.tokosancaka\.com - [L,NC]
-    
-    # 5. Bebaskan folder sancaka.bisnis.pro (BARU - Agar subdomain ini bisa diakses)
     RewriteRule ^sancaka\.bisnis\.pro - [L,NC]
-
-    # --------------------------------------------
-    
+    RewriteRule ^bisnis\.sancaka\.my\.id - [L,NC]
     RewriteRule ^scrapper($|/) - [L]
 
-    # Arahkan semua request ke folder public
+    # --- 2. WILDCARD SUBDOMAIN (PENCEGATAN DINAMIS) ---
+    # Jika mengakses subdomain (misal: gemini.tokosancaka.com)
+    # Tapi abaikan jika itu adalah www atau domain utama
+    RewriteCond %{HTTP_HOST} !^www\.tokosancaka\.com$ [NC]
+    RewriteCond %{HTTP_HOST} !^tokosancaka\.com$ [NC]
+    # Ambil subdomainnya dan lempar secara internal ke folder percetakan/public
+    RewriteCond %{HTTP_HOST} ^([^.]+)\.tokosancaka\.com$ [NC]
+    # Gunakan pengecekan agar tidak looping jika sudah berada di folder percetakan
+    RewriteCond %{REQUEST_URI} !^/percetakan/
+    RewriteRule ^(.*)$ percetakan/public/$1 [L]
+
+    # --- 3. ATURAN DEFAULT WEB UTAMA ---
+    # Arahkan semua request domain utama ke folder public
     RewriteCond %{REQUEST_URI} !^/public/
+    # Tambahkan pengecekan agar folder percetakan tidak ikut terlempar ke public utama
+    RewriteCond %{REQUEST_URI} !^/percetakan/
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
 
 # php -- BEGIN cPanel-generated handler, do not edit
-# Set the “ea-php74” package as the default “PHP” programming language.
 <IfModule mime_module>
   AddHandler application/x-httpd-ea-php74___lsphp .php .php7 .phtml
 </IfModule>
