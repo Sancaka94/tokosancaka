@@ -139,10 +139,10 @@ Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
                         <div class="md:col-span-2 p-4 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-slate-200">
                             <div class="md:hidden text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Status</div>
                             @php
-                                $status = strtolower($order->status); // Variabel Marketplace
+                                // (Kode badge warna status biarkan saja seperti sebelumnya)
+                                $status = strtolower($order->status);
                                 $badgeClass = match($status) {
-                                    'paid'       => 'bg-green-100 text-green-800',
-                                    'completed'  => 'bg-green-100 text-green-800',
+                                    'paid', 'completed', 'success' => 'bg-green-100 text-green-800',
                                     'pending'    => 'bg-yellow-100 text-yellow-800',
                                     'failed'     => 'bg-red-100 text-red-800',
                                     'expired'    => 'bg-gray-100 text-gray-800',
@@ -154,25 +154,35 @@ Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
                                 {{ ucfirst($status) }}
                             </span>
 
-                            {{-- LOGIKA TOMBOL AKSI --}}
+                            {{-- ================================================= --}}
+                            {{-- PERBAIKAN: Cek Invoice Number Sebelum Render Link --}}
+                            {{-- ================================================= --}}
+
                             @if ($status === 'pending' && $order->payment_url)
-                                {{-- PERBAIKAN: Ganti 'customer.checkout.invoice' menjadi 'checkout.invoice' --}}
-                                <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">
-                                    Bayar Sekarang
-                                </a>
+                                {{-- Cek apakah invoice ada isinya --}}
+                                @if(!empty($order->invoice_number))
+                                    <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">
+                                        Bayar Sekarang
+                                    </a>
+                                @else
+                                    <span class="mt-2 text-xs text-red-400 italic">Invoice Error</span>
+                                @endif
 
                             @elseif ($order->shipping_resi)
-                                {{-- Tombol Lacak Paket (Sudah Benar) --}}
                                 <a href="{{ route('customer.lacak.index', ['resi' => $order->shipping_resi]) }}"
                                    class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">
                                    Lacak Paket
                                 </a>
 
                             @else
-                                {{-- PERBAIKAN: Ganti 'customer.checkout.invoice' menjadi 'checkout.invoice' --}}
-                                <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="mt-2 text-blue-600 hover:text-blue-900 font-semibold text-sm">
-                                   Lihat Invoice
-                                </a>
+                                {{-- Cek apakah invoice ada isinya --}}
+                                @if(!empty($order->invoice_number))
+                                    <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="mt-2 text-blue-600 hover:text-blue-900 font-semibold text-sm">
+                                       Lihat Invoice
+                                    </a>
+                                @else
+                                    <span class="mt-2 text-xs text-slate-400 italic">Menunggu Invoice</span>
+                                @endif
                             @endif
                         </div>
                     </div>
