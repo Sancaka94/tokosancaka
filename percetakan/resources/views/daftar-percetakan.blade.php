@@ -98,6 +98,20 @@
                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none">
                     </div>
 
+                    <div class="mb-5">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Nomor WhatsApp (Aktif)</label>
+                        <input type="tel"
+                            id="whatsapp_input"
+                            name="whatsapp"
+                            value="{{ old('whatsapp') }}"
+                            required
+                            oninput="cleanWA(this)"
+                            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none"
+                            placeholder="Contoh: 085745808xxx">
+                        <p class="text-[10px] text-gray-400 mt-1 italic">*Format otomatis dibersihkan menjadi 08xxxxxxxxxx</p>
+                        @error('whatsapp') <p class="text-red-500 text-[10px] mt-1 font-bold">{{ $message }}</p> @enderror
+                    </div>
+
                     <div class="md:col-span-2">
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Nama Usaha Percetakan</label>
                         <input type="text" x-model="businessName" @input="generateSubdomain()" name="business_name" required
@@ -105,15 +119,23 @@
                                placeholder="Contoh: Sancaka Digital Printing">
                     </div>
 
-                    <div class="md:col-span-2 bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                        <label class="block text-[10px] font-black text-blue-800 uppercase mb-2">Konfigurasi Alamat URL (Subdomain)</label>
-                        <div class="flex items-center text-sm md:text-base">
-                            <span class="text-gray-400 font-mono">https://</span>
-                            <input type="text" name="subdomain" x-model="subdomain" required
-                                   class="bg-transparent font-bold text-blue-700 border-b-2 border-blue-200 focus:border-blue-600 outline-none px-1 transition-colors mx-1 min-w-[80px]"
-                                   placeholder="nama-toko">
-                            <span class="text-blue-800 font-semibold italic">.tokosancaka.com/percetakan</span>
+                    <div class="mb-5">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Alamat Subdomain</label>
+                        <div class="flex items-center">
+                            <input type="text"
+                                id="subdomain_input"
+                                name="subdomain"
+                                value="{{ old('subdomain') }}"
+                                required
+                                minlength="3"
+                                oninput="cleanSubdomain(this)"
+                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-l-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none"
+                                placeholder="contoh: app">
+                            <span class="bg-gray-200 px-4 py-2.5 border border-l-0 border-gray-200 rounded-r-xl text-gray-600 text-sm font-bold">
+                                .tokosancaka.com
+                            </span>
                         </div>
+                        <p id="subdomain_error" class="text-[10px] text-gray-400 mt-1 italic">*Hanya boleh huruf, minimal 3 karakter.</p>
                         @error('subdomain') <p class="text-red-500 text-[10px] mt-1 font-bold">{{ $message }}</p> @enderror
                     </div>
                 </div>
@@ -175,6 +197,63 @@
             </form>
         </div>
     </div>
+
+    <script>
+        function cleanSubdomain(el) {
+            // 1. Ambil nilai dan paksa jadi huruf kecil (lowercase) agar rapi di URL
+            let val = el.value.toLowerCase();
+
+            // 2. Hapus semua karakter yang BUKAN huruf (a-z)
+            // Angka, simbol, spasi, dan karakter aneh akan langsung hilang
+            val = val.replace(/[^a-z]/g, '');
+
+            // 3. Update kembali nilai di dalam kotak input
+            el.value = val;
+
+            // 4. Validasi panjang minimal (Visual feedback)
+            let errorText = document.getElementById('subdomain_error');
+            if (val.length > 0 && val.length < 3) {
+                errorText.classList.add('text-red-500');
+                errorText.classList.remove('text-gray-400');
+                errorText.innerText = "⚠️ Terlalu pendek! Minimal 3 huruf.";
+            } else if (val.length >= 3) {
+                errorText.classList.add('text-green-500');
+                errorText.classList.remove('text-gray-400', 'text-red-500');
+                errorText.innerText = "✅ Subdomain valid.";
+            } else {
+                errorText.classList.add('text-gray-400');
+                errorText.classList.remove('text-green-500', 'text-red-500');
+                errorText.innerText = "*Hanya boleh huruf, minimal 3 karakter.";
+            }
+        }
+
+        function cleanWA(el) {
+            // 1. Ambil nilai input
+            let val = el.value;
+
+            // 2. Hapus semua karakter yang BUKAN angka
+            val = val.replace(/[^0-9]/g, '');
+
+            // 3. Jika diawali '62', ubah jadi '0'
+            if (val.startsWith('62')) {
+                val = '0' + val.substring(2);
+            }
+
+            // 4. Jika diawali '8' (langsung angka 8 tanpa 0), tambahkan '0' di depan
+            if (val.startsWith('8')) {
+                val = '0' + val;
+            }
+
+            // 5. Update kembali nilai di dalam kotak input
+            el.value = val;
+        }
+
+        // Tambahan: Pastikan saat form disubmit, nomor WA sudah bersih total
+        document.querySelector('form').addEventListener('submit', function() {
+            let waInput = document.getElementById('whatsapp_input');
+            cleanWA(waInput);
+        });
+        </script>
 
 </body>
 </html>
