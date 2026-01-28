@@ -28,46 +28,50 @@ class DashboardController extends Controller
 {
 public function index()
     {
-        // 1. AMBIL ID USER YANG LOGIN
-        $customer = Auth::user();
+        // 1. AMBIL USER & ID SECARA EKSPLISIT
+        $user = Auth::user();
 
-        // Pastikan kita pakai ID yang benar (id atau id_pengguna)
-        // Gunakan Auth::id() agar lebih aman jika primary key-nya berbeda
-        $customerId = Auth::id();
+        // Kita ambil ID langsung dari atribut model untuk memastikan tidak salah ambil
+        $userId = $user->getAttribute('id_pengguna');
 
-        $saldo = $customer->saldo;
+        // --- DEBUGGING (OPSIONAL) ---
+        // Jika masih error, HAPUS tanda // di bawah ini untuk melihat ID siapa yang terbaca
+        dd("ID Yang Login: " . $userId, "Role: " . $user->role);
 
-        // --- 2. QUERY MANUAL (JANGAN PAKAI CLONE) ---
-        // Kita tulis ulang "Pesanan::where..." di setiap baris.
-        // Ini menjamin 100% filter tidak akan bocor.
+        $saldo = $user->saldo;
 
-        // A. Total Pesanan (Khusus User Ini)
-        $totalPesanan = Pesanan::where('id_pengguna_pembeli', $customerId)->count();
+        // 2. QUERY MENGGUNAKAN RELASI (Lebih Aman dari Kebocoran)
+        // Kita gunakan $user->pesanans() yang sudah Anda definisikan di Model User.
+        // Laravel otomatis menambahkan "WHERE id_pengguna_pembeli = $userId"
 
-        // B. Pesanan Selesai (Khusus User Ini)
-        $pesananSelesai = Pesanan::where('id_pengguna_pembeli', $customerId)
-                                 ->where('status_pesanan', 'Tiba di Tujuan')
-                                 ->count();
+        // A. Total Pesanan
+        $totalPesanan = $user->pesanans()->count();
 
-        // C. Pesanan Pending (Khusus User Ini)
-        $pesananPending = Pesanan::where('id_pengguna_pembeli', $customerId)
-                                 ->whereIn('status_pesanan', ['pending', 'Menunggu Pembayaran'])
-                                 ->count();
+        // B. Pesanan Selesai
+        $pesananSelesai = $user->pesanans()
+                               ->whereIn('status_pesanan', ['Selesai', 'Tiba di Tujuan'])
+                               ->count();
 
-        // D. Pesanan Terakhir (Khusus User Ini)
-        $recentOrders = Pesanan::where('id_pengguna_pembeli', $customerId)
-                               ->latest('tanggal_pesanan')
-                               ->take(10)
-                               ->get();
+        // C. Pesanan Pending
+        $pesananPending = $user->pesanans()
+                               ->whereIn('status_pesanan', ['pending', 'Menunggu Pembayaran', 'Belum Bayar'])
+                               ->count();
 
-        // E. Scan SPX (Khusus User Ini)
-        $recentSpxScans = ScannedPackage::where('user_id', $customerId)
+        // D. 5 Pesanan Terakhir
+        $recentOrders = $user->pesanans()
+                             ->latest('tanggal_pesanan')
+                             ->take(5)
+                             ->get();
+
+        // E. 5 Scan SPX Terakhir (Manual Query karena belum ada relasi di Model User)
+        $recentSpxScans = ScannedPackage::where('user_id', $userId)
                                         ->latest()
-                                        ->take(5);
+                                        ->take(5)
+                                        ->get();
 
-        // --- PENGAMBILAN DATA UNTUK GRAFIK ---
-        $orderChartData = $this->getOrderChartData($customerId);
-        $spxChartData = $this->getSpxScanChartData($customerId);
+        // 3. Data Grafik
+        $orderChartData = $this->getOrderChartData($userId);
+        $spxChartData   = $this->getSpxScanChartData($userId);
 
         // --- REKAPITULASI PENGELUARAN EKSPEDISI ---
         $rekapEkspedisi = Cache::remember('cust_dashboard_rekap_exp_' . $customerId . '_v2', 600, function () use ($customerId) {
