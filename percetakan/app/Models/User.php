@@ -20,6 +20,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'tenant_id', // <--- JANGAN LUPA TAMBAHKAN INI
         'password',
     ];
 
@@ -44,5 +45,11 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    // Tambahkan relasi ke Tenant
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
     }
 }
