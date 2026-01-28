@@ -418,19 +418,15 @@ class DokuRegistrationController extends Controller
     public function refreshDokuStatus()
     {
         $user = Auth::user();
-        $store = $user->store; // <--- (1) Ambil Data Toko
+        $store = $user->store;
 
-        // (2) Gunakan $store->doku_sac_id, bukan $user->...
         if (!$store || !$store->doku_sac_id) {
-            return back()->with('error', 'Akun DOKU toko belum terdaftar.');
+            return back()->with('error', 'Akun DOKU belum terdaftar.');
         }
 
         try {
-            // =============================================================
-            // A. AMBIL KREDENSIAL DARI DATABASE
-            // =============================================================
+            // === KREDENSIAL (Tetap Sama) ===
             $mode = \App\Models\Api::getValue('DOKU_MODE', 'global', 'sandbox');
-
             if ($mode === 'production') {
                 $clientId = \App\Models\Api::getValue('DOKU_CLIENT_ID', 'production');
                 $secretKey = \App\Models\Api::getValue('DOKU_SECRET_KEY', 'production');
@@ -441,22 +437,13 @@ class DokuRegistrationController extends Controller
                 $baseUrl = 'https://api-sandbox.doku.com';
             }
 
-            if (!$clientId || !$secretKey) {
-                return back()->with('error', 'Konfigurasi API DOKU belum lengkap.');
-            }
+            if (!$clientId || !$secretKey) return back()->with('error', 'Konfigurasi API belum lengkap.');
 
-            // =============================================================
-            // B. PERSIAPAN DATA REQUEST
-            // =============================================================
+            // === REQUEST (Tetap Sama) ===
             $requestId = 'REQ-' . time() . rand(100,999);
             $timestamp = gmdate("Y-m-d\TH:i:s\Z");
-
-            // (3) Gunakan $store->doku_sac_id untuk target path API
             $targetPath = '/sac-merchant/v1/accounts/' . $store->doku_sac_id;
 
-            // =============================================================
-            // C. GENERATE SIGNATURE
-            // =============================================================
             $rawSignature = "Client-Id:" . $clientId . "\n" .
                             "Request-Id:" . $requestId . "\n" .
                             "Request-Timestamp:" . $timestamp . "\n" .
@@ -464,9 +451,6 @@ class DokuRegistrationController extends Controller
 
             $signature = "HMACSHA256=" . base64_encode(hash_hmac('sha256', $rawSignature, $secretKey, true));
 
-            // =============================================================
-            // D. TEMBAK API
-            // =============================================================
             $response = Http::withHeaders([
                 'Client-Id'         => $clientId,
                 'Request-Id'        => $requestId,
@@ -476,17 +460,13 @@ class DokuRegistrationController extends Controller
 
             $data = $response->json();
 
-            // === [UPDATE PENTING DISINI] ===
             if ($response->successful()) {
 
-                // 1. KITA INTIP ISI RESPONSNYA DI LOG (Cek file storage/logs/laravel.log)
-                Log::info('DOKU STATUS RESPONSE FULL:', $data);
-
-                // 2. Cek status di berbagai kemungkinan posisi (langsung atau di dalam 'data')
-                $statusApi = $data['status']
-                             ?? ($data['data']['status']
-                             ?? ($data['account_status']
-                             ?? ($data['data']['account_status'] ?? null)));
+                // === [PERBAIKAN LOGIKA PENCARIAN STATUS] ===
+                // Berdasarkan log Anda: {"account": {"status": "ACTIVE"}}
+                $statusApi = $data['account']['status'] // <--- Prioritas Utama Sesuai Log
+                             ?? ($data['status']
+                             ?? ($data['data']['status'] ?? null));
 
                 if ($statusApi) {
                     $store->doku_status = strtoupper($statusApi);
@@ -495,11 +475,10 @@ class DokuRegistrationController extends Controller
                     if (strtoupper($statusApi) === 'ACTIVE') {
                         return back()->with('success', 'Berhasil! Status Akun DOKU sekarang ACTIVE.');
                     } else {
-                        return back()->with('warning', 'Status terbaru diambil: ' . $statusApi);
+                        return back()->with('warning', 'Status berhasil diambil: ' . $statusApi);
                     }
                 } else {
-                    // Jika masih kosong, kita paksa ambil dari 'balance' logic kalau ada, atau error
-                    return back()->with('error', 'Respon Valid tapi key status tidak ditemukan. Cek Log.');
+                    return back()->with('error', 'API Valid tapi kolom status tidak ditemukan.');
                 }
             } else {
                 Log::error('Gagal Cek Status DOKU', ['resp' => $data]);
