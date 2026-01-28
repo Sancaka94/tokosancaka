@@ -297,6 +297,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/customer/pesanan/riwayat-belanja', [App\Http\Controllers\Customer\PesananController::class, 'riwayatBelanja'])
         ->name('customer.pesanan.riwayat_belanja');
 
+    Route::get('/customer/pesanan/riwayat', [App\Http\Controllers\Customer\PesananController::class, 'riwayat'])
+        ->name('customer.pesanan.riwayat');
+
     // Route Refresh Status DOKU
     Route::post('/seller/doku/refresh-status', [DokuRegistrationController::class, 'refreshDokuStatus'])
         ->name('seller.doku.refresh_status');
