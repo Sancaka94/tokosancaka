@@ -196,7 +196,7 @@ public function index()
 
         $data = [
             'saldo' => $saldo,
-            'totalPesanan' => $totalPesanan,
+            'totalPesananUser' => $totalPesanan,  // <--- Nama Baru (Unik)
             'pesananSelesai' => $pesananSelesai,
             'pesananPending' => $pesananPending,
             'recentOrders' => $recentOrders,

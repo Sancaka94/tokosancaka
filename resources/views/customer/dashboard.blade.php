@@ -20,7 +20,7 @@
         <div x-data="{ activeSlide: 0, slides: {{ json_encode($slides) }} }"
              x-init="if (slides.length > 1) { setInterval(() => { activeSlide = (activeSlide + 1) % slides.length }, 5000) }"
              class="relative w-full rounded-xl shadow-lg overflow-hidden">
-            
+
             <div class="relative w-full overflow-hidden">
                 <div class="flex transition-transform duration-700 ease-in-out" :style="`transform: translateX(-${activeSlide * 100}%);`">
                     <template x-for="(slide, index) in slides" :key="index">
@@ -63,7 +63,7 @@
                 <div class="flex justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-500">Total Pesanan</p>
-                        <p class="text-3xl font-bold text-gray-900">{{ $totalPesanan }}</p>
+                        <p class="text-3xl font-bold text-gray-900">{{ $totalPesananUser }}</p>
                     </div>
                     <div class="text-5xl text-green-400"><i class="fas fa-box-open"></i></div>
                 </div>
@@ -87,7 +87,7 @@
                 </div>
             </div>
         </div>
-        
+
         @if (auth()->user()->role === 'Pelanggan' && !auth()->user()->store)
         <div class="p-6 bg-gradient-to-r from-blue-500 to-cyan-400 text-white rounded-xl shadow-lg flex flex-col sm:flex-row items-center justify-between">
             <div>
@@ -149,13 +149,13 @@
                     <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
                         {{ $order->nomor_invoice }}
                     </td>
-                    
+
                     {{-- LOGIC EKSPEDISI (LENGKAP: IDX, J&T CARGO, DLL) --}}
                     <td class="px-6 py-4 whitespace-nowrap">
                         @php
                             $rawExpedition = strtolower($order->expedition ?? '');
-                            $courierName = $order->expedition; 
-                            $logoFile = 'default.png'; 
+                            $courierName = $order->expedition;
+                            $logoFile = 'default.png';
 
                             // --- LOGIKA PENCOCOKAN ---
                             if (str_contains($rawExpedition, 'jtcargo')) {
@@ -193,8 +193,8 @@
 
                         <div class="flex items-center space-x-3">
                             <div class="flex-shrink-0 h-8 w-8">
-                                <img class="h-8 w-8 rounded-full object-contain bg-gray-50 p-1 border border-gray-200" 
-                                     src="{{ asset('storage/logo-ekspedisi/' . $logoFile) }}" 
+                                <img class="h-8 w-8 rounded-full object-contain bg-gray-50 p-1 border border-gray-200"
+                                     src="{{ asset('storage/logo-ekspedisi/' . $logoFile) }}"
                                      alt="{{ $courierName }}"
                                      onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($courierName) }}&background=random&color=fff&size=32&font-size=0.4';">
                             </div>
@@ -208,20 +208,20 @@
         <td class="px-6 py-4 whitespace-nowrap">
             @php
                 $status = $order->status_pesanan;
-                
+
                 // Default warna (Abu-abu)
                 $badgeClass = 'bg-gray-100 text-gray-800';
 
                 // Logika Warna
                 if ($status == 'Selesai' || $status == 'Tiba di Tujuan') {
                     $badgeClass = 'bg-green-100 text-green-800'; // HIJAU
-                } 
+                }
                 elseif ($status == 'Menunggu Pickup' || $status == 'Diproses') {
                     $badgeClass = 'bg-yellow-100 text-yellow-800'; // KUNING
-                } 
+                }
                 elseif ($status == 'Dibatalkan' || $status == 'Batal' || $status == 'Retur') {
                     $badgeClass = 'bg-red-100 text-red-800'; // MERAH
-                } 
+                }
                 elseif ($status == 'Dikirim' || $status == 'Sedang Dikirim') {
                     $badgeClass = 'bg-blue-100 text-blue-800'; // BIRU (Optional)
                 }
@@ -234,10 +234,10 @@
                     <td class="px-6 py-4 whitespace-nowrap text-left font-semibold text-gray-800">
                         Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}
                     </td>
-                    
+
                     <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <a href="https://tokosancaka.com/tracking/search?resi={{ $order->nomor_invoice }}" 
-                           target="_blank" 
+                        <a href="https://tokosancaka.com/tracking/search?resi={{ $order->nomor_invoice }}"
+                           target="_blank"
                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-red-600 hover:bg-indigo-100 hover:text-red-700 border border-indigo-200 rounded-lg text-xs font-bold transition-colors duration-200"
                            title="Lacak Invoice: {{ $order->nomor_invoice }}">
                             <i class="fas fa-search-location"></i> Lacak
@@ -285,7 +285,7 @@
                 <span class="bg-blue-100 p-2 rounded-lg text-blue-600"><i class="fas fa-wallet text-lg"></i></span>
                 Rekap Biaya Ekspedisi
             </h3>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 @forelse ($rekapEkspedisi as $item)
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group">
@@ -381,7 +381,7 @@
 <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.3/dist/echo.iife.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    
+
     // --- 1. CHART: PESANAN 7 HARI TERAKHIR ---
     const defaultChartOptions = {
         responsive: true,
@@ -464,9 +464,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 datasets: [{
                     data: {!! $provChartValues ?? '[]' !!},
                     backgroundColor: [
-                        'rgba(16, 185, 129, 0.7)', 
-                        'rgba(245, 158, 11, 0.7)', 
-                        'rgba(239, 68, 68, 0.7)', 
+                        'rgba(16, 185, 129, 0.7)',
+                        'rgba(245, 158, 11, 0.7)',
+                        'rgba(239, 68, 68, 0.7)',
                         'rgba(59, 130, 246, 0.7)',
                         'rgba(139, 92, 246, 0.7)'
                     ],
@@ -486,7 +486,7 @@ document.addEventListener('DOMContentLoaded', function () {
     cityCharts.forEach(canvas => {
         const labels = JSON.parse(canvas.getAttribute('data-labels'));
         const data = JSON.parse(canvas.getAttribute('data-values'));
-        
+
         new Chart(canvas.getContext('2d'), {
             type: 'bar',
             indexAxis: 'y',
@@ -522,7 +522,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- 6. REALTIME UPDATES (PUSHER / ECHO) ---
     const saldoElement = document.getElementById('dashboard-saldo');
     const userId = {{ Auth::id() }};
-    
+
     if (typeof window.Echo !== 'undefined' && userId) {
         try {
             // Update Saldo Realtime
@@ -532,7 +532,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         saldoElement.textContent = e.formattedSaldo;
                     }
                 });
-            
+
             // Update Slider Realtime
             const sliderComponent = document.querySelector('[x-data*="activeSlide"]');
             if (sliderComponent && sliderComponent.__x) {
