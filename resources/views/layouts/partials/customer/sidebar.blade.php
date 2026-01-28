@@ -111,7 +111,7 @@
                 {{-- ========================================================== --}}
                 <a href="{{ route('customer.business.index') }}"
                 :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
-                class="flex items-center py-2.5 mt-2 mb-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-md shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 {{ request()->routeIs('customer.business.index') ? 'ring-2 ring-white' : '' }}">
+                class="flex items-center py-2.5 mt-2 mb-2 bg-gradient-to-r from-red-600 to-red-500 text-white rounded-md shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 {{ request()->routeIs('customer.business.index') ? 'ring-2 ring-white' : '' }}">
                     <i class="fas fa-briefcase fa-fw w-6 text-xl"></i>
                     <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3">
                         <span class="block font-bold whitespace-nowrap">Pusat Bisnis</span>
