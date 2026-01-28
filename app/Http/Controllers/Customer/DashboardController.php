@@ -29,19 +29,30 @@ class DashboardController extends Controller
 public function index()
     {
         $customer = Auth::user();
-        $customerId = $customer->id_pengguna; 
+        $customerId = $customer->id_pengguna;
 
-        // --- PENGAMBILAN DATA STATISTIK ---
+        // --- PENGAMBILAN DATA STATISTIK (FIXED) ---
         $saldo = $customer->saldo;
-        
-        $semuaPesananQuery = Pesanan::where('id_pengguna_pembeli', $customerId);
 
-        $totalPesanan = (clone $semuaPesananQuery)->count();
-        $pesananSelesai = (clone $semuaPesananQuery)->where('status_pesanan', 'Tiba di Tujuan')->count();
-        $pesananPending = (clone $semuaPesananQuery)->whereIn('status_pesanan', ['pending', 'Menunggu Pembayaran'])->count();
-        
-        // Hapus 'take(5)' agar semua data terambil
-        $recentOrders = (clone $semuaPesananQuery)->latest('tanggal_pesanan')->get();
+        // 1. Total Pesanan (Milik User Ini Saja)
+        $totalPesanan = Pesanan::where('id_pengguna_pembeli', $customerId)->count();
+
+        // 2. Pesanan Selesai (Milik User Ini Saja)
+        $pesananSelesai = Pesanan::where('id_pengguna_pembeli', $customerId)
+                                 ->where('status_pesanan', 'Tiba di Tujuan')
+                                 ->count();
+
+        // 3. Pesanan Pending (Milik User Ini Saja)
+        $pesananPending = Pesanan::where('id_pengguna_pembeli', $customerId)
+                                 ->whereIn('status_pesanan', ['pending', 'Menunggu Pembayaran'])
+                                 ->count();
+
+        // 4. Recent Orders (Milik User Ini Saja)
+        $recentOrders = Pesanan::where('id_pengguna_pembeli', $customerId)
+                               ->latest('tanggal_pesanan')
+                               ->take(10) // Batasi 10 agar tidak berat, kalau mau semua hapus ini
+                               ->get();
+
         $recentSpxScans = ScannedPackage::where('user_id', $customerId)->latest()->take(5)->get();
 
         // --- PENGAMBILAN DATA UNTUK GRAFIK ---
@@ -50,7 +61,7 @@ public function index()
 
         // --- REKAPITULASI PENGELUARAN EKSPEDISI ---
         $rekapEkspedisi = Cache::remember('cust_dashboard_rekap_exp_' . $customerId . '_v2', 600, function () use ($customerId) {
-            
+
             // 1. MASTER LIST
             $courierMap = [
                 'jne' => ['name' => 'JNE', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
@@ -106,7 +117,7 @@ public function index()
             foreach ($orders as $order) {
                 $parts = explode('-', $order->expedition);
                 if (count($parts) >= 2) {
-                    $dbCode = strtolower($parts[1]); 
+                    $dbCode = strtolower($parts[1]);
                     if (isset($courierMap[$dbCode])) {
                         $displayName = $courierMap[$dbCode]['name'];
 
@@ -123,7 +134,7 @@ public function index()
                         if ($order->sender_name) $stats[$displayName]['senders'][strtoupper(trim($order->sender_name))] = true;
                         if ($order->receiver_name) $stats[$displayName]['receivers'][strtoupper(trim($order->receiver_name))] = true;
                         if ($order->sender_regency) $stats[$displayName]['cities_origin'][strtoupper(trim($order->sender_regency))] = true;
-                        
+
                         if ($order->receiver_regency) {
                             $city = strtoupper(trim($order->receiver_regency));
                             $stats[$displayName]['cities_dest'][$city] = true;
@@ -163,7 +174,7 @@ public function index()
         // Mengambil data slider
         $sliderData = Setting::where('key', 'slider_informasi')->first();
         $slides = $sliderData ? json_decode($sliderData->value, true) : [];
-        
+
         // --- [BAGIAN YANG HILANG SEBELUMNYA] ---
         // Hitung Data Global untuk Grafik Kota & Provinsi
         $allOrders = Pesanan::where('id_pengguna_pembeli', $customerId)
@@ -249,7 +260,7 @@ public function index()
             ->groupBy('date')
             ->get()
             ->keyBy('date');
-            
+
         $labels = [];
         $values = [];
         for ($i = 6; $i >= 0; $i--) {
@@ -260,7 +271,7 @@ public function index()
         }
         return ['labels' => $labels, 'values' => $values];
     }
-    
+
     // --- LOGIKA PENDAFTARAN SELLER BARU ---
 
     /**
@@ -335,7 +346,7 @@ public function index()
             $base64Doc  = base64_encode(file_get_contents($request->file('business_doc_file')->getRealPath()));
 
             // --- 3. SMART DATA FORMATTING (ADDRESS FIX) ---
-            
+
             // Helper: Auto-Correct Nama Kota (Ngawi -> Kab. Ngawi)
             $formatCity = function($rawCity) {
                 $city = Str::title(trim($rawCity));
@@ -354,9 +365,9 @@ public function index()
                 "city"        => $formatCity($request->input('shopAddress.city')),
                 "area"        => Str::title(trim($request->input('shopAddress.area'))), // Kecamatan
                 "address1"    => $request->input('shopAddress.address1'),
-                "address2"    => "-", 
+                "address2"    => "-",
                 "postcode"    => $request->input('shopAddress.postcode'),
-                "subDistrict" => "-"  
+                "subDistrict" => "-"
             ];
 
             // B. FIX OWNER ADDRESS (ERROR "Area Can't Be Blank" SOLVED HERE)
@@ -365,7 +376,7 @@ public function index()
 
             // Logic Fallback: Jika Kecamatan Owner kosong, pakai Kecamatan Toko
             if (empty($rawOwnerArea)) {
-                $rawOwnerArea = $fixedShopAddress['area']; 
+                $rawOwnerArea = $fixedShopAddress['area'];
             }
 
             $fixedOwnerAddress = [
@@ -374,7 +385,7 @@ public function index()
                 "city"        => $formatCity($rawOwnerCity),
                 "area"        => Str::title(trim($rawOwnerArea)), // <--- SUDAH TERISI
                 "address1"    => $request->input('ownerAddress.address1'),
-                "address2"    => "-", 
+                "address2"    => "-",
                 "postcode"    => $request->input('ownerAddress.postcode'),
                 "subDistrict" => "-"
             ];
@@ -384,7 +395,7 @@ public function index()
                 "country"     => "Indonesia",
                 "province"    => $fixedShopAddress['province'],
                 "city"        => $fixedShopAddress['city'],
-                "area"        => $fixedShopAddress['area'], 
+                "area"        => $fixedShopAddress['area'],
                 "address1"    => $request->input('taxAddress.address1') ?? $fixedShopAddress['address1'],
                 "address2"    => "-",
                 "postcode"    => $request->input('taxAddress.postcode') ?? $fixedShopAddress['postcode'],
@@ -392,7 +403,7 @@ public function index()
             ];
 
             // --- 4. CONFIG & DEFAULTS ---
-            $clientId     = config('services.dana.x_partner_id'); 
+            $clientId     = config('services.dana.x_partner_id');
             $clientSecret = config('services.dana.client_secret');
             $baseUrl      = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
             $baseUrl      = rtrim($baseUrl, '/');
@@ -427,7 +438,7 @@ public function index()
             if (!isset($fixedExtInfo['OMZET'])) {
                 $fixedExtInfo['OMZET'] = '100JT-500JT';
             }
-            
+
             // --- 5. DB UPDATE/INSERT ---
             $dbData = [
                 'user_id' => auth()->id(),
@@ -441,12 +452,12 @@ public function index()
                 'shop_biz_type' => $shopBizType,
                 'loyalty' => $request->loyalty ?? 'true',
                 'lat' => $request->lat, 'ln' => $request->ln,
-                
+
                 // SIMPAN DATA YANG SUDAH DIBERSIHKAN
                 'shop_address' => json_encode($fixedShopAddress),
                 'owner_address' => json_encode($fixedOwnerAddress), // <--- FIXED
                 'tax_address' => json_encode($fixedTaxAddress),     // <--- FIXED
-                
+
                 'ext_info' => json_encode($fixedExtInfo),
                 'owner_first_name' => $request->input('ownerName.firstName'),
                 'owner_last_name' => $request->input('ownerName.lastName'),
@@ -494,12 +505,12 @@ public function index()
                     "parentDivisionId" => $request->parentDivisionId,
                     "shopParentType"   => $request->shopParentType,
                     "mainName"         => $request->mainName,
-                    
+
                     // ALAMAT YANG SUDAH VALID
-                    "shopAddress"      => $fixedShopAddress, 
+                    "shopAddress"      => $fixedShopAddress,
                     "ownerAddress"     => $fixedOwnerAddress, // <--- FIXED
                     "taxAddress"       => $fixedTaxAddress,   // <--- FIXED
-                    
+
                     "shopDesc"         => $request->shopDesc ?? '-',
                     "externalShopId"   => $request->externalShopId,
                     "logoUrlMap"       => [ "PC_LOGO" => $base64Logo ],
@@ -520,8 +531,8 @@ public function index()
                     "posNumber"        => "0",
                     "mccCodes"         => $request->mccCodes,
                     "businessEntity"   => $request->businessEntity,
-                    "shopOwning"       => $shopOwning, 
-                    "shopBizType"      => $shopBizType, 
+                    "shopOwning"       => $shopOwning,
+                    "shopBizType"      => $shopBizType,
                     "businessDocs"     => [[
                         "docType" => ($request->businessEntity == 'individu') ? 'KTP' : 'SIUP',
                         "docId"   => $request->ownerIdNo,
@@ -546,7 +557,7 @@ public function index()
             if (!Str::contains($privateKeyStr, 'BEGIN PRIVATE KEY')) {
                 $privateKeyStr = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($privateKeyStr, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
             }
-            
+
             $binarySignature = "";
             if (!openssl_sign($stringToSign, $binarySignature, $privateKeyStr, OPENSSL_ALGO_SHA256)) {
                 throw new \Exception("Gagal sign OpenSSL");
@@ -590,7 +601,7 @@ public function index()
                     'dana_response_msg' => "$danaMsg (Code: $danaCode)",
                     'updated_at'        => now()
                 ]);
-                DB::commit(); 
+                DB::commit();
                 return back()->withInput()->with('error', "Gagal Mendaftar ke DANA: $danaMsg ($danaCode)");
             }
 
@@ -604,10 +615,10 @@ public function index()
     /**
      * PRIVATE HELPER: RSA SIGNATURE
      */
-    private function generateSignature($stringToSign) 
+    private function generateSignature($stringToSign)
     {
         $privateKeyStr = config('services.dana.private_key');
-        
+
         if (file_exists($privateKeyStr)) {
             $privateKeyContent = file_get_contents($privateKeyStr);
         } else {
@@ -619,12 +630,12 @@ public function index()
         }
 
         $binarySignature = "";
-        
+
         // Gunakan OPENSSL_ALGO_SHA256
         if (!openssl_sign($stringToSign, $binarySignature, $privateKeyContent, OPENSSL_ALGO_SHA256)) {
             throw new \Exception("Gagal generate signature OpenSSL.");
         }
-        
+
         return base64_encode($binarySignature);
     }
 
@@ -634,7 +645,7 @@ public function index()
     public function editShopForm($id)
     {
         $shop = DB::table('dana_shops')->where('id', $id)->where('user_id', auth()->id())->first();
-        
+
         if (!$shop) {
             return back()->with('error', 'Toko tidak ditemukan.');
         }
@@ -678,11 +689,11 @@ public function index()
             // (Jika butuh kode upload lengkapnya lagi, beritahu saya)
             // ---------------------------------------------------------
             // Similasi variabel upload untuk konteks jawaban ini:
-            $logoPath = $oldShop->logo_path; 
+            $logoPath = $oldShop->logo_path;
             $base64Logo = ""; // Diisi logic file get contents
-            $docPath = $oldShop->doc_path; 
+            $docPath = $oldShop->doc_path;
             $base64Doc = ""; // Diisi logic file get contents
-            
+
             // LOGIC HANDLE FILE (Singkat)
              if ($request->hasFile('shop_logo')) {
                 $logoPath = $request->file('shop_logo')->store('uploads/dana/logos', 'public');
@@ -708,7 +719,7 @@ public function index()
             // ---------------------------------------------------------
 
             // 2. DATA PREPARATION (SESUAI DOKUMENTASI)
-            
+
             // [FIX 1: PAKSA DEFAULT VALUE AGAR TIDAK NULL]
             // Jika input kosong, pakai 'DIRECT_OWNED'. Jangan biarkan null.
             $shopOwning = $request->input('shopOwning');
@@ -757,7 +768,7 @@ public function index()
                 "country"     => "Indonesia",
                 "province"    => $fixedShopAddress['province'],
                 "city"        => $fixedShopAddress['city'],
-                "area"        => $fixedShopAddress['area'], 
+                "area"        => $fixedShopAddress['area'],
                 "subDistrict" => $fixedShopAddress['subDistrict'],
                 "address1"    => $request->input('taxAddress.address1') ?? $fixedShopAddress['address1'],
                 "address2"    => "-",
@@ -769,15 +780,15 @@ public function index()
             // [FIX EXT INFO & PROFILING]
             $rawExtInfo = $request->input('extInfo', []);
             $fixedExtInfo = array_merge($rawExtInfo, [
-                'USER_PROFILING' => $rawExtInfo['USER_PROFILING'] ?? 'B2C',            
-                'AVG_TICKET'     => $rawExtInfo['AVG_TICKET'] ?? '10000-50000',    
-                'OMZET'          => $rawExtInfo['OMZET'] ?? '100JT-500JT'     
+                'USER_PROFILING' => $rawExtInfo['USER_PROFILING'] ?? 'B2C',
+                'AVG_TICKET'     => $rawExtInfo['AVG_TICKET'] ?? '10000-50000',
+                'OMZET'          => $rawExtInfo['OMZET'] ?? '100JT-500JT'
             ]);
 
             // --- CONFIG ---
-            $clientId     = config('services.dana.x_partner_id'); 
+            $clientId     = config('services.dana.x_partner_id');
             $clientSecret = config('services.dana.client_secret');
-            $realMerchantId = config('services.dana.merchant_id'); 
+            $realMerchantId = config('services.dana.merchant_id');
             $baseUrl  = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
             $baseUrl  = rtrim($baseUrl, '/');
             if (empty($clientId)) $clientId = '2014000014442';
@@ -794,19 +805,19 @@ public function index()
                 'shop_owning' => $request->shopOwning,
                 'shop_biz_type' => $request->shopBizType,
                 'lat' => $request->lat, 'ln' => $request->ln,
-                
+
                 'shop_address' => json_encode($fixedShopAddress),
                 'owner_address' => json_encode($fixedOwnerAddress),
                 'tax_address' => json_encode($fixedTaxAddress),
                 'ext_info' => json_encode($fixedExtInfo),
-                
+
                 'owner_first_name' => $request->input('ownerName.firstName'),
                 'owner_last_name' => $request->input('ownerName.lastName'),
                 'owner_phone' => $request->input('ownerPhoneNumber.mobileNo'),
                 'owner_id_type' => $request->ownerIdType, // Simpan tipe ID
                 'owner_id_no' => $request->docId,         // Simpan Nomer ID
                 'business_entity' => $request->businessEntity, // Simpan Entity
-                
+
                 'logo_path' => $logoPath,
                 'doc_path' => $docPath,
                 'updated_at' => now(),
@@ -827,56 +838,56 @@ public function index()
                     "shopId"           => $oldShop->dana_shop_id,
                     "merchantId"       => $realMerchantId,
                     "shopIdType"       => "INNER_ID",
-                    
+
                     "apiVersion"       => "3",
                     "parentDivisionId" => $realMerchantId,
                     "shopParentType"   => $request->shopParentType,
                     "mainName"         => $request->mainName,
-                    
-                    "shopAddress"      => $fixedShopAddress, 
-                    
+
+                    "shopAddress"      => $fixedShopAddress,
+
                     "shopDesc"         => $request->shopDesc ?? '-',
                     "newExternalShopId"=> $oldShop->external_shop_id,
                     "mccCodes"         => $request->mccCodes,
                     "logoUrlMap"       => [ "PC_LOGO" => $base64Logo ],
                     "extInfo"          => $fixedExtInfo,
-                    
+
                     "sizeType"         => $request->sizeType,
                     "ln"               => $request->ln,
                     "lat"              => $request->lat,
                     "loyalty"          => "true",
-                    
+
                     // OWNER ADDRESS OBJECT
                     "ownerAddress"     => $fixedOwnerAddress,
-                    
+
                     // OWNER NAME OBJECT
                     "ownerName"        => [
                         "firstName" => $request->input('ownerName.firstName'),
                         "lastName"  => $request->input('ownerName.lastName')
                     ],
-                    
+
                     // OWNER PHONE OBJECT
                     "ownerPhoneNumber" => [
                         "mobileNo" => $request->input('ownerPhoneNumber.mobileNo'),
                         "mobileId" => Str::random(10), // Required string
                         "verified" => "true"           // Required flag
                     ],
-                    
+
                     "ownerIdType"      => $request->ownerIdType,
                     "ownerIdNo"        => $request->docId, // Dari input docId
                     "deviceNumber"     => "0",
                     "posNumber"        => "0",
-                    
+
                     "businessEntity"   => $request->businessEntity,
-                    "shopOwning"       => $request->shopOwning, 
-                    "shopBizType"      => $request->shopBizType, 
-                    
+                    "shopOwning"       => $request->shopOwning,
+                    "shopBizType"      => $request->shopBizType,
+
                     "businessDocs"     => [[
                         "docType" => $request->docType,
                         "docId"   => $request->docId,
                         "docFile" => $base64Doc
                     ]],
-                    
+
                     "taxNo"            => $request->taxNo,
                     "taxAddress"       => $fixedTaxAddress,
                     "brandName"        => $request->brandName,
@@ -894,7 +905,7 @@ public function index()
             if (!Str::contains($privateKeyStr, 'BEGIN PRIVATE KEY')) {
                 $privateKeyStr = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($privateKeyStr, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
             }
-            
+
             $binarySignature = "";
             openssl_sign($stringToSign, $binarySignature, $privateKeyStr, OPENSSL_ALGO_SHA256);
             $signatureString = base64_encode($binarySignature);
@@ -910,7 +921,7 @@ public function index()
               ->post($baseUrl . $endpointPath);
 
             $result = $response->json();
-            
+
             // RESULT HANDLING
             $danaResultInfo = $result['response']['body']['resultInfo'] ?? [];
             if (($danaResultInfo['resultStatus'] ?? 'F') === 'S') {
@@ -926,7 +937,7 @@ public function index()
                     'dana_response_msg' => $danaResultInfo['resultMsg'] ?? 'Failed',
                     'updated_at' => now()
                 ]);
-                DB::commit(); 
+                DB::commit();
                 return back()->withInput()->with('error', "Gagal Update: " . ($danaResultInfo['resultMsg'] ?? 'Unknown'));
             }
 
