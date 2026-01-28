@@ -8,7 +8,7 @@
     .stepper-item { display: flex; align-items: center; gap: 1rem; }
     .stepper-dot { display: flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 50%; color: white; font-weight: 600; flex-shrink: 0; }
     .stepper-line { width: 1px; height: 3rem; background-color: #D1D5DB; margin-left: 0.9375rem; }
-    
+
     /* Style untuk spinner */
     .spinner-border {
         width: 1rem; height: 1rem;
@@ -24,14 +24,14 @@
 @section('content')
 <div class="py-12">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
-            
+
             {{-- KOLOM KIRI: STEPPER / INFORMASI --}}
             <div class="lg:col-span-1">
                 <h2 class="text-2xl font-semibold text-gray-800">Satu Langkah Lagi</h2>
                 <p class="mt-2 text-gray-600">Selesaikan pendaftaran toko Anda untuk mulai berjualan.</p>
-                
+
                 <div class="mt-8">
                     <div class="flex flex-col">
                         <div class="stepper-item">
@@ -60,27 +60,28 @@
             {{-- KOLOM KANAN: FORM --}}
             <div class="lg:col-span-2">
                 <div class="bg-white overflow-hidden shadow-lg sm:rounded-lg">
-                    
+
                     {{-- Menggunakan Alpine.js untuk state management form --}}
                     <form id="store-register-form"
-                          action="{{ route('seller.register.submit') }}" 
-                          method="POST"
-                          x-data="addressForm(
-                              '{{ route('seller.address.geocode') }}',
-                              '{{ csrf_token() }}',
-                              {
-                                  lat: '{{ old('latitude', $user->latitude) }}',
-                                  lng: '{{ old('longitude', $user->longitude) }}',
-                                  province: '{{ old('province', $user->province) }}',
-                                  regency: '{{ old('regency', $user->regency) }}',
-                                  district: '{{ old('district', $user->district) }}',
-                                  village: '{{ old('village', $user->village) }}',
-                                  postal_code: '{{ old('postal_code', $user->postal_code) }}',
-                                  address_detail: `{{ old('address_detail', $user->address_detail) }}`
-                              }
-                          )">
+                        action="{{ route('seller.register.submit') }}"
+                        method="POST"
+                        x-data="addressForm(
+                            '{{ route('seller.address.geocode') }}',
+                            '{{ csrf_token() }}',
+                            {
+                                {{-- Use auth()->user() instead of $user --}}
+                                lat: '{{ old('latitude', auth()->user()->latitude) }}',
+                                lng: '{{ old('longitude', auth()->user()->longitude) }}',
+                                province: '{{ old('province', auth()->user()->province) }}',
+                                regency: '{{ old('regency', auth()->user()->regency) }}',
+                                district: '{{ old('district', auth()->user()->district) }}',
+                                village: '{{ old('village', auth()->user()->village) }}',
+                                postal_code: '{{ old('postal_code', auth()->user()->postal_code) }}',
+                                address_detail: `{{ old('address_detail', auth()->user()->address_detail) }}`
+                            }
+                        )">
                         @csrf
-                        
+
                         <div class="p-6 sm:p-8">
                             <h3 class="text-xl font-semibold text-gray-800 mb-6">Lengkapi Detail Toko</h3>
 
@@ -101,20 +102,20 @@
                                     <span class="block sm:inline">{{ session('error') }}</span>
                                 </div>
                             @endif
-                            
+
                             <div class="mb-6">
                                 <label for="store_name" class="block text-sm font-medium text-gray-700">Nama Toko <span class="text-red-500">*</span></label>
-                                <input type="text" name="store_name" id="store_name" 
-                                       value="{{ old('store_name', $currentStoreName ?? '') }}" 
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500" 
+                                <input type="text" name="store_name" id="store_name"
+                                       value="{{ old('store_name', $currentStoreName ?? '') }}"
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
                                        placeholder="Contoh: Sancaka Jaya Store" required>
                                 <p class="mt-1 text-xs text-gray-500">Ini adalah nama toko yang Anda masukkan saat registrasi awal.</p>
                             </div>
 
                             <div class="mb-6">
                                 <label for="description" class="block text-sm font-medium text-gray-700">Deskripsi Singkat Toko (Opsional)</label>
-                                <textarea name="description" id="description" rows="3" 
-                                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500" 
+                                <textarea name="description" id="description" rows="3"
+                                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
                                           placeholder="Jelaskan tentang Toko Anda, produk apa yang dijual, dll.">{{ old('description') }}</textarea>
                             </div>
 
@@ -122,7 +123,7 @@
                             {{-- FORM ALAMAT (DISEDERHANAKAN) --}}
                             {{-- ============================================= --}}
                             <h3 class="text-lg font-semibold text-gray-800 mb-4 border-t pt-6">Alamat Toko (Pengiriman)</h3>
-                            
+
                             <input type="hidden" name="latitude" id="latitude" x-model="fields.lat">
                             <input type="hidden" name="longitude" id="longitude" x-model="fields.lng">
 
@@ -136,7 +137,7 @@
                                     <input type="text" id="lng_display" x-model="fields.lng" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100" readonly placeholder="Klik tombol di bawah">
                                 </div>
                             </div>
-                            
+
                             <div class="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label for="province" class="block text-sm font-medium text-gray-700">Provinsi <span class="text-red-500">*</span></label>
@@ -159,7 +160,7 @@
                                     <input type="text" name="postal_code" id="postal_code" x-model="fields.postal_code" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500" required>
                                 </div>
                             </div>
-                            
+
                             <div class="mb-4">
                                 <label for="address_detail" class="block text-sm font-medium text-gray-700">Detail Alamat (Nama Jalan, No. Rumah, RT/RW) <span class="text-red-500">*</span></label>
                                 <textarea name="address_detail" id="address_detail" rows="3" x-model="fields.address_detail" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500" required placeholder="Contoh: Jl. Dr. Wahidin No.18A RT.22 RW.05">{{ old('address_detail', $user->address_detail) }}</textarea>
@@ -219,7 +220,7 @@ document.addEventListener('alpine:init', () => {
             this.geocodeMessage = 'Mencari koordinat...';
             this.geocodeSuccess = false;
 
-            
+
             // ===============================================
             // PERUBAHAN LOGIKA PENCOCOKAN
             // ===============================================
