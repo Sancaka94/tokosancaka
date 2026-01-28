@@ -114,7 +114,7 @@
                 class="flex items-center py-2.5 mt-2 mb-2 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-md shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 {{ request()->routeIs('customer.business.index') ? 'ring-2 ring-white' : '' }}">
                     <i class="fas fa-briefcase fa-fw w-6 text-xl"></i>
                     <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3">
-                        <span class="block font-bold whitespace-nowrap">Pusat Bisnis</span>
+                        <span class="block font-bold whitespace-nowrap">Upgrade Akun Bisnis</span>
                         <span class="block text-[10px] text-yellow-100 leading-none mt-0.5">Daftar Agen / Toko / DANA</span>
                     </div>
                 </a>
