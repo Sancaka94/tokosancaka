@@ -295,6 +295,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/customer/pesanan/riwayat-belanja', [App\Http\Controllers\Customer\PesananController::class, 'riwayatBelanja'])
         ->name('customer.pesanan.riwayat_belanja');
 
+    // Route Refresh Status DOKU
+    Route::post('/seller/doku/refresh-status', [DokuRegistrationController::class, 'refreshDokuStatus'])
+        ->name('seller.doku.refresh_status');
+
     Route::get('/customer/dashboard', function () { return view('dashboard'); })
         ->middleware(RoleMiddleware::class . ':Pelanggan')->name('customer.dashboard');
     Route::get('/admin/dashboard', function () { return view('admin.dashboard'); })
