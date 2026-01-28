@@ -33,7 +33,7 @@ public function index()
 
         // Pastikan kita pakai ID yang benar (id atau id_pengguna)
         // Gunakan Auth::id() agar lebih aman jika primary key-nya berbeda
-        $customerId = Auth::id();
+        $customerId = Auth::id_pengguna();
 
         $saldo = $customer->saldo;
 
