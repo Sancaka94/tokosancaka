@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\BelongsToTenant; // <-- Pastikan ini di-import
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str; // Wajib import ini untuk Slug
 
 class Product extends Model
 {
     use HasFactory;
+    use BelongsToTenant; // <-- Pastikan ini dipasang di dalam class
 
     protected $table = 'products';
 

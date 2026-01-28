@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToTenant; // <-- Pastikan ini di-import
+
 
 class OrderDetail extends Model
 {
     use HasFactory;
+    use BelongsToTenant; // <-- Pastikan ini dipasang di dalam class
 
     // Aktifkan timestamps karena kita sudah menambahkan kolom created_at & updated_at di SQL sebelumnya
     public $timestamps = true;
@@ -30,7 +33,7 @@ class OrderDetail extends Model
     {
         return $this->belongsTo(Product::class);
     }
-    
+
     public function order()
     {
         return $this->belongsTo(Order::class);

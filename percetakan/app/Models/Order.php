@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToTenant; // <-- Pastikan ini di-import
+
 
 class Order extends Model
 {
     use HasFactory;
+    use BelongsToTenant; // <-- Pastikan ini dipasang di dalam class
 
     protected $fillable = [
         'order_number',
@@ -76,10 +79,10 @@ class Order extends Model
     $grossProfit = $this->details->sum(function ($item) {
         // PENTING: Jika base_price_at_order 0, kita coba ambil dari master product sebagai cadangan (fallback)
         // Ini trik biar data lama gak error
-        $modal = $item->base_price_at_order > 0 
-                 ? $item->base_price_at_order 
-                 : ($item->product->base_price ?? 0); 
-                 
+        $modal = $item->base_price_at_order > 0
+                 ? $item->base_price_at_order
+                 : ($item->product->base_price ?? 0);
+
         return ($item->price_at_order - $modal) * $item->quantity;
     });
 
