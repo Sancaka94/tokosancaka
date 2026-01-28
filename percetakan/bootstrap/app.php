@@ -15,7 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
 
-        $middleware->append(\App\Http\Middleware\TenantMiddleware::class);
+        // Cara yang benar untuk menambahkan banyak middleware sekaligus
+        $middleware->web(append: [
+            \App\Http\Middleware\TenantMiddleware::class,
+            \App\Http\Middleware\CheckSubscription::class,
+        ]);
 
         // PENTING: Mengecualikan Route Webhook dari proteksi CSRF
         // Karena server luar (KiriminAja/Tripay/Doku) tidak memiliki token CSRF aplikasi kita.
