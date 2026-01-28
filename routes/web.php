@@ -132,6 +132,10 @@ Route::get('/apps', function () {
     return view('apps');
 })->name('apps.index');
 
+Route::get('/about', function () {
+    return view('about');
+})->name('about');
+
 
 // ROUTE UTAMA CETAK THERMAL (Top Level)
 // Menggunakan parameter {resi} agar bisa menangkap ID Transaksi/Resi secara dinamis

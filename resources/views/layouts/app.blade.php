@@ -13,14 +13,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Vendor CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    
+
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ asset('public/assets/css/home-style.css') }}">
-    
+
     <style>
         /*
         ==========================================================
@@ -31,7 +31,7 @@
             font-family: 'Poppins', sans-serif;
             padding-top: 70px; /* Menambahkan padding untuk navbar fixed-top */
         }
-        
+
         /* Layout 100% di semua layar */
         .navbar .container {
             max-width: 100% !important;
@@ -85,7 +85,7 @@
         .megamenu-list a:hover {
             color: #0d6efd;
         }
-        
+
         .megamenu-feature {
             background-color: #f8f9fa;
             padding: 20px;
@@ -100,7 +100,7 @@
         .text-purple {
             color: #6f42c1 !important;
         }
-        
+
         /*
         ==========================================================
         AUTOCOMPLETE STYLING (BOOTSTRAP)
@@ -163,37 +163,42 @@
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('/') ? 'active fw-bold' : '' }}" href="{{ url('/') }}">Beranda</a>
                         </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url('/about') }}">Tentang Kami</a>
+                        </li>
+
                         <li class="nav-item">
                             <a class="nav-link" href="#layanan">Layanan</a>
                         </li>
 
-<li class="nav-item dropdown">
-    <a class="nav-link dropdown-toggle {{ request()->is('privacy-policy') || request()->is('terms-and-conditions') ? 'active fw-bold' : '' }}" 
-       href="#" 
-       id="legalDropdown" 
-       role="button" 
-       data-bs-toggle="dropdown" 
-       aria-expanded="false">
-       Legal
-    </a>
-    <ul class="dropdown-menu" aria-labelledby="legalDropdown">
-        <li>
-            <a class="dropdown-item {{ request()->is('privacy-policy') ? 'active fw-bold' : '' }}" 
-               href="{{ route('privacy.policy') }}">
-               Privacy Policy
-            </a>
-        </li>
-        <li>
-            <a class="dropdown-item {{ request()->is('terms-and-conditions') ? 'active fw-bold' : '' }}" 
-               href="{{ route('terms.conditions') }}">
-               Terms & Conditions
-            </a>
-        </li>
-    </ul>
-</li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {{ request()->is('privacy-policy') || request()->is('terms-and-conditions') ? 'active fw-bold' : '' }}"
+                            href="#"
+                            id="legalDropdown"
+                            role="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                            Legal
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="legalDropdown">
+                                <li>
+                                    <a class="dropdown-item {{ request()->is('privacy-policy') ? 'active fw-bold' : '' }}"
+                                    href="{{ route('privacy.policy') }}">
+                                    Privacy Policy
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {{ request()->is('terms-and-conditions') ? 'active fw-bold' : '' }}"
+                                    href="{{ route('terms.conditions') }}">
+                                    Terms & Conditions
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
 
 
-                        
+
                         <li class="nav-item dropdown mega-dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="megaMenuServices" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Jasa Kami
@@ -289,19 +294,19 @@
                                 </div>
                             </div>
                         </li>
-                        
+
                         <li class="nav-item ms-lg-2">
                             <a class="btn btn-orange d-flex align-items-center" href="{{ url('') }}/etalase">
                                 <i class="fas fa-shopping-cart me-2"></i> Etalase
                             </a>
                         </li>
-                        
+
                         <li class="nav-item ms-lg-2">
                             <a class="btn btn-success d-flex align-items-center" href="{{ url('') }}/blog">
                                 <i class="fas fa-blog me-2"></i> Blog
                             </a>
                         </li>
-                        
+
                         <!-- MEGA MENU REKANAN -->
                         <li class="nav-item dropdown mega-dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="rekananDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -376,10 +381,10 @@
     @php
         $user = Auth::user();
         // Pastikan role lowercase agar tidak error saat pengecekan (misal: "Agent" jadi "agent")
-        $userRole = strtolower($user->role ?? 'user'); 
-        
+        $userRole = strtolower($user->role ?? 'user');
+
         // Default values
-        $dashboardRoute = route('home'); 
+        $dashboardRoute = route('home');
         $roleName = 'User';
 
         // LOGIKA PENENTUAN ROLE & LINK DASHBOARD
@@ -387,7 +392,7 @@
             $dashboardRoute = route('admin.dashboard');
             $roleName = 'Admin';
         } elseif ($userRole === 'seller') {
-            $dashboardRoute = route('seller.dashboard') ?? route('customer.dashboard'); 
+            $dashboardRoute = route('seller.dashboard') ?? route('customer.dashboard');
             $roleName = 'Seller';
         } elseif ($userRole === 'agent') {
             // Gunakan route agent.dashboard jika ada, atau fallback ke customer
@@ -397,7 +402,7 @@
             $dashboardRoute = route('customer.dashboard');
             $roleName = 'Pelanggan';
         }
-        
+
         // Ambil NAMA LENGKAP
         $displayName = $user->nama_lengkap ?? $user->name ?? $user->email;
     @endphp
@@ -407,7 +412,7 @@
     </button>
 
     <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="authDropdown">
-        
+
         <li class="px-3 py-2 bg-light border-bottom mb-2 text-center">
             <div class="fw-bold text-dark text-truncate" style="max-width: 250px; margin: 0 auto;">
                 {{ $displayName }}
@@ -429,14 +434,14 @@
                 <i class="fa-solid fa-gauge-high me-2"></i> Dashboard {{ $roleName }}
             </a>
         </li>
-        
+
         {{-- =================================================== --}}
         {{-- MENU ADMIN --}}
         {{-- =================================================== --}}
         @if ($userRole === 'admin')
             <li><hr class="dropdown-divider"></li>
             <li><h6 class="dropdown-header text-primary fw-bold">Menu Admin</h6></li>
-            
+
             {{-- Order Management --}}
             <li>
                 <a class="dropdown-item" href="{{ route('admin.pesanan.create') }}">
@@ -453,7 +458,7 @@
                     <i class="fa-solid fa-box-open me-2 text-warning"></i> Data Pesanan
                 </a>
             </li>
-            
+
             {{-- User Management --}}
             <li>
                 <a class="dropdown-item" href="{{ route('admin.customers.index') }}">
@@ -478,14 +483,14 @@
                 </a>
             </li>
         @endif
-        
+
         {{-- =================================================== --}}
         {{-- MENU AGENT (BARU) --}}
         {{-- =================================================== --}}
         @if ($userRole === 'agent')
             <li><hr class="dropdown-divider"></li>
             <li><h6 class="dropdown-header text-primary fw-bold">Menu Agen</h6></li>
-            
+
             <li><a class="dropdown-item" href="{{ route('customer.pesanan.create') }}"><i class="fa-solid fa-paper-plane me-2 text-success"></i> Input Paket Agen</a></li>
             <li><a class="dropdown-item" href="{{ route('customer.pesanan.index') }}"><i class="fa-solid fa-clipboard-list me-2 text-warning"></i> Riwayat Transaksi</a></li>
             <li><a class="dropdown-item" href="{{ route('customer.topup.index') }}"><i class="fa-solid fa-wallet me-2 text-info"></i> Saldo Agen</a></li>
@@ -498,7 +503,7 @@
         @if ($userRole === 'seller')
             <li><hr class="dropdown-divider"></li>
             <li><h6 class="dropdown-header text-primary fw-bold">Menu Seller</h6></li>
-            
+
             <li><a class="dropdown-item" href="{{ route('customer.pesanan.create') }}"><i class="fa-solid fa-box me-2 text-success"></i> Kirim Paket</a></li>
             <li><a class="dropdown-item" href="{{ route('customer.pesanan.index') }}"><i class="fa-solid fa-clock-rotate-left me-2 text-warning"></i> Riwayat Kiriman</a></li>
             <li><a class="dropdown-item" href="{{ route('customer.topup.index') }}"><i class="fa-solid fa-wallet me-2 text-info"></i> Dompet Seller</a></li>
@@ -511,7 +516,7 @@
         @if ($userRole === 'pelanggan')
             <li><hr class="dropdown-divider"></li>
             <li><h6 class="dropdown-header text-primary fw-bold">Menu Pelanggan</h6></li>
-            
+
             <li><a class="dropdown-item" href="{{ route('customer.pesanan.create') }}"><i class="fa-solid fa-map-location-dot me-2 text-success"></i> Kirim Paket Saya</a></li>
             <li><a class="dropdown-item" href="{{ route('customer.pesanan.index') }}"><i class="fa-solid fa-list-ul me-2 text-warning"></i> Riwayat Pesanan</a></li>
             <li><a class="dropdown-item" href="{{ route('customer.topup.index') }}"><i class="fa-solid fa-wallet me-2 text-info"></i> Isi Saldo (Topup)</a></li>
@@ -519,7 +524,7 @@
         @endif
 
         <li><hr class="dropdown-divider"></li>
-        
+
         {{-- Tautan Logout --}}
         <li>
             <form method="POST" action="{{ route('logout') }}">
@@ -625,7 +630,7 @@
             </div>
         </div>
     </footer>
-    
+
     <!-- Modal Cek Ongkir (Desain Bootstrap 5) -->
     <div class="modal fade" id="cekOngkirModal" tabindex="-1" aria-labelledby="cekOngkirModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -673,7 +678,7 @@
                                 <i class="fa-solid fa-shield-halved me-1"></i> Gunakan Asuransi
                             </button>
                         </div>
-                        
+
                         <!-- Dimensi (Hidden by default) -->
                         <div class="mb-3 d-none" id="volume-fields">
                             <label class="form-label fw-semibold">Dimensi Paket (cm)</label>
@@ -701,14 +706,14 @@
                         </div>
                     </form>
 
-                    
+
                     <!-- Hasil -->
                     <div id="cost-results-container" class="mt-4"></div>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Modal Tutorial Onboarding -->
     <div class="modal fade" id="tutorialModal" tabindex="-1" aria-labelledby="tutorialModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-md">
@@ -744,7 +749,7 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     @stack('scripts')
-    
+
     @if (!empty($__debug))
     <div class="bg-yellow-100 text-yellow-800 p-4 text-sm border-t border-yellow-300 mt-8">
         <strong>🔧 DEBUG INFO:</strong>
