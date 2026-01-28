@@ -17,7 +17,7 @@ Updated: Fix Image URL (from products table) & Resi (shipping_reference)
                 <h1 class="text-3xl font-bold text-gray-900">Riwayat Belanja</h1>
                 <p class="mt-2 text-sm text-gray-600">Daftar transaksi marketplace Anda.</p>
             </div>
-            <a href="{{ route('katalog.index') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition shadow-sm">
+            <a href="{{ route('katalog.index') }}" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 transition shadow-sm">
                 <i class="fas fa-plus mr-2"></i> Belanja Lagi
             </a>
         </div>
@@ -25,12 +25,12 @@ Updated: Fix Image URL (from products table) & Resi (shipping_reference)
         {{-- Jika Tidak Ada Pesanan --}}
         @if($pesanans->isEmpty())
             <div class="bg-white rounded-xl shadow-sm p-12 text-center border border-dashed border-gray-300">
-                <div class="mx-auto w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-6">
-                    <i class="fas fa-shopping-basket text-indigo-400 text-3xl"></i>
+                <div class="mx-auto w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-shopping-basket text-red-400 text-3xl"></i>
                 </div>
                 <h3 class="text-xl font-medium text-gray-900">Belum ada riwayat belanja</h3>
                 <p class="text-gray-500 mt-2 mb-6">Sepertinya Anda belum pernah checkout barang apapun.</p>
-                <a href="{{ route('katalog.index') }}" class="text-indigo-600 hover:text-indigo-800 font-semibold hover:underline">
+                <a href="{{ route('katalog.index') }}" class="text-red-600 hover:text-red-800 font-semibold hover:underline">
                     Cari Produk Sekarang &rarr;
                 </a>
             </div>
@@ -56,9 +56,9 @@ Updated: Fix Image URL (from products table) & Resi (shipping_reference)
                                              alt="{{ $storeName }}"
                                              class="w-full h-full object-cover"
                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                        <i class="fas fa-store text-indigo-400 hidden"></i>
+                                        <i class="fas fa-store text-red-400 hidden"></i>
                                     @else
-                                        <i class="fas fa-store text-indigo-400"></i>
+                                        <i class="fas fa-store text-red-400"></i>
                                     @endif
                                 </div>
 
@@ -190,19 +190,19 @@ Updated: Fix Image URL (from products table) & Resi (shipping_reference)
                                 <div>
                                     <div class="flex justify-between items-end mb-4 border-t border-dashed border-gray-200 pt-3">
                                         <span class="text-xs text-gray-500">Total Belanja</span>
-                                        <span class="text-lg font-bold text-indigo-600">Rp {{ number_format($order->total_amount, 0, ',', '.') }}</span>
+                                        <span class="text-lg font-bold text-red-600">Rp {{ number_format($order->total_amount, 0, ',', '.') }}</span>
                                     </div>
 
                                     <div class="grid gap-2">
                                         @if(in_array($status, ['pending', 'unpaid', 'menunggu_pembayaran']))
                                             @if(!empty($order->invoice_number))
-                                                <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-indigo-600 text-white text-sm font-bold py-2.5 rounded-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
+                                                <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-red-600 text-white text-sm font-bold py-2.5 rounded-lg hover:bg-red-700 transition shadow-lg shadow-red-200">
                                                     Bayar Sekarang
                                                 </a>
                                             @endif
                                         @elseif(!empty($resi))
                                             {{-- Tracking Link --}}
-                                            <a href="{{ route('tracking.index', ['resi' => $resi]) }}" class="block w-full text-center border border-indigo-600 text-indigo-600 text-sm font-bold py-2.5 rounded-lg hover:bg-indigo-50 transition">
+                                            <a href="{{ route('tracking.index', ['resi' => $resi]) }}" class="block w-full text-center border border-red-600 text-red-600 text-sm font-bold py-2.5 rounded-lg hover:bg-red-50 transition">
                                                 Lacak Paket
                                             </a>
                                             <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center text-gray-500 text-xs hover:text-gray-700 mt-1">

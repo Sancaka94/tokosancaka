@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http; // <-- WAJIB DITAMBAHKAN
 use App\Services\DokuJokulService;
 use App\Services\DokuSacService; // Pastikan pakai Service SAC yang baru
 use App\Models\User;
@@ -411,6 +412,94 @@ class DokuRegistrationController extends Controller
             DB::rollBack();
             Log::error('cairkanSaldoUtama Exception: ' . $e->getMessage(), ['store_id' => $store->id]);
             return redirect()->back()->with('error', 'Terjadi kesalahan server saat memproses pencairan.')->with('tab', 'ringkasan');
+        }
+    }
+
+    public function refreshDokuStatus()
+    {
+        $user = Auth::user();
+        $store = $user->store; // <--- (1) Ambil Data Toko
+
+        // (2) Gunakan $store->doku_sac_id, bukan $user->...
+        if (!$store || !$store->doku_sac_id) {
+            return back()->with('error', 'Akun DOKU toko belum terdaftar.');
+        }
+
+        try {
+            // =============================================================
+            // A. AMBIL KREDENSIAL DARI DATABASE
+            // =============================================================
+            $mode = \App\Models\Api::getValue('DOKU_MODE', 'global', 'sandbox');
+
+            if ($mode === 'production') {
+                $clientId = \App\Models\Api::getValue('DOKU_CLIENT_ID', 'production');
+                $secretKey = \App\Models\Api::getValue('DOKU_SECRET_KEY', 'production');
+                $baseUrl = 'https://jokul.doku.com';
+            } else {
+                $clientId = \App\Models\Api::getValue('DOKU_CLIENT_ID', 'sandbox');
+                $secretKey = \App\Models\Api::getValue('DOKU_SECRET_KEY', 'sandbox');
+                $baseUrl = 'https://api-sandbox.doku.com';
+            }
+
+            if (!$clientId || !$secretKey) {
+                return back()->with('error', 'Konfigurasi API DOKU belum lengkap.');
+            }
+
+            // =============================================================
+            // B. PERSIAPAN DATA REQUEST
+            // =============================================================
+            $requestId = 'REQ-' . time() . rand(100,999);
+            $timestamp = gmdate("Y-m-d\TH:i:s\Z");
+
+            // (3) Gunakan $store->doku_sac_id untuk target path API
+            $targetPath = '/v2-onboarding/accounts/' . $store->doku_sac_id;
+
+            // =============================================================
+            // C. GENERATE SIGNATURE
+            // =============================================================
+            $rawSignature = "Client-Id:" . $clientId . "\n" .
+                            "Request-Id:" . $requestId . "\n" .
+                            "Request-Timestamp:" . $timestamp . "\n" .
+                            "Request-Target:" . $targetPath;
+
+            $signature = "HMACSHA256=" . base64_encode(hash_hmac('sha256', $rawSignature, $secretKey, true));
+
+            // =============================================================
+            // D. TEMBAK API
+            // =============================================================
+            $response = Http::withHeaders([
+                'Client-Id'         => $clientId,
+                'Request-Id'        => $requestId,
+                'Request-Timestamp' => $timestamp,
+                'Signature'         => $signature,
+            ])->get($baseUrl . $targetPath);
+
+            $data = $response->json();
+
+            if ($response->successful()) {
+                $statusApi = $data['status'] ?? ($data['account_status'] ?? null);
+
+                if ($statusApi) {
+                    // (4) Update ke tabel STORES (bukan users)
+                    $store->doku_status = strtoupper($statusApi); // ACTIVE / PENDING
+                    $store->save();
+
+                    if (strtoupper($statusApi) === 'ACTIVE') {
+                        return back()->with('success', 'Berhasil! Status Akun DOKU sekarang ACTIVE.');
+                    } else {
+                        return back()->with('warning', 'Status terbaru: ' . $statusApi . '. Akun belum aktif.');
+                    }
+                } else {
+                    return back()->with('error', 'Respon API valid tapi status kosong.');
+                }
+            } else {
+                Log::error('Gagal Cek Status DOKU', ['resp' => $data]);
+                return back()->with('error', 'Gagal cek status: ' . ($data['error']['message'] ?? 'Unknown Error'));
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Exception DOKU Status', ['msg' => $e->getMessage()]);
+            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
         }
     }
 
