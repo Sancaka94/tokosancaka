@@ -30,69 +30,36 @@ public function index()
     {
         // 1. Identifikasi User
         $user = Auth::user();
-        $userId = $user->id_pengguna;
-
-        // ==========================================================
-        // 🛑 AREA DIAGNOSA (HAPUS NANTI SETELAH KETEMU MASALAHNYA)
-        // ==========================================================
-
-        // Cek 1: Berapa order yang benar-benar punya ID 52?
-        $cekCount = Pesanan::where('id_pengguna_pembeli', $userId)->count();
-
-        // Cek 2: Ambil 1 contoh order sembarang, siapa pemilik aslinya?
-        $randomOrder = Pesanan::first();
-
-        // Cek 3: Lihat Query SQL Aslinya (Apakah WHERE-nya hilang?)
-        DB::enableQueryLog();
-        Pesanan::where('id_pengguna_pembeli', $userId)->get();
-        $queryLog = DB::getQueryLog();
-
-        dd([
-            'ID LOGIN ANDA' => $userId,
-            'TOTAL SEMUA ORDER DI DB' => Pesanan::count(),
-            'TOTAL ORDER MILIK ID 52' => $cekCount,
-            'CONTOH DATA ORDER PERTAMA' => [
-                'Nomor Invoice' => $randomOrder->nomor_invoice ?? '-',
-                'Pemilik (id_pengguna_pembeli)' => $randomOrder->id_pengguna_pembeli ?? 'KOSONG',
-            ],
-            'QUERY SQL YANG DIJALANKAN' => $queryLog
-        ]);
-        // ==========================================================
-
+        // Ambil ID dengan aman (prioritas id_pengguna, fallback ke id)
+        $customerId = $user->id_pengguna ?? $user->id;
         $saldo = $user->saldo;
 
-        // 2. QUERY MENGGUNAKAN RELASI (Lebih Aman dari Kebocoran)
-        // Kita gunakan $user->pesanans() yang sudah Anda definisikan di Model User.
-        // Laravel otomatis menambahkan "WHERE id_pengguna_pembeli = $userId"
+        // 2. Query Data Statistik (Eksplisit untuk User ini Saja)
+        // Kita gunakan $customerId agar 100% aman
 
-        // A. Total Pesanan
-        $totalPesanan = $user->pesanans()->count();
+        $totalPesanan = Pesanan::where('id_pengguna_pembeli', $customerId)->count();
 
-        // B. Pesanan Selesai
-        $pesananSelesai = $user->pesanans()
-                               ->whereIn('status_pesanan', ['Selesai', 'Tiba di Tujuan'])
-                               ->count();
+        $pesananSelesai = Pesanan::where('id_pengguna_pembeli', $customerId)
+                                 ->whereIn('status_pesanan', ['Selesai', 'Tiba di Tujuan'])
+                                 ->count();
 
-        // C. Pesanan Pending
-        $pesananPending = $user->pesanans()
-                               ->whereIn('status_pesanan', ['pending', 'Menunggu Pembayaran', 'Belum Bayar'])
-                               ->count();
+        $pesananPending = Pesanan::where('id_pengguna_pembeli', $customerId)
+                                 ->whereIn('status_pesanan', ['pending', 'Menunggu Pembayaran', 'Belum Bayar'])
+                                 ->count();
 
-        // D. 5 Pesanan Terakhir
-        $recentOrders = $user->pesanans()
-                             ->latest('tanggal_pesanan')
-                             ->take(5)
-                             ->get();
+        $recentOrders = Pesanan::where('id_pengguna_pembeli', $customerId)
+                               ->latest('tanggal_pesanan')
+                               ->take(5)
+                               ->get();
 
-        // E. 5 Scan SPX Terakhir (Manual Query karena belum ada relasi di Model User)
-        $recentSpxScans = ScannedPackage::where('user_id', $userId)
+        $recentSpxScans = ScannedPackage::where('user_id', $customerId)
                                         ->latest()
                                         ->take(5)
                                         ->get();
 
-        // 3. Data Grafik
-        $orderChartData = $this->getOrderChartData($userId);
-        $spxChartData   = $this->getSpxScanChartData($userId);
+        // 3. Data Grafik & Rekap
+        $orderChartData = $this->getOrderChartData($customerId);
+        $spxChartData   = $this->getSpxScanChartData($customerId);
 
         // --- REKAPITULASI PENGELUARAN EKSPEDISI ---
         $rekapEkspedisi = Cache::remember('cust_dashboard_rekap_exp_' . $customerId . '_v2', 600, function () use ($customerId) {
