@@ -90,58 +90,64 @@ class DokuWebhookController extends Controller
                 // A. PENANGANAN TENANT (PREFIX SEWA-)
                 // =================================================================
                 // =================================================================
+
                 // 1. PENANGANAN TENANT (PREFIX SEWA-)
                 // =================================================================
                 if (Str::startsWith($orderId, 'SEWA-')) {
                     Log::info("LOG LOG: Detected Tenant Payment: $orderId");
-
-                    // Kita ambil nama subdomain dari invoice (Contoh: SEWA-APP-xxx -> app)
                     $subdomain = strtolower(explode('-', $orderId)[1] ?? '');
 
-                    // STEP 1: Tanya Database Pertama (Utama)
-                    $tenantMain = \Illuminate\Support\Facades\DB::table('tenants')
-                                    ->where('subdomain', $subdomain)
-                                    ->first();
+                    $activated = false;
 
-                    if ($tenantMain) {
-                        Log::info("LOG LOG: ✅ Tenant ditemukan di DB UTAMA. Mengaktifkan...");
-                        \Illuminate\Support\Facades\DB::table('tenants')
-                            ->where('id', $tenantMain->id)
-                            ->update([
-                                'status' => 'active',
-                                'updated_at' => now()->timezone('Asia/Jakarta')
-                            ]);
-                        return response()->json(['message' => 'Activated in Main DB']);
-                    }
-
-                    // STEP 2: Jika tidak ada di pertama, Tanya Database Kedua (Percetakan)
-                    Log::info("LOG LOG: 🔍 Tidak ada di DB Utama, lari ke mysql_second...");
+                    // STEP 1: Cek di Database Utama (Hanya jika kolom 'subdomain' ada)
                     try {
-                        $percetakanDB = \Illuminate\Support\Facades\DB::connection('mysql_second');
-                        $tenantSecond = $percetakanDB->table('tenants')
-                                        ->where('subdomain', $subdomain)
-                                        ->first();
+                        $hasColumn = \Illuminate\Support\Facades\Schema::hasColumn('tenants', 'subdomain');
 
-                        if ($tenantSecond) {
-                            Log::info("LOG LOG: ✅ Tenant ditemukan di DB PERCETAKAN. Mengaktifkan...");
-                            $percetakanDB->table('tenants')
-                                ->where('id', $tenantSecond->id)
-                                ->update([
-                                    'status' => 'active',
-                                    'updated_at' => now()->timezone('Asia/Jakarta')
-                                ]);
+                        if ($hasColumn) {
+                            $tenantMain = \Illuminate\Support\Facades\DB::table('tenants')
+                                            ->where('subdomain', $subdomain)
+                                            ->first();
 
-                            Log::info("LOG LOG: 🚀 Status Tenant '$subdomain' Sukses Aktif di DB Kedua.");
-
-                            // Panggil Notif WA (Optional)
-                            $this->_sendFonnteNotification($subdomain);
-
-                            return response()->json(['message' => 'Activated in Secondary DB']);
-                        } else {
-                            Log::warning("LOG LOG: ❌ Tenant '$subdomain' tidak ditemukan di database manapun!");
+                            if ($tenantMain) {
+                                Log::info("LOG LOG: ✅ Tenant ditemukan di DB UTAMA.");
+                                \Illuminate\Support\Facades\DB::table('tenants')
+                                    ->where('id', $tenantMain->id)
+                                    ->update(['status' => 'active', 'updated_at' => now()]);
+                                $activated = true;
+                            }
                         }
                     } catch (\Exception $e) {
-                        Log::error("LOG LOG: ❌ Gagal koneksi/query ke DB Percetakan: " . $e->getMessage());
+                        Log::warning("LOG LOG: Database Utama tidak memiliki struktur tenant yang cocok, lanjut ke DB Kedua.");
+                    }
+
+                    // STEP 2: Jika belum aktif, lari ke Database Kedua (Percetakan)
+                    if (!$activated) {
+                        Log::info("LOG LOG: 🔍 Mencari di mysql_second (DB Percetakan)...");
+                        try {
+                            $percetakanDB = \Illuminate\Support\Facades\DB::connection('mysql_second');
+                            $tenantSecond = $percetakanDB->table('tenants')
+                                            ->where('subdomain', $subdomain)
+                                            ->first();
+
+                            if ($tenantSecond) {
+                                $percetakanDB->table('tenants')
+                                    ->where('id', $tenantSecond->id)
+                                    ->update(['status' => 'active', 'updated_at' => now()]);
+
+                                Log::info("LOG LOG: ✅ Tenant '$subdomain' AKTIF di DB PERCETAKAN.");
+                                $this->_sendFonnteNotification($subdomain);
+                                $activated = true;
+                            }
+                        } catch (\Exception $e) {
+                            Log::error("LOG LOG: ❌ Gagal akses DB Percetakan: " . $e->getMessage());
+                        }
+                    }
+
+                    if ($activated) {
+                        return response()->json(['message' => 'Activation Success']);
+                    } else {
+                        Log::warning("LOG LOG: ❌ Tenant '$subdomain' tidak ditemukan di database manapun.");
+                        return response()->json(['message' => 'Tenant not found'], 404);
                     }
                 }
 
