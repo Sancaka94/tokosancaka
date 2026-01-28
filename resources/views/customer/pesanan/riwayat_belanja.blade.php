@@ -45,30 +45,39 @@ Updated: Fix Path Image (public/storage) & Status
                         <div class="px-6 py-4 bg-gray-50 border-b border-gray-100 flex flex-wrap justify-between items-center gap-4">
                             <div class="flex items-center gap-3">
 
-                                {{-- LOGO TOKO --}}
-                                <div class="w-10 h-10 rounded-full bg-white border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                                    @php
-                                        // Cek apakah ada logo di DB
-                                        $logoPathRaw = $order->store->logo_path ?? null;
-                                    @endphp
+                                {{-- LOGIC PENGAMBILAN DATA DARI TABEL PENGGUNA --}}
+                                @php
+                                    // Ambil data User Penjual dari relasi store
+                                    $seller = $order->store->user ?? null;
 
-                                    @if($logoPathRaw)
-                                        {{-- Fix Path Logo Toko --}}
-                                        <img src="{{ asset('public/storage/' . $logoPathRaw) }}"
-                                             alt="Logo Toko"
+                                    // Ambil Nama Toko (Prioritas dari tabel Pengguna -> store_name)
+                                    $storeName = $seller->store_name ?? ($order->store->name ?? 'Toko Tidak Dikenal');
+
+                                    // Ambil Logo Toko (Prioritas dari tabel Pengguna -> store_logo_path)
+                                    // Data di DB contohnya: "uploads/store-logos/Fh27..."
+                                    $storeLogoRaw = $seller->store_logo_path ?? null;
+                                @endphp
+
+                                {{-- TAMPILAN LOGO TOKO --}}
+                                <div class="w-10 h-10 rounded-full bg-white border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                                    @if($storeLogoRaw)
+                                        <img src="{{ asset('public/storage/' . $storeLogoRaw) }}"
+                                             alt="{{ $storeName }}"
                                              class="w-full h-full object-cover"
                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                        {{-- Fallback jika gambar error/hilang --}}
+                                        {{-- Fallback Icon (Disembunyikan jika gambar ada) --}}
                                         <i class="fas fa-store text-indigo-400 hidden"></i>
                                     @else
-                                        {{-- Fallback jika NULL di database --}}
+                                        {{-- Fallback jika store_logo_path NULL (seperti id 26, 33, 38...) --}}
                                         <i class="fas fa-store text-indigo-400"></i>
                                     @endif
                                 </div>
 
+                                {{-- TAMPILAN NAMA TOKO --}}
                                 <div>
                                     <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
-                                        {{ $order->store?->name ?? 'Toko Tidak Tersedia' }}
+                                        {{ $storeName }}
+                                        <span class="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">Penjual</span>
                                     </h4>
                                     <p class="text-xs text-gray-500 font-mono mt-0.5">
                                         {{ $order->invoice_number }} • {{ $order->created_at->format('d M Y') }}
@@ -76,7 +85,7 @@ Updated: Fix Path Image (public/storage) & Status
                                 </div>
                             </div>
 
-                            {{-- BADGE STATUS --}}
+                            {{-- BADGE STATUS (Tidak Berubah) --}}
                             @php
                                 $status = strtolower($order->status);
                                 $badgeClass = match($status) {

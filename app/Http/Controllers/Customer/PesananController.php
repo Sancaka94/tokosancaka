@@ -1503,9 +1503,10 @@ public function cetakThermal($resi)
         // Ambil data dari tabel orders (Marketplace)
         // Kita load relasi 'store' dan 'items' agar tidak error N+1 di view
         $pesanans = \App\Models\Order::where('user_id', $customerId)
-                            ->with(['store', 'items.product', 'items.variant'])
-                            ->latest()
-                            ->paginate(10);
+                    // TAMBAHKAN 'store.user' DISINI AGAR DATA PENGGUNA TERAMBIL
+                    ->with(['store.user', 'items.product.images', 'items.variant'])
+                    ->latest()
+                    ->paginate(10);
 
         // Arahkan ke file view baru: riwayat_belanja.blade.php
         return view('customer.pesanan.riwayat_belanja', compact('pesanans'));
