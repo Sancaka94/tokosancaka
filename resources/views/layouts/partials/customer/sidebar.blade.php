@@ -229,9 +229,12 @@
                 Ganti baris <a> yang lama dengan yang baru di bawah ini:
                 --}}
 
+                {{-- MENU RIWAYAT BELANJA (Fixed Style) --}}
                 <a href="{{ route('customer.pesanan.riwayat_belanja') }}"
-                    class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('customer.pesanan.riwayat_belanja') ? 'bg-gray-800 text-white' : '' }}">
-                    <i class="fas fa-history fa-fw w-4 mr-2"></i> Riwayat Belanja
+                   :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
+                   class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.pesanan.riwayat_belanja') ? 'bg-gray-900 text-white' : '' }}">
+                    <i class="fas fa-history fa-fw w-6 text-xl"></i>
+                    <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 whitespace-nowrap">Riwayat Belanja</span>
                 </a>
 
                 <a href="{{ route('customer.ongkir.index') }}"
