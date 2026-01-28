@@ -139,6 +139,8 @@
                         class="flex items-center w-full py-2.5 text-white hover:bg-red-700 bg-red-600 hover:text-white rounded-md transition-colors duration-200 shadow-sm">
                         <i class="fas fa-mobile-alt fa-fw w-6 text-xl"></i>
                         <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 flex-1 text-left whitespace-nowrap">LOKET PPOB</span>
+                        <span class="block text-[10px] text-yellow-100 leading-none mt-0.5">Token Listrik, PDAM & Pulsa</span>
+
                         <i :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" x-show="open" class="fas fa-chevron-up ml-auto text-xs"></i>
                         <i :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" x-show="!open" class="fas fa-chevron-down ml-auto text-xs"></i>
                     </button>
