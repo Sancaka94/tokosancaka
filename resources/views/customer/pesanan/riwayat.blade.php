@@ -154,18 +154,23 @@ Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
                                 {{ ucfirst($status) }}
                             </span>
 
+                            {{-- LOGIKA TOMBOL AKSI --}}
                             @if ($status === 'pending' && $order->payment_url)
-                                <a href="{{ route('customer.checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">
+                                {{-- PERBAIKAN: Ganti 'customer.checkout.invoice' menjadi 'checkout.invoice' --}}
+                                <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">
                                     Bayar Sekarang
                                 </a>
+
                             @elseif ($order->shipping_resi)
-                                {{-- Pastikan route 'customer.lacak.index' ada --}}
+                                {{-- Tombol Lacak Paket (Sudah Benar) --}}
                                 <a href="{{ route('customer.lacak.index', ['resi' => $order->shipping_resi]) }}"
                                    class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">
                                    Lacak Paket
                                 </a>
+
                             @else
-                                <a href="{{ route('customer.checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="mt-2 text-blue-600 hover:text-blue-900 font-semibold text-sm">
+                                {{-- PERBAIKAN: Ganti 'customer.checkout.invoice' menjadi 'checkout.invoice' --}}
+                                <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="mt-2 text-blue-600 hover:text-blue-900 font-semibold text-sm">
                                    Lihat Invoice
                                 </a>
                             @endif
