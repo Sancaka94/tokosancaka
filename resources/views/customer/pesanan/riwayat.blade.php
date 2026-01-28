@@ -116,17 +116,24 @@ Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
                         <div class="md:col-span-2 p-4 border-t md:border-t-0 md:border-l border-slate-200">
                             <div class="md:hidden text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Isi Paket</div>
 
-                            {{-- Ambil item pertama sebagai 'display' --}}
-                            @php $firstItem = $order->items->first(); @endphp
+                            {{-- PERBAIKAN: Gunakan Null Coalescing (??) agar tidak error jika items null --}}
+                            @php
+                                // Jika $order->items null, ganti dengan collect([]) agar tetap dianggap array kosong
+                                $items = $order->items ?? collect([]);
+                                $firstItem = $items->first();
+                            @endphp
 
                             <div class="text-sm text-slate-800 font-semibold">
-                                {{ $firstItem ? $firstItem->product->name : 'N/A' }}
-                                @if($order->items->count() > 1)
-                                    <span class="text-xs text-slate-500">(+ {{ $order->items->count() - 1 }} item lain)</span>
+                                {{-- Cek apakah firstItem ada produknya --}}
+                                {{ $firstItem?->product?->name ?? 'Produk Tidak Ditemukan' }}
+
+                                @if($items->count() > 1)
+                                    <span class="text-xs text-slate-500">(+ {{ $items->count() - 1 }} item lain)</span>
                                 @endif
                             </div>
                             <div class="text-xs text-slate-600">Total Nilai: Rp {{ number_format($order->subtotal ?? 0, 0, ',', '.') }}</div>
-                            <div class="text-xs text-slate-600">Total Kuantitas: {{ $order->items->sum('quantity') }} pcs</div>
+                            {{-- Gunakan variabel $items yang sudah aman --}}
+                            <div class="text-xs text-slate-600">Total Kuantitas: {{ $items->sum('quantity') }} pcs</div>
                         </div>
 
                         <div class="md:col-span-2 p-4 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-slate-200">
