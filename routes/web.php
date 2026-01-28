@@ -103,6 +103,8 @@ use App\Http\Controllers\SellerReviewController;
 // Website fontend WA Integration
 //use App\Http\Controllers\WhatsappController;
 
+use App\Http\Controllers\Toko\DokuRegistrationController;
+
 //Tools Broadcast Pesan WA
 use App\Http\Controllers\BroadcastController;
 
