@@ -9,16 +9,16 @@ trait BelongsToTenant
 {
     protected static function bootBelongsToTenant()
     {
-        // 1. Filter Otomatis saat mengambil data (SELECT)
+        // Filter otomatis setiap kali memanggil data (SELECT)
         static::addGlobalScope('tenant', function (Builder $builder) {
-            if (Auth::check()) {
+            if (Auth::check() && Auth::user()->tenant_id) {
                 $builder->where('tenant_id', Auth::user()->tenant_id);
             }
         });
 
-        // 2. Isi Otomatis saat simpan data (INSERT)
+        // Isi otomatis tenant_id saat menambah data baru (INSERT)
         static::creating(function ($model) {
-            if (Auth::check()) {
+            if (Auth::check() && Auth::user()->tenant_id) {
                 $model->tenant_id = Auth::user()->tenant_id;
             }
         });
