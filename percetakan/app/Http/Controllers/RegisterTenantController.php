@@ -73,6 +73,7 @@ class RegisterTenantController extends Controller
             $tenant = Tenant::create([
                 'name'       => $request->business_name,
                 'subdomain'  => strtolower($request->subdomain),
+                'whatsapp'   => $request->whatsapp, // <--- PASTIKAN BARIS INI ADA
                 'package'    => $request->package,
                 'status'     => $status,
                 'expired_at' => $expiredAt,
