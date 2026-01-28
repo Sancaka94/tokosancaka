@@ -407,44 +407,38 @@
 @push('scripts')
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // --- LOGIKA 1: AUTO REFRESH STATUS (Prioritas Utama) ---
-        // Kita gunakan variabel PHP untuk mentrigger JS hanya jika status BUKAN Active
-        @if($store->doku_status !== 'ACTIVE')
-            console.log('Status belum ACTIVE, melakukan auto-refresh status...');
 
+        // --- LOGIKA 1: PRIORITAS STATUS (Jika belum ACTIVE) ---
+        // Jika status masih PENDING, sistem akan otomatis klik "Cek Status" duluan.
+        @if($store->doku_status !== 'ACTIVE')
             var btnStatus = document.getElementById('btn-auto-status');
             if (btnStatus) {
-                // Beri jeda sedikit agar user sadar ada proses
-                setTimeout(function() {
-                    btnStatus.click();
-                    // Tampilkan loading text (opsional)
-                    btnStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
-                    btnStatus.disabled = true;
-                }, 1000);
+                console.log('Auto-Refresh: Status belum Active, checking status...');
+                // Klik tombol status (ini akan reload halaman)
+                setTimeout(function(){ btnStatus.click(); }, 1000);
             }
-        @endif
+        @else
 
-        // --- LOGIKA 2: AUTO REFRESH SALDO (Opsional & Aman) ---
-        // Hanya jalan jika status SUDAH Active DAN kita ingin memaksa update saat pertama buka
-        // Menggunakan SessionStorage agar tidak looping (reload terus menerus)
-        @if($store->doku_status === 'ACTIVE')
-            // Cek apakah kita sudah pernah auto-refresh saldo di sesi ini?
-            if (!sessionStorage.getItem('doku_saldo_refreshed')) {
-                console.log('Status ACTIVE, melakukan auto-refresh saldo sekali...');
+        // --- LOGIKA 2: PRIORITAS SALDO (Jika sudah ACTIVE) ---
+        // Hanya jalan jika Status sudah ACTIVE + Belum pernah refresh saldo di sesi ini
 
+            var sessionKey = 'doku_saldo_auto_refreshed';
+
+            // Cek apakah sudah pernah auto-refresh?
+            if (!sessionStorage.getItem(sessionKey)) {
                 var btnSaldo = document.getElementById('btn-auto-saldo');
-                if (btnSaldo) {
-                    // Tandai bahwa kita sudah refresh, supaya tidak looping setelah reload
-                    sessionStorage.setItem('doku_saldo_refreshed', 'true');
 
-                    setTimeout(function() {
-                        btnSaldo.click();
-                    }, 500);
+                if (btnSaldo) {
+                    console.log('Auto-Refresh: Status Active, syncing balance...');
+
+                    // Tandai bahwa kita sudah melakukan refresh (agar tidak looping setelah reload)
+                    sessionStorage.setItem(sessionKey, 'true');
+
+                    // Klik tombol saldo
+                    setTimeout(function(){ btnSaldo.click(); }, 500);
                 }
             } else {
-                console.log('Saldo sudah di-refresh sebelumnya (Session Check).');
-                // Opsional: Clear session jika ingin reset setiap kali tutup browser tab
-                // sessionStorage.removeItem('doku_saldo_refreshed');
+                console.log('Auto-Refresh: Saldo sudah disinkronkan sebelumnya.');
             }
         @endif
     });
