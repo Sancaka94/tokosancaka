@@ -230,7 +230,7 @@
                 --}}
 
                 <a href="{{ route('customer.pesanan.riwayat_belanja') }}"
-                class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('customer.pesanan.riwayat_belanja') ? 'bg-gray-800 text-white' : '' }}">
+                    class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('customer.pesanan.riwayat_belanja') ? 'bg-gray-800 text-white' : '' }}">
                     <i class="fas fa-history fa-fw w-4 mr-2"></i> Riwayat Belanja
                 </a>
 
