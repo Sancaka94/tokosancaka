@@ -1,4 +1,4 @@
-{{-- 
+{{--
 File: resources/views/customer/pesanan/riwayat.blade.php
 Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
 --}}
@@ -33,7 +33,7 @@ Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
             {{-- ========================================================== --}}
             {{-- PERBAIKAN: Loop $pesanans (sesuai kiriman controller) --}}
             {{-- ========================================================== --}}
-            @forelse ($pesanans as $order) 
+            @forelse ($pesanans as $order)
                 <div class="bg-white rounded-xl shadow-md overflow-hidden border border-slate-200 hover:shadow-lg transition duration-200">
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
 
@@ -64,19 +64,19 @@ Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
                                 <div>
                                     <div class="font-semibold text-slate-800 text-sm">
                                         {{-- Variabel Marketplace --}}
-                                        {{ optional($order->store)->name ?? 'Toko Dihapus' }} ({{ optional($order->store->user)->no_wa ?? 'N/A' }})
+                                        {{ $order->store?->name ?? 'Toko Dihapus' }} ({{ $order->store?->user?->no_wa ?? 'N/A' }})
                                     </div>
-                                    <div class="text-xs text-slate-600">{{ optional($order->store)->address_detail ?? 'Alamat toko tidak ada' }}</div>
+                                    <div class="text-xs text-slate-600">{{ $order->store?->address_detail ?? 'Alamat toko tidak ada' }}</div>
                                 </div>
                             </div>
-                            
+
                             {{-- ALAMAT PENERIMA (PEMBELI) --}}
                             <div class="flex items-start">
                                 <i class="fas fa-download text-green-500 mr-3 mt-1 flex-shrink-0"></i>
                                 <div>
                                     <div class="font-semibold text-slate-800 text-sm">
                                         {{-- Variabel Marketplace --}}
-                                        {{ $order->user->nama_lengkap }} ({{ $order->user->no_wa }})
+                                        {{ $order->user?->nama_lengkap ?? 'User Tidak Dikenal' }} ({{ $order->user?->no_wa ?? '-' }})
                                     </div>
                                     <div class="text-xs text-slate-600">{{ $order->shipping_address }}</div>
                                 </div>
@@ -96,8 +96,8 @@ Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
                             @endphp
                             <div class="flex items-center mb-1">
                                 {{-- PERBAIKAN PATH GAMBAR: Hapus 'public/' --}}
-                                <img src="{{ asset('public/storage/logo-ekspedisi/' . $logoPath . '.png') }}" 
-                                     alt="{{ $expeditionName }} Logo" 
+                                <img src="{{ asset('public/storage/logo-ekspedisi/' . $logoPath . '.png') }}"
+                                     alt="{{ $expeditionName }} Logo"
                                      class="w-10 h-auto mr-2"
                                      onerror="this.style.display='none'"> {{-- Sembunyikan jika logo tdk ada --}}
                                 <span class="font-bold text-sm">{{ $expeditionName }}</span>
@@ -115,12 +115,12 @@ Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
 
                         <div class="md:col-span-2 p-4 border-t md:border-t-0 md:border-l border-slate-200">
                             <div class="md:hidden text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Isi Paket</div>
-                            
+
                             {{-- Ambil item pertama sebagai 'display' --}}
                             @php $firstItem = $order->items->first(); @endphp
-                            
+
                             <div class="text-sm text-slate-800 font-semibold">
-                                {{ $firstItem ? $firstItem->product->name : 'N/A' }} 
+                                {{ $firstItem ? $firstItem->product->name : 'N/A' }}
                                 @if($order->items->count() > 1)
                                     <span class="text-xs text-slate-500">(+ {{ $order->items->count() - 1 }} item lain)</span>
                                 @endif
@@ -153,7 +153,7 @@ Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
                                 </a>
                             @elseif ($order->shipping_resi)
                                 {{-- Pastikan route 'customer.lacak.index' ada --}}
-                                <a href="{{ route('customer.lacak.index', ['resi' => $order->shipping_resi]) }}" 
+                                <a href="{{ route('customer.lacak.index', ['resi' => $order->shipping_resi]) }}"
                                    class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">
                                    Lacak Paket
                                 </a>
