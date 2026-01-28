@@ -102,19 +102,23 @@ File: resources/views/customer/pesanan/riwayat_belanja.blade.php
                                     <div class="flex items-start gap-4 p-2 hover:bg-gray-50 rounded-lg transition">
 
                                         {{-- GAMBAR PRODUK --}}
-                                        {{-- GAMBAR PRODUK (PERBAIKAN PATH) --}}
+                                        {{-- GAMBAR PRODUK (FIXED PATH: public/storage/products/...) --}}
                                         <div class="w-20 h-20 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden border border-gray-200 relative group">
                                             @if($item->product && $item->product->images && $item->product->images->count() > 0)
                                                 @php
                                                     $rawPath = $item->product->images->first()->path;
-                                                    // Cek apakah path di DB sudah ada 'products/' atau belum
-                                                    // Jika belum, kita tambahkan manual agar mengarah ke storage/products/
-                                                    $finalPath = \Illuminate\Support\Str::startsWith($rawPath, 'products/')
+
+                                                    // 1. Cek apakah di database sudah ada awalan 'products/'
+                                                    // Jika belum, kita tambahkan manual.
+                                                    $cleanPath = \Illuminate\Support\Str::startsWith($rawPath, 'products/')
                                                                  ? $rawPath
                                                                  : 'products/' . $rawPath;
+
+                                                    // 2. Generate URL sesuai request Anda (pakai 'public/storage/')
+                                                    $imageUrl = asset('public/storage/' . $cleanPath);
                                                 @endphp
 
-                                                <img src="{{ asset('storage/' . $finalPath) }}"
+                                                <img src="{{ $imageUrl }}"
                                                      alt="{{ $item->product->name }}"
                                                      class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                                                      onerror="this.onerror=null; this.src='https://via.placeholder.com/150?text=No+Image';">
