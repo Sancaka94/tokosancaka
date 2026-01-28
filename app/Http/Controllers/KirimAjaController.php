@@ -119,7 +119,7 @@ class KirimAjaController extends Controller
                 // =========================================================================
             // 🔥🔥🔥 INI BAGIAN YANG ANDA GANTI / PASTE 🔥🔥🔥
             // =========================================================================
-            
+
             // 1.B. Cek Pesanan Manual (SCK) - Direct DB Update
             $cekPesanan = DB::table('Pesanan')->where('nomor_invoice', $orderId)->first();
             if ($cekPesanan) {
@@ -158,9 +158,9 @@ class KirimAjaController extends Controller
                 if ($statusPesananIndo === 'Selesai' || $method === 'finished_packages') {
                     try {
                         Log::info("[WEBHOOK-KA] 🚀 Memicu Simpan Keuangan untuk: $orderId");
-                        
+
                         $pesananModel = Pesanan::where('nomor_invoice', $orderId)->first();
-                        
+
                         if ($pesananModel) {
                             // Panggil fungsi di AdminController
                             // Pastikan method di AdminController namanya 'simpanKeuangan' (tanpa Ke)
@@ -172,6 +172,57 @@ class KirimAjaController extends Controller
                     } catch (\Throwable $th) {
                         Log::error("[WEBHOOK-KA] ❌ Gagal Catat Keuangan: " . $th->getMessage());
                     }
+
+                    // ---------------------------------------------------------------------
+                    // 🔥 FITUR BARU: TRANSFER SALDO DOKU KE PENJUAL (AUTO-CAIR)
+                    // ---------------------------------------------------------------------
+                    try {
+                        // 1. Ambil Data Toko dari Pesanan
+                        // Pastikan model Pesanan punya relasi atau kolom store_id / id_toko
+                        $store = null;
+                        if (!empty($trxPesanan->store_id)) {
+                            $store = \App\Models\Store::find($trxPesanan->store_id);
+                        }
+
+                        if (!empty($trxPesanan->penjual_id)) {
+                            // Cari toko berdasarkan user_id penjual
+                            $store = \App\Models\Store::where('user_id', $trxPesanan->penjual_id)->first();
+                        }
+
+                        // 2. Cek apakah Toko punya Dompet DOKU (SAC ID)
+                        if ($store && !empty($store->doku_sac_id)) {
+                            \Illuminate\Support\Facades\Log::info("[WEBHOOK-KA] 🏦 Proses Transfer DOKU untuk: " . $store->name);
+
+                            // 3. Tentukan Nominal (Total Tagihan Pesanan)
+                            $nominalCair = (int) ($trxPesanan->total_tagihan ?? $trxPesanan->total_harga ?? 0);
+
+                            if ($nominalCair > 0) {
+                                // 4. Panggil Service DOKU
+                                $dokuService = app(\App\Services\DokuJokulService::class);
+                                $mainSacId = config('doku.main_sac_id');
+
+                                if ($mainSacId) {
+                                    // 5. EKSEKUSI TRANSFER (Admin -> Penjual)
+                                    $transferResult = $dokuService->transferIntra(
+                                        $mainSacId,           // Dari: Admin
+                                        $store->doku_sac_id,  // Ke: Penjual
+                                        $nominalCair
+                                    );
+
+                                    if (($transferResult['success'] ?? false) === true) {
+                                        \Illuminate\Support\Facades\Log::info("[WEBHOOK-KA] ✅ SUKSES CAIR! Rp ".number_format($nominalCair)." masuk ke SAC {$store->doku_sac_id}");
+                                    } else {
+                                        \Illuminate\Support\Facades\Log::error("[WEBHOOK-KA] ❌ Gagal Transfer DOKU: " . ($transferResult['message'] ?? 'Unknown Error'));
+                                    }
+                                } else {
+                                    \Illuminate\Support\Facades\Log::error("[WEBHOOK-KA] ❌ Gagal: Main SAC ID (Admin) belum disetting.");
+                                }
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error("[WEBHOOK-KA] ❌ Exception DOKU: " . $e->getMessage());
+                    }
+                    // ---------------------------------------------------------------------
                 }
             }
             // =========================================================================
