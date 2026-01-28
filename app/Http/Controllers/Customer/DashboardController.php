@@ -63,7 +63,7 @@ public function index()
         // E. Scan SPX (Khusus User Ini)
         $recentSpxScans = ScannedPackage::where('user_id', $customerId)
                                         ->latest()
-                                        ->take(5)
+                                        ->take(5);
 
         // --- PENGAMBILAN DATA UNTUK GRAFIK ---
         $orderChartData = $this->getOrderChartData($customerId);
