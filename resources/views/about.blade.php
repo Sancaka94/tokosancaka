@@ -284,6 +284,11 @@
                     <div>
                         <h6 class="fw-bold mb-1">Website</h6>
                         <a href="https://sancaka.bisnis.pro" class="text-white-50 text-decoration-none">sancaka.bisnis.pro</a>
+                        <a href="https://bisnis.pro" class="text-white-50 text-decoration-none">bisnis.pro</a><br>
+                        <a href="https://tokosancaka.com" class="text-white-50 text-decoration-none">tokosancaka.com</a><br>
+                        <a href="https://tokosancaka.biz.id" class="text-white-50 text-decoration-none">tokosancaka.biz.id</a><br>
+                        <a href="https://sancaka.my.id" class="text-white-50 text-decoration-none">sancaka.my.id</a>
+
                     </div>
                 </div>
             </div>
