@@ -643,8 +643,9 @@ class OrderController extends Controller
             $finalPrice = $hargaSetelahDiskon + $biayaOngkir;
 
             // Generate Order Number Unik
-            $orderNumber = 'SCK-' . date('ymdHis') . rand(100, 999);
-            Log::info("[STEP 1] Generated Order Number: {$orderNumber}");
+            // Ganti baris generator nomor order di project Percetakan menjadi:
+            $orderNumber = 'SCK-PRT-' . date('ymdHis') . rand(100, 999);
+            Log::info("[STEP 1] Generated Printing Order Number: {$orderNumber}");
 
             // Identifikasi Customer
             $customerName  = $request->customer_name ?? 'Customer Umum';

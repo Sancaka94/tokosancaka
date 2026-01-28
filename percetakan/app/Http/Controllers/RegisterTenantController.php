@@ -22,12 +22,13 @@ class RegisterTenantController extends Controller
      * Menangani pendaftaran Tenant Baru (SaaS POS)
      */
     public function register(Request $request, DokuJokulService $dokuService)
-    {
-        Log::info("================ START REGISTER SYSTEM ================");
-        Log::info("LOG LOG: Memulai alur pendaftaran tenant baru.");
+{
+    Log::info("================ START REGISTER SYSTEM ================");
+    Log::info("LOG LOG: Memulai alur pendaftaran tenant baru.");
 
-        // 1. VALIDASI INPUT (Termasuk WA dan Paket)
-        $request->validate([
+    try {
+        // Pindahkan validasi ke dalam try-catch agar error terekam LOG
+        $validatedData = $request->validate([
             'owner_name'    => 'required|string|max:255',
             'email'         => 'required|email|max:255',
             'whatsapp'      => 'required|string|min:9|max:15',
@@ -36,6 +37,16 @@ class RegisterTenantController extends Controller
             'package'       => 'required|in:trial,monthly,yearly',
             'password'      => 'required|min:8',
         ]);
+
+        Log::info("LOG LOG: Validasi Berhasil.");
+
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                Log::error("LOG LOG: VALIDASI GAGAL! Pesan: " . json_encode($e->errors()));
+                return back()->withErrors($e->errors())->withInput();
+            } catch (\Exception $e) {
+                Log::error("LOG LOG: ERROR TAK TERDUGA: " . $e->getMessage());
+                return back()->with('error', $e->getMessage());
+            }
 
         // 2. SETUP DATA AWAL (Waktu & Harga)
         $now = Carbon::now('Asia/Jakarta');

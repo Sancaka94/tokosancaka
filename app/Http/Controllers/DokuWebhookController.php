@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\App; // <-- PERBAIKAN: Import 'App' facade
 use Illuminate\Support\Str;
 use App\Models\Store; // <-- PERBAIKAN: Import Model Store
@@ -74,7 +75,7 @@ class DokuWebhookController extends Controller
         // --- SIGNATURE VALID: PROSES PESANAN ---
         Log::info('DOKU Webhook: Signature Valid. Memproses data...');
 
-        // --- 2. PROSES DATA ---
+        // --- 3. PROSES DATA ---
         $data = $request->all();
 
         if (isset($data['transaction'])) {
@@ -86,65 +87,75 @@ class DokuWebhookController extends Controller
             if ($status === 'SUCCESS') {
 
                 // =================================================================
-                // A. LOGIKA KHUSUS TENANT (PREFIX SEWA-)
+                // A. PENANGANAN TENANT (PREFIX SEWA-)
                 // =================================================================
                 if (Str::startsWith($orderId, 'SEWA-')) {
                     Log::info("LOG LOG: Detected Tenant Payment: $orderId");
 
-                    // 1. Cek di Database Utama
-                    $tenantMain = Tenant::where('subdomain', explode('-', $orderId)[1] ?? '')->first();
-
+                    $tenantMain = Tenant::where('subdomain', explode('-', $orderId)[1] ?? '')->first(); // controller ada di DB kedua
                     if ($tenantMain) {
-                        Log::info("LOG LOG: ✅ Tenant ditemukan di DB UTAMA. Memproses...");
+                        Log::info("LOG LOG: ✅ Tenant ditemukan di DB UTAMA.");
                         return App::make(RegisterTenantController::class)->handleDokuWebhook($request);
                     }
 
-                    // 2. Cek di Database Kedua (mysql_second / Percetakan)
-                    Log::info("LOG LOG: 🔍 Tidak ada di DB Utama, mencari di mysql_second...");
+                    Log::info("LOG LOG: 🔍 Mencari di mysql_second...");
                     try {
                         $percetakanDB = DB::connection('mysql_second');
                         $subdomain = strtolower(explode('-', $orderId)[1] ?? '');
-
                         $tenantSecond = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
 
                         if ($tenantSecond) {
-                            Log::info("LOG LOG: ✅ Tenant ditemukan di DB PERCETAKAN. Mengaktifkan...");
-
                             $percetakanDB->table('tenants')->where('id', $tenantSecond->id)->update([
                                 'status' => 'active',
                                 'updated_at' => now()->timezone('Asia/Jakarta')
                             ]);
-
-                            Log::info("LOG LOG: 🚀 Status Tenant '$subdomain' AKTIF di DB Percetakan.");
+                            Log::info("LOG LOG: ✅ Tenant AKTIF di DB PERCETAKAN.");
                             $this->_sendFonnteNotification($subdomain);
                             return response()->json(['message' => 'Activated in Secondary DB']);
                         }
                     } catch (\Exception $e) {
                         Log::error("LOG LOG: ❌ Gagal akses DB Percetakan: " . $e->getMessage());
                     }
-
-                    Log::warning("LOG LOG: ⚠️ Invoice $orderId tidak ditemukan di manapun.");
+                }
 
                 // =================================================================
-                // B. LOGIKA TRANSAKSI LAIN (BUKAN SEWA)
+                // B. PENANGANAN ORDER PERCETAKAN (PREFIX SCK-PRT-)
                 // =================================================================
-                } else {
+                else if (Str::startsWith($orderId, 'SCK-PRT-')) {
+                    Log::info("LOG LOG: 🖨️ Mendeteksi Order Percetakan: $orderId");
+                    try {
+                        $percetakanDB = DB::connection('mysql_second');
+                        $orderPercetakan = $percetakanDB->table('orders')->where('order_number', $orderId)->first();
+                        if ($orderPercetakan) {
+                            $percetakanDB->table('orders')->where('id', $orderPercetakan->id)->update([
+                                'payment_status' => 'paid',
+                                'status' => 'processing',
+                                'updated_at' => now()->timezone('Asia/Jakarta')
+                            ]);
+                            Log::info("LOG LOG: ✅ Order Percetakan LUNAS di DB Percetakan.");
+                            $this->_sendFonnteNotification("Order Lunas: $orderId");
+                            return response()->json(['message' => 'Order Updated in DB Second']);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("LOG LOG: ❌ Gagal Update Order Percetakan: " . $e->getMessage());
+                    }
+                }
+
+                // =================================================================
+                // C. PENANGANAN DB PERTAMA (KODE ASLI ANDA)
+                // =================================================================
+                else {
                     if (Str::startsWith($orderId, 'TOPUP-')) {
-                        Log::info("DOKU Dispatcher: TOPUP -> $orderId");
                         return App::make(TopUpController::class)->handleDokuCallback($data);
-
                     } else if (Str::startsWith($orderId, 'INV-')) {
-                        Log::info("DOKU Dispatcher: CUSTOMER ORDER -> $orderId");
                         return App::make(CustomerOrderController::class)->handleDokuCallback($data);
-
                     } else if (Str::startsWith($orderId, 'SCK-') || Str::startsWith($orderId, 'CVSANCAK-') || Str::startsWith($orderId, 'ORD-')) {
-                        Log::info("DOKU Dispatcher: POS MAIN -> $orderId");
                         return App::make(CheckoutController::class)->handleDokuCallback($data);
                     }
                 }
 
             } else {
-                Log::info("DOKU Webhook: Status $status. Dilewati.");
+                Log::info("DOKU Webhook: Status bukan SUCCESS. Dilewati.");
             }
 
         // 2. Apakah ini Webhook Notifikasi Sub Account? (Ini yang Anda perlukan!)
