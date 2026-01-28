@@ -133,16 +133,33 @@
                 <hr x-show="!(isExpanded || isHovered)" class="border-gray-700 my-4 hidden lg:block">
 
                 <div x-data="{ open: {{ request()->routeIs('customer.ppob.*') ? 'true' : 'false' }} }" class="space-y-1">
-                    {{-- Logic Klik: Jika mini sidebar -> expand dulu. Jika sudah expand -> toggle menu --}}
                     <button @click="if(!(isExpanded || isHovered) && window.innerWidth >= 1024) { isExpanded = true; open = true; } else { open = !open; }"
                         :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                         class="flex items-center w-full py-2.5 text-white hover:bg-red-700 bg-red-600 hover:text-white rounded-md transition-colors duration-200 shadow-sm">
-                        <i class="fas fa-mobile-alt fa-fw w-6 text-xl"></i>
-                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 flex-1 text-left whitespace-nowrap">LOKET PPOB</span>
-                        <span class="block text-[10px] text-yellow-100 leading-none mt-0.5">Token Listrik, PDAM & Pulsa</span>
 
+                        {{-- 1. ICON (Selalu Muncul) --}}
+                        <i class="fas fa-mobile-alt fa-fw w-6 text-xl"></i>
+
+                        {{-- 2. WRAPPER TEKS (Judul + Deskripsi) --}}
+                        {{-- Kita pindahkan logic :class hidden ke DIV pembungkus ini --}}
+                        <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 flex-1 text-left">
+
+                            {{-- Judul Utama --}}
+                            <span class="block font-bold whitespace-nowrap leading-tight">
+                                LOKET PPOB
+                            </span>
+
+                            {{-- Deskripsi Kecil di Bawahnya --}}
+                            <span class="block text-[10px] text-red-100 leading-tight mt-0.5">
+                                Token Listrik, PDAM & Pulsa
+                            </span>
+
+                        </div>
+
+                        {{-- 3. ICON PANAH (Hanya Muncul saat Expand) --}}
                         <i :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" x-show="open" class="fas fa-chevron-up ml-auto text-xs"></i>
                         <i :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" x-show="!open" class="fas fa-chevron-down ml-auto text-xs"></i>
+
                     </button>
 
                     <div x-show="open" x-cloak class="ml-4 pl-4 border-l border-gray-700 space-y-1 mt-1" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
