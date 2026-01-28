@@ -282,7 +282,7 @@
                 <div class="d-flex mb-3">
                     <div class="me-3 text-info fs-4"><i class="fas fa-globe"></i></div>
                     <div>
-                        <h6 class="fw-bold mb-1">Website</h6>
+                        <h6 class="fw-bold mb-1">Website Kami</h6>
                         <a href="https://sancaka.bisnis.pro" class="text-white-50 text-decoration-none">sancaka.bisnis.pro</a>
                         <a href="https://bisnis.pro" class="text-white-50 text-decoration-none">bisnis.pro</a><br>
                         <a href="https://tokosancaka.com" class="text-white-50 text-decoration-none">tokosancaka.com</a><br>
