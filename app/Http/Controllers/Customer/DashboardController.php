@@ -28,32 +28,42 @@ class DashboardController extends Controller
 {
 public function index()
     {
+        // 1. AMBIL ID USER YANG LOGIN
         $customer = Auth::user();
-        $customerId = $customer->id_pengguna;
 
-        // --- PENGAMBILAN DATA STATISTIK (FIXED) ---
+        // Pastikan kita pakai ID yang benar (id atau id_pengguna)
+        // Gunakan Auth::id() agar lebih aman jika primary key-nya berbeda
+        $customerId = Auth::id();
+
         $saldo = $customer->saldo;
 
-        // 1. Total Pesanan (Milik User Ini Saja)
+        // --- 2. QUERY MANUAL (JANGAN PAKAI CLONE) ---
+        // Kita tulis ulang "Pesanan::where..." di setiap baris.
+        // Ini menjamin 100% filter tidak akan bocor.
+
+        // A. Total Pesanan (Khusus User Ini)
         $totalPesanan = Pesanan::where('id_pengguna_pembeli', $customerId)->count();
 
-        // 2. Pesanan Selesai (Milik User Ini Saja)
+        // B. Pesanan Selesai (Khusus User Ini)
         $pesananSelesai = Pesanan::where('id_pengguna_pembeli', $customerId)
                                  ->where('status_pesanan', 'Tiba di Tujuan')
                                  ->count();
 
-        // 3. Pesanan Pending (Milik User Ini Saja)
+        // C. Pesanan Pending (Khusus User Ini)
         $pesananPending = Pesanan::where('id_pengguna_pembeli', $customerId)
                                  ->whereIn('status_pesanan', ['pending', 'Menunggu Pembayaran'])
                                  ->count();
 
-        // 4. Recent Orders (Milik User Ini Saja)
+        // D. Pesanan Terakhir (Khusus User Ini)
         $recentOrders = Pesanan::where('id_pengguna_pembeli', $customerId)
                                ->latest('tanggal_pesanan')
-                               ->take(10) // Batasi 10 agar tidak berat, kalau mau semua hapus ini
+                               ->take(10)
                                ->get();
 
-        $recentSpxScans = ScannedPackage::where('user_id', $customerId)->latest()->take(5)->get();
+        // E. Scan SPX (Khusus User Ini)
+        $recentSpxScans = ScannedPackage::where('user_id', $customerId)
+                                        ->latest()
+                                        ->take(5)
 
         // --- PENGAMBILAN DATA UNTUK GRAFIK ---
         $orderChartData = $this->getOrderChartData($customerId);
