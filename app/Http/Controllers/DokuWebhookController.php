@@ -274,20 +274,65 @@ class DokuWebhookController extends Controller
     }
 
     /**
-     * Helper Notifikasi WA (Jika database kedua sukses)
-     */
-    private function _sendFonnteNotification($subdomain)
-    {
-        try {
-            $adminPhone = '085745808809'; // Nomor Bapak
-            $msg = "💰 *PEMBAYARAN TENANT LUNAS*\n\nSubdomain: *{$subdomain}*\nStatus: *ACTIVE*\nSistem: *Database Percetakan*\nWaktu: " . now()->timezone('Asia/Jakarta')->format('d/m/Y H:i');
+ * Helper Notifikasi WA (Jika database kedua sukses)
+ * Otomatis membersihkan nomor pendaftar agar standar 08
+ */
+private function _sendFonnteNotification($subdomain)
+{
+    try {
+        // 1. Ambil data tenant dari database kedua untuk mendapatkan nomor WA
+        $percetakanDB = \Illuminate\Support\Facades\DB::connection('mysql_second');
+        $tenant = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
 
-            // Panggil fungsi kirim Fonnte (Bisa buat helper global atau panggil controller)
-            // Http::withHeaders(['Authorization' => env('FONNTE_API_KEY')])->post(...);
-            Log::info("LOG LOG: Notifikasi WA Aktivasi Tenant $subdomain dikirim.");
-        } catch (\Exception $e) {
-            Log::error("LOG LOG: Gagal kirim WA Notif: " . $e->getMessage());
+        if (!$tenant || empty($tenant->whatsapp)) {
+            Log::warning("LOG LOG: Gagal kirim WA, nomor WA tenant tidak ditemukan.");
+            return;
         }
+
+        // 2. PROSES PEMBERSIHAN NOMOR (STANDARISASI 08)
+        $phone = $tenant->whatsapp;
+        $phone = preg_replace('/[^0-9]/', '', $phone); // Hapus karakter non-angka
+
+        if (str_starts_with($phone, '62')) {
+            $phone = '0' . substr($phone, 2); // Ubah 628... jadi 08...
+        } elseif (str_starts_with($phone, '8')) {
+            $phone = '0' . $phone; // Tambah 0 jika langsung angka 8
+        }
+
+        // 3. Susun Pesan
+        $adminPhone = '085745808809'; // Nomor Bapak
+        $msg = "💰 *PEMBAYARAN TERKONFIRMASI*\n\n" .
+               "Halo Owner *{$subdomain}*,\n" .
+               "Pembayaran sewa Anda telah kami terima.\n\n" .
+               "Status: *ACTIVE* ✅\n" .
+               "Sistem: *Database Percetakan*\n" .
+               "Link Login: https://{$subdomain}.tokosancaka.com/percetakan/public/login\n\n" .
+               "_Pesanan Anda sudah bisa diakses. Terima kasih!_";
+
+        // 4. Kirim ke User & Admin
+        $this->_sendFonnteMessage($phone, $msg);
+        $this->_sendFonnteMessage($adminPhone, "INFO: Tenant *{$subdomain}* baru saja aktif otomatis via Webhook DOKU.");
+
+        Log::info("LOG LOG: Notifikasi WA Aktivasi Tenant $subdomain dikirim ke $phone.");
+    } catch (\Exception $e) {
+        Log::error("LOG LOG: Gagal kirim WA Notif: " . $e->getMessage());
+    }
+}
+
+    /**
+     * Fungsi internal kirim pesan via Fonnte
+     */
+    private function _sendFonnteMessage($target, $message)
+    {
+        $token = env('FONNTE_API_KEY') ?? env('FONNTE_KEY');
+        if (!$token) return;
+
+        \Illuminate\Support\Facades\Http::withHeaders([
+            'Authorization' => $token
+        ])->post('https://api.fonnte.com/send', [
+            'target' => $target,
+            'message' => $message
+        ]);
     }
 }
 

@@ -151,7 +151,7 @@ class RegisterTenantController extends Controller
         }
     }
 
-    /**
+   /**
      * Webhook DOKU untuk aktivasi otomatis
      */
     public function handleDokuWebhook(Request $request)
@@ -168,16 +168,37 @@ class RegisterTenantController extends Controller
                 $parts = explode('-', $invoice);
                 $subdomain = strtolower($parts[1]);
 
+                // Mencari tenant berdasarkan subdomain
                 $tenant = Tenant::where('subdomain', $subdomain)->first();
+
                 if ($tenant && $tenant->status !== 'active') {
+                    // 1. Update Status jadi Active
                     $tenant->update(['status' => 'active']);
                     Log::info("LOG LOG: Akun Tenant {$subdomain} AKTIF via Webhook.");
 
-                    // Notifikasi WA Lunas ke User & Admin
-                    $this->_sendFonnte('085745808809', "💰 Akun Tenant *{$subdomain}* baru saja LUNAS.");
+                    // 2. Normalisasi Nomor WhatsApp Admin & User
+                    $adminPhone = $this->_normalizeWa('085745808809'); // Nomor Bapak
+                    $userPhone = $this->_normalizeWa($tenant->whatsapp);
+
+                    // 3. Susun Pesan untuk User
+                    $msgUser = "💰 *PEMBAYARAN SEWA BERHASIL*\n\n" .
+                               "Halo Owner *{$subdomain}*,\n" .
+                               "Terima kasih, pembayaran sewa aplikasi percetakan telah kami terima.\n\n" .
+                               "Status: *ACTIVE* ✅\n" .
+                               "Link Login: https://{$subdomain}.tokosancaka.com/percetakan/public/login\n\n" .
+                               "_Silakan login menggunakan email dan password yang Anda daftarkan._";
+
+                    // 4. Kirim WA ke User & Admin
+                    if (!empty($userPhone)) {
+                        $this->_sendFonnte($userPhone, $msgUser);
+                    }
+
+                    $this->_sendFonnte($adminPhone, "🔔 *INFO ADMIN*: Akun Tenant *{$subdomain}* baru saja AKTIF otomatis via DOKU.");
                 }
             }
         }
+
+        // Response standar DOKU Jokul
         return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Success']);
     }
 
@@ -186,14 +207,15 @@ class RegisterTenantController extends Controller
      */
     private function _sendFonnte($target, $message)
     {
-        $token = env('FONNTE_API_KEY');
+        $token = env('FONNTE_API_KEY') ?? env('FONNTE_KEY');
         if (!$token) {
             Log::warning("LOG LOG: Fonnte Token Kosong!");
             return;
         }
 
         try {
-            $response = Http::withHeaders(['Authorization' => $token])
+            // Gunakan nomor yang sudah dinormalisasi
+            $response = \Illuminate\Support\Facades\Http::withHeaders(['Authorization' => $token])
                 ->post('https://api.fonnte.com/send', [
                     'target' => $target,
                     'message' => $message,
@@ -205,16 +227,25 @@ class RegisterTenantController extends Controller
     }
 
     /**
-     * Helper: Normalisasi nomor ke format 62
-     */
-    private function _normalizeWa($phone)
-    {
-        $phone = preg_replace('/[^0-9]/', '', $phone);
-        if (substr($phone, 0, 1) == '0') {
-            $phone = '62' . substr($phone, 1);
-        } elseif (substr($phone, 0, 1) == '8') {
-            $phone = '62' . $phone;
-        }
-        return $phone;
+ * Helper: Normalisasi nomor ke format 08 (Sesuai spek Fonnte Bapak)
+ */
+private function _normalizeWa($phone)
+{
+    if (!$phone) return null;
+
+    // 1. Hapus semua karakter yang bukan angka
+    $phone = preg_replace('/[^0-9]/', '', $phone);
+
+    // 2. Jika diawali '62', ubah menjadi '0'
+    if (str_starts_with($phone, '62')) {
+        $phone = '0' . substr($phone, 2);
     }
+    // 3. Jika diawali '8' (langsung angka 8), tambahkan '0' di depan
+    elseif (str_starts_with($phone, '8')) {
+        $phone = '0' . $phone;
+    }
+
+    // Pastikan hasil akhirnya diawali dengan '08'
+    return $phone;
+}
 }
