@@ -177,37 +177,50 @@ class KirimAjaController extends Controller
                     // 🔥 FITUR BARU: TRANSFER SALDO DOKU KE PENJUAL (AUTO-CAIR)
                     // ---------------------------------------------------------------------
                     try {
+                        \Illuminate\Support\Facades\Log::info("[WEBHOOK-KA] 🔥 MEMULAI PROSES AUTO-CAIR DOKU...");
+
                         // 1. Ambil Data Toko dari Pesanan
-                        // Pastikan model Pesanan punya relasi atau kolom store_id / id_toko
                         $store = null;
+
+                        // Cek via store_id
                         if (!empty($trxPesanan->store_id)) {
                             $store = \App\Models\Store::find($trxPesanan->store_id);
+                            \Illuminate\Support\Facades\Log::info("[WEBHOOK-KA] 🔎 Cari Toko via store_id ({$trxPesanan->store_id}): " . ($store ? "DITEMUKAN ({$store->name})" : "TIDAK DITEMUKAN"));
                         }
 
-                        if (!empty($trxPesanan->penjual_id)) {
-                            // Cari toko berdasarkan user_id penjual
+                        // Jika belum ketemu, Cek via penjual_id (User ID)
+                        if (!$store && !empty($trxPesanan->penjual_id)) {
                             $store = \App\Models\Store::where('user_id', $trxPesanan->penjual_id)->first();
+                            \Illuminate\Support\Facades\Log::info("[WEBHOOK-KA] 🔎 Cari Toko via penjual_id ({$trxPesanan->penjual_id}): " . ($store ? "DITEMUKAN ({$store->name})" : "TIDAK DITEMUKAN"));
                         }
 
                         // 2. Cek apakah Toko punya Dompet DOKU (SAC ID)
                         if ($store && !empty($store->doku_sac_id)) {
-                            \Illuminate\Support\Facades\Log::info("[WEBHOOK-KA] 🏦 Proses Transfer DOKU untuk: " . $store->name);
+                            \Illuminate\Support\Facades\Log::info("[WEBHOOK-KA] 🏦 Toko punya SAC ID: {$store->doku_sac_id}. Lanjut hitung nominal...");
 
                             // 3. Tentukan Nominal (Total Tagihan Pesanan)
                             $nominalCair = (int) ($trxPesanan->total_tagihan ?? $trxPesanan->total_harga ?? 0);
+                            \Illuminate\Support\Facades\Log::info("[WEBHOOK-KA] 💰 Nominal yang akan dicairkan: Rp " . number_format($nominalCair));
 
                             if ($nominalCair > 0) {
                                 // 4. Panggil Service DOKU
                                 $dokuService = app(\App\Services\DokuJokulService::class);
                                 $mainSacId = config('doku.main_sac_id');
 
+                                \Illuminate\Support\Facades\Log::info("[WEBHOOK-KA] ⚙️ Main SAC ID (Admin): " . ($mainSacId ? $mainSacId : "KOSONG/NULL"));
+
                                 if ($mainSacId) {
                                     // 5. EKSEKUSI TRANSFER (Admin -> Penjual)
+                                    \Illuminate\Support\Facades\Log::info("[WEBHOOK-KA] 🚀 Mengirim Request Transfer Intra ke DOKU...");
+
                                     $transferResult = $dokuService->transferIntra(
                                         $mainSacId,           // Dari: Admin
                                         $store->doku_sac_id,  // Ke: Penjual
                                         $nominalCair
                                     );
+
+                                    // LOG RESPONSE MENTAH DARI DOKU (PENTING UNTUK DEBUGGING)
+                                    \Illuminate\Support\Facades\Log::info("[WEBHOOK-KA] 📡 Response DOKU Raw:", $transferResult);
 
                                     if (($transferResult['success'] ?? false) === true) {
                                         \Illuminate\Support\Facades\Log::info("[WEBHOOK-KA] ✅ SUKSES CAIR! Rp ".number_format($nominalCair)." masuk ke SAC {$store->doku_sac_id}");
@@ -215,13 +228,22 @@ class KirimAjaController extends Controller
                                         \Illuminate\Support\Facades\Log::error("[WEBHOOK-KA] ❌ Gagal Transfer DOKU: " . ($transferResult['message'] ?? 'Unknown Error'));
                                     }
                                 } else {
-                                    \Illuminate\Support\Facades\Log::error("[WEBHOOK-KA] ❌ Gagal: Main SAC ID (Admin) belum disetting.");
+                                    \Illuminate\Support\Facades\Log::error("[WEBHOOK-KA] ❌ Gagal: Main SAC ID (Admin) belum disetting di Config.");
                                 }
+                            } else {
+                                \Illuminate\Support\Facades\Log::warning("[WEBHOOK-KA] ⚠️ Nominal Cair 0. Membatalkan transfer.");
+                            }
+                        } else {
+                            if ($store) {
+                                \Illuminate\Support\Facades\Log::warning("[WEBHOOK-KA] ⚠️ SKIP DOKU: Toko Ditemukan ({$store->name}) tapi BELUM punya SAC ID.");
+                            } else {
+                                \Illuminate\Support\Facades\Log::warning("[WEBHOOK-KA] ⚠️ SKIP DOKU: Toko tidak ditemukan.");
                             }
                         }
                     } catch (\Exception $e) {
-                        \Illuminate\Support\Facades\Log::error("[WEBHOOK-KA] ❌ Exception DOKU: " . $e->getMessage());
+                        \Illuminate\Support\Facades\Log::error("[WEBHOOK-KA] ❌ Exception/Crash DOKU: " . $e->getMessage() . " | Line: " . $e->getLine());
                     }
+                    // ---------------------------------------------------------------------
                     // ---------------------------------------------------------------------
                 }
             }
