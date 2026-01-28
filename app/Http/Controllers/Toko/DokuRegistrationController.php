@@ -211,7 +211,7 @@ class DokuRegistrationController extends Controller
         // ==========================================================
     }
 
-   /**
+ /**
      * (BARU) Menangani form Payout (Withdrawal)
      */
     public function handlePayout(Request $request)
@@ -219,20 +219,38 @@ class DokuRegistrationController extends Controller
         $user = Auth::user();
         $store = $user->store;
 
+        // [LOG 1] Cek Data Masuk
+        Log::info('PAYOUT: Request Masuk', [
+            'store_id' => $store->id ?? 'null',
+            'user_id' => $user->id ?? 'null',
+            'sac_id' => $store->doku_sac_id ?? 'KOSONG',
+            'input_raw' => $request->all()
+        ]);
+
         $validator = Validator::make($request->all(), [
             'amount' => 'required|numeric|min:10000',
-            'bank_code' => 'required|string|max:10',
-            'bank_account_number' => 'required|string', // Jangan numeric strict di validasi awal, kita sanitize nanti
+            'bank_code' => 'required|string', // Hapus max:10 jika bank code panjang
+            'bank_account_number' => 'required|string',
             'bank_account_name' => 'required|string|max:100',
         ]);
 
         if ($validator->fails()) {
+            // [LOG 2] Gagal Validasi Input
+            Log::warning('PAYOUT: Gagal Validasi Input', ['errors' => $validator->errors()->toArray()]);
             return redirect()->back()->withErrors($validator)->withInput()->with('activeTab', 'payout');
         }
 
         $amount = (int) $request->input('amount');
+
+        // [LOG 3] Cek Saldo Sebelum Proses
+        Log::info('PAYOUT: Pengecekan Saldo', [
+            'saldo_tersedia' => $store->doku_balance_available,
+            'permintaan' => $amount
+        ]);
+
         if ($store->doku_balance_available < $amount) {
-             return redirect()->back()->with('error', 'Saldo Tersedia tidak mencukupi.')->with('activeTab', 'payout');
+            Log::warning('PAYOUT: Saldo Tidak Cukup');
+            return redirect()->back()->with('error', 'Saldo Tersedia tidak mencukupi.')->with('activeTab', 'payout');
         }
 
         try {
@@ -241,12 +259,20 @@ class DokuRegistrationController extends Controller
 
             $beneficiary = [
                 'bank_code' => $request->input('bank_code'),
-                'bank_account_number' => $cleanRekening, // Kirim yang bersih
+                'bank_account_number' => $cleanRekening,
                 'bank_account_name' => $request->input('bank_account_name'),
             ];
 
             // --- PERBAIKAN 2: Invoice Lebih Unik ---
             $invoice_number = 'WD-' . $store->id . '-' . time() . '-' . Str::random(4);
+
+            // [LOG 4] Siap Tembak API
+            Log::info('PAYOUT: Mengirim Request ke Service DOKU...', [
+                'sac_id' => $store->doku_sac_id,
+                'amount' => $amount,
+                'invoice' => $invoice_number,
+                'beneficiary' => $beneficiary
+            ]);
 
             $response = $this->dokuService->sendPayout(
                 $store->doku_sac_id,
@@ -255,19 +281,37 @@ class DokuRegistrationController extends Controller
                 $beneficiary
             );
 
+            // [LOG 5] Respon Mentah dari Service
+            Log::info('PAYOUT: Respon dari Service DOKU', ['response' => $response]);
+
             if ($response['success'] ?? false) {
                 // Kurangi saldo cache (akan diforce-refresh oleh webhook, tapi ini untuk UI instan)
                 $store->doku_balance_available -= $amount;
                 $store->doku_balance_last_updated = now(); // Set cache baru
                 $store->save();
 
-                return redirect()->back()->with('success', 'Permintaan Payout berhasil dikirim! Status: ' . $response['data']['payout']['status'])->with('activeTab', 'payout');
+                // [LOG 6] Sukses & DB Updated
+                Log::info('PAYOUT: SUKSES. Saldo lokal dipotong.', [
+                    'sisa_saldo' => $store->doku_balance_available,
+                    'status_doku' => $response['data']['payout']['status'] ?? 'UNKNOWN'
+                ]);
+
+                return redirect()->back()->with('success', 'Permintaan Payout berhasil dikirim! Status: ' . ($response['data']['payout']['status'] ?? 'Success'))->with('activeTab', 'payout');
             } else {
+                // [LOG 7] Gagal dari API DOKU
+                Log::error('PAYOUT: GAGAL API DOKU', ['pesan_error' => $response['message']]);
                 return redirect()->back()->with('error', 'Payout Gagal: ' . $response['message'])->with('activeTab', 'payout');
             }
 
         } catch (Exception $e) {
-            Log::error('DOKU Payout Exception', ['error' => $e->getMessage()]);
+            // [LOG 8] Exception / Crash
+            Log::error('PAYOUT: EXCEPTION SYSTEM', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString() // Opsional, nyalakan jika butuh trace lengkap
+            ]);
+
             return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat Payout: ' . $e->getMessage())->with('activeTab', 'payout');
         }
     }
