@@ -452,7 +452,7 @@ class DokuRegistrationController extends Controller
             $timestamp = gmdate("Y-m-d\TH:i:s\Z");
 
             // (3) Gunakan $store->doku_sac_id untuk target path API
-            $targetPath = '/v2-onboarding/accounts/' . $store->doku_sac_id;
+            $targetPath = '/sac-merchant/v1/accounts/' . $store->doku_sac_id;
 
             // =============================================================
             // C. GENERATE SIGNATURE
