@@ -297,6 +297,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/seller/dashboard', function () { return view('seller.dashboard'); })
         ->middleware(RoleMiddleware::class . ':Seller')->name('seller.dashboard');
 
+    // Seller Register
+    Route::get('/seller/register', [SellerRegisterController::class, 'create'])->name('seller.register.form');
+    Route::post('/seller/register', [SellerRegisterController::class, 'store'])->name('seller.register.submit');
+    Route::get('customer/seller/register', [SellerRegisterController::class, 'create'])->name('customer.seller.register.form'); // Alias
+
+
     // User Profile
     Route::get('/user/profile', function () { return view('profile.show'); })->name('profile.show');
 
@@ -418,11 +424,6 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix
 
     Route::post('/koli/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
     Route::post('/koli/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
-
-    // Seller Register
-    Route::get('/seller/register', [SellerRegisterController::class, 'create'])->name('seller.register.form');
-    Route::post('/seller/register', [SellerRegisterController::class, 'store'])->name('seller.register.submit');
-    Route::get('customer/seller/register', [SellerRegisterController::class, 'create'])->name('customer.seller.register.form'); // Alias
 
     // API DANA
 
