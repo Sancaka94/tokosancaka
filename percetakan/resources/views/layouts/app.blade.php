@@ -60,6 +60,7 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    <script src="https://unpkg.com/lucide@latest"></script> {{-- TAMBAHKAN INI --}}
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
@@ -76,6 +77,32 @@
     @stack('styles')
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased" x-data="{ sidebarOpen: false }">
+
+    @if(session('subscription_expired'))
+        <div id="freezeModal" class="fixed inset-0 z-[999] flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm">
+            <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border-4 border-red-500 animate-bounce-short">
+                <div class="text-center">
+                    <div class="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="lock" class="text-red-600 w-10 h-10"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-gray-800 mb-2">AKUN DIBEKUKAN!</h2>
+                    <p class="text-gray-600 mb-6">Masa aktif layanan <strong>{{ Auth::user()->tenant->name }}</strong> telah berakhir pada {{ Auth::user()->tenant->expired_at->format('d M Y') }}.</p>
+
+                    <div class="bg-gray-50 rounded-xl p-4 mb-6 text-left border border-gray-200">
+                        <p class="text-xs text-gray-500 uppercase font-bold mb-1">Status Tagihan:</p>
+                        <p class="text-red-600 font-bold">Menunggu Pembayaran Perpanjangan</p>
+                    </div>
+
+                    <a href="https://tokosancaka.com/billing" class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg text-center">
+                        BAYAR SEKARANG
+                    </a>
+                    <p class="mt-4 text-[10px] text-gray-400 italic">Hubungi Admin: 085745808809 jika ada kendala.</p>
+                </div>
+            </div>
+        </div>
+        @endif
+
+
 
     <div class="flex h-screen overflow-hidden">
 
@@ -104,5 +131,11 @@
     </div>
 
     @stack('scripts')
+
+      <script>
+            // Refresh icon Lucide jika diperlukan
+            lucide.createIcons();
+        </script>
+
 </body>
 </html>
