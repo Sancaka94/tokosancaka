@@ -1,6 +1,6 @@
 {{--
 File: resources/views/customer/pesanan/riwayat_belanja.blade.php
-Updated: Fix Path Image (public/storage) & Status
+Updated: Fix Image URL (from products table) & Resi (shipping_reference)
 --}}
 
 @extends('layouts.customer')
@@ -44,40 +44,27 @@ Updated: Fix Path Image (public/storage) & Status
                         {{-- 1. HEADER KARTU (LOGO TOKO & STATUS) --}}
                         <div class="px-6 py-4 bg-gray-50 border-b border-gray-100 flex flex-wrap justify-between items-center gap-4">
                             <div class="flex items-center gap-3">
-
-                                {{-- LOGIC PENGAMBILAN DATA DARI TABEL PENGGUNA --}}
                                 @php
-                                    // Ambil data User Penjual dari relasi store
                                     $seller = $order->store->user ?? null;
-
-                                    // Ambil Nama Toko (Prioritas dari tabel Pengguna -> store_name)
                                     $storeName = $seller->store_name ?? ($order->store->name ?? 'Toko Tidak Dikenal');
-
-                                    // Ambil Logo Toko (Prioritas dari tabel Pengguna -> store_logo_path)
-                                    // Data di DB contohnya: "uploads/store-logos/Fh27..."
                                     $storeLogoRaw = $seller->store_logo_path ?? null;
                                 @endphp
 
-                                {{-- TAMPILAN LOGO TOKO --}}
                                 <div class="w-10 h-10 rounded-full bg-white border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center">
                                     @if($storeLogoRaw)
                                         <img src="{{ asset('public/storage/' . $storeLogoRaw) }}"
                                              alt="{{ $storeName }}"
                                              class="w-full h-full object-cover"
                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                        {{-- Fallback Icon (Disembunyikan jika gambar ada) --}}
                                         <i class="fas fa-store text-indigo-400 hidden"></i>
                                     @else
-                                        {{-- Fallback jika store_logo_path NULL (seperti id 26, 33, 38...) --}}
                                         <i class="fas fa-store text-indigo-400"></i>
                                     @endif
                                 </div>
 
-                                {{-- TAMPILAN NAMA TOKO --}}
                                 <div>
                                     <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
                                         {{ $storeName }}
-                                        <span class="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">Penjual</span>
                                     </h4>
                                     <p class="text-xs text-gray-500 font-mono mt-0.5">
                                         {{ $order->invoice_number }} • {{ $order->created_at->format('d M Y') }}
@@ -85,28 +72,19 @@ Updated: Fix Path Image (public/storage) & Status
                                 </div>
                             </div>
 
-                            {{-- BADGE STATUS (Tidak Berubah) --}}
                             @php
                                 $status = strtolower($order->status);
                                 $badgeClass = match($status) {
                                     'paid', 'completed', 'success', 'lunas' => 'bg-green-100 text-green-800 border-green-200',
-                                    'pending', 'unpaid', 'menunggu_pembayaran', 'menunggu pembayaran' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                                    'pending', 'unpaid', 'menunggu_pembayaran' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
                                     'processing', 'diproses' => 'bg-blue-100 text-blue-800 border-blue-200',
                                     'shipped', 'dikirim' => 'bg-purple-100 text-purple-800 border-purple-200',
                                     'failed', 'expired', 'batal' => 'bg-red-100 text-red-800 border-red-200',
                                     default => 'bg-gray-100 text-gray-800 border-gray-200'
                                 };
-                                $statusLabel = match($status) {
-                                    'paid' => 'LUNAS',
-                                    'processing' => 'DIPROSES PENJUAL',
-                                    'shipped' => 'SEDANG DIKIRIM',
-                                    'pending', 'unpaid' => 'BELUM BAYAR',
-                                    'completed' => 'SELESAI',
-                                    default => strtoupper($status)
-                                };
                             @endphp
                             <span class="px-3 py-1 rounded-full text-xs font-bold border {{ $badgeClass }}">
-                                {{ $statusLabel }}
+                                {{ strtoupper($status) }}
                             </span>
                         </div>
 
@@ -115,23 +93,18 @@ Updated: Fix Path Image (public/storage) & Status
 
                             {{-- KOLOM KIRI: PRODUK --}}
                             <div class="md:col-span-2 space-y-4">
-                                @php
-                                    $items = $order->items ?? collect([]);
-                                @endphp
+                                @php $items = $order->items ?? collect([]); @endphp
 
                                 @foreach($items->take(2) as $item)
                                     <div class="flex items-start gap-4 p-2 hover:bg-gray-50 rounded-lg transition">
 
-                                        {{-- GAMBAR PRODUK (FIXED PATH) --}}
+                                        {{-- GAMBAR PRODUK (DARI KOLOM image_url) --}}
                                         <div class="w-20 h-20 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden border border-gray-200 relative group">
-                                            @if($item->product && $item->product->images && $item->product->images->count() > 0)
+                                            @if($item->product && !empty($item->product->image_url))
                                                 @php
-                                                    $rawPath = $item->product->images->first()->path;
-
-                                                    // Fix Path: Pastikan mengarah ke public/storage/products/...
-                                                    // Hapus 'public/' jika double di database (opsional, jaga-jaga)
+                                                    $rawPath = $item->product->image_url;
+                                                    // Bersihkan path
                                                     $cleanPath = str_replace('public/', '', $rawPath);
-
                                                     // URL Final
                                                     $imageUrl = asset('public/storage/' . $cleanPath);
                                                 @endphp
@@ -139,7 +112,7 @@ Updated: Fix Path Image (public/storage) & Status
                                                 <img src="{{ $imageUrl }}"
                                                      alt="{{ $item->product->name }}"
                                                      class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                                     onerror="this.onerror=null; this.src='https://via.placeholder.com/150?text=No+Image';">
+                                                     onerror="this.onerror=null; this.src='https://via.placeholder.com/150?text=No+Pic';">
                                             @else
                                                 <div class="w-full h-full flex flex-col items-center justify-center text-gray-400">
                                                     <i class="fas fa-image text-xl mb-1"></i>
@@ -152,40 +125,29 @@ Updated: Fix Path Image (public/storage) & Status
                                             <h5 class="text-sm font-bold text-gray-900 line-clamp-2">
                                                 {{ $item->product?->name ?? 'Produk Dihapus' }}
                                             </h5>
-
                                             @if($item->variant)
                                                 <p class="text-xs text-gray-500 mt-1">
                                                     Varian: {{ $item->variant->sku_code ?? 'Default' }}
                                                 </p>
                                             @endif
-
                                             <p class="text-xs text-gray-700 font-medium mt-2">
                                                 {{ $item->quantity }} x Rp {{ number_format($item->price, 0, ',', '.') }}
                                             </p>
                                         </div>
                                     </div>
                                 @endforeach
-
-                                @if($items->count() > 2)
-                                    <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block text-xs text-indigo-600 font-medium hover:underline pl-24">
-                                        + {{ $items->count() - 2 }} produk lainnya...
-                                    </a>
-                                @endif
                             </div>
 
                             {{-- KOLOM KANAN: PENGIRIMAN & TOTAL --}}
                             <div class="flex flex-col justify-between border-t md:border-t-0 md:border-l border-gray-100 md:pl-8 pt-4 md:pt-0">
 
-                                {{-- INFO KURIR & LOGO EKSPEDISI --}}
                                 <div class="mb-4">
                                     <p class="text-xs text-gray-500 uppercase font-bold mb-2 tracking-wider">KURIR PENGIRIMAN</p>
 
                                     <div class="flex items-center gap-3">
                                         @php
-                                            // Parse nama kurir (contoh: anteraja, jne)
                                             $parts = explode('-', $order->shipping_method);
                                             $courierName = $parts[1] ?? 'Kurir';
-                                            // Path Logo Ekspedisi
                                             $logoExpedition = asset('public/storage/logo-ekspedisi/' . strtolower($courierName) . '.png');
                                         @endphp
 
@@ -194,26 +156,26 @@ Updated: Fix Path Image (public/storage) & Status
                                                  alt="{{ $courierName }}"
                                                  class="w-full h-full object-contain"
                                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                            {{-- Fallback Icon --}}
                                             <i class="fas fa-truck text-gray-400 text-lg hidden text-center w-full mt-1"></i>
                                         </div>
 
                                         <div>
-                                            <p class="text-sm font-bold text-gray-800 uppercase">
-                                                {{ $courierName }}
-                                            </p>
-                                            <p class="text-[10px] text-gray-500">
-                                                {{ strtoupper($parts[2] ?? 'Layanan') }}
-                                            </p>
+                                            <p class="text-sm font-bold text-gray-800 uppercase">{{ $courierName }}</p>
+                                            <p class="text-[10px] text-gray-500">{{ strtoupper($parts[2] ?? '') }}</p>
                                         </div>
                                     </div>
 
-                                    {{-- STATUS PENGIRIMAN --}}
-                                    @if($order->shipping_resi)
-                                        <div class="mt-3 bg-green-50 border border-green-200 rounded p-2 flex justify-between items-center group cursor-pointer" onclick="navigator.clipboard.writeText('{{ $order->shipping_resi }}'); alert('Resi disalin!')">
+                                    {{-- PERBAIKAN LOGIKA RESI: Cek shipping_resi ATAU shipping_reference --}}
+                                    @php
+                                        // Cek kolom shipping_resi dulu (jika ada di model), kalau kosong pakai shipping_reference
+                                        $resi = $order->shipping_resi ?? ($order->shipping_reference ?? null);
+                                    @endphp
+
+                                    @if(!empty($resi) && $resi !== 'NULL')
+                                        <div class="mt-3 bg-green-50 border border-green-200 rounded p-2 flex justify-between items-center group cursor-pointer" onclick="navigator.clipboard.writeText('{{ $resi }}'); alert('Resi disalin!')">
                                             <div>
-                                                <p class="text-[10px] text-green-700 font-bold uppercase">Nomor Resi</p>
-                                                <p class="text-xs font-mono text-gray-900 font-bold">{{ $order->shipping_resi }}</p>
+                                                <p class="text-[10px] text-green-700 font-bold uppercase">Nomor Resi / Ref</p>
+                                                <p class="text-xs font-mono text-gray-900 font-bold">{{ $resi }}</p>
                                             </div>
                                             <i class="fas fa-copy text-green-400 group-hover:text-green-600"></i>
                                         </div>
@@ -225,7 +187,6 @@ Updated: Fix Path Image (public/storage) & Status
                                     @endif
                                 </div>
 
-                                {{-- TOTAL & TOMBOL --}}
                                 <div>
                                     <div class="flex justify-between items-end mb-4 border-t border-dashed border-gray-200 pt-3">
                                         <span class="text-xs text-gray-500">Total Belanja</span>
@@ -233,26 +194,24 @@ Updated: Fix Path Image (public/storage) & Status
                                     </div>
 
                                     <div class="grid gap-2">
-                                        {{-- LOGIKA TOMBOL BERDASARKAN STATUS --}}
                                         @if(in_array($status, ['pending', 'unpaid', 'menunggu_pembayaran']))
                                             @if(!empty($order->invoice_number))
                                                 <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-indigo-600 text-white text-sm font-bold py-2.5 rounded-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
                                                     Bayar Sekarang
                                                 </a>
                                             @endif
-                                        @elseif($order->shipping_resi)
-                                            <a href="{{ route('tracking.index', ['resi' => $order->shipping_resi]) }}" class="block w-full text-center border border-indigo-600 text-indigo-600 text-sm font-bold py-2.5 rounded-lg hover:bg-indigo-50 transition">
+                                        @elseif(!empty($resi))
+                                            {{-- Tracking Link --}}
+                                            <a href="{{ route('tracking.index', ['resi' => $resi]) }}" class="block w-full text-center border border-indigo-600 text-indigo-600 text-sm font-bold py-2.5 rounded-lg hover:bg-indigo-50 transition">
                                                 Lacak Paket
                                             </a>
                                             <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center text-gray-500 text-xs hover:text-gray-700 mt-1">
                                                 Lihat Invoice
                                             </a>
                                         @else
-                                            @if(!empty($order->invoice_number))
-                                                <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-gray-100 text-gray-700 text-sm font-bold py-2.5 rounded-lg hover:bg-gray-200 transition">
-                                                    Detail Pesanan
-                                                </a>
-                                            @endif
+                                            <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-gray-100 text-gray-700 text-sm font-bold py-2.5 rounded-lg hover:bg-gray-200 transition">
+                                                Detail Pesanan
+                                            </a>
                                         @endif
                                     </div>
                                 </div>
@@ -263,7 +222,6 @@ Updated: Fix Path Image (public/storage) & Status
                 @endforeach
             </div>
 
-            {{-- Pagination --}}
             <div class="mt-8">
                 {{ $pesanans->links() }}
             </div>
