@@ -671,40 +671,47 @@ class CheckoutController extends Controller
             // --- 7. Selesai Semua, Commit Transaksi ---
             }
 
+            // ==========================================================
+            // 4. PROSES REDIRECT (UPDATE SESUAI INSTRUKSI)
+            // ==========================================================
+
+            // Simpan status akhir & clear session
             $order->save();
             DB::commit();
+            session()->forget('cart');
 
-            // ==========================================================
-            // DITAMBAHKAN: KIRIM NOTIFIKASI (HANYA UNTUK COD/CASH)
-            // ==========================================================
-            // 4. Proses Pembayaran
-            if (in_array($request->payment_method, ['cod', 'cash'])) {
-                $this->kirimNotifikasiPesananLengkap($order, 'Baru (COD)');
-                $order->save();
-                DB::commit();
-                session()->forget('cart');
-                return redirect()->route('checkout.invoice', ['invoice' => $order->invoice_number]);
-            }
-
-            elseif ($request->payment_method === 'DANA') {
-                // --- DANA DIRECT DEBIT INTEGRATION ---
-                DB::commit(); // Commit first so order exists in DB before API call
+            // --- A. JIKA METODE DANA (AUTO REDIRECT KE PAYMENT GATEWAY) ---
+            if ($request->payment_method === 'DANA') {
                 return $this->createPaymentDANA($order);
             }
 
-        else {
-                // Tripay or Doku Logic (Placeholder)
-                // $this->kirimNotifikasiPesananLengkap($order, 'Baru (Menunggu Bayar)');
-                // $order->save();
-                // DB::commit();
-                // session()->forget('cart');
-                // return redirect()->route('checkout.invoice', ['invoice' => $order->invoice_number]);
+            // --- B. JIKA COD / CASH / TRIPAY / DOKU (REDIRECT KE HALAMAN TOKO) ---
 
-                // Fallback for demo purposes if no other gateway is active
-                $order->save();
-                DB::commit();
-                session()->forget('cart');
-                return redirect()->route('checkout.invoice', ['invoice' => $order->invoice_number]);
+            // Cek Role User untuk menentukan tujuan redirect
+            $currentUser = Auth::user();
+
+            // 1. Jika ADMIN -> Ke Halaman Admin Orders
+            if ($currentUser && $currentUser->role === 'Admin') {
+
+                // Kirim notifikasi jika COD/Cash
+                if (in_array($request->payment_method, ['cod', 'cash'])) {
+                    $this->kirimNotifikasiPesananLengkap($order, 'Baru (COD/Cash)');
+                }
+
+                return redirect()->to('https://tokosancaka.com/admin/orders')
+                    ->with('success', 'Pesanan berhasil dibuat (Mode Admin).');
+            }
+
+            // 2. Jika CUSTOMER / SELLER -> Ke Halaman Riwayat Belanja
+            else {
+
+                // Kirim notifikasi jika COD/Cash
+                if (in_array($request->payment_method, ['cod', 'cash'])) {
+                    $this->kirimNotifikasiPesananLengkap($order, 'Baru (COD/Cash)');
+                }
+
+                return redirect()->route('customer.pesanan.riwayat_belanja')
+                    ->with('success', 'Pesanan berhasil! Silakan cek status pembayaran Anda.');
             }
 
         } catch (\Exception $e) {
