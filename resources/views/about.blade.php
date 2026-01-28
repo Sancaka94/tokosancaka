@@ -3,230 +3,308 @@
 @section('title', 'Tentang Kami - CV. Sancaka Karya Hutama')
 
 @section('content')
-<div class="bg-gray-50 min-h-screen font-sans">
 
-    {{-- 1. HERO SECTION --}}
-    <div class="relative bg-gradient-to-r from-indigo-900 to-blue-800 text-white overflow-hidden">
-        <div class="absolute inset-0">
-            <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80" alt="Office Building" class="w-full h-full object-cover opacity-10">
-        </div>
-        <div class="relative max-w-7xl mx-auto py-20 px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
-            <span class="bg-indigo-800 bg-opacity-50 text-indigo-100 py-1 px-3 rounded-full text-sm font-semibold mb-4 border border-indigo-500">
-                Terpercaya & Profesional
-            </span>
-            <h1 class="text-3xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl mb-4">
-                CV. SANCAKA KARYA HUTAMA
-            </h1>
-            <p class="text-xl max-w-3xl mx-auto text-indigo-100 font-light">
-                Mitra Solusi Terbaik untuk Bisnis dan Kebutuhan Anda. Bergerak di bidang jual beli barang jasa, pengiriman, perizinan, hingga digital marketing.
-            </p>
-        </div>
+{{-- CUSTOM CSS UNTUK HALAMAN INI --}}
+<style>
+    /* Hero Section Gradient & Overlay */
+    .hero-about {
+        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        color: white;
+        padding: 80px 0;
+        position: relative;
+        overflow: hidden;
+    }
+    .hero-about::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-image: url('https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80');
+        background-size: cover;
+        background-position: center;
+        opacity: 0.15;
+    }
+    .hero-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    /* Kartu Layanan */
+    .service-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border: none;
+        border-top: 4px solid transparent;
+    }
+    .service-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+    }
+    .border-top-blue { border-top-color: #0d6efd; }
+    .border-top-red { border-top-color: #dc3545; }
+    .border-top-green { border-top-color: #198754; }
+    .border-top-purple { border-top-color: #6f42c1; }
+    .border-top-yellow { border-top-color: #ffc107; }
+
+    /* Icon Circle */
+    .icon-box {
+        width: 60px; height: 60px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+</style>
+
+{{-- 1. HERO SECTION --}}
+<div class="hero-about text-center">
+    <div class="container hero-content">
+        <span class="badge rounded-pill bg-light text-primary mb-3 px-3 py-2 border">Terpercaya & Profesional</span>
+        <h1 class="display-4 fw-bold mb-3">CV. SANCAKA KARYA HUTAMA</h1>
+        <p class="lead mx-auto mb-0" style="max-width: 800px;">
+            Mitra Solusi Terbaik untuk Bisnis dan Kebutuhan Anda. Bergerak di bidang jual beli barang jasa, pengiriman, perizinan, hingga digital marketing.
+        </p>
     </div>
+</div>
 
-    {{-- 2. INTRODUCTION & VISI MISI --}}
-    <div class="py-16 bg-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+{{-- 2. INTRODUCTION & VISI MISI --}}
+<div class="py-5 bg-white">
+    <div class="container">
 
-            {{-- Intro --}}
-            <div class="text-center mb-16 max-w-4xl mx-auto">
-                <h2 class="text-base text-indigo-600 font-bold tracking-wide uppercase">Tentang Kami</h2>
-                <p class="mt-4 text-lg text-gray-600 leading-relaxed">
+        {{-- Intro Text --}}
+        <div class="row justify-content-center mb-5">
+            <div class="col-lg-8 text-center">
+                <h6 class="text-primary fw-bold text-uppercase ls-1">Tentang Kami</h6>
+                <p class="mt-3 text-muted fs-5">
                     Selamat datang di <b>CV. SANCAKA KARYA HUTAMA</b>, perusahaan terpercaya yang bergerak di bidang jual beli barang dan jasa. Kami hadir untuk memberikan solusi komprehensif dalam berbagai kebutuhan Anda, termasuk jasa pengiriman, desain grafis, pemasaran digital, percetakan, hingga layanan profesional lainnya.
                 </p>
             </div>
+        </div>
 
-            {{-- Grid Visi Misi --}}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
-                <div class="bg-indigo-50 p-8 rounded-2xl border-l-4 border-indigo-600 shadow-sm hover:shadow-md transition">
-                    <div class="flex items-center mb-4">
-                        <div class="bg-indigo-600 p-3 rounded-lg text-white mr-4">
-                            <i class="fas fa-eye text-2xl"></i>
+        {{-- Visi & Misi --}}
+        <div class="row g-4 align-items-start">
+            {{-- Visi --}}
+            <div class="col-md-6">
+                <div class="p-4 bg-light rounded-3 shadow-sm h-100 border-start border-4 border-primary">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary text-white rounded p-3 me-3">
+                            <i class="fas fa-eye fa-lg"></i>
                         </div>
-                        <h3 class="text-2xl font-bold text-gray-900">Visi Kami</h3>
+                        <h3 class="fw-bold m-0 text-dark">Visi Kami</h3>
                     </div>
-                    <p class="text-gray-700 text-lg leading-relaxed italic">
+                    <p class="text-secondary fst-italic fs-5 mb-0">
                         "Menjadi perusahaan terkemuka di bidang jual beli barang dan jasa di Indonesia, yang dikenal karena inovasi, kepercayaan, dan layanan terbaik untuk memenuhi kebutuhan pelanggan."
                     </p>
                 </div>
+            </div>
 
-                <div>
-                    <h3 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                        <i class="fas fa-bullseye text-indigo-600 mr-3"></i> Misi Kami
+            {{-- Misi --}}
+            <div class="col-md-6">
+                <div class="h-100 ps-md-3">
+                    <h3 class="fw-bold mb-4 d-flex align-items-center text-dark">
+                        <i class="fas fa-bullseye text-primary me-3"></i> Misi Kami
                     </h3>
-                    <ul class="space-y-4">
-                        <li class="flex items-start">
-                            <i class="fas fa-check-circle text-green-500 mt-1 mr-3 flex-shrink-0"></i>
-                            <span class="text-gray-600">Memberikan layanan berkualitas tinggi dengan mengutamakan profesionalisme.</span>
+                    <ul class="list-unstyled">
+                        <li class="d-flex mb-3">
+                            <i class="fas fa-check-circle text-success mt-1 me-3 flex-shrink-0"></i>
+                            <span class="text-secondary">Memberikan layanan berkualitas tinggi dengan mengutamakan profesionalisme.</span>
                         </li>
-                        <li class="flex items-start">
-                            <i class="fas fa-check-circle text-green-500 mt-1 mr-3 flex-shrink-0"></i>
-                            <span class="text-gray-600">Menghadirkan solusi pengiriman barang aman, cepat, dan bergaransi.</span>
+                        <li class="d-flex mb-3">
+                            <i class="fas fa-check-circle text-success mt-1 me-3 flex-shrink-0"></i>
+                            <span class="text-secondary">Menghadirkan solusi pengiriman barang aman, cepat, dan bergaransi.</span>
                         </li>
-                        <li class="flex items-start">
-                            <i class="fas fa-check-circle text-green-500 mt-1 mr-3 flex-shrink-0"></i>
-                            <span class="text-gray-600">Mendukung kebutuhan digital melalui desain grafis & website inovatif.</span>
+                        <li class="d-flex mb-3">
+                            <i class="fas fa-check-circle text-success mt-1 me-3 flex-shrink-0"></i>
+                            <span class="text-secondary">Mendukung kebutuhan digital melalui desain grafis & website inovatif.</span>
                         </li>
-                        <li class="flex items-start">
-                            <i class="fas fa-check-circle text-green-500 mt-1 mr-3 flex-shrink-0"></i>
-                            <span class="text-gray-600">Menyediakan layanan perizinan (PBG, SLF, IMB) yang cepat & transparan.</span>
+                        <li class="d-flex mb-3">
+                            <i class="fas fa-check-circle text-success mt-1 me-3 flex-shrink-0"></i>
+                            <span class="text-secondary">Menyediakan layanan perizinan (PBG, SLF, IMB) yang cepat & transparan.</span>
                         </li>
-                        <li class="flex items-start">
-                            <i class="fas fa-check-circle text-green-500 mt-1 mr-3 flex-shrink-0"></i>
-                            <span class="text-gray-600">Menjadi mitra andal dalam percetakan berkualitas di Ngawi.</span>
+                        <li class="d-flex mb-3">
+                            <i class="fas fa-check-circle text-success mt-1 me-3 flex-shrink-0"></i>
+                            <span class="text-secondary">Menjadi mitra andal dalam percetakan berkualitas di Ngawi.</span>
                         </li>
                     </ul>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    {{-- 3. LAYANAN KAMI (Expanded) --}}
-    <div class="py-16 bg-gray-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl font-extrabold text-gray-900">Layanan Unggulan</h2>
-                <p class="mt-4 text-gray-500">Solusi lengkap untuk kebutuhan pribadi dan bisnis Anda.</p>
+{{-- 3. LAYANAN KAMI --}}
+<div class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">Layanan Unggulan</h2>
+            <p class="text-muted">Solusi lengkap untuk kebutuhan pribadi dan bisnis Anda.</p>
+        </div>
+
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+
+            {{-- Card 1 --}}
+            <div class="col">
+                <div class="card h-100 shadow-sm service-card border-top-blue p-3">
+                    <div class="card-body">
+                        <div class="icon-box bg-primary bg-opacity-10 text-primary">
+                            <i class="fas fa-handshake"></i>
+                        </div>
+                        <h5 class="card-title fw-bold">Jual Beli Barang & Jasa</h5>
+                        <p class="card-text text-muted small">Menyediakan beragam barang berkualitas tinggi serta layanan profesional dengan hasil terbaik untuk kepuasan Anda.</p>
+                    </div>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-
-                <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-blue-500 hover:-translate-y-1 transition duration-300">
-                    <div class="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-2xl mb-4">
-                        <i class="fas fa-handshake"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Jual Beli Barang & Jasa</h3>
-                    <p class="text-gray-600 text-sm">Menyediakan beragam barang berkualitas tinggi serta layanan profesional dengan hasil terbaik untuk kepuasan Anda.</p>
-                </div>
-
-                <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-red-500 hover:-translate-y-1 transition duration-300">
-                    <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center text-red-600 text-2xl mb-4">
-                        <i class="fas fa-truck-fast"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Jasa Pengiriman & Cargo</h3>
-                    <p class="text-gray-600 text-sm mb-3">Pengiriman cepat, murah, amanah & bergaransi. Melayani paket reguler, kargo, pindahan rumah/kos, hingga kirim motor.</p>
-                    <div class="flex flex-wrap gap-1">
-                        @foreach(['JNE','J&T','SiCepat','POS','TiKi','Ninja','Lion','Wahana'] as $exp)
-                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">{{ $exp }}</span>
-                        @endforeach
+            {{-- Card 2 --}}
+            <div class="col">
+                <div class="card h-100 shadow-sm service-card border-top-red p-3">
+                    <div class="card-body">
+                        <div class="icon-box bg-danger bg-opacity-10 text-danger">
+                            <i class="fas fa-shipping-fast"></i>
+                        </div>
+                        <h5 class="card-title fw-bold">Jasa Pengiriman & Cargo</h5>
+                        <p class="card-text text-muted small mb-3">Pengiriman cepat, murah, amanah & bergaransi. Melayani paket reguler, kargo, pindahan rumah/kos, hingga kirim motor.</p>
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach(['JNE','J&T','SiCepat','POS','TiKi','Ninja','Lion','Wahana'] as $exp)
+                                <span class="badge bg-secondary bg-opacity-10 text-dark border">{{ $exp }}</span>
+                            @endforeach
+                        </div>
                     </div>
                 </div>
-
-                <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-green-500 hover:-translate-y-1 transition duration-300">
-                    <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-2xl mb-4">
-                        <i class="fas fa-file-contract"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Jasa Perizinan Bangunan</h3>
-                    <ul class="text-sm text-gray-600 space-y-1 list-disc list-inside">
-                        <li><b>PBG</b> (Persetujuan Bangunan Gedung)</li>
-                        <li><b>SLF</b> (Sertifikat Laik Fungsi)</li>
-                        <li><b>IMB</b> (Izin Mendirikan Bangunan)</li>
-                    </ul>
-                    <p class="text-xs text-gray-500 mt-2">Proses cepat, efisien, dan transparan.</p>
-                </div>
-
-                <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-purple-500 hover:-translate-y-1 transition duration-300">
-                    <div class="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 text-2xl mb-4">
-                        <i class="fas fa-laptop-code"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Desain & Digital Marketing</h3>
-                    <p class="text-gray-600 text-sm">Layanan desain grafis kreatif untuk branding, pembuatan website profesional, dan strategi pemasaran digital yang efektif.</p>
-                </div>
-
-                <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-yellow-500 hover:-translate-y-1 transition duration-300">
-                    <div class="w-14 h-14 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-2xl mb-4">
-                        <i class="fas fa-print"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Percetakan & Printing</h3>
-                    <p class="text-gray-600 text-sm">Layanan percetakan, printing, dan print copy dengan kualitas tinggi di wilayah Ngawi dan sekitarnya.</p>
-                </div>
-
-                <div class="bg-indigo-600 rounded-xl shadow-md p-6 text-white hover:-translate-y-1 transition duration-300 flex flex-col justify-center items-center text-center">
-                    <i class="fas fa-headset text-4xl mb-4 opacity-80"></i>
-                    <h3 class="text-xl font-bold mb-2">Butuh Bantuan?</h3>
-                    <p class="text-indigo-100 text-sm mb-4">Tim kami siap membantu kebutuhan bisnis Anda kapan saja.</p>
-                    <a href="https://wa.me/6285745808809" target="_blank" class="bg-white text-indigo-700 font-bold py-2 px-6 rounded-full hover:bg-gray-100 transition">
-                        Hubungi WhatsApp
-                    </a>
-                </div>
-
             </div>
+
+            {{-- Card 3 --}}
+            <div class="col">
+                <div class="card h-100 shadow-sm service-card border-top-green p-3">
+                    <div class="card-body">
+                        <div class="icon-box bg-success bg-opacity-10 text-success">
+                            <i class="fas fa-file-contract"></i>
+                        </div>
+                        <h5 class="card-title fw-bold">Jasa Perizinan Bangunan</h5>
+                        <ul class="small text-muted ps-3 mb-2">
+                            <li><b>PBG</b> (Persetujuan Bangunan Gedung)</li>
+                            <li><b>SLF</b> (Sertifikat Laik Fungsi)</li>
+                            <li><b>IMB</b> (Izin Mendirikan Bangunan)</li>
+                        </ul>
+                        <p class="card-text text-muted small">Proses cepat, efisien, dan transparan.</p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Card 4 --}}
+            <div class="col">
+                <div class="card h-100 shadow-sm service-card border-top-purple p-3">
+                    <div class="card-body">
+                        <div class="icon-box bg-info bg-opacity-10 text-dark" style="color: #6f42c1;">
+                            <i class="fas fa-laptop-code"></i>
+                        </div>
+                        <h5 class="card-title fw-bold">Desain & Digital Marketing</h5>
+                        <p class="card-text text-muted small">Layanan desain grafis kreatif untuk branding, pembuatan website profesional, dan strategi pemasaran digital yang efektif.</p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Card 5 --}}
+            <div class="col">
+                <div class="card h-100 shadow-sm service-card border-top-yellow p-3">
+                    <div class="card-body">
+                        <div class="icon-box bg-warning bg-opacity-10 text-warning">
+                            <i class="fas fa-print"></i>
+                        </div>
+                        <h5 class="card-title fw-bold">Percetakan & Printing</h5>
+                        <p class="card-text text-muted small">Layanan percetakan, printing, dan print copy dengan kualitas tinggi di wilayah Ngawi dan sekitarnya.</p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Card 6: Support --}}
+            <div class="col">
+                <div class="card h-100 shadow-sm bg-primary text-white service-card p-3 text-center d-flex align-items-center justify-content-center">
+                    <div class="card-body">
+                        <i class="fas fa-headset fa-3x mb-3 text-white-50"></i>
+                        <h5 class="card-title fw-bold">Butuh Bantuan?</h5>
+                        <p class="card-text small text-white-50 mb-4">Tim kami siap membantu kebutuhan bisnis Anda kapan saja.</p>
+                        <a href="https://wa.me/6285745808809" target="_blank" class="btn btn-light fw-bold rounded-pill px-4 text-primary">
+                            <i class="fab fa-whatsapp me-2"></i> Hubungi WhatsApp
+                        </a>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
+</div>
 
-    {{-- 4. MITRA EKSPEDISI BAR --}}
-    <div class="bg-white py-10 border-y border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 text-center">
-            <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-6">Bekerja sama dengan Ekspedisi Terpercaya</p>
-            <div class="flex flex-wrap justify-center gap-4 md:gap-8 opacity-70 grayscale hover:grayscale-0 transition-all duration-500">
-                @php
-                    $partners = ['JNE', 'TIKI', 'POS Indonesia', 'SiCepat', 'J&T Express', 'Ninja Xpress', 'Lion Parcel', 'Wahana', 'ID Express', 'Dakota Cargo', 'Indah Cargo', 'SAP Express'];
-                @endphp
-                @foreach($partners as $partner)
-                    <span class="px-4 py-2 bg-gray-100 rounded-lg font-bold text-gray-700 border border-gray-300 shadow-sm">{{ $partner }}</span>
-                @endforeach
-            </div>
+{{-- 4. PARTNERS --}}
+<div class="py-5 bg-white border-top border-bottom">
+    <div class="container text-center">
+        <p class="text-uppercase fw-bold text-muted small mb-4" style="letter-spacing: 2px;">Bekerja sama dengan Ekspedisi Terpercaya</p>
+        <div class="d-flex flex-wrap justify-content-center gap-3 opacity-75">
+            @php
+                $partners = ['JNE', 'TIKI', 'POS Indonesia', 'SiCepat', 'J&T Express', 'Ninja Xpress', 'Lion Parcel', 'Wahana', 'ID Express', 'Dakota Cargo', 'Indah Cargo', 'SAP Express'];
+            @endphp
+            @foreach($partners as $partner)
+                <span class="badge bg-white text-dark border p-3 fs-6 shadow-sm">{{ $partner }}</span>
+            @endforeach
         </div>
     </div>
+</div>
 
-    {{-- 5. KONTAK & FOOTER INFO --}}
-    <div class="bg-gray-900 text-white py-16">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+{{-- 5. CONTACT & FOOTER --}}
+<div class="bg-dark text-white py-5">
+    <div class="container">
+        <div class="row align-items-center g-5">
 
-                <div>
-                    <h2 class="text-3xl font-extrabold mb-6">Hubungi Kami</h2>
-                    <p class="text-gray-400 mb-8 text-lg">
-                        Kami selalu siap membantu kebutuhan Anda. Untuk informasi lebih lanjut mengenai layanan kami, silakan hubungi kontak di bawah ini.
-                    </p>
+            {{-- Contact Info --}}
+            <div class="col-lg-6">
+                <h2 class="fw-bold mb-4">Hubungi Kami</h2>
+                <p class="text-white-50 mb-5">
+                    Kami selalu siap membantu kebutuhan Anda. Untuk informasi lebih lanjut mengenai layanan kami, silakan hubungi kontak di bawah ini.
+                </p>
 
-                    <div class="space-y-6">
-                        <div class="flex items-start">
-                            <i class="fas fa-map-marked-alt text-indigo-400 text-2xl mt-1 mr-4"></i>
-                            <div>
-                                <h4 class="font-bold text-lg">Alamat Kantor</h4>
-                                <p class="text-gray-300 leading-relaxed">
-                                    Jl. Dr. Wahidin No.18A RT.22 RW.05,<br>
-                                    Kel. Ketanggi, Kec. Ngawi,<br>
-                                    Kab. Ngawi, Jawa Timur 63211
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center">
-                            <i class="fab fa-whatsapp text-green-400 text-2xl mr-4"></i>
-                            <div>
-                                <h4 class="font-bold text-lg">WhatsApp</h4>
-                                <p class="text-gray-300 font-mono text-lg">0857-4580-8809</p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center">
-                            <i class="fas fa-globe text-blue-400 text-2xl mr-4"></i>
-                            <div>
-                                <h4 class="font-bold text-lg">Website</h4>
-                                <a href="https://sancaka.bisnis.pro" target="_blank" class="text-indigo-300 hover:text-white underline decoration-dotted">
-                                    sancaka.bisnis.pro
-                                </a>
-                            </div>
-                        </div>
+                <div class="d-flex mb-4">
+                    <div class="me-4 text-primary fs-4"><i class="fas fa-map-marker-alt"></i></div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Alamat Kantor</h5>
+                        <p class="text-white-50 mb-0">
+                            Jl. Dr. Wahidin No.18A RT.22 RW.05,<br>
+                            Kel. Ketanggi, Kec. Ngawi,<br>
+                            Kab. Ngawi, Jawa Timur 63211
+                        </p>
                     </div>
                 </div>
 
-                <div class="relative h-80 w-full rounded-2xl overflow-hidden shadow-2xl border-4 border-gray-700">
+                <div class="d-flex mb-4">
+                    <div class="me-4 text-success fs-4"><i class="fab fa-whatsapp"></i></div>
+                    <div>
+                        <h5 class="fw-bold mb-1">WhatsApp</h5>
+                        <p class="text-white-50 mb-0 font-monospace fs-5">0857-4580-8809</p>
+                    </div>
+                </div>
+
+                <div class="d-flex mb-4">
+                    <div class="me-4 text-info fs-4"><i class="fas fa-globe"></i></div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Website</h5>
+                        <a href="https://sancaka.bisnis.pro" target="_blank" class="text-white-50 text-decoration-none border-bottom border-secondary pb-1 hover-text-white">
+                            sancaka.bisnis.pro
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Google Maps --}}
+            <div class="col-lg-6">
+                <div class="ratio ratio-16x9 rounded-3 overflow-hidden shadow-lg border border-secondary">
                     <iframe
-                        class="absolute inset-0 w-full h-full"
-                        src="https://www.google.com/maps?q=Jl.+Dr.+Wahidin+No.18A,+Ngawi,+Jawa+Timur&output=embed"
-                        frameborder="0"
-                        style="border:0;"
+                        src="https://maps.google.com/maps?q=Jl.%20Dr.%20Wahidin%20No.18A%20Ngawi&t=&z=15&ie=UTF8&iwloc=&output=embed"
                         allowfullscreen=""
-                        aria-hidden="false"
-                        tabindex="0">
+                        loading="lazy"
+                        style="border:0;">
                     </iframe>
                 </div>
-
             </div>
+
         </div>
     </div>
-
 </div>
+
 @endsection
