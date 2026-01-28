@@ -1511,4 +1511,33 @@ public function cetakThermal($resi)
         return view('customer.pesanan.riwayat_belanja', compact('pesanans'));
     }
 
+    /**
+     * Menampilkan detail pesanan (Redirect ke Invoice).
+     */
+    public function show($id)
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        $userId = $user->id_pengguna ?? $user->id;
+
+        // 1. Cari Order berdasarkan ID dan User yang login
+        // Kita cek di tabel 'orders' (Marketplace)
+        $order = \App\Models\Order::where('id', $id)
+                    ->where('user_id', $userId)
+                    ->first();
+
+        // 2. Jika tidak ketemu di tabel orders, cek tabel pesanan (Legacy/Manual)
+        if (!$order) {
+            $order = \App\Models\Pesanan::where('id', $id)
+                        ->where('id_pengguna_pembeli', $userId)
+                        ->firstOrFail();
+
+            $invoiceNumber = $order->nomor_invoice;
+        } else {
+            $invoiceNumber = $order->invoice_number;
+        }
+
+        // 3. Arahkan ke halaman Invoice yang sudah ada
+        return redirect()->route('checkout.invoice', ['invoice' => $invoiceNumber]);
+    }
+
 }
