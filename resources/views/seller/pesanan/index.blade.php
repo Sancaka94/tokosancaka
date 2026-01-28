@@ -37,7 +37,7 @@
 
         {{-- Card Utama --}}
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-            
+
             {{-- Form Pencarian --}}
             <div class="p-6 border-b border-gray-200">
                 <form action="{{ route('seller.pesanan.marketplace.index') }}" method="GET">
@@ -53,7 +53,7 @@
                     </div>
                 </form>
             </div>
-            
+
             {{-- Header Tabel --}}
             <div class="hidden lg:grid grid-cols-12 gap-4 px-6 py-3 bg-purple-50 border-b border-purple-200 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
                 <div class="col-span-1">No</div>
@@ -136,10 +136,10 @@
                                 <div class="font-semibold text-gray-900">Rp{{ number_format($order->shipping_cost) }}</div>
                                 @if($order->cod_fee > 0)
                                     @if(strtolower($order->payment_method) == 'cod')
-    <div class="text-xs text-gray-600">Tagihan COD: Rp{{ number_format($order->total_amount) }}</div>
-@elseif($order->cod_fee > 0)
-    <div class="text-xs text-gray-600">Biaya COD: Rp{{ number_format($order->cod_fee) }}</div>
-@endif
+                                    <div class="text-xs text-gray-600">Tagihan COD: Rp{{ number_format($order->total_amount) }}</div>
+                                @elseif($order->cod_fee > 0)
+                                    <div class="text-xs text-gray-600">Biaya COD: Rp{{ number_format($order->cod_fee) }}</div>
+                                @endif
                                 @endif
                                 {{-- Kode Resi sudah benar, masalah ada di Controller Mbah --}}
                                 <div class="text-xs text-gray-500 break-all">Resi: {{ $order->shipping_reference ?? '-' }}</div>
@@ -157,7 +157,7 @@
                                     @php
                                         $productWeight = $item->product->weight ?? 0;
                                         $totalWeight += $productWeight * $item->quantity;
-                                        
+
                                         // ======================================================
                                         // PERBAIKAN 4: Ganti default dimensi ke 5
                                         // ======================================================
@@ -195,7 +195,7 @@
                     </div>
                 @endforelse
             </div>
-            
+
             {{-- Pagination --}}
             <div class="p-6 bg-gray-50 border-t">
                 {{ $orders->links() }}

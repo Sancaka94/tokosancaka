@@ -372,7 +372,7 @@ class PesananController extends Controller
 
                 $paymentGateway = 'tripay';
 
-                if (strtoupper($validatedData['payment_method']) === 'DOKU_JOKUL') {
+                if (strtoupper($validatedData['payment_method']) === 'DOKU') {
                     $paymentGateway = 'doku';
                 }
 
