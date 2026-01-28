@@ -135,11 +135,18 @@
                             <div class="flex justify-between items-center mb-2">
                                 <h3 class="text-lg font-medium text-gray-900">Saldo Dompet Anda (SANCAKA EXPRESS)</h3>
 
-                                <form action="{{ route('seller.doku.refresh_balance') }}" method="POST">
+                                <form action="{{ route('seller.doku.refreshBalance') }}" method="POST"
+                                    x-data="{ isRefreshing: false }"
+                                    @submit="isRefreshing = true">
                                     @csrf
-                                    {{-- Tambahkan ID="btn-auto-saldo" --}}
-                                    <button type="submit" id="btn-auto-saldo" class="...">
-                                        Refresh Saldo
+                                    {{-- TAMBAHAN: id="btn-auto-saldo" agar bisa diklik otomatis --}}
+                                    <button type="submit"
+                                            id="btn-auto-saldo"
+                                            :disabled="isRefreshing"
+                                            class="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                                            :class="{ 'opacity-50 cursor-not-allowed': isRefreshing }">
+                                        <i class="fas fa-sync-alt fa-fw" :class="{ 'fa-spin': isRefreshing }"></i>
+                                        <span x-text="isRefreshing ? 'Menyinkronkan...' : 'Refresh Saldo'"></span>
                                     </button>
                                 </form>
                             </div>
