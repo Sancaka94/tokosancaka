@@ -359,7 +359,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/api/contacts/search', [App\Http\Controllers\Customer\KontakController::class, 'search'])->name('api.contacts.search');
 
-
+    Route::resource('customer/pesanan', App\Http\Controllers\Customer\PesananController::class);
 });
 
 
