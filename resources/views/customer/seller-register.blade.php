@@ -61,7 +61,7 @@
             <div class="lg:col-span-2">
                 <div class="bg-white overflow-hidden shadow-lg sm:rounded-lg">
 
-                    {{-- Menggunakan Alpine.js untuk state management form --}}
+                    {{-- Ganti seluruh blok <form> Anda dengan kode ini --}}
                     <form id="store-register-form"
                         action="{{ route('seller.register.submit') }}"
                         method="POST"
@@ -69,7 +69,6 @@
                             '{{ route('seller.address.geocode') }}',
                             '{{ csrf_token() }}',
                             {
-                                {{-- Use auth()->user() instead of $user --}}
                                 lat: '{{ old('latitude', auth()->user()->latitude) }}',
                                 lng: '{{ old('longitude', auth()->user()->longitude) }}',
                                 province: '{{ old('province', auth()->user()->province) }}',
@@ -85,113 +84,120 @@
                         <div class="p-6 sm:p-8">
                             <h3 class="text-xl font-semibold text-gray-800 mb-6">Lengkapi Detail Toko</h3>
 
-                            {{-- Tampilkan error --}}
+                            {{-- Tampilkan error (jika ada) --}}
                             @if ($errors->any())
                                 <div class="mb-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg">
-                                    <strong class="font-bold">Oops! Terjadi kesalahan:</strong>
-                                    <ul class="mt-2 list-disc list-inside text-sm">
+                                    <ul class="list-disc list-inside text-sm">
                                         @foreach ($errors->all() as $error)
                                             <li>{{ $error }}</li>
                                         @endforeach
                                     </ul>
                                 </div>
                             @endif
-                            @if (session('error'))
-                                <div class="mb-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg">
-                                    <strong class="font-bold">Gagal!</strong>
-                                    <span class="block sm:inline">{{ session('error') }}</span>
-                                </div>
-                            @endif
 
+                            {{-- 1. NAMA TOKO (DIKUNCI) --}}
                             <div class="mb-6">
                                 <label for="store_name" class="block text-sm font-medium text-gray-700">Nama Toko <span class="text-red-500">*</span></label>
                                 <input type="text" name="store_name" id="store_name"
-                                       value="{{ old('store_name', $currentStoreName ?? '') }}"
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
-                                       placeholder="Contoh: Sancaka Jaya Store" required>
-                                <p class="mt-1 text-xs text-gray-500">Ini adalah nama toko yang Anda masukkan saat registrasi awal.</p>
+                                    value="{{ old('store_name', $currentStoreName ?? auth()->user()->store_name ?? '') }}"
+                                    {{-- ✅ READONLY & ABU-ABU --}}
+                                    readonly
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-200 text-gray-600 cursor-not-allowed focus:border-gray-300 focus:ring-0"
+                                    required>
+                                <p class="mt-1 text-xs text-gray-500">Nama toko sesuai data registrasi awal (tidak dapat diubah).</p>
                             </div>
 
+                            {{-- 2. DESKRIPSI (BISA DIEDIT) --}}
                             <div class="mb-6">
                                 <label for="description" class="block text-sm font-medium text-gray-700">Deskripsi Singkat Toko (Opsional)</label>
                                 <textarea name="description" id="description" rows="3"
-                                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
-                                          placeholder="Jelaskan tentang Toko Anda, produk apa yang dijual, dll.">{{ old('description') }}</textarea>
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
+                                        placeholder="Jelaskan tentang Toko Anda, produk apa yang dijual, dll.">{{ old('description') }}</textarea>
                             </div>
 
-                            {{-- ============================================= --}}
-                            {{-- FORM ALAMAT (DISEDERHANAKAN) --}}
-                            {{-- ============================================= --}}
+                            {{-- Divider --}}
                             <h3 class="text-lg font-semibold text-gray-800 mb-4 border-t pt-6">Alamat Toko (Pengiriman)</h3>
 
+                            {{-- Hidden Input untuk Lat/Long (agar tetap terkirim ke backend) --}}
                             <input type="hidden" name="latitude" id="latitude" x-model="fields.lat">
                             <input type="hidden" name="longitude" id="longitude" x-model="fields.lng">
 
+                            {{-- 3. LATITUDE & LONGITUDE (BISA DIEDIT / AUTO) --}}
                             <div class="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label for="lat_display" class="block text-sm font-medium text-gray-700">Latitude <span class="text-red-500">*</span></label>
-                                    <input type="text" id="lat_display" x-model="fields.lat" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100" readonly placeholder="Klik tombol di bawah">
+                                    {{-- ✅ TIDAK READONLY (Bisa diketik manual) --}}
+                                    <input type="text" id="lat_display" x-model="fields.lat"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
+                                        placeholder="-7.xxxxx">
                                 </div>
                                 <div>
                                     <label for="lng_display" class="block text-sm font-medium text-gray-700">Longitude <span class="text-red-500">*</span></label>
-                                    <input type="text" id="lng_display" x-model="fields.lng" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100" readonly placeholder="Klik tombol di bawah">
+                                    {{-- ✅ TIDAK READONLY (Bisa diketik manual) --}}
+                                    <input type="text" id="lng_display" x-model="fields.lng"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
+                                        placeholder="111.xxxxx">
                                 </div>
                             </div>
 
+                            {{-- 4. KOLOM ALAMAT (SEMUA DIKUNCI) --}}
                             <div class="grid grid-cols-2 gap-4 mb-4">
                                 <div>
-                                    <label for="province" class="block text-sm font-medium text-gray-700">Provinsi <span class="text-red-500">*</span></label>
-                                    <input type="text" name="province" id="province" x-model="fields.province" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500" required>
+                                    <label for="province" class="block text-sm font-medium text-gray-700">Provinsi</label>
+                                    <input type="text" name="province" id="province" x-model="fields.province"
+                                        readonly class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-200 text-gray-600 cursor-not-allowed focus:ring-0">
                                 </div>
                                 <div>
-                                    <label for="regency" class="block text-sm font-medium text-gray-700">Kabupaten / Kota <span class="text-red-500">*</span></label>
-                                    <input type="text" name="regency" id="regency" x-model="fields.regency" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500" required>
+                                    <label for="regency" class="block text-sm font-medium text-gray-700">Kabupaten / Kota</label>
+                                    <input type="text" name="regency" id="regency" x-model="fields.regency"
+                                        readonly class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-200 text-gray-600 cursor-not-allowed focus:ring-0">
                                 </div>
                                 <div>
-                                    <label for="district" class="block text-sm font-medium text-gray-700">Kecamatan <span class="text-red-500">*</span></label>
-                                    <input type="text" name="district" id="district" x-model="fields.district" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500" required>
+                                    <label for="district" class="block text-sm font-medium text-gray-700">Kecamatan</label>
+                                    <input type="text" name="district" id="district" x-model="fields.district"
+                                        readonly class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-200 text-gray-600 cursor-not-allowed focus:ring-0">
                                 </div>
                                 <div>
-                                    <label for="village" class="block text-sm font-medium text-gray-700">Desa / Kelurahan <span class="text-red-500">*</span></label>
-                                    <input type="text" name="village" id="village" x-model="fields.village" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500" required>
+                                    <label for="village" class="block text-sm font-medium text-gray-700">Desa / Kelurahan</label>
+                                    <input type="text" name="village" id="village" x-model="fields.village"
+                                        readonly class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-200 text-gray-600 cursor-not-allowed focus:ring-0">
                                 </div>
                                 <div>
-                                    <label for="postal_code" class="block text-sm font-medium text-gray-700">Kode Pos <span class="text-red-500">*</span></label>
-                                    <input type="text" name="postal_code" id="postal_code" x-model="fields.postal_code" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500" required>
+                                    <label for="postal_code" class="block text-sm font-medium text-gray-700">Kode Pos</label>
+                                    <input type="text" name="postal_code" id="postal_code" x-model="fields.postal_code"
+                                        readonly class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-200 text-gray-600 cursor-not-allowed focus:ring-0">
                                 </div>
                             </div>
 
+                            {{-- 5. DETAIL ALAMAT (DIKUNCI) --}}
                             <div class="mb-4">
-                                <label for="address_detail" class="block text-sm font-medium text-gray-700">Detail Alamat (Nama Jalan, No. Rumah, RT/RW) <span class="text-red-500">*</span></label>
-                                    <textarea name="address_detail"
-                                            id="address_detail"
-                                            rows="3"
-                                            x-model="fields.address_detail"
-                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
-                                            required
-                                            placeholder="Contoh: Jl. Dr. Wahidin No.18A RT.22 RW.05">{{ old('address_detail', auth()->user()->address_detail) }}</textarea>
+                                <label for="address_detail" class="block text-sm font-medium text-gray-700">Detail Alamat</label>
+                                <textarea name="address_detail" id="address_detail" rows="3" x-model="fields.address_detail"
+                                        readonly class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-200 text-gray-600 cursor-not-allowed focus:ring-0">{{ old('address_detail', auth()->user()->address_detail) }}</textarea>
                             </div>
 
+                            {{-- TOMBOL DAPATKAN KOORDINAT --}}
                             <div class="mb-4">
-                                <button type="button" @click="getCoords" :disabled="geocoding" class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 border border-gray-300 rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-gray-300">
+                                <button type="button" @click="getCoords" :disabled="geocoding" class="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 border border-blue-300 rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-blue-100 transition">
                                     <span x-show="!geocoding" class="flex items-center">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                        Dapatkan Koordinat (Lat/Long)
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                        Auto-Generate Koordinat (Dari Alamat)
                                     </span>
                                     <span x-show="geocoding" class="flex items-center">
-                                        <span class="spinner-border mr-2"></span>
-                                        Mencari...
+                                        <span class="spinner-border mr-2"></span> Mencari...
                                     </span>
                                 </button>
-                                <span x-show="geocodeMessage" x-text="geocodeMessage" :class="geocodeSuccess ? 'text-green-600' : 'text-red-500'" class="ml-2 text-sm"></span>
+                                <p class="mt-1 text-xs text-gray-500">Klik tombol di atas untuk mengisi Latitude & Longitude secara otomatis berdasarkan alamat Anda.</p>
+                                <span x-show="geocodeMessage" x-text="geocodeMessage" :class="geocodeSuccess ? 'text-green-600' : 'text-red-500'" class="block mt-2 text-sm font-bold"></span>
                             </div>
-                        </div>
 
-                        <div class="px-6 py-4 bg-gray-50 flex items-center justify-end gap-4 border-t border-gray-200">
-                            <a href="{{ route('customer.dashboard') }}" class="text-sm font-medium text-gray-600 hover:text-gray-900">Batal</a>
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500 active:bg-red-700 focus:outline-none focus:border-red-700 focus:ring ring-red-300 disabled:opacity-25 transition ease-in-out duration-150">
-                                Daftarkan Toko Saya
-                            </button>
+                            {{-- TOMBOL ACTION --}}
+                            <div class="px-6 py-4 bg-gray-50 flex items-center justify-end gap-4 border-t border-gray-200 -mx-6 -mb-6 mt-6">
+                                <a href="{{ route('customer.dashboard') }}" class="text-sm font-medium text-gray-600 hover:text-gray-900">Batal</a>
+                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500 focus:outline-none focus:ring ring-red-300 transition ease-in-out duration-150">
+                                    Daftarkan Toko Saya
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
