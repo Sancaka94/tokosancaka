@@ -75,154 +75,54 @@ class DokuWebhookController extends Controller
         // --- SIGNATURE VALID: PROSES PESANAN ---
         Log::info('DOKU Webhook: Signature Valid. Memproses data...');
 
-        // --- 3. PROSES DATA ---
+       // 2. PROSES DATA
         $data = $request->all();
 
         if (isset($data['transaction'])) {
             $orderId = $data['order']['invoice_number'] ?? null;
             $status = $data['transaction']['status'] ?? null;
 
-            Log::info("LOG LOG: Memproses Invoice: $orderId | Status: $status");
-
-            if ($status === 'SUCCESS') {
-
-                // =================================================================
-                // A. PENANGANAN TENANT (PREFIX SEWA-)
-                // =================================================================
-                // =================================================================
-
-                // 1. PENANGANAN TENANT (PREFIX SEWA-)
-                // =================================================================
+            if (strtoupper($status) === 'SUCCESS') {
+                // --- A. PENANGANAN TENANT (SEWA-) ---
                 if (Str::startsWith($orderId, 'SEWA-')) {
-                    Log::info("LOG LOG: Detected Tenant Payment: $orderId");
                     $subdomain = strtolower(explode('-', $orderId)[1] ?? '');
-
                     $activated = false;
 
-                    // STEP 1: Cek di Database Utama (Hanya jika kolom 'subdomain' ada)
+                    // STEP 1: DB Utama
                     try {
-                        $hasColumn = \Illuminate\Support\Facades\Schema::hasColumn('tenants', 'subdomain');
-
-                        if ($hasColumn) {
-                            $tenantMain = \Illuminate\Support\Facades\DB::table('tenants')
-                                            ->where('subdomain', $subdomain)
-                                            ->first();
-
+                        if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'subdomain')) {
+                            $tenantMain = DB::table('tenants')->where('subdomain', $subdomain)->first();
                             if ($tenantMain) {
-                                Log::info("LOG LOG: ✅ Tenant ditemukan di DB UTAMA.");
-                                \Illuminate\Support\Facades\DB::table('tenants')
-                                    ->where('id', $tenantMain->id)
-                                    ->update(['status' => 'active', 'updated_at' => now()]);
+                                DB::table('tenants')->where('id', $tenantMain->id)->update(['status' => 'active', 'updated_at' => now()]);
                                 $activated = true;
                             }
-
                         }
-                    } catch (\Exception $e) {
-                        Log::warning("LOG LOG: Database Utama tidak memiliki struktur tenant yang cocok, lanjut ke DB Kedua.");
-                    }
+                    } catch (\Exception $e) {}
 
-                    // STEP 2: Jika belum aktif, lari ke Database Kedua (Percetakan)
+                    // STEP 2: DB Percetakan (mysql_second)
                     if (!$activated) {
-                        Log::info("LOG LOG: 🔍 Mencari di mysql_second (DB Percetakan)...");
                         try {
-                            $percetakanDB = \Illuminate\Support\Facades\DB::connection('mysql_second');
-                            $tenantSecond = $percetakanDB->table('tenants')
-                                            ->where('subdomain', $subdomain)
-                                            ->first();
+                            $percetakanDB = DB::connection('mysql_second');
+                            $tenantSec = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
+                            if ($tenantSec) {
+                                // Hitung Expired
+                                $days = ($tenantSec->package == 'yearly') ? 365 : (($tenantSec->package == 'trial') ? 7 : 30);
+                                $expiredDate = now()->addDays($days)->timezone('Asia/Jakarta');
 
-                            if ($tenantSecond) {
-                                $percetakanDB->table('tenants')
-                                    ->where('id', $tenantSecond->id)
-                                    ->update(['status' => 'active', 'updated_at' => now()]);
-
-                                Log::info("LOG LOG: ✅ Tenant '$subdomain' AKTIF di DB PERCETAKAN.");
-                                $this->_sendFonnteNotification($subdomain);
-                                $activated = true;
-                            }
-                        } catch (\Exception $e) {
-                            Log::error("LOG LOG: ❌ Gagal akses DB Percetakan: " . $e->getMessage());
-                        }
-                    }
-
-                    // HAPUS/GANTI semua isi Try-Catch Step 2 Bapak dengan ini:
-                    if (!$activated) {
-                        Log::info("LOG LOG: 🔍 Mencari di mysql_second (DB Percetakan)...");
-                        try {
-                            $percetakanDB = \Illuminate\Support\Facades\DB::connection('mysql_second');
-                            $tenantSecond = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
-
-                            if ($tenantSecond) {
-                                // 1. HITUNG EXPIRED (Ini yang sangat penting)
-                                $daysToAdd = 30; // Default bulanan
-                                if ($tenantSecond->package == 'yearly') {
-                                    $daysToAdd = 365;
-                                } elseif ($tenantSecond->package == 'trial') {
-                                    $daysToAdd = 7;
-                                }
-
-                                $expiredDate = now()->addDays($daysToAdd)->timezone('Asia/Jakarta');
-
-                                // 2. UPDATE STATUS & EXPIRED SEKALIGUS
-                                $percetakanDB->table('tenants')
-                                    ->where('id', $tenantSecond->id)
-                                    ->update([
-                                        'status' => 'active',
-                                        'expired_at' => $expiredDate, // MENGIRIM TANGGAL EXPIRED
-                                        'updated_at' => now()->timezone('Asia/Jakarta')
-                                    ]);
-
-                                Log::info("LOG LOG: ✅ Tenant '$subdomain' AKTIF. Expired: " . $expiredDate);
-
-                                // 3. KIRIM NOTIFIKASI
-                                $this->_sendFonnteNotification($subdomain);
-                                $activated = true;
-                            }
-                        } catch (\Exception $e) {
-                            Log::error("LOG LOG: ❌ Gagal akses DB Percetakan: " . $e->getMessage());
-                        }
-                    }
-
-                    // 2. DISINI TEMPATNYA: Cek & Aktifkan di Database Percetakan
-                    try {
-                        $percetakanDB = \Illuminate\Support\Facades\DB::connection('mysql_second');
-                        $tenantSecond = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
-
-                        // MASUKKAN KODE EXPIRED DISINI
-                        if ($tenantSecond) {
-                            // Tentukan penambahan waktu berdasarkan paket yang dibeli
-                            $daysToAdd = 30; // Default bulanan
-                            if ($tenantSecond->package == 'yearly') {
-                                $daysToAdd = 365;
-                            } elseif ($tenantSecond->package == 'trial') {
-                                $daysToAdd = 7;
-                            }
-
-                            // Hitung tanggal expired dari sekarang
-                            $expiredDate = now()->addDays($daysToAdd)->timezone('Asia/Jakarta');
-
-                            // Update Status DAN Tanggal Expired di DB Percetakan
-                            $percetakanDB->table('tenants')
-                                ->where('id', $tenantSecond->id)
-                                ->update([
+                                $percetakanDB->table('tenants')->where('id', $tenantSec->id)->update([
                                     'status' => 'active',
-                                    'expired_at' => $expiredDate, // Kolom ini sekarang terisi
-                                    'updated_at' => now()->timezone('Asia/Jakarta')
+                                    'expired_at' => $expiredDate,
+                                    'updated_at' => now()
                                 ]);
 
-                            Log::info("LOG LOG: ✅ Tenant '$subdomain' AKTIF di DB Percetakan. Expired: " . $expiredDate);
-
-                            // Kirim WA Notif
-                            $this->_sendFonnteNotification($subdomain);
-
-                            return response()->json(['message' => 'Activated with Expiry']);
+                                Log::info("LOG LOG: ✅ Tenant '$subdomain' AKTIF di DB Percetakan. Expired: $expiredDate");
+                                $this->_sendFonnteNotification($subdomain);
+                            }
+                        } catch (\Exception $e) {
+                            Log::error("LOG LOG: Gagal Update DB Percetakan: " . $e->getMessage());
                         }
-                    } catch (\Exception $e) {
-                        Log::error("LOG LOG: ❌ Gagal Update Expired: " . $e->getMessage());
                     }
                 }
-                }
-
-
 
                 // =================================================================
                 // B. PENANGANAN ORDER PERCETAKAN (PREFIX SCK-PRT-)
