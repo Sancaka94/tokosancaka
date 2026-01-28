@@ -114,6 +114,17 @@
                                         {{ $store->doku_status ?? 'Tidak Diketahui' }}
                                     </span>
                                 @endif
+
+                                {{-- TOMBOL REFRESH STATUS DOKU --}}
+                                @if($store->doku_status !== 'ACTIVE')
+                                    <form action="{{ route('seller.doku.refresh_status') }}" method="POST" class="inline-block ml-2">
+                                        @csrf
+                                        <button type="submit" class="inline-flex items-center px-2 py-1 bg-blue-50 border border-blue-200 rounded text-xs font-medium text-blue-700 hover:bg-blue-100 focus:outline-none transition ease-in-out duration-150" title="Cek Status Terbaru ke DOKU">
+                                            <svg class="w-3 h-3 mr-1 animate-spin-hover" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                            Cek Status
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </div>
 
