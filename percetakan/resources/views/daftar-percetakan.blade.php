@@ -6,6 +6,7 @@
     <title>Daftar Layanan Percetakan Sancaka</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         [x-cloak] { display: none !important; }
     </style>
@@ -175,10 +176,41 @@
                     </div>
                 </div>
 
-                <div class="mb-6">
+                <div class="mb-5">
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Set Password Admin</label>
-                    <input type="password" name="password" required
-                           class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none">
+                    <div class="relative">
+                        <input type="password"
+                            id="password"
+                            name="password"
+                            required
+                            oninput="validateSecurity(this)"
+                            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none pr-12"
+                            placeholder="••••••••">
+                        <button type="button" onclick="togglePass('password', 'eye-1')" class="absolute right-4 top-2.5 text-gray-400">
+                            <i id="eye-1" data-lucide="eye"></i>
+                        </button>
+                    </div>
+                    <div id="security_notif" class="text-[10px] mt-1 space-y-1 text-gray-400 italic">
+                        <p id="req_len">• Minimal 8 Karakter</p>
+                        <p id="req_char">• Wajib: Huruf Besar, Kecil, Angka, & Simbol (*, @, dll)</p>
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Konfirmasi Password</label>
+                    <div class="relative">
+                        <input type="password"
+                            id="password_confirmation"
+                            name="password_confirmation"
+                            required
+                            oninput="checkMatch()"
+                            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none pr-12"
+                            placeholder="Ulangi password">
+                        <button type="button" onclick="togglePass('password_confirmation', 'eye-2')" class="absolute right-4 top-2.5 text-gray-400">
+                            <i id="eye-2" data-lucide="eye"></i>
+                        </button>
+                    </div>
+                    <p id="match_error" class="text-red-500 text-[10px] mt-1 font-bold hidden">❌ Password tidak cocok!</p>
                 </div>
 
                 <div class="bg-gray-800 rounded-2xl p-5 mb-8 text-white flex justify-between items-center shadow-xl">
@@ -199,6 +231,81 @@
     </div>
 
     <script>
+        // 1. Fungsi Toggle Lihat Password
+        function togglePass(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+
+            if (input.type === "password") {
+                input.type = "text";
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = "password";
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons(); // Refresh icon
+        }
+
+        // 2. Validasi Keamanan Password (Ketentuan Bapak)
+        function validateSecurity(el) {
+            const val = el.value;
+            const reqLen = document.getElementById('req_len');
+            const reqChar = document.getElementById('req_char');
+
+            // RegEx: Huruf besar, kecil, angka, dan simbol
+            const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{1,}$/;
+
+            // Cek Panjang
+            if (val.length >= 8) {
+                reqLen.classList.add('text-green-500', 'not-italic', 'font-bold');
+                reqLen.innerText = "✅ Minimal 8 Karakter";
+            } else {
+                reqLen.classList.remove('text-green-500', 'not-italic', 'font-bold');
+                reqLen.innerText = "• Minimal 8 Karakter";
+            }
+
+            // Cek Karakter Komplit
+            if (regex.test(val)) {
+                reqChar.classList.add('text-green-500', 'not-italic', 'font-bold');
+                reqChar.innerText = "✅ Keamanan Terpenuhi";
+            } else {
+                reqChar.classList.remove('text-green-500', 'not-italic', 'font-bold');
+                reqChar.innerText = "• Wajib: Huruf Besar, Kecil, Angka, & Simbol";
+            }
+            checkMatch(); // Ikut cek kecocokan saat ngetik di pass utama
+        }
+
+        // 3. Cek Kecocokan Password 1 & 2
+        function checkMatch() {
+            const p1 = document.getElementById('password').value;
+            const p2 = document.getElementById('password_confirmation').value;
+            const error = document.getElementById('match_error');
+
+            if (p2.length > 0 && p1 !== p2) {
+                error.classList.remove('hidden');
+            } else {
+                error.classList.add('hidden');
+            }
+        }
+
+        // 4. Mencegah Form Submit Jika Belum Benar
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const p1 = document.getElementById('password').value;
+            const p2 = document.getElementById('password_confirmation').value;
+            const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+            if (!regex.test(p1)) {
+                e.preventDefault();
+                alert("Password belum memenuhi syarat keamanan!");
+            } else if (p1 !== p2) {
+                e.preventDefault();
+                alert("Konfirmasi password tidak cocok!");
+            }
+        });
+
+        // Inisialisasi awal icon
+        lucide.createIcons();
+
         function cleanSubdomain(el) {
             // 1. Ambil nilai dan paksa jadi huruf kecil (lowercase) agar rapi di URL
             let val = el.value.toLowerCase();
