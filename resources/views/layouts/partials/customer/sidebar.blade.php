@@ -16,7 +16,7 @@
 
     /* Warna Thumb (Batang Geser) - Putih agak terang agar terlihat di background biru */
     .custom-sidebar-scroll::-webkit-scrollbar-thumb {
-        background-color: rgba(255, 255, 255, 0.4) !important; 
+        background-color: rgba(255, 255, 255, 0.4) !important;
         border-radius: 10px;
         border: 2px solid rgba(30, 58, 138, 0); /* Trik agar terlihat lebih kecil dari track */
         background-clip: padding-box;
@@ -48,7 +48,7 @@
             sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in',
             (isExpanded || isHovered) ? 'w-64' : 'w-64 lg:w-20'
         ]"
-        {{-- 
+        {{--
             ✅ PERBAIKAN CLASS:
             1. 'h-screen' & 'sticky' dihilangkan, ganti 'fixed' agar tinggi konsisten.
             2. 'custom-sidebar-scroll' diterapkan.
@@ -59,9 +59,9 @@
         x-cloak>
 
         {{-- Header Sidebar (Sticky di dalam Sidebar) --}}
-        <div class="flex flex-col items-center justify-center py-6 border-b border-blue-800/50 sticky top-0 bg-blue-900 z-10 transition-all duration-300"> 
+        <div class="flex flex-col items-center justify-center py-6 border-b border-blue-800/50 sticky top-0 bg-blue-900 z-10 transition-all duration-300">
             {{-- Tombol Toggle Manual (Desktop) --}}
-            <button @click="isExpanded = !isExpanded" 
+            <button @click="isExpanded = !isExpanded"
                     class="absolute top-2 right-2 p-1 rounded-md hover:bg-blue-800 text-blue-200 focus:outline-none hidden lg:block"
                     title="Kunci Sidebar (Agar tetap terbuka)">
                 {{-- Icon berubah: Jika terkunci (isExpanded) pakai panah, jika tidak pakai bars --}}
@@ -78,10 +78,10 @@
 
                 {{-- Logo: Besar saat expanded/hover, Kecil saat mini --}}
                 <img :class="(isExpanded || isHovered) ? 'w-16 h-16' : 'w-16 h-16 lg:w-10 lg:h-10 lg:mt-6'"
-                     class="object-cover rounded-full mb-3 border-4 border-gray-700 shadow-md transition-all duration-300" 
-                     src="{{ $logoSrc }}" 
+                     class="object-cover rounded-full mb-3 border-4 border-gray-700 shadow-md transition-all duration-300"
+                     src="{{ $logoSrc }}"
                      alt="Logo Toko" />
-                
+
                 {{-- Nama Toko --}}
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="truncate w-40 block transition-opacity duration-200">
                     {{ $storeName }}
@@ -92,7 +92,7 @@
         <nav class="mt-4 px-2 space-y-2 pb-20">
 
             {{-- 1. DASHBOARD MONITOR --}}
-            <a href="{{ route('customer.dashboard') }}" 
+            <a href="{{ route('customer.dashboard') }}"
                :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.dashboard') ? 'bg-gray-900 text-white' : '' }}">
                 <i class="fas fa-tachometer-alt fa-fw w-6 text-xl"></i>
@@ -103,40 +103,30 @@
                 $user = auth()->user();
                 $hideMenus = $user->setup_token !== null && $user->profile_setup_at === null && $user->status === 'Tidak Aktif';
             @endphp
-            
+
             @if(!$hideMenus)
 
-                {{-- BAGIAN 2: MENU KHUSUS AGEN --}}
-                @if($user->role === 'agent' || $user->role === 'admin')
-                    <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="pt-4 pb-2">
-                        <p class="px-2 text-xs text-yellow-400 uppercase tracking-wider font-bold">Menu Agen Resmi</p>
+                {{-- ========================================================== --}}
+                {{-- MENU BARU: PUSAT BISNIS (Menu Utama untuk Daftar-Daftar) --}}
+                {{-- ========================================================== --}}
+                <a href="{{ route('customer.business.index') }}"
+                :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
+                class="flex items-center py-2.5 mt-2 mb-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-md shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 {{ request()->routeIs('customer.business.index') ? 'ring-2 ring-white' : '' }}">
+                    <i class="fas fa-briefcase fa-fw w-6 text-xl"></i>
+                    <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3">
+                        <span class="block font-bold whitespace-nowrap">Pusat Bisnis</span>
+                        <span class="block text-[10px] text-yellow-100 leading-none mt-0.5">Daftar Agen / Toko / DANA</span>
                     </div>
-                    <hr x-show="!(isExpanded || isHovered)" class="border-gray-700 my-4 hidden lg:block">
+                </a>
 
-                    <a href="{{ route('agent.products.index') }}" 
-                       :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
-                       class="flex items-center py-2.5 mb-1 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-md shadow-md border border-blue-600 hover:from-blue-600 hover:to-blue-700 transition">
-                        <i class="fas fa-store fa-fw w-6 text-xl text-yellow-400"></i>
-                        <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3">
-                            <span class="block font-bold text-sm">Kelola Agen Sancaka</span>
-                            <span class="block text-[10px] text-blue-200 font-normal">Atur Harga Jual</span>
-                        </div>
-                    </a>
-                @else
-                    <div class="py-4">
-                        <a href="{{ route('agent.register.index') }}" 
-                           :class="(isExpanded || isHovered) ? 'px-4' : 'px-4 lg:justify-center lg:px-0'"
-                           class="flex items-center py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-1 group border border-purple-400/30">
-                            <div class="p-1.5 bg-white/20 rounded-full mr-3 group-hover:bg-white/30 transition">
-                                <i class="fas fa-rocket fa-fw"></i>
-                            </div>
-                            <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
-                                <span class="block text-[10px] uppercase font-bold text-indigo-100 tracking-wider">Upgrade Akun</span>
-                                <span class="block font-bold text-white leading-tight">Jadi Agen Resmi</span>
-                            </div>
-                        </a>
-                    </div>
-                @endif
+                <hr class="border-gray-700 my-2 opacity-50">
+
+                {{--
+                    CATATAN:
+                    Kamu bisa MENGHAPUS atau MENYEMBUNYIKAN tombol "Upgrade Akun"
+                    dan "Daftar Merchant DANA" yang lama di sidebar,
+                    karena sekarang user diarahkan lewat tombol "Pusat Bisnis" di atas.
+                --}}
 
                 {{-- BAGIAN 3: PRODUK DIGITAL --}}
                 <p :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Produk Digital</p>
@@ -144,7 +134,7 @@
 
                 <div x-data="{ open: {{ request()->routeIs('customer.ppob.*') ? 'true' : 'false' }} }" class="space-y-1">
                     {{-- Logic Klik: Jika mini sidebar -> expand dulu. Jika sudah expand -> toggle menu --}}
-                    <button @click="if(!(isExpanded || isHovered) && window.innerWidth >= 1024) { isExpanded = true; open = true; } else { open = !open; }" 
+                    <button @click="if(!(isExpanded || isHovered) && window.innerWidth >= 1024) { isExpanded = true; open = true; } else { open = !open; }"
                         :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                         class="flex items-center w-full py-2.5 text-white hover:bg-red-700 bg-red-600 hover:text-white rounded-md transition-colors duration-200 shadow-sm">
                         <i class="fas fa-mobile-alt fa-fw w-6 text-xl"></i>
@@ -164,26 +154,26 @@
                             <i class="fas fa-history fa-fw w-4 mr-2"></i> Riwayat Transaksi
                         </a>
                     </div>
-                </div> 
+                </div>
 
                 {{-- BAGIAN 4: PENGIRIMAN --}}
                 <p :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Manajemen Pengiriman</p>
                 <hr x-show="!(isExpanded || isHovered)" class="border-gray-700 my-4 hidden lg:block">
 
-                <a href="https://tokosancaka.com/customer/chat" 
+                <a href="https://tokosancaka.com/customer/chat"
                    :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                    class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->is('customer/chat*') ? 'bg-gray-900 text-white' : '' }}">
                     <i class="fas fa-comment-dots fa-fw w-6 text-xl"></i>
                     <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 whitespace-nowrap">Chat CS ADMIN</span>
                 </a>
 
-                <a href="{{ route('customer.pesanan.create') }}" 
+                <a href="{{ route('customer.pesanan.create') }}"
                    :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                    class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.pesanan.create') ? 'bg-gray-900 text-white' : '' }}">
                     <i class="fas fa-plus-circle fa-fw w-6 text-xl"></i>
                     <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 whitespace-nowrap">Kirim Paket (Satuan)</span>
                 </a>
-                
+
                 <a href="{{ route('customer.koli.create') }}"
                    :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                    class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.koli.create') ? 'bg-gray-900 text-white' : '' }}">
@@ -194,28 +184,28 @@
                     </span>
                 </a>
 
-                <a href="{{ route('customer.pesanan.index') }}" 
+                <a href="{{ route('customer.pesanan.index') }}"
                    :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                    class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.pesanan.index') ? 'bg-gray-900 text-white' : '' }}">
                     <i class="fas fa-table fa-fw w-6 text-xl"></i>
                     <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 whitespace-nowrap">Data Pengiriman</span>
                 </a>
-                
-                <a href="{{ route('customer.kontak.index') }}" 
+
+                <a href="{{ route('customer.kontak.index') }}"
                    :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                    class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.kontak.*') ? 'bg-gray-900 text-white' : '' }}">
                     <i class="fas fa-address-book fa-fw w-6 text-xl"></i>
                     <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 whitespace-nowrap">Data Kontak</span>
                 </a>
 
-                <a href="{{ route('customer.lacak.index') }}" 
+                <a href="{{ route('customer.lacak.index') }}"
                    :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                    class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.lacak.index') ? 'bg-gray-900 text-white' : '' }}">
                     <i class="fas fa-search-location fa-fw w-6 text-xl"></i>
                     <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 whitespace-nowrap">Lacak Paket</span>
                 </a>
 
-                <a href="{{ route('customer.ongkir.index') }}" 
+                <a href="{{ route('customer.ongkir.index') }}"
                    :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                    class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.ongkir.index') ? 'bg-gray-900 text-white' : '' }}">
                     <i class="fas fa-truck fa-fw w-6 text-xl"></i>
@@ -226,14 +216,14 @@
                 <p :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Operasional</p>
                 <hr x-show="!(isExpanded || isHovered)" class="border-gray-700 my-4 hidden lg:block">
 
-                <a href="{{ route('customer.scan.spx') }}" 
+                <a href="{{ route('customer.scan.spx') }}"
                    :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                    class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.scan.spx') ? 'bg-gray-900 text-white' : '' }}">
                     <i class="fas fa-qrcode fa-fw w-6 text-xl"></i>
                     <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 whitespace-nowrap">Scan Paket SPX</span>
                 </a>
 
-                <a href="{{ route('customer.scan.index') }}" 
+                <a href="{{ route('customer.scan.index') }}"
                    :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                    class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.scan.index') ? 'bg-gray-900 text-white' : '' }}">
                     <i class="fas fa-database fa-fw w-6 text-xl"></i>
@@ -244,14 +234,14 @@
                 <p :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Keuangan</p>
                 <hr x-show="!(isExpanded || isHovered)" class="border-gray-700 my-4 hidden lg:block">
 
-                <a href="{{ route('customer.topup.index') }}" 
+                <a href="{{ route('customer.topup.index') }}"
                    :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                    class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.topup.*') ? 'bg-gray-900 text-white' : '' }}">
                     <i class="fas fa-wallet fa-fw w-6 text-xl"></i>
                     <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 whitespace-nowrap">Top Up Saldo</span>
                 </a>
 
-                <a href="{{ route('customer.laporan.index') }}" 
+                <a href="{{ route('customer.laporan.index') }}"
                    :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                    class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.laporan.index') ? 'bg-gray-900 text-white' : '' }}">
                     <i class="fas fa-chart-area fa-fw w-6 text-xl"></i>
@@ -263,7 +253,7 @@
                 <hr x-show="!(isExpanded || isHovered)" class="border-gray-700 my-4 hidden lg:block">
 
                 <div x-data="{ open: false }" class="space-y-1">
-                    <button @click="if(!(isExpanded || isHovered) && window.innerWidth >= 1024) { isExpanded = true; open = true; } else { open = !open; }" 
+                    <button @click="if(!(isExpanded || isHovered) && window.innerWidth >= 1024) { isExpanded = true; open = true; } else { open = !open; }"
                         :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                         class="flex items-center w-full py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200">
                         <i class="fas fa-store fa-fw w-6 text-xl"></i>
@@ -309,7 +299,7 @@
                                 <i class="fas fa-id-card fa-fw w-4 mr-2 text-blue-400"></i> Daftar Merchant DANA
                             </a>
                             {{-- END MENU BARU --}}
-                            <a href="{{ route('customer.merchant.index') }}" 
+                            <a href="{{ route('customer.merchant.index') }}"
                             class="{{ request()->routeIs('customer.merchant.*') ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                                 <i class="fas fa-store mr-3 flex-shrink-0 h-6 w-6 {{ request()->routeIs('customer.merchant.*') ? 'text-white' : 'text-gray-400 group-hover:text-gray-300' }}"></i>
                                 Data Toko DANA
@@ -335,7 +325,7 @@
 
                 {{-- BAGIAN 9: PENGATURAN USER --}}
                 <div class="mt-auto">
-                    <a href="{{ route('customer.profile.edit') }}" 
+                    <a href="{{ route('customer.profile.edit') }}"
                     :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
                     class="flex items-center py-2.5 mt-4 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.profile.edit') ? 'bg-gray-900 text-white' : '' }}">
                         <i class="fas fa-cog fa-fw w-6 text-xl"></i>
@@ -361,16 +351,16 @@
     </aside>
 
     {{-- TOMBOL CLOSE FLOATING (Tetap hanya untuk Mobile) --}}
-    <div x-show="sidebarOpen" 
+    <div x-show="sidebarOpen"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 -translate-x-10"
          x-transition:enter-end="opacity-100 translate-x-0"
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100 translate-x-0"
          x-transition:leave-end="opacity-0 -translate-x-10"
-         class="fixed top-4 left-64 z-[110] ml-2 lg:hidden" 
+         class="fixed top-4 left-64 z-[110] ml-2 lg:hidden"
          x-cloak>
-        
+
         <button @click="sidebarOpen = false"
                 class="flex items-center justify-center w-10 h-10 bg-blue-900 text-white rounded-full shadow-lg border-2 border-white/20 hover:bg-red-600 hover:scale-110 transition-all duration-300 focus:outline-none ring-2 ring-black/10">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
