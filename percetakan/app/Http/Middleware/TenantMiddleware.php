@@ -13,8 +13,26 @@ class TenantMiddleware
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle(Request $request, Closure $next): Response
-    {
-        return $next($request);
+    public function handle(Request $request, Closure $next)
+{
+    $host = $request->getHost(); // Contoh: gemini.tokosancaka.com
+    $subdomain = explode('.', $host)[0];
+
+    // Daftar subdomain yang harus diabaikan (milik sistem utama)
+    $exclude = ['www', 'tokosancaka', 'localhost', 'mail'];
+
+    if (!in_array($subdomain, $exclude)) {
+        // Cari tenant di database berdasarkan subdomain
+        $tenant = \App\Models\Tenant::where('subdomain', $subdomain)->first();
+
+        if (!$tenant) {
+            abort(404, "Toko '$subdomain' belum terdaftar.");
+        }
+
+        // Simpan data tenant ke dalam request agar bisa dipanggil di Controller manapun
+        $request->merge(['current_tenant' => $tenant]);
     }
+
+    return $next($request);
+}
 }
