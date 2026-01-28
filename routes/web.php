@@ -290,6 +290,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return redirect()->route('customer.dashboard');
     })->name('dashboard');
 
+      // Ganti route riwayat yang lama dengan ini:
+    Route::get('/customer/riwayat-belanja', [App\Http\Controllers\Customer\PesananController::class, 'riwayatBelanja'])
+        ->name('customer.pesanan.riwayat_belanja');
+
     Route::get('/customer/dashboard', function () { return view('dashboard'); })
         ->middleware(RoleMiddleware::class . ':Pelanggan')->name('customer.dashboard');
     Route::get('/admin/dashboard', function () { return view('admin.dashboard'); })
@@ -301,10 +305,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/seller/register', [SellerRegisterController::class, 'create'])->name('seller.register.form');
     Route::post('/seller/register', [SellerRegisterController::class, 'store'])->name('seller.register.submit');
     Route::get('customer/seller/register', [SellerRegisterController::class, 'create'])->name('customer.seller.register.form'); // Alias
-
-    // Ganti route riwayat yang lama dengan ini:
-    Route::get('/customer/riwayat-belanja', [App\Http\Controllers\Customer\PesananController::class, 'riwayatBelanja'])
-        ->name('customer.pesanan.riwayat_belanja');
 
     // User Profile
     Route::get('/user/profile', function () { return view('profile.show'); })->name('profile.show');
