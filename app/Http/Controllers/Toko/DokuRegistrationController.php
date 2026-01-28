@@ -476,30 +476,39 @@ class DokuRegistrationController extends Controller
 
             $data = $response->json();
 
+            // === [UPDATE PENTING DISINI] ===
             if ($response->successful()) {
-                $statusApi = $data['status'] ?? ($data['account_status'] ?? null);
+
+                // 1. KITA INTIP ISI RESPONSNYA DI LOG (Cek file storage/logs/laravel.log)
+                Log::info('DOKU STATUS RESPONSE FULL:', $data);
+
+                // 2. Cek status di berbagai kemungkinan posisi (langsung atau di dalam 'data')
+                $statusApi = $data['status']
+                             ?? ($data['data']['status']
+                             ?? ($data['account_status']
+                             ?? ($data['data']['account_status'] ?? null)));
 
                 if ($statusApi) {
-                    // (4) Update ke tabel STORES (bukan users)
-                    $store->doku_status = strtoupper($statusApi); // ACTIVE / PENDING
+                    $store->doku_status = strtoupper($statusApi);
                     $store->save();
 
                     if (strtoupper($statusApi) === 'ACTIVE') {
                         return back()->with('success', 'Berhasil! Status Akun DOKU sekarang ACTIVE.');
                     } else {
-                        return back()->with('warning', 'Status terbaru: ' . $statusApi . '. Akun belum aktif.');
+                        return back()->with('warning', 'Status terbaru diambil: ' . $statusApi);
                     }
                 } else {
-                    return back()->with('error', 'Respon API valid tapi status kosong.');
+                    // Jika masih kosong, kita paksa ambil dari 'balance' logic kalau ada, atau error
+                    return back()->with('error', 'Respon Valid tapi key status tidak ditemukan. Cek Log.');
                 }
             } else {
                 Log::error('Gagal Cek Status DOKU', ['resp' => $data]);
-                return back()->with('error', 'Gagal cek status: ' . ($data['error']['message'] ?? 'Unknown Error'));
+                return back()->with('error', 'Gagal: ' . ($data['error']['message'] ?? 'Unknown Error'));
             }
 
         } catch (\Exception $e) {
             Log::error('Exception DOKU Status', ['msg' => $e->getMessage()]);
-            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+            return back()->with('error', 'Error Sistem: ' . $e->getMessage());
         }
     }
 
