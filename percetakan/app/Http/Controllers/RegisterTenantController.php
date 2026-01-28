@@ -16,52 +16,51 @@ class RegisterTenantController extends Controller
     }
 
     public function register(Request $request)
-    {
-        // 1. Validasi
-        $request->validate([
-            'owner_name' => 'required|string|max:255',
-            'email' => 'required|email|max:255', // Cek unique manual jika perlu
-            'business_name' => 'required|string|max:255',
-            'subdomain' => 'required|alpha_dash', // Kita cek unique di blok try-catch
-            'password' => 'required|min:8',
+{
+    $request->validate([
+        'owner_name' => 'required|string|max:255',
+        'email' => 'required|email|max:255',
+        'business_name' => 'required|string|max:255',
+        'subdomain' => 'required|alpha_dash|unique:tenants,subdomain',
+        'password' => 'required|min:8',
+        'package' => 'required|in:trial,monthly,yearly', // Tambahkan ini
+    ]);
+
+    DB::beginTransaction();
+    try {
+        // Tentukan masa berlaku
+        $days = 14; // Default trial
+        if ($request->package == 'monthly') $days = 30;
+        if ($request->package == 'yearly') $days = 365;
+
+        // 1. Buat Tenant
+        $tenant = Tenant::create([
+            'name' => $request->business_name,
+            'subdomain' => strtolower($request->subdomain),
+            'category' => 'percetakan',
+            'package' => $request->package,
+            'expired_at' => now()->addDays($days),
+            'status' => 'active',
         ]);
 
-        DB::beginTransaction();
-        try {
-            // Cek manual apakah subdomain sudah dipakai di tabel tenants
-            // (Asumsi Tenant model ada di app ini atau disetting koneksinya)
-            if (Tenant::where('subdomain', $request->subdomain)->exists()) {
-                return back()->withErrors(['subdomain' => 'Subdomain ini sudah digunakan orang lain.']);
-            }
+        // 2. Buat User Owner
+        User::create([
+            'tenant_id' => $tenant->id,
+            'name' => $request->owner_name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => 'owner',
+        ]);
 
-            // 2. Buat Tenant Baru
-            $tenant = Tenant::create([
-                'name' => $request->business_name,
-                'subdomain' => strtolower($request->subdomain),
-                'category' => 'percetakan',
-            ]);
+        DB::commit();
 
-            // 3. Buat User Owner Baru
-            User::create([
-                'tenant_id' => $tenant->id,
-                'name' => $request->owner_name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role' => 'owner',
-            ]);
+        // Redirect ke login subdomain
+        $targetUrl = 'http://' . $tenant->subdomain . '.tokosancaka.com/percetakan/login';
+        return redirect()->away($targetUrl);
 
-            DB::commit();
-
-            // 4. Redirect ke Subdomain Baru
-            // Contoh: https://gemini.tokosancaka.com/percetakan/login
-            $protocol = $request->secure() ? 'https://' : 'http://';
-            $targetUrl = $protocol . $tenant->subdomain . '.tokosancaka.com/percetakan/login';
-
-            return redirect()->away($targetUrl);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Gagal mendaftar: ' . $e->getMessage());
-        }
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->with('error', 'Gagal: ' . $e->getMessage());
     }
+}
 }

@@ -33,6 +33,12 @@ class TenantMiddleware
         $request->merge(['current_tenant' => $tenant]);
     }
 
+    if ($tenant->expired_at && now()->gt($tenant->expired_at)) {
+        // Jika lewat tanggal expired, ubah status jadi inactive
+        $tenant->update(['status' => 'inactive']);
+        abort(403, "Masa aktif paket Bapak telah habis. Silakan hubungi Sancaka untuk perpanjang.");
+    }
+
     return $next($request);
 }
 }
