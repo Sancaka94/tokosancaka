@@ -591,7 +591,9 @@ class OrderController extends Controller
 
                 if ($isVariant) {
                     // --- LOGIKA JIKA PILIH VARIANT ---
-                    $variant = ProductVariant::lockForUpdate()->find($item['variant_id']);
+                    $variant = ProductVariant::where('tenant_id', $this->tenantId)
+                          ->lockForUpdate()
+                          ->find($item['variant_id']);
 
                     if (!$variant) throw new \Exception("Varian Produk ID {$item['variant_id']} tidak ditemukan.");
 
@@ -2105,12 +2107,10 @@ public function handleDanaCallback(Request $request)
         return $phone;
     }
 
-    /**
-     * Menampilkan Form Edit Order
-     */
     public function edit($id)
     {
-        $order = Order::findOrFail($id);
+        // Tambahkan filter tenant_id agar tidak bisa mengintip nota orang lain
+        $order = Order::where('tenant_id', $this->tenantId)->findOrFail($id);
         return view('orders.edit', compact('order'));
     }
 
@@ -2211,7 +2211,7 @@ public function handleDanaCallback(Request $request)
      */
     public function exportPdf(Request $request)
     {
-        $query = Order::query();
+        $query = Order::where('tenant_id', $this->tenantId);
 
         if ($request->filled('q')) {
             $search = $request->q;
@@ -2289,10 +2289,12 @@ public function handleDanaCallback(Request $request)
         // ==========================================
         // 2. CARI DI TABEL VARIAN (JIKA PRODUK UTAMA TIDAK KETEMU)
         // ==========================================
-        // Kita gunakan 'with' untuk mengambil data induknya sekalian
         $variant = ProductVariant::with('product')
-            ->where('barcode', $barcode)
-            ->orWhere('sku', $barcode)
+            ->where('tenant_id', $this->tenantId) // <--- TAMBAHKAN FILTER INI
+            ->where(function($q) use ($barcode) {
+                $q->where('barcode', $barcode)
+                ->orWhere('sku', $barcode);
+            })
             ->first();
 
         if ($variant && $variant->product) {
