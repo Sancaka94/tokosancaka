@@ -252,10 +252,10 @@
 
                         if (rawPresets && rawPresets !== 'null') {
                             this.presets = JSON.parse(rawPresets);
-                        } else {
-                            this.presets = [];
+                                } else {
+                                    this.presets = [];
+                                }
                         }
-                    }
                     }"
                     @submit="submitting = true">
 
