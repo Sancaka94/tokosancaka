@@ -18,7 +18,7 @@ class DashboardController extends Controller
     public function index()
     {
         // 1. STATISTIK KARTU MONITOR
-        
+
         // Total Omzet dari pesanan yang sudah dibayar (Paid)
         $totalOmzet = Order::where('payment_status', 'paid')->sum('final_price');
 
@@ -41,7 +41,7 @@ class DashboardController extends Controller
                             ->value('dana_merchant_balance') ?? 0;
 
         // 2. DATA UNTUK GRAFIK (OPSIONAL - 7 Hari Terakhir)
-        
+
         $salesData = Order::where('payment_status', 'paid')
             ->where('created_at', '>=', Carbon::now()->subDays(7))
             ->select(
