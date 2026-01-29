@@ -26,6 +26,7 @@ use App\Models\Affiliate;
 use App\Models\Store;
 use App\Models\TopUp;
 use App\Models\User;
+use App\Models\Tenant;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\ProductVariant; // <--- TAMBAHKAN INI
@@ -155,16 +156,30 @@ class OrderController extends Controller
     }
 
     /**
-     * Menampilkan Halaman Kasir (POS)
+     * Menampilkan Halaman Kasir (POS) - Terfilter Subdomain
      */
     public function create(Request $request)
     {
-        $products = Product::where('stock_status', 'available')
+        // 1. DETEKSI TENANT DARI SUBDOMAIN
+        $host = $request->getHost();
+        $subdomain = explode('.', $host)[0];
+
+        // Cari tenant berdasarkan subdomain URL
+        $tenant = \App\Models\Tenant::where('subdomain', $subdomain)->first();
+
+        // Jika subdomain tidak terdaftar, arahkan ke error atau tenant pusat (ID 1)
+        $tenantId = $tenant ? $tenant->id : 1;
+
+        // 2. FILTER PRODUK BERDASARKAN TENANT_ID
+        $products = Product::where('tenant_id', $tenantId) // <--- KUNCI FILTER
+                           ->where('stock_status', 'available')
                            ->where('stock', '>', 0)
                            ->orderBy('created_at', 'desc')
                            ->get();
 
-        $customers = Affiliate::orderBy('name', 'asc')
+        // 3. FILTER PELANGGAN BERDASARKAN TENANT_ID
+        $customers = Affiliate::where('tenant_id', $tenantId) // <--- KIKIS BOCOR DATA
+                              ->orderBy('name', 'asc')
                               ->get()
                               ->map(function($aff) {
                                   $aff->saldo = 0;
@@ -175,28 +190,26 @@ class OrderController extends Controller
 
         $autoCoupon = $request->query('coupon');
 
-        // --- [MULAI KODE TAMBAHAN] ---
-        // Logika untuk mengambil kategori dari database
+        // 4. FILTER KATEGORI BERDASARKAN TENANT_ID
         $categories = [];
         try {
-            // Cek apakah tabel category ada & ambil datanya
             if (class_exists('App\Models\Category')) {
-                $categories = Category::where('is_active', true)->get();
+                $categories = Category::where('tenant_id', $tenantId) // <--- KUNCI FILTER
+                                      ->where('is_active', true)
+                                      ->get();
             }
         } catch (\Exception $e) { }
 
-        // Fallback manual jika database kosong/error
+        // Fallback jika kategori kosong
         if (count($categories) == 0) {
             $categories = [
                 (object)['id' => 'retail', 'name' => 'Retail / Toko', 'slug' => 'retail'],
-                (object)['id' => 'laundry', 'name' => 'Laundry (Kiloan/Satuan)', 'slug' => 'laundry'],
-                (object)['id' => 'fnb', 'name' => 'Food & Beverage', 'slug' => 'fnb'],
+                (object)['id' => 'laundry', 'name' => 'Laundry', 'slug' => 'laundry'],
             ];
         }
-        // --- [SELESAI KODE TAMBAHAN] ---
 
-        // JANGAN LUPA: Tambahkan 'categories' ke dalam compact
-        return view('orders.create', compact('products', 'customers', 'autoCoupon', 'categories'));
+        // Tambahkan variabel tenant ke view jika diperlukan untuk branding nama toko
+        return view('orders.create', compact('products', 'customers', 'autoCoupon', 'categories', 'tenant'));
     }
 
     /**
