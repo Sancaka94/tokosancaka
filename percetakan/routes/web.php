@@ -404,3 +404,9 @@ Route::post('/scan-process', [ScannerController::class, 'handleScan'])->name('sc
 // URL Hasilnya: tokosancaka.com/percetakan/daftar-percetakan
 Route::get('/daftar-percetakan', [RegisterTenantController::class, 'showForm'])->name('daftar.percetakan');
 Route::post('/daftar-percetakan', [RegisterTenantController::class, 'register'])->name('daftar.percetakan.store');
+
+// Route untuk mengambil data varian (GET)
+Route::get('/products/{id}/variants', [App\Http\Http\Controllers\ProductController::class, 'getVariants']);
+
+// Route untuk menyimpan data varian (POST)
+Route::post('/products/{id}/variants', [App\Http\Http\Controllers\ProductController::class, 'saveVariants']);
