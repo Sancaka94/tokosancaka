@@ -38,12 +38,27 @@ use App\Services\DanaSignatureService; // <--- TAMBAHKAN INI
 
 class OrderController extends Controller
 {
+    // 1. Siapkan variabel penampung ID Tenant
+    protected $tenantId;
+
+    public function __construct(Request $request)
+    {
+        // 2. Deteksi Tenant dari Subdomain URL (Berlaku untuk semua fungsi)
+        $host = $request->getHost();
+        $subdomain = explode('.', $host)[0];
+
+        // 3. Cari data Tenant-nya
+        $tenant = \App\Models\Tenant::where('subdomain', $subdomain)->first();
+
+        // 4. Simpan ID-nya. Jika tidak ketemu, default ke 1 (Pusat)
+        $this->tenantId = $tenant ? $tenant->id : 1;
+    }
     // =========================================================================
     // 1. INDEX & DASHBOARD STATISTIK (DIPERBAIKI)
     // =========================================================================
     public function index(Request $request)
     {
-        $query = Order::query();
+        $query = Order::where('tenant_id', $this->tenantId);
 
         // 1. Filter Pencarian (No Order / Nama Customer / DAN ITEM PRODUK)
         if ($request->filled('q')) {
@@ -692,7 +707,8 @@ class OrderController extends Controller
             Log::info("[STEP 2] Saving Order to DB (Status: Pending)...");
 
             $order = Order::create([
-                'order_number'    => $orderNumber,
+                'tenant_id'       => $this->tenantId, // <--- OTOMATIS AMAN
+                'order_number'    => 'SCK-PRT-' . date('ymdHis'),
                 'user_id'         => $request->customer_id ?? null,
                 'customer_name'   => $customerName,
                 'customer_phone'  => $customerPhone,
