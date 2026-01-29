@@ -245,12 +245,17 @@
                         unit: 'pcs',
 
                         handleCategoryChange(event) {
-                            const option = event.target.options[event.target.selectedIndex];
-                            this.isService = option.dataset.type === 'service';
-                            this.unit = option.dataset.unit || 'pcs';
-                            const rawPresets = option.dataset.presets;
-                            this.presets = rawPresets ? JSON.parse(rawPresets) : [];
+                        const option = event.target.options[event.target.selectedIndex];
+                        this.isService = option.dataset.type === 'service';
+                        this.unit = option.dataset.unit || 'pcs';
+                        const rawPresets = option.dataset.presets;
+
+                        if (rawPresets && rawPresets !== 'null') {
+                            this.presets = JSON.parse(rawPresets);
+                        } else {
+                            this.presets = [];
                         }
+                    }
                     }"
                     @submit="submitting = true">
 
@@ -331,7 +336,8 @@
                                     <option value="{{ $cat->id }}"
                                             data-type="{{ $cat->type }}"
                                             data-unit="{{ $cat->default_unit }}"
-                                            data-presets="{{ json_encode($cat->product_presets) }}">
+                                            {{-- Tambahkan tanda tanya dua kali dan kurung siku --}}
+                                            data-presets="{{ json_encode($cat->product_presets ?? []) }}">
                                         {{ $cat->name }}
                                     </option>
                                 @endforeach
