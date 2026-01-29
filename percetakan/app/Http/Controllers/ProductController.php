@@ -614,4 +614,74 @@ class ProductController extends Controller
                         ->get();
         return response()->json($products);
     }
+
+    /**
+     * SIMPAN VARIAN PRODUK (Dipanggil via AJAX/AlpineJS)
+     */
+    public function saveVariants(Request $request, $id)
+    {
+        // 1. Validasi Input Array
+        $request->validate([
+            'variants'         => 'required|array',
+            'variants.*.name'  => 'required|string',
+            'variants.*.price' => 'required|numeric',
+            'variants.*.stock' => 'required|integer',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 2. Kunci Keamanan: Pastikan produk milik Tenant ini
+            $product = Product::where('tenant_id', $this->tenantId)->findOrFail($id);
+
+            // 3. Logika Hapus: Ambil semua ID yang dikirim dari form
+            // Jika ada varian lama di database yang ID-nya TIDAK dikirim, berarti user menghapusnya di form.
+            $submittedIds = collect($request->variants)->pluck('id')->filter()->toArray();
+            $product->variants()->whereNotIn('id', $submittedIds)->delete();
+
+            // 4. Loop Simpan / Update
+            foreach ($request->variants as $v) {
+                // Handle Barcode kosong agar jadi NULL (supaya tidak error unique constraint)
+                $barcode = !empty($v['barcode']) ? $v['barcode'] : null;
+
+                $product->variants()->updateOrCreate(
+                    [
+                        'id' => $v['id'] ?? null, // Jika ID ada, dia Update. Jika null, dia Create.
+                    ],
+                    [
+                        'tenant_id'  => $this->tenantId, // <--- WAJIB: Suntik ID Tenant
+                        'product_id' => $product->id,
+                        'name'       => $v['name'],
+                        'price'      => $v['price'],
+                        'stock'      => $v['stock'],
+                        'sku'        => $v['sku'] ?? null,
+                        'barcode'    => $barcode,
+                    ]
+                );
+            }
+
+            // 5. Update Total Stok Produk Utama (Opsional: Akumulasi otomatis)
+            $totalStock = $product->variants()->sum('stock');
+            $product->update([
+                'stock' => $totalStock,
+                'has_variant' => true // Tandai bahwa produk ini punya varian
+            ]);
+
+            DB::commit();
+
+            // 6. Respon JSON (Penting buat Javascript)
+            return response()->json([
+                'success' => true,
+                'message' => 'Varian berhasil disimpan!'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Kembalikan pesan error yang jelas ke Javascript
+            return response()->json([
+                'success' => false,
+                'message' => 'Server Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 }
