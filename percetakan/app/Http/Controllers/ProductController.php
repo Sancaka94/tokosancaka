@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\ProductVariant;
+use App\Models\Tenant; // <--- WAJIB TAMBAHKAN INI
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -15,19 +16,29 @@ use Barryvdh\DomPDF\Facade\Pdf; // Import di atas
 
 class ProductController extends Controller
 {
-    /**
-     * Menampilkan daftar produk
-     */
+    protected $tenantId;
+
+    public function __construct(Request $request)
+    {
+        // Deteksi Subdomain
+        $host = $request->getHost();
+        $subdomain = explode('.', $host)[0];
+        $tenant = Tenant::where('subdomain', $subdomain)->first();
+
+        // Kunci ID Tenant secara global untuk controller ini
+        $this->tenantId = $tenant ? $tenant->id : 1;
+    }
+
     public function index(Request $request)
     {
-        // 1. Ambil Data Kategori untuk Dropdown Filter
-        $categories = \App\Models\Category::orderBy('name', 'asc')->get();
+        // 1. Ambil Data Kategori - Filter Tenant
+        $categories = Category::where('tenant_id', $this->tenantId)->orderBy('name', 'asc')->get();
 
-        // 2. Mulai Query Produk
-        $query = Product::with('category')->latest();
+        // 2. Query Produk - Filter Tenant
+        $query = Product::where('tenant_id', $this->tenantId)->with('category')->latest();
 
-        // --- FILTER 1: PENCARIAN (Search Bar) ---
-        if ($request->has('search') && $request->filled('search')) {
+        // --- FILTER PENCARIAN ---
+        if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
@@ -36,32 +47,17 @@ class ProductController extends Controller
             });
         }
 
-        // --- FILTER 2: KATEGORI (Dropdown) ---
-        if ($request->has('category_id') && $request->category_id != 'all' && $request->filled('category_id')) {
+        // --- FILTER KATEGORI ---
+        if ($request->filled('category_id') && $request->category_id != 'all') {
             $query->where('category_id', $request->category_id);
         }
 
-        // --- FILTER 3: JENIS PRODUK (Tombol Tab) ---
-        // type: 'all' (Semua), 'single' (Tunggal), 'variant' (Varian)
-        if ($request->has('type') && $request->type != 'all') {
-            if ($request->type == 'variant') {
-                $query->where('has_variant', 1);
-            } elseif ($request->type == 'single') {
-                $query->where('has_variant', 0);
-            }
-        }
-
-        // 3. Eksekusi Pagination (Gunakan withQueryString agar filter tidak hilang saat pindah halaman)
+        // 3. Eksekusi
         $products = $query->paginate(10)->withQueryString();
-        
-        // --- TAMBAHAN KHUSUS ELECTRON (API) ---
-        // Jika permintaan datang dari aplikasi Desktop (JSON), kirim semua data
+
         if ($request->wantsJson() || $request->is('api/*')) {
-            // Ambil semua produk (tanpa pagination) agar kasir offline lancar
-            $allProducts = $query->get(); 
-            return response()->json($allProducts);
+            return response()->json($query->get());
         }
-        // --------------------------------------
 
         return view('products.index', compact('products', 'categories'));
     }
@@ -93,7 +89,7 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         Log::info('[STORE START] Proses tambah produk...');
-
+        $request->merge(['tenant_id' => $this->tenantId]);
         // 1. Validasi Input
         $validator = Validator::make($request->all(), [
             'name'        => 'required|string|max:255',
@@ -146,6 +142,7 @@ class ProductController extends Controller
 
             // 4. Simpan Produk Induk
             $product = Product::create([
+                'tenant_id'    => $this->tenantId, // <--- KUNCI DATA
                 'name'         => $request->name,
                 'sku'          => $productSku,
                 'category_id'  => $request->category_id,
@@ -172,6 +169,7 @@ class ProductController extends Controller
                     $varBarcode = $variant['barcode'] ?? null;
 
                     ProductVariant::create([
+                        'tenant_id'  => $this->tenantId, // <--- KUNCI VARIAN
                         'product_id' => $product->id,
                         'name'       => $variant['name'],
                         'price'      => $variant['price'],
@@ -350,7 +348,13 @@ class ProductController extends Controller
      */
     public function edit(Product $product)
     {
+        if ($product->tenant_id != $this->tenantId) {
+            abort(403, 'Anda tidak memiliki akses ke produk ini.');
+        }
+
         $product->load('variants'); // Load data varian
+        // PROTEKSI: Cek apakah produk ini milik tenant yang sedang buka subdomain ini
+
         $categories = Category::where('is_active', true)->orderBy('name', 'asc')->get();
         return view('products.edit', compact('product', 'categories'));
     }
@@ -362,7 +366,7 @@ class ProductController extends Controller
             $product->load(['variants', 'category']);
             return response()->json($product);
         }
-        
+
         $product->load(['variants', 'category']);
         return view('products.show', compact('product'));
     }
@@ -412,6 +416,7 @@ class ProductController extends Controller
                     $varBarcode = $variant['barcode'] ?? null;
 
                     $product->variants()->create([
+                        'tenant_id' => $this->tenantId, // <--- WAJIB TAMBAHKAN INI
                         'name'  => $variant['name'],
                         'price' => $variant['price'],
                         'stock' => $variant['stock'],
@@ -456,7 +461,7 @@ class ProductController extends Controller
             $query->where('category_id', $request->category_id);
 
             // Ambil nama kategori untuk judul di PDF
-            $cat = \App\Models\Category::find($request->category_id);
+            $cat = Category::where('tenant_id', $this->tenantId)->find($request->category_id);
             if ($cat) {
                 $categoryName = $cat->name;
             }
@@ -542,7 +547,7 @@ class ProductController extends Controller
 
         return $finalBarcode;
     }
-    
+
     /**
      * API KHUSUS ELECTRON: Scan Barcode
      */
@@ -553,8 +558,10 @@ class ProductController extends Controller
         if (!$keyword) return response()->json(['status' => 'error', 'message' => 'Kode kosong'], 400);
 
         // 1. Cek Varian
-        $variant = ProductVariant::with('product')
-            ->where('barcode', $keyword)->orWhere('sku', $keyword)->first();
+        $variant = ProductVariant::where('tenant_id', $this->tenantId)
+            ->where(function($q) use ($keyword) {
+                $q->where('barcode', $keyword)->orWhere('sku', $keyword);
+            })->first();
 
         if ($variant && $variant->product) {
             return response()->json([
@@ -570,8 +577,10 @@ class ProductController extends Controller
         }
 
         // 2. Cek Produk Utama
-        $product = Product::with('variants')
-            ->where('barcode', $keyword)->orWhere('sku', $keyword)->first();
+        $product = Product::where('tenant_id', $this->tenantId)
+            ->where(function($q) use ($keyword) {
+                $q->where('barcode', $keyword)->orWhere('sku', $keyword);
+            })->first();
 
         if ($product) {
             if ($product->has_variant) {
@@ -590,17 +599,14 @@ class ProductController extends Controller
 
         return response()->json(['status' => 'error', 'message' => 'Produk tidak ditemukan'], 404);
     }
-    
-    // --- FUNGSI KHUSUS API ELECTRON (PASTI JSON) ---
-    public function apiList()
-    {
-        // Ambil semua produk aktif beserta kategorinya
-        // Menggunakan get() agar tidak terpotong pagination
-        $products = Product::with('category')
-                           ->where('stock_status', 'available') // Opsional: Cuma yg ada stok
-                           ->latest()
-                           ->get();
 
+    // --- FUNGSI KHUSUS API ELECTRON (PASTI JSON) ---
+    public function apiList() {
+        $products = Product::where('tenant_id', $this->tenantId) // <--- WAJIB TAMBAH INI
+                        ->with('category')
+                        ->where('stock_status', 'available')
+                        ->latest()
+                        ->get();
         return response()->json($products);
     }
 }
