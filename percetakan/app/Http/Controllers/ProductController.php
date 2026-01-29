@@ -35,7 +35,9 @@ class ProductController extends Controller
         $categories = Category::where('tenant_id', $this->tenantId)->orderBy('name', 'asc')->get();
 
         // 2. Query Produk - Filter Tenant
-        $query = Product::where('tenant_id', $this->tenantId)->with('category')->latest();
+        $query = Product::where('tenant_id', $this->tenantId) // <--- KUNCI DISINI
+                ->with(['category', 'variants'])
+                ->orderBy('name', 'asc');
 
         // --- FILTER PENCARIAN ---
         if ($request->filled('search')) {
