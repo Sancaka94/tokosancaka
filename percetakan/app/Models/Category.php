@@ -11,6 +11,7 @@ use App\Traits\BelongsToTenant; // <-- Pastikan ini di-import
 class Category extends Model
 {
     use HasFactory;
+    use BelongsToTenant; // <-- Pastikan ini dipasang di dalam class
 
     protected $table = 'categories';
 
