@@ -1892,7 +1892,9 @@ public function handleDanaCallback(Request $request)
 
         try {
             // 1. Cari Order
-            $order = Order::with(['items', 'attachments'])->findOrFail($id);
+            $order = Order::where('tenant_id', $this->tenantId)
+              ->with(['items', 'attachments'])
+              ->findOrFail($id);
 
             // 2. Logika Pengembalian Stok (Opsional)
             // Jika pesanan dibatalkan/dihapus sebelum selesai, stok dikembalikan
@@ -2134,19 +2136,19 @@ public function handleDanaCallback(Request $request)
 
         DB::beginTransaction();
         try {
-            $order = Order::findOrFail($id);
+            $order = Order::where('tenant_id', $this->tenantId)->findOrFail($id);
             $subtotalBaru = 0;
 
             // 2. Loop Items untuk Update Qty & Harga
             foreach ($request->items as $itemId => $data) {
-                $detail = OrderDetail::findOrFail($itemId);
+                $detail = OrderDetail::where('tenant_id', $this->tenantId)->findOrFail($itemId);
                 $oldQty = $detail->quantity;
                 $newQty = $data['qty'];
                 $newPrice = $data['price'];
 
                 // Update Stok Produk (Jika ada perubahan Qty)
                 if ($oldQty != $newQty) {
-                    $product = Product::find($detail->product_id);
+                    $product = Product::where('tenant_id', $this->tenantId)->find($detail->product_id);
                     if ($product) {
                         // Selisih: Jika qty baru lebih besar, kurangi stok. Sebaliknya tambah stok.
                         $selisih = $newQty - $oldQty;
