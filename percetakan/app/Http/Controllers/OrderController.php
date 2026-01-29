@@ -731,6 +731,7 @@ class OrderController extends Controller
             foreach ($finalCart as $data) {
                 $prod = $data['product'];
                 OrderDetail::create([
+                    'tenant_id'         => $this->tenantId, // <--- Tambahkan ini
                     'order_id'          => $order->id,
                     'product_id'        => $prod->id,
                     'product_name'      => $prod->name,
@@ -1795,13 +1796,12 @@ public function handleDanaCallback(Request $request)
         }
     }
 
-    /**
-     * Menampilkan Detail Order
-     */
     public function show($id)
     {
-        // Load order beserta item produk dan lampiran file
-        $order = Order::with(['items', 'attachments', 'coupon'])->findOrFail($id);
+        // Filter berdasarkan tenant_id juga!
+        $order = Order::where('tenant_id', $this->tenantId)
+                    ->with(['items', 'attachments', 'coupon'])
+                    ->findOrFail($id);
 
         return view('orders.show', compact('order'));
     }
@@ -2260,7 +2260,8 @@ public function handleDanaCallback(Request $request)
         // ==========================================
         // 1. CARI DI TABEL PRODUK UTAMA (SINGLE)
         // ==========================================
-        $product = Product::where('stock_status', 'available')
+        $product = Product::where('tenant_id', $this->tenantId)
+            ->where('stock_status', 'available') // <--- Tambahkan filter ini
             ->where(function($q) use ($barcode) {
                 $q->where('barcode', $barcode)
                   ->orWhere('sku', $barcode);
