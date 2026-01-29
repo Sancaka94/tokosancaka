@@ -708,7 +708,7 @@ class OrderController extends Controller
 
             $order = Order::create([
                 'tenant_id'       => $this->tenantId, // <--- OTOMATIS AMAN
-                'order_number'    => 'SCK-PRT-' . date('ymdHis'),
+                'order_number'    => $orderNumber,
                 'user_id'         => $request->customer_id ?? null,
                 'customer_name'   => $customerName,
                 'customer_phone'  => $customerPhone,
