@@ -13,6 +13,7 @@ class OrderAttachment extends Model
     use BelongsToTenant; // <-- Pastikan ini dipasang di dalam class
 
     protected $fillable = [
+        'tenant_id',    // <--- TAMBAHKAN INI DI BARIS PALING ATAS
         'order_id',
         'file_path',
         'file_name',

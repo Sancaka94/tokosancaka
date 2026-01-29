@@ -5,21 +5,25 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use App\Traits\BelongsToTenant; // <-- Pastikan ini di-import
+
 
 class Coupon extends Model
 {
     use HasFactory;
+    use BelongsToTenant; // <-- Pastikan ini dipasang di dalam class
 
     /**
      * Konfigurasi Timestamp
      * Set ke 'false' jika tabel Anda TIDAK punya kolom 'updated_at'.
      */
-    public $timestamps = false; 
+    public $timestamps = false;
 
     /**
      * Daftar kolom yang boleh diisi (Mass Assignment).
      */
     protected $fillable = [
+        'tenant_id',
         'user_id',          // <--- PENTING: ID Pemilik Kupon (Affiliator)
         'code',
         'type',             // 'percent' atau 'fixed'
@@ -40,7 +44,7 @@ class Coupon extends Model
         'start_date' => 'datetime',
         'expiry_date' => 'datetime',
         'is_active' => 'boolean',
-        'value' => 'integer', 
+        'value' => 'integer',
         'min_order_amount' => 'integer',
         'used_count' => 'integer',
         'usage_limit' => 'integer',
@@ -69,7 +73,7 @@ class Coupon extends Model
      */
     public function isValid($totalOrder = 0)
     {
-        $now = now(); 
+        $now = now();
 
         // 1. Cek Status Aktif
         if (!$this->is_active) {
@@ -78,27 +82,27 @@ class Coupon extends Model
 
         // 2. Cek Tanggal Mulai (Jika diatur)
         if ($this->start_date && $now->lt($this->start_date)) {
-            return false; 
+            return false;
         }
 
         // 3. Cek Tanggal Kadaluarsa (Jika diatur)
         if ($this->expiry_date && $now->gt($this->expiry_date)) {
-            return false; 
+            return false;
         }
 
         // 4. Cek Batas Penggunaan (Kuota)
         if ($this->usage_limit > 0 && $this->used_count >= $this->usage_limit) {
-            return false; 
+            return false;
         }
 
         // 5. Cek Minimal Belanja
         if ($this->min_order_amount > 0 && $totalOrder < $this->min_order_amount) {
-            return false; 
+            return false;
         }
 
         return true;
     }
-    
+
     /**
      * Helper untuk menghitung nominal potongan
      */
@@ -106,12 +110,12 @@ class Coupon extends Model
     {
         if ($this->type == 'percent') {
             $discount = ($this->value / 100) * $totalOrder;
-            
+
             // Cek jika ada batas maksimal diskon (cap)
             if ($this->max_discount_amount > 0 && $discount > $this->max_discount_amount) {
                 return $this->max_discount_amount;
             }
-            
+
             return $discount;
         }
 

@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToTenant; // <-- Pastikan ini di-import
+
 
 class ProductVariant extends Model
 {
     use HasFactory;
+    use BelongsToTenant; // <-- Pastikan ini dipasang di dalam class
 
     /**
      * Nama tabel di database.
@@ -18,6 +21,7 @@ class ProductVariant extends Model
      * Kolom yang boleh diisi secara massal (Mass Assignment).
      */
     protected $fillable = [
+        'tenant_id',
         'product_id', // ID Produk Induk
         'name',       // Nama Varian (Contoh: "Merah / XL")
         'price',      // Harga khusus varian

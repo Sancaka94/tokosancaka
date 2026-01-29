@@ -13,6 +13,7 @@ class Order extends Model
     use BelongsToTenant; // <-- Pastikan ini dipasang di dalam class
 
     protected $fillable = [
+        'tenant_id',
         'order_number',
         'user_id',          // Baru (ID Customer Registered)
         'customer_name',    // Nama Tamu (Guest) atau Nama User

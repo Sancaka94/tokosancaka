@@ -17,6 +17,7 @@ class OrderDetail extends Model
 
     // PENTING: Daftarkan semua nama kolom ini agar bisa disimpan
     protected $fillable = [
+        'tenant_id',    // <--- TAMBAHKAN INI DI BARIS PALING ATAS
         'order_id',
         'product_id',
         'product_name',   // Kolom yang baru ditambahkan

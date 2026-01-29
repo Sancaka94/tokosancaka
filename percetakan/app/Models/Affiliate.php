@@ -6,15 +6,20 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\BelongsToTenant; // <-- Pastikan ini di-import
+
+
 
 // 2. GANTI 'extends Model' menjadi 'extends Authenticatable'
 class Affiliate extends Authenticatable
 {
     use HasFactory, Notifiable;
+    use BelongsToTenant; // <-- Pastikan ini dipasang di dalam class
 
     protected $table = 'affiliates';
 
     protected $fillable = [
+        'tenant_id',
         'name',
         'address',
         'whatsapp',
@@ -31,7 +36,7 @@ class Affiliate extends Authenticatable
     ];
 
     protected $hidden = [
-        'pin', 
+        'pin',
         'remember_token', // Tambahkan ini juga
     ];
 
@@ -68,7 +73,7 @@ class Affiliate extends Authenticatable
     {
         return $this->hasOne(Coupon::class, 'code', 'coupon_code');
     }
-    
+
     public function getWhatsappLinkAttribute()
     {
         $number = $this->whatsapp;

@@ -19,6 +19,7 @@ class Product extends Model
      * Sudah disesuaikan dengan fitur Varian & Kategori.
      */
     protected $fillable = [
+        'tenant_id',    // <--- TAMBAHKAN INI DI BARIS PALING ATAS
         'category_id',
         'name',
         'slug',         // URL ramah SEO
