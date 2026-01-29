@@ -747,7 +747,7 @@
                 this.variants = []; // Reset dulu
 
                 try {
-                    let url = `{{ url('/products') }}/${productId}/variants`;
+                    let url = `/products/${productId}/variants`;
                     let response = await fetch(url);
                     if (!response.ok) throw new Error('Gagal ambil data');
 
@@ -807,7 +807,7 @@
                 this.isSavingVariant = true;
 
                 try {
-                    let url = `{{ url('/products') }}/${this.activeProductId}/variants`;
+                    let url = `/products/${this.activeProductId}/variants`;
 
                     let response = await fetch(url, {
                         method: 'POST',
