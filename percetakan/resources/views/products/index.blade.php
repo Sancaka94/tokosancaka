@@ -352,14 +352,19 @@
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Nama Produk / Layanan <span class="text-red-500">*</span></label>
 
-                        {{-- Input Manual --}}
-                        <input type="text" name="name" x-show="presets.length === 0" :required="presets.length === 0"
-                               placeholder="Contoh: Kertas A4 70gsm"
-                               class="w-full px-4 py-3 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-sm font-bold text-slate-700 placeholder-slate-300">
+                        {{-- 1. Input Manual (Matikan jika ada preset) --}}
+                        <input type="text" name="name"
+                            x-show="presets.length === 0"
+                            :required="presets.length === 0"
+                            :disabled="presets.length > 0"  {{-- <--- TAMBAHAN KRITIS: Biar gak dikirim kalau sembunyi --}}
+                            placeholder="Contoh: Kertas A4 70gsm"
+                            class="w-full px-4 py-3 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-sm font-bold text-slate-700 placeholder-slate-300">
 
-                        {{-- Dropdown Preset --}}
+                        {{-- 2. Dropdown Preset (Matikan jika tidak ada preset) --}}
                         <div class="relative" x-show="presets.length > 0" style="display: none;">
-                            <select name="name" :required="presets.length > 0"
+                            <select name="name"
+                                    :required="presets.length > 0"
+                                    :disabled="presets.length === 0" {{-- <--- TAMBAHAN KRITIS: Biar gak dikirim kalau sembunyi --}}
                                     class="w-full px-4 py-3 rounded-xl border-indigo-200 bg-indigo-50 text-indigo-700 font-bold focus:ring-2 focus:ring-indigo-500 transition text-sm appearance-none">
                                 <option value="">-- Pilih Layanan --</option>
                                 <template x-for="p in presets">
