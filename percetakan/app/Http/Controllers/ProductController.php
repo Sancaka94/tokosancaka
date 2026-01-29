@@ -421,7 +421,10 @@ class ProductController extends Controller
                         'price' => $variant['price'],
                         'stock' => $variant['stock'],
                         'sku'   => $variantSku,
-                        'barcode' => $varBarcode, // <--- TAMBAHKAN INI
+                        'barcode' => [
+                            'nullable',
+                            Rule::unique('products')->where('tenant_id', $this->tenantId)->ignore($product->id ?? null),
+                        ],
                     ]);
                     $totalStock += $variant['stock'];
                 }
