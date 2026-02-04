@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/callback/doku',
             'telegram-webhook',
             'dana/notify', // URL Webhook DANA dibebaskan dari CSRF
+            'doku/*',
         ]);
 
         // --- TAMBAHKAN BAGIAN INI ---
