@@ -524,9 +524,8 @@ width: 22px;
         <div class="row align-items-center">
 
             <div class="col-lg-6">
-                <div class="d-inline-flex align-items-center px-3 py-1 rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 mb-4">
-                    <span class="badge bg-danger me-2">BARU</span>
-                    <span class="text-white small fw-bold">Kirim Paket Lebih Cepat & Aman</span>
+                <div class="hero-badge animate-fade-up">
+                    <i class="fas fa-bolt text-warning me-2"></i> Kirim Paket Lebih Cepat
                 </div>
 
                 <h1 class="hero-title animate-fade-up">
@@ -535,24 +534,25 @@ width: 22px;
                 </h1>
 
                 <p class="hero-subtitle animate-fade-up delay-1">
-                    Kirim paket ke seluruh Indonesia dengan mudah.
-                    Lacak posisi paket real-time, tarif transparan,
+                    Jangkauan seluruh Indonesia. Lacak paket real-time, tarif transparan,
                     dan jaminan keamanan terpercaya bersama Sancaka Express.
                 </p>
 
-                <div class="d-flex gap-3 flex-wrap justify-content-md-start justify-content-center animate-fade-up delay-2">
+                <div class="d-flex gap-3 justify-content-md-start justify-content-center animate-fade-up delay-2">
                     <a href="#cek-ongkir" class="btn btn-hero-primary">
                         Mulai Kirim
                     </a>
                     <a href="#lacak" class="btn btn-hero-outline">
-                        <i class="fas fa-search me-2"></i> Lacak Paket
+                        Lacak Paket
                     </a>
                 </div>
             </div>
 
             <div class="col-lg-6">
                 <div class="hero-image-container animate-fade-up delay-1">
-                    <img src="{{ asset('storage/gambar/hero-logistik.png') }}" alt="Ilustrasi Logistik Sancaka" class="hero-image img-fluid">
+                    <img src="https://cdni.iconscout.com/illustration/premium/thumb/logistics-service-illustration-download-in-svg-png-gif-file-formats--delivery-transportation-cargo-business-pack-illustrations-3617637.png"
+                         alt="Ilustrasi Logistik Sancaka"
+                         class="hero-image">
                 </div>
             </div>
 
@@ -561,7 +561,7 @@ width: 22px;
 
     <div class="custom-shape-divider-bottom">
         <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
-            <path d="M985.66,92.83C906.67,72,823.78,31,743.84,14.19c-82.26-17.34-168.06-16.33-250.45.39-57.84,11.73-114,31.07-172,41.86A600.21,600.21,0,0,1,0,27.35V120H1200V95.8C1132.19,118.92,1055.71,111.31,985.66,92.83Z" class="shape-fill"></path>
+            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" class="shape-fill"></path>
         </svg>
     </div>
 </section>
