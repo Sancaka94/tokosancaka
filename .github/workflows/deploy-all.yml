@@ -1,4 +1,5 @@
-name: Deploy All Domains
+name: Deploy via SSH (Rsync)
+
 on:
   push:
     branches:
@@ -6,30 +7,26 @@ on:
 
 jobs:
   web-deploy:
-    name: 🚀 Kirim ke DirectAdmin
+    name: 🚀 Kirim Cepat (Rsync)
     runs-on: ubuntu-latest
     steps:
-    - name: 🚚 Ambil file terbaru
+    - name: 🚚 Ambil kode terbaru
       uses: actions/checkout@v4
 
-    - name: 📂 Sync FTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+    - name: 🚀 Sync ke Server
+      uses: easingthemes/ssh-deploy@v5.0.0
       with:
-        server: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
+        # KREDENSIAL
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        REMOTE_HOST: ${{ secrets.FTP_SERVER }}
+        REMOTE_USER: ${{ secrets.FTP_USERNAME }}
+
+        # SUMBER & TUJUAN
+        SOURCE: "./"
+        TARGET: "domains/"
+
+        # SETTINGAN PINTAR (Hanya kirim yang berubah & hapus yang tidak ada di git)
+        ARGS: "-rltgoDzvO --delete"
         
-        # TARGET: Langsung ke folder domains di server
-        server-dir: ./domains/
-        
-        # SUMBER: Dari root repo kamu
-        local-dir: ./
-        
-        # PENGAMANAN: Jangan upload file ini
-        exclude: |
-          **/.git*
-          **/.git*/**
-          **/.github/**
-          **/node_modules/**
-          **/vendor/**
-          **/.env*
+        # SATPAM (File yang tidak boleh dikirim)
+        EXCLUDE: ".git/, .github/, .gitignore, .env, .env.*, node_modules/, vendor/, *.sql, *.log, Data Backup/"
