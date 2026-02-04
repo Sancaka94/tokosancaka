@@ -519,19 +519,27 @@ width: 22px;
 
 
 
-<!-- Hero Section -->
-
 <section class="hero-section">
-
-    <div class="container text-center py-5">
-
-        <h1 class="display-4 fw-bold">Solusi Pengiriman Terlengkap dan Terpercaya</h1>
-
-        <p class="lead mt-3 col-lg-8 mx-auto">Kirim paket ke seluruh Indonesia dengan mudah, cepat, dan aman bersama Sancaka Express.</p>
-
-
+    <div class="animation-bg">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
     </div>
 
+    <div class="container position-relative z-2 text-center text-white">
+        <span class="badge bg-white bg-opacity-10 border border-white border-opacity-25 rounded-pill px-3 py-2 mb-3 animate-fade-up">
+            🚀 Kirim Paket Lebih Cepat & Aman
+        </span>
+
+        <h1 class="display-4 fw-bold mb-3 animate-fade-up">
+            Solusi Pengiriman <br>
+            <span class="highlight-text">Terlengkap & Terpercaya</span>
+        </h1>
+
+        <p class="lead text-white-50 mt-3 col-lg-8 mx-auto mb-5 animate-fade-up delay-1">
+            Kirim paket ke seluruh Indonesia dengan mudah, cepat, dan aman bersama Sancaka Express.
+        </p>
+    </div>
 </section>
 
 
