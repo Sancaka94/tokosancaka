@@ -520,27 +520,50 @@ width: 22px;
 
 
 <section class="hero-section">
-    <div class="container position-relative z-2 text-center">
+    <div class="container position-relative z-2">
+        <div class="row align-items-center">
 
-        <a href="#cek-ongkir" class="text-decoration-none">
-            <div class="badge-modern animate-fade-up">
-                <span class="badge-dot"></span>
-                <span>Layanan Logistik Terintegrasi & Cepat</span>
-                <i class="fas fa-chevron-right ms-1" style="font-size: 10px;"></i>
+            <div class="col-lg-6">
+                <div class="d-inline-flex align-items-center px-3 py-1 rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 mb-4">
+                    <span class="badge bg-danger me-2">BARU</span>
+                    <span class="text-white small fw-bold">Kirim Paket Lebih Cepat & Aman</span>
+                </div>
+
+                <h1 class="hero-title animate-fade-up">
+                    Solusi Pengiriman <br>
+                    Cepat & Aman
+                </h1>
+
+                <p class="hero-subtitle animate-fade-up delay-1">
+                    Kirim paket ke seluruh Indonesia dengan mudah.
+                    Lacak posisi paket real-time, tarif transparan,
+                    dan jaminan keamanan terpercaya bersama Sancaka Express.
+                </p>
+
+                <div class="d-flex gap-3 flex-wrap justify-content-md-start justify-content-center animate-fade-up delay-2">
+                    <a href="#cek-ongkir" class="btn btn-hero-primary">
+                        Mulai Kirim
+                    </a>
+                    <a href="#lacak" class="btn btn-hero-outline">
+                        <i class="fas fa-search me-2"></i> Lacak Paket
+                    </a>
+                </div>
             </div>
-        </a>
 
-        <h1 class="hero-title animate-fade-up delay-1">
-            Solusi Pengiriman <br>
-            <span class="text-highlight">Terlengkap & Terpercaya</span>
-        </h1>
-
-        <p class="hero-subtitle animate-fade-up delay-2">
-            Platform logistik modern untuk kebutuhan bisnis dan personal.
-            Kirim paket ke seluruh Indonesia dengan tracking real-time dan tarif transparan.
-        </p>
+            <div class="col-lg-6">
+                <div class="hero-image-container animate-fade-up delay-1">
+                    <img src="{{ asset('storage/gambar/hero-logistik.png') }}" alt="Ilustrasi Logistik Sancaka" class="hero-image img-fluid">
+                </div>
+            </div>
 
         </div>
+    </div>
+
+    <div class="custom-shape-divider-bottom">
+        <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" class="shape-fill"></path>
+        </svg>
+    </div>
 </section>
 
 

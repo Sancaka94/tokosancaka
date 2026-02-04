@@ -170,108 +170,114 @@
 
 
 
-
-
-
-
-/* --- HERO SECTION: CLEAN TECH STYLE --- */
+/* --- HERO SECTION: MODERN WAVE RED --- */
 .hero-section {
-    /* Background Gelap Elegan (Dark Navy) */
-    background-color: #0f172a;
-    /* Pola Titik-titik (Dot Pattern) untuk kesan Jaringan Logistik */
-    background-image: radial-gradient(#334155 1px, transparent 1px);
-    background-size: 30px 30px;
-
-    min-height: 580px;
-    display: flex;
-    align-items: center;
+    /* Gradient Merah Modern (Deep Red ke Bright Red) */
+    background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%);
     position: relative;
-    padding-bottom: 80px;
+    padding-top: 100px; /* Jarak atas */
+    padding-bottom: 150px; /* Jarak bawah dilebihkan untuk Wave */
     overflow: hidden;
 }
 
-/* Efek Vignette (Bayangan pinggir) biar fokus ke tengah */
-.hero-section::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(circle at center, transparent 0%, #0f172a 80%);
-    pointer-events: none;
-}
-
-/* Typography yang BERSIH (Tanpa Shadow Tebal) */
+/* Teks Hero */
 .hero-title {
     font-size: 3.5rem;
     font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -0.02em; /* Rapatkan huruf biar modern */
+    line-height: 1.2;
     color: #ffffff;
     margin-bottom: 1.5rem;
 }
 
 .hero-subtitle {
-    font-size: 1.25rem;
-    color: #94a3b8; /* Abu-abu terang, bukan putih polos */
-    font-weight: 400;
+    font-size: 1.15rem;
+    color: rgba(255, 255, 255, 0.9); /* Putih agak transparan */
     line-height: 1.6;
-    max-width: 700px;
-    margin: 0 auto 3rem auto;
+    margin-bottom: 2.5rem;
+    font-weight: 400;
 }
 
-/* Highlight Text: Warna Solid Tegas */
-.text-highlight {
-    color: #f43f5e; /* Merah Modern (Rose/Pinkish Red) */
+/* Ilustrasi di Kanan */
+.hero-image-container {
     position: relative;
-    display: inline-block;
+    z-index: 2;
+    text-align: center;
+}
+.hero-image {
+    max-width: 100%;
+    height: auto;
+    /* Animasi melayang halus */
+    animation: floatingHero 6s ease-in-out infinite;
+    filter: drop-shadow(0 20px 40px rgba(0,0,0,0.2)); /* Bayangan biar 3D */
 }
 
-/* Garis bawah artistik */
-.text-highlight::after {
-    content: '';
+@keyframes floatingHero {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+}
+
+/* Tombol Hero */
+.btn-hero-primary {
+    background-color: #ffffff;
+    color: #b91c1c; /* Merah Teks */
+    font-weight: 700;
+    padding: 12px 30px;
+    border-radius: 50px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    border: 2px solid #ffffff;
+    transition: all 0.3s;
+}
+.btn-hero-primary:hover {
+    background-color: transparent;
+    color: #ffffff;
+    transform: translateY(-3px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+}
+
+.btn-hero-outline {
+    background-color: transparent;
+    color: #ffffff;
+    font-weight: 600;
+    padding: 12px 30px;
+    border-radius: 50px;
+    border: 2px solid rgba(255,255,255,0.3);
+    transition: all 0.3s;
+}
+.btn-hero-outline:hover {
+    border-color: #ffffff;
+    background-color: rgba(255,255,255,0.1);
+}
+
+/* --- WAVE SVG (Lengkungan Bawah) --- */
+.custom-shape-divider-bottom {
     position: absolute;
-    bottom: 5px;
+    bottom: 0;
     left: 0;
     width: 100%;
-    height: 12px;
-    background-color: rgba(244, 63, 94, 0.2); /* Merah transparan */
-    z-index: -1;
-    transform: skewX(-15deg);
+    overflow: hidden;
+    line-height: 0;
+    z-index: 1;
 }
-
-/* Badge Baru: Glassmorphism Halus */
-.badge-modern {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 20px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 100px;
-    color: #e2e8f0;
-    font-size: 0.875rem;
-    font-weight: 500;
-    margin-bottom: 2rem;
-    backdrop-filter: blur(4px);
-    transition: all 0.3s ease;
+.custom-shape-divider-bottom svg {
+    position: relative;
+    display: block;
+    width: calc(130% + 1.3px);
+    height: 120px;
 }
-.badge-modern:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-2px);
-}
-.badge-dot {
-    width: 8px;
-    height: 8px;
-    background-color: #22c55e; /* Hijau aktif */
-    border-radius: 50%;
-    box-shadow: 0 0 10px #22c55e;
+.custom-shape-divider-bottom .shape-fill {
+    fill: #FFFFFF; /* Warna putih nyambung ke section bawah */
 }
 
 /* Responsif HP */
-@media (max-width: 768px) {
+@media (max-width: 991px) {
+    .hero-section { text-align: center; padding-top: 60px; padding-bottom: 100px; }
     .hero-title { font-size: 2.5rem; }
-    .hero-section { background-size: 20px 20px; } /* Titik lebih kecil di HP */
+    .hero-image-container { margin-top: 40px; }
 }
+
+
+
+
 
 
 /* CSS untuk Judul Utama (H1) - KOMBINASI Garis & Bayangan Putih */
