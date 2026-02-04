@@ -1,4 +1,4 @@
-name: Deploy via SSH (Rsync)
+name: Deploy via SSH (Git Pull)
 
 on:
   push:
@@ -6,27 +6,19 @@ on:
       - master
 
 jobs:
-  web-deploy:
-    name: 🚀 Kirim Cepat (Rsync)
+  deploy:
+    name: 🚀 Server Auto-Update
     runs-on: ubuntu-latest
     steps:
-    - name: 🚚 Ambil kode terbaru
-      uses: actions/checkout@v4
-
-    - name: 🚀 Sync ke Server
-      uses: easingthemes/ssh-deploy@v5.0.0
-      with:
-        # KREDENSIAL
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        REMOTE_HOST: ${{ secrets.FTP_SERVER }}
-        REMOTE_USER: ${{ secrets.FTP_USERNAME }}
-
-        # SUMBER & TUJUAN
-        SOURCE: "./"
-        TARGET: "domains/" 
-
-        # SETTINGAN PINTAR (Bersih tanpa perintah SSH)
-        ARGS: "-rltgoDzvO --delete"
-        
-        # SATPAM
-        EXCLUDE: ".git/, .github/, .gitignore, .env, .env.*, node_modules/, vendor/, *.sql, *.log, Data Backup/"
+      - name: Perintah Server Tarik Data
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            cd /home/tokq3391/domains/
+            git fetch --all
+            git reset --hard origin/master
+            echo "✅ Sukses! Web server sudah update."
