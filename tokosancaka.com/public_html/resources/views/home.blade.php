@@ -520,26 +520,27 @@ width: 22px;
 
 
 <section class="hero-section">
-    <div class="animation-bg">
-        <div class="shape shape-1"></div>
-        <div class="shape shape-2"></div>
-        <div class="shape shape-3"></div>
-    </div>
+    <div class="container position-relative z-2 text-center">
 
-    <div class="container position-relative z-2 text-center text-white">
-        <span class="badge bg-white bg-opacity-10 border border-white border-opacity-25 rounded-pill px-3 py-2 mb-3 animate-fade-up">
-            🚀 Kirim Paket Lebih Cepat & Aman
-        </span>
+        <a href="#cek-ongkir" class="text-decoration-none">
+            <div class="badge-modern animate-fade-up">
+                <span class="badge-dot"></span>
+                <span>Layanan Logistik Terintegrasi & Cepat</span>
+                <i class="fas fa-chevron-right ms-1" style="font-size: 10px;"></i>
+            </div>
+        </a>
 
-        <h1 class="display-4 fw-bold mb-3 animate-fade-up">
+        <h1 class="hero-title animate-fade-up delay-1">
             Solusi Pengiriman <br>
-            <span class="highlight-text">Terlengkap & Terpercaya</span>
+            <span class="text-highlight">Terlengkap & Terpercaya</span>
         </h1>
 
-        <p class="lead text-white-50 mt-3 col-lg-8 mx-auto mb-5 animate-fade-up delay-1">
-            Kirim paket ke seluruh Indonesia dengan mudah, cepat, dan aman bersama Sancaka Express.
+        <p class="hero-subtitle animate-fade-up delay-2">
+            Platform logistik modern untuk kebutuhan bisnis dan personal.
+            Kirim paket ke seluruh Indonesia dengan tracking real-time dan tarif transparan.
         </p>
-    </div>
+
+        </div>
 </section>
 
 
