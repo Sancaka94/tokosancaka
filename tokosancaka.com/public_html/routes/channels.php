@@ -48,6 +48,11 @@ Broadcast::channel('customer-saldo.{userId}', function ($user, $userId) {
     return (int) $user->id_pengguna === (int) $userId;
 });
 
+
+//Broadcast::channel('customer.saldo.{id}', function ($user, $id) {
+    // User hanya boleh dengar channel miliknya sendiri
+    //return (int) $user->id === (int) $id;
+//});
 // Channel yang dapat diakses oleh semua user yang terotentikasi.
 // Berguna untuk notifikasi umum, seperti saat surat jalan baru dibuat.
 // Callback yang mengembalikan `true` akan mengizinkan semua user yang login
