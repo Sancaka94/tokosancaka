@@ -1,0 +1,40 @@
+name: Deploy Final Sancaka
+
+on:
+  push:
+    branches:
+      - master
+      - main  # Jaga-jaga kalau ternyata laptop pakai 'main'
+
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.CPANEL_HOST }}
+          username: ${{ secrets.CPANEL_USERNAME }}
+          key: ${{ secrets.CPANEL_KEY }}
+          port: 22
+          script: |
+            # KITA GUNAKAN ALAMAT LENGKAP BIAR TIDAK NYASAR
+            # Sesuaikan username 'tokq3391' dan domain jika ada typo
+            cd /home/tokq3391/domains/tokosancaka.com/public_html
+
+            # Cek kita ada di mana (akan muncul di log GitHub)
+            echo "Posisi saat ini:"
+            pwd
+
+            # Tarik data (force update agar tidak ada konflik)
+            git fetch --all
+            git reset --hard origin/master
+
+            # Update dependency & cache
+            # (Hapus tanda # di baris bawah jika folder vendor belum ada)
+            # composer install --no-interaction --prefer-dist --optimize-autoloader
+
+            php artisan optimize:clear
+
+            echo "Deploy Selesai!"

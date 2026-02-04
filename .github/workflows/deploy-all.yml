@@ -1,0 +1,35 @@
+name: Deploy All Domains
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  web-deploy:
+    name: 🚀 Kirim ke DirectAdmin
+    runs-on: ubuntu-latest
+    steps:
+    - name: 🚚 Ambil file terbaru
+      uses: actions/checkout@v4
+
+    - name: 📂 Sync FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        
+        # TARGET: Langsung ke folder domains di server
+        server-dir: ./domains/
+        
+        # SUMBER: Dari root repo kamu
+        local-dir: ./
+        
+        # PENGAMANAN: Jangan upload file ini
+        exclude: |
+          **/.git*
+          **/.git*/**
+          **/.github/**
+          **/node_modules/**
+          **/vendor/**
+          **/.env*

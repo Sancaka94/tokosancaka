@@ -1,0 +1,52 @@
+# --- LEVEL 1: BLOKIR SEMUA (DEFAULT) ---
+*
+
+# --- LEVEL 2: IZINKAN STRUKTUR FOLDER ---
+# Izinkan folder domain terbaca
+!*/
+# Izinkan folder .github (PENTING: supaya script deploy tetap ada)
+!.github/
+!.github/**
+# Izinkan file .gitignore ini sendiri
+!.gitignore
+
+# --- LEVEL 3: HANYA IZINKAN PUBLIC_HTML ---
+!/*/public_html/
+!/*/public_html/**
+
+# --- LEVEL 4: FILTER TERAKHIR (BLACK LIST) ---
+# Walaupun ada di dalam public_html, file-file ini HARUS DIBUANG:
+
+# 1. Kredensial (HARAM HUKUMNYA)
+.env
+.env.*
+config.php
+database.php
+
+# 2. Database & Backup
+*.sql
+*.zip
+*.tar.gz
+*.rar
+*.log
+
+# 3. File Gambar & Media (Sesuai Request Kamu)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.svg
+*.webp
+*.ico
+*.bmp
+*.mp4
+*.mp3
+
+# 4. Sampah Sistem
+node_modules/
+vendor/
+.DS_Store
+Thumbs.db
+
+Data Backup/
+data_backup/
