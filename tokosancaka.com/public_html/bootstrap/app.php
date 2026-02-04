@@ -8,11 +8,34 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
+        channels: __DIR__.'/../routes/channels.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware): void {
-        //
+    ->withMiddleware(function (Middleware $middleware) {
+        // ✅ DIPERBAIKI: Daftarkan middleware di sini
+        $middleware->web(append: [
+            \App\Http\Middleware\UpdateUserLastSeenAt::class,
+        ]);
+
+        $middleware->validateCsrfTokens(except: [
+            'api/webhook/kiriminaja', // <--- Tambahkan ini
+            'digiflazz/webhook', // <--- Tambahkan baris ini
+            'payment/*', // Jika ada webhook payment lain
+            'webhook/fonnte', // <--- Tambahkan baris ini
+            //'api/telegram/webhook', // Sesuaikan dengan route
+            'api/webhook/doku-jokul', // <--- PASTIIN INI ADA
+            'api/callback/tripay',
+            'api/callback/doku',
+            'telegram-webhook',
+            'dana/notify', // URL Webhook DANA dibebaskan dari CSRF
+        ]);
+
+        // --- TAMBAHKAN BAGIAN INI ---
+        $middleware->alias([
+            'is_agent' => \App\Http\Middleware\IsAgent::class,
+        ]);
+
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
+    ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
