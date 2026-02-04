@@ -170,60 +170,40 @@
 
 
 
-/* --- HERO SECTION: MODERN WAVE RED --- */
+/* --- HERO SECTION: SOLID RED & SHARP WAVE --- */
 .hero-section {
-    /* Gradient Merah Modern (Deep Red ke Bright Red) */
-    background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%);
+    /* MERAH SOLID (Tanpa Gradasi) */
+    background: #dc2626;
     position: relative;
-    padding-top: 100px; /* Jarak atas */
-    padding-bottom: 150px; /* Jarak bawah dilebihkan untuk Wave */
+    padding-top: 120px;
+    padding-bottom: 180px; /* Jarak bawah lebih lega untuk wave tajam */
     overflow: hidden;
 }
 
 /* Teks Hero */
 .hero-title {
-    font-size: 3.5rem;
+    font-size: 3.8rem;
     font-weight: 800;
-    line-height: 1.2;
+    line-height: 1.1;
     color: #ffffff;
     margin-bottom: 1.5rem;
 }
 
 .hero-subtitle {
-    font-size: 1.15rem;
-    color: rgba(255, 255, 255, 0.9); /* Putih agak transparan */
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.9);
     line-height: 1.6;
     margin-bottom: 2.5rem;
     font-weight: 400;
 }
 
-/* Ilustrasi di Kanan */
-.hero-image-container {
-    position: relative;
-    z-index: 2;
-    text-align: center;
-}
-.hero-image {
-    max-width: 100%;
-    height: auto;
-    /* Animasi melayang halus */
-    animation: floatingHero 6s ease-in-out infinite;
-    filter: drop-shadow(0 20px 40px rgba(0,0,0,0.2)); /* Bayangan biar 3D */
-}
-
-@keyframes floatingHero {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-15px); }
-}
-
-/* Tombol Hero */
+/* Tombol Hero (Outline Putih) */
 .btn-hero-primary {
     background-color: #ffffff;
-    color: #b91c1c; /* Merah Teks */
+    color: #dc2626; /* Merah Teks */
     font-weight: 700;
-    padding: 12px 30px;
+    padding: 14px 35px;
     border-radius: 50px;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
     border: 2px solid #ffffff;
     transition: all 0.3s;
 }
@@ -231,16 +211,15 @@
     background-color: transparent;
     color: #ffffff;
     transform: translateY(-3px);
-    box-shadow: 0 15px 30px rgba(0,0,0,0.2);
 }
 
 .btn-hero-outline {
     background-color: transparent;
     color: #ffffff;
     font-weight: 600;
-    padding: 12px 30px;
+    padding: 14px 35px;
     border-radius: 50px;
-    border: 2px solid rgba(255,255,255,0.3);
+    border: 2px solid rgba(255,255,255,0.4);
     transition: all 0.3s;
 }
 .btn-hero-outline:hover {
@@ -248,7 +227,24 @@
     background-color: rgba(255,255,255,0.1);
 }
 
-/* --- WAVE SVG (Lengkungan Bawah) --- */
+/* Ilustrasi Kanan */
+.hero-image-container {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+}
+.hero-image {
+    max-width: 90%; /* Sedikit dikecilkan agar pas */
+    height: auto;
+    filter: drop-shadow(0 15px 30px rgba(0,0,0,0.15));
+    animation: floatingHero 6s ease-in-out infinite;
+}
+@keyframes floatingHero {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+/* --- WAVE SHARP (Lengkungan Tajam) --- */
 .custom-shape-divider-bottom {
     position: absolute;
     bottom: 0;
@@ -261,18 +257,20 @@
 .custom-shape-divider-bottom svg {
     position: relative;
     display: block;
-    width: calc(130% + 1.3px);
-    height: 120px;
+    width: calc(100% + 1.3px);
+    height: 150px; /* Tinggi gelombang */
+    transform: rotateY(180deg); /* Balik arah gelombang */
 }
 .custom-shape-divider-bottom .shape-fill {
     fill: #FFFFFF; /* Warna putih nyambung ke section bawah */
 }
 
-/* Responsif HP */
+/* Responsif */
 @media (max-width: 991px) {
-    .hero-section { text-align: center; padding-top: 60px; padding-bottom: 100px; }
-    .hero-title { font-size: 2.5rem; }
-    .hero-image-container { margin-top: 40px; }
+    .hero-section { text-align: center; padding-top: 80px; padding-bottom: 120px; }
+    .hero-title { font-size: 2.8rem; }
+    .hero-image-container { margin-top: 50px; }
+    .hero-image { max-width: 100%; }
 }
 
 
