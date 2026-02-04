@@ -25,8 +25,8 @@ jobs:
         SOURCE: "./"
         TARGET: "domains/"
 
-        # SETTINGAN PINTAR (Hanya kirim yang berubah & hapus yang tidak ada di git)
-        ARGS: "-rltgoDzvO --delete"
+        # GANTI BARIS ARGS JADI SEPERTI INI:
+        ARGS: "-rltgoDzvO --delete -o StrictHostKeyChecking=no"
         
         # SATPAM (File yang tidak boleh dikirim)
         EXCLUDE: ".git/, .github/, .gitignore, .env, .env.*, node_modules/, vendor/, *.sql, *.log, Data Backup/"
