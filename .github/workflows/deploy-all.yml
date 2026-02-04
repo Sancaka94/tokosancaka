@@ -23,10 +23,10 @@ jobs:
 
         # SUMBER & TUJUAN
         SOURCE: "./"
-        TARGET: "domains/"
+        TARGET: "domains/" 
 
-        # GANTI BARIS ARGS JADI SEPERTI INI:
-        ARGS: "-rltgoDzvO --delete -o StrictHostKeyChecking=no"
+        # SETTINGAN PINTAR (Bersih tanpa perintah SSH)
+        ARGS: "-rltgoDzvO --delete"
         
-        # SATPAM (File yang tidak boleh dikirim)
+        # SATPAM
         EXCLUDE: ".git/, .github/, .gitignore, .env, .env.*, node_modules/, vendor/, *.sql, *.log, Data Backup/"
