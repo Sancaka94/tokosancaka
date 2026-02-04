@@ -170,134 +170,19 @@
 
 
 
-/* --- HERO SECTION: CLEAN RED MATTE --- */
-.hero-section {
-    /* Merah Solid Elegan (Bukan merah cabe yang sakit di mata) */
-    background-color: #cb0c1f;
-    position: relative;
-    padding-top: 100px;
-    padding-bottom: 160px; /* Space bawah untuk gelombang */
-    overflow: hidden;
-}
 
-/* JUDUL UTAMA: BERSIH TANPA BAYANGAN */
-.hero-title {
-    font-family: 'Poppins', sans-serif; /* Pastikan font modern */
-    font-size: 3.5rem;
-    font-weight: 800; /* Sangat tebal */
-    line-height: 1.2;
-    color: #ffffff !important;
-    text-shadow: none !important; /* HAPUS EFEK GLOW JELEK */
-    margin-bottom: 1.5rem;
-}
 
-/* Deskripsi */
-.hero-subtitle {
-    font-size: 1.1rem;
-    color: rgba(255, 255, 255, 0.9);
-    font-weight: 400;
-    line-height: 1.6;
-    margin-bottom: 2.5rem;
-    max-width: 90%;
-}
 
-/* Badge 'BARU' di atas judul */
-.hero-badge {
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50px;
-    padding: 5px 15px;
-    display: inline-flex;
-    align-items: center;
-    color: white;
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin-bottom: 20px;
-}
 
-/* Tombol Putih Bersih */
-.btn-hero-primary {
-    background-color: #ffffff;
-    color: #cb0c1f; /* Teks merah */
-    font-weight: 700;
-    padding: 14px 40px;
-    border-radius: 12px; /* Sudut agak kotak modern */
-    border: none;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    transition: all 0.3s;
-}
-.btn-hero-primary:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-    background-color: #f8f9fa;
-    color: #a3000f;
-}
-
-.btn-hero-outline {
-    background-color: transparent;
+      .hero-section {
+    /* Hapus linear-gradient, langsung url gambar saja */
+    background: url('https://tokosancaka.com/storage/gambar/sancaka_header.webp') no-repeat center center;
+    background-size: cover;
     color: #ffffff;
-    font-weight: 600;
-    padding: 14px 40px;
-    border-radius: 12px;
-    border: 2px solid rgba(255,255,255,0.5);
-    transition: all 0.3s;
+    padding: 120px 0;
+    text-align: center;
+    position: relative; /* Tambahkan ini untuk jaga-jaga layout */
 }
-.btn-hero-outline:hover {
-    background-color: rgba(255,255,255,0.1);
-    border-color: #ffffff;
-}
-
-/* Ilustrasi Kanan */
-.hero-image-container {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    justify-content: center;
-}
-/* PENTING: Agar gambar tidak pecah */
-.hero-image {
-    width: 100%;
-    max-width: 550px; /* Batasi ukuran maksimal */
-    height: auto;
-    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.2)); /* Bayangan halus di gambar saja */
-    animation: floatingHero 6s ease-in-out infinite;
-}
-
-@keyframes floatingHero {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-15px); }
-}
-
-/* WAVE (GELOMBANG) BAWAH - Putih Polos */
-.custom-shape-divider-bottom {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    overflow: hidden;
-    line-height: 0;
-}
-.custom-shape-divider-bottom svg {
-    position: relative;
-    display: block;
-    width: calc(100% + 1.3px);
-    height: 100px;
-}
-.custom-shape-divider-bottom .shape-fill {
-    fill: #FFFFFF;
-}
-
-/* Responsif HP */
-@media (max-width: 991px) {
-    .hero-section { text-align: center; padding-top: 60px; }
-    .hero-title { font-size: 2.5rem; }
-    .hero-image-container { margin-top: 40px; }
-    .d-flex.gap-3 { justify-content: center !important; }
-}
-
-
-
-
 
 
 /* CSS untuk Judul Utama (H1) - KOMBINASI Garis & Bayangan Putih */

@@ -519,51 +519,19 @@ width: 22px;
 
 
 
+<!-- Hero Section -->
+
 <section class="hero-section">
-    <div class="container position-relative z-2">
-        <div class="row align-items-center">
 
-            <div class="col-lg-6">
-                <div class="hero-badge animate-fade-up">
-                    <i class="fas fa-bolt text-warning me-2"></i> Kirim Paket Lebih Cepat
-                </div>
+    <div class="container text-center py-5">
 
-                <h1 class="hero-title animate-fade-up">
-                    Solusi Pengiriman <br>
-                    Cepat & Aman
-                </h1>
+        <h1 class="display-4 fw-bold">Solusi Pengiriman Terlengkap dan Terpercaya</h1>
 
-                <p class="hero-subtitle animate-fade-up delay-1">
-                    Jangkauan seluruh Indonesia. Lacak paket real-time, tarif transparan,
-                    dan jaminan keamanan terpercaya bersama Sancaka Express.
-                </p>
+        <p class="lead mt-3 col-lg-8 mx-auto">Kirim paket ke seluruh Indonesia dengan mudah, cepat, dan aman bersama Sancaka Express.</p>
 
-                <div class="d-flex gap-3 justify-content-md-start justify-content-center animate-fade-up delay-2">
-                    <a href="#cek-ongkir" class="btn btn-hero-primary">
-                        Mulai Kirim
-                    </a>
-                    <a href="#lacak" class="btn btn-hero-outline">
-                        Lacak Paket
-                    </a>
-                </div>
-            </div>
 
-            <div class="col-lg-6">
-                <div class="hero-image-container animate-fade-up delay-1">
-                    <img src="https://cdni.iconscout.com/illustration/premium/thumb/logistics-service-illustration-download-in-svg-png-gif-file-formats--delivery-transportation-cargo-business-pack-illustrations-3617637.png"
-                         alt="Ilustrasi Logistik Sancaka"
-                         class="hero-image">
-                </div>
-            </div>
-
-        </div>
     </div>
 
-    <div class="custom-shape-divider-bottom">
-        <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
-            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" class="shape-fill"></path>
-        </svg>
-    </div>
 </section>
 
 
