@@ -16,7 +16,7 @@
 
     <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
 
-        <a href="{{ route('dashboard') }}"
+        <a href="{{ route('dashboard', ['subdomain' => request()->route('subdomain') ?? 'admin']) }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200
            {{ request()->routeIs('dashboard')
              ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
