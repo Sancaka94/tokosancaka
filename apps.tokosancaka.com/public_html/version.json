@@ -1,7 +1,37 @@
 {
-    "version": "1.0.0.37",
-    "last_update": "05 Feb 2026 17:27",
+    "version": "1.0.0.42",
+    "last_update": "05 Feb 2026 17:52",
     "commits": [
+        {
+            "hash": "8bd3e76",
+            "date": "2026-02-05 17:49:59 +0700",
+            "author": "Admin Sancaka",
+            "message": "Update System"
+        },
+        {
+            "hash": "f3c827f",
+            "date": "2026-02-05 17:44:24 +0700",
+            "author": "Admin Sancaka",
+            "message": "Update System"
+        },
+        {
+            "hash": "cff62f3",
+            "date": "2026-02-05 17:37:22 +0700",
+            "author": "Admin Sancaka",
+            "message": "Fix Update System"
+        },
+        {
+            "hash": "80dad2c",
+            "date": "2026-02-05 17:31:57 +0700",
+            "author": "Admin Sancaka",
+            "message": "Fix Update System"
+        },
+        {
+            "hash": "ef9de12",
+            "date": "2026-02-05 17:28:43 +0700",
+            "author": "Admin Sancaka",
+            "message": "Fix Update System"
+        },
         {
             "hash": "b3f934b",
             "date": "2026-02-05 17:26:22 +0700",
@@ -89,36 +119,6 @@
         {
             "hash": "46f7edd",
             "date": "2026-02-05 15:16:06 +0700",
-            "author": "Admin Sancaka",
-            "message": "Fix Update System"
-        },
-        {
-            "hash": "f70f641",
-            "date": "2026-02-05 15:08:53 +0700",
-            "author": "Admin Sancaka",
-            "message": "Fix Update System"
-        },
-        {
-            "hash": "d4964a6",
-            "date": "2026-02-05 15:01:10 +0700",
-            "author": "Admin Sancaka",
-            "message": "Fix Update System"
-        },
-        {
-            "hash": "5b88be4",
-            "date": "2026-02-05 14:55:08 +0700",
-            "author": "Admin Sancaka",
-            "message": "Fix Update System"
-        },
-        {
-            "hash": "6dd2796",
-            "date": "2026-02-05 14:51:32 +0700",
-            "author": "Admin Sancaka",
-            "message": "Fix Update System"
-        },
-        {
-            "hash": "9295191",
-            "date": "2026-02-05 13:48:55 +0700",
             "author": "Admin Sancaka",
             "message": "Fix Update System"
         }
