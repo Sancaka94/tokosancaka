@@ -4,38 +4,45 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\View;
 
 class ChangelogController extends Controller
 {
     public function index()
     {
         $commits = [];
+        $version = '1.0.0'; // Default jika gagal baca git
 
-        // Cek apakah folder .git ada
+        // Cek apakah folder .git ada di root project
         if (File::exists(base_path('.git'))) {
             try {
-                // Ambil 20 log terakhir dengan format: HASH|TANGGAL|AUTHOR|PESAN
-                // %h = short hash, %cd = commit date, %an = author name, %s = subject
-                $cmd = 'git log --pretty=format:"%h|%cd|%an|%s" --date=format:"%d %b %Y %H:%M" -n 20';
+                // 1. Ambil 20 Log Terakhir
+                // Format: Hash Singkat | Tanggal ISO | Author | Pesan Commit
+                $cmdLogs = 'git log --pretty=format:"%h|%ci|%an|%s" -n 20';
+                exec($cmdLogs, $outputLogs);
 
-                exec($cmd, $output);
+                // 2. Ambil Total Count untuk Versioning (Build Number)
+                $buildNumber = trim(exec('git rev-list --count HEAD'));
+                $version = "1.0.0.{$buildNumber}";
 
-                foreach ($output as $line) {
+                foreach ($outputLogs as $line) {
                     $parts = explode('|', $line);
                     if (count($parts) >= 4) {
                         $commits[] = [
                             'hash'    => $parts[0],
-                            'date'    => $parts[1],
+                            'date'    => \Carbon\Carbon::parse($parts[1])->translatedFormat('d F Y, H:i'), // Format Indonesia
+                            'ago'     => \Carbon\Carbon::parse($parts[1])->diffForHumans(),
                             'author'  => $parts[2],
                             'message' => $parts[3],
                         ];
                     }
                 }
             } catch (\Exception $e) {
-                // Silent error
+                // Silent error jika git command gagal
             }
         }
 
-        return view('admin.changelog.index', compact('commits'));
+        // Kirim data ke View
+        return view('admin.changelog.index', compact('commits', 'version'));
     }
 }

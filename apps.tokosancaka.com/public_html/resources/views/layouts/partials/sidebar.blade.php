@@ -290,12 +290,16 @@
 
     {{-- FOOTER VERSI OTOMATIS --}}
     <div class="px-6 pb-4 pt-2 text-center">
-        <p class="text-[10px] text-slate-400 font-medium">
-            Version <span class="text-slate-600 font-bold">{{ $app_version }}</span>
-        </p>
-        <p class="text-[9px] text-slate-300 mt-0.5">
-            Updated: {{ $app_last_update }}
-        </p>
+        {{-- Klik versi untuk melihat detail update --}}
+        <a href="{{ route('admin.changelog') }}" class="group block hover:bg-slate-50 rounded-lg py-2 transition-colors cursor-pointer" title="Lihat Riwayat Update">
+            <p class="text-[10px] text-slate-400 font-medium group-hover:text-blue-500">
+                Version <span class="text-slate-600 font-bold group-hover:text-blue-600">{{ $app_version ?? '1.0' }}</span>
+            </p>
+            <p class="text-[9px] text-slate-300 mt-0.5 flex items-center justify-center gap-1">
+                <span>Updated: {{ $app_last_update ?? '-' }}</span>
+                <i class="fas fa-history text-[8px] opacity-0 group-hover:opacity-100 transition-opacity"></i>
+            </p>
+        </a>
     </div>
 
 </aside>
