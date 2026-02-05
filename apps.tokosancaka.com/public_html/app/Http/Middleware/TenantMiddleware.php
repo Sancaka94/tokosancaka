@@ -6,45 +6,57 @@ use Closure;
 use Illuminate\Http\Request;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\View;
-use Illuminate\Support\Facades\URL; // Jangan lupa ini
+use Illuminate\Support\Facades\URL; // Wajib Import
 
 class TenantMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        // 1. AMBIL HOST & SUBDOMAIN
+        // 1. AMBIL SUBDOMAIN
         $host = $request->getHost();
-        $subdomain = explode('.', $host)[0];
+        $parts = explode('.', $host);
+        $subdomain = $parts[0];
 
-        // ==================================================================
-        // [PERBAIKAN] SET DEFAULT URL PARAMETER (PINDAH KE SINI - PALING ATAS)
-        // ==================================================================
-        // Agar route() tidak error meskipun subdomain masuk daftar exclude (seperti admin)
+        // -------------------------------------------------------------
+        // [RULE 1] JIKA AKSES DOMAIN UTAMA (APPS), LANGSUNG LEWAT
+        // -------------------------------------------------------------
+        // PENTING: 'apps' dan 'www' tidak boleh dicek di database tenant
+        if ($subdomain === 'apps' || $subdomain === 'www') {
+            return $next($request);
+        }
+
+        // -------------------------------------------------------------
+        // [RULE 2] SET DEFAULT URL PARAMETER (WAJIB PALING ATAS)
+        // -------------------------------------------------------------
+        // Agar tidak error "Missing parameter: subdomain"
         URL::defaults(['subdomain' => $subdomain]);
 
-        // 2. DAFTAR PENGECUALIAN
-        // Jika 'admin' adalah Toko Pusat yang ada di database tenants,
-        // sebaiknya HAPUS 'admin' dari daftar ini.
-        $exclude = ['www', 'tokosancaka', 'localhost', 'mail', 'apps', 'system'];
-
-        // 3. WHITELIST JALUR
+        // -------------------------------------------------------------
+        // [RULE 3] WHITELIST ROUTE TERTENTU
+        // -------------------------------------------------------------
+        // API & Payment Gateway harus lolos tanpa cek tenant
         if (
             $request->is('api/*') ||
             $request->is('tenant/generate-payment') ||
-            $request->routeIs('tenant.suspended') ||
-            in_array($subdomain, $exclude)
+            $request->routeIs('tenant.suspended')
         ) {
             return $next($request);
         }
 
-        // 4. CARI TENANT DI DATABASE
+        // -------------------------------------------------------------
+        // [RULE 4] CEK DATABASE TENANT
+        // -------------------------------------------------------------
         $tenant = Tenant::where('subdomain', $subdomain)->first();
 
+        // [MODIFIKASI PERMINTAAN KAMU]
+        // Jika subdomain TIDAK ADA, lempar ke Halaman Daftar
         if (!$tenant) {
-            abort(404);
+            return redirect()->away('https://apps.tokosancaka.com/daftar-pos');
         }
 
-        // 5. CEK EXPIRED
+        // -------------------------------------------------------------
+        // [RULE 5] CEK EXPIRED / INACTIVE
+        // -------------------------------------------------------------
         if ($tenant->expired_at && now()->gt($tenant->expired_at)) {
             if ($tenant->status !== 'inactive') {
                 $tenant->update(['status' => 'inactive']);
@@ -58,7 +70,9 @@ class TenantMiddleware
              return redirect()->route('tenant.suspended');
         }
 
-        // 6. INJEKSI DATA TENANT
+        // -------------------------------------------------------------
+        // [RULE 6] INJEKSI DATA KE APLIKASI
+        // -------------------------------------------------------------
         $request->merge(['tenant' => $tenant]);
         View::share('currentTenant', $tenant);
 
