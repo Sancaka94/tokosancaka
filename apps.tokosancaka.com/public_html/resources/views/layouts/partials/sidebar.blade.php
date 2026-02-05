@@ -4,7 +4,8 @@
     class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transition-transform duration-300 transform lg:relative lg:translate-x-0 shadow-sm flex flex-col h-full">
 
     <div class="flex items-center h-20 px-6 border-b border-slate-50 flex-shrink-0">
-        <a href="{{ route('dashboard', ['subdomain' => request()->route('subdomain') ?? 'admin']) }}" class="flex items-center gap-3 group">
+        {{-- Hapus parameter manual, cukup panggil nama route --}}
+        <a href="{{ route('dashboard') }}" class="flex items-center gap-3 group">
             <div class="w-9 h-9 bg-gradient-to-tr from-blue-600 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-100 group-hover:scale-105 transition-transform">
                 <img src="https://tokosancaka.com/storage/uploads/sancaka.png" class="h-6 w-6 object-contain invert" alt="Logo">
             </div>
@@ -16,7 +17,7 @@
 
     <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
 
-        <a href="{{ route('dashboard', ['subdomain' => request()->route('subdomain') ?? 'admin']) }}"
+        <a href="{{ route('dashboard') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200
            {{ request()->routeIs('dashboard')
              ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
@@ -28,9 +29,10 @@
         {{-- ========================================================= --}}
         {{-- [BARU] MENU KHUSUS OWNER TOKO (TENANT DASHBOARD)          --}}
         {{-- ========================================================= --}}
-         @if(in_array(Auth::user()->role, ['super_admin']))
-            {{-- Hanya 'admin' toko yang boleh lihat info tagihan/langganan --}}
-            <a href="{{ route('tenant.dashboard') }}"
+        @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
+            {{-- Pastikan route 'tenant.dashboard' atau 'tenant.suspended' ada di web.php --}}
+            {{-- Jika belum ada, arahkan ke dashboard biasa atau buat route baru --}}
+             <a href="{{ route('dashboard') }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 mt-1
                {{ request()->routeIs('tenant.dashboard')
                  ? 'bg-emerald-50 text-emerald-600 font-bold border border-emerald-100'
@@ -49,7 +51,7 @@
 
             <a href="{{ route('orders.create') }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-               {{ request()->routeIs('orders.create')
+               {{ request()->routeIs('orders.create') || request()->routeIs('orders.create.alias')
                  ? 'bg-red-600 text-white shadow-lg shadow-red-200'
                  : 'text-slate-600 hover:bg-slate-50 hover:text-red-600' }}">
                 <i class="fas fa-plus-circle w-5 text-center"></i>
@@ -67,7 +69,6 @@
         @endif
 
         {{-- AREA LAPORAN: SUPER ADMIN, ADMIN, KEUANGAN --}}
-        {{-- Tambahkan 'finance' di dalam array --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin', 'keuangan', 'finance']))
             <a href="{{ route('reports.index') }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
@@ -86,7 +87,6 @@
         </div>
 
         {{-- DANA: SUPER ADMIN, ADMIN, KEUANGAN --}}
-        {{-- Tambahkan 'finance' di dalam array --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin', 'keuangan', 'finance']))
             <a href="{{ route('dana.dashboard') }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
@@ -111,16 +111,17 @@
         @endif
 
         {{-- ========================================================= --}}
-        {{-- MENU TENANT / CUSTOMER (KHUSUS SUPER ADMIN)               --}}
+        {{-- MENU DATA TENANT (KHUSUS SUPER ADMIN / ADMIN PUSAT)       --}}
         {{-- ========================================================= --}}
-         @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
-            <a href="{{ url('/admin/list-customer') }}"
+        @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
+            {{-- Menggunakan route customers.index yang kita set di web.php --}}
+            <a href="{{ route('customers.index') }}"
             class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-            {{ Request::is('admin/list-customer*') || request()->routeIs('admin.tenants')
+            {{ request()->routeIs('customers.*') || Request::is('admin/list-customer*')
                 ? 'bg-blue-50 text-blue-600'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600' }}">
                 <i class="fas fa-store w-5 text-center"></i>
-                <span>Data Tenant</span>
+                <span>Data Tenant (Pelanggan)</span>
             </a>
         @endif
         {{-- ========================================================= --}}
@@ -139,7 +140,6 @@
 
 
         {{-- AREA KEUANGAN: SUPER ADMIN, ADMIN, KEUANGAN --}}
-        {{-- Tambahkan 'finance' di dalam array --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin', 'keuangan', 'finance']))
             <div class="pt-5 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
                 Keuangan & Laporan
@@ -200,14 +200,11 @@
                 </button>
 
                 <div x-show="open" x-collapse x-cloak class="mt-1 ml-7 border-l-2 border-slate-100 space-y-1">
-                    {{-- Submenu: Daftar Pegawai --}}
                     <a href="{{ route('employees.index') }}"
                        class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
                        {{ request()->routeIs('employees.index') ? 'text-blue-600 bg-blue-50/50 border-l-2 border-blue-600 -ml-[2px]' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50' }}">
                         Daftar Pegawai
                     </a>
-
-                    {{-- Submenu: Tambah Baru --}}
                     <a href="{{ route('employees.create') }}"
                        class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
                        {{ request()->routeIs('employees.create') ? 'text-blue-600 bg-blue-50/50 border-l-2 border-blue-600 -ml-[2px]' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50' }}">
@@ -247,9 +244,8 @@
                     Edit Profile
                 </a>
 
-                {{-- HANYA SUPER ADMIN & ADMIN YANG BISA LIHAT LOG --}}
                 @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
-                    <a href="{{ url('admin/logs') }}" target="_blank"
+                    <a href="{{ route('admin.logs.index') }}" target="_blank"
                        class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl text-red-500 hover:bg-red-50 transition-colors">
                         System Log
                     </a>
@@ -265,7 +261,6 @@
             </div>
             <div class="overflow-hidden text-ellipsis whitespace-nowrap">
                 <p class="text-xs font-bold text-slate-800 leading-none mb-1">{{ Auth::user()->name ?? 'Administrator' }}</p>
-                {{-- Tampilkan ROLE dengan gaya Badge --}}
                 <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium
                     @if(Auth::user()->role === 'super_admin') bg-purple-100 text-purple-800
                     @elseif(Auth::user()->role === 'admin') bg-blue-100 text-blue-800
