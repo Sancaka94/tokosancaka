@@ -287,4 +287,16 @@
             </button>
         </form>
     </div>
+
+    {{-- FOOTER VERSI OTOMATIS --}}
+    <div class="px-6 pb-4 pt-2 text-center">
+        <p class="text-[10px] text-slate-400 font-medium">
+            Version <span class="text-slate-600 font-bold">{{ $app_version }}</span>
+        </p>
+        <p class="text-[9px] text-slate-300 mt-0.5">
+            Updated: {{ $app_last_update }}
+        </p>
+    </div>
+
 </aside>
+
