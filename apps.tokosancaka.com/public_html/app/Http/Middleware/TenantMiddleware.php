@@ -31,7 +31,7 @@ class TenantMiddleware
         // [RULE 2] SET DEFAULT URL PARAMETER (WAJIB PALING ATAS)
         // -------------------------------------------------------------
         // Agar tidak error "Missing parameter: subdomain"
-        URL::defaults(['subdomain' => $subdomain]);
+        //URL::defaults(['subdomain' => $subdomain]);
 
         // -------------------------------------------------------------
         // [RULE 3] WHITELIST ROUTE TERTENTU
