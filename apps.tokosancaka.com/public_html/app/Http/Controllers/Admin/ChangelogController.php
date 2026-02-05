@@ -4,45 +4,50 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\View;
+use Carbon\Carbon;
 
 class ChangelogController extends Controller
 {
     public function index()
     {
         $commits = [];
-        $version = '1.0.0'; // Default jika gagal baca git
+        $version = '1.0.0';
 
-        // Cek apakah folder .git ada di root project
-        if (File::exists(base_path('.git'))) {
-            try {
-                // 1. Ambil 20 Log Terakhir
-                // Format: Hash Singkat | Tanggal ISO | Author | Pesan Commit
-                $cmdLogs = 'git log --pretty=format:"%h|%ci|%an|%s" -n 20';
-                exec($cmdLogs, $outputLogs);
+        // CARA BACA: Ambil data dari file version.json yang di-upload
+        $jsonPath = base_path('version.json');
 
-                // 2. Ambil Total Count untuk Versioning (Build Number)
-                $buildNumber = trim(exec('git rev-list --count HEAD'));
-                $version = "1.0.0.{$buildNumber}";
+        if (File::exists($jsonPath)) {
+            // 1. Decode JSON ke Array
+            $jsonData = json_decode(File::get($jsonPath), true);
 
-                foreach ($outputLogs as $line) {
-                    $parts = explode('|', $line);
-                    if (count($parts) >= 4) {
-                        $commits[] = [
-                            'hash'    => $parts[0],
-                            'date'    => \Carbon\Carbon::parse($parts[1])->translatedFormat('d F Y, H:i'), // Format Indonesia
-                            'ago'     => \Carbon\Carbon::parse($parts[1])->diffForHumans(),
-                            'author'  => $parts[2],
-                            'message' => $parts[3],
-                        ];
-                    }
+            // 2. Ambil Versi
+            $version = $jsonData['version'] ?? '1.0.0';
+
+            // 3. Ambil Data Commits (Raw)
+            $rawCommits = $jsonData['commits'] ?? [];
+
+            // 4. Format Tanggal agar enak dibaca (pakai Carbon)
+            foreach ($rawCommits as $log) {
+                // Pastikan format tanggal aman
+                try {
+                    $dateObj = Carbon::parse($log['date']);
+                    $dateString = $dateObj->translatedFormat('d F Y, H:i'); // 05 Februari 2026, 15:30
+                    $agoString = $dateObj->diffForHumans(); // 2 jam yang lalu
+                } catch (\Exception $e) {
+                    $dateString = $log['date'];
+                    $agoString = '-';
                 }
-            } catch (\Exception $e) {
-                // Silent error jika git command gagal
+
+                $commits[] = [
+                    'hash'    => $log['hash'],
+                    'date'    => $dateString,
+                    'ago'     => $agoString,
+                    'author'  => $log['author'],
+                    'message' => $log['message'],
+                ];
             }
         }
 
-        // Kirim data ke View
         return view('admin.changelog.index', compact('commits', 'version'));
     }
 }
