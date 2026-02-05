@@ -71,16 +71,13 @@ Route::domain('{subdomain}.tokosancaka.com')
     ->middleware(['tenant']) // <--- Middleware TenantMiddleware WAJIB DISINI
     ->group(function () {
 
+    require __DIR__.'/auth.php'; // <--- INI WAJIB DIMATIKAN!
+
     // --- HALAMAN AUTH TENANT (LOGIN KHUSUS TOKO) ---
     // Override route '/' agar subdomain langsung masuk ke halaman login/dashboard
     Route::get('/', function() {
         return redirect()->route('login');
     });
-
-    // Login Toko
-    Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
-    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // Halaman Error Toko
     Route::get('/account-suspended', [TenantController::class, 'suspended'])->name('tenant.suspended');
