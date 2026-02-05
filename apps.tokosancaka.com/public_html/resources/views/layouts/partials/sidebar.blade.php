@@ -31,17 +31,6 @@
         </a>
     </div>
 
-    <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
-
-        <a href="{{ route('dashboard', $params) }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200
-           {{ request()->routeIs('dashboard')
-             ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-             : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600' }}">
-            <i class="fas fa-th-large w-5 text-center {{ request()->routeIs('dashboard') ? 'text-white' : 'text-slate-400' }}"></i>
-            <span>Dashboard</span>
-        </a>
-
          {{-- FOOTER VERSI OTOMATIS --}}
     <div class="px-6 pb-4 pt-2 text-center">
         {{-- Klik versi untuk melihat detail update --}}
@@ -55,6 +44,19 @@
             </p>
         </a>
     </div>
+
+    <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
+
+        <a href="{{ route('dashboard', $params) }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200
+           {{ request()->routeIs('dashboard')
+             ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+             : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600' }}">
+            <i class="fas fa-th-large w-5 text-center {{ request()->routeIs('dashboard') ? 'text-white' : 'text-slate-400' }}"></i>
+            <span>Dashboard</span>
+        </a>
+
+
 
         {{-- STATUS LANGGANAN --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
