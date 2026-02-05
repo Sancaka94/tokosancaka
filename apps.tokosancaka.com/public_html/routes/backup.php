@@ -137,6 +137,13 @@ Route::domain('{subdomain}.tokosancaka.com')
         Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+        Route::middleware(['role:super_admin'])->group(function () {
+        // Di dalam group middleware auth & role:super_admin/admin
+        Route::get('/admin/changelog', [App\Http\Controllers\Admin\ChangelogController::class, 'index'])
+            ->name('admin.changelog');
+        });
+
+
         // --- ROLE: ADMIN & SUPER ADMIN ---
         Route::middleware(['role:admin|finance|super_admin'])->group(function () {
             // Logs
