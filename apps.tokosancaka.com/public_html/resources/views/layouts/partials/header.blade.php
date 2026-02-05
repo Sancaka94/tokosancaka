@@ -1,10 +1,25 @@
 <header class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-40" x-data="{ userOpen: false }">
 
+    {{-- ================================================================= --}}
+    {{-- [LOGIC PENYELAMAT] AMBIL SUBDOMAIN MANUAL UNTUK HEADER            --}}
+    {{-- ================================================================= --}}
+    @php
+        // Ambil host (contoh: toko1.tokosancaka.com)
+        $host = request()->getHost();
+        $parts = explode('.', $host);
+        // Ambil bagian depan (toko1), jika gagal pakai 'admin'
+        $currentSubdomain = $parts[0] ?? 'admin';
+        // Parameter untuk disuntikkan ke route
+        $params = ['subdomain' => $currentSubdomain];
+    @endphp
+
     <div class="flex items-center gap-4">
+        {{-- Tombol Toggle Sidebar (Mobile) --}}
         <button @click="sidebarOpen = !sidebarOpen" class="text-slate-500 hover:text-blue-600 focus:outline-none lg:hidden p-2.5 rounded-xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
             <i class="fas fa-bars-staggered text-xl"></i>
         </button>
 
+        {{-- Search Bar --}}
         <div class="hidden md:flex relative group">
             <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 group-focus-within:text-blue-600 transition-colors">
                 <i class="fas fa-search text-sm"></i>
@@ -15,6 +30,7 @@
 
     <div class="flex items-center gap-3 sm:gap-5">
 
+        {{-- Notifikasi --}}
         <button class="relative p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all group border border-transparent hover:border-blue-100">
             <i class="fas fa-bell text-lg group-hover:shake"></i>
             <span class="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-red-600 ring-2 ring-white"></span>
@@ -22,6 +38,7 @@
 
         <div class="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
+        {{-- User Dropdown --}}
         <div class="relative">
             <button @click="userOpen = !userOpen"
                     @click.outside="userOpen = false"
@@ -33,7 +50,7 @@
                             {{ Auth::user()->name }}
                         </p>
                         <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">
-                            {{ Auth::user()->role ?? 'Administrator' }}
+                            {{ str_replace('_', ' ', Auth::user()->role ?? 'Administrator') }}
                         </p>
                     @else
                         <p class="text-sm font-bold text-slate-800">Tamu</p>
@@ -58,6 +75,7 @@
                 <i class="fas fa-chevron-down text-[10px] text-slate-300 group-hover:text-blue-600 transition-colors hidden sm:block mr-2"></i>
             </button>
 
+            {{-- Dropdown Menu --}}
             <div x-show="userOpen"
                  x-transition:enter="transition ease-out duration-200"
                  x-transition:enter-start="opacity-0 scale-95 translate-y-2"
@@ -76,10 +94,11 @@
                     </div>
 
                     <div class="px-2 space-y-1">
-                        <a href="{{ route('profile.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-600 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all">
+                        {{-- FIX: Tambahkan $params di route --}}
+                        <a href="{{ route('profile.index', $params) }}" class="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-600 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all">
                             <i class="fas fa-user-circle w-5 text-center text-slate-400 group-hover:text-blue-600"></i> Profile Saya
                         </a>
-                        <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-600 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all">
+                        <a href="{{ route('profile.edit', $params) }}" class="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-600 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all">
                             <i class="fas fa-user-gear w-5 text-center text-slate-400"></i> Pengaturan Akun
                         </a>
                     </div>
@@ -87,7 +106,8 @@
                     <div class="h-px bg-slate-100 my-2 mx-4"></div>
 
                     <div class="px-2">
-                        <form method="POST" action="{{ route('logout') }}">
+                        {{-- FIX: Tambahkan $params di route logout --}}
+                        <form method="POST" action="{{ route('logout', $params) }}">
                             @csrf
                             <button type="submit" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-600 rounded-xl hover:bg-red-50 transition-all">
                                 <i class="fas fa-arrow-right-from-bracket w-5 text-center"></i> Logout Sesi
@@ -96,7 +116,8 @@
                     </div>
                 @else
                     <div class="p-3">
-                        <a href="{{ route('login') }}" class="flex items-center justify-center gap-3 px-4 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+                        {{-- FIX: Tambahkan $params di route login --}}
+                        <a href="{{ route('login', $params) }}" class="flex items-center justify-center gap-3 px-4 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
                             <i class="fas fa-sign-in-alt"></i> Login Sekarang
                         </a>
                     </div>
