@@ -126,6 +126,8 @@ use App\Http\Controllers\Admin\LabaRugiController;
 
 use App\Http\Controllers\Admin\AkuntansiController;
 
+use App\Http\Controllers\PushWaController;
+
 Route::get('/cek-sistem-sancaka', function () {
     // 1. Cek Koneksi Database
     try {
@@ -883,6 +885,14 @@ Route::get('/tembak-webhook-manual', function () {
     echo "<pre>";
     print_r(json_decode($response, true));
     echo "</pre>";
-    
+
     return "Selesai eksekusi script pancingan.";
+});
+
+
+Route::get('/wa/scan', [PushWaController::class, 'connect']);
+// Test kirim pesan (opsional)
+Route::get('/wa/test-kirim', function() {
+    $wa = new PushWaController();
+    return $wa->sendMessage('085745808809', 'Halo, ini pesan test dari Laravel!');
 });
