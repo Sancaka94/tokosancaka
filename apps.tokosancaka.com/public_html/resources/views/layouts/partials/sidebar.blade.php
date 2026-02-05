@@ -4,7 +4,7 @@
     class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transition-transform duration-300 transform lg:relative lg:translate-x-0 shadow-sm flex flex-col h-full">
 
     <div class="flex items-center h-20 px-6 border-b border-slate-50 flex-shrink-0">
-        <a href="{{ route('dashboard') }}" class="flex items-center gap-3 group">
+        <a href="{{ route('dashboard', ['subdomain' => request()->route('subdomain') ?? 'admin']) }}" class="flex items-center gap-3 group">
             <div class="w-9 h-9 bg-gradient-to-tr from-blue-600 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-100 group-hover:scale-105 transition-transform">
                 <img src="https://tokosancaka.com/storage/uploads/sancaka.png" class="h-6 w-6 object-contain invert" alt="Logo">
             </div>
