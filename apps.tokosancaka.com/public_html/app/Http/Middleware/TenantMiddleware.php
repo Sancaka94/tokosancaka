@@ -17,6 +17,8 @@ class TenantMiddleware
         $parts = explode('.', $host);
         $subdomain = $parts[0];
 
+        \Illuminate\Support\Facades\URL::defaults(['subdomain' => $subdomain]);
+
         // -------------------------------------------------------------
         // [RULE 1] JIKA AKSES DOMAIN UTAMA (APPS), LANGSUNG LEWAT
         // -------------------------------------------------------------
