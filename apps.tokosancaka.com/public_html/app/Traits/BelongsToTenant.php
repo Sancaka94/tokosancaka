@@ -2,25 +2,34 @@
 
 namespace App\Traits;
 
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 trait BelongsToTenant
 {
     protected static function bootBelongsToTenant()
     {
-        // Filter otomatis setiap kali memanggil data (SELECT)
+        // 1. FILTER OTOMATIS SAAT 'READ' DATA
+        // Setiap kali query dijalankan, tambahkan "WHERE tenant_id = X"
         static::addGlobalScope('tenant', function (Builder $builder) {
-            if (Auth::check() && Auth::user()->tenant_id) {
+            if (Auth::check()) {
                 $builder->where('tenant_id', Auth::user()->tenant_id);
             }
         });
 
-        // Isi otomatis tenant_id saat menambah data baru (INSERT)
-        static::creating(function ($model) {
-            if (Auth::check() && Auth::user()->tenant_id) {
+        // 2. INPUT OTOMATIS SAAT 'CREATE' DATA
+        // Setiap kali simpan data baru, otomatis isi kolom tenant_id
+        static::creating(function (Model $model) {
+            if (Auth::check()) {
                 $model->tenant_id = Auth::user()->tenant_id;
             }
         });
+    }
+
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
     }
 }
