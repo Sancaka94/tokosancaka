@@ -21,9 +21,14 @@ class GenerateVersion extends Command
         $lastUpdate = now()->format('d M Y H:i');
 
         try {
-            // 1. Cek folder .git
-            if (!File::exists(base_path('.git'))) {
-                $this->error('Folder .git tidak ditemukan. Pastikan dijalankan di folder project Git.');
+            // [REVISI] Hapus pengecekan File::exists(.git)
+            // Biarkan perintah git log yang mendeteksi otomatis lokasi repository-nya
+
+            // 1. Cek dulu apakah ini folder git valid dengan perintah ringan
+            exec('git rev-parse --is-inside-work-tree 2>&1', $checkGit, $returnVar);
+
+            if ($returnVar !== 0) {
+                $this->error('Gagal: Folder ini tidak terdeteksi sebagai repository Git.');
                 return;
             }
 
@@ -56,7 +61,7 @@ class GenerateVersion extends Command
                 'commits' => $commits
             ];
 
-            // 6. Simpan ke file version.json di root project
+            // 6. Simpan ke file version.json
             File::put(base_path('version.json'), json_encode($data, JSON_PRETTY_PRINT));
 
             $this->info("✅ SUKSES! File version.json berhasil dibuat.");
