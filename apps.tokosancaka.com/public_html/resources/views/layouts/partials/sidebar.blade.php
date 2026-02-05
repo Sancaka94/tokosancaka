@@ -3,9 +3,25 @@
     :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
     class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transition-transform duration-300 transform lg:relative lg:translate-x-0 shadow-sm flex flex-col h-full">
 
+    {{-- ================================================================= --}}
+    {{-- [LOGIC PENYELAMAT] AMBIL SUBDOMAIN MANUAL DARI URL BROWSER        --}}
+    {{-- ================================================================= --}}
+    @php
+        // Ambil host (contoh: toko1.tokosancaka.com)
+        $host = request()->getHost();
+        // Pecah jadi array
+        $parts = explode('.', $host);
+        // Ambil bagian depan (toko1), jika gagal pakai 'admin'
+        $currentSubdomain = $parts[0] ?? 'admin';
+
+        // Fungsi bantu agar tidak capek ngetik array parameter
+        // Kita suntikkan subdomain ke semua route
+        $params = ['subdomain' => $currentSubdomain];
+    @endphp
+
     <div class="flex items-center h-20 px-6 border-b border-slate-50 flex-shrink-0">
-        {{-- Hapus parameter manual, cukup panggil nama route --}}
-        <a href="{{ route('dashboard') }}" class="flex items-center gap-3 group">
+        {{-- Gunakan variabel $params di setiap route --}}
+        <a href="{{ route('dashboard', $params) }}" class="flex items-center gap-3 group">
             <div class="w-9 h-9 bg-gradient-to-tr from-blue-600 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-100 group-hover:scale-105 transition-transform">
                 <img src="https://tokosancaka.com/storage/uploads/sancaka.png" class="h-6 w-6 object-contain invert" alt="Logo">
             </div>
@@ -17,7 +33,7 @@
 
     <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
 
-        <a href="{{ route('dashboard') }}"
+        <a href="{{ route('dashboard', $params) }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200
            {{ request()->routeIs('dashboard')
              ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
@@ -26,13 +42,11 @@
             <span>Dashboard</span>
         </a>
 
-        {{-- ========================================================= --}}
-        {{-- [BARU] MENU KHUSUS OWNER TOKO (TENANT DASHBOARD)          --}}
-        {{-- ========================================================= --}}
+        {{-- STATUS LANGGANAN --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
-            {{-- Pastikan route 'tenant.dashboard' atau 'tenant.suspended' ada di web.php --}}
-            {{-- Jika belum ada, arahkan ke dashboard biasa atau buat route baru --}}
-             <a href="{{ route('dashboard') }}"
+            {{-- Pastikan route ini ada, jika tidak, arahkan ke dashboard --}}
+            @if(Route::has('tenant.dashboard'))
+            <a href="{{ route('tenant.dashboard', $params) }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 mt-1
                {{ request()->routeIs('tenant.dashboard')
                  ? 'bg-emerald-50 text-emerald-600 font-bold border border-emerald-100'
@@ -40,25 +54,25 @@
                 <i class="fas fa-crown w-5 text-center {{ request()->routeIs('tenant.dashboard') ? 'text-emerald-600' : 'text-slate-400' }}"></i>
                 <span>Status Langganan</span>
             </a>
+            @endif
         @endif
-        {{-- ========================================================= --}}
 
-        {{-- AREA TRANSAKSI: SUPER ADMIN, ADMIN, STAFF, OPERATOR --}}
+        {{-- AREA TRANSAKSI --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin', 'staff', 'operator']))
             <div class="pt-5 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
                 Transaksi
             </div>
 
-            <a href="{{ route('orders.create') }}"
+            <a href="{{ route('orders.create', $params) }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-               {{ request()->routeIs('orders.create') || request()->routeIs('orders.create.alias')
+               {{ request()->routeIs('orders.create')
                  ? 'bg-red-600 text-white shadow-lg shadow-red-200'
                  : 'text-slate-600 hover:bg-slate-50 hover:text-red-600' }}">
                 <i class="fas fa-plus-circle w-5 text-center"></i>
                 <span>Buat Pesanan</span>
             </a>
 
-            <a href="{{ route('orders.index') }}"
+            <a href="{{ route('orders.index', $params) }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
                {{ request()->routeIs('orders.index') || request()->routeIs('orders.show')
                  ? 'bg-blue-50 text-blue-600'
@@ -68,9 +82,9 @@
             </a>
         @endif
 
-        {{-- AREA LAPORAN: SUPER ADMIN, ADMIN, KEUANGAN --}}
+        {{-- AREA LAPORAN --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin', 'keuangan', 'finance']))
-            <a href="{{ route('reports.index') }}"
+            <a href="{{ route('reports.index', $params) }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
                {{ request()->routeIs('reports.index')
                  ? 'bg-blue-50 text-blue-600'
@@ -80,15 +94,14 @@
             </a>
         @endif
 
-
         {{-- AREA SISTEM --}}
         <div class="pt-5 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
             Sistem & Relasi
         </div>
 
-        {{-- DANA: SUPER ADMIN, ADMIN, KEUANGAN --}}
+        {{-- DANA DASHBOARD --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin', 'keuangan', 'finance']))
-            <a href="{{ route('dana.dashboard') }}"
+            <a href="{{ route('dana.dashboard', $params) }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
                {{ request()->routeIs('dana.dashboard')
                  ? 'bg-sky-50 text-sky-600'
@@ -98,9 +111,9 @@
             </a>
         @endif
 
-        {{-- AFFILIATE: HANYA SUPER ADMIN & ADMIN --}}
+        {{-- AFFILIATE --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
-            <a href="{{ route('affiliate.index') }}"
+            <a href="{{ route('affiliate.index', $params) }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
                {{ request()->routeIs('affiliate.*')
                  ? 'bg-blue-50 text-blue-600'
@@ -110,25 +123,22 @@
             </a>
         @endif
 
-        {{-- ========================================================= --}}
-        {{-- MENU DATA TENANT (KHUSUS SUPER ADMIN / ADMIN PUSAT)       --}}
-        {{-- ========================================================= --}}
+        {{-- DATA TENANT (LINK MANUAL) --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
-            {{-- Menggunakan route customers.index yang kita set di web.php --}}
-            <a href="{{ route('customers.index') }}"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-            {{ request()->routeIs('customers.*') || Request::is('admin/list-customer*')
-                ? 'bg-blue-50 text-blue-600'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600' }}">
+             {{-- Kita gunakan URL manual saja untuk tenant list agar aman --}}
+            <a href="{{ url('admin/list-customer') }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+               {{ Request::is('admin/list-customer*')
+                 ? 'bg-blue-50 text-blue-600'
+                 : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600' }}">
                 <i class="fas fa-store w-5 text-center"></i>
-                <span>Data Tenant (Pelanggan)</span>
+                <span>Data Tenant</span>
             </a>
         @endif
-        {{-- ========================================================= --}}
 
-        {{-- PRODUK: SUPER ADMIN, ADMIN, STAFF --}}
+        {{-- PRODUK --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin', 'staff', 'operator']))
-            <a href="{{ route('products.index') }}"
+            <a href="{{ route('products.index', $params) }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
                {{ request()->routeIs('products.*')
                  ? 'bg-blue-50 text-blue-600'
@@ -138,8 +148,7 @@
             </a>
         @endif
 
-
-        {{-- AREA KEUANGAN: SUPER ADMIN, ADMIN, KEUANGAN --}}
+        {{-- KEUANGAN --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin', 'keuangan', 'finance']))
             <div class="pt-5 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
                 Keuangan & Laporan
@@ -159,22 +168,22 @@
                 </button>
 
                 <div x-show="open" x-collapse x-cloak class="mt-1 ml-7 border-l-2 border-slate-100 space-y-1">
-                    <a href="{{ route('finance.index') }}"
+                    <a href="{{ route('finance.index', $params) }}"
                        class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
                        {{ request()->routeIs('finance.index') ? 'text-blue-600 bg-blue-50/50 border-l-2 border-blue-600 -ml-[2px]' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50' }}">
                         Ringkasan Arus Kas
                     </a>
-                    <a href="{{ route('finance.laba_rugi') }}"
+                    <a href="{{ route('finance.laba_rugi', $params) }}"
                        class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
                        {{ request()->routeIs('finance.laba_rugi') ? 'text-blue-600 bg-blue-50/50 border-l-2 border-blue-600 -ml-[2px]' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50' }}">
                         Laporan Laba Rugi
                     </a>
-                    <a href="{{ route('finance.tahunan') }}"
+                    <a href="{{ route('finance.tahunan', $params) }}"
                        class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
                        {{ request()->routeIs('finance.tahunan') ? 'text-blue-600 bg-blue-50/50 border-l-2 border-blue-600 -ml-[2px]' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50' }}">
                         Analisis Tahunan
                     </a>
-                    <a href="{{ route('finance.sync') }}"
+                    <a href="{{ route('finance.sync', $params) }}"
                        class="flex items-center justify-between pl-6 pr-4 py-2 text-xs font-medium rounded-r-xl transition-all
                        {{ request()->routeIs('finance.sync') ? 'text-emerald-600 bg-emerald-50 border-l-2 border-emerald-600 -ml-[2px]' : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50' }}">
                         <span>Sinkronisasi Data</span>
@@ -184,7 +193,7 @@
             </div>
         @endif
 
-        {{-- PEGAWAI: HANYA SUPER ADMIN & ADMIN --}}
+        {{-- PEGAWAI --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
             <div x-data="{ open: {{ request()->routeIs('employees.*') ? 'true' : 'false' }} }">
                 <button @click="open = !open" type="button"
@@ -200,12 +209,12 @@
                 </button>
 
                 <div x-show="open" x-collapse x-cloak class="mt-1 ml-7 border-l-2 border-slate-100 space-y-1">
-                    <a href="{{ route('employees.index') }}"
+                    <a href="{{ route('employees.index', $params) }}"
                        class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
                        {{ request()->routeIs('employees.index') ? 'text-blue-600 bg-blue-50/50 border-l-2 border-blue-600 -ml-[2px]' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50' }}">
                         Daftar Pegawai
                     </a>
-                    <a href="{{ route('employees.create') }}"
+                    <a href="{{ route('employees.create', $params) }}"
                        class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
                        {{ request()->routeIs('employees.create') ? 'text-blue-600 bg-blue-50/50 border-l-2 border-blue-600 -ml-[2px]' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50' }}">
                         + Tambah Baru
@@ -214,7 +223,7 @@
             </div>
         @endif
 
-        {{-- PENGATURAN: SEMUA USER --}}
+        {{-- PENGATURAN --}}
         <div class="pt-5 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
             Pengaturan
         </div>
@@ -233,19 +242,19 @@
             </button>
 
             <div x-show="open" x-collapse x-cloak class="mt-1 ml-7 border-l-2 border-slate-100 space-y-1">
-                <a href="{{ route('profile.index') }}"
+                <a href="{{ route('profile.index', $params) }}"
                    class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
                    {{ request()->routeIs('profile.index') ? 'text-blue-600 bg-blue-50/50 border-l-2 border-blue-600 -ml-[2px]' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50' }}">
                     Data Profile
                 </a>
-                <a href="{{ route('profile.edit') }}"
+                <a href="{{ route('profile.edit', $params) }}"
                    class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
                    {{ request()->routeIs('profile.edit') ? 'text-blue-600 bg-blue-50/50 border-l-2 border-blue-600 -ml-[2px]' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50' }}">
                     Edit Profile
                 </a>
 
                 @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
-                    <a href="{{ route('admin.logs.index') }}" target="_blank"
+                    <a href="{{ url('admin/logs') }}" target="_blank"
                        class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl text-red-500 hover:bg-red-50 transition-colors">
                         System Log
                     </a>
@@ -270,7 +279,7 @@
             </div>
         </div>
 
-        <form method="POST" action="{{ route('logout') }}">
+        <form method="POST" action="{{ route('logout', $params) }}">
             @csrf
             <button type="submit" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-red-600 bg-white border border-red-100 rounded-xl hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-300 group shadow-sm shadow-red-50">
                 <i class="fas fa-power-off group-hover:rotate-12 transition-transform"></i>
