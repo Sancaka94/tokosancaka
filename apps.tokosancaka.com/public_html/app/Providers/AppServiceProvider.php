@@ -31,7 +31,6 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-
         // 3. Logic Subdomain (Anti Error Missing Parameter)
         if (php_sapi_name() !== 'cli') {
             try {
