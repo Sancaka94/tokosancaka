@@ -12,16 +12,25 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
+    // ======================================================================
+    // [PENTING] ROUTE REGISTER DIMATIKAN
+    // ======================================================================
+    // Kita matikan ini karena User tidak boleh daftar sendiri di Subdomain.
+    // Pendaftaran Toko via Landing Page, Pendaftaran Staff via Dashboard Admin.
+    /*
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 
     Route::post('register', [RegisteredUserController::class, 'store']);
+    */
 
+    // --- LOGIN (Tetap Hidup) ---
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
+    // --- FORGOT PASSWORD (Tetap Hidup) ---
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
