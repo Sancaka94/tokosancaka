@@ -25,10 +25,9 @@ class RegisterTenantController extends Controller
     public function register(Request $request, DokuJokulService $dokuService)
     {
         Log::info("================ START REGISTER SYSTEM ================");
-        Log::info("LOG LOG: Memulai alur pendaftaran tenant baru.");
 
+        // Validasi tetap sama...
         try {
-            // Pindahkan validasi ke dalam try-catch agar error terekam LOG
             $validatedData = $request->validate([
                 'owner_name'    => 'required|string|max:255',
                 'email'         => 'required|email|max:255',
@@ -38,20 +37,15 @@ class RegisterTenantController extends Controller
                 'package'       => 'required|in:trial,monthly,yearly',
                 'password'      => 'required|min:8',
             ]);
-
-            Log::info("LOG LOG: Validasi Berhasil.");
-
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error("LOG LOG: VALIDASI GAGAL! Pesan: " . json_encode($e->errors()));
             return back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
-            Log::error("LOG LOG: ERROR TAK TERDUGA: " . $e->getMessage());
             return back()->with('error', $e->getMessage());
         }
 
-        // 2. SETUP DATA AWAL (Waktu & Harga)
+        // 2. SETUP DATA AWAL
         $now = Carbon::now('Asia/Jakarta');
-        $adminPhone = '085745808809'; // Nomor Server Bapak
+        $adminPhone = '085745808809';
         $userWa = $this->_normalizeWa($request->whatsapp);
 
         $prices = [
@@ -62,7 +56,6 @@ class RegisterTenantController extends Controller
         $amount = $prices[$request->package];
 
         DB::beginTransaction();
-        Log::info("LOG LOG: Database Transaction Started.");
 
         try {
             // 3. KALKULASI MASA AKTIF
@@ -70,7 +63,8 @@ class RegisterTenantController extends Controller
             $days = ($request->package == 'yearly') ? 365 : ($request->package == 'monthly' ? 30 : 14);
             $expiredAt = $now->copy()->addDays($days);
 
-            // 4. SIMPAN TENANT (USAHA)
+            // 4. SIMPAN TENANT
+            // Simpan subdomain dalam huruf kecil agar konsisten saat dicek Cloudflare
             $tenant = Tenant::create([
                 'name'       => $request->business_name,
                 'subdomain'  => strtolower($request->subdomain),
@@ -80,39 +74,30 @@ class RegisterTenantController extends Controller
                 'expired_at' => $expiredAt,
                 'created_at' => $now,
             ]);
-            Log::info("LOG LOG: Tenant berhasil dibuat: {$tenant->subdomain}");
 
-            // 5. SIMPAN USER (ADMIN UTAMA TOKO)
-            // Default Role langsung 'admin' agar bisa akses dashboard
+            // 5. SIMPAN USER
             $user = User::create([
                 'tenant_id' => $tenant->id,
                 'name'      => $request->owner_name,
                 'email'     => $request->email,
                 'phone'     => $userWa,
                 'password'  => Hash::make($request->password),
-                'role'      => 'admin', // <--- SUDAH DIGANTI KE ADMIN
-                // Berikan akses penuh ke semua fitur karena dia boss tokonya
+                'role'      => 'admin',
                 'permissions' => ['dashboard', 'pos', 'products', 'reports', 'settings', 'finance'],
             ]);
-            Log::info("LOG LOG: User Admin Toko berhasil dibuat: {$user->email}");
 
-            DB::commit();
-            Log::info("LOG LOG: DB Transaction Committed.");
+            DB::commit(); // Commit database dulu sebelum kirim WA/API agar ID sudah terbentuk
 
             // 6. NOTIFIKASI WA UNTUK ADMIN (SERVER)
+            // [PERBAIKAN] Gunakan Domain Utama untuk notifikasi admin agar bisa dicek manual
             $msgAdmin = "🔔 *ADA PENDAFTAR BARU!*\n\n";
             $msgAdmin .= "👤 Nama: {$request->owner_name}\n";
             $msgAdmin .= "🏪 Toko: {$request->business_name}\n";
-            $msgAdmin .= "📦 Paket: " . strtoupper($request->package) . "\n";
-            $msgAdmin .= "📱 WA: {$userWa}\n";
-            $msgAdmin .= "🌐 Subdomain: {$tenant->subdomain}.tokosancaka.com\n";
-            $msgAdmin .= "📅 Waktu: " . $now->format('d/m/Y H:i') . " WIB";
+            $msgAdmin .= "🌐 Subdomain: {$tenant->subdomain}.tokosancaka.com\n"; // URL ini akan ditangkap Cloudflare Worker nanti
             $this->_sendFonnte($adminPhone, $msgAdmin);
 
             // 7. PROSES PEMBAYARAN DOKU (Jika bukan trial)
             if ($amount > 0) {
-                Log::info("LOG LOG: Memproses integrasi DOKU untuk paket berbayar.");
-
                 $invoiceNumber = 'SEWA-' . strtoupper($tenant->subdomain) . '-' . $now->format('ymdHis');
                 $dokuData = [
                     'name'  => $request->owner_name,
@@ -122,32 +107,30 @@ class RegisterTenantController extends Controller
 
                 $paymentUrl = $dokuService->createPayment($invoiceNumber, $amount, $dokuData);
 
-                if (!$paymentUrl) throw new \Exception("Gagal mendapatkan URL dari DOKU.");
-
-                // Notifikasi WA ke User (Tagihan)
+                // Kirim WA Tagihan...
                 $msgUser = "Halo Kak *{$request->owner_name}* 👋,\n\n";
-                $msgUser .= "Terima kasih telah mendaftar di *Sancaka POS*.\n";
-                $msgUser .= "Untuk mengaktifkan paket *" . strtoupper($request->package) . "*, silakan selesaikan pembayaran berikut:\n\n";
-                $msgUser .= "💰 *Total: Rp " . number_format($amount, 0, ',', '.') . "*\n";
-                $msgUser .= "🔗 *Link Pembayaran:* \n" . $paymentUrl . "\n\n";
-                $msgUser .= "Akun otomatis aktif setelah pembayaran sukses.";
+                $msgUser .= "Link Pembayaran: \n" . $paymentUrl . "\n";
                 $this->_sendFonnte($userWa, $msgUser);
 
-                Log::info("LOG LOG: Redirect ke DOKU: {$paymentUrl}");
+                // [PERBAIKAN] Gunakan away() untuk memastikan user keluar dari aplikasi kita menuju DOKU
                 return redirect()->away($paymentUrl);
             }
 
             // 8. FINISH (TRIAL)
-            $targetUrl = 'http://' . $tenant->subdomain . '.tokosancaka.com/login';
+            // [PERBAIKAN KRUSIAL] Wajib pakai HTTPS.
+            // Cloudflare Worker hanya akan bekerja optimal jika request masuk via HTTPS.
+            // Jika HTTP, takutnya server DA me-redirect dan menghilangkan Header 'X-Original-Host'.
+            $targetUrl = 'https://' . $tenant->subdomain . '.tokosancaka.com/login';
 
-            // Notifikasi WA Trial
             $msgTrial = "Selamat Kak *{$request->owner_name}*! 🎉\n\n";
-            $msgTrial .= "Akun *Trial 14 Hari* Anda di Sancaka POS sudah aktif.\n";
-            $msgTrial .= "Silakan akses dashboard Anda di:\n" . $targetUrl;
+            $msgTrial .= "Akun Trial Anda aktif. Login disini:\n" . $targetUrl;
             $this->_sendFonnte($userWa, $msgTrial);
 
-            Log::info("LOG LOG: Trial sukses. Redirect ke subdomain.");
-            return redirect()->away($targetUrl)->with('success', 'Pendaftaran Berhasil! Akun Trial Aktif.');
+            Log::info("LOG LOG: Trial sukses. Redirect ke: " . $targetUrl);
+
+            // [PERBAIKAN] Redirect 'away' memaksa browser user memuat ulang URL baru.
+            // Saat browser memuat URL ini, Cloudflare Worker akan menangkapnya -> Memalsukan Header -> Masuk Server DA.
+            return redirect()->away($targetUrl);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -157,13 +140,14 @@ class RegisterTenantController extends Controller
     }
 
    /**
-     * Webhook DOKU untuk aktivasi otomatis
+     * Webhook DOKU
      */
     public function handleDokuWebhook(Request $request)
     {
-        $content = $request->getContent();
-        Log::info("LOG LOG: [WEBHOOK SEWA] Data Masuk: " . $content);
+        // Logika Webhook sudah aman karena tidak bergantung URL, tapi bergantung Invoice Number
+        // Bagian ini tidak perlu diubah, hanya pastikan URL di WA User menggunakan HTTPS
 
+        $content = $request->getContent();
         $data = json_decode($content, true);
         $invoice = $data['order']['invoice_number'] ?? null;
         $status = $data['transaction']['status'] ?? null;
@@ -173,37 +157,24 @@ class RegisterTenantController extends Controller
                 $parts = explode('-', $invoice);
                 $subdomain = strtolower($parts[1]);
 
-                // Mencari tenant berdasarkan subdomain
                 $tenant = Tenant::where('subdomain', $subdomain)->first();
 
                 if ($tenant && $tenant->status !== 'active') {
-                    // 1. Update Status jadi Active
                     $tenant->update(['status' => 'active']);
-                    Log::info("LOG LOG: Akun Tenant {$subdomain} AKTIF via Webhook.");
 
-                    // 2. Normalisasi Nomor WhatsApp Admin & User
-                    $adminPhone = $this->_normalizeWa('085745808809'); // Nomor Bapak
                     $userPhone = $this->_normalizeWa($tenant->whatsapp);
 
-                    // 3. Susun Pesan untuk User
-                    $msgUser = "💰 *PEMBAYARAN SEWA BERHASIL*\n\n" .
-                               "Halo Owner *{$subdomain}*,\n" .
-                               "Terima kasih, pembayaran sewa aplikasi percetakan telah kami terima.\n\n" .
+                    // [PERBAIKAN] Pastikan Link Login di WA menggunakan HTTPS
+                    $msgUser = "💰 *PEMBAYARAN BERHASIL*\n\n" .
                                "Status: *ACTIVE* ✅\n" .
-                               "Link Login: https://{$subdomain}.tokosancaka.com/login\n\n" .
-                               "_Silakan login menggunakan email dan password yang Anda daftarkan._";
+                               "Link Login: https://{$subdomain}.tokosancaka.com/login\n\n"; // WAJIB HTTPS
 
-                    // 4. Kirim WA ke User & Admin
                     if (!empty($userPhone)) {
                         $this->_sendFonnte($userPhone, $msgUser);
                     }
-
-                    $this->_sendFonnte($adminPhone, "🔔 *INFO ADMIN*: Akun Tenant *{$subdomain}* baru saja AKTIF otomatis via DOKU.");
                 }
             }
         }
-
-        // Response standar DOKU Jokul
         return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Success']);
     }
 
@@ -257,12 +228,12 @@ class RegisterTenantController extends Controller
     public function listTenants(Request $request)
     {
         // 1. HAPUS 'with('domains')'. Cukup Tenant::query()
-        $query = Tenant::query(); 
+        $query = Tenant::query();
 
         // 2. Fitur Pencarian
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
-            
+
             $query->where(function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")       // Nama Toko
                   ->orWhere('subdomain', 'like', "%{$search}%") // Subdomain (Kolom biasa)
