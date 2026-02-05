@@ -13,29 +13,38 @@ class PushWaController extends Controller
      */
     public function connect()
     {
-        $token = env('PUSHWA_TOKEN'); // Ambil dari .env
+        $token = env('PUSHWA_TOKEN');
 
         try {
-            // 1. Request ke API PushWA
             $response = Http::post('https://dash.pushwa.com/api/startDevice', [
                 'token' => $token
             ]);
 
-            // 2. Cek apakah request sukses
             if ($response->successful()) {
                 $data = $response->json();
 
-                // 3. Cek apakah ada data QR dalam response
+                // KEMUNGKINAN 1: Device Belum Connect -> Ada QR Code
                 if (isset($data['qr'])) {
-                    // Convert string QR menjadi URL Gambar QR Code
                     $qrImage = 'https://api.qrserver.com/v1/create-qr-code/?data=' . urlencode($data['qr']);
-
-                    // Kirim ke view
                     return view('pushwa.scan', compact('qrImage'));
-                } else {
-                    // Jika device mungkin sudah terhubung atau error lain
+                }
+
+                // KEMUNGKINAN 2: Device Sudah Connect -> Status "connected"
+                elseif (isset($data['message']) && $data['message'] == 'connected') {
+                    // Tampilkan pesan sukses sederhana atau buat view khusus
+                    return "<div style='display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif;'>
+                                <div style='text-align:center;'>
+                                    <h1 style='color:green;'>✅ WhatsApp Sudah Terhubung!</h1>
+                                    <p>Server Anda siap mengirim pesan.</p>
+                                    <a href='/wa/test-kirim' style='color:blue; text-decoration:underline;'>Coba Kirim Pesan Test</a>
+                                </div>
+                            </div>";
+                }
+
+                // KEMUNGKINAN 3: Respon lain (Error/Unknown)
+                else {
                     return response()->json([
-                        'message' => 'QR Code tidak ditemukan. Mungkin device sudah terhubung?',
+                        'message' => 'Respon tidak dikenali dari PushWA.',
                         'response' => $data
                     ]);
                 }
