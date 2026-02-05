@@ -41,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
             } catch (\Exception $e) {}
         }
 
+
         // =================================================================
         // 4. [AUTO VERSIONING] BACA DARI FILE JSON (UNTUK SIDEBAR)
         // =================================================================
