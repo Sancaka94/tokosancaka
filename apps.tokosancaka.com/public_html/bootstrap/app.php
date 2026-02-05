@@ -16,7 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
 
+        // 1. Percayai Proxy Cloudflare
         $middleware->trustProxies(at: '*');
+
+        // 2. [PERBAIKAN] Panggil Middleware Class (Bukan Closure)
+        // Ini akan berjalan paling awal untuk memperbaiki Hostname
+        $middleware->prepend(\App\Http\Middleware\FixCloudflareHost::class);
 
         // Alias Middleware
         $middleware->alias([
@@ -59,6 +64,11 @@ return Application::configure(basePath: dirname(__DIR__))
             '*/logout',
             'http://*/login',
             'https://*/login',
+            'login',
+            'logout',
+            'register',
+            '*/login',
+            '*/logout',
         ]);
 
     })
