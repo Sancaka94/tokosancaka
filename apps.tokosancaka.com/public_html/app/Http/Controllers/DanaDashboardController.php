@@ -166,6 +166,7 @@ public function index(Request $request)
             // Catat Log Transaksi (Opsional, gunakan try-catch agar tidak memutus flow)
             try {
                 DB::table('dana_transactions')->insert([
+                    'tenant_id'    => $aff->tenant_id, // <--- WAJIB ADA
                     'affiliate_id' => ($userType === 'MEMBER') ? $userId : null,
                     'type'         => 'BINDING',
                     'reference_no' => $externalId,
@@ -331,6 +332,7 @@ public function index(Request $request)
 
             // B. Catat ke Audit Log Transaksi
             DB::table('dana_transactions')->insert([
+                'tenant_id'    => $aff->tenant_id, // <--- WAJIB ADA
                 'affiliate_id' => $aff->id,
                 'type' => 'TOPUP',
                 'reference_no' => $partnerRef,
@@ -459,6 +461,7 @@ public function accountInquiry(Request $request)
 
         // --- [DATABASE 1] CATAT KE TABEL TRANSAKSI (AUDIT LOG) ---
         DB::table('dana_transactions')->insert([
+            'tenant_id'    => $aff->tenant_id, // <--- WAJIB ADA
             'affiliate_id' => $request->affiliate_id,
             'type' => 'INQUIRY',
             'reference_no' => $body['partnerReferenceNo'],
@@ -688,6 +691,7 @@ public function customerTopup(Request $request)
 
         // --- [DATABASE] CATAT KE dana_transactions ---
         DB::table('dana_transactions')->insert([
+            'tenant_id'    => $aff->tenant_id, // <--- WAJIB ADA
             'affiliate_id' => $aff->id,
             'type' => 'TOPUP',
             'reference_no' => $partnerRef,
