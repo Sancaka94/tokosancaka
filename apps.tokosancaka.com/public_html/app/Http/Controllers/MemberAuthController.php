@@ -448,19 +448,31 @@ class MemberAuthController extends Controller
             ->withBody($jsonBody, 'application/json')
             ->post('https://api.sandbox.dana.id' . $path);
 
+        // --- MULAI KODE PERBAIKAN ---
         $result = $response->json();
 
+        // [DEBUG] Cek Body Asli untuk memastikan kenapa null
+        Log::info('[DANA TOPUP] Raw Body', ['body' => $response->body()]);
         Log::info('[DANA TOPUP] Respon Diterima', ['status' => $response->status(), 'result' => $result]);
 
-        // 6. Cek Keberhasilan (Status 200 di Sandbox seringkali result-nya null)
-        if ($response->successful()) {
+        // LOGIKA BARU: Cek Status 200 DAN pastikan ada responseCode Sukses dari DANA
+        $isSuccess = false;
+        if ($response->successful() && isset($result['responseCode'])) {
+            // 2000000 = Sukses Umum, 2003800 = Sukses Topup
+            if (in_array($result['responseCode'], ['2000000', '2003800'])) {
+                $isSuccess = true;
+            }
+        }
+
+        // JIKA BENAR-BENAR SUKSES
+        if ($isSuccess) {
 
             // A. Potong Saldo Profit Affiliate
             DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
 
             // B. Catat ke Audit Log Transaksi
             DB::table('dana_transactions')->insert([
-                'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN BARIS INI
+                'tenant_id'    => $aff->tenant_id,
                 'affiliate_id' => $aff->id,
                 'type' => 'TOPUP',
                 'reference_no' => $partnerRef,
@@ -471,32 +483,40 @@ class MemberAuthController extends Controller
                 'created_at' => now()
             ]);
 
-            // C. Kirim Notifikasi WhatsApp ke USER (Affiliate)
-            $pesanUser = "✅ *PENCAIRAN PROFIT BERHASIL*\n\n";
-            $pesanUser = "Halo " . $aff->name . ",\n";
-            $pesanUser = "Pencairan profit Anda ke DANA telah sukses.\n\n";
-            $pesanUser = "*Detail:* \n";
-            $pesanUser = "▪️ Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n";
-            $pesanUser = "▪️ No. DANA: " . $cleanPhone . "\n";
-            $pesanUser = "▪️ Ref ID: " . $partnerRef . "\n";
-            $pesanUser = "▪️ Waktu: " . now()->format('d/m H:i') . " WIB\n\n";
-            $pesanUser = "Saldo profit Anda telah otomatis terpotong. Terima kasih!";
-
+            // C. Kirim Notifikasi WhatsApp ke USER
+            $pesanUser = "✅ *PENCAIRAN PROFIT BERHASIL*\n\nHalo " . $aff->name . ",\nPencairan profit Anda ke DANA telah sukses.\n\n*Detail:* \n▪️ Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n▪️ No. DANA: " . $cleanPhone . "\n▪️ Ref ID: " . $partnerRef . "\n▪️ Waktu: " . now()->format('d/m H:i') . " WIB\n\nSaldo profit Anda telah otomatis terpotong. Terima kasih!";
             $this->sendWhatsApp($cleanPhone, $pesanUser);
 
-            // D. Kirim Notifikasi ke ADMIN (Nomor Bos)
-            $pesanAdmin = "📢 *LAPORAN TOPUP SUKSES*\n\n";
-            $pesanAdmin = "Affiliate: " . $aff->name . " (ID: " . $aff->id . ")\n";
-            $pesanAdmin = "Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n";
-            $pesanAdmin = "Tujuan: " . $cleanPhone . "\n";
-            $pesanAdmin = "Status: Saldo Berhasil Dipotong.";
-
-            $this->sendWhatsApp('6285745808809', $pesanAdmin); // Nomor Admin Bos
+            // D. Kirim Notifikasi ke ADMIN
+            $pesanAdmin = "📢 *LAPORAN TOPUP SUKSES*\n\nAffiliate: " . $aff->name . " (ID: " . $aff->id . ")\nNominal: Rp " . number_format($request->amount, 0, ',', '.') . "\nTujuan: " . $cleanPhone . "\nStatus: Saldo Berhasil Dipotong.";
+            $this->sendWhatsApp('6285745808809', $pesanAdmin);
 
             Log::info('[DANA TOPUP] BERHASIL & WA TERKIRIM');
-
             return back()->with('success', '💸 Topup Berhasil, Saldo Dipotong, dan WA Terkirim!');
+
+        } else {
+            // JIKA GAGAL / RESPON NULL
+            $errCode = $result['responseCode'] ?? 'NULL/EMPTY';
+            $errMsg  = $result['responseMessage'] ?? 'Tidak ada data respon dari DANA (Sandbox Error)';
+
+            Log::error('[DANA TOPUP] Gagal/Null Response', ['res' => $result]);
+
+            // Catat Gagal di DB (Opsional)
+             DB::table('dana_transactions')->insert([
+                'tenant_id'    => $aff->tenant_id,
+                'affiliate_id' => $aff->id,
+                'type' => 'TOPUP',
+                'reference_no' => $partnerRef,
+                'phone' => $cleanPhone,
+                'amount' => $request->amount,
+                'status' => 'FAILED',
+                'response_payload' => json_encode($result), // Bisa jadi null
+                'created_at' => now()
+            ]);
+
+            return back()->with('error', "Gagal dari DANA: $errMsg ($errCode)");
         }
+        // --- SELESAI KODE PERBAIKAN ---
 
         return back()->with('error', 'Gagal dari DANA: ' . ($result['responseMessage'] ?? 'Respon Server Error'));
 
