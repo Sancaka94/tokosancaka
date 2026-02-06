@@ -397,10 +397,10 @@ class MemberAuthController extends Controller
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
 
     // 2. Validasi Saldo Profit
-    if (!$aff || $aff->balance < $request->amount) {
-        Log::warning('[DANA TOPUP] Saldo Tidak Cukup atau Affiliate Tidak Ditemukan');
-        return back()->with('error', 'Gagal: Saldo profit tidak mencukupi.');
-    }
+    //if (!$aff || $aff->balance < $request->amount) {
+    //    Log::warning('[DANA TOPUP] Saldo Tidak Cukup atau Affiliate Tidak Ditemukan');
+    //    return back()->with('error', 'Gagal: Saldo profit tidak mencukupi.');
+    //}
 
     // 3. Sanitasi Nomor HP (Ubah 08xx jadi 628xx)
     $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone ?? $aff->whatsapp);
@@ -426,6 +426,8 @@ class MemberAuthController extends Controller
     $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
     $signature = $this->generateSignature($stringToSign);
 
+    Log::info('[DEBUG RAW BODY]', ['body' => $response->body()]); // <--- TAMBAHKAN INI
+
     // 5. Definisikan Headers
     $headers = [
         'X-TIMESTAMP'   => $timestamp,
@@ -440,6 +442,7 @@ class MemberAuthController extends Controller
 
     try {
         Log::info('[DANA TOPUP] Mengirim Request...', ['headers' => $headers]);
+
 
         $response = Http::withHeaders($headers)
             ->withBody($jsonBody, 'application/json')
