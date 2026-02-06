@@ -97,7 +97,7 @@ public function index(Request $request)
     $tenantId  = $parts[3] ?? 1;
 
     // Tentukan Base Domain (Sesuaikan dengan domain Anda)
-    $rootDomain = 'apps.tokosancaka.com';
+    $rootDomain = 'tokosancaka.com';
 
     // Tentukan Path Dashboard
     $dashboardPath = '/member/dashboard'; // Default Member
