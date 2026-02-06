@@ -517,6 +517,8 @@ Route::post('/member/deposit-dana', [App\Http\Controllers\MemberAuthController::
     ->name('deposit.dana')
     ->middleware('auth:member');
 
+Route::post('/member/deposit', [MemberAuthController::class, 'storeDeposit'])->name('deposit.store');
+
 // 1. Dashboard & Utama
 Route::get('/dana-dashboard', [DanaDashboardController::class, 'index'])->name('dana.dashboard');
 Route::post('/dana-topup', [DanaDashboardController::class, 'topupSaldo'])->name('dana.topup');
