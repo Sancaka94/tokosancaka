@@ -1844,15 +1844,17 @@ TEXT;
             $message .= "{$trackingLink}\n\n";
             $message .= "Simpan bukti resi ini ya Kak. Terima kasih telah menggunakan Sancaka Express! 🙏";
 
-            // 6. Kirim via Fonnte Service
-            // Pastikan Anda sudah use App\Services\FonnteService di atas
-            $response = FonnteService::sendMessage($targetPhone, $message);
+          // 6. Kirim via PushWA (Gantikan Fonnte)
+            // $response = FonnteService::sendMessage($targetPhone, $message); // <-- Fonnte Lama
+
+            // Panggil Helper PushWA
+            $pushWaResponse = $this->_sendPushWa($targetPhone, $message);
 
             // 7. Return JSON
             return response()->json([
                 'status' => 'success',
-                'message' => "Resi berhasil dikirim ke WhatsApp {$roleName} ({$targetName}).",
-                'debug' => $response
+                'message' => "Resi berhasil dikirim ke WhatsApp {$roleName} ({$targetName}) via PushWA.",
+                'debug' => $pushWaResponse
             ]);
 
         } catch (Exception $e) {
@@ -2031,4 +2033,37 @@ public function cetakThermal($resi)
         return response()->json(['success' => true, 'data' => $channels]);
     }
 
-} // Akhir Class
+    /**
+     * Helper Private untuk mengirim pesan via PushWA
+     * Menggunakan format API yang Anda berikan.
+     */
+    private function _sendPushWa($target, $message)
+    {
+        $token = env('PUSHWA_TOKEN'); // Ambil dari .env
+
+        // Pastikan target format 62 (walaupun API WA kadang terima 08, 62 lebih aman)
+        if (Str::startsWith($target, '0')) {
+            $target = '62' . substr($target, 1);
+        }
+
+        try {
+            $response = Http::post('https://dash.pushwa.com/api/kirimPesan', [
+                'token' => $token,
+                'target' => $target,
+                'type' => 'text',
+                'delay' => '1',
+                'message' => $message
+            ]);
+
+            Log::info("PushWA Sent to $target", ['response' => $response->json()]);
+
+            return $response->json();
+
+        } catch (\Exception $e) {
+            Log::error("PushWA Failed to $target: " . $e->getMessage());
+            return ['status' => false, 'error' => $e->getMessage()];
+        }
+    }
+} // Akhir Class PesananController
+
+
