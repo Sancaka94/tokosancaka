@@ -277,8 +277,7 @@ class MemberAuthController extends Controller
             // B. CATAT KE RIWAYAT TRANSAKSI (Gunakan try-catch agar tidak crash jika DB error)
             try {
                 DB::table('dana_transactions')->insert([
-                    'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN BARIS INI (PENTING!)
-                    'affiliate_id' => $affiliateId,
+                    'tenant_id' => $tenantId, // Gunakan variabel ini (hasil pecahan state)                    'affiliate_id' => $affiliateId,
                     'type' => 'BINDING',
                     'reference_no' => $externalId,
                     'phone' => '-',
