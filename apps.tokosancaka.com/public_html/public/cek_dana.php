@@ -1,6 +1,6 @@
 <?php
-// Simpan file ini sebagai: generate_postman.php
-// Jalankan di terminal: php generate_postman.php
+// Simpan file ini dengan nama: tes_dana.php
+// Jalankan di terminal: php tes_dana.php
 
 // --- 1. CONFIG (HARDCODE DARI CHAT ANDA) ---
 $clientId     = "2025081520100641466855";
@@ -34,12 +34,14 @@ NR/qAr2HmcN0nJdx1gTNIP2bYRxzrqLqfxoHSKmORMh4BCS+saRwkmMdIFzXdNVO
 L5vXkAGZnIBgAJ/9t+HC0w==
 -----END PRIVATE KEY-----";
 
-// --- 2. DATA REQUEST ---
-$timestamp = date('Y-m-d\TH:i:sP'); // Waktu Sekarang
-$refNo     = "TEST-POSTMAN-" . time(); // Ref Unik
+// --- 2. SETUP DATA REQUEST ---
+// Gunakan zona waktu Jakarta agar Timestamp valid
+date_default_timezone_set('Asia/Jakarta');
+$timestamp = date('Y-m-d\TH:i:sP');
+$refNo     = "TEST-" . time();
 $amount    = "1000.00";
 
-// Body JSON (Versi Strict / Tanpa Goods)
+// Body JSON (Sesuai Dokumentasi SNAP Direct Debit)
 $body = [
     "partnerReferenceNo" => $refNo,
     "merchantId"         => $merchantId,
@@ -69,13 +71,15 @@ $body = [
     ]
 ];
 
-// --- 3. GENERATE SIGNATURE (SNAP LOGIC) ---
+// --- 3. GENERATE SIGNATURE (SNAP LOGIC - PIPA | ) ---
 $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 $hashedBody = strtolower(hash('sha256', $jsonBody));
 $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
+
+// String to Sign: Method|Path||LowerHash|Timestamp
 $stringToSign = "POST|" . $path . "||" . $hashedBody . "|" . $timestamp;
 
-// Bersihkan Key
+// Bersihkan Format Key
 $pKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $privateKey);
 $pKey = "-----BEGIN PRIVATE KEY-----\n" . chunk_split($pKey, 64, "\n") . "-----END PRIVATE KEY-----";
 
@@ -83,18 +87,26 @@ $binarySig = "";
 openssl_sign($stringToSign, $binarySig, $pKey, OPENSSL_ALGO_SHA256);
 $signature = base64_encode($binarySig);
 
-// --- 4. OUTPUT UNTUK DI-COPY KE POSTMAN ---
-echo "\n=== DATA UNTUK POSTMAN ===\n";
-echo "1. URL (POST): \nhttps://api.sandbox.dana.id/rest/redirection/v1.0/debit/payment-host-to-host\n\n";
+// --- 4. OUTPUT UNTUK POSTMAN ---
+echo "\n============================================\n";
+echo "   DATA UNTUK COPAS KE POSTMAN (VALID)\n";
+echo "============================================\n\n";
 
-echo "2. HEADERS:\n";
-echo "X-PARTNER-ID: " . $clientId . "\n";
-echo "X-EXTERNAL-ID: " . uniqid() . "\n";
-echo "X-TIMESTAMP: " . $timestamp . "\n";
-echo "X-SIGNATURE: " . $signature . "\n";
-echo "CHANNEL-ID: 95221\n";
-echo "ORIGIN: https://apps.tokosancaka.com\n\n";
+echo "1. URL (POST):\n";
+echo "https://api.sandbox.dana.id/rest/redirection/v1.0/debit/payment-host-to-host\n\n";
 
-echo "3. BODY (Raw JSON):\n";
-echo $jsonBody . "\n\n";
+echo "2. HEADERS (Masukkan satu per satu):\n";
+echo "--------------------------------------------\n";
+echo "X-PARTNER-ID  : " . $clientId . "\n";
+echo "X-EXTERNAL-ID : " . uniqid() . "\n";
+echo "X-TIMESTAMP   : " . $timestamp . "\n";
+echo "X-SIGNATURE   : " . $signature . "\n";
+echo "CHANNEL-ID    : 95221\n";
+echo "ORIGIN        : https://apps.tokosancaka.com\n";
+echo "--------------------------------------------\n\n";
+
+echo "3. BODY (Pilih 'raw' -> 'JSON'):\n";
+echo "--------------------------------------------\n";
+echo $jsonBody . "\n";
+echo "--------------------------------------------\n\n";
 ?>
