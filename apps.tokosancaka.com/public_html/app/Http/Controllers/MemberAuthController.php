@@ -507,6 +507,7 @@ public function accountInquiry(Request $request)
 {
     // --- [LOG 1] INPUT REQUEST ---
     Log::info('[DANA INQUIRY] Start Process', [
+        'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN INI
         'affiliate_id' => $request->affiliate_id,
         'amount' => $request->amount,
         'ip' => $request->ip()
@@ -586,6 +587,7 @@ public function accountInquiry(Request $request)
 
         // --- [DATABASE 1] CATAT KE TABEL TRANSAKSI (AUDIT LOG) ---
         DB::table('dana_transactions')->insert([
+            'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN INI
             'affiliate_id' => $request->affiliate_id,
             'type' => 'INQUIRY',
             'reference_no' => $body['partnerReferenceNo'],
@@ -719,6 +721,7 @@ public function customerTopup(Request $request)
 {
     // --- [LOG 1] START PROCESS ---
     Log::info('[DANA TOPUP] --- MEMULAI PROSES TOPUP ---', [
+        'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN INI
         'affiliate_id' => $request->affiliate_id,
         'target_phone' => $request->phone,
         'amount' => $request->amount,
@@ -816,6 +819,7 @@ public function customerTopup(Request $request)
             $isSuccessCode = in_array($resCode, ['2000000', '2003800']);
 
             DB::table('dana_response_codes')->insert([
+                'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN INI
                 'response_code' => $resCode,
                 'category'      => 'TOPUP',
                 'message_title' => $isSuccessCode ? 'Transaction Success' : 'New Code Detected',
@@ -834,6 +838,7 @@ public function customerTopup(Request $request)
 
         // --- [DATABASE] CATAT KE dana_transactions ---
         DB::table('dana_transactions')->insert([
+            'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN INI
             'affiliate_id' => $aff->id,
             'type' => 'TOPUP',
             'reference_no' => $partnerRef,
@@ -1028,6 +1033,7 @@ public function checkTopupStatus(Request $request)
 
             // Catat Log ke DB (Audit Trail)
             DB::table('dana_transactions')->insert([
+                'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN INI
                 'affiliate_id' => $aff->id,
                 'type' => 'BANK_INQUIRY',
                 'reference_no' => $refNo,
@@ -1087,6 +1093,7 @@ public function checkTopupStatus(Request $request)
     {
         // --- [LOG 1] MULAI PROSES ---
         Log::info('[DANA TRANSFER BANK] Start', [
+            'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN
             'affiliate_id' => $request->affiliate_id,
             'bank_code' => $request->bank_code,
             'account_no' => $request->account_no,
@@ -1170,6 +1177,7 @@ public function checkTopupStatus(Request $request)
             if ($resCode == '2004300') {
                 // Catat Log Transaksi Sukses
                 DB::table('dana_transactions')->insert([
+                    'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN
                     'affiliate_id' => $aff->id,
                     'type' => 'TRANSFER_BANK',
                     'reference_no' => $partnerRef,
@@ -1190,6 +1198,7 @@ public function checkTopupStatus(Request $request)
             // Uang tetap ditahan (tidak direfund), user diminta cek berkala
             elseif (in_array($resCode, ['2024300', '4294300', '5004301'])) {
                 DB::table('dana_transactions')->insert([
+                    'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN
                     'affiliate_id' => $aff->id,
                     'type' => 'TRANSFER_BANK',
                     'reference_no' => $partnerRef,
@@ -1210,6 +1219,7 @@ public function checkTopupStatus(Request $request)
 
                 // Catat Log Gagal
                 DB::table('dana_transactions')->insert([
+                    'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN
                     'affiliate_id' => $aff->id,
                     'type' => 'TRANSFER_BANK',
                     'reference_no' => $partnerRef,
