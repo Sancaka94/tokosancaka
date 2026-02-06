@@ -1460,7 +1460,7 @@ public function checkTopupStatus(Request $request)
 
     public function storeDeposit(Request $request)
     {
-        // 1. Validasi Input
+        // 1. Validasi
         $request->validate([
             'amount'         => 'required|numeric|min:1000',
             'payment_method' => 'nullable|in:BANK_TRANSFER,DANA',
@@ -1476,74 +1476,75 @@ public function checkTopupStatus(Request $request)
         ]);
 
         // =====================================================================
-        // OPSI 1: VIA DANA (PAYMENT GATEWAY / ACQUIRING)
+        // OPSI 1: VIA DANA (PAYMENT GATEWAY) - STRICT FIX
         // =====================================================================
         if ($method === 'DANA') {
 
-            // --- [A] DIAGNOSA KONFIGURASI (Wajib Cek) ---
+            // Cek Config & Token
             $c_partnerId  = config('services.dana.x_partner_id');
             $c_merchantId = config('services.dana.merchant_id');
-            $c_secret     = config('services.dana.client_secret'); // Pastikan ini ada di .env
+            $c_secret     = config('services.dana.client_secret');
 
-            if (empty($c_partnerId) || empty($c_merchantId)) {
-                Log::error('[DEPOSIT DANA] CONFIG ERROR: PartnerID/MerchantID kosong di .env');
-                return back()->with('error', 'Konfigurasi Server DANA Belum Lengkap.');
+            if (empty($c_partnerId) || empty($c_merchantId) || empty($c_secret)) {
+                return back()->with('error', 'Config DANA (Partner/Merchant/Secret) belum lengkap di .env');
             }
 
-            // Cek Binding User
             if (!$member->dana_access_token) {
-                return back()->with('error', 'Akun DANA belum terhubung. Silakan hubungkan (Binding) terlebih dahulu.');
+                return back()->with('error', 'Akun DANA belum terhubung.');
             }
 
-            // Setup Data Transaksi
             $refNo     = 'DEP-' . time() . mt_rand(100, 999);
             $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-            $amountString = number_format($request->amount, 2, '.', ''); // Format string "10000.00"
+            $amountString = number_format($request->amount, 2, '.', '');
 
-            // --- [B] SUSUN PAYLOAD ACQUIRING V2.0 ---
-            // Kita pakai "dana.acquiring.order.create" (Tarik Saldo)
-            $head = [
-                "version"      => "2.0",
-                "function"     => "dana.acquiring.order.create",
-                "clientId"     => $c_partnerId,
-                "clientSecret" => $c_secret, // Wajib untuk V2
-                "reqTime"      => $timestamp,
-                "reqMsgId"     => (string) Str::uuid(),
-                "reserve"      => "{}"
-            ];
-
-            $body = [
-                "merchantId"      => $c_merchantId,
-                "merchantTransId" => $refNo,
-                "merchantTransType" => "01",
-                "order" => [
-                    "orderTitle"        => "Topup Saldo",
-                    "orderAmount"       => [
-                        "currency" => "IDR",
-                        "value"    => $amountString
-                    ],
+            // --- [STEP 1] RAKIT DATA REQUEST (ISI DALAM) ---
+            $requestData = [
+                "head" => [
+                    "version"      => "2.0",
+                    "function"     => "dana.acquiring.order.create",
+                    "clientId"     => $c_partnerId,
+                    "clientSecret" => $c_secret,
+                    "reqTime"      => $timestamp,
+                    "reqMsgId"     => (string) Str::uuid(),
+                    "reserve"      => "{}"
+                ],
+                "body" => [
+                    "merchantId"      => $c_merchantId,
+                    "merchantTransId" => $refNo,
                     "merchantTransType" => "01",
-                    "orderMemo"         => "Dep:" . $member->id
-                ],
-                "envInfo" => [
-                    "sourcePlatform" => "IPG",
-                    "terminalType"   => "SYSTEM"
-                ],
-                // PENTING: Token User agar langsung motong saldo dia
-                "userCredential" => [
-                    "accessToken" => $member->dana_access_token
+                    "order" => [
+                        "orderTitle"        => "Deposit Saldo",
+                        "orderAmount"       => [
+                            "currency" => "IDR",
+                            "value"    => $amountString
+                        ],
+                        "merchantTransType" => "01",
+                        "orderMemo"         => "Topup User " . $member->id
+                    ],
+                    "envInfo" => [
+                        "sourcePlatform" => "IPG",
+                        "terminalType"   => "SYSTEM"
+                    ],
+                    "userCredential" => [
+                        "accessToken" => $member->dana_access_token
+                    ]
                 ]
             ];
 
-            $requestPayload = ["request" => ["head" => $head, "body" => $body]];
+            // --- [STEP 2] ENCODE JSON UNTUK SIGNATURE (STRING MATI) ---
+            // Kita kunci string ini agar tidak berubah lagi
+            $jsonRequestValue = json_encode($requestData, JSON_UNESCAPED_SLASHES);
 
-            // --- [C] SIGNATURE GENERATION ---
-            // JSON Encode tanpa spasi (UNESCAPED_SLASHES penting)
-            $jsonToSign = json_encode($requestPayload['request'], JSON_UNESCAPED_SLASHES);
-            $signature  = $this->generateSignature($jsonToSign);
+            // Generate Signature dari string JSON yang fix ini
+            $signature = $this->generateSignature($jsonRequestValue);
+
+            // --- [STEP 3] RAKIT BODY FINAL SEBAGAI STRING ---
+            // Jangan pakai array, kita rakit string JSON manual agar 100% akurat
+            // Format: {"request": {HEAD+BODY}, "signature": "SIGNATURE"}
+            $finalJsonBody = '{"request":' . $jsonRequestValue . ',"signature":"' . $signature . '"}';
 
             try {
-                // Simpan Log DB (Pending)
+                // Log DB (Pending)
                 DB::table('dana_transactions')->insert([
                     'tenant_id'        => $member->tenant_id ?? 1,
                     'affiliate_id'     => $member->id,
@@ -1555,55 +1556,43 @@ public function checkTopupStatus(Request $request)
                     'created_at'       => now()
                 ]);
 
-                Log::info('[DEPOSIT DANA] Mengirim Request...', ['ref' => $refNo]);
+                // Log String yang dikirim (Untuk Debugging Signature)
+                Log::info('[DEPOSIT DANA] Sending Raw JSON:', ['body' => $finalJsonBody]);
 
-                // --- [D] KIRIM REQUEST (DENGAN HEADER JSON YANG BENAR) ---
+                // --- [STEP 4] KIRIM RAW BODY ---
+                // Gunakan withBody() untuk mengirim string mentah, bukan array
                 $response = Http::withHeaders([
                     'Content-Type' => 'application/json',
-                    'Accept'       => 'application/json', // Paksa DANA balas JSON
-                ])->post('https://api.sandbox.dana.id/dana/acquiring/order/create.htm', [
-                    "request"   => $requestPayload['request'],
-                    "signature" => $signature
+                    'Accept'       => 'application/json',
+                ])->withBody($finalJsonBody, 'application/json')
+                  ->post('https://api.sandbox.dana.id/dana/acquiring/order/create.htm');
+
+                // --- [STEP 5] ANALISA RESPON ---
+                $httpStatus = $response->status();
+                $rawResponse = $response->body();
+
+                Log::info('[DEPOSIT DANA] Result:', [
+                    'status' => $httpStatus,
+                    'raw' => $rawResponse
                 ]);
 
-                // --- [E] DEBUGGING RESPON ---
-                $httpStatus = $response->status();
-                $rawBody    = $response->body();
-                $result     = $response->json();
-
-                // Log jika error HTML (biasanya 404/500/403)
-                if ($httpStatus != 200 || empty($rawBody)) {
-                    Log::error('[DEPOSIT DANA] HTTP ERROR/EMPTY', [
-                        'status' => $httpStatus,
-                        'body' => substr($rawBody, 0, 200)
-                    ]);
-                    return back()->with('error', "Gagal Koneksi DANA (HTTP $httpStatus). Cek Log.");
+                if (empty($rawResponse)) {
+                    Log::error('[DEPOSIT DANA] BLANK RESPONSE. Signature mismatch or Config Invalid.');
+                    return back()->with('error', 'Terjadi kesalahan sistem DANA (Empty Response). Cek Config/Signature.');
                 }
 
-                // Cek isi JSON
+                $result = $response->json();
                 $resStatus = $result['response']['body']['resultInfo']['resultStatus'] ?? 'F';
                 $resMsg    = $result['response']['body']['resultInfo']['resultMsg'] ?? 'Unknown Error';
 
                 if ($resStatus == 'S') {
-                    // SUKSES -> DAPAT LINK PEMBAYARAN
+                    // SUKSES
                     $checkoutUrl = $result['response']['body']['checkoutUrl'];
-
-                    // Update DB dengan respon asli
-                    DB::table('dana_transactions')->where('reference_no', $refNo)->update([
-                        'response_payload' => json_encode($result)
-                    ]);
-
-                    // Redirect User ke Aplikasi DANA untuk PIN
+                    DB::table('dana_transactions')->where('reference_no', $refNo)->update(['response_payload' => $rawResponse]);
                     return redirect($checkoutUrl);
-
                 } else {
-                    // GAGAL DARI DANA (Misal: Token Expired, Saldo Kurang, Risk Reject)
-                    DB::table('dana_transactions')->where('reference_no', $refNo)->update([
-                        'status' => 'FAILED',
-                        'response_payload' => json_encode($result)
-                    ]);
-
-                    Log::error('[DEPOSIT DANA REJECT]', ['msg' => $resMsg]);
+                    // GAGAL
+                    DB::table('dana_transactions')->where('reference_no', $refNo)->update(['status' => 'FAILED', 'response_payload' => $rawResponse]);
                     return back()->with('error', "Gagal DANA: $resMsg");
                 }
 
@@ -1614,7 +1603,7 @@ public function checkTopupStatus(Request $request)
         }
 
         // =====================================================================
-        // OPSI 2: VIA BANK TRANSFER (MANUAL - KODE UNIK)
+        // OPSI 2: VIA BANK TRANSFER (MANUAL)
         // =====================================================================
         else {
             $uniqueCode = mt_rand(111, 999);
@@ -1622,7 +1611,6 @@ public function checkTopupStatus(Request $request)
             $refNo = 'DEP-' . date('ymd') . rand(1000, 9999);
 
             try {
-                // Simpan Model TopUp
                 $topup = new TopUp();
                 $topup->tenant_id       = $member->tenant_id ?? 1;
                 $topup->affiliate_id    = $member->id;
