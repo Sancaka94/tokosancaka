@@ -896,6 +896,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth']], function () {
 
     // Route untuk Scan WA
     Route::get('/wa/scan', [PushWaController::class, 'scan'])->name('admin.wa.scan');
+    Route::get('/fonnte/scan', [App\Http\Controllers\FonnteController::class, 'scan'])->name('admin.fonnte.scan');
 
 });
 
