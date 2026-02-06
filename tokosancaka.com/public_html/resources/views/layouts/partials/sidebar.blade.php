@@ -388,6 +388,8 @@
                 </button>
                 <div id="menuWhatsapp" class="submenu mt-1" :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                     <ul class="pl-8 pr-2 py-1 space-y-1">
+                        {{-- MENU BARU: Scan QR / Koneksi --}}
+                        <li><a href="{{ route('admin.wa.scan') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('admin.wa.scan') ? 'text-white' : 'text-gray-400' }}">Scan QR / Koneksi</a></li>
                         <li><a href="{{ route('broadcast.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->routeIs('broadcast.*') ? 'text-white' : 'text-gray-400' }}">Kirim Pesan (Broadcast)</a></li>
                         <li><a href="{{ url('whatsapp') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-red-600 {{ request()->is('whatsapp*') ? 'text-white' : 'text-gray-400' }}">Inbox (Whatsapp)</a></li>
                     </ul>
