@@ -1565,7 +1565,7 @@ public function checkTopupStatus(Request $request)
         // OPSI 2: BANK TRANSFER (MANUAL)
         // =====================================================================
         else {
-             $uniqueCode     = mt_rand(111, 999);
+            $uniqueCode     = mt_rand(111, 999);
             $amountOriginal = $request->amount;
             $amountTotal    = $amountOriginal + $uniqueCode;
             $refNo          = 'DEP-' . date('ymd') . rand(1000, 9999);
@@ -1607,7 +1607,7 @@ public function checkTopupStatus(Request $request)
     {
         $clientId   = config('services.dana.x_partner_id');
         $secret     = config('services.dana.client_secret');
-        $pKey       = config('services.dana.private_key');
+        $pKey       = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzVQeZMz9RvbIICBgMjcyB2ivX2OaZj9h1IQ7GGNHkq5Y5YJLADlR4GgiDjdL2eOu/WUUF1mXIiamS1wISRPCMp2vUTS+GzNqg5N0bzEd8Z2g0QPexaH8S/fXzBV5dr1Z+JOgM9zxmbUioxjrW9RNNhf4iXJGVTt4wWnFSm1FEunvA7rfMEnMNEeVSwLqzSLy8RaGCWt5j5FZse+35C/UtKk27v3ES2soYLoj84Pz/Q5UGGuWoe5U/dj/u/XUgae08a0G25umInNVn7Et3XkRFdaqd9KJtn66eZcjqXK8XLPuXRldL4kVeNW4OCzhYw9biHO2IlxCZ/GSFt+ytWbyawIDAQAB';
         $baseUrl    = config('services.dana.base_url', 'https://api.sandbox.dana.id');
 
         // 1. STRICT STRUCTURE
