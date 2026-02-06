@@ -1468,11 +1468,12 @@ public function checkTopupStatus(Request $request)
     private $rawPrivateKey = "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDNVB5kzP1G9sggIGAyNzIHaK9fY5pmP2HUhDsYY0eSrljlgksAOVHgaCION0vZ4679ZRQXWZciJqZLXAhJE8Iyna9RNL4bM2qDk3RvMR3xnaDRA97FofxL99fMFXl2vVn4k6Az3PGZtSKjGOtb1E02F/iJckZVO3jBacVKbUUS6e8Dut8wScw0R5VLAurNIvLxFoYJa3mPkVmx77fkL9S0qTbu/cRLayhguiPzg/P9DlQYa5ah7lT92P+79dSBp7TxrQbbm6Yic1WfsS3deREV1qp30om2frp5lyOpcrxcs+5dGV0viRV41bg4LOFjD1uIc7YiXEJn8ZIW37K1ZvJrAgMBAAECggEAA91U8x2+mKLVcnFZjihmyyfnwRpdUhZYT4krmZJoyvR4HN2+bqMljN044t6ckV3NMdzAq43Wn+BtWdbCGyoBijVYkuU0vMtTcmWIl/0rLJyEZdq2Sy740i84gxFWZ2s58clJhyBd9cAohjxWVbShvWZnGaMqerkzVSSZ/4Qd/DSdVxU2+YuooLq3QgVasmlZkSy4W720Q2Op6NS8joq0LRHxQRRbvl9J99zs+3cTtSfVK3nLOixhiLu0O/keek8yZ6Kw98Rms/od1TWDY0ivo24y0ABfnWOOy6f/+v3MzKq2ghvFIX0ft6Z79EDt839AjJXW82l5E085J7qY66kKhQKBgQDnAb1iVLL6ycR3RqBCR0MYBdJC8uNdgxw/vi6+fic7MAYY9/FsdDVQr0do4tTCkIwjcHoOPGwrwYl3xnTzDSgd5cX0wU0hbBXrSfN+zZjkwf+8eec+mIvMBV3UMe2kJ/Z8aWvtUmhqVK9fgAqggiFNGmIAjmxJPi3iBdl9Qvrm1QKBgQDjiymT8cSl9bMqUQxG0ggfTFXlZFiVBlmk5qYEcbSaz247Hqo2sLR5it4qHxiWV/QqXabhVYFkQcLTd3Qgj9t8TwWOvSYN69gBxW3dYqsptYVQ8lywjKKt3WKVGSKOgqslMwXnJTHZ/PycBDigDP1nmhczmx0DEQFVltW3n+GUPwKBgCSAzeBf6fhfMcB3VJOklyGQqe0SXINGWIxqDRDk9mYP7Ka9Z1Tv+AzL5cjZLy2fkcV33JGrUpyHdKWMoqZVieVPjbxjX0DMx5nqkaOT8XkUfsjVqojlqhGPN4h0a0zpU7XNItTZlM5Ym23H2eYLKh/470uPNeVNAgsZSYjVsLgRAoGAJuEaY5sF3M2UpYBftqIgnShv7NgugpgpLRH0AAJlt6YF0bg1oU6kJ7hgqZXSn627nJmP8CSqDTVnUrawcvfhquXdrzwGio5nxDW1xgQb9u57Lw+aYthE26xeMdevneYZ1CtZsNscH4EosIfQHRjbG56qpDi2xlVbgwJY1h1NcAUCgYB28OEqvgeYcu2YJfcn66kgd/eTNPiHrGxDL6zhU7MDOl07Cm7AaRFeyLuYrHchI2cbGSc5ssZNYjf5Fp9mh6XrNR/qAr2HmcN0nJdx1gTNIP2bYRxzrqLqfxoHSKmORMh4BCS+saRwkmMdIFzXdNVOL5vXkAGZnIBgAJ/9t+HC0w==";
 
   /**
-     * PROSES DEPOSIT (DANA SNAP API)
-     * Menggunakan Config Laravel (No Hardcode)
+     * PROSES DEPOSIT (DANA SNAP API - DIRECT DEBIT)
+     * Menggunakan Config Laravel & Signature SNAP (Pipa |)
      */
     public function storeDeposit(Request $request)
     {
+        // 1. Validasi Input
         $request->validate([
             'amount'         => 'required|numeric|min:1000',
             'payment_method' => 'nullable|in:BANK_TRANSFER,DANA',
@@ -1486,44 +1487,50 @@ public function checkTopupStatus(Request $request)
         // =====================================================================
         if ($method === 'DANA') {
 
+            // Cek Binding
+            if (!$member->dana_access_token) {
+                return back()->with('error', 'Silakan hubungkan akun DANA Anda terlebih dahulu (Menu Binding).');
+            }
+
             $refNo = 'DEP-' . time() . mt_rand(100, 999);
             $amt   = number_format($request->amount, 2, '.', '');
+            $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'); // ISO8601
 
-            // Timestamp Wajib ISO8601 (WIB)
-            $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-
-            // 1. RAKIT BODY JSON (Sesuai Dokumentasi SNAP)
+            // 1. RAKIT BODY JSON (Sesuai Dokumentasi SNAP Direct Debit)
+            // Parameter ini WAJIB ada dan tidak boleh null
             $body = [
                 "partnerReferenceNo" => $refNo,
-                "merchantId"         => config('services.dana.merchant_id'), // Gunakan Config
+                "merchantId"         => config('services.dana.merchant_id'),
                 "amount" => [
                     "value"    => $amt,
                     "currency" => "IDR"
                 ],
                 "urlParams" => [
                     [
-                        "url"        => url('/member/dashboard'),
+                        "url"        => url('/member/dashboard'), // URL Redirect setelah sukses
                         "type"       => "PAY_RETURN",
                         "isDeeplink" => "Y"
                     ]
                 ],
+                // Info Produk Digital
                 "additionalInfo" => [
                     "productCode" => "DIGITAL_PRODUCT",
+                    "mcc" => "5732", // Kategori Merchant
                     "order" => [
-                        "orderTitle" => "Deposit Saldo Sancaka",
-                        "orderMemo"  => "Topup Saldo Member"
+                        "orderTitle" => "Deposit Saldo",
+                        "orderMemo"  => "Topup User " . $member->id
                     ],
-                    "mcc" => "5732",
                     "envInfo" => [
-                        "sourcePlatform" => "IPG",
-                        "terminalType"   => "WEB"
+                        "sourcePlatform"    => "IPG",
+                        "terminalType"      => "WEB",
+                        "orderTerminalType" => "WEB"
                     ]
                 ]
             ];
 
             try {
                 // 2. KIRIM REQUEST SNAP
-                // Endpoint SNAP DANA: /rest/redirection/v1.0/debit/payment-host-to-host
+                // Endpoint Resmi SNAP Direct Debit
                 $response = $this->sendSnapRequest(
                     '/rest/redirection/v1.0/debit/payment-host-to-host',
                     'POST',
@@ -1531,7 +1538,11 @@ public function checkTopupStatus(Request $request)
                     $timestamp
                 );
 
+                // 3. CEK RESPONSE DARI DANA
+                // Jika sukses, DANA akan memberikan 'webRedirectUrl'
                 if (isset($response['webRedirectUrl'])) {
+
+                    // Simpan Transaksi ke Database (Status PENDING)
                     DB::table('dana_transactions')->insert([
                         'tenant_id'    => $member->tenant_id ?? 1,
                         'affiliate_id' => $member->id,
@@ -1544,24 +1555,28 @@ public function checkTopupStatus(Request $request)
                         'created_at'   => now()
                     ]);
 
+                    // Redirect User ke Halaman Pembayaran DANA
                     return redirect($response['webRedirectUrl']);
                 } else {
+                    // Handle Error dari DANA
                     $errCode = $response['responseCode'] ?? 'Unknown';
                     $errMsg  = $response['responseMessage'] ?? 'Gagal mendapatkan Link Pembayaran';
-                    return back()->with('error', "DANA Error ($errCode): $errMsg");
+
+                    Log::error('[DANA DEPOSIT FAIL]', ['res' => $response]);
+                    return back()->with('error', "Gagal DANA ($errCode): $errMsg");
                 }
 
             } catch (\Exception $e) {
-                Log::error('[DANA SNAP ERROR] ' . $e->getMessage());
-                return back()->with('error', 'Gagal memproses DANA: ' . $e->getMessage());
+                Log::error('[DANA EXCEPTION] ' . $e->getMessage());
+                return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
             }
         }
 
         // =====================================================================
-        // OPSI 2: BANK TRANSFER
+        // OPSI 2: BANK TRANSFER (MANUAL)
         // =====================================================================
         else {
-            $uniqueCode     = mt_rand(111, 999);
+             $uniqueCode     = mt_rand(111, 999);
             $amountOriginal = $request->amount;
             $amountTotal    = $amountOriginal + $uniqueCode;
             $refNo          = 'DEP-' . date('ymd') . rand(1000, 9999);
@@ -1597,35 +1612,35 @@ public function checkTopupStatus(Request $request)
     }
 
     /**
-     * HELPER: KHUSUS SNAP REQUEST (WAJIB FORMAT PIPA | )
-     * Berbeda dengan checkBalance yang pakai titik dua :
+     * HELPER KHUSUS SNAP REQUEST (WAJIB ADA)
+     * Mengatur Signature format SNAP (Pipa |) dan Header wajib.
      */
     private function sendSnapRequest($path, $method, $body, $timestamp)
     {
-        // 1. Minify JSON Body
-        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+        // 1. Minify JSON Body (Penting: Jangan escape slashes/unicode)
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        // 2. Generate SIGNATURE STRING (Pola SNAP BI Standard)
-        // Format: METHOD|PATH|ACCESS_TOKEN|LOWERCASE(SHA256(BODY))|TIMESTAMP
-        // Karena ini init payment (B2B), AccessToken dikosongkan (double pipe ||)
+        // 2. Generate SIGNATURE STRING (Pola SNAP)
+        // Format: METHOD|PATH|ACCESS_TOKEN|LOWER(SHA256(BODY))|TIMESTAMP
+        // Access Token dikosongkan (||) karena ini Init Payment
         $hashedBody = strtolower(hash('sha256', $jsonBody));
         $stringToSign = $method . "|" . $path . "||" . $hashedBody . "|" . $timestamp;
 
         // 3. Ambil Private Key dari Config
         $privateKey = config('services.dana.private_key');
 
-        // Bersihkan Key
+        // Bersihkan Key (Hapus Header/Footer/Spasi agar OpenSSL bisa baca)
         $pKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $privateKey);
         $pKey = "-----BEGIN PRIVATE KEY-----\n" . chunk_split($pKey, 64, "\n") . "-----END PRIVATE KEY-----";
 
-        // 4. SIGN
+        // 4. SIGNING
         $binarySignature = "";
         if (!openssl_sign($stringToSign, $binarySignature, $pKey, OPENSSL_ALGO_SHA256)) {
-             throw new \Exception("Gagal Generate SNAP Signature (Cek Private Key di .env)");
+             throw new \Exception("Gagal Generate Signature. Cek Format Private Key di .env");
         }
         $signature = base64_encode($binarySignature);
 
-        // 5. HEADER SNAP
+        // 5. HEADER SNAP (Wajib sesuai dokumen)
         $headers = [
             'Content-Type'  => 'application/json',
             'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
@@ -1636,7 +1651,7 @@ public function checkTopupStatus(Request $request)
             'ORIGIN'        => config('services.dana.origin', 'https://apps.tokosancaka.com'),
         ];
 
-        // 6. KIRIM (POST)
+        // 6. KIRIM POST
         $baseUrl = config('services.dana.base_url', 'https://api.sandbox.dana.id');
         $fullUrl = $baseUrl . $path;
 
