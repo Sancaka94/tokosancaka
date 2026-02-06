@@ -1672,4 +1672,66 @@ public function checkTopupStatus(Request $request)
         }
     }
 
+    /**
+     * HELPER SNAP API (STRICT HEADER & SIGNATURE)
+     * Fungsi ini wajib ada untuk menangani Signature dan Request ke DANA
+     */
+    private function sendSnapRequest($path, $method, $body, $timestamp)
+    {
+        // 1. Minify JSON (Penting untuk Signature)
+        // JSON_UNESCAPED_SLASHES agar URL tidak error
+        // JSON_UNESCAPED_UNICODE agar karakter khusus aman
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        // 2. Generate Signature SNAP
+        // Pattern: HTTPMethod + "|" + RelativePath + "|" + AccessToken + "|" + Lowercase(Hex(SHA256(Body))) + "|" + Timestamp
+        // Karena ini Init Payment (B2B), AccessToken dikosongkan (double pipe ||)
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = $method . "|" . $path . "||" . $hashedBody . "|" . $timestamp;
+
+        // 3. Sign dengan Private Key
+        $privateKey = config('services.dana.private_key');
+
+        // Bersihkan format key (Hapus spasi/enter yang mungkin terbawa)
+        $pKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $privateKey);
+        $pKey = "-----BEGIN PRIVATE KEY-----\n" . chunk_split($pKey, 64, "\n") . "-----END PRIVATE KEY-----";
+
+        $binarySig = "";
+        if (!openssl_sign($stringToSign, $binarySig, $pKey, OPENSSL_ALGO_SHA256)) {
+            Log::error("OpenSSL Error: " . openssl_error_string());
+            throw new \Exception("Gagal Generate Signature (Cek Key di .env)");
+        }
+        $signature = base64_encode($binarySig);
+
+        // 4. Headers Wajib
+        $headers = [
+            'Content-Type'  => 'application/json',
+            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+            'X-EXTERNAL-ID' => (string) Str::uuid(),
+            'X-TIMESTAMP'   => $timestamp,
+            'X-SIGNATURE'   => $signature,
+            'CHANNEL-ID'    => '95221',
+            'ORIGIN'        => config('services.dana.origin', 'https://apps.tokosancaka.com'),
+        ];
+
+        // 5. Kirim Request
+        $baseUrl = config('services.dana.base_url', 'https://api.sandbox.dana.id');
+        $fullUrl = $baseUrl . $path;
+
+        Log::info("[SNAP SEND]", ['url' => $fullUrl, 'body' => $body]);
+
+        $response = Http::withHeaders($headers)
+                        ->withBody($jsonBody, 'application/json')
+                        ->post($fullUrl);
+
+        Log::info("[SNAP RESPONSE]", ['res' => $response->body()]);
+
+        // Cek jika respon kosong (biasanya karena key salah atau timeout)
+        if (empty($response->body())) {
+             throw new \Exception("DANA merespon kosong (Blank). Cek koneksi atau Key.");
+        }
+
+        return $response->json();
+    }
+
 }
