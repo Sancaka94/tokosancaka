@@ -137,48 +137,79 @@ class MemberAuthController extends Controller
         Log::info('[BINDING] 🚀 1. MEMULAI PROSES REDIRECT KE DANA PORTAL');
         Log::info('================================================================');
 
-        // Log info dasar user untuk trace jika ada error
+        // Log info dasar user
         Log::info('[BINDING] Client IP: ' . $request->ip());
         Log::info('[BINDING] User Agent: ' . $request->header('User-Agent'));
 
-        // Ambil Affiliate ID
-        $affiliateId = $request->affiliate_id ?? 11;
-        Log::info("[BINDING] 📥 Affiliate ID yang diproses: {$affiliateId}");
+        // ---------------------------------------------------------------------
+        // 1. AMBIL DATA DINAMIS (MEMBER, TENANT, SUBDOMAIN)
+        // ---------------------------------------------------------------------
 
-        // [LOG 2] Pengecekan Config (Penting untuk debug jika .env tidak terbaca)
+        // Cek Auth Guard Member
+        $member = Auth::guard('member')->user();
+
+        // Fallback jika testing tanpa login (Not Recommended for Production)
+        $memberId = $member ? $member->id : ($request->affiliate_id ?? 11);
+        $tenantId = $member ? $member->tenant_id : ($request->tenant_id ?? 1);
+        $memberName = $member ? $member->name : 'Guest/Test';
+
+        // Deteksi Subdomain dari Route Parameter (sesuai setup routing Anda)
+        // Jika null/kosong, default ke 'apps' (pusat)
+        $currentSubdomain = $request->route('subdomain') ?? 'apps';
+
+        Log::info("[BINDING] 👤 User Info:", [
+            'name' => $memberName,
+            'id' => $memberId,
+            'tenant_id' => $tenantId,
+            'origin_subdomain' => $currentSubdomain
+        ]);
+
+        // ---------------------------------------------------------------------
+        // 2. FORMAT STATE (PENTING UNTUK CALLBACK)
+        // Format: TIPE - ID_MEMBER - SUBDOMAIN - TENANT_ID
+        // Contoh: MEMBER-11-apps-1
+        // ---------------------------------------------------------------------
+        $state = "MEMBER-{$memberId}-{$currentSubdomain}-{$tenantId}";
+
+        // [LOG 2] Pengecekan Config
         $partnerId   = config('services.dana.x_partner_id');
         $merchantId  = config('services.dana.merchant_id');
-        $redirectUrl = config('services.dana.redirect_url_oauth');
 
-        Log::info('[BINDING] ⚙️ Cek Konfigurasi ENV:');
-        Log::info(" - Partner ID: " . ($partnerId ? $partnerId : '❌ KOSONG'));
-        Log::info(" - Merchant ID: " . ($merchantId ? $merchantId : '❌ KOSONG'));
-        Log::info(" - Redirect URL: " . ($redirectUrl ? $redirectUrl : '❌ KOSONG'));
+        // Kita kunci Redirect URL ke Pusat (Apps) agar tidak perlu whitelist banyak subdomain di DANA
+        $redirectUrl = 'https://apps.tokosancaka.com/dana/callback';
 
-        // Generate Variabel Dinamis
+        Log::info('[BINDING] ⚙️ Config & State:', [
+            'partnerId' => $partnerId ? '✅ OK' : '❌ NULL',
+            'merchantId' => $merchantId ? '✅ OK' : '❌ NULL',
+            'redirectUrl' => $redirectUrl,
+            'generated_state' => $state
+        ]);
+
+        // Generate External ID Unik
         $timestamp  = now('Asia/Jakarta')->toIso8601String();
-        $externalId = 'BIND-' . $affiliateId . '-' . time();
-        $state      = 'ID-' . $affiliateId;
+        $externalId = 'BIND-' . $state . '-' . time();
 
-        // Siapkan Parameter
+        // ---------------------------------------------------------------------
+        // 3. SUSUN PARAMETER
+        // ---------------------------------------------------------------------
         $queryParams = [
             'partnerId'   => $partnerId,
             'timestamp'   => $timestamp,
             'externalId'  => $externalId,
             'merchantId'  => $merchantId,
             'redirectUrl' => $redirectUrl,
-            'state'       => $state,
+            'state'       => $state, // <--- Membawa semua info penting
             'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         ];
 
-        // [LOG 3] Log Payload Mentah (Sebelum di-encode ke URL)
-        Log::info('[BINDING] 📦 Payload Parameter yang disiapkan:', $queryParams);
+        // [LOG 3] Log Payload
+        Log::info('[BINDING] 📦 Payload Parameter:', $queryParams);
 
         // Build URL
         $baseUrl = "https://m.sandbox.dana.id/d/portal/oauth";
         $finalRedirectUrl = $baseUrl . "?" . http_build_query($queryParams);
 
-        // [LOG 4] Log URL Final (Sangat penting: Bisa dicopy-paste ke browser untuk tes manual)
+        // [LOG 4] Log URL Final
         Log::info('[BINDING] 🔗 GENERATED URL (Siap Redirect):');
         Log::info($finalRedirectUrl);
 
