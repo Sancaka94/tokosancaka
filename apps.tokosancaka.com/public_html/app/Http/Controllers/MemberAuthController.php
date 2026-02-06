@@ -148,12 +148,11 @@ class MemberAuthController extends Controller
         // [LOG 2] Pengecekan Config (Penting untuk debug jika .env tidak terbaca)
         $partnerId   = config('services.dana.x_partner_id');
         $merchantId  = config('services.dana.merchant_id');
-        $redirectUrl = config('services.dana.redirect_url_oauth');
+        $memberRedirect = 'https://apps.tokosancaka.com/member/dashboard';
 
         Log::info('[BINDING] ⚙️ Cek Konfigurasi ENV:');
         Log::info(" - Partner ID: " . ($partnerId ? $partnerId : '❌ KOSONG'));
         Log::info(" - Merchant ID: " . ($merchantId ? $merchantId : '❌ KOSONG'));
-        Log::info(" - Redirect URL: " . ($redirectUrl ? $redirectUrl : '❌ KOSONG'));
 
         // Generate Variabel Dinamis
         $timestamp  = now('Asia/Jakarta')->toIso8601String();
@@ -166,13 +165,14 @@ class MemberAuthController extends Controller
             'timestamp'   => $timestamp,
             'externalId'  => $externalId,
             'merchantId'  => $merchantId,
-            'redirectUrl' => $redirectUrl,
+            'redirectUrl' => $memberRedirect,
             'state'       => $state,
             'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         ];
 
         // [LOG 3] Log Payload Mentah (Sebelum di-encode ke URL)
         Log::info('[BINDING] 📦 Payload Parameter yang disiapkan:', $queryParams);
+        Log::info('[BINDING MEMBER] 🔗 Target Redirect: ' . $memberRedirect);
 
         // Build URL
         $baseUrl = "https://m.sandbox.dana.id/d/portal/oauth";
