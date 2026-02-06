@@ -1468,12 +1468,11 @@ public function checkTopupStatus(Request $request)
     private $rawPrivateKey = "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDNVB5kzP1G9sggIGAyNzIHaK9fY5pmP2HUhDsYY0eSrljlgksAOVHgaCION0vZ4679ZRQXWZciJqZLXAhJE8Iyna9RNL4bM2qDk3RvMR3xnaDRA97FofxL99fMFXl2vVn4k6Az3PGZtSKjGOtb1E02F/iJckZVO3jBacVKbUUS6e8Dut8wScw0R5VLAurNIvLxFoYJa3mPkVmx77fkL9S0qTbu/cRLayhguiPzg/P9DlQYa5ah7lT92P+79dSBp7TxrQbbm6Yic1WfsS3deREV1qp30om2frp5lyOpcrxcs+5dGV0viRV41bg4LOFjD1uIc7YiXEJn8ZIW37K1ZvJrAgMBAAECggEAA91U8x2+mKLVcnFZjihmyyfnwRpdUhZYT4krmZJoyvR4HN2+bqMljN044t6ckV3NMdzAq43Wn+BtWdbCGyoBijVYkuU0vMtTcmWIl/0rLJyEZdq2Sy740i84gxFWZ2s58clJhyBd9cAohjxWVbShvWZnGaMqerkzVSSZ/4Qd/DSdVxU2+YuooLq3QgVasmlZkSy4W720Q2Op6NS8joq0LRHxQRRbvl9J99zs+3cTtSfVK3nLOixhiLu0O/keek8yZ6Kw98Rms/od1TWDY0ivo24y0ABfnWOOy6f/+v3MzKq2ghvFIX0ft6Z79EDt839AjJXW82l5E085J7qY66kKhQKBgQDnAb1iVLL6ycR3RqBCR0MYBdJC8uNdgxw/vi6+fic7MAYY9/FsdDVQr0do4tTCkIwjcHoOPGwrwYl3xnTzDSgd5cX0wU0hbBXrSfN+zZjkwf+8eec+mIvMBV3UMe2kJ/Z8aWvtUmhqVK9fgAqggiFNGmIAjmxJPi3iBdl9Qvrm1QKBgQDjiymT8cSl9bMqUQxG0ggfTFXlZFiVBlmk5qYEcbSaz247Hqo2sLR5it4qHxiWV/QqXabhVYFkQcLTd3Qgj9t8TwWOvSYN69gBxW3dYqsptYVQ8lywjKKt3WKVGSKOgqslMwXnJTHZ/PycBDigDP1nmhczmx0DEQFVltW3n+GUPwKBgCSAzeBf6fhfMcB3VJOklyGQqe0SXINGWIxqDRDk9mYP7Ka9Z1Tv+AzL5cjZLy2fkcV33JGrUpyHdKWMoqZVieVPjbxjX0DMx5nqkaOT8XkUfsjVqojlqhGPN4h0a0zpU7XNItTZlM5Ym23H2eYLKh/470uPNeVNAgsZSYjVsLgRAoGAJuEaY5sF3M2UpYBftqIgnShv7NgugpgpLRH0AAJlt6YF0bg1oU6kJ7hgqZXSn627nJmP8CSqDTVnUrawcvfhquXdrzwGio5nxDW1xgQb9u57Lw+aYthE26xeMdevneYZ1CtZsNscH4EosIfQHRjbG56qpDi2xlVbgwJY1h1NcAUCgYB28OEqvgeYcu2YJfcn66kgd/eTNPiHrGxDL6zhU7MDOl07Cm7AaRFeyLuYrHchI2cbGSc5ssZNYjf5Fp9mh6XrNR/qAr2HmcN0nJdx1gTNIP2bYRxzrqLqfxoHSKmORMh4BCS+saRwkmMdIFzXdNVOL5vXkAGZnIBgAJ/9t+HC0w==";
 
   /**
-     * PROSES DEPOSIT (DANA SNAP API - DIRECT DEBIT)
-     * Mengikuti Dokumentasi Strict: Wajib ada Goods & Shipping Info
+     * PROSES DEPOSIT (SMART IDEMPOTENCY)
+     * Menggunakan Logic Reuse RefNo untuk mencegah Double Order
      */
     public function storeDeposit(Request $request)
     {
-        // 1. Validasi Input
         $request->validate([
             'amount'         => 'required|numeric|min:1000',
             'payment_method' => 'nullable|in:BANK_TRANSFER,DANA',
@@ -1483,126 +1482,148 @@ public function checkTopupStatus(Request $request)
         $method = $request->payment_method ?? 'BANK_TRANSFER';
 
         // =====================================================================
-        // OPSI 1: VIA DANA (SNAP API - Host to Host)
+        // OPSI 1: VIA DANA (SNAP API)
         // =====================================================================
         if ($method === 'DANA') {
 
-            // Pastikan User sudah punya Nama (Wajib untuk Shipping Info)
-            $custName = $member->name ?? 'Member Sancaka';
-            // Pecah nama depan/belakang (Wajib ada firstName & lastName)
+            // Data User untuk Shipping Info (Wajib)
+            $custName  = $member->name ?? 'Member Sancaka';
             $nameParts = explode(' ', trim($custName));
             $firstName = $nameParts[0];
             $lastName  = count($nameParts) > 1 ? end($nameParts) : $firstName;
 
-            $refNo = 'DEP-' . time() . mt_rand(100, 999);
-            $amt   = number_format($request->amount, 2, '.', '');
+            // -----------------------------------------------------------------
+            // A. LOGIKA IDEMPOTENT (Cek Transaksi Pending Terakhir)
+            // -----------------------------------------------------------------
+            // Kita cari apakah ada deposit PENDING dengan nominal SAMA dalam 15 menit terakhir
+            $existingTx = DB::table('dana_transactions')
+                ->where('affiliate_id', $member->id)
+                ->where('type', 'DEPOSIT')
+                ->where('status', 'PENDING')
+                ->where('amount', $request->amount)
+                ->where('created_at', '>=', now()->subMinutes(15)) // Batas 15 menit
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($existingTx) {
+                // REUSE: Pakai RefNo lama agar tidak bikin order baru (Fitur Idempotent DANA)
+                $refNo = $existingTx->reference_no;
+                Log::info("[DANA] Reusing Existing RefNo: $refNo");
+            } else {
+                // BARU: Buat RefNo baru
+                $refNo = 'DEP-' . time() . mt_rand(100, 999);
+            }
+
+            $amt = number_format($request->amount, 2, '.', '');
             $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
 
-            // 1. RAKIT BODY JSON (SESUAI DOKUMENTASI YANG ANDA KIRIM)
+            // -----------------------------------------------------------------
+            // B. SIAPKAN PAYLOAD
+            // -----------------------------------------------------------------
             $body = [
-                "partnerReferenceNo" => $refNo,             // Required
-                "merchantId"         => config('services.dana.merchant_id'), // Required
+                "partnerReferenceNo" => $refNo,
+                "merchantId"         => config('services.dana.merchant_id'),
                 "amount" => [
-                    "value"    => $amt,                     // Required
-                    "currency" => "IDR"                     // Required
+                    "value"    => $amt,
+                    "currency" => "IDR"
                 ],
                 "urlParams" => [
                     [
-                        "url"        => url('/member/dashboard'), // Required
-                        "type"       => "PAY_RETURN",             // Required
-                        "isDeeplink" => "Y"                       // Required
-                    ],
-                    [
-                        "url"        => url('/api/callback/dana/notify'),
-                        "type"       => "NOTIFICATION",
-                        "isDeeplink" => "N"
+                        "url"        => url('/member/dashboard'),
+                        "type"       => "PAY_RETURN",
+                        "isDeeplink" => "Y"
                     ]
                 ],
                 "additionalInfo" => [
-                    "productCode" => "51051000100000000001", // Required (Kode Produk Digital Umum)
-                    "mcc"         => "5732",                 // Required (Electronic Sales)
+                    "productCode" => "51051000100000000001",
+                    "mcc"         => "5732",
                     "order" => [
-                        "orderTitle" => "Deposit Saldo Sancaka", // Required
+                        "orderTitle" => "Deposit Saldo Sancaka",
                         "orderMemo"  => "Topup User " . $member->id,
-
-                        // [WAJIB] GOODS (Barang)
-                        // Karena dokumen bilang Required, kita buat 1 item "Deposit"
-                        "goods" => [
-                            [
-                                "merchantGoodsId" => "DEPOSIT-01",      // Required
-                                "description"     => "Deposit Saldo",   // Required
-                                "category"        => "DIGITAL_GOODS",   // Required
-                                "quantity"        => "1",               // Required
-                                "price" => [
-                                    "value"    => $amt,                 // Required
-                                    "currency" => "IDR"                 // Required
-                                ]
-                            ]
-                        ],
-
-                        // [WAJIB] SHIPPING INFO (Pengiriman)
-                        // Karena dokumen bilang Required, kita isi data dummy/data user
-                        // Walaupun produk digital, field ini harus ada agar tidak error 400
-                        "shippingInfo" => [
-                            [
-                                "merchantShippingId" => "SHIP-" . $refNo, // Required
-                                "firstName"   => $firstName,              // Required
-                                "lastName"    => $lastName,               // Required
-                                "email"       => "member@tokosancaka.com",
-                                "phoneNo"     => $member->whatsapp,
-                                "address1"    => "Digital Transaction",   // Required
-                                "address2"    => "Sancaka System",
-                                "cityName"    => "Jakarta",               // Required
-                                "stateName"   => "DKI Jakarta",           // Required
-                                "countryName" => "Indonesia",             // Required
-                                "zipCode"     => "10000",                 // Required
-                                "chargeAmount" => [
-                                    "value"    => "0.00",                 // Required (Ongkir 0)
-                                    "currency" => "IDR"                   // Required
-                                ]
-                            ]
-                        ]
+                        "goods" => [[
+                            "merchantGoodsId" => "DEP-01",
+                            "description"     => "Deposit Saldo",
+                            "category"        => "DIGITAL_GOODS",
+                            "quantity"        => "1",
+                            "price" => ["value" => $amt, "currency" => "IDR"]
+                        ]],
+                        "shippingInfo" => [[
+                            "merchantShippingId" => "SHIP-$refNo",
+                            "firstName" => $firstName, "lastName" => $lastName,
+                            "email" => "user@sancaka.com", "phoneNo" => $member->whatsapp,
+                            "address1" => "Digital", "address2" => "System",
+                            "cityName" => "Jakarta", "stateName" => "DKI",
+                            "countryName" => "Indonesia", "zipCode" => "10000",
+                            "chargeAmount" => ["value" => "0.00", "currency" => "IDR"]
+                        ]]
                     ],
                     "envInfo" => [
-                        "sourcePlatform"    => "IPG",     // Required
-                        "terminalType"      => "WEB",     // Required
-                        "orderTerminalType" => "WEB"      // Required
+                        "sourcePlatform" => "IPG", "terminalType" => "WEB", "orderTerminalType" => "WEB"
                     ]
                 ]
             ];
 
             try {
-                // 2. KIRIM REQUEST SNAP
+                // -------------------------------------------------------------
+                // C. KIRIM REQUEST (DENGAN AUTO-RETRY IDEMPOTENCY)
+                // -------------------------------------------------------------
                 $response = $this->sendSnapRequest(
-                    '/rest/redirection/v1.0/debit/payment-host-to-host',
-                    'POST',
-                    $body,
-                    $timestamp
+                    '/rest/redirection/v1.0/debit/payment-host-to-host', 'POST', $body, $timestamp
                 );
 
-                // 3. CEK RESPONSE
+                // CEK ERROR KHUSUS: 4045418 (Inconsistent Request)
+                // Ini terjadi jika kita Reuse RefNo tapi datanya beda (misal timestamp/item geser dikit)
+                if (isset($response['responseCode']) && $response['responseCode'] == '4045418') {
+
+                    Log::warning("[DANA RETRY] Idempotency Error (4045418). Generating NEW RefNo.");
+
+                    // SOLUSI: Paksa Bikin RefNo Baru & Kirim Ulang Detik Itu Juga
+                    $newRefNo = 'DEP-' . time() . mt_rand(1000, 9999);
+                    $body['partnerReferenceNo'] = $newRefNo;
+                    $body['additionalInfo']['order']['shippingInfo'][0]['merchantShippingId'] = "SHIP-$newRefNo";
+
+                    // Update Timestamp juga biar fresh
+                    $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+
+                    // Request Ulang
+                    $response = $this->sendSnapRequest(
+                        '/rest/redirection/v1.0/debit/payment-host-to-host', 'POST', $body, $timestamp
+                    );
+
+                    // Update RefNo yang dipakai
+                    $refNo = $newRefNo;
+                }
+
+                // -------------------------------------------------------------
+                // D. PROSES HASIL
+                // -------------------------------------------------------------
                 if (isset($response['webRedirectUrl'])) {
 
-                    // Simpan Transaksi
-                    DB::table('dana_transactions')->insert([
-                        'tenant_id'    => $member->tenant_id ?? 1,
-                        'affiliate_id' => $member->id,
-                        'type'         => 'DEPOSIT',
-                        'reference_no' => $refNo,
-                        'phone'        => $member->whatsapp,
-                        'amount'       => $request->amount,
-                        'status'       => 'PENDING',
-                        'response_payload' => json_encode($response),
-                        'created_at'   => now()
-                    ]);
+                    // Jika ini Transaksi Baru (belum ada di DB), Insert
+                    if (!$existingTx || $refNo != $existingTx->reference_no) {
+                        DB::table('dana_transactions')->insert([
+                            'tenant_id'    => $member->tenant_id ?? 1,
+                            'affiliate_id' => $member->id,
+                            'type'         => 'DEPOSIT',
+                            'reference_no' => $refNo,
+                            'phone'        => $member->whatsapp,
+                            'amount'       => $request->amount,
+                            'status'       => 'PENDING',
+                            'response_payload' => json_encode($response),
+                            'created_at'   => now()
+                        ]);
+                    } else {
+                        // Jika Reuse, Update Timestamp saja biar user tau dia baru akses lagi
+                        DB::table('dana_transactions')
+                            ->where('id', $existingTx->id)
+                            ->update(['updated_at' => now(), 'response_payload' => json_encode($response)]);
+                    }
 
                     return redirect($response['webRedirectUrl']);
 
                 } else {
                     $errCode = $response['responseCode'] ?? 'Unknown';
-                    $errMsg  = $response['responseMessage'] ?? 'Gagal mendapatkan Link Pembayaran';
-
-                    Log::error('[DANA FAIL]', ['res' => $response]);
+                    $errMsg  = $response['responseMessage'] ?? 'Gagal DANA';
                     return back()->with('error', "DANA Error ($errCode): $errMsg");
                 }
 
@@ -1649,62 +1670,6 @@ public function checkTopupStatus(Request $request)
                 return back()->with('error', 'Gagal: ' . $e->getMessage());
             }
         }
-    }
-
-    /**
-     * HELPER SNAP REQUEST (STRICT SIGNATURE)
-     */
-    private function sendSnapRequest($path, $method, $body, $timestamp)
-    {
-        // 1. Minify JSON (Wajib)
-        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-        // 2. Signature String (SNAP Format: Pipa | )
-        // Access Token Kosong (||)
-        $hashedBody = strtolower(hash('sha256', $jsonBody));
-        $stringToSign = $method . "|" . $path . "||" . $hashedBody . "|" . $timestamp;
-
-        // 3. Signing
-        $privateKey = config('services.dana.private_key');
-        // Bersihkan Key
-        $pKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $privateKey);
-        $pKey = "-----BEGIN PRIVATE KEY-----\n" . chunk_split($pKey, 64, "\n") . "-----END PRIVATE KEY-----";
-
-        $binarySig = "";
-        if (!openssl_sign($stringToSign, $binarySig, $pKey, OPENSSL_ALGO_SHA256)) {
-             throw new \Exception("Gagal Signature (Cek Private Key di .env)");
-        }
-        $signature = base64_encode($binarySig);
-
-        // 4. Headers (Wajib Sesuai Dokumen)
-        $headers = [
-            'Content-Type'  => 'application/json',
-            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-            'X-EXTERNAL-ID' => (string) Str::uuid(),
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'CHANNEL-ID'    => '95221',
-            'ORIGIN'        => config('services.dana.origin', 'https://apps.tokosancaka.com'),
-        ];
-
-        // 5. Kirim
-        $baseUrl = config('services.dana.base_url', 'https://api.sandbox.dana.id');
-        $fullUrl = $baseUrl . $path;
-
-        Log::info("[SNAP SEND] $fullUrl", ['body' => $body]);
-
-        $response = Http::withHeaders($headers)
-                        ->withBody($jsonBody, 'application/json')
-                        ->post($fullUrl);
-
-        $rawRes = $response->body();
-        Log::info("[SNAP RESPONSE] $rawRes");
-
-        if (empty($rawRes)) {
-             throw new \Exception("DANA SNAP Merespon Kosong (Blank). Cek Config.");
-        }
-
-        return $response->json();
     }
 
 }
