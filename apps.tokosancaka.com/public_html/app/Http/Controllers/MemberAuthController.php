@@ -1459,49 +1459,176 @@ public function checkTopupStatus(Request $request)
     // -------------------------------------------------------------------------
 
     /**
-     * PRIVATE HELPER: KIRIM REQUEST DANA (STRICT ORDERED JSON)
-     * Mengurutkan field JSON agar Signature valid & tidak Blank Response
+     * PROSES DEPOSIT (DANA DIRECT DEBIT & BANK TRANSFER)
+     */
+    public function storeDeposit(Request $request)
+    {
+        // 1. Validasi Input
+        $request->validate([
+            'amount'         => 'required|numeric|min:1000',
+            'payment_method' => 'nullable|in:BANK_TRANSFER,DANA',
+        ]);
+
+        $member = Auth::guard('member')->user();
+        $method = $request->payment_method ?? 'BANK_TRANSFER';
+
+        // =====================================================================
+        // OPSI 1: VIA DANA (DIRECT DEBIT - 2 STEP FLOW)
+        // =====================================================================
+        if ($method === 'DANA') {
+
+            // Ambil Config
+            $merchantId = config('services.dana.merchant_id');
+
+            // Cek Binding
+            if (!$member->dana_access_token) {
+                return back()->with('error', 'Akun DANA belum terhubung. Silakan hubungkan (Binding) terlebih dahulu.');
+            }
+
+            $refNo = 'DEP-' . time() . mt_rand(100, 999);
+            $amt   = number_format($request->amount, 2, '.', '');
+
+            try {
+                // -------------------------------------------------------------
+                // STEP 1: CREATE ORDER (MURNI ORDER, TANPA TOKEN USER)
+                // -------------------------------------------------------------
+                $bodyOrder = [
+                    "merchantId"        => $merchantId,
+                    "merchantTransId"   => $refNo,
+                    "merchantTransType" => "01",
+                    "order" => [
+                        "orderTitle"        => "Deposit Saldo",
+                        "orderAmount"       => ["currency" => "IDR", "value" => $amt],
+                        "merchantTransType" => "01",
+                        "orderMemo"         => "Topup Saldo"
+                    ],
+                    "envInfo" => [
+                        "sourcePlatform" => "IPG",
+                        "terminalType"   => "SYSTEM"
+                    ]
+                    // PENTING: userCredential DIHAPUS agar tidak Blank Response
+                ];
+
+                $resOrder = $this->sendDanaRequest('dana.acquiring.order.create', $bodyOrder);
+
+                if (($resOrder['status'] ?? 'F') !== 'S') {
+                    $msg = $resOrder['msg'] ?? 'Unknown Error';
+                    Log::error('[DANA ORDER FAIL]', ['res' => $resOrder]);
+                    return back()->with('error', "Gagal Membuat Order DANA: $msg");
+                }
+
+                $checkoutUrl = $resOrder['body']['checkoutUrl'];
+
+                // -------------------------------------------------------------
+                // STEP 2: APPLY OTT (Tukar Token User Jadi Token Sekali Pakai)
+                // -------------------------------------------------------------
+                $bodyOTT = [
+                    "merchantId"  => $merchantId,
+                    "accessToken" => $member->dana_access_token
+                ];
+
+                $resOTT = $this->sendDanaRequest('dana.oauth.auth.applyOtt', $bodyOTT);
+
+                if (($resOTT['status'] ?? 'F') !== 'S') {
+                    return back()->with('error', 'Sesi DANA habis. Silakan Hubungkan Ulang (Binding) Akun DANA Anda.');
+                }
+
+                $ottToken = $resOTT['body']['ott'];
+
+                // -------------------------------------------------------------
+                // STEP 3: REDIRECT (GABUNG URL + OTT)
+                // -------------------------------------------------------------
+                $separator = (parse_url($checkoutUrl, PHP_URL_QUERY) == NULL) ? '?' : '&';
+                $finalUrl  = $checkoutUrl . $separator . 'ott=' . $ottToken;
+
+                // Simpan DB
+                DB::table('dana_transactions')->insert([
+                    'tenant_id'    => $member->tenant_id ?? 1,
+                    'affiliate_id' => $member->id,
+                    'type'         => 'DEPOSIT',
+                    'reference_no' => $refNo,
+                    'phone'        => $member->whatsapp,
+                    'amount'       => $request->amount,
+                    'status'       => 'PENDING',
+                    'created_at'   => now()
+                ]);
+
+                return redirect($finalUrl);
+
+            } catch (\Exception $e) {
+                Log::error('[DANA ERROR] ' . $e->getMessage());
+                return back()->with('error', 'Error Sistem: ' . $e->getMessage());
+            }
+        }
+
+        // =====================================================================
+        // OPSI 2: BANK TRANSFER (MANUAL)
+        // =====================================================================
+        else {
+             $uniqueCode     = mt_rand(111, 999);
+            $amountOriginal = $request->amount;
+            $amountTotal    = $amountOriginal + $uniqueCode;
+            $refNo          = 'DEP-' . date('ymd') . rand(1000, 9999);
+
+            try {
+                $topup = new TopUp();
+                $topup->tenant_id       = $member->tenant_id ?? 1;
+                $topup->affiliate_id    = $member->id;
+                $topup->reference_no    = $refNo;
+                $topup->amount          = $amountOriginal;
+                $topup->unique_code     = $uniqueCode;
+                $topup->total_amount    = $amountTotal;
+                $topup->status          = 'PENDING';
+                $topup->payment_method  = 'BANK_TRANSFER';
+                $topup->created_at      = now();
+                $topup->save();
+
+                $formattedTotal = number_format($amountTotal, 0, ',', '.');
+                $bankInfo = "BCA: 1234567890 (PT Sancaka)";
+
+                $msg  = "📥 *TIKET DEPOSIT*\n\nHalo {$member->name},\nSilakan transfer TEPAT senilai:\n💰 *Rp {$formattedTotal}*\n\nKe {$bankInfo}\nRef: {$refNo}";
+
+                if (method_exists($this, 'sendWhatsApp')) {
+                    $this->sendWhatsApp($member->whatsapp, $msg);
+                }
+
+                return back()->with('success', "✅ Tiket Deposit Dibuat!\nSilakan transfer tepat: **Rp {$formattedTotal}**");
+
+            } catch (\Exception $e) {
+                return back()->with('error', 'Gagal: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * PRIVATE HELPER: KIRIM REQUEST DANA (STRICT JSON ORDER)
      */
     private function sendDanaRequest($function, $bodyContent)
     {
         $clientId   = config('services.dana.x_partner_id');
         $secret     = config('services.dana.client_secret');
         $pKey       = config('services.dana.private_key');
+        $baseUrl    = config('services.dana.base_url', 'https://api.sandbox.dana.id');
 
-        // Base URL
-        $baseUrl = config('services.dana.base_url', 'https://api.sandbox.dana.id');
-
-        // 1. STRICT PAYLOAD STRUCTURE (Urutan field sangat vital!)
-        $ts = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        $msgId = (string) Str::uuid();
-
-        // Head harus urut seperti ini
+        // 1. STRICT STRUCTURE
+        // Request Object disusun manual agar urutan key JSON tidak berubah (Penting untuk Signature)
         $head = [
             "clientId"     => $clientId,
             "clientSecret" => $secret,
             "function"     => $function,
-            "reqMsgId"     => $msgId,
-            "reqTime"      => $ts,
+            "reqMsgId"     => (string) Str::uuid(),
+            "reqTime"      => now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'),
             "reserve"      => "{}",
             "version"      => "2.0"
         ];
 
-        // Gabungkan Head & Body
-        $payload = [
-            "body" => $bodyContent, // Body dulu (secara abjad B sebelum H, tapi di JSON request object biasanya Head dulu, kita coba format standard)
-            "head" => $head
-        ];
-
-        // KOREKSI: Sesuai dokumentasi DANA, strukturnya: {"request": {"head":..., "body":...}}
-        // Jadi variable $payload ini adalah isi dari "request"
-        $requestObj = [
+        $requestPayload = [
             "head" => $head,
             "body" => $bodyContent
         ];
 
-        // 2. SIGNATURE GENERATION
-        // Gunakan JSON_PRESERVE_ZERO_FRACTION agar angka float (10000.00) tidak berubah jadi 10000
-        $jsonToSign = json_encode($requestObj, JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
+        // 2. SIGNATURE
+        $jsonToSign = json_encode($requestPayload, JSON_UNESCAPED_SLASHES);
 
         // Bersihkan Key
         $pKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $pKey);
@@ -1514,8 +1641,7 @@ public function checkTopupStatus(Request $request)
         }
         $signature = base64_encode($binarySig);
 
-        // 3. FINAL BODY (Manual Construction)
-        // Kita rakit string manual agar urutan "request" dan "signature" sesuai
+        // 3. FINAL BODY
         $finalBody = '{"request":' . $jsonToSign . ',"signature":"' . $signature . '"}';
 
         // 4. ENDPOINT
@@ -1524,24 +1650,18 @@ public function checkTopupStatus(Request $request)
             $endpoint = $baseUrl . '/dana/oauth/auth/applyOtt.htm';
         }
 
-        // 5. SEND (Debug Mode)
-        Log::info("[DANA SEND] Endpoint: $endpoint");
-        // Log::info("[DANA PAYLOAD]: $finalBody"); // Uncomment jika ingin lihat payload mentah
-
+        // 5. SEND
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
             'Accept'       => 'application/json',
-            // Tambahkan Header Date/MsgId juga kadang membantu
             'X-CLIENT-KEY' => $clientId,
-            'X-TIMESTAMP'  => $ts,
         ])->withBody($finalBody, 'application/json')->post($endpoint);
 
         $rawBody = $response->body();
 
         if (empty($rawBody)) {
-            // Jika masih kosong, ini fix masalah KUNCI (Public Key di Dashboard salah upload)
-            Log::error('[DANA BLANK RESPONSE]', ['sent' => $finalBody]);
-            throw new \Exception("DANA merespon kosong. Pastikan Public Key di Dashboard DANA sudah diupdate dengan yang baru.");
+            Log::error('[DANA BLANK RESPONSE]', ['payload' => $finalBody]);
+            throw new \Exception("DANA merespon kosong. Cek Public Key di Dashboard DANA.");
         }
 
         return [
