@@ -11,51 +11,47 @@ class PushWaController extends Controller
     /**
      * Menampilkan QR Code untuk Scan WA
      */
-    public function connect()
+    public function scan()
     {
         $token = env('PUSHWA_TOKEN');
 
+        // Default values
+        $isConnected = false;
+        $qrImage = null;
+        $message = '';
+
         try {
+            // 1. Panggil API PushWA
             $response = Http::post('https://dash.pushwa.com/api/startDevice', [
                 'token' => $token
             ]);
 
+            $data = $response->json();
+
+            // 2. Cek Logika Respon
             if ($response->successful()) {
-                $data = $response->json();
 
-                // KEMUNGKINAN 1: Device Belum Connect -> Ada QR Code
-                if (isset($data['qr'])) {
-                    $qrImage = 'https://api.qrserver.com/v1/create-qr-code/?data=' . urlencode($data['qr']);
-                    return view('pushwa.scan', compact('qrImage'));
+                // KEMUNGKINAN A: Sudah Terhubung
+                if (isset($data['message']) && $data['message'] == 'connected') {
+                    $isConnected = true;
+                    $message = 'WhatsApp Sudah Terhubung';
                 }
-
-                // KEMUNGKINAN 2: Device Sudah Connect -> Status "connected"
-                elseif (isset($data['message']) && $data['message'] == 'connected') {
-                    // Tampilkan pesan sukses sederhana atau buat view khusus
-                    return "<div style='display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif;'>
-                                <div style='text-align:center;'>
-                                    <h1 style='color:green;'>✅ WhatsApp Sudah Terhubung!</h1>
-                                    <p>Server Anda siap mengirim pesan.</p>
-                                    <a href='/wa/test-kirim' style='color:blue; text-decoration:underline;'>Coba Kirim Pesan Test</a>
-                                </div>
-                            </div>";
-                }
-
-                // KEMUNGKINAN 3: Respon lain (Error/Unknown)
-                else {
-                    return response()->json([
-                        'message' => 'Respon tidak dikenali dari PushWA.',
-                        'response' => $data
-                    ]);
+                // KEMUNGKINAN B: Belum Terhubung (Ada QR)
+                elseif (isset($data['qr'])) {
+                    $isConnected = false;
+                    $qrImage = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($data['qr']);
+                    $message = 'Silakan Scan QR Code di bawah ini';
                 }
             } else {
-                Log::error('PushWA Error: ' . $response->body());
-                return response()->json(['error' => 'Gagal menghubungi server PushWA'], 500);
+                $message = 'Gagal mengambil QR Code. Cek Token Anda.';
             }
 
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            $message = 'Error Sistem: ' . $e->getMessage();
         }
+
+        // 3. Kirim data ke View Admin
+        return view('admin.pushwa.scan', compact('isConnected', 'qrImage', 'message'));
     }
 
     /**

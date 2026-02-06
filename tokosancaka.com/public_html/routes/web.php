@@ -890,13 +890,13 @@ Route::get('/tembak-webhook-manual', function () {
 });
 
 // -----------------------------------API PUSH WA-----------------------------------//
-Route::get('/wa/scan', [PushWaController::class, 'connect']);
-// Test kirim pesan (opsional)
-Route::get('/wa/test-kirim', function() {
-    $wa = new PushWaController();
-    return $wa->sendMessage('085745808809', 'Halo, ini pesan test dari Laravel!');
-});
 
-Route::get('/wa/kirim-test', [PushWaController::class, 'tesKirim']);
+// Masukkan ke dalam group admin auth jika perlu
+Route::group(['prefix' => 'admin', 'middleware' => ['auth']], function () {
+
+    // Route untuk Scan WA
+    Route::get('/wa/scan', [PushWaController::class, 'scan'])->name('admin.wa.scan');
+
+});
 
 // ----------------------------Pentup PUSH WA--------------------------------------//
