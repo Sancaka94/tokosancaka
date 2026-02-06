@@ -1467,9 +1467,9 @@ public function checkTopupStatus(Request $request)
     // Private Key (Format 1 Baris)
     private $rawPrivateKey = "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDNVB5kzP1G9sggIGAyNzIHaK9fY5pmP2HUhDsYY0eSrljlgksAOVHgaCION0vZ4679ZRQXWZciJqZLXAhJE8Iyna9RNL4bM2qDk3RvMR3xnaDRA97FofxL99fMFXl2vVn4k6Az3PGZtSKjGOtb1E02F/iJckZVO3jBacVKbUUS6e8Dut8wScw0R5VLAurNIvLxFoYJa3mPkVmx77fkL9S0qTbu/cRLayhguiPzg/P9DlQYa5ah7lT92P+79dSBp7TxrQbbm6Yic1WfsS3deREV1qp30om2frp5lyOpcrxcs+5dGV0viRV41bg4LOFjD1uIc7YiXEJn8ZIW37K1ZvJrAgMBAAECggEAA91U8x2+mKLVcnFZjihmyyfnwRpdUhZYT4krmZJoyvR4HN2+bqMljN044t6ckV3NMdzAq43Wn+BtWdbCGyoBijVYkuU0vMtTcmWIl/0rLJyEZdq2Sy740i84gxFWZ2s58clJhyBd9cAohjxWVbShvWZnGaMqerkzVSSZ/4Qd/DSdVxU2+YuooLq3QgVasmlZkSy4W720Q2Op6NS8joq0LRHxQRRbvl9J99zs+3cTtSfVK3nLOixhiLu0O/keek8yZ6Kw98Rms/od1TWDY0ivo24y0ABfnWOOy6f/+v3MzKq2ghvFIX0ft6Z79EDt839AjJXW82l5E085J7qY66kKhQKBgQDnAb1iVLL6ycR3RqBCR0MYBdJC8uNdgxw/vi6+fic7MAYY9/FsdDVQr0do4tTCkIwjcHoOPGwrwYl3xnTzDSgd5cX0wU0hbBXrSfN+zZjkwf+8eec+mIvMBV3UMe2kJ/Z8aWvtUmhqVK9fgAqggiFNGmIAjmxJPi3iBdl9Qvrm1QKBgQDjiymT8cSl9bMqUQxG0ggfTFXlZFiVBlmk5qYEcbSaz247Hqo2sLR5it4qHxiWV/QqXabhVYFkQcLTd3Qgj9t8TwWOvSYN69gBxW3dYqsptYVQ8lywjKKt3WKVGSKOgqslMwXnJTHZ/PycBDigDP1nmhczmx0DEQFVltW3n+GUPwKBgCSAzeBf6fhfMcB3VJOklyGQqe0SXINGWIxqDRDk9mYP7Ka9Z1Tv+AzL5cjZLy2fkcV33JGrUpyHdKWMoqZVieVPjbxjX0DMx5nqkaOT8XkUfsjVqojlqhGPN4h0a0zpU7XNItTZlM5Ym23H2eYLKh/470uPNeVNAgsZSYjVsLgRAoGAJuEaY5sF3M2UpYBftqIgnShv7NgugpgpLRH0AAJlt6YF0bg1oU6kJ7hgqZXSn627nJmP8CSqDTVnUrawcvfhquXdrzwGio5nxDW1xgQb9u57Lw+aYthE26xeMdevneYZ1CtZsNscH4EosIfQHRjbG56qpDi2xlVbgwJY1h1NcAUCgYB28OEqvgeYcu2YJfcn66kgd/eTNPiHrGxDL6zhU7MDOl07Cm7AaRFeyLuYrHchI2cbGSc5ssZNYjf5Fp9mh6XrNR/qAr2HmcN0nJdx1gTNIP2bYRxzrqLqfxoHSKmORMh4BCS+saRwkmMdIFzXdNVOL5vXkAGZnIBgAJ/9t+HC0w==";
 
-   /**
+  /**
      * PROSES DEPOSIT (DANA SNAP API)
-     * PERBAIKAN: Menggunakan Config Laravel (No Hardcode)
+     * Menggunakan Config Laravel (No Hardcode)
      */
     public function storeDeposit(Request $request)
     {
@@ -1488,6 +1488,8 @@ public function checkTopupStatus(Request $request)
 
             $refNo = 'DEP-' . time() . mt_rand(100, 999);
             $amt   = number_format($request->amount, 2, '.', '');
+
+            // Timestamp Wajib ISO8601 (WIB)
             $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
 
             // 1. RAKIT BODY JSON (Sesuai Dokumentasi SNAP)
@@ -1521,6 +1523,7 @@ public function checkTopupStatus(Request $request)
 
             try {
                 // 2. KIRIM REQUEST SNAP
+                // Endpoint SNAP DANA: /rest/redirection/v1.0/debit/payment-host-to-host
                 $response = $this->sendSnapRequest(
                     '/rest/redirection/v1.0/debit/payment-host-to-host',
                     'POST',
@@ -1594,23 +1597,35 @@ public function checkTopupStatus(Request $request)
     }
 
     /**
-     * HELPER 2: KHUSUS SNAP REQUEST
-     * Digunakan oleh: storeDeposit
-     * Perbaikan: Menggunakan Config, bukan Hardcode
+     * HELPER: KHUSUS SNAP REQUEST (WAJIB FORMAT PIPA | )
+     * Berbeda dengan checkBalance yang pakai titik dua :
      */
     private function sendSnapRequest($path, $method, $body, $timestamp)
     {
         // 1. Minify JSON Body
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
 
-        // 2. Generate SIGNATURE STRING (Pola SNAP)
+        // 2. Generate SIGNATURE STRING (Pola SNAP BI Standard)
+        // Format: METHOD|PATH|ACCESS_TOKEN|LOWERCASE(SHA256(BODY))|TIMESTAMP
+        // Karena ini init payment (B2B), AccessToken dikosongkan (double pipe ||)
         $hashedBody = strtolower(hash('sha256', $jsonBody));
         $stringToSign = $method . "|" . $path . "||" . $hashedBody . "|" . $timestamp;
 
-        // 3. SIGN dengan Private Key dari Config
-        $signature = $this->generateSignature($stringToSign);
+        // 3. Ambil Private Key dari Config
+        $privateKey = config('services.dana.private_key');
 
-        // 4. HEADER SNAP (Ambil ID dari Config)
+        // Bersihkan Key
+        $pKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $privateKey);
+        $pKey = "-----BEGIN PRIVATE KEY-----\n" . chunk_split($pKey, 64, "\n") . "-----END PRIVATE KEY-----";
+
+        // 4. SIGN
+        $binarySignature = "";
+        if (!openssl_sign($stringToSign, $binarySignature, $pKey, OPENSSL_ALGO_SHA256)) {
+             throw new \Exception("Gagal Generate SNAP Signature (Cek Private Key di .env)");
+        }
+        $signature = base64_encode($binarySignature);
+
+        // 5. HEADER SNAP
         $headers = [
             'Content-Type'  => 'application/json',
             'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
@@ -1621,11 +1636,11 @@ public function checkTopupStatus(Request $request)
             'ORIGIN'        => config('services.dana.origin', 'https://apps.tokosancaka.com'),
         ];
 
-        // 5. KIRIM (POST)
+        // 6. KIRIM (POST)
         $baseUrl = config('services.dana.base_url', 'https://api.sandbox.dana.id');
         $fullUrl = $baseUrl . $path;
 
-        Log::info("[SNAP SEND] $fullUrl", ['body' => $body, 'headers' => $headers]);
+        Log::info("[SNAP SEND] $fullUrl", ['body' => $body]);
 
         $response = Http::withHeaders($headers)
                         ->withBody($jsonBody, 'application/json')
