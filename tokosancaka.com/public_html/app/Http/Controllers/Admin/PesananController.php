@@ -1760,20 +1760,33 @@ TEXT;
             $messageTemplate
         );
 
-        // 7. Kirim Pesan via Fonnte
+        // ---------------------------------------------------------------------
+        // 7. KIRIM PESAN (MODIFIKASI PUSHWA)
+        // ---------------------------------------------------------------------
         $senderWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($pesanan->sender_phone));
         $receiverWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($pesanan->receiver_phone));
 
         try {
+            // --- OPSI 1: PUSHWA (AKTIF) ---
+            if ($senderWa) {
+                $this->_sendPushWa($senderWa, $message);
+            }
+            if ($receiverWa) {
+                $this->_sendPushWa($receiverWa, $message);
+            }
+
+            // --- OPSI 2: FONNTE (NON-AKTIF / CADANGAN) ---
+            /*
             if ($senderWa) {
                 FonnteService::sendMessage($senderWa, $message);
             }
-
             if ($receiverWa) {
                 FonnteService::sendMessage($receiverWa, $message);
             }
+            */
+
         } catch (Exception $e) {
-            Log::error('Fonnte Service sendMessage failed: ' . $e->getMessage(), ['invoice' => $pesanan->nomor_invoice]);
+            Log::error('WA Notification failed: ' . $e->getMessage(), ['invoice' => $pesanan->nomor_invoice]);
         }
     }
 
