@@ -73,4 +73,45 @@ class PushWaController extends Controller
 
         return $response->json();
     }
+
+
+    /**
+     * Fungsi Private: Logika inti kirim pesan
+     */
+    private function kirimPesan($target, $message)
+    {
+        $token = env('PUSHWA_TOKEN');
+
+        // 1. Auto-Format Nomor (Ubah 08 jadi 628)
+        // API WA biasanya wajib format internasional
+        $target = $this->formatNomor($target);
+
+        // 2. Kirim Request ke API kirimPesan
+        try {
+            $response = Http::post('https://dash.pushwa.com/api/kirimPesan', [
+                'token'   => $token,
+                'target'  => $target,
+                'type'    => 'text',   // Sesuai kode curl Anda
+                'delay'   => '1',      // Sesuai kode curl Anda
+                'message' => $message
+            ]);
+
+            return $response->json();
+
+        } catch (\Exception $e) {
+            return ['status' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Helper: Format nomor HP Indonesia ke format 62
+     */
+    private function formatNomor($nomor)
+    {
+        $nomor = trim($nomor);
+        if (substr($nomor, 0, 1) == '0') {
+            return '62' . substr($nomor, 1);
+        }
+        return $nomor;
+    }
 }

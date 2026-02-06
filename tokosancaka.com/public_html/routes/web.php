@@ -889,10 +889,14 @@ Route::get('/tembak-webhook-manual', function () {
     return "Selesai eksekusi script pancingan.";
 });
 
-
+// -----------------------------------API PUSH WA-----------------------------------//
 Route::get('/wa/scan', [PushWaController::class, 'connect']);
 // Test kirim pesan (opsional)
 Route::get('/wa/test-kirim', function() {
     $wa = new PushWaController();
     return $wa->sendMessage('085745808809', 'Halo, ini pesan test dari Laravel!');
 });
+
+Route::get('/wa/kirim-test', [PushWaController::class, 'tesKirim']);
+
+// ----------------------------Pentup PUSH WA--------------------------------------//
