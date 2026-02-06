@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\Tenant; // <--- WAJIB TAMBAH
 use App\Models\Affiliate; // <--- BARIS INI WAJIB ADA
+use App\Models\TopUp;  // <--- TAMBAHKAN BARIS INI
 use Illuminate\Support\Str;
 
 class DanaDashboardController extends Controller
