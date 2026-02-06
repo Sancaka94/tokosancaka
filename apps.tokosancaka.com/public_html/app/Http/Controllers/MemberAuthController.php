@@ -1459,7 +1459,8 @@ public function checkTopupStatus(Request $request)
     // -------------------------------------------------------------------------
 
     /**
-     * PROSES DEPOSIT (DANA AUTOMATIC & BANK MANUAL)
+     * PROSES DEPOSIT (DANA DIRECT DEBIT - 2 STEP FLOW)
+     * Revisi: Menghapus userCredential di Step 1 agar tidak Blank Response
      */
     public function storeDeposit(Request $request)
     {
@@ -1473,37 +1474,34 @@ public function checkTopupStatus(Request $request)
         $method = $request->payment_method ?? 'BANK_TRANSFER';
 
         // =====================================================================
-        // OPSI 1: VIA DANA (DIRECT DEBIT FLOW - 2 STEPS)
+        // OPSI 1: VIA DANA (DIRECT DEBIT)
         // =====================================================================
         if ($method === 'DANA') {
 
-            // A. Cek Config & Token
+            // Cek Config
             $c_partnerId  = config('services.dana.x_partner_id');
             $c_merchantId = config('services.dana.merchant_id');
             $c_secret     = config('services.dana.client_secret');
             $c_privateKey = config('services.dana.private_key');
 
-            // Validasi Kelengkapan Config
-            if (empty($c_partnerId) || empty($c_merchantId) || empty($c_secret) || empty($c_privateKey)) {
-                Log::error('[DEPOSIT DANA] Config Error: Data .env tidak lengkap.');
-                return back()->with('error', 'Sistem pembayaran sedang maintenance (Config Error).');
+            if (empty($c_partnerId) || empty($c_merchantId) || empty($c_secret)) {
+                return back()->with('error', 'Konfigurasi DANA belum lengkap (Admin).');
             }
 
-            // Validasi Binding User
+            // Cek Binding
             if (!$member->dana_access_token) {
                 return back()->with('error', 'Akun DANA belum terhubung. Silakan hubungkan (Binding) terlebih dahulu.');
             }
 
-            // Setup Variabel Transaksi
+            // Setup
             $refNo = 'DEP-' . time() . mt_rand(100, 999);
-            $amt   = number_format($request->amount, 2, '.', ''); // Format: 10000.00
+            $amt   = number_format($request->amount, 2, '.', ''); // "10000.00"
 
             try {
                 // -------------------------------------------------------------
-                // STEP 1: CREATE ORDER (Dapat Checkout URL)
+                // STEP 1: CREATE ORDER (MURNI ORDER, TANPA TOKEN USER)
                 // -------------------------------------------------------------
-                // Kita request Link Pembayaran tanpa mengirim Token User dulu
-
+                // Payload Request (Perhatikan: TIDAK ADA userCredential disini)
                 $bodyOrder = [
                     "merchantId"        => $c_merchantId,
                     "merchantTransId"   => $refNo,
@@ -1512,29 +1510,31 @@ public function checkTopupStatus(Request $request)
                         "orderTitle"        => "Deposit Saldo",
                         "orderAmount"       => ["currency" => "IDR", "value" => $amt],
                         "merchantTransType" => "01",
-                        "orderMemo"         => "Topup Member Sancaka"
+                        "orderMemo"         => "Topup Saldo"
                     ],
                     "envInfo" => [
                         "sourcePlatform" => "IPG",
                         "terminalType"   => "SYSTEM"
                     ]
+                    // [PENTING] userCredential DIHAPUS TOTAL DARI SINI
                 ];
 
-                // Kirim Request ke DANA
+                // Kirim Request
                 $resOrder = $this->sendDanaRequest('dana.acquiring.order.create', $bodyOrder);
 
-                // Cek Hasil Step 1
+                // Cek Validitas Respon
                 if (($resOrder['status'] ?? 'F') !== 'S') {
-                    Log::error('[DANA ORDER FAIL]', ['res' => $resOrder]);
-                    throw new \Exception("Gagal Membuat Order: " . ($resOrder['msg'] ?? 'Unknown Error'));
+                    $errMsg = $resOrder['msg'] ?? 'Unknown Error';
+                    Log::error('[DANA ORDER FAIL]', ['response' => $resOrder]);
+                    return back()->with('error', "Gagal Membuat Order DANA: $errMsg");
                 }
 
                 $checkoutUrl = $resOrder['body']['checkoutUrl'];
 
                 // -------------------------------------------------------------
-                // STEP 2: APPLY OTT (Tukar AccessToken User jadi One-Time-Token)
+                // STEP 2: APPLY OTT (Direct Debit Token)
                 // -------------------------------------------------------------
-                // Agar user tidak perlu login ulang (Direct Debit)
+                // Kita tukar token user jadi token sekali pakai (OTT)
 
                 $bodyOTT = [
                     "merchantId"  => $c_merchantId,
@@ -1543,23 +1543,22 @@ public function checkTopupStatus(Request $request)
 
                 $resOTT = $this->sendDanaRequest('dana.oauth.auth.applyOtt', $bodyOTT);
 
-                // Cek Hasil Step 2
                 if (($resOTT['status'] ?? 'F') !== 'S') {
-                    // Jika gagal OTT, biasanya token expired -> Redirect ke Binding Ulang
-                    return back()->with('error', 'Sesi DANA habis. Silakan hubungkan ulang akun DANA Anda.');
+                    // Jika gagal OTT, biasanya token expired -> Minta user binding ulang
+                    return back()->with('error', 'Sesi DANA habis. Silakan Update DANA (Binding Ulang).');
                 }
 
                 $ottToken = $resOTT['body']['ott'];
 
                 // -------------------------------------------------------------
-                // STEP 3: GABUNGKAN URL + OTT & REDIRECT
+                // STEP 3: REDIRECT
                 // -------------------------------------------------------------
 
-                // Cek separator URL (? atau &)
+                // Gabungkan URL + OTT
                 $separator = (parse_url($checkoutUrl, PHP_URL_QUERY) == NULL) ? '?' : '&';
                 $finalUrl  = $checkoutUrl . $separator . 'ott=' . $ottToken;
 
-                // Simpan Riwayat Transaksi ke Database (Status PENDING)
+                // Simpan DB
                 DB::table('dana_transactions')->insert([
                     'tenant_id'    => $member->tenant_id ?? 1,
                     'affiliate_id' => $member->id,
@@ -1571,20 +1570,20 @@ public function checkTopupStatus(Request $request)
                     'created_at'   => now()
                 ]);
 
-                // Redirect User ke Halaman PIN DANA
                 return redirect($finalUrl);
 
             } catch (\Exception $e) {
-                Log::error('[DANA EXCEPTION] ' . $e->getMessage());
-                return back()->with('error', 'Gagal memproses DANA: ' . $e->getMessage());
+                Log::error('[DANA ERROR] ' . $e->getMessage());
+                return back()->with('error', 'Error: ' . $e->getMessage());
             }
         }
 
         // =====================================================================
-        // OPSI 2: VIA BANK TRANSFER (MANUAL - KODE UNIK)
+        // OPSI 2: BANK TRANSFER (MANUAL)
         // =====================================================================
         else {
-            $uniqueCode     = mt_rand(111, 999);
+            // ... (Logika Bank Transfer Anda, copy dari kode sebelumnya) ...
+             $uniqueCode     = mt_rand(111, 999);
             $amountOriginal = $request->amount;
             $amountTotal    = $amountOriginal + $uniqueCode;
             $refNo          = 'DEP-' . date('ymd') . rand(1000, 9999);
@@ -1633,77 +1632,73 @@ public function checkTopupStatus(Request $request)
     }
 
     /**
-     * HELPER: KIRIM REQUEST KE DANA (PRIVATE)
-     * Menangani Signature, Key Formatting, dan HTTP Request secara otomatis.
+     * PRIVATE HELPER: KIRIM REQUEST DANA
      */
     private function sendDanaRequest($function, $bodyContent)
     {
-        // 1. Ambil Config
         $clientId   = config('services.dana.x_partner_id');
-        $merchantId = config('services.dana.merchant_id');
         $secret     = config('services.dana.client_secret');
         $pKey       = config('services.dana.private_key');
-        $baseUrl    = config('services.dana.base_url'); // Otomatis Sandbox/Prod sesuai .env
 
-        // 2. Siapkan Struktur Payload
-        $ts = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        // Base URL (Otomatis Sandbox/Prod)
+        $baseUrl = config('services.dana.base_url', 'https://api.sandbox.dana.id');
+
+        // 1. Payload Structure
         $payload = [
             "head" => [
                 "version"      => "2.0",
                 "function"     => $function,
                 "clientId"     => $clientId,
                 "clientSecret" => $secret,
-                "reqTime"      => $ts,
+                "reqTime"      => now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'),
                 "reqMsgId"     => (string) Str::uuid(),
                 "reserve"      => "{}"
             ],
             "body" => $bodyContent
         ];
 
-        // 3. Generate Signature (STRICT FORMAT)
+        // 2. Signature Generation (Robust)
         $jsonPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
-        // Bersihkan Format Private Key (Anti-Gagal)
+        // Bersihkan Key (Cegah error format)
         $pKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $pKey);
         $pKey = "-----BEGIN PRIVATE KEY-----\n" . chunk_split($pKey, 64, "\n") . "-----END PRIVATE KEY-----";
 
         $binarySig = "";
         if (!openssl_sign($jsonPayload, $binarySig, $pKey, OPENSSL_ALGO_SHA256)) {
             Log::error("OpenSSL Error: " . openssl_error_string());
-            throw new \Exception("Gagal membuat Signature Keamanan.");
+            throw new \Exception("Gagal menandatangani request (Signature Error).");
         }
         $signature = base64_encode($binarySig);
 
-        // 4. Rakit Body Final
+        // 3. Final Body
         $finalBody = '{"request":' . $jsonPayload . ',"signature":"' . $signature . '"}';
 
-        // 5. Tentukan Endpoint URL
-        // Default ke Create Order
-        $url = $baseUrl . '/dana/acquiring/order/create.htm';
-
-        // Jika request OTT, ubah URL
+        // 4. Endpoint Map
+        $endpoint = $baseUrl . '/dana/acquiring/order/create.htm'; // Default
         if ($function == 'dana.oauth.auth.applyOtt') {
-            $url = $baseUrl . '/dana/oauth/auth/applyOtt.htm';
+            $endpoint = $baseUrl . '/dana/oauth/auth/applyOtt.htm';
         }
 
-        // 6. Kirim HTTP Request
+        // 5. Send
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
             'Accept'       => 'application/json',
-        ])->withBody($finalBody, 'application/json')->post($url);
+        ])->withBody($finalBody, 'application/json')->post($endpoint);
 
-        // 7. Cek Respon Kosong (Masalah Klasik Signature)
         $rawBody = $response->body();
+
+        // 6. Diagnosa Error Blank
         if (empty($rawBody)) {
-            throw new \Exception("DANA Merespon Kosong (Blank). Kemungkinan Kunci (Key) di .env tidak cocok dengan Dashboard DANA.");
+            // Log Payload yang dikirim untuk debug
+            Log::error('[DANA BLANK RESPONSE]', ['sent_payload' => $jsonPayload]);
+            throw new \Exception("DANA merespon kosong (Blank). Signature/Config mungkin salah.");
         }
 
-        // 8. Return Hasil JSON
-        $res = $response->json();
         return [
-            'status' => $res['response']['body']['resultInfo']['resultStatus'] ?? 'F',
-            'msg'    => $res['response']['body']['resultInfo']['resultMsg'] ?? 'Unknown Error',
-            'body'   => $res['response']['body'] ?? []
+            'status' => $response->json()['response']['body']['resultInfo']['resultStatus'] ?? 'F',
+            'msg'    => $response->json()['response']['body']['resultInfo']['resultMsg'] ?? 'Unknown',
+            'body'   => $response->json()['response']['body'] ?? []
         ];
     }
 }
