@@ -722,167 +722,219 @@ private function sendWhatsApp($to, $message)
 
 public function customerTopup(Request $request)
 {
-    // --- [LOG 1] START PROCESS ---
-    Log::info('[DANA TOPUP] --- MEMULAI PROSES TOPUP ---', [
-        'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN INI
-        'affiliate_id' => $request->affiliate_id,
-        'target_phone' => $request->phone,
-        'amount' => $request->amount,
-        'ip' => $request->ip()
+    // --- [0] VALIDASI INPUT ---
+    $request->validate([
+        'affiliate_id' => 'required|exists:affiliates,id',
+        'phone'        => 'required|numeric',
+        'amount'       => 'required|numeric|min:1000', // Minimal topup wajar
     ]);
 
-    // Ambil Data Affiliate
+    // Konfigurasi Statis (Sebaiknya pindahkan ke .env nanti)
+    $waToken = config('services.fonnte.token', 'ynMyPswSKr14wdtXMJF7'); // Gunakan config atau default
+    $adminWA = config('services.admin_wa', '6285745808809');
+
+    // --- [LOG 1] START PROCESS ---
+    // Ambil Data Affiliate dulu untuk logging yang akurat
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
+
     if (!$aff) {
-        Log::error('[DANA TOPUP] Affiliate Tidak Ditemukan', ['id' => $request->affiliate_id]);
-        return back()->with('error', 'Affiliate tidak terdaftar di sistem.');
+        return back()->with('error', 'Affiliate tidak ditemukan.');
     }
 
-    // --- [LOG 2] SANITASI NOMOR & NOMINAL ---
-    // 1. Hapus karakter selain angka (spasi, strip, +, dll hilang)
-    $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
+    Log::info('[DANA TOPUP] --- MEMULAI PROSES TOPUP ---', [
+        'tenant_id'    => $aff->tenant_id ?? null,
+        'affiliate_id' => $aff->id,
+        'aff_name'     => $aff->name,
+        'target_phone' => $request->phone,
+        'amount'       => $request->amount,
+        'current_bal'  => $aff->balance, // Log saldo awal
+        'ip'           => $request->ip()
+    ]);
 
-    // 2. Normalisasi awalan agar selalu 62
-    if (substr($cleanPhone, 0, 2) === '62') {
-        // Jika input sudah 628xxxxx -> Biarkan, sudah benar
-    } elseif (substr($cleanPhone, 0, 1) === '0') {
-        // Jika input 08xxxxx -> Hapus '0' depan, ganti '62'
-        $cleanPhone = '62' . substr($cleanPhone, 1);
-    } elseif (substr($cleanPhone, 0, 1) === '8') {
-        // Jika input 8xxxxx -> Tambahkan '62' di depan
-        $cleanPhone = '62' . $cleanPhone;
+    // --- [CRITICAL] CEK SALDO AFFILIATE ---
+    if ($aff->balance < $request->amount) {
+        Log::warning('[DANA TOPUP] Saldo Tidak Cukup', ['aff_id' => $aff->id, 'balance' => $aff->balance, 'req' => $request->amount]);
+        return back()->with('error', 'Saldo tidak mencukupi untuk melakukan transaksi ini.');
     }
-
-    $timestamp = now('Asia/Jakarta')->toIso8601String();
-    $partnerRef = (string) time() . Str::random(8); // Sesuai partnerReferenceNo di dokumen
-    $valStr = number_format((float)$request->amount, 2, '.', '');
-
-    // --- [BODY: HARUS SESUAI DOKUMEN BOS] ---
-    $body = [
-    "partnerReferenceNo" => $partnerRef,
-    "customerNumber"     => $cleanPhone,
-    "amount" => [
-        "value"    => $valStr,
-        "currency" => "IDR"
-    ],
-    "feeAmount" => [
-        "value"    => "0.00", // Di Sandbox real, fee biasanya 0.00
-        "currency" => "IDR"
-    ],
-    "transactionDate" => $timestamp,
-    "sessionId"       => (string) Str::uuid(),
-    "categoryId"      => "6",
-    "notes"           => "Topup Sancaka",
-    "additionalInfo"  => [
-            "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE",
-            "externalDivisionId" => "",
-            "chargeTarget"       => "MERCHANT",
-            "customerId"         => ""
-        ]
-];
-
-    // --- [LOG 4] SIGNATURE & SECURITY ---
-    $path = '/v1.0/emoney/topup.htm';
-    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
-    $hashedBody = strtolower(hash('sha256', $jsonBody));
-    $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-    $signature = $this->generateSignature($stringToSign);
-
-    $headers = [
-        'Content-Type'  => 'application/json',
-        'Authorization' => 'Bearer ' . $aff->dana_access_token,
-        'X-TIMESTAMP'   => $timestamp,
-        'X-SIGNATURE'   => $signature,
-        'ORIGIN'        => config('services.dana.origin'),
-        'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-        'X-EXTERNAL-ID' => (string) time() . Str::random(6),
-        'X-IP-ADDRESS'  => $request->ip(),
-        'X-DEVICE-ID'   => 'SANCAKA-DANA-01',
-        'CHANNEL-ID'    => '95221'
-    ];
 
     try {
-        Log::info('[DANA TOPUP] Mengirim Request ke DANA API', ['body' => $body]);
+        // --- [LOG 2] SANITASI NOMOR ---
+        $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
+        if (substr($cleanPhone, 0, 2) === '62') {
+            // Do nothing
+        } elseif (substr($cleanPhone, 0, 1) === '0') {
+            $cleanPhone = '62' . substr($cleanPhone, 1);
+        } elseif (substr($cleanPhone, 0, 1) === '8') {
+            $cleanPhone = '62' . $cleanPhone;
+        }
 
-        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+        // --- SETUP VARIABEL TIME & REF ---
+        $timestamp  = now('Asia/Jakarta')->toIso8601String();
+        // Gunakan UUID atau kombinasi unik agar tidak duplicate transaction
+        $partnerRef = date('YmdHis') . mt_rand(1000, 9999);
+        $valStr     = number_format((float)$request->amount, 2, '.', '');
+
+        // --- [BODY REQUEST] ---
+        $body = [
+            "partnerReferenceNo" => $partnerRef,
+            "customerNumber"     => $cleanPhone,
+            "amount" => [
+                "value"    => $valStr,
+                "currency" => "IDR"
+            ],
+            "feeAmount" => [
+                "value"    => "0.00",
+                "currency" => "IDR"
+            ],
+            "transactionDate" => $timestamp,
+            "sessionId"       => (string) Str::uuid(),
+            "categoryId"      => "6", // Kategori Pulsa/Data/E-money
+            "notes"           => "Topup Sancaka System",
+            "additionalInfo"  => [
+                "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE",
+                "externalDivisionId" => "SANCAKA_DIV", // Boleh diisi identifier divisi
+                "chargeTarget"       => "MERCHANT",
+                "customerId"         => ""
+            ]
+        ];
+
+        // --- [LOG 3] SIGNATURE & SECURITY ---
+        $path = '/v1.0/emoney/topup.htm';
+
+        // Encode JSON persis seperti yang akan dikirim (UNESCAPED_SLASHES penting untuk URL)
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+
+        // Hashing body (SHA256)
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
+
+        // String to Sign format DANA
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
+        // Generate Signature (Pastikan fungsi ini menggunakan Private Key yang benar)
+        $signature = $this->generateSignature($stringToSign);
+
+        $headers = [
+            'Content-Type'  => 'application/json',
+            'Authorization' => 'Bearer ' . ($aff->dana_access_token ?? config('services.dana.default_token')), // Fallback jika aff tidak punya token khusus
+            'X-TIMESTAMP'   => $timestamp,
+            'X-SIGNATURE'   => $signature,
+            'ORIGIN'        => config('services.dana.origin', 'https://sancaka.com'),
+            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+            'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+            'X-IP-ADDRESS'  => $request->ip(),
+            'X-DEVICE-ID'   => 'SANCAKA-POS-01', // Sebaiknya unik per device jika ada
+            'CHANNEL-ID'    => '95221'
+        ];
+
+        Log::info('[DANA TOPUP] Mengirim Request...', ['ref' => $partnerRef, 'amount' => $valStr]);
+
+        // --- [EXECUTE API] ---
+        // Gunakan URL dari Config/Env agar mudah switch Sandbox/Prod
+        $baseUrl = config('services.dana.base_url', 'https://api.sandbox.dana.id');
+        $response = Http::withHeaders($headers)
+                        ->withBody($jsonBody, 'application/json')
+                        ->post($baseUrl . $path);
+
         $result = $response->json();
+        $resCode = $result['responseCode'] ?? '5003801'; // Default Error jika response kosong
 
-        $resCode = $result['responseCode'] ?? '5003801';
-
-        // --- [SMART MATCHING] ---
+        // --- [SMART MATCHING RESPONSE] ---
         $library = DB::table('dana_response_codes')
-                    ->where('response_code', $resCode)
-                    ->where('category', 'TOPUP')
-                    ->first();
+            ->where('response_code', $resCode)
+            ->where('category', 'TOPUP')
+            ->first();
 
-        // Jika kode baru, catat otomatis
+        // Auto-Insert Library jika kode baru
         if (!$library) {
-            // [FIX LOGIC] Tentukan status sukses berdasarkan kode yang dikenal
-            // 2000000 = Sukses Umum, 2003800 = Sukses Topup
-            $isSuccessCode = in_array($resCode, ['2000000', '2003800']);
+            // List kode sukses DANA (Cek dokumentasi terbaru)
+            // 2000000: Success General
+            // 2003800: Success Topup
+            $successCodes = ['2000000', '2003800'];
+            $isSuccessCode = in_array($resCode, $successCodes);
 
             DB::table('dana_response_codes')->insert([
-                'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN INI
+                'tenant_id'     => $aff->tenant_id ?? null,
                 'response_code' => $resCode,
                 'category'      => 'TOPUP',
-                'message_title' => $isSuccessCode ? 'Transaction Success' : 'New Code Detected',
-                'description'   => $result['responseMessage'] ?? 'Auto Generated',
+                'message_title' => $isSuccessCode ? 'Transaction Success' : 'New DANA Code',
+                'description'   => $result['responseMessage'] ?? 'System Generated Description',
                 'solution'      => 'Cek Dokumentasi DANA',
-                'is_success'    => $isSuccessCode, // <--- GUNAKAN VARIABEL INI
+                'is_success'    => $isSuccessCode,
                 'created_at'    => now()
             ]);
 
-            // Refresh data library
+            // Fetch ulang data yang baru diinsert
             $library = DB::table('dana_response_codes')
-                        ->where('response_code', $resCode)
-                        ->where('category', 'TOPUP')
-                        ->first();
+                ->where('response_code', $resCode)
+                ->where('category', 'TOPUP')
+                ->first();
         }
 
-        // --- [DATABASE] CATAT KE dana_transactions ---
-        DB::table('dana_transactions')->insert([
-            'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN INI
-            'affiliate_id' => $aff->id,
-            'type' => 'TOPUP',
-            'reference_no' => $partnerRef,
-            'phone' => $cleanPhone,
-            'amount' => $request->amount,
-            'status' => $library->is_success ? 'SUCCESS' : 'FAILED',
-            'response_payload' => json_encode($result),
-            'created_at' => now()
-        ]);
-
-        // --- [FONNTE] SETUP WHATSAPP ---
-        $waToken = "ynMyPswSKr14wdtXMJF7";
-        $adminWA = "6285745808809";
-
+        // --- [LOGIC TRANSAKSI] ---
         if ($library->is_success) {
-            // Update balance jika sukses (Opsional)
+            // 1. Catat Transaksi
+            DB::table('dana_transactions')->insert([
+                'tenant_id'        => $aff->tenant_id ?? null,
+                'affiliate_id'     => $aff->id,
+                'type'             => 'TOPUP',
+                'reference_no'     => $partnerRef,
+                'phone'            => $cleanPhone,
+                'amount'           => $request->amount,
+                'status'           => 'SUCCESS',
+                'response_payload' => json_encode($result),
+                'created_at'       => now()
+            ]);
+
+            // 2. Potong Saldo Affiliate (Hanya jika sukses)
             DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
 
-            // WA ke User
-            $msgUser = "✅ *TOPUP BERHASIL*\n\nHalo *{$aff->name}*,\nTopup DANA ke {$cleanPhone} senilai Rp " . number_format($request->amount) . " berhasil.\n\nRef ID: {$partnerRef}\nWaktu: " . now()->format('d/m H:i') . " WIB\nTerima kasih!";
-            $this->sendWhatsApp($cleanPhone, $msgUser, $waToken);
+            // 3. WA Notifikasi Sukses
+            $msgUser = "✅ *TOPUP BERHASIL*\n\nHalo *{$aff->name}*,\nTopup DANA ke {$cleanPhone} senilai Rp " . number_format($request->amount) . " berhasil.\n\nRef ID: {$partnerRef}\nWaktu: " . now()->format('d/m H:i') . " WIB\n\n_Sancaka System_";
 
-            Log::info('[DANA TOPUP] Berhasil', ['code' => $resCode]);
-            return back()->with('dana_report', $library)->with('success', 'Topup Berhasil Diuraikan!');
+            // Pastikan method sendWhatsApp ada/bisa dipanggil
+            if (method_exists($this, 'sendWhatsApp')) {
+                $this->sendWhatsApp($cleanPhone, $msgUser, $waToken);
+            }
+
+            Log::info('[DANA TOPUP] SUKSES & SALDO DIPOTONG', ['ref' => $partnerRef]);
+            return back()->with('dana_report', $library)->with('success', 'Topup Berhasil!');
+
         } else {
-            // WA ke Admin (Error/Test Case)
-            $msgAdmin = "⚠️ *DANA TOPUP ALERT*\n\nAffiliate: {$aff->name}\nTarget: {$cleanPhone}\nNominal: Rp " . number_format($request->amount) . "\nResponse: [{$resCode}] {$library->message_title}\nDesc: {$library->description}\n\nMohon dicek segera!";
-            $this->sendWhatsApp($adminWA, $msgAdmin, $waToken);
+            // Transaksi Gagal dari DANA
+            DB::table('dana_transactions')->insert([
+                'tenant_id'        => $aff->tenant_id ?? null,
+                'affiliate_id'     => $aff->id,
+                'type'             => 'TOPUP',
+                'reference_no'     => $partnerRef,
+                'phone'            => $cleanPhone,
+                'amount'           => $request->amount,
+                'status'           => 'FAILED',
+                'response_payload' => json_encode($result),
+                'created_at'       => now()
+            ]);
 
-            Log::error('[DANA TOPUP] Gagal/Error Response', ['result' => $result]);
-            return back()->with('dana_report', $library)->with('error', 'Gagal: ' . $library->message_title);
+            // WA Notifikasi Gagal ke Admin
+            $msgAdmin = "⚠️ *GAGAL TOPUP DANA*\n\nAffiliate: {$aff->name}\nTarget: {$cleanPhone}\nNominal: Rp " . number_format($request->amount) . "\nResponse: [{$resCode}] {$library->message_title}\nDesc: {$library->description}";
+
+            if (method_exists($this, 'sendWhatsApp')) {
+                $this->sendWhatsApp($adminWA, $msgAdmin, $waToken);
+            }
+
+            Log::error('[DANA TOPUP] Gagal Response API', ['result' => $result]);
+            return back()->with('dana_report', $library)->with('error', 'Gagal: ' . $library->description);
         }
 
     } catch (\Exception $e) {
-        Log::error('[DANA TOPUP] EXCEPTION ERROR', ['msg' => $e->getMessage()]);
+        Log::error('[DANA TOPUP] EXCEPTION', ['msg' => $e->getMessage(), 'line' => $e->getLine()]);
 
-        // WA Error ke Admin
-        $this->sendWhatsApp("6285745808809", "🚨 *SYSTEM ERROR TOPUP*\nMsg: " . $e->getMessage(), "ynMyPswSKr14wdtXMJF7");
+        // WA Error System ke Admin
+        if (isset($adminWA) && method_exists($this, 'sendWhatsApp')) {
+             $this->sendWhatsApp($adminWA, "🚨 *SYSTEM ERROR TOPUP*\nMsg: " . $e->getMessage(), $waToken);
+        }
 
-        return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+        return back()->with('error', 'Terjadi Kesalahan Sistem: ' . $e->getMessage());
     }
+
 }
 
 public function checkTopupStatus(Request $request)

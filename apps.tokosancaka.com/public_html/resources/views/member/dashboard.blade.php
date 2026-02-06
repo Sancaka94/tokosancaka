@@ -58,6 +58,7 @@
 
             {{-- ACTION BUTTONS --}}
             <div class="flex gap-2">
+
                 {{-- Tombol DANA Binding --}}
                 <form action="{{ route('dana.startBinding') }}" method="POST" class="flex-1">
                     @csrf
@@ -66,6 +67,11 @@
                         <i class="fas fa-link"></i> {{ $member->dana_access_token ? 'Update DANA' : 'Hubungkan DANA' }}
                     </button>
                 </form>
+
+                <button onclick="openDepositModal()"
+                        class="text-[10px] bg-indigo-500 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-600 transition flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-500/20">
+                    <i class="fas fa-plus-circle text-xs"></i> Isi Saldo
+                </button>
 
                 {{-- Tombol Cairkan ke DANA --}}
                 @if($member->balance > 0)
@@ -371,6 +377,49 @@
         </div>
     </div>
 
+    {{-- MODAL DEPOSIT / ISI SALDO --}}
+    <div id="depositModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-fade-in">
+            <div class="bg-indigo-600 p-6 text-white relative overflow-hidden">
+                {{-- Hiasan Background --}}
+                <div class="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 rounded-full bg-white/10 blur-xl"></div>
+
+                <h3 class="text-lg font-black uppercase italic tracking-tighter relative z-10">Isi Saldo</h3>
+                <p class="text-indigo-100 text-[10px] uppercase font-bold tracking-widest relative z-10">Topup Balance Account</p>
+            </div>
+
+            {{-- Ganti route('deposit.store') sesuai route Anda --}}
+            <form action="{{ route('deposit.store') }}" method="POST" class="p-6">
+                @csrf
+                <div class="mb-6">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Pilih Nominal</label>
+
+                    {{-- Quick Select Buttons --}}
+                    <div class="grid grid-cols-3 gap-2 mb-4">
+                        <button type="button" onclick="setDepositAmount(50000)" class="py-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition">50.000</button>
+                        <button type="button" onclick="setDepositAmount(100000)" class="py-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition">100.000</button>
+                        <button type="button" onclick="setDepositAmount(250000)" class="py-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition">250.000</button>
+                    </div>
+
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Atau Input Manual</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 font-bold text-sm">Rp</span>
+                        <input type="number" name="amount" id="deposit_amount" required min="10000" placeholder="0"
+                               class="w-full pl-10 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-black text-2xl text-slate-800 focus:ring-0 focus:border-indigo-500 transition">
+                    </div>
+                    <p class="text-[9px] text-slate-400 mt-2 italic">*Minimal deposit Rp 10.000</p>
+                </div>
+
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeDepositModal()" class="flex-1 py-3 text-slate-400 font-bold text-xs uppercase transition hover:text-slate-600">Batal</button>
+                    <button type="submit" class="flex-[2] py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition transform active:scale-95">
+                        <i class="fas fa-wallet mr-1"></i> Lanjut Bayar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     {{-- ======================================================================= --}}
     {{-- JAVASCRIPT --}}
     {{-- ======================================================================= --}}
@@ -397,6 +446,28 @@
         function closeBankModal() {
             document.getElementById('bankModal').classList.add('hidden');
         }
+
+        // --- MODAL DEPOSIT (Baru) ---
+        function openDepositModal() {
+            document.getElementById('depositModal').classList.remove('hidden');
+        }
+
+        function closeDepositModal() {
+            document.getElementById('depositModal').classList.add('hidden');
+        }
+
+        function setDepositAmount(amount) {
+            document.getElementById('deposit_amount').value = amount;
+        }
+
+        // --- Tutup modal jika klik di luar area ---
+        window.onclick = function(event) {
+            const depModal = document.getElementById('depositModal');
+            if (event.target == depModal) {
+                closeDepositModal();
+            }
+        }
+
     </script>
 
     {{-- AUTO OPEN MODAL JIKA SUKSES CEK REKENING --}}
