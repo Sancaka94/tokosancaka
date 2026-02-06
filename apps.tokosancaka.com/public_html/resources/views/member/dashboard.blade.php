@@ -234,7 +234,7 @@
                         <label class="text-[10px] font-black text-slate-400 uppercase">Nominal</label>
                         <span class="text-[10px] font-black text-emerald-600 uppercase" id="modal_max_balance"></span>
                     </div>
-                    <input type="number" name="amount" required min="1000" placeholder="Min. 1000" class="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-black text-2xl text-slate-800 focus:ring-0 focus:border-emerald-500 transition">
+                    <input type="number" name="amount" required min="1" placeholder="Min. 1000" class="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-black text-2xl text-slate-800 focus:ring-0 focus:border-emerald-500 transition">
                 </div>
                 <div class="flex gap-3">
                     <button type="button" onclick="closeTopupModal()" class="flex-1 py-3 text-slate-400 font-bold text-xs uppercase transition">Batal</button>
