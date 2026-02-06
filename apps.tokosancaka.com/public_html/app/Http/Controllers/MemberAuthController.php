@@ -1476,63 +1476,74 @@ public function checkTopupStatus(Request $request)
         ]);
 
         // =====================================================================
-        // OPSI 1: VIA DANA (PAYMENT GATEWAY)
+        // OPSI 1: VIA DANA (PAYMENT GATEWAY / ACQUIRING)
         // =====================================================================
         if ($method === 'DANA') {
 
-            // Cek Binding
+            // --- [A] DIAGNOSA KONFIGURASI (Wajib Cek) ---
+            $c_partnerId  = config('services.dana.x_partner_id');
+            $c_merchantId = config('services.dana.merchant_id');
+            $c_secret     = config('services.dana.client_secret'); // Pastikan ini ada di .env
+
+            if (empty($c_partnerId) || empty($c_merchantId)) {
+                Log::error('[DEPOSIT DANA] CONFIG ERROR: PartnerID/MerchantID kosong di .env');
+                return back()->with('error', 'Konfigurasi Server DANA Belum Lengkap.');
+            }
+
+            // Cek Binding User
             if (!$member->dana_access_token) {
                 return back()->with('error', 'Akun DANA belum terhubung. Silakan hubungkan (Binding) terlebih dahulu.');
             }
 
-            $refNo     = 'DEP-DANA-' . time() . mt_rand(100, 999);
+            // Setup Data Transaksi
+            $refNo     = 'DEP-' . time() . mt_rand(100, 999);
             $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $amountString = number_format($request->amount, 2, '.', ''); // Format string "10000.00"
 
-            // Format Amount String (Contoh: "10000.00")
-            $amountString = number_format($request->amount, 2, '.', '');
+            // --- [B] SUSUN PAYLOAD ACQUIRING V2.0 ---
+            // Kita pakai "dana.acquiring.order.create" (Tarik Saldo)
+            $head = [
+                "version"      => "2.0",
+                "function"     => "dana.acquiring.order.create",
+                "clientId"     => $c_partnerId,
+                "clientSecret" => $c_secret, // Wajib untuk V2
+                "reqTime"      => $timestamp,
+                "reqMsgId"     => (string) Str::uuid(),
+                "reserve"      => "{}"
+            ];
 
-            // Payload Create Order DANA V2
-            $payload = [
-                "request" => [
-                    "head" => [
-                        "version"      => "2.0",
-                        "function"     => "dana.acquiring.order.create",
-                        "clientId"     => config('services.dana.x_partner_id'),
-                        "clientSecret" => config('services.dana.client_secret'),
-                        "reqTime"      => $timestamp,
-                        "reqMsgId"     => (string) Str::uuid(),
-                        "reserve"      => "{}"
+            $body = [
+                "merchantId"      => $c_merchantId,
+                "merchantTransId" => $refNo,
+                "merchantTransType" => "01",
+                "order" => [
+                    "orderTitle"        => "Topup Saldo",
+                    "orderAmount"       => [
+                        "currency" => "IDR",
+                        "value"    => $amountString
                     ],
-                    "body" => [
-                        "merchantId"      => config('services.dana.merchant_id'),
-                        "merchantTransId" => $refNo,
-                        "merchantTransType" => "01",
-                        "order" => [
-                            "orderTitle"        => "Deposit Sancaka",
-                            "orderAmount"       => [
-                                "currency" => "IDR",
-                                "value"    => $amountString
-                            ],
-                            "merchantTransType" => "01",
-                            "orderMemo"         => "Topup User ID: " . $member->id
-                        ],
-                        "envInfo" => [
-                            "sourcePlatform" => "IPG",
-                            "terminalType"   => "SYSTEM"
-                        ],
-                        "userCredential" => [
-                            "accessToken" => $member->dana_access_token
-                        ]
-                    ]
+                    "merchantTransType" => "01",
+                    "orderMemo"         => "Dep:" . $member->id
+                ],
+                "envInfo" => [
+                    "sourcePlatform" => "IPG",
+                    "terminalType"   => "SYSTEM"
+                ],
+                // PENTING: Token User agar langsung motong saldo dia
+                "userCredential" => [
+                    "accessToken" => $member->dana_access_token
                 ]
             ];
 
-            // Generate Signature
-            $jsonToSign = json_encode($payload['request'], JSON_UNESCAPED_SLASHES);
+            $requestPayload = ["request" => ["head" => $head, "body" => $body]];
+
+            // --- [C] SIGNATURE GENERATION ---
+            // JSON Encode tanpa spasi (UNESCAPED_SLASHES penting)
+            $jsonToSign = json_encode($requestPayload['request'], JSON_UNESCAPED_SLASHES);
             $signature  = $this->generateSignature($jsonToSign);
 
             try {
-                // 1. Simpan Log Transaksi (Status PENDING)
+                // Simpan Log DB (Pending)
                 DB::table('dana_transactions')->insert([
                     'tenant_id'        => $member->tenant_id ?? 1,
                     'affiliate_id'     => $member->id,
@@ -1544,65 +1555,56 @@ public function checkTopupStatus(Request $request)
                     'created_at'       => now()
                 ]);
 
-                // 2. Kirim Request dengan Header Lengkap
                 Log::info('[DEPOSIT DANA] Mengirim Request...', ['ref' => $refNo]);
 
+                // --- [D] KIRIM REQUEST (DENGAN HEADER JSON YANG BENAR) ---
                 $response = Http::withHeaders([
                     'Content-Type' => 'application/json',
-                    'Accept'       => 'application/json',
+                    'Accept'       => 'application/json', // Paksa DANA balas JSON
                 ])->post('https://api.sandbox.dana.id/dana/acquiring/order/create.htm', [
-                    "request"   => $payload['request'],
+                    "request"   => $requestPayload['request'],
                     "signature" => $signature
                 ]);
 
-                // 3. DEBUGGING RESPONSE (Sangat Penting)
+                // --- [E] DEBUGGING RESPON ---
                 $httpStatus = $response->status();
                 $rawBody    = $response->body();
                 $result     = $response->json();
 
-                Log::info('[DEPOSIT DANA] Result:', [
-                    'http_status' => $httpStatus,
-                    'raw_body'    => substr($rawBody, 0, 500) // Potong biar tidak kepanjangan di log
-                ]);
-
-                // 4. Analisa Error HTTP
-                if ($httpStatus != 200) {
-                    // Update DB jadi Failed
-                    DB::table('dana_transactions')->where('reference_no', $refNo)->update(['status' => 'FAILED']);
-                    return back()->with('error', "Gagal Koneksi DANA (HTTP $httpStatus).");
+                // Log jika error HTML (biasanya 404/500/403)
+                if ($httpStatus != 200 || empty($rawBody)) {
+                    Log::error('[DEPOSIT DANA] HTTP ERROR/EMPTY', [
+                        'status' => $httpStatus,
+                        'body' => substr($rawBody, 0, 200)
+                    ]);
+                    return back()->with('error', "Gagal Koneksi DANA (HTTP $httpStatus). Cek Log.");
                 }
 
-                // 5. Analisa Jika Body Bukan JSON (Null)
-                if (is_null($result)) {
-                    Log::error('[DEPOSIT DANA] CRITICAL: Response is NULL/HTML', ['body' => $rawBody]);
-                    DB::table('dana_transactions')->where('reference_no', $refNo)->update(['status' => 'FAILED']);
-                    return back()->with('error', 'Respon DANA tidak valid (Null/HTML). Cek Log.');
-                }
-
-                // 6. Analisa Logic DANA
-                $resBody   = $result['response']['body'] ?? [];
-                $resStatus = $resBody['resultInfo']['resultStatus'] ?? 'F'; // Default Failed
-                $resMsg    = $resBody['resultInfo']['resultMsg'] ?? 'Unknown Message';
+                // Cek isi JSON
+                $resStatus = $result['response']['body']['resultInfo']['resultStatus'] ?? 'F';
+                $resMsg    = $result['response']['body']['resultInfo']['resultMsg'] ?? 'Unknown Error';
 
                 if ($resStatus == 'S') {
-                    // SUKSES -> Redirect ke Halaman PIN DANA
-                    $checkoutUrl = $resBody['checkoutUrl'];
+                    // SUKSES -> DAPAT LINK PEMBAYARAN
+                    $checkoutUrl = $result['response']['body']['checkoutUrl'];
 
-                    // Update Payload Sukses
-                    DB::table('dana_transactions')
-                        ->where('reference_no', $refNo)
-                        ->update(['response_payload' => json_encode($result)]);
+                    // Update DB dengan respon asli
+                    DB::table('dana_transactions')->where('reference_no', $refNo)->update([
+                        'response_payload' => json_encode($result)
+                    ]);
 
+                    // Redirect User ke Aplikasi DANA untuk PIN
                     return redirect($checkoutUrl);
 
                 } else {
-                    // GAGAL Logic DANA
-                    DB::table('dana_transactions')
-                        ->where('reference_no', $refNo)
-                        ->update(['status' => 'FAILED', 'response_payload' => json_encode($result)]);
+                    // GAGAL DARI DANA (Misal: Token Expired, Saldo Kurang, Risk Reject)
+                    DB::table('dana_transactions')->where('reference_no', $refNo)->update([
+                        'status' => 'FAILED',
+                        'response_payload' => json_encode($result)
+                    ]);
 
                     Log::error('[DEPOSIT DANA REJECT]', ['msg' => $resMsg]);
-                    return back()->with('error', "Gagal: $resMsg");
+                    return back()->with('error', "Gagal DANA: $resMsg");
                 }
 
             } catch (\Exception $e) {
@@ -1616,16 +1618,16 @@ public function checkTopupStatus(Request $request)
         // =====================================================================
         else {
             $uniqueCode = mt_rand(111, 999);
-            $amountOriginal = $request->amount;
-            $amountTotal    = $amountOriginal + $uniqueCode;
+            $amountTotal = $request->amount + $uniqueCode;
             $refNo = 'DEP-' . date('ymd') . rand(1000, 9999);
 
             try {
+                // Simpan Model TopUp
                 $topup = new TopUp();
                 $topup->tenant_id       = $member->tenant_id ?? 1;
                 $topup->affiliate_id    = $member->id;
                 $topup->reference_no    = $refNo;
-                $topup->amount          = $amountOriginal;
+                $topup->amount          = $request->amount;
                 $topup->unique_code     = $uniqueCode;
                 $topup->total_amount    = $amountTotal;
                 $topup->status          = 'PENDING';
@@ -1634,9 +1636,7 @@ public function checkTopupStatus(Request $request)
                 $topup->save();
 
                 $formattedTotal = number_format($amountTotal, 0, ',', '.');
-                $bankInfo = "BCA: 1234567890 (PT Sancaka)";
-
-                $msg  = "📥 *TIKET DEPOSIT*\n\nHalo {$member->name},\nSilakan transfer TEPAT senilai:\n💰 *Rp {$formattedTotal}*\n\nKe {$bankInfo}\nRef: {$refNo}";
+                $msg  = "📥 *TIKET DEPOSIT*\n\nHalo {$member->name},\nSilakan transfer TEPAT senilai:\n💰 *Rp {$formattedTotal}*\n\nKe BCA: 1234567890\nRef: {$refNo}";
 
                 if (method_exists($this, 'sendWhatsApp')) {
                     $this->sendWhatsApp($member->whatsapp, $msg);
@@ -1645,8 +1645,7 @@ public function checkTopupStatus(Request $request)
                 return back()->with('success', "✅ Tiket Deposit Dibuat!\nSilakan transfer tepat: **Rp {$formattedTotal}**");
 
             } catch (\Exception $e) {
-                Log::error('[DEPOSIT ERROR]', ['msg' => $e->getMessage()]);
-                return back()->with('error', 'Gagal membuat deposit: ' . $e->getMessage());
+                return back()->with('error', 'Gagal: ' . $e->getMessage());
             }
         }
     }
