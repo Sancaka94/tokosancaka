@@ -66,56 +66,59 @@ public function index(Request $request)
         return redirect("https://m.sandbox.dana.id/d/portal/oauth?" . http_build_query($queryParams));
     }
 
-  public function handleCallback(Request $request)
+    public function handleCallback(Request $request)
 {
-    Log::info('[DANA CALLBACK] Mendapatkan Auth Code:', $request->all());
+    Log::info('[DANA CALLBACK] Masuk...', $request->all());
 
-    $authCode = $request->input('authCode'); // Perhatikan penulisan: authCode (camelCase) biasanya dari DANA
+    $authCode = $request->input('authCode');
     $stateRaw = $request->input('state');
 
     // 1. VALIDASI DATA MENTAH
     if (!$authCode || !$stateRaw) {
-        return redirect('/')->with('error', 'Data Callback Invalid');
+        Log::error('[DANA CALLBACK] Gagal: AuthCode atau State kosong.');
+        return redirect('https://apps.tokosancaka.com')->with('error', 'Callback DANA Invalid (Data Kosong).');
     }
 
-    // 2. BONGKAR STATE (LOGIKA BARU)
-    // Format: TIPE - ID_USER - SUBDOMAIN - TENANT_ID
-    // Contoh: MEMBER-11-mitra1-5
+    // 2. BONGKAR STATE
+    // Format Harapan: TIPE - ID_USER - SUBDOMAIN - TENANT_ID
     $parts = explode('-', $stateRaw);
 
-    // Pastikan format state valid (minimal 4 bagian)
+    // Default Fallback jika parsing gagal
+    $userType  = $parts[0] ?? 'UNKNOWN';
+    $userId    = $parts[1] ?? 0;
+    $subdomain = $parts[2] ?? 'apps'; // Default ke 'apps' jika kosong
+    $tenantId  = $parts[3] ?? 1;
+
+    // Tentukan Base Domain (Sesuaikan dengan domain Anda)
+    $rootDomain = 'tokosancaka.com';
+
+    // Tentukan Path Dashboard
+    $dashboardPath = '/member/dashboard'; // Default Member
+    if ($userType === 'ADMIN') {
+        $dashboardPath = '/admin/dashboard'; // Sesuaikan path admin filament
+    }
+
+    // RAKIT URL TARGET SEKARANG (Agar jika error, kita tetap bisa lempar balik kesini)
+    // Hasil: https://apps.tokosancaka.com/member/dashboard
+    $targetUrl = "https://{$subdomain}.{$rootDomain}{$dashboardPath}";
+
+    // Cek Validitas Format State
     if (count($parts) < 4) {
-        Log::error('[DANA CALLBACK] Format State Salah: ' . $stateRaw);
-        return redirect('/')->with('error', 'Format State Invalid');
+        Log::error("[DANA CALLBACK] Format State Salah: $stateRaw");
+        return redirect($targetUrl)->with('error', 'Gagal Verifikasi: Format Data Invalid.');
     }
 
-    $userType  = $parts[0]; // MEMBER atau ADMIN
-    $userId    = $parts[1]; // ID User/Affiliate
-    $subdomain = $parts[2]; // Subdomain asal (misal: mitra1)
-    $tenantId  = $parts[3]; // ID Tenant
+    // 3. TENTUKAN TABEL
+    $tableName = ($userType === 'ADMIN') ? 'users' : 'affiliates';
 
-    // 3. TENTUKAN TABEL DAN TARGET URL
-    $tableName = '';
-    $dashboardPath = '';
-
-    if ($userType === 'MEMBER') {
-        $tableName = 'affiliates';
-        $dashboardPath = '/member/dashboard';
-    } elseif ($userType === 'ADMIN') {
-        $tableName = 'users'; // Atau tabel admin Anda
-        $dashboardPath = '/admin/dashboard'; // Sesuaikan path admin filament/lainnya
-    } else {
-        return redirect('/')->with('error', 'Tipe User Unknown');
-    }
-
-    // 4. REQUEST TOKEN KE DANA (LOGIKA B2B2C STANDAR)
+    // 4. REQUEST TOKEN KE DANA
     try {
         $timestamp  = now('Asia/Jakarta')->toIso8601String();
         $clientId   = config('services.dana.x_partner_id');
         $externalId = (string) time();
 
         $stringToSign = $clientId . "|" . $timestamp;
-        $signature    = $this->generateSignature($stringToSign); // Pastikan function ini ada
+        $signature    = $this->generateSignature($stringToSign);
 
         $path = '/v1.0/access-token/b2b2c.htm';
         $body = [
@@ -134,64 +137,51 @@ public function index(Request $request)
         ])->post('https://api.sandbox.dana.id' . $path, $body);
 
         $result = $response->json();
-        $successCodes = ['2001100', '2007400']; // Kode sukses umum DANA
+        $successCodes = ['2001100', '2007400'];
 
-        // 5. JIKA SUKSES DAPAT TOKEN
+        // JIKA SUKSES
         if (isset($result['responseCode']) && in_array($result['responseCode'], $successCodes)) {
 
-            // A. UPDATE DATABASE (DENGAN FILTER TENANT ID)
+            // Update Database
             $affected = DB::table($tableName)
                 ->where('id', $userId)
-                ->where('tenant_id', $tenantId) // Safety Check: Pastikan Tenant Benar
+                ->where('tenant_id', $tenantId)
                 ->update([
                     'dana_access_token' => $result['accessToken'],
-                    'dana_connected_at' => now(), // Opsional: catat kapan connect
+                    'dana_connected_at' => now(),
                     'updated_at' => now()
                 ]);
 
             if ($affected === 0) {
-                Log::error("[DANA CALLBACK] Gagal Update: User $userId Tenant $tenantId tidak ditemukan di tabel $tableName");
+                Log::warning("[DANA CALLBACK] ID $userId Tenant $tenantId tidak ditemukan di tabel $tableName");
             }
 
-            // B. CATAT TRANSAKSI (AUDIT LOG)
+            // Catat Log Transaksi (Opsional, gunakan try-catch agar tidak memutus flow)
             try {
                 DB::table('dana_transactions')->insert([
-                    'affiliate_id' => ($userType === 'MEMBER') ? $userId : null, // Null jika admin
+                    'affiliate_id' => ($userType === 'MEMBER') ? $userId : null,
                     'type'         => 'BINDING',
                     'reference_no' => $externalId,
-                    'phone'        => '-', // Nomor HP belum dapat disini
+                    'phone'        => '-',
                     'amount'       => 0,
                     'status'       => 'SUCCESS',
                     'response_payload' => json_encode($result),
                     'created_at'   => now()
                 ]);
-            } catch (\Exception $e) {
-                // Ignore error log audit agar flow user tidak putus
-                Log::error('[DANA CALLBACK] Log Error: ' . $e->getMessage());
-            }
+            } catch (\Exception $e) {}
 
-            // 6. REDIRECT DINAMIS KE SUBDOMAIN ASAL
-            // Kita rakit URL manual agar session user di subdomain tetap terbaca
-            $rootDomain = 'tokosancaka.com'; // Sesuaikan domain utama
-            $targetUrl  = "https://{$subdomain}.{$rootDomain}{$dashboardPath}";
-
-            Log::info("[DANA CALLBACK] Redirecting to: $targetUrl");
-
+            Log::info("[DANA CALLBACK] Berhasil! Redirecting ke: $targetUrl");
             return redirect($targetUrl)->with('success', '✅ Akun DANA Berhasil Terhubung!');
         }
 
         // JIKA GAGAL DAPAT TOKEN
-        Log::error('[DANA CALLBACK] Gagal Exchange Token:', $result);
-
-        // Tetap kembalikan user ke subdomain asal dengan pesan error
-        $rootDomain = 'tokosancaka.com';
-        $targetUrl  = "https://{$subdomain}.{$rootDomain}{$dashboardPath}";
-
+        Log::error('[DANA CALLBACK] DANA Reject:', $result);
         return redirect($targetUrl)->with('error', 'Gagal menghubungkan DANA: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 
     } catch (\Exception $e) {
-        Log::error('[DANA CALLBACK] System Exception:', ['msg' => $e->getMessage()]);
-        return redirect('/')->with('error', 'System Error');
+        Log::error('[DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
+        // Tetap lempar ke Dashboard (jangan ke root /)
+        return redirect($targetUrl)->with('error', 'Terjadi Kesalahan Sistem saat verifikasi.');
     }
 }
 
