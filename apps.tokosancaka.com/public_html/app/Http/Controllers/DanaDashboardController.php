@@ -66,38 +66,61 @@ public function index(Request $request)
         return redirect("https://m.sandbox.dana.id/d/portal/oauth?" . http_build_query($queryParams));
     }
 
-   public function handleCallback(Request $request)
+  public function handleCallback(Request $request)
 {
     Log::info('[DANA CALLBACK] Mendapatkan Auth Code:', $request->all());
 
-    $authCode = $request->input('auth_code');
-    $state = $request->input('state');
-    // Ambil ID Affiliate dari state, default ke 11 jika tidak ada
-    $affiliateId = $state ? str_replace('ID-', '', $state) : 11;
+    $authCode = $request->input('authCode'); // Perhatikan penulisan: authCode (camelCase) biasanya dari DANA
+    $stateRaw = $request->input('state');
 
-    if (!$authCode) {
-        return redirect()->route('dana.dashboard')->with('error', 'Auth Code Kosong');
+    // 1. VALIDASI DATA MENTAH
+    if (!$authCode || !$stateRaw) {
+        return redirect('/')->with('error', 'Data Callback Invalid');
     }
 
-    // 1. Simpan Auth Code-nya dulu ke database sebagai jejak awal
-    DB::table('affiliates')->where('id', $affiliateId)->update([
-        'dana_auth_code' => $authCode,
-        'updated_at' => now()
-    ]);
+    // 2. BONGKAR STATE (LOGIKA BARU)
+    // Format: TIPE - ID_USER - SUBDOMAIN - TENANT_ID
+    // Contoh: MEMBER-11-mitra1-5
+    $parts = explode('-', $stateRaw);
 
+    // Pastikan format state valid (minimal 4 bagian)
+    if (count($parts) < 4) {
+        Log::error('[DANA CALLBACK] Format State Salah: ' . $stateRaw);
+        return redirect('/')->with('error', 'Format State Invalid');
+    }
+
+    $userType  = $parts[0]; // MEMBER atau ADMIN
+    $userId    = $parts[1]; // ID User/Affiliate
+    $subdomain = $parts[2]; // Subdomain asal (misal: mitra1)
+    $tenantId  = $parts[3]; // ID Tenant
+
+    // 3. TENTUKAN TABEL DAN TARGET URL
+    $tableName = '';
+    $dashboardPath = '';
+
+    if ($userType === 'MEMBER') {
+        $tableName = 'affiliates';
+        $dashboardPath = '/member/dashboard';
+    } elseif ($userType === 'ADMIN') {
+        $tableName = 'users'; // Atau tabel admin Anda
+        $dashboardPath = '/admin/dashboard'; // Sesuaikan path admin filament/lainnya
+    } else {
+        return redirect('/')->with('error', 'Tipe User Unknown');
+    }
+
+    // 4. REQUEST TOKEN KE DANA (LOGIKA B2B2C STANDAR)
     try {
-        $timestamp = now('Asia/Jakarta')->toIso8601String();
-        $clientId = config('services.dana.x_partner_id');
+        $timestamp  = now('Asia/Jakarta')->toIso8601String();
+        $clientId   = config('services.dana.x_partner_id');
         $externalId = (string) time();
 
-        // Signature B2B2C: ClientID|Timestamp
         $stringToSign = $clientId . "|" . $timestamp;
-        $signature = $this->generateSignature($stringToSign);
+        $signature    = $this->generateSignature($stringToSign); // Pastikan function ini ada
 
         $path = '/v1.0/access-token/b2b2c.htm';
         $body = [
             'grantType' => 'authorization_code',
-            'authCode' => $authCode,
+            'authCode'  => $authCode,
             'additionalInfo' => (object)[]
         ];
 
@@ -111,57 +134,64 @@ public function index(Request $request)
         ])->post('https://api.sandbox.dana.id' . $path, $body);
 
         $result = $response->json();
-        // Kode sukses DANA Sandbox seringkali 2007400 untuk B2B2C
-        $successCodes = ['2001100', '2007400'];
+        $successCodes = ['2001100', '2007400']; // Kode sukses umum DANA
 
+        // 5. JIKA SUKSES DAPAT TOKEN
         if (isset($result['responseCode']) && in_array($result['responseCode'], $successCodes)) {
-            // A. UPDATE TOKEN KE DATABASE (Prioritas Utama)
-            DB::table('affiliates')->where('id', $affiliateId)->update([
-                'dana_access_token' => $result['accessToken'],
-                'updated_at' => now()
-            ]);
 
-            // B. CATAT KE RIWAYAT TRANSAKSI (Gunakan try-catch agar tidak crash jika DB error)
-            try {
-                DB::table('dana_transactions')->insert([
-                    'affiliate_id' => $affiliateId,
-                    'type' => 'BINDING',
-                    'reference_no' => $externalId,
-                    'phone' => '-',
-                    'amount' => 0,
-                    'status' => 'SUCCESS',
-                    'response_payload' => json_encode($result),
-                    'created_at' => now()
+            // A. UPDATE DATABASE (DENGAN FILTER TENANT ID)
+            $affected = DB::table($tableName)
+                ->where('id', $userId)
+                ->where('tenant_id', $tenantId) // Safety Check: Pastikan Tenant Benar
+                ->update([
+                    'dana_access_token' => $result['accessToken'],
+                    'dana_connected_at' => now(), // Opsional: catat kapan connect
+                    'updated_at' => now()
                 ]);
-            } catch (\Exception $dbEx) {
-                Log::error('[DANA CALLBACK] Gagal simpan log transaksi: ' . $dbEx->getMessage());
+
+            if ($affected === 0) {
+                Log::error("[DANA CALLBACK] Gagal Update: User $userId Tenant $tenantId tidak ditemukan di tabel $tableName");
             }
 
-            return redirect()->route('dana.dashboard')->with('success', '✅ Akun Berhasil Terhubung!');
+            // B. CATAT TRANSAKSI (AUDIT LOG)
+            try {
+                DB::table('dana_transactions')->insert([
+                    'affiliate_id' => ($userType === 'MEMBER') ? $userId : null, // Null jika admin
+                    'type'         => 'BINDING',
+                    'reference_no' => $externalId,
+                    'phone'        => '-', // Nomor HP belum dapat disini
+                    'amount'       => 0,
+                    'status'       => 'SUCCESS',
+                    'response_payload' => json_encode($result),
+                    'created_at'   => now()
+                ]);
+            } catch (\Exception $e) {
+                // Ignore error log audit agar flow user tidak putus
+                Log::error('[DANA CALLBACK] Log Error: ' . $e->getMessage());
+            }
+
+            // 6. REDIRECT DINAMIS KE SUBDOMAIN ASAL
+            // Kita rakit URL manual agar session user di subdomain tetap terbaca
+            $rootDomain = 'tokosancaka.com'; // Sesuaikan domain utama
+            $targetUrl  = "https://{$subdomain}.{$rootDomain}{$dashboardPath}";
+
+            Log::info("[DANA CALLBACK] Redirecting to: $targetUrl");
+
+            return redirect($targetUrl)->with('success', '✅ Akun DANA Berhasil Terhubung!');
         }
 
-        // JIKA GAGAL TUKAR TOKEN
-        try {
-            DB::table('dana_transactions')->insert([
-                'affiliate_id' => $affiliateId,
-                'type' => 'BINDING',
-                'reference_no' => $externalId,
-                'phone' => '-',
-                'amount' => 0,
-                'status' => 'FAILED',
-                'response_payload' => json_encode($result),
-                'created_at' => now()
-            ]);
-        } catch (\Exception $dbEx) {
-            Log::error('[DANA CALLBACK] Gagal simpan log error: ' . $dbEx->getMessage());
-        }
+        // JIKA GAGAL DAPAT TOKEN
+        Log::error('[DANA CALLBACK] Gagal Exchange Token:', $result);
 
-        Log::error('[EXCHANGE FAILED]', $result);
-        return redirect()->route('dana.dashboard')->with('error', 'Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+        // Tetap kembalikan user ke subdomain asal dengan pesan error
+        $rootDomain = 'tokosancaka.com';
+        $targetUrl  = "https://{$subdomain}.{$rootDomain}{$dashboardPath}";
+
+        return redirect($targetUrl)->with('error', 'Gagal menghubungkan DANA: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 
     } catch (\Exception $e) {
-        Log::error('[DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
-        return redirect()->route('dana.dashboard')->with('error', 'Sistem Error: ' . $e->getMessage());
+        Log::error('[DANA CALLBACK] System Exception:', ['msg' => $e->getMessage()]);
+        return redirect('/')->with('error', 'System Error');
     }
 }
 
