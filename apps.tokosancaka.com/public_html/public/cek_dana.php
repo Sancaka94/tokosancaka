@@ -1,135 +1,100 @@
 <?php
-// File: public/cek_dana.php
-// Akses di: http://apps.tokosancaka.com/cek_dana.php
+// Simpan file ini sebagai: generate_postman.php
+// Jalankan di terminal: php generate_postman.php
 
-header('Content-Type: application/json');
-
-// ============================================================================
-// 1. CONFIGURATION (ISI SESUAI DATA DI .ENV ANDA)
-// ============================================================================
-
-$clientId     = 'ISI_X_PARTNER_ID_DISINI';      // Contoh: 202508...
-$merchantId   = 'ISI_MERCHANT_ID_DISINI';       // Contoh: 2166...
-$clientSecret = 'ISI_CLIENT_SECRET_DISINI';     // Contoh: 1df385...
-
-// Copy Private Key dari .env (Hati-hati, harus persis!)
+// --- 1. CONFIG (HARDCODE DARI CHAT ANDA) ---
+$clientId     = "2025081520100641466855";
+$merchantId   = "216620080014040009735";
 $privateKey   = "-----BEGIN PRIVATE KEY-----
-PASTE_PRIVATE_KEY_ANDA_DISINI_SECARA_UTUH
-TERMASUK_HEADER_DAN_FOOTERNYA
-JANGAN_ADA_SPASI_ANEH
+MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDNVB5kzP1G9sgg
+IGAyNzIHaK9fY5pmP2HUhDsYY0eSrljlgksAOVHgaCION0vZ4679ZRQXWZciJqZL
+XAhJE8Iyna9RNL4bM2qDk3RvMR3xnaDRA97FofxL99fMFXl2vVn4k6Az3PGZtSKj
+GOtb1E02F/iJckZVO3jBacVKbUUS6e8Dut8wScw0R5VLAurNIvLxFoYJa3mPkVmx
+77fkL9S0qTbu/cRLayhguiPzg/P9DlQYa5ah7lT92P+79dSBp7TxrQbbm6Yic1Wf
+sS3deREV1qp30om2frp5lyOpcrxcs+5dGV0viRV41bg4LOFjD1uIc7YiXEJn8ZIW
+37K1ZvJrAgMBAAECggEAA91U8x2+mKLVcnFZjihmyyfnwRpdUhZYT4krmZJoyvR4
+HN2+bqMljN044t6ckV3NMdzAq43Wn+BtWdbCGyoBijVYkuU0vMtTcmWIl/0rLJyE
+Zdq2Sy740i84gxFWZ2s58clJhyBd9cAohjxWVbShvWZnGaMqerkzVSSZ/4Qd/DSd
+VxU2+YuooLq3QgVasmlZkSy4W720Q2Op6NS8joq0LRHxQRRbvl9J99zs+3cTtSfV
+K3nLOixhiLu0O/keek8yZ6Kw98Rms/od1TWDY0ivo24y0ABfnWOOy6f/+v3MzKq2
+ghvFIX0ft6Z79EDt839AjJXW82l5E085J7qY66kKhQKBgQDnAb1iVLL6ycR3RqBC
+R0MYBdJC8uNdgxw/vi6+fic7MAYY9/FsdDVQr0do4tTCkIwjcHoOPGwrwYl3xnTz
+DSgd5cX0wU0hbBXrSfN+zZjkwf+8eec+mIvMBV3UMe2kJ/Z8aWvtUmhqVK9fgAqg
+giFNGmIAjmxJPi3iBdl9Qvrm1QKBgQDjiymT8cSl9bMqUQxG0ggfTFXlZFiVBlmk
+5qYEcbSaz247Hqo2sLR5it4qHxiWV/QqXabhVYFkQcLTd3Qgj9t8TwWOvSYN69gB
+xW3dYqsptYVQ8lywjKKt3WKVGSKOgqslMwXnJTHZ/PycBDigDP1nmhczmx0DEQFV
+ltW3n+GUPwKBgCSAzeBf6fhfMcB3VJOklyGQqe0SXINGWIxqDRDk9mYP7Ka9Z1Tv
++AzL5cjZLy2fkcV33JGrUpyHdKWMoqZVieVPjbxjX0DMx5nqkaOT8XkUfsjVqojl
+qhGPN4h0a0zpU7XNItTZlM5Ym23H2eYLKh/470uPNeVNAgsZSYjVsLgRAoGAJuEa
+Y5sF3M2UpYBftqIgnShv7NgugpgpLRH0AAJlt6YF0bg1oU6kJ7hgqZXSn627nJmP
+8CSqDTVnUrawcvfhquXdrzwGio5nxDW1xgQb9u57Lw+aYthE26xeMdevneYZ1CtZ
+sNscH4EosIfQHRjbG56qpDi2xlVbgwJY1h1NcAUCgYB28OEqvgeYcu2YJfcn66kg
+d/eTNPiHrGxDL6zhU7MDOl07Cm7AaRFeyLuYrHchI2cbGSc5ssZNYjf5Fp9mh6Xr
+NR/qAr2HmcN0nJdx1gTNIP2bYRxzrqLqfxoHSKmORMh4BCS+saRwkmMdIFzXdNVO
+L5vXkAGZnIBgAJ/9t+HC0w==
 -----END PRIVATE KEY-----";
 
-// ============================================================================
-// 2. HELPER FUNCTIONS
-// ============================================================================
+// --- 2. DATA REQUEST ---
+$timestamp = date('Y-m-d\TH:i:sP'); // Waktu Sekarang
+$refNo     = "TEST-POSTMAN-" . time(); // Ref Unik
+$amount    = "1000.00";
 
-function generateSignature($payload, $pKey) {
-    // Bersihkan format key agar standar
-    $pKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $pKey);
-    $pKey = "-----BEGIN PRIVATE KEY-----\n" . chunk_split($pKey, 64, "\n") . "-----END PRIVATE KEY-----";
-
-    $signature = "";
-    if (!openssl_sign($payload, $signature, $pKey, OPENSSL_ALGO_SHA256)) {
-        return false;
-    }
-    return base64_encode($signature);
-}
-
-// ============================================================================
-// 3. PREPARE REQUEST (ACQUIRING ORDER)
-// ============================================================================
-
-$timestamp = date("Y-m-d\TH:i:sP");
-$refNo     = "TEST-DEBUG-" . time();
-
-// Payload Standar V2.0
-$requestData = [
-    "head" => [
-        "version"      => "2.0",
-        "function"     => "dana.acquiring.order.create",
-        "clientId"     => $clientId,
-        "clientSecret" => $clientSecret,
-        "reqTime"      => $timestamp,
-        "reqMsgId"     => uniqid(),
-        "reserve"      => "{}"
+// Body JSON (Versi Strict / Tanpa Goods)
+$body = [
+    "partnerReferenceNo" => $refNo,
+    "merchantId"         => $merchantId,
+    "amount" => [
+        "value"    => $amount,
+        "currency" => "IDR"
     ],
-    "body" => [
-        "merchantId"        => $merchantId,
-        "merchantTransId"   => $refNo,
-        "merchantTransType" => "01",
+    "urlParams" => [
+        [
+            "url"        => "https://google.com",
+            "type"       => "PAY_RETURN",
+            "isDeeplink" => "Y"
+        ]
+    ],
+    "additionalInfo" => [
+        "productCode" => "DIGITAL_PRODUCT",
         "order" => [
-            "orderTitle"        => "Test Koneksi Script",
-            "orderAmount"       => [
-                "currency" => "IDR",
-                "value"    => "1000.00"
-            ],
-            "merchantTransType" => "01",
-            "orderMemo"         => "Debug Check"
+            "orderTitle" => "Tes Postman",
+            "orderMemo"  => "Cek Signature"
         ],
+        "mcc" => "5732",
         "envInfo" => [
-            "sourcePlatform" => "IPG",
-            "terminalType"   => "SYSTEM"
+            "sourcePlatform"    => "IPG",
+            "terminalType"      => "WEB",
+            "orderTerminalType" => "WEB"
         ]
     ]
 ];
 
-// Encode & Sign
-$jsonPayload = json_encode($requestData);
-$signature   = generateSignature($jsonPayload, $privateKey);
+// --- 3. GENERATE SIGNATURE (SNAP LOGIC) ---
+$jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$hashedBody = strtolower(hash('sha256', $jsonBody));
+$path = '/rest/redirection/v1.0/debit/payment-host-to-host';
+$stringToSign = "POST|" . $path . "||" . $hashedBody . "|" . $timestamp;
 
-if (!$signature) {
-    echo json_encode(["error" => "Gagal membuat signature. Format Private Key Salah."]);
-    exit;
-}
+// Bersihkan Key
+$pKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $privateKey);
+$pKey = "-----BEGIN PRIVATE KEY-----\n" . chunk_split($pKey, 64, "\n") . "-----END PRIVATE KEY-----";
 
-// Rakit Final Body
-$finalBody = '{"request":' . $jsonPayload . ',"signature":"' . $signature . '"}';
+$binarySig = "";
+openssl_sign($stringToSign, $binarySig, $pKey, OPENSSL_ALGO_SHA256);
+$signature = base64_encode($binarySig);
 
-// ============================================================================
-// 4. EXECUTE CURL
-// ============================================================================
+// --- 4. OUTPUT UNTUK DI-COPY KE POSTMAN ---
+echo "\n=== DATA UNTUK POSTMAN ===\n";
+echo "1. URL (POST): \nhttps://api.sandbox.dana.id/rest/redirection/v1.0/debit/payment-host-to-host\n\n";
 
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, "https://api.sandbox.dana.id/dana/acquiring/order/create.htm");
-curl_setopt($ch, CURLOPT_POST, 1);
-curl_setopt($ch, CURLOPT_POSTFIELDS, $finalBody);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0); // Skip SSL check for sandbox debug
-curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-    'Content-Type: application/json',
-    'Accept: application/json'
-));
+echo "2. HEADERS:\n";
+echo "X-PARTNER-ID: " . $clientId . "\n";
+echo "X-EXTERNAL-ID: " . uniqid() . "\n";
+echo "X-TIMESTAMP: " . $timestamp . "\n";
+echo "X-SIGNATURE: " . $signature . "\n";
+echo "CHANNEL-ID: 95221\n";
+echo "ORIGIN: https://apps.tokosancaka.com\n\n";
 
-$response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curlErr  = curl_error($ch);
-curl_close($ch);
-
-// ============================================================================
-// 5. OUTPUT HASIL DIAGNOSA
-// ============================================================================
-
-$result = [
-    "status_http" => $httpCode,
-    "response_raw" => $response, // <--- INI YANG PALING PENTING
-    "curl_error" => $curlErr,
-    "payload_sent" => json_decode($finalBody),
-    "analisa" => ""
-];
-
-// Analisa Sederhana
-if (empty($response)) {
-    $result['analisa'] = "CRITICAL: Respon Kosong. Signature Invalid atau Public Key di Dashboard DANA tidak cocok dengan Private Key di script ini.";
-} elseif ($httpCode != 200) {
-    $result['analisa'] = "ERROR: Koneksi Gagal (HTTP $httpCode). Cek URL atau Firewall.";
-} else {
-    $jsonRes = json_decode($response, true);
-    if (isset($jsonRes['response']['body']['resultInfo']['resultStatus']) && $jsonRes['response']['body']['resultInfo']['resultStatus'] == 'S') {
-        $result['analisa'] = "SUKSES! Kunci & Config Benar. Masalah ada di kode Laravel.";
-    } else {
-        $result['analisa'] = "TERHUBUNG TAPI DITOLAK: Cek pesan error di dalam JSON response.";
-    }
-}
-
-echo json_encode($result, JSON_PRETTY_PRINT);
+echo "3. BODY (Raw JSON):\n";
+echo $jsonBody . "\n\n";
 ?>
