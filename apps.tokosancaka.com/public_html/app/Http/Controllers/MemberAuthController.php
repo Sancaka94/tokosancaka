@@ -1433,4 +1433,76 @@ public function checkTopupStatus(Request $request)
             return back()->with('error', 'Sistem Error: ' . $e->getMessage());
         }
     }
+
+    // -------------------------------------------------------------------------
+    //  TAMBAHKAN KODE INI (START)
+    // -------------------------------------------------------------------------
+
+    public function storeDeposit(Request $request)
+    {
+        // 1. Validasi Input
+        $request->validate([
+            'amount' => 'required|numeric|min:10000',
+        ]);
+
+        $member = Auth::guard('member')->user();
+
+        // 2. Logika Kode Unik (3 Digit Acak)
+        $uniqueCode = mt_rand(111, 999);
+        $amountOriginal = $request->amount;
+        $amountTotal    = $amountOriginal + $uniqueCode;
+
+        // Buat Ref No: DEP-YYMMDD-XXXX
+        $refNo = 'DEP-' . date('ymd') . rand(1000, 9999);
+
+        Log::info('[DEPOSIT STORE] Request Baru', [
+            'member' => $member->name,
+            'amount' => $amountTotal
+        ]);
+
+        try {
+            // 3. Simpan ke Database
+            $topup = new TopUp(); // Pastikan model TopUp sudah di-import di atas
+            $topup->tenant_id       = $member->tenant_id ?? 1;
+            $topup->affiliate_id    = $member->id;
+            $topup->reference_no    = $refNo;
+            $topup->amount          = $amountOriginal; // Nominal murni
+            $topup->unique_code     = $uniqueCode;     // Kode unik
+            $topup->total_amount    = $amountTotal;    // Yang harus ditransfer
+            $topup->status          = 'PENDING';
+            $topup->payment_method  = 'BANK_TRANSFER';
+            $topup->created_at      = now();
+            $topup->save();
+
+            // 4. Pesan Instruksi
+            // Format angka rupiah
+            $formattedTotal = number_format($amountTotal, 0, ',', '.');
+
+            // Rekening Tujuan (Bisa diganti sesuai kebutuhan)
+            $bankInfo = "BCA: 1234567890 (PT Sancaka)";
+
+            // Kirim WA (Optional)
+            $msg  = "📥 *TIKET DEPOSIT*\n\n";
+            $msg .= "Halo {$member->name},\n";
+            $msg .= "Silakan transfer TEPAT senilai:\n";
+            $msg .= "💰 *Rp {$formattedTotal}*\n\n";
+            $msg .= "Ke {$bankInfo}\n";
+            $msg .= "Ref: {$refNo}";
+
+            if (method_exists($this, 'sendWhatsApp')) {
+                $this->sendWhatsApp($member->whatsapp, $msg);
+            }
+
+            // 5. Redirect Back dengan Pesan Sukses
+            return back()->with('success',
+                "✅ Tiket Deposit Dibuat!\n\n" .
+                "Silakan transfer tepat: **Rp {$formattedTotal}**\n" .
+                "(Cek WhatsApp Anda untuk instruksi lengkap)"
+            );
+
+        } catch (\Exception $e) {
+            Log::error('[DEPOSIT ERROR]', ['msg' => $e->getMessage()]);
+            return back()->with('error', 'Gagal membuat deposit: ' . $e->getMessage());
+        }
+    }
 }
