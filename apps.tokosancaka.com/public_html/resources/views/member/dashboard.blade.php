@@ -73,7 +73,7 @@
                         class="flex-1 text-[10px] bg-emerald-500 text-white py-2 rounded-lg font-bold hover:bg-emerald-600 transition flex items-center justify-center gap-1">
                     <i class="fas fa-hand-holding-usd"></i> Cairkan Saldo
                 </button>
-                @endif
+
 
                 {{-- Tombol Cairkan ke Bank --}}
                 <button onclick="openBankModal('{{ $member->id }}', '{{ $member->balance }}')"
