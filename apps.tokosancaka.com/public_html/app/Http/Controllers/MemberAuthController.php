@@ -129,24 +129,63 @@ class MemberAuthController extends Controller
         return redirect()->route('member.login');
     }
 
-    // 1. START BINDING (LOGIKA AWAL BOS)
+   // 1. START BINDING (LOGIKA AWAL BOS)
     public function startBinding(Request $request)
     {
-        Log::info('[BINDING] Memulai proses redirect ke DANA Portal...');
+        // [LOG 1] Tanda mulai proses
+        Log::info('================================================================');
+        Log::info('[BINDING] 🚀 1. MEMULAI PROSES REDIRECT KE DANA PORTAL');
+        Log::info('================================================================');
 
+        // Log info dasar user untuk trace jika ada error
+        Log::info('[BINDING] Client IP: ' . $request->ip());
+        Log::info('[BINDING] User Agent: ' . $request->header('User-Agent'));
+
+        // Ambil Affiliate ID
         $affiliateId = $request->affiliate_id ?? 11;
+        Log::info("[BINDING] 📥 Affiliate ID yang diproses: {$affiliateId}");
 
+        // [LOG 2] Pengecekan Config (Penting untuk debug jika .env tidak terbaca)
+        $partnerId   = config('services.dana.x_partner_id');
+        $merchantId  = config('services.dana.merchant_id');
+        $redirectUrl = config('services.dana.redirect_url_oauth');
+
+        Log::info('[BINDING] ⚙️ Cek Konfigurasi ENV:');
+        Log::info(" - Partner ID: " . ($partnerId ? $partnerId : '❌ KOSONG'));
+        Log::info(" - Merchant ID: " . ($merchantId ? $merchantId : '❌ KOSONG'));
+        Log::info(" - Redirect URL: " . ($redirectUrl ? $redirectUrl : '❌ KOSONG'));
+
+        // Generate Variabel Dinamis
+        $timestamp  = now('Asia/Jakarta')->toIso8601String();
+        $externalId = 'BIND-' . $affiliateId . '-' . time();
+        $state      = 'ID-' . $affiliateId;
+
+        // Siapkan Parameter
         $queryParams = [
-            'partnerId'   => config('services.dana.x_partner_id'),
-            'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
-            'externalId'  => 'BIND-' . $affiliateId . '-' . time(),
-            'merchantId'  => config('services.dana.merchant_id'),
-            'redirectUrl' => config('services.dana.redirect_url_oauth'),
-            'state'       => 'ID-' . $affiliateId,
+            'partnerId'   => $partnerId,
+            'timestamp'   => $timestamp,
+            'externalId'  => $externalId,
+            'merchantId'  => $merchantId,
+            'redirectUrl' => $redirectUrl,
+            'state'       => $state,
             'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         ];
 
-        return redirect("https://m.sandbox.dana.id/d/portal/oauth?" . http_build_query($queryParams));
+        // [LOG 3] Log Payload Mentah (Sebelum di-encode ke URL)
+        Log::info('[BINDING] 📦 Payload Parameter yang disiapkan:', $queryParams);
+
+        // Build URL
+        $baseUrl = "https://m.sandbox.dana.id/d/portal/oauth";
+        $finalRedirectUrl = $baseUrl . "?" . http_build_query($queryParams);
+
+        // [LOG 4] Log URL Final (Sangat penting: Bisa dicopy-paste ke browser untuk tes manual)
+        Log::info('[BINDING] 🔗 GENERATED URL (Siap Redirect):');
+        Log::info($finalRedirectUrl);
+
+        Log::info('[BINDING] ✅ Proses controller selesai, melempar user ke DANA...');
+        Log::info('================================================================');
+
+        return redirect($finalRedirectUrl);
     }
 
    public function handleCallback(Request $request)
