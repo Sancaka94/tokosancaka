@@ -51,18 +51,22 @@ return [
         'redirect_url_oauth'  => env('REDIRECT_URL_OAUTH'),
         'external_shop_id'    => env('EXTERNAL_SHOP_ID'),
         'dana_env'            => env('DANA_ENV', 'SANDBOX'),
+        // [WAJIB ADA] Logic otomatis menentukan URL Sandbox vs Production
+        'base_url'            => env('DANA_ENV') === 'PRODUCTION'
+                                    ? 'https://api.dana.id'
+                                    : 'https://api.sandbox.dana.id',
     ],
-    
+
 
     // --- KONFIGURASI KIRIMINAJA ---
- 
+
     'kiriminaja' => [
         'token'    => env('KIRIMINAJA_TOKEN'),
         // Default fallback hanya jika env kosong. Jika env ada isinya, dia pakai env.
         'base_url' => env('KIRIMINAJA_BASE_URL', 'https://client.kiriminaja.com'),
-        
+
         'origin_district_id'    => env('KIRIMINAJA_ORIGIN_DISTRICT'),
-        'origin_subdistrict_id' => env('KIRIMINAJA_ORIGIN_SUBDISTRICT'), 
+        'origin_subdistrict_id' => env('KIRIMINAJA_ORIGIN_SUBDISTRICT'),
         // TAMBAHKAN INI:
         'origin_lat' => env('KIRIMINAJA_ORIGIN_LAT'),
         'origin_long' => env('KIRIMINAJA_ORIGIN_LONG'), // <-- Pastikan ini menarik env yang benar
