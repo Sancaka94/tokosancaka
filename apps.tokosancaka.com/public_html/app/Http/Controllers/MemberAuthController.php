@@ -457,6 +457,7 @@ class MemberAuthController extends Controller
 
             // B. Catat ke Audit Log Transaksi
             DB::table('dana_transactions')->insert([
+                'tenant_id'    => $aff->tenant_id, // <--- TAMBAHKAN BARIS INI
                 'affiliate_id' => $aff->id,
                 'type' => 'TOPUP',
                 'reference_no' => $partnerRef,
