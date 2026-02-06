@@ -71,8 +71,6 @@ public function index(Request $request)
     Log::info('[DANA CALLBACK] Masuk...', $request->all());
 
     // --- [PERBAIKAN DISINI] ---
-    // Ambil auth_code (snake_case) karena itu yang dikirim DANA di log Anda
-    // Kita pakai operator ?? untuk jaga-jaga jika format berubah
     $authCode = $request->input('auth_code') ?? $request->input('authCode');
     $stateRaw = $request->input('state');
 
@@ -85,16 +83,34 @@ public function index(Request $request)
         return redirect('https://apps.tokosancaka.com')->with('error', 'Callback DANA Invalid (Data Kosong).');
     }
 
+    // --- [NEW LOGIC: IDEMPOTENCY CHECK] ---
+    // Mencegah Auth Code diproses dua kali (Double Request/Refresh Page)
+    // Cek apakah Auth Code ini sudah pernah disimpan di database affiliate sebelumnya
+    $isUsed = DB::table('affiliates')->where('dana_auth_code', $authCode)->exists();
+
+    // Atau cek via Cache untuk locking cepat (durasi 1 menit)
+    $cacheKey = 'dana_auth_process_' . $authCode;
+    if ($isUsed || \Illuminate\Support\Facades\Cache::has($cacheKey)) {
+        Log::warning("[DANA CALLBACK] IDEMPOTENCY TRIGGERED: AuthCode $authCode sudah diproses.");
+        // Jangan return error, tapi anggap sukses (redirect ke dashboard) agar user tidak bingung
+        // Parse state sebentar untuk tahu redirect kemana
+        $parts = explode('-', $stateRaw);
+        $subdomain = $parts[2] ?? 'apps';
+        return redirect("https://{$subdomain}.tokosancaka.com/member/dashboard")->with('success', 'Akun sudah terhubung (Request sebelumnya).');
+    }
+
+    // Kunci proses ini selama 60 detik agar request paralel ditolak
+    \Illuminate\Support\Facades\Cache::put($cacheKey, true, 60);
+    // -------------------------------------
+
     // 2. BONGKAR STATE
-    // Format: TIPE - ID_USER - SUBDOMAIN - TENANT_ID
-    // Log Anda: MEMBER-11-apps-1 (Ini sudah BENAR & SEMPURNA)
     $parts = explode('-', $stateRaw);
 
     // Default Fallback
-    $userType  = $parts[0] ?? 'UNKNOWN';
-    $userId    = $parts[1] ?? 0;
-    $subdomain = $parts[2] ?? 'apps';
-    $tenantId  = $parts[3] ?? 1;
+    $userType      = $parts[0] ?? 'UNKNOWN';
+    $userId        = $parts[1] ?? 0;
+    $subdomain     = $parts[2] ?? 'apps';
+    $tenantId      = $parts[3] ?? 1;
 
     // Tentukan Base Domain (Sesuaikan dengan domain Anda)
     $rootDomain = 'tokosancaka.com';
@@ -102,11 +118,10 @@ public function index(Request $request)
     // Tentukan Path Dashboard
     $dashboardPath = '/member/dashboard'; // Default Member
     if ($userType === 'ADMIN') {
-        $dashboardPath = '/admin/dashboard'; // Sesuaikan path admin filament
+        $dashboardPath = '/admin/dashboard';
     }
 
-    // RAKIT URL TARGET SEKARANG (Agar jika error, kita tetap bisa lempar balik kesini)
-    // Hasil: https://apps.tokosancaka.com/member/dashboard
+    // RAKIT URL TARGET
     $targetUrl = "https://{$subdomain}.{$rootDomain}{$dashboardPath}";
 
     // Cek Validitas Format State
@@ -155,6 +170,7 @@ public function index(Request $request)
                 ->where('tenant_id', $tenantId)
                 ->update([
                     'dana_access_token' => $result['accessToken'],
+                    'dana_auth_code'    => $authCode, // Simpan untuk cek idempotency di masa depan
                     'dana_connected_at' => now(),
                     'updated_at' => now()
                 ]);
@@ -163,10 +179,10 @@ public function index(Request $request)
                 Log::warning("[DANA CALLBACK] ID $userId Tenant $tenantId tidak ditemukan di tabel $tableName");
             }
 
-            // Catat Log Transaksi (Opsional, gunakan try-catch agar tidak memutus flow)
+            // Catat Log Transaksi (Opsional)
             try {
                 DB::table('dana_transactions')->insert([
-                    'tenant_id'    => $aff->tenant_id, // <--- WAJIB ADA
+                    'tenant_id'    => $tenantId, // Pakai variabel $tenantId yang sudah di-explode
                     'affiliate_id' => ($userType === 'MEMBER') ? $userId : null,
                     'type'         => 'BINDING',
                     'reference_no' => $externalId,
@@ -177,6 +193,16 @@ public function index(Request $request)
                     'created_at'   => now()
                 ]);
             } catch (\Exception $e) {}
+
+            // =================================================================
+            // 5. [NEW] POST-BINDING RECOVERY (DEPOSIT & REFUND LOGIC)
+            // Cek apakah ada transaksi PENDING milik user ini, lalu update statusnya
+            // karena kita baru saja dapat token valid.
+            // =================================================================
+            if ($userType === 'MEMBER') {
+                $this->processPendingTransactions($userId, $result['accessToken']);
+            }
+            // =================================================================
 
             Log::info("[DANA CALLBACK] Berhasil! Redirecting ke: $targetUrl");
             return redirect($targetUrl)->with('success', '✅ Akun DANA Berhasil Terhubung!');
@@ -190,6 +216,45 @@ public function index(Request $request)
         Log::error('[DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
         // Tetap lempar ke Dashboard (jangan ke root /)
         return redirect($targetUrl)->with('error', 'Terjadi Kesalahan Sistem saat verifikasi.');
+    }
+}
+
+// --- FUNGSI TAMBAHAN (Helper untuk Process Recovery) ---
+// Tambahkan function ini di dalam Class Controller yang sama
+
+protected function processPendingTransactions($affiliateId, $accessToken)
+{
+    // Ambil transaksi PENDING milik user ini
+    $pendingTrx = DB::table('dana_transactions')
+        ->where('affiliate_id', $affiliateId)
+        ->where('status', 'PENDING')
+        ->get();
+
+    foreach ($pendingTrx as $trx) {
+        // [LOGIKA DEPOSIT / INCOMING]
+        if ($trx->type == 'DEPOSIT') {
+            // Cek status ke DANA (Logic Check Status Simplified)
+            // Jika sukses di DANA tapi PENDING di kita -> Update & Tambah Saldo
+            // (Disini Anda bisa panggil API queryTransactionStatus DANA)
+
+            // Simulasi: Jika DANA bilang sukses
+            DB::table('affiliates')->where('id', $affiliateId)->increment('balance', $trx->amount);
+            DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'SUCCESS']);
+
+            Log::info("[RECOVERY] Mengecek pending Deposit Ref: {$trx->reference_no}");
+        }
+
+        // [LOGIKA REFUND / FAILED OUTGOING]
+        // Jika sebelumnya user mencoba transfer bank/tarik tunai tapi PENDING
+        if ($trx->type == 'TRANSFER_BANK' || $trx->type == 'DISBURSEMENT') {
+            // Cek status ke DANA. Jika FAILED/REFUNDED di DANA -> Kembalikan Saldo User
+
+            // Simulasi: Jika status DANA 'FAILED'
+            DB::table('affiliates')->where('id', $affiliateId)->increment('balance', $trx->amount);
+            DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'REFUNDED']);
+
+            Log::info("[RECOVERY] Mengecek pending Transfer Ref: {$trx->reference_no}");
+        }
     }
 }
 

@@ -1304,5 +1304,133 @@ public function checkTopupStatus(Request $request)
         }
     }
 
+    // -------------------------------------------------------------------------
+    // DEPOSIT VIA DANA (TARIK SALDO DANA USER -> MASUK KE SYSTEM)
+    // -------------------------------------------------------------------------
 
+    public function depositViaDana(Request $request)
+    {
+        // 1. Validasi Input
+        $request->validate([
+            'amount' => 'required|numeric|min:1000',
+        ]);
+
+        $member = Auth::guard('member')->user();
+
+        // Cek apakah akun sudah terhubung
+        if (!$member->dana_access_token) {
+            return back()->with('error', 'Silakan hubungkan akun DANA Anda terlebih dahulu.');
+        }
+
+        // [LOG 1] Mulai Transaksi
+        $refNo = 'DEP-DANA-' . time() . mt_rand(100, 999);
+        Log::info('[DEPOSIT DANA] Request Baru', [
+            'affiliate_id' => $member->id,
+            'amount' => $request->amount,
+            'ref' => $refNo
+        ]);
+
+        // 2. Setup Request ke DANA (Acquiring Order)
+        $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+
+        // Body Request V2.0 (Acquiring)
+        $payload = [
+            "request" => [
+                "head" => [
+                    "version"      => "2.0",
+                    "function"     => "dana.acquiring.order.create",
+                    "clientId"     => config('services.dana.x_partner_id'),
+                    "clientSecret" => config('services.dana.client_secret'),
+                    "reqTime"      => $timestamp,
+                    "reqMsgId"     => (string) Str::uuid(),
+                    "reserve"      => "{}"
+                ],
+                "body" => [
+                    "merchantId" => config('services.dana.merchant_id'),
+                    "merchantTransId" => $refNo,
+                    "order" => [
+                        "orderTitle" => "Topup Saldo Sancaka",
+                        "orderAmount" => [
+                            "currency" => "IDR",
+                            "value" => (string) number_format($request->amount, 0, '', '') // Format string tanpa desimal/koma
+                        ],
+                        "merchantTransType" => "01", // 01 = Transaction
+                        "orderMemo" => "Deposit Saldo Member ID: " . $member->id
+                    ],
+                    "merchantTransType" => "01",
+                    "envInfo" => [
+                        "sourcePlatform" => "IPG",
+                        "terminalType"   => "SYSTEM"
+                    ],
+                    // PENTING: Menggunakan Token User agar dia tidak perlu login ulang, cuma PIN
+                    "userCredential" => [
+                        "accessToken" => $member->dana_access_token
+                    ]
+                ]
+            ]
+        ];
+
+        // 3. Generate Signature V2
+        $jsonToSign = json_encode($payload['request'], JSON_UNESCAPED_SLASHES);
+        $signature  = $this->generateSignature($jsonToSign); // Pastikan function generateSignature mendukung V2/V1 logic
+
+        try {
+            // 4. Catat Dulu ke Database (PENDING)
+            DB::table('dana_transactions')->insert([
+                'tenant_id'        => $member->tenant_id ?? 1,
+                'affiliate_id'     => $member->id,
+                'type'             => 'DEPOSIT', // Tipe baru: DEPOSIT
+                'reference_no'     => $refNo,
+                'phone'            => $member->whatsapp, // Nomor User
+                'amount'           => $request->amount,
+                'status'           => 'PENDING',
+                'response_payload' => null,
+                'created_at'       => now()
+            ]);
+
+            Log::info('[DEPOSIT DANA] Mengirim Request Create Order...');
+
+            // 5. Kirim Request ke DANA
+            $response = Http::post('https://api.sandbox.dana.id/dana/acquiring/order/create.htm', [
+                "request"   => $payload['request'],
+                "signature" => $signature
+            ]);
+
+            $result = $response->json();
+            Log::info('[DEPOSIT DANA] Response:', ['res' => $result]);
+
+            // 6. Cek Response
+            $resBody = $result['response']['body'] ?? [];
+            $resStatus = $resBody['resultInfo']['resultStatus'] ?? 'F';
+
+            if ($resStatus == 'S') { // S = Success Creating Order
+
+                // Ambil URL Pembayaran (Checkout URL)
+                // DANA akan mengembalikan URL dimana user harus memasukkan PIN
+                $checkoutUrl = $resBody['checkoutUrl'];
+
+                // Update Log dengan Payload
+                DB::table('dana_transactions')
+                    ->where('reference_no', $refNo)
+                    ->update(['response_payload' => json_encode($result)]);
+
+                // REDIRECT USER KE DANA UNTUK PIN
+                return redirect($checkoutUrl);
+
+            } else {
+                // Gagal Create Order
+                $errMsg = $resBody['resultInfo']['resultMsg'] ?? 'Gagal membuat order DANA.';
+
+                DB::table('dana_transactions')
+                    ->where('reference_no', $refNo)
+                    ->update(['status' => 'FAILED', 'response_payload' => json_encode($result)]);
+
+                return back()->with('error', 'Gagal Deposit: ' . $errMsg);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('[DEPOSIT DANA] Exception', ['msg' => $e->getMessage()]);
+            return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+        }
+    }
 }
