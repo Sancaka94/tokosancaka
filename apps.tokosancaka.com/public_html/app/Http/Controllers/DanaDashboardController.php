@@ -70,27 +70,34 @@ public function index(Request $request)
 {
     Log::info('[DANA CALLBACK] Masuk...', $request->all());
 
-    $authCode = $request->input('authCode');
+    // --- [PERBAIKAN DISINI] ---
+    // Ambil auth_code (snake_case) karena itu yang dikirim DANA di log Anda
+    // Kita pakai operator ?? untuk jaga-jaga jika format berubah
+    $authCode = $request->input('auth_code') ?? $request->input('authCode');
     $stateRaw = $request->input('state');
 
     // 1. VALIDASI DATA MENTAH
     if (!$authCode || !$stateRaw) {
-        Log::error('[DANA CALLBACK] Gagal: AuthCode atau State kosong.');
+        Log::error('[DANA CALLBACK] Gagal: AuthCode atau State kosong.', [
+            'authCode_input' => $authCode,
+            'state_input' => $stateRaw
+        ]);
         return redirect('https://apps.tokosancaka.com')->with('error', 'Callback DANA Invalid (Data Kosong).');
     }
 
     // 2. BONGKAR STATE
-    // Format Harapan: TIPE - ID_USER - SUBDOMAIN - TENANT_ID
+    // Format: TIPE - ID_USER - SUBDOMAIN - TENANT_ID
+    // Log Anda: MEMBER-11-apps-1 (Ini sudah BENAR & SEMPURNA)
     $parts = explode('-', $stateRaw);
 
-    // Default Fallback jika parsing gagal
+    // Default Fallback
     $userType  = $parts[0] ?? 'UNKNOWN';
     $userId    = $parts[1] ?? 0;
-    $subdomain = $parts[2] ?? 'apps'; // Default ke 'apps' jika kosong
+    $subdomain = $parts[2] ?? 'apps';
     $tenantId  = $parts[3] ?? 1;
 
     // Tentukan Base Domain (Sesuaikan dengan domain Anda)
-    $rootDomain = 'tokosancaka.com';
+    $rootDomain = 'apps.tokosancaka.com';
 
     // Tentukan Path Dashboard
     $dashboardPath = '/member/dashboard'; // Default Member
