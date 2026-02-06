@@ -57,35 +57,42 @@
             </div>
 
             {{-- ACTION BUTTONS --}}
-            <div class="flex gap-2">
+            <div class="grid grid-cols-2 gap-2 mt-4">
 
-                {{-- Tombol DANA Binding --}}
-                <form action="{{ route('dana.startBinding') }}" method="POST" class="flex-1">
-                    @csrf
-                    <input type="hidden" name="affiliate_id" value="{{ $member->id }}">
-                    <button type="submit" class="w-full text-[10px] bg-blue-500 text-white py-2 rounded-lg font-bold hover:bg-blue-600 transition flex items-center justify-center gap-1">
-                        <i class="fas fa-link"></i> {{ $member->dana_access_token ? 'Update DANA' : 'Hubungkan DANA' }}
-                    </button>
-                </form>
-
+                {{-- 1. Tombol ISI SALDO (DEPOSIT) --}}
                 <button onclick="openDepositModal()"
-                        class="text-[10px] bg-indigo-500 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-600 transition flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-500/20">
+                        class="w-full text-[10px] bg-indigo-500 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-600 transition flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-500/20 active:scale-95">
                     <i class="fas fa-plus-circle text-xs"></i> Isi Saldo
                 </button>
 
-                {{-- Tombol Cairkan ke DANA --}}
+                {{-- 2. Tombol DANA BINDING --}}
+                <form action="{{ route('dana.startBinding') }}" method="POST" class="w-full">
+                    @csrf
+                    <input type="hidden" name="affiliate_id" value="{{ $member->id }}">
+                    <button type="submit" class="w-full text-[10px] bg-blue-500 text-white py-2.5 rounded-xl font-bold hover:bg-blue-600 transition flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/20 active:scale-95">
+                        <i class="fas fa-link text-xs"></i> {{ $member->dana_access_token ? 'Update DANA' : 'Sambung DANA' }}
+                    </button>
+                </form>
+
+                {{-- 3. Tombol CAIRKAN DANA --}}
                 @if($member->balance > 0)
-                <button onclick="openTopupModal('{{ $member->id }}', '{{ $member->balance }}', '{{ $member->whatsapp }}')"
-                        class="flex-1 text-[10px] bg-emerald-500 text-white py-2 rounded-lg font-bold hover:bg-emerald-600 transition flex items-center justify-center gap-1">
-                    <i class="fas fa-hand-holding-usd"></i> Cairkan Saldo
-                </button>
+                    <button onclick="openTopupModal('{{ $member->id }}', '{{ $member->balance }}', '{{ $member->whatsapp }}')"
+                            class="w-full text-[10px] bg-emerald-500 text-white py-2.5 rounded-xl font-bold hover:bg-emerald-600 transition flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95">
+                        <i class="fas fa-hand-holding-usd text-xs"></i> Cairkan DANA
+                    </button>
+                @else
+                    {{-- Tampilan jika saldo kosong (Disabled) --}}
+                    <button disabled class="w-full text-[10px] bg-slate-200 text-slate-400 py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-not-allowed">
+                        <i class="fas fa-hand-holding-usd text-xs"></i> Saldo Kosong
+                    </button>
                 @endif
 
-                {{-- Tombol Cairkan ke Bank --}}
+                {{-- 4. Tombol CAIRKAN BANK --}}
                 <button onclick="openBankModal('{{ $member->id }}', '{{ $member->balance }}')"
-                        class="flex-1 text-[10px] bg-slate-600 text-white py-2 rounded-lg font-bold hover:bg-slate-700 transition flex items-center justify-center gap-1">
-                    <i class="fas fa-university"></i> Ke Rekening Bank
+                        class="w-full text-[10px] bg-slate-600 text-white py-2.5 rounded-xl font-bold hover:bg-slate-700 transition flex items-center justify-center gap-1.5 shadow-lg shadow-slate-600/20 active:scale-95">
+                    <i class="fas fa-university text-xs"></i> Ke Rekening
                 </button>
+
             </div>
         </div>
     </div>
@@ -377,20 +384,44 @@
         </div>
     </div>
 
-    {{-- MODAL DEPOSIT / ISI SALDO --}}
+   {{-- MODAL DEPOSIT / ISI SALDO --}}
     <div id="depositModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-fade-in">
-            <div class="bg-indigo-600 p-6 text-white relative overflow-hidden">
-                {{-- Hiasan Background --}}
-                <div class="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 rounded-full bg-white/10 blur-xl"></div>
 
+            {{-- Header Modal --}}
+            <div class="bg-indigo-600 p-6 text-white relative overflow-hidden">
+                <div class="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 rounded-full bg-white/10 blur-xl"></div>
                 <h3 class="text-lg font-black uppercase italic tracking-tighter relative z-10">Isi Saldo</h3>
-                <p class="text-indigo-100 text-[10px] uppercase font-bold tracking-widest relative z-10">Topup Balance Account</p>
+                <p class="text-indigo-100 text-[10px] uppercase font-bold tracking-widest relative z-10">Pilih Metode & Nominal</p>
             </div>
 
-            {{-- Ganti route('deposit.store') sesuai route Anda --}}
             <form action="{{ route('deposit.store') }}" method="POST" class="p-6">
                 @csrf
+
+                {{-- INPUT HIDDEN UNTUK METODE PEMBAYARAN --}}
+                <input type="hidden" name="payment_method" id="payment_method_input" value="BANK_TRANSFER">
+
+                {{-- PILIHAN METODE BAYAR --}}
+                <div class="mb-5">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Pilih Metode Bayar</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        {{-- Tombol DANA --}}
+                        <div id="btn_method_dana" onclick="selectPaymentMethod('DANA')"
+                             class="cursor-pointer border-2 border-slate-100 rounded-xl p-3 flex flex-col items-center justify-center gap-1 transition hover:border-blue-300">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png" class="h-4 object-contain" alt="DANA">
+                            <span class="text-[9px] font-bold mt-1 text-slate-600">Otomatis (Instant)</span>
+                        </div>
+
+                        {{-- Tombol BANK --}}
+                        <div id="btn_method_bank" onclick="selectPaymentMethod('BANK_TRANSFER')"
+                             class="cursor-pointer border-2 border-indigo-600 bg-indigo-50 rounded-xl p-3 flex flex-col items-center justify-center gap-1 transition">
+                            <i class="fas fa-university text-indigo-600 text-lg"></i>
+                            <span class="text-[9px] font-bold mt-1 text-indigo-700">Transfer Bank</span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- NOMINAL INPUT --}}
                 <div class="mb-6">
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Pilih Nominal</label>
 
@@ -410,10 +441,11 @@
                     <p class="text-[9px] text-slate-400 mt-2 italic">*Minimal deposit Rp 10.000</p>
                 </div>
 
+                {{-- TOMBOL AKSI --}}
                 <div class="flex gap-3">
                     <button type="button" onclick="closeDepositModal()" class="flex-1 py-3 text-slate-400 font-bold text-xs uppercase transition hover:text-slate-600">Batal</button>
                     <button type="submit" class="flex-[2] py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition transform active:scale-95">
-                        <i class="fas fa-wallet mr-1"></i> Lanjut Bayar
+                        Lanjut Bayar
                     </button>
                 </div>
             </form>
@@ -447,7 +479,11 @@
             document.getElementById('bankModal').classList.add('hidden');
         }
 
-        // --- MODAL DEPOSIT (Baru) ---
+    </script>
+
+    <script>
+        // --- LOGIKA MODAL DEPOSIT ---
+
         function openDepositModal() {
             document.getElementById('depositModal').classList.remove('hidden');
         }
@@ -460,14 +496,47 @@
             document.getElementById('deposit_amount').value = amount;
         }
 
-        // --- Tutup modal jika klik di luar area ---
+        // FUNGSI BARU: Pilihan Metode Bayar (Toggle Style)
+        function selectPaymentMethod(method) {
+            // 1. Update Input Hidden
+            document.getElementById('payment_method_input').value = method;
+
+            // 2. Ambil Elemen Tombol
+            const btnDana = document.getElementById('btn_method_dana');
+            const btnBank = document.getElementById('btn_method_bank');
+
+            // Class untuk Aktif (Terpilih)
+            const activeClass = ["border-indigo-600", "bg-indigo-50", "text-indigo-700"];
+            // Class untuk Tidak Aktif (Reset)
+            const inactiveClass = ["border-slate-100", "bg-transparent", "text-slate-600"];
+
+            if (method === 'DANA') {
+                // Set DANA Aktif
+                btnDana.classList.add(...activeClass);
+                btnDana.classList.remove("border-slate-100");
+
+                // Set Bank Non-Aktif
+                btnBank.classList.remove(...activeClass);
+                btnBank.classList.add("border-slate-100");
+
+            } else {
+                // Set Bank Aktif
+                btnBank.classList.add(...activeClass);
+                btnBank.classList.remove("border-slate-100");
+
+                // Set DANA Non-Aktif
+                btnDana.classList.remove(...activeClass);
+                btnDana.classList.add("border-slate-100");
+            }
+        }
+
+        // Tutup modal jika klik luar
         window.onclick = function(event) {
             const depModal = document.getElementById('depositModal');
             if (event.target == depModal) {
                 closeDepositModal();
             }
         }
-
     </script>
 
     {{-- AUTO OPEN MODAL JIKA SUKSES CEK REKENING --}}

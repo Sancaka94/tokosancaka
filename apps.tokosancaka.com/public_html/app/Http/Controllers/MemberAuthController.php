@@ -1460,69 +1460,181 @@ public function checkTopupStatus(Request $request)
 
     public function storeDeposit(Request $request)
     {
-        // 1. Validasi Input
+        // 1. Validasi Input (Tambahkan opsi payment_method)
         $request->validate([
-            'amount' => 'required|numeric|min:10000',
+            'amount'         => 'required|numeric|min:1000',
+            'payment_method' => 'nullable|in:BANK_TRANSFER,DANA', // Opsi: BANK_TRANSFER (Default) atau DANA
         ]);
 
         $member = Auth::guard('member')->user();
-
-        // 2. Logika Kode Unik (3 Digit Acak)
-        $uniqueCode = mt_rand(111, 999);
-        $amountOriginal = $request->amount;
-        $amountTotal    = $amountOriginal + $uniqueCode;
-
-        // Buat Ref No: DEP-YYMMDD-XXXX
-        $refNo = 'DEP-' . date('ymd') . rand(1000, 9999);
+        $method = $request->payment_method ?? 'BANK_TRANSFER'; // Default ke Bank jika kosong
 
         Log::info('[DEPOSIT STORE] Request Baru', [
             'member' => $member->name,
-            'amount' => $amountTotal
+            'amount' => $request->amount,
+            'method' => $method
         ]);
 
-        try {
-            // 3. Simpan ke Database
-            $topup = new TopUp(); // Pastikan model TopUp sudah di-import di atas
-            $topup->tenant_id       = $member->tenant_id ?? 1;
-            $topup->affiliate_id    = $member->id;
-            $topup->reference_no    = $refNo;
-            $topup->amount          = $amountOriginal; // Nominal murni
-            $topup->unique_code     = $uniqueCode;     // Kode unik
-            $topup->total_amount    = $amountTotal;    // Yang harus ditransfer
-            $topup->status          = 'PENDING';
-            $topup->payment_method  = 'BANK_TRANSFER';
-            $topup->created_at      = now();
-            $topup->save();
+        // =====================================================================
+        // OPSI 1: VIA DANA (PAYMENT GATEWAY / ACQUIRING)
+        // =====================================================================
+        if ($method === 'DANA') {
 
-            // 4. Pesan Instruksi
-            // Format angka rupiah
-            $formattedTotal = number_format($amountTotal, 0, ',', '.');
-
-            // Rekening Tujuan (Bisa diganti sesuai kebutuhan)
-            $bankInfo = "BCA: 1234567890 (PT Sancaka)";
-
-            // Kirim WA (Optional)
-            $msg  = "📥 *TIKET DEPOSIT*\n\n";
-            $msg .= "Halo {$member->name},\n";
-            $msg .= "Silakan transfer TEPAT senilai:\n";
-            $msg .= "💰 *Rp {$formattedTotal}*\n\n";
-            $msg .= "Ke {$bankInfo}\n";
-            $msg .= "Ref: {$refNo}";
-
-            if (method_exists($this, 'sendWhatsApp')) {
-                $this->sendWhatsApp($member->whatsapp, $msg);
+            // Cek Binding
+            if (!$member->dana_access_token) {
+                return back()->with('error', 'Akun DANA belum terhubung. Silakan hubungkan (Binding) terlebih dahulu.');
             }
 
-            // 5. Redirect Back dengan Pesan Sukses
-            return back()->with('success',
-                "✅ Tiket Deposit Dibuat!\n\n" .
-                "Silakan transfer tepat: **Rp {$formattedTotal}**\n" .
-                "(Cek WhatsApp Anda untuk instruksi lengkap)"
-            );
+            $refNo     = 'DEP-DANA-' . time() . mt_rand(100, 999);
+            $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
 
-        } catch (\Exception $e) {
-            Log::error('[DEPOSIT ERROR]', ['msg' => $e->getMessage()]);
-            return back()->with('error', 'Gagal membuat deposit: ' . $e->getMessage());
+            // Payload Create Order DANA V2
+            $payload = [
+                "request" => [
+                    "head" => [
+                        "version"      => "2.0",
+                        "function"     => "dana.acquiring.order.create",
+                        "clientId"     => config('services.dana.x_partner_id'),
+                        "clientSecret" => config('services.dana.client_secret'),
+                        "reqTime"      => $timestamp,
+                        "reqMsgId"     => (string) Str::uuid(),
+                        "reserve"      => "{}"
+                    ],
+                    "body" => [
+                        "merchantId"      => config('services.dana.merchant_id'),
+                        "merchantTransId" => $refNo,
+                        "merchantTransType" => "01",
+                        "order" => [
+                            "orderTitle"        => "Deposit Sancaka",
+                            "orderAmount"       => [
+                                "currency" => "IDR",
+                                "value"    => (string) number_format($request->amount, 0, '', '')
+                            ],
+                            "merchantTransType" => "01",
+                            "orderMemo"         => "Topup Saldo Member: " . $member->whatsapp
+                        ],
+                        "envInfo" => [
+                            "sourcePlatform" => "IPG",
+                            "terminalType"   => "SYSTEM"
+                        ],
+                        "userCredential" => [
+                            "accessToken" => $member->dana_access_token
+                        ]
+                    ]
+                ]
+            ];
+
+            // Generate Signature
+            $jsonToSign = json_encode($payload['request'], JSON_UNESCAPED_SLASHES);
+            $signature  = $this->generateSignature($jsonToSign);
+
+            try {
+                // Simpan ke Database (Model TopUp) -> Status PENDING
+                $topup = new TopUp();
+                $topup->tenant_id       = $member->tenant_id ?? 1;
+                $topup->affiliate_id    = $member->id;
+                $topup->reference_no    = $refNo;
+                $topup->amount          = $request->amount;
+                $topup->unique_code     = 0; // Tidak pakai kode unik kalau DANA
+                $topup->total_amount    = $request->amount;
+                $topup->status          = 'PENDING';
+                $topup->payment_method  = 'DANA';
+                $topup->created_at      = now();
+                $topup->save();
+
+                // Catat juga ke Log Transaksi DANA (Agar Webhook bisa mendeteksi)
+                DB::table('dana_transactions')->insert([
+                    'tenant_id'        => $member->tenant_id ?? 1,
+                    'affiliate_id'     => $member->id,
+                    'type'             => 'DEPOSIT', // Tipe Transaksi
+                    'reference_no'     => $refNo,
+                    'phone'            => $member->whatsapp,
+                    'amount'           => $request->amount,
+                    'status'           => 'PENDING',
+                    'created_at'       => now()
+                ]);
+
+                // Kirim Request
+                $response = Http::post('https://api.sandbox.dana.id/dana/acquiring/order/create.htm', [
+                    "request"   => $payload['request'],
+                    "signature" => $signature
+                ]);
+
+                $result = $response->json();
+                $resStatus = $result['response']['body']['resultInfo']['resultStatus'] ?? 'F';
+
+                if ($resStatus == 'S') {
+                    // SUKSES DAPAT LINK -> REDIRECT USER
+                    $checkoutUrl = $result['response']['body']['checkoutUrl'];
+                    return redirect($checkoutUrl);
+                } else {
+                    // GAGAL
+                    $errMsg = $result['response']['body']['resultInfo']['resultMsg'] ?? 'Gagal membuat order DANA.';
+                    $topup->status = 'FAILED';
+                    $topup->save();
+
+                    return back()->with('error', 'Gagal Deposit DANA: ' . $errMsg);
+                }
+
+            } catch (\Exception $e) {
+                Log::error('[DEPOSIT DANA ERROR]', ['msg' => $e->getMessage()]);
+                return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+            }
+        }
+
+        // =====================================================================
+        // OPSI 2: VIA BANK TRANSFER (MANUAL - KODE UNIK) - LOGIKA LAMA ANDA
+        // =====================================================================
+        else {
+            // 2. Logika Kode Unik (3 Digit Acak)
+            $uniqueCode = mt_rand(111, 999);
+            $amountOriginal = $request->amount;
+            $amountTotal    = $amountOriginal + $uniqueCode;
+
+            // Buat Ref No: DEP-YYMMDD-XXXX
+            $refNo = 'DEP-' . date('ymd') . rand(1000, 9999);
+
+            try {
+                // 3. Simpan ke Database
+                $topup = new TopUp();
+                $topup->tenant_id       = $member->tenant_id ?? 1;
+                $topup->affiliate_id    = $member->id;
+                $topup->reference_no    = $refNo;
+                $topup->amount          = $amountOriginal; // Nominal murni
+                $topup->unique_code     = $uniqueCode;     // Kode unik
+                $topup->total_amount    = $amountTotal;    // Yang harus ditransfer
+                $topup->status          = 'PENDING';
+                $topup->payment_method  = 'BANK_TRANSFER';
+                $topup->created_at      = now();
+                $topup->save();
+
+                // 4. Pesan Instruksi
+                $formattedTotal = number_format($amountTotal, 0, ',', '.');
+                $bankInfo = "BCA: 1234567890 (PT Sancaka)";
+
+                // Kirim WA
+                $msg  = "📥 *TIKET DEPOSIT*\n\n";
+                $msg .= "Halo {$member->name},\n";
+                $msg .= "Silakan transfer TEPAT senilai:\n";
+                $msg .= "💰 *Rp {$formattedTotal}*\n\n";
+                $msg .= "Ke {$bankInfo}\n";
+                $msg .= "Ref: {$refNo}";
+
+                if (method_exists($this, 'sendWhatsApp')) {
+                    $this->sendWhatsApp($member->whatsapp, $msg);
+                }
+
+                // 5. Redirect Back
+                return back()->with('success',
+                    "✅ Tiket Deposit Dibuat!\n\n" .
+                    "Silakan transfer tepat: **Rp {$formattedTotal}**\n" .
+                    "(Cek WhatsApp Anda untuk instruksi lengkap)"
+                );
+
+            } catch (\Exception $e) {
+                Log::error('[DEPOSIT ERROR]', ['msg' => $e->getMessage()]);
+                return back()->with('error', 'Gagal membuat deposit: ' . $e->getMessage());
+            }
         }
     }
 }
