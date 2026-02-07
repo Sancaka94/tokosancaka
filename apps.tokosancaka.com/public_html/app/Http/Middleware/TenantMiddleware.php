@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\URL; // Wajib Import
+use Illuminate\Support\Facades\Config; // Tambahkan ini
+use Illuminate\Support\Facades\DB;     // Tambahkan ini
 
 class TenantMiddleware
 {
@@ -18,6 +20,19 @@ class TenantMiddleware
         $subdomain = $parts[0];
 
         \Illuminate\Support\Facades\URL::defaults(['subdomain' => $subdomain]);
+
+        // -------------------------------------------------------------
+        // [MODIFIKASI KHUSUS DEMO]
+        // Jika subdomain adalah 'demo', paksa gunakan database demo
+        // -------------------------------------------------------------
+        if ($subdomain === 'demo') {
+            // Ubah koneksi default secara runtime ke mysql_demo
+            Config::set('database.default', 'mysql_demo');
+            DB::purge('mysql_demo'); // Bersihkan cache koneksi agar perubahan diterapkan
+
+            // Lewati pengecekan tabel 'tenants' karena ini database statis/demo
+            return $next($request);
+        }
 
         // -------------------------------------------------------------
         // [RULE 1] JIKA AKSES DOMAIN UTAMA (APPS), LANGSUNG LEWAT
@@ -46,12 +61,10 @@ class TenantMiddleware
         }
 
         // -------------------------------------------------------------
-        // [RULE 4] CEK DATABASE TENANT
+        // [RULE 4] CEK DATABASE TENANT (Untuk subdomain selain apps & demo)
         // -------------------------------------------------------------
         $tenant = Tenant::where('subdomain', $subdomain)->first();
 
-        // [MODIFIKASI PERMINTAAN KAMU]
-        // Jika subdomain TIDAK ADA, lempar ke Halaman Daftar
         if (!$tenant) {
             return redirect()->away('https://apps.tokosancaka.com/daftar-pos');
         }
