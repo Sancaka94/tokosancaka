@@ -1859,6 +1859,13 @@ TEXT;
             ]);\
             */
 
+            // 7. Return JSON
+            return response()->json([
+                'status' => 'success',
+                'message' => "Resi berhasil dikirim ke WhatsApp {$roleName} ({$targetName}).",
+                'debug' => $response
+            ]);
+
         } catch (Exception $e) {
             Log::error("API WA Resi Error (Admin): " . $e->getMessage());
             return response()->json([
