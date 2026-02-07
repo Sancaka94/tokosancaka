@@ -21,14 +21,40 @@ class TenantMiddleware
 
         \Illuminate\Support\Facades\URL::defaults(['subdomain' => $subdomain]);
 
-        // -------------------------------------------------------------
-        // [MODIFIKASI KHUSUS DEMO]
-        // Jika subdomain adalah 'demo', paksa gunakan database demo
+       // -------------------------------------------------------------
+        // [MAGIC FIX: PAKSA CONFIG DI RUNTIME]
         // -------------------------------------------------------------
         if ($subdomain === 'demo') {
+
+            // 1. Kita definisikan manual koneksinya di sini (Bypass file config/database.php)
+            //    Ini menjamin Laravel "melihat" koneksi mysql_demo
+            config(['database.connections.mysql_demo' => [
+                'driver'    => 'mysql',
+                'host'      => env('DB_HOST_DEMO', '127.0.0.1'),
+                'port'      => env('DB_PORT_DEMO', '3306'),
+                'database'  => env('DB_DATABASE_DEMO', 'tokq3391_demo'),
+                'username'  => env('DB_USERNAME_DEMO', 'tokq3391_demo'),
+                'password'  => env('DB_PASSWORD_DEMO', ''),
+                'charset'   => 'utf8mb4',
+                'collation' => 'utf8mb4_unicode_ci',
+                'prefix'    => '',
+                'strict'    => true,
+                'engine'    => null,
+            ]]);
+
+            // 2. Set Default ke koneksi yang baru saja kita buat
             Config::set('database.default', 'mysql_demo');
-            DB::purge('mysql_demo'); // Nama ini harus sama dengan key di config/database.php
-            DB::reconnect('mysql_demo'); // Tambahkan ini untuk memastikan koneksi benar-benar segar
+
+            // 3. Purge & Reconnect (Wajib)
+            DB::purge('mysql_demo');
+            DB::reconnect('mysql_demo');
+
+            // 4. (Opsional) Dummy Tenant untuk mencegah Error di View
+            //$demoTenant = new \stdClass();
+            //$demoTenant->name = 'Toko Demo Sancaka';
+            //$demoTenant->subdomain = 'demo';
+            //$demoTenant->status = 'active';
+            View::share('currentTenant');
 
             return $next($request);
         }
