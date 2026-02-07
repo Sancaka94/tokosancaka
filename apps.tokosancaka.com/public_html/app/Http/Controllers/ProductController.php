@@ -364,51 +364,62 @@ class ProductController extends Controller
     // API UNTUK MODAL VARIAN (AJAX)
     // ================================================================
 
-    public function getVariants($id)
-{
-    // Cek apakah yang akses adalah subdomain 'admin' atau 'pusat'
-    $host = request()->getHost();
-    $isCentral = str_contains($host, 'admin.') || str_contains($host, 'apps.');
+    // TAMBAHKAN $subdomain di depan $id
+    public function getVariants($subdomain, $id)
+    {
+        // Debugging (Opsional): Cek isi variabel
+        // dd($subdomain, $id); // Hasil: "admin", "26"
 
-    if ($isCentral) {
-        // JIKA ADMIN: Cari produk TANPA peduli tenant_id (Global Scope dimatikan)
-        // Pastikan Anda import namespace: use App\Models\Product;
+        // Kita gunakan withoutGlobalScopes jaga-jaga, tapi findOrFail($id) saja juga cukup
+        // karena produk ini memang milik Tenant 1.
         $product = Product::withoutGlobalScopes()->findOrFail($id);
-    } else {
-        // JIKA TENANT: Cari produk standar (Wajib milik tenant ybs)
-        $product = Product::findOrFail($id);
+
+        return response()->json([
+            'product_name' => $product->name,
+            'variants'     => $product->variants()->withoutGlobalScopes()->get()
+        ]);
     }
 
-    return response()->json([
-        'product_name' => $product->name,
-        'variants'     => $product->variants // Relation variants juga harus tanpa scope jika perlu
-    ]);
-}
-
-    public function updateVariants(Request $request, $id)
+    /**
+     * Update Varian Produk via Ajax/Modal
+     * Parameter $subdomain wajib ada di urutan pertama karena Route::domain(...)
+     */
+    public function updateVariants(Request $request, $subdomain, $id)
     {
-        // 1. CARI PRODUK MANUAL (FIX ERROR STRING GIVEN)
-        $product = Product::findOrFail($id);
+        // 1. CARI PRODUK (FIX: ID ada di parameter ke-3)
+        // Gunakan withoutGlobalScopes() agar Admin bisa menemukan produk milik Tenant lain
+        // Jika tidak pakai ini, Admin akan dapat 404 saat edit produk Tenant (karena tenant_id beda)
+        $product = Product::withoutGlobalScopes()->findOrFail($id);
 
-        // Validasi input
-        $request->validate([
+        // 2. VALIDASI INPUT
+        $validator = Validator::make($request->all(), [
             'variants' => 'array',
             'variants.*.name' => 'required|string',
+            'variants.*.price' => 'required|numeric|min:0',
+            'variants.*.stock' => 'required|numeric|min:0',
+            // Validasi barcode unik kecuali milik sendiri (Logic rumit, kita handle di catch saja biar cepat)
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
         DB::beginTransaction();
         try {
-            // Ambil Tenant ID yang bersih
-            $fixTenantId = (int) (is_array($this->tenantId) ? $this->tenantId[0] : $this->tenantId);
+            // Tentukan Tenant ID Pemilik Produk
+            // Jika Admin mengedit, kita pakai tenant_id produk aslinya, bukan ID Admin (1)
+            // Jika produk baru (jarang terjadi di update), fallback ke $this->tenantId
+            $targetTenantId = $product->tenant_id ?? (int)(is_array($this->tenantId) ? $this->tenantId[0] : $this->tenantId);
 
-            // Cek Jenis Induknya
+            // Deteksi Tipe Induk (Physical/Service) untuk Prefix Barcode (100/200)
             $parentType = $product->type;
             if (empty($parentType) && !empty($product->barcode)) {
                 $prefixInduk = substr($product->barcode, 0, 3);
                 $parentType = ($prefixInduk === '200') ? 'service' : 'physical';
             }
 
-            // Hapus varian lama
+            // 3. HAPUS VARIAN LAMA (Reset Strategy)
+            // Kita hapus semua varian lama dan buat baru sesuai input form
             $product->variants()->delete();
 
             $totalStock = 0;
@@ -416,21 +427,23 @@ class ProductController extends Controller
             if ($request->filled('variants')) {
                 foreach ($request->variants as $variant) {
 
-                    // --- LOGIKA BARCODE VARIAN ---
+                    // A. LOGIKA BARCODE VARIAN
                     $varBarcode = $variant['barcode'] ?? null;
-
                     if (empty($varBarcode)) {
+                        // Generate Barcode Otomatis (Panggil Helper di Controller)
                         $varBarcode = $this->generateSmartBarcode($parentType);
                     }
 
-                    // Generate SKU jika kosong
+                    // B. LOGIKA SKU VARIAN
                     $variantSku = $variant['sku'] ?? null;
                     if (empty($variantSku)) {
+                        // Generate SKU Otomatis (Panggil Helper di Controller)
                         $variantSku = $this->generateSku($product->name, $variant['name']);
                     }
 
-                    $product->variants()->create([
-                        'tenant_id'  => $fixTenantId,
+                    // C. SIMPAN VARIAN BARU
+                    ProductVariant::create([
+                        'tenant_id'  => $targetTenantId, // PENTING: Pakai ID pemilik asli
                         'product_id' => $product->id,
                         'name'       => $variant['name'],
                         'price'      => $variant['price'],
@@ -443,7 +456,8 @@ class ProductController extends Controller
                 }
             }
 
-            // Update Stok Induk
+            // 4. UPDATE STATUS STOK INDUK
+            // Update total stok induk berdasarkan jumlah stok semua varian
             $product->update([
                 'stock' => $totalStock,
                 'has_variant' => count($request->variants) > 0 ? 1 : 0,
@@ -455,7 +469,10 @@ class ProductController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Server Error: ' . $e->getMessage()], 500);
+            Log::error('Update Variants Error: ' . $e->getMessage());
+
+            // Return error agar bisa ditangkap JavaScript Frontend
+            return response()->json(['success' => false, 'message' => 'Gagal simpan: ' . $e->getMessage()], 500);
         }
     }
 
