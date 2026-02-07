@@ -366,17 +366,25 @@ class ProductController extends Controller
 
     /**
      * Ambil data varian untuk ditampilkan di Modal
+     * FIX: Menggunakan $id manual untuk menghindari tabrakan dengan parameter subdomain
      */
-    public function getVariants(Product $product)
+    public function getVariants($id)
     {
+        // Cari produk secara manual (fail jika tidak ketemu)
+        // Ini mengatasi masalah dimana $id berisi string subdomain
+        $product = Product::findOrFail($id);
+
         return response()->json([
             'product_name' => $product->name,
             'variants'     => $product->variants
         ]);
     }
 
-    public function updateVariants(Request $request, Product $product)
+    public function updateVariants(Request $request, $id)
     {
+        // 1. CARI PRODUK MANUAL (FIX ERROR STRING GIVEN)
+        $product = Product::findOrFail($id);
+
         // Validasi input
         $request->validate([
             'variants' => 'array',
@@ -385,18 +393,14 @@ class ProductController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. Ambil Tenant ID yang bersih (Anti Error 500)
+            // Ambil Tenant ID yang bersih
             $fixTenantId = (int) (is_array($this->tenantId) ? $this->tenantId[0] : $this->tenantId);
 
-            // 2. Cek Jenis Induknya (Barang/Jasa) untuk penentuan Prefix Barcode
-            // Cara 1: Cek kolom 'type' di database (Lebih Akurat)
+            // Cek Jenis Induknya
             $parentType = $product->type;
-
-            // Cara 2 (Cadangan): Cek 3 digit awal barcode induk
             if (empty($parentType) && !empty($product->barcode)) {
                 $prefixInduk = substr($product->barcode, 0, 3);
-                if ($prefixInduk === '200') $parentType = 'service';
-                else $parentType = 'physical';
+                $parentType = ($prefixInduk === '200') ? 'service' : 'physical';
             }
 
             // Hapus varian lama
@@ -410,13 +414,9 @@ class ProductController extends Controller
                     // --- LOGIKA BARCODE VARIAN ---
                     $varBarcode = $variant['barcode'] ?? null;
 
-                    // A. Jika user mengosongkan barcode -> Generate Otomatis
                     if (empty($varBarcode)) {
-                        // Generate sesuai tipe induk (200.. atau 100..)
                         $varBarcode = $this->generateSmartBarcode($parentType);
                     }
-                    // B. Jika user isi manual -> Kita validasi sedikit (Opsional)
-                    // (Disini kita biarkan user input manual, validasi database yang akan menolak jika duplikat)
 
                     // Generate SKU jika kosong
                     $variantSku = $variant['sku'] ?? null;
@@ -425,13 +425,13 @@ class ProductController extends Controller
                     }
 
                     $product->variants()->create([
-                        'tenant_id'  => $fixTenantId, // Tenant ID Aman
+                        'tenant_id'  => $fixTenantId,
                         'product_id' => $product->id,
                         'name'       => $variant['name'],
                         'price'      => $variant['price'],
                         'stock'      => $variant['stock'],
                         'sku'        => $variantSku,
-                        'barcode'    => $varBarcode, // Barcode Aman (100/200)
+                        'barcode'    => $varBarcode,
                     ]);
 
                     $totalStock += $variant['stock'];
@@ -450,7 +450,6 @@ class ProductController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            // Kembalikan error JSON biar kebaca di console log browser
             return response()->json(['success' => false, 'message' => 'Server Error: ' . $e->getMessage()], 500);
         }
     }
