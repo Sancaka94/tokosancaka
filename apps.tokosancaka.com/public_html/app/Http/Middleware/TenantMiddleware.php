@@ -26,11 +26,10 @@ class TenantMiddleware
         // Jika subdomain adalah 'demo', paksa gunakan database demo
         // -------------------------------------------------------------
         if ($subdomain === 'demo') {
-            // Ubah koneksi default secara runtime ke mysql_demo
             Config::set('database.default', 'mysql_demo');
-            DB::purge('mysql_demo'); // Bersihkan cache koneksi agar perubahan diterapkan
+            DB::purge('mysql_demo'); // Nama ini harus sama dengan key di config/database.php
+            DB::reconnect('mysql_demo'); // Tambahkan ini untuk memastikan koneksi benar-benar segar
 
-            // Lewati pengecekan tabel 'tenants' karena ini database statis/demo
             return $next($request);
         }
 
