@@ -2075,7 +2075,7 @@ public function handleDanaCallback(Request $request)
         }
     }
 
-   public function invoice($orderNumber)
+   public function invoice($subdomain, $orderNumber)
     {
         // LOG LOG: Penanda awal buka invoice
         Log::info("LOG LOG: =========================================");
