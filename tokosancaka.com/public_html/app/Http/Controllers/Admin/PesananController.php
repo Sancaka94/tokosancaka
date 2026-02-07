@@ -1768,22 +1768,23 @@ TEXT;
 
         try {
             // --- OPSI 1: PUSHWA (AKTIF) ---
-            if ($senderWa) {
+            /*if ($senderWa) {
                 $this->_sendPushWa($senderWa, $message);
             }
             if ($receiverWa) {
                 $this->_sendPushWa($receiverWa, $message);
             }
+            */
 
             // --- OPSI 2: FONNTE (NON-AKTIF / CADANGAN) ---
-            /*
+
             if ($senderWa) {
                 FonnteService::sendMessage($senderWa, $message);
             }
             if ($receiverWa) {
                 FonnteService::sendMessage($receiverWa, $message);
             }
-            */
+
 
         } catch (Exception $e) {
             Log::error('WA Notification failed: ' . $e->getMessage(), ['invoice' => $pesanan->nomor_invoice]);
@@ -1845,17 +1846,18 @@ TEXT;
             $message .= "Simpan bukti resi ini ya Kak. Terima kasih telah menggunakan Sancaka Express! 🙏";
 
           // 6. Kirim via PushWA (Gantikan Fonnte)
-            // $response = FonnteService::sendMessage($targetPhone, $message); // <-- Fonnte Lama
+            $response = FonnteService::sendMessage($targetPhone, $message); // <-- Fonnte Lama
 
             // Panggil Helper PushWA
-            $pushWaResponse = $this->_sendPushWa($targetPhone, $message);
+            // $pushWaResponse = $this->_sendPushWa($targetPhone, $message);
 
             // 7. Return JSON
-            return response()->json([
+            /* return response()->json([
                 'status' => 'success',
                 'message' => "Resi berhasil dikirim ke WhatsApp {$roleName} ({$targetName}) via PushWA.",
                 'debug' => $pushWaResponse
-            ]);
+            ]);\
+            */
 
         } catch (Exception $e) {
             Log::error("API WA Resi Error (Admin): " . $e->getMessage());
