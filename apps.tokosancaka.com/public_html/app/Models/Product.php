@@ -27,6 +27,7 @@ class Product extends Model
         'base_price',   // Harga Modal
         'sell_price',   // Harga Jual
         'stock',        // Sisa Stok
+        'sku',          // <--- WAJIB TAMBAHKAN INI (JANGAN LUPA)
         'sold',         // Jumlah Terjual
         'unit',         // Satuan (pcs, kg, dll)
         'supplier',     // Nama Supplier
