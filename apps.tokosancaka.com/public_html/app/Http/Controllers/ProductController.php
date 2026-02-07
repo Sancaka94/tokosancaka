@@ -364,21 +364,26 @@ class ProductController extends Controller
     // API UNTUK MODAL VARIAN (AJAX)
     // ================================================================
 
-    /**
-     * Ambil data varian untuk ditampilkan di Modal
-     * FIX: Menggunakan $id manual untuk menghindari tabrakan dengan parameter subdomain
-     */
     public function getVariants($id)
-    {
-        // Cari produk secara manual (fail jika tidak ketemu)
-        // Ini mengatasi masalah dimana $id berisi string subdomain
-        $product = Product::findOrFail($id);
+{
+    // Cek apakah yang akses adalah subdomain 'admin' atau 'pusat'
+    $host = request()->getHost();
+    $isCentral = str_contains($host, 'admin.') || str_contains($host, 'apps.');
 
-        return response()->json([
-            'product_name' => $product->name,
-            'variants'     => $product->variants
-        ]);
+    if ($isCentral) {
+        // JIKA ADMIN: Cari produk TANPA peduli tenant_id (Global Scope dimatikan)
+        // Pastikan Anda import namespace: use App\Models\Product;
+        $product = Product::withoutGlobalScopes()->findOrFail($id);
+    } else {
+        // JIKA TENANT: Cari produk standar (Wajib milik tenant ybs)
+        $product = Product::findOrFail($id);
     }
+
+    return response()->json([
+        'product_name' => $product->name,
+        'variants'     => $product->variants // Relation variants juga harus tanpa scope jika perlu
+    ]);
+}
 
     public function updateVariants(Request $request, $id)
     {
