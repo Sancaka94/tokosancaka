@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\PosTopUp;
+use App\Models\TopUp;
 use Throwable;
 
 class TenantPaymentController extends Controller
