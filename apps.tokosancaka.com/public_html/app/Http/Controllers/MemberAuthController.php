@@ -1488,9 +1488,8 @@ public function checkTopupStatus(Request $request)
 
    public function storeDeposit(Request $request)
     {
-        // 1. Validasi Input
         $request->validate([
-            'amount'         => 'required|numeric|min:1000',
+            'amount' => 'required|numeric|min:1000',
             'payment_method' => 'nullable|in:BANK_TRANSFER,DANA',
         ]);
 
@@ -1499,22 +1498,21 @@ public function checkTopupStatus(Request $request)
 
         if ($method === 'DANA') {
 
-            // --- HINDARI ERROR 403: PAKSA NOMINAL KECIL SAAT TESTING ---
-            // Sandbox sering menolak transaksi besar. Kita coba Rp 1000 perak dulu.
-            // Setelah sukses, baru kembalikan ke $request->amount
-            // $realAmount = $request->amount; // (Uncomment ini nanti kalau sudah sukses)
-            $realAmount = 1000; // <--- HARDCODE TEST 1000 PERAK
-
+            // CEK TOKEN
             if (empty($member->dana_access_token)) {
                 return back()->with('error', 'Silakan hubungkan akun DANA Anda terlebih dahulu.');
             }
 
+            // HARDCODE NOMINAL KECIL (TESTING)
+            // Limit sandbox kadang kecil, kita pakai 1000 dulu.
+            $realAmount = 1000;
+
+            // Config Check
             $merchantId = config('services.dana.merchant_id');
             if (empty($merchantId)) return back()->with('error', 'Config Error: Merchant ID Missing.');
 
-            // Idempotency Check
+            // Init DB
             $refNo = 'DEP-' . time() . mt_rand(100, 999);
-
             DB::table('dana_transactions')->insert([
                 'tenant_id'    => $member->tenant_id ?? 1,
                 'affiliate_id' => $member->id,
@@ -1536,36 +1534,33 @@ public function checkTopupStatus(Request $request)
 
                 $apiInstance = new WidgetApi(null, $config);
 
-                // 2. Order Object
+                // 2. Order
                 $orderObj = new DanaOrder();
                 $orderObj->setOrderTitle("Deposit Saldo");
                 $orderObj->setOrderMemo("Topup ID " . $member->id);
 
-                // 3. EnvInfo (STANDAR BAKU)
+                // 3. EnvInfo
                 $envInfo = new EnvInfo();
                 $envInfo->setSourcePlatform("IPG");
                 $envInfo->setTerminalType("WEB");
                 $envInfo->setWebsiteLanguage("ID");
-                $envInfo->setClientIp("127.0.0.1"); // Wajib IPv4
+                $envInfo->setClientIp("127.0.0.1"); // IPv4 Only
 
-                // 4. Additional Info (STANDAR)
+                // 4. Additional Info
                 $addInfo = new WidgetPaymentRequestAdditionalInfo();
-                // KEMBALI KE DIGITAL_PRODUCT (Format Paling Aman)
                 $addInfo->setProductCode("DIGITAL_PRODUCT");
-                // SET MCC GROCERY (Biasanya paling 'permisif')
-                $addInfo->setMcc("5411");
+                // HAPUS MCC (Biarkan Default agar tidak konflik izin)
+                // $addInfo->setMcc("5411");
                 $addInfo->setOrder($orderObj);
                 $addInfo->setEnvInfo($envInfo);
 
-                // 5. Request Utama
+                // 5. Request
                 $paymentRequest = new WidgetPaymentRequest();
                 $paymentRequest->setMerchantId($merchantId);
                 $paymentRequest->setPartnerReferenceNo($refNo);
 
-                // --- AMOUNT (WAJIB 2 DESIMAL) ---
-                // Format: "1000.00"
+                // Amount (Strict 2 Decimal)
                 $amountString = number_format($realAmount, 2, '.', '');
-
                 $money = new Money();
                 $money->setValue($amountString);
                 $money->setCurrency("IDR");
@@ -1577,9 +1572,6 @@ public function checkTopupStatus(Request $request)
                 $urlParam->setType("PAY_RETURN");
                 $urlParam->setIsDeeplink("Y");
                 $paymentRequest->setUrlParams([$urlParam]);
-
-                // Expiry (Opsional - Matikan dulu biar aman format)
-                // $paymentRequest->setValidUpTo(...);
 
                 $paymentRequest->setAdditionalInfo($addInfo);
 
