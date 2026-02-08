@@ -57,7 +57,7 @@ class TenantPaymentController extends Controller
             $customerData = [
                 'name'  => $user->name,
                 'email' => $user->email,
-                'phone' => $user->phone ?? '08123456789'
+                'phone' => $user->phone ?? '085745808809'
             ];
 
             // 4. Request Payment URL ke DOKU
