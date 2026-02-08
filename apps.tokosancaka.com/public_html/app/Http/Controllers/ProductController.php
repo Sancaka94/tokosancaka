@@ -5,15 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\ProductVariant;
-use App\Models\Tenant; // <--- WAJIB TAMBAHKAN INI
+use App\Models\Tenant; // <--- WAJIB: Model Tenant
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule; // <--- TARUH DISINI BOS!
-use Illuminate\Support\Str; // Wajib untuk manipulasi string/slug
-use Barryvdh\DomPDF\Facade\Pdf; // Import di atas
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth; // <--- WAJIB: Auth User
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ProductController extends Controller
 {
@@ -21,24 +22,38 @@ class ProductController extends Controller
 
     public function __construct(Request $request)
     {
-        // Deteksi Subdomain
+        // 1. Deteksi Subdomain & Tenant
         $host = $request->getHost();
         $subdomain = explode('.', $host)[0];
+
         $tenant = Tenant::where('subdomain', $subdomain)->first();
 
-        // Kunci ID Tenant secara global untuk controller ini
-        $this->tenantId = $tenant ? $tenant->id : 1;
+        // Strict Check: Jika tenant tidak ada, error 404 (Security)
+        if (!$tenant) {
+            abort(404, 'Toko/Tenant tidak ditemukan.');
+        }
+
+        $this->tenantId = $tenant->id;
+
+        // 2. Middleware Auth (Wajib Login)
+        $this->middleware('auth');
     }
 
-    public function index(Request $request)
+    /**
+     * Menampilkan daftar produk
+     * Route: GET {subdomain}/products
+     */
+    public function index(Request $request, $subdomain = null)
     {
         // 1. Ambil Data Kategori - Filter Tenant
-        $categories = Category::where('tenant_id', $this->tenantId)->orderBy('name', 'asc')->get();
+        $categories = Category::where('tenant_id', $this->tenantId)
+                              ->orderBy('name', 'asc')
+                              ->get();
 
         // 2. Query Produk - Filter Tenant
-        $query = Product::where('tenant_id', $this->tenantId) // <--- KUNCI DISINI
-                ->with(['category', 'variants'])
-                ->orderBy('name', 'asc');
+        $query = Product::where('tenant_id', $this->tenantId) // <--- TENANT FILTER
+                        ->with(['category', 'variants'])
+                        ->orderBy('name', 'asc');
 
         // --- FILTER PENCARIAN ---
         if ($request->filled('search')) {
@@ -86,10 +101,25 @@ class ProductController extends Controller
         return $pName . '-' . mt_rand(10000, 99999);
     }
 
-    public function store(Request $request)
+    /**
+     * Halaman Create Standard
+     */
+    public function create($subdomain = null)
     {
-        // 1. Bersihkan Tenant ID (Wajib Integer)
-        $fixTenantId = (int) (is_array($this->tenantId) ? $this->tenantId[0] : $this->tenantId);
+        $categories = Category::where('tenant_id', $this->tenantId)
+                              ->where('is_active', true)
+                              ->get();
+        return view('products.create', compact('categories'));
+    }
+
+    /**
+     * Proses Simpan Produk Baru
+     * Route: POST {subdomain}/products
+     */
+    public function store(Request $request, $subdomain = null)
+    {
+        // 1. Ambil User ID
+        $userId = Auth::id();
 
         // 2. Validasi Input (Termasuk Gambar)
         $validator = Validator::make($request->all(), [
@@ -105,8 +135,8 @@ class ProductController extends Controller
                 'nullable',
                 'min:10',
                 'max:13',
-                Rule::unique('products')->where('tenant_id', $fixTenantId),
-                Rule::unique('product_variants')->where('tenant_id', $fixTenantId)
+                Rule::unique('products')->where('tenant_id', $this->tenantId),
+                Rule::unique('product_variants')->where('tenant_id', $this->tenantId)
             ],
             // Validasi Varian
             'variants'    => 'array',
@@ -115,8 +145,8 @@ class ProductController extends Controller
                 'min:10',
                 'max:13',
                 'distinct',
-                Rule::unique('products', 'barcode')->where('tenant_id', $fixTenantId),
-                Rule::unique('product_variants', 'barcode')->where('tenant_id', $fixTenantId)
+                Rule::unique('products', 'barcode')->where('tenant_id', $this->tenantId),
+                Rule::unique('product_variants', 'barcode')->where('tenant_id', $this->tenantId)
             ]
         ]);
 
@@ -130,8 +160,8 @@ class ProductController extends Controller
                 $file = $request->file('image');
                 // Nama file unik: waktu_namaasli.jpg
                 $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
-                // Simpan ke folder: storage/app/public/products
-                $imagePath = $file->storeAs('products', $filename, 'public');
+                // Simpan ke folder tenant agar terpisah: products/tenant_ID
+                $imagePath = $file->storeAs("products/tenant_{$this->tenantId}", $filename, 'public');
             }
 
             // 4. LOGIKA AUTO BARCODE INDUK
@@ -139,7 +169,7 @@ class ProductController extends Controller
             $productType = $request->type ?? 'physical'; // Default ke Barang jika null
 
             if (empty($barcodeToSave)) {
-                // Generate 100... atau 200...
+                // Generate 100... atau 200... (Smart Barcode)
                 $barcodeToSave = $this->generateSmartBarcode($productType);
             }
 
@@ -148,7 +178,9 @@ class ProductController extends Controller
 
             // 5. SIMPAN KE DATABASE
             $product = Product::create([
-                'tenant_id'    => $fixTenantId,
+                'tenant_id'    => $this->tenantId, // <--- TENANT ID
+                'user_id'      => $userId,         // <--- USER ID
+                'created_by'   => $userId,         // <--- LOG CREATOR
                 'name'         => $request->name,
                 'type'         => $productType,
                 'sku'          => $productSku,
@@ -159,7 +191,7 @@ class ProductController extends Controller
                 'stock_status' => 'available',
                 'has_variant'  => $hasVariant,
                 'barcode'      => $barcodeToSave,
-                'image'        => $imagePath, // <--- MASUKKAN PATH GAMBAR DISINI
+                'image'        => $imagePath,
                 'unit'         => $request->unit ?? 'pcs',
                 'supplier'     => $request->supplier,
             ]);
@@ -176,7 +208,7 @@ class ProductController extends Controller
                     }
 
                     ProductVariant::create([
-                        'tenant_id'  => $fixTenantId,
+                        'tenant_id'  => $this->tenantId, // <--- TENANT ID
                         'product_id' => $product->id,
                         'name'       => $variant['name'],
                         'price'      => $variant['price'],
@@ -191,7 +223,7 @@ class ProductController extends Controller
             }
 
             DB::commit();
-            return redirect()->route('products.index')->with('success', 'Produk Berhasil Disimpan');
+            return redirect()->route('products.index', $subdomain)->with('success', 'Produk Berhasil Disimpan');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -203,22 +235,37 @@ class ProductController extends Controller
         }
     }
 
-    public function update(Request $request, Product $product)
+    /**
+     * Proses Update Produk
+     * Method Signature: ($request, $subdomain, $id) -> Urutan Parameter Route
+     */
+    public function update(Request $request, $subdomain, $id)
     {
-        // 1. Validasi (Sudah Benar)
+        // 1. Validasi Kepemilikan (Strict Tenant Check)
+        $product = Product::where('tenant_id', $this->tenantId)
+                          ->where('id', $id)
+                          ->firstOrFail();
+
+        // 2. Validasi Input
         $validator = Validator::make($request->all(), [
             'name'        => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
             'base_price'  => 'required|numeric|min:0',
             'sell_price'  => 'nullable|numeric|min:0',
             'unit'        => 'required|string',
-            'barcode'     => 'nullable|unique:products,barcode,' . $product->id . '|unique:product_variants,barcode',
+            // Barcode unik kecuali milik produk ini sendiri
+            'barcode'     => [
+                'nullable',
+                Rule::unique('products')->ignore($product->id)->where('tenant_id', $this->tenantId),
+                Rule::unique('product_variants')->where('tenant_id', $this->tenantId)
+            ],
         ]);
 
-        // Logic Barcode (Sudah Benar)
+        // Logic Barcode (Generate Numeric jika kosong - SESUAI KODE ASLI)
         $barcodeToSave = $request->barcode;
         if (empty($barcodeToSave)) {
             $catId = $request->category_id ?? $product->category_id;
+            // Gunakan Numeric Barcode sesuai kode lama Anda
             $barcodeToSave = $this->generateNumericBarcode($catId);
         }
 
@@ -246,6 +293,7 @@ class ProductController extends Controller
                 'supplier'    => $request->supplier,
                 'has_variant' => $hasVariant,
                 'barcode'     => $barcodeToSave,
+                'updated_by'  => Auth::id(), // <--- UPDATE LOG USER
             ];
 
             if (!$hasVariant) {
@@ -259,31 +307,37 @@ class ProductController extends Controller
                 }
                 $file = $request->file('image');
                 $filename = time() . '_' . $file->getClientOriginalName();
-                $data['image'] = $file->storeAs('products', $filename, 'public');
+                $data['image'] = $file->storeAs("products/tenant_{$this->tenantId}", $filename, 'public');
             }
 
             $product->update($data);
 
-            // LOGIKA UPDATE VARIAN
+            // LOGIKA UPDATE VARIAN (Manual Form / Bukan Ajax)
+            // Kode asli Anda punya blok ini di update(), jadi saya pertahankan.
+            // Namun jika Anda pakai Modal Ajax, blok ini mungkin tidak terpakai,
+            // tapi tetap saya simpan agar "LENGKAP".
             if ($hasVariant) {
-                $product->variants()->delete(); // Hapus lama
-                $totalVariantStock = 0;
+                // Hapus lama (Scope Tenant)
+                ProductVariant::where('product_id', $product->id)
+                              ->where('tenant_id', $this->tenantId)
+                              ->delete();
 
-                // Siapkan Tenant ID yang aman (Angka)
-                $fixTenantId = (int) (is_array($this->tenantId) ? $this->tenantId[0] : $this->tenantId);
+                $totalVariantStock = 0;
 
                 if ($request->filled('variants')) {
                     foreach ($request->variants as $variant) {
+
                         $variantSku = $variant['sku'] ?? $this->generateSku($request->name, $variant['name']);
 
                         // Cek Barcode Varian
                         $varBarcode = $variant['barcode'] ?? null;
                         if (empty($varBarcode)) {
+                            // Gunakan Numeric Barcode (Kode Asli)
                             $varBarcode = $this->generateNumericBarcode($request->category_id);
                         }
 
                         ProductVariant::create([
-                            'tenant_id'  => $fixTenantId, // <--- DULU LUPA DISINI (Sekarang sudah ada)
+                            'tenant_id'  => $this->tenantId, // <--- TENANT ID
                             'product_id' => $product->id,
                             'name'       => $variant['name'],
                             'price'      => $variant['price'],
@@ -300,11 +354,14 @@ class ProductController extends Controller
                     'stock_status' => $totalVariantStock > 0 ? 'available' : 'out_of_stock'
                 ]);
             } else {
-                $product->variants()->delete();
+                // Jika berubah jadi single product, hapus varian
+                ProductVariant::where('product_id', $product->id)
+                              ->where('tenant_id', $this->tenantId)
+                              ->delete();
             }
 
             DB::commit();
-            return redirect()->route('products.index')->with('success', 'Produk berhasil diperbarui!');
+            return redirect()->route('products.index', $subdomain)->with('success', 'Produk berhasil diperbarui!');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -316,8 +373,13 @@ class ProductController extends Controller
     /**
      * Hapus Produk
      */
-    public function destroy(Product $product)
+    public function destroy($subdomain, $id)
     {
+        // Cari Product Scope Tenant
+        $product = Product::where('tenant_id', $this->tenantId)
+                          ->where('id', $id)
+                          ->firstOrFail();
+
         try {
             if ($product->image && Storage::disk('public')->exists($product->image)) {
                 Storage::disk('public')->delete($product->image);
@@ -326,30 +388,40 @@ class ProductController extends Controller
             // Cascade delete di database akan otomatis menghapus variants
             $product->delete();
 
-            return redirect()->route('products.index')->with('success', 'Produk dihapus!');
+            return redirect()->route('products.index', $subdomain)->with('success', 'Produk dihapus!');
         } catch (\Exception $e) {
-            return redirect()->route('products.index')->with('error', 'Gagal hapus.');
+            return redirect()->route('products.index', $subdomain)->with('error', 'Gagal hapus.');
         }
     }
 
     /**
      * Halaman Edit Standard
      */
-    public function edit(Product $product)
+    public function edit($subdomain, $id)
     {
-        if ($product->tenant_id != $this->tenantId) {
-            abort(403, 'Anda tidak memiliki akses ke produk ini.');
-        }
+        $product = Product::where('tenant_id', $this->tenantId)
+                          ->where('id', $id)
+                          ->firstOrFail();
 
-        $product->load('variants'); // Load data varian
-        // PROTEKSI: Cek apakah produk ini milik tenant yang sedang buka subdomain ini
+        $product->load('variants');
 
-        $categories = Category::where('is_active', true)->orderBy('name', 'asc')->get();
+        $categories = Category::where('tenant_id', $this->tenantId)
+                              ->where('is_active', true)
+                              ->orderBy('name', 'asc')
+                              ->get();
+
         return view('products.edit', compact('product', 'categories'));
     }
 
-    public function show(Product $product)
+    /**
+     * Detail Produk
+     */
+    public function show($subdomain, $id)
     {
+        $product = Product::where('tenant_id', $this->tenantId)
+                          ->where('id', $id)
+                          ->firstOrFail();
+
         // Jika request dari Electron, return JSON
         if (request()->wantsJson() || request()->is('api/*')) {
             $product->load(['variants', 'category']);
@@ -361,35 +433,44 @@ class ProductController extends Controller
     }
 
     // ================================================================
-    // API UNTUK MODAL VARIAN (AJAX)
+    // API UNTUK MODAL VARIAN (AJAX) - FIX SUBDOMAIN PARAMETER
     // ================================================================
 
-    // TAMBAHKAN $subdomain di depan $id
+    /**
+     * Get Variants for Modal
+     * Method Signature: ($subdomain, $id)
+     */
     public function getVariants($subdomain, $id)
     {
-        // Debugging (Opsional): Cek isi variabel
-        // dd($subdomain, $id); // Hasil: "admin", "26"
+        // Cari Produk Tenant Ini
+        $product = Product::where('tenant_id', $this->tenantId)
+                          ->where('id', $id)
+                          ->first();
 
-        // Kita gunakan withoutGlobalScopes jaga-jaga, tapi findOrFail($id) saja juga cukup
-        // karena produk ini memang milik Tenant 1.
-        $product = Product::withoutGlobalScopes()->findOrFail($id);
+        // Fix Javascript Proxy Error
+        if (!$product) {
+            return response()->json(['error' => 'Produk tidak ditemukan.'], 404);
+        }
 
         return response()->json([
             'product_name' => $product->name,
-            'variants'     => $product->variants()->withoutGlobalScopes()->get()
+            'variants'     => $product->variants()
+                                      ->where('tenant_id', $this->tenantId) // Tenant Scope
+                                      ->withoutGlobalScopes() // Opsional jika ada scope lain
+                                      ->get()
         ]);
     }
 
     /**
      * Update Varian Produk via Ajax/Modal
-     * Parameter $subdomain wajib ada di urutan pertama karena Route::domain(...)
+     * Method Signature: ($request, $subdomain, $id)
      */
     public function updateVariants(Request $request, $subdomain, $id)
     {
-        // 1. CARI PRODUK (FIX: ID ada di parameter ke-3)
-        // Gunakan withoutGlobalScopes() agar Admin bisa menemukan produk milik Tenant lain
-        // Jika tidak pakai ini, Admin akan dapat 404 saat edit produk Tenant (karena tenant_id beda)
-        $product = Product::withoutGlobalScopes()->findOrFail($id);
+        // 1. CARI PRODUK TENANT
+        $product = Product::where('tenant_id', $this->tenantId)
+                          ->where('id', $id)
+                          ->firstOrFail();
 
         // 2. VALIDASI INPUT
         $validator = Validator::make($request->all(), [
@@ -397,7 +478,7 @@ class ProductController extends Controller
             'variants.*.name' => 'required|string',
             'variants.*.price' => 'required|numeric|min:0',
             'variants.*.stock' => 'required|numeric|min:0',
-            // Validasi barcode unik kecuali milik sendiri (Logic rumit, kita handle di catch saja biar cepat)
+            // Validasi barcode unik handle di catch
         ]);
 
         if ($validator->fails()) {
@@ -406,11 +487,6 @@ class ProductController extends Controller
 
         DB::beginTransaction();
         try {
-            // Tentukan Tenant ID Pemilik Produk
-            // Jika Admin mengedit, kita pakai tenant_id produk aslinya, bukan ID Admin (1)
-            // Jika produk baru (jarang terjadi di update), fallback ke $this->tenantId
-            $targetTenantId = $product->tenant_id ?? (int)(is_array($this->tenantId) ? $this->tenantId[0] : $this->tenantId);
-
             // Deteksi Tipe Induk (Physical/Service) untuk Prefix Barcode (100/200)
             $parentType = $product->type;
             if (empty($parentType) && !empty($product->barcode)) {
@@ -418,9 +494,10 @@ class ProductController extends Controller
                 $parentType = ($prefixInduk === '200') ? 'service' : 'physical';
             }
 
-            // 3. HAPUS VARIAN LAMA (Reset Strategy)
-            // Kita hapus semua varian lama dan buat baru sesuai input form
-            $product->variants()->delete();
+            // 3. HAPUS VARIAN LAMA (Reset Strategy) - Scope Tenant
+            ProductVariant::where('product_id', $product->id)
+                          ->where('tenant_id', $this->tenantId)
+                          ->delete();
 
             $totalStock = 0;
 
@@ -430,20 +507,20 @@ class ProductController extends Controller
                     // A. LOGIKA BARCODE VARIAN
                     $varBarcode = $variant['barcode'] ?? null;
                     if (empty($varBarcode)) {
-                        // Generate Barcode Otomatis (Panggil Helper di Controller)
+                        // Generate Barcode Otomatis
                         $varBarcode = $this->generateSmartBarcode($parentType);
                     }
 
                     // B. LOGIKA SKU VARIAN
                     $variantSku = $variant['sku'] ?? null;
                     if (empty($variantSku)) {
-                        // Generate SKU Otomatis (Panggil Helper di Controller)
+                        // Generate SKU Otomatis
                         $variantSku = $this->generateSku($product->name, $variant['name']);
                     }
 
                     // C. SIMPAN VARIAN BARU
                     ProductVariant::create([
-                        'tenant_id'  => $targetTenantId, // PENTING: Pakai ID pemilik asli
+                        'tenant_id'  => $this->tenantId, // <--- WAJIB
                         'product_id' => $product->id,
                         'name'       => $variant['name'],
                         'price'      => $variant['price'],
@@ -457,11 +534,11 @@ class ProductController extends Controller
             }
 
             // 4. UPDATE STATUS STOK INDUK
-            // Update total stok induk berdasarkan jumlah stok semua varian
             $product->update([
                 'stock' => $totalStock,
                 'has_variant' => count($request->variants) > 0 ? 1 : 0,
-                'stock_status' => $totalStock > 0 ? 'available' : 'out_of_stock'
+                'stock_status' => $totalStock > 0 ? 'available' : 'out_of_stock',
+                'updated_by' => Auth::id() // <--- LOG USER
             ]);
 
             DB::commit();
@@ -470,22 +547,20 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Update Variants Error: ' . $e->getMessage());
-
             // Return error agar bisa ditangkap JavaScript Frontend
             return response()->json(['success' => false, 'message' => 'Gagal simpan: ' . $e->getMessage()], 500);
         }
     }
 
-    // Halaman create standar
-    public function create() {
-        $categories = Category::where('is_active', true)->get();
-        return view('products.create', compact('categories'));
-    }
-
-    public function downloadPdf(Request $request)
+    /**
+     * Download PDF
+     * Method Signature: ($request, $subdomain)
+     */
+    public function downloadPdf(Request $request, $subdomain = null)
     {
-        // 1. Mulai Query dengan Eager Loading (Relasi 'variants' WAJIB dibawa)
-        $query = Product::with(['category', 'variants'])
+        // 1. Mulai Query dengan Eager Loading
+        $query = Product::where('tenant_id', $this->tenantId) // <--- Filter Tenant
+                        ->with(['category', 'variants'])
                         ->orderBy('name', 'asc');
 
         // --- FILTER KATEGORI ---
@@ -493,7 +568,7 @@ class ProductController extends Controller
         if ($request->has('category_id') && $request->category_id != 'all') {
             $query->where('category_id', $request->category_id);
 
-            // Ambil nama kategori untuk judul di PDF
+            // Ambil nama kategori untuk judul di PDF (Tenant Scope)
             $cat = Category::where('tenant_id', $this->tenantId)->find($request->category_id);
             if ($cat) {
                 $categoryName = $cat->name;
@@ -512,7 +587,7 @@ class ProductController extends Controller
             }
         }
 
-        // --- FILTER PENCARIAN (Opsional: Jika ingin cetak hasil search saja) ---
+        // --- FILTER PENCARIAN ---
         if ($request->has('search') && $request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -526,9 +601,6 @@ class ProductController extends Controller
         $products = $query->get();
 
         // 3. Load View PDF
-        // Pastikan Anda sudah mengimport facade PDF di paling atas file:
-        // use Barryvdh\DomPDF\Facade\Pdf;
-
         $pdf = Pdf::loadView('products.pdf_barcode', [
             'products' => $products,
             'categoryName' => $categoryName,
@@ -542,9 +614,8 @@ class ProductController extends Controller
     }
 
     /**
-     * Generate Barcode 13 Digit (Numeric Only)
+     * Generate Barcode 13 Digit (Numeric Only) - DIKEMBALIKAN SESUAI PERMINTAAN
      * Format: [ID_KATEGORI + 00] + [ANGKA_ACAK]
-     * Contoh Kategori ID 1: 1008374625192
      */
     private function generateNumericBarcode($categoryId)
     {
@@ -553,11 +624,10 @@ class ProductController extends Controller
         $prefix = $categoryId . '00';
 
         // 2. Hitung sisa panjang digit yang dibutuhkan
-        // Target EAN-13 adalah 13 digit.
         $targetLength = 13;
         $neededLength = $targetLength - strlen($prefix);
 
-        // Jika prefix kepanjangan (jarang terjadi), batasi minimal random 3 digit
+        // Jika prefix kepanjangan, batasi minimal random 3 digit
         if ($neededLength < 3) $neededLength = 3;
 
         do {
@@ -569,20 +639,27 @@ class ProductController extends Controller
 
             $finalBarcode = $prefix . $randomString;
 
-            // Pastikan panjang total tidak melebihi 13 (potong jika lebih)
+            // Pastikan panjang total tidak melebihi 13
             $finalBarcode = substr($finalBarcode, 0, 13);
 
-            // 4. Cek Unik di Database (Produk & Varian)
-            $exists = \App\Models\Product::where('barcode', $finalBarcode)->exists()
-                   || \App\Models\ProductVariant::where('barcode', $finalBarcode)->exists();
+            // 4. Cek Unik di Database (Tenant Scope)
+            $exists = DB::table('products')
+                        ->where('tenant_id', $this->tenantId)
+                        ->where('barcode', $finalBarcode)
+                        ->exists()
+                   || DB::table('product_variants')
+                        ->where('tenant_id', $this->tenantId)
+                        ->where('barcode', $finalBarcode)
+                        ->exists();
 
-        } while ($exists); // Ulangi terus sampai nemu yang belum dipakai
+        } while ($exists);
 
         return $finalBarcode;
     }
 
     /**
      * API KHUSUS ELECTRON: Scan Barcode
+     * Method Signature: ($request) - API biasa jarang pake subdomain di method, tapi scoped tenant
      */
     public function scanProduct(Request $request)
     {
@@ -590,7 +667,7 @@ class ProductController extends Controller
 
         if (!$keyword) return response()->json(['status' => 'error', 'message' => 'Kode kosong'], 400);
 
-        // 1. Cek Varian
+        // 1. Cek Varian (Filter Tenant)
         $variant = ProductVariant::where('tenant_id', $this->tenantId)
             ->where(function($q) use ($keyword) {
                 $q->where('barcode', $keyword)->orWhere('sku', $keyword);
@@ -609,7 +686,7 @@ class ProductController extends Controller
             ]);
         }
 
-        // 2. Cek Produk Utama
+        // 2. Cek Produk Utama (Filter Tenant)
         $product = Product::where('tenant_id', $this->tenantId)
             ->where(function($q) use ($keyword) {
                 $q->where('barcode', $keyword)->orWhere('sku', $keyword);
@@ -633,7 +710,9 @@ class ProductController extends Controller
         return response()->json(['status' => 'error', 'message' => 'Produk tidak ditemukan'], 404);
     }
 
-    // --- FUNGSI KHUSUS API ELECTRON (PASTI JSON) ---
+    /**
+     * API LIST (JSON)
+     */
     public function apiList() {
         $products = Product::where('tenant_id', $this->tenantId) // <--- WAJIB TAMBAH INI
                         ->with('category')
@@ -647,16 +726,13 @@ class ProductController extends Controller
      * GENERATOR BARCODE CERDAS (13 Digit)
      * - Prefix 200: Jasa
      * - Prefix 100: Barang
-     * - Cek Unik per Tenant
      */
     private function generateSmartBarcode($type = 'physical')
     {
         // 1. Tentukan Prefix (200 utk Jasa, 100 utk Barang)
-        // Asumsi nilai $type: 'service' atau 'physical'
         $prefix = ($type === 'service' || $type === 'jasa') ? '200' : '100';
 
         // 2. Hitung sisa digit (Target 13 digit)
-        // Panjang prefix = 3. Sisa = 10 digit.
         $neededLength = 13 - strlen($prefix);
 
         do {
@@ -669,7 +745,6 @@ class ProductController extends Controller
             $finalBarcode = $prefix . $randomString;
 
             // 4. Cek Unik (HANYA DI TENANT INI)
-            // Kita pakai query manual biar cepat
             $exists = DB::table('products')
                         ->where('tenant_id', $this->tenantId)
                         ->where('barcode', $finalBarcode)
@@ -679,9 +754,8 @@ class ProductController extends Controller
                         ->where('barcode', $finalBarcode)
                         ->exists();
 
-        } while ($exists); // Ulangi kalau apes dapat angka kembar
+        } while ($exists);
 
         return $finalBarcode;
     }
-
 }
