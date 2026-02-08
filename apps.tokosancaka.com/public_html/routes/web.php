@@ -546,3 +546,5 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/settings', [TenantDashboardController::class, 'edit'])->name('tenant.settings');
     Route::put('/settings', [TenantDashboardController::class, 'update'])->name('tenant.update');
 });
+
+
