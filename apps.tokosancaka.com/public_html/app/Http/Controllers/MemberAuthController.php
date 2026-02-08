@@ -1486,10 +1486,10 @@ public function checkTopupStatus(Request $request)
     // Private Key (Format 1 Baris)
     private $rawPrivateKey = "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDNVB5kzP1G9sggIGAyNzIHaK9fY5pmP2HUhDsYY0eSrljlgksAOVHgaCION0vZ4679ZRQXWZciJqZLXAhJE8Iyna9RNL4bM2qDk3RvMR3xnaDRA97FofxL99fMFXl2vVn4k6Az3PGZtSKjGOtb1E02F/iJckZVO3jBacVKbUUS6e8Dut8wScw0R5VLAurNIvLxFoYJa3mPkVmx77fkL9S0qTbu/cRLayhguiPzg/P9DlQYa5ah7lT92P+79dSBp7TxrQbbm6Yic1WfsS3deREV1qp30om2frp5lyOpcrxcs+5dGV0viRV41bg4LOFjD1uIc7YiXEJn8ZIW37K1ZvJrAgMBAAECggEAA91U8x2+mKLVcnFZjihmyyfnwRpdUhZYT4krmZJoyvR4HN2+bqMljN044t6ckV3NMdzAq43Wn+BtWdbCGyoBijVYkuU0vMtTcmWIl/0rLJyEZdq2Sy740i84gxFWZ2s58clJhyBd9cAohjxWVbShvWZnGaMqerkzVSSZ/4Qd/DSdVxU2+YuooLq3QgVasmlZkSy4W720Q2Op6NS8joq0LRHxQRRbvl9J99zs+3cTtSfVK3nLOixhiLu0O/keek8yZ6Kw98Rms/od1TWDY0ivo24y0ABfnWOOy6f/+v3MzKq2ghvFIX0ft6Z79EDt839AjJXW82l5E085J7qY66kKhQKBgQDnAb1iVLL6ycR3RqBCR0MYBdJC8uNdgxw/vi6+fic7MAYY9/FsdDVQr0do4tTCkIwjcHoOPGwrwYl3xnTzDSgd5cX0wU0hbBXrSfN+zZjkwf+8eec+mIvMBV3UMe2kJ/Z8aWvtUmhqVK9fgAqggiFNGmIAjmxJPi3iBdl9Qvrm1QKBgQDjiymT8cSl9bMqUQxG0ggfTFXlZFiVBlmk5qYEcbSaz247Hqo2sLR5it4qHxiWV/QqXabhVYFkQcLTd3Qgj9t8TwWOvSYN69gBxW3dYqsptYVQ8lywjKKt3WKVGSKOgqslMwXnJTHZ/PycBDigDP1nmhczmx0DEQFVltW3n+GUPwKBgCSAzeBf6fhfMcB3VJOklyGQqe0SXINGWIxqDRDk9mYP7Ka9Z1Tv+AzL5cjZLy2fkcV33JGrUpyHdKWMoqZVieVPjbxjX0DMx5nqkaOT8XkUfsjVqojlqhGPN4h0a0zpU7XNItTZlM5Ym23H2eYLKh/470uPNeVNAgsZSYjVsLgRAoGAJuEaY5sF3M2UpYBftqIgnShv7NgugpgpLRH0AAJlt6YF0bg1oU6kJ7hgqZXSn627nJmP8CSqDTVnUrawcvfhquXdrzwGio5nxDW1xgQb9u57Lw+aYthE26xeMdevneYZ1CtZsNscH4EosIfQHRjbG56qpDi2xlVbgwJY1h1NcAUCgYB28OEqvgeYcu2YJfcn66kgd/eTNPiHrGxDL6zhU7MDOl07Cm7AaRFeyLuYrHchI2cbGSc5ssZNYjf5Fp9mh6XrNR/qAr2HmcN0nJdx1gTNIP2bYRxzrqLqfxoHSKmORMh4BCS+saRwkmMdIFzXdNVOL5vXkAGZnIBgAJ/9t+HC0w==";
 
-    public function storeDeposit(Request $request)
+   public function storeDeposit(Request $request)
     {
         $request->validate([
-            'amount'         => 'required|numeric|min:1000',
+            'amount' => 'required|numeric|min:1000',
             'payment_method' => 'nullable|in:BANK_TRANSFER,DANA',
         ]);
 
@@ -1504,7 +1504,7 @@ public function checkTopupStatus(Request $request)
             $merchantId = config('services.dana.merchant_id');
             if (empty($merchantId)) return back()->with('error', 'Config Error: Merchant ID Missing.');
 
-            // IDEMPOTENCY CHECK
+            // Idempotency Check
             $existingTx = DB::table('dana_transactions')
                 ->where('affiliate_id', $member->id)
                 ->where('type', 'DEPOSIT')
@@ -1524,19 +1524,18 @@ public function checkTopupStatus(Request $request)
             } else {
                 $refNo = 'DEP-' . time() . mt_rand(100, 999);
                 DB::table('dana_transactions')->insert([
-                    'tenant_id'    => $member->tenant_id ?? 1,
+                    'tenant_id' => $member->tenant_id ?? 1,
                     'affiliate_id' => $member->id,
-                    'type'         => 'DEPOSIT',
+                    'type' => 'DEPOSIT',
                     'reference_no' => $refNo,
-                    'phone'        => $member->whatsapp ?? '',
-                    'amount'       => $request->amount,
-                    'status'       => 'INIT',
-                    'created_at'   => now()
+                    'phone' => $member->whatsapp ?? '',
+                    'amount' => $request->amount,
+                    'status' => 'INIT',
+                    'created_at' => now()
                 ]);
             }
 
             try {
-                // 1. Config
                 $config = new Configuration();
                 $config->setApiKey('PRIVATE_KEY', config('services.dana.private_key'));
                 $config->setApiKey('X_PARTNER_ID', config('services.dana.x_partner_id'));
@@ -1545,54 +1544,52 @@ public function checkTopupStatus(Request $request)
 
                 $apiInstance = new WidgetApi(null, $config);
 
-                // 2. Order Object
+                // --- A. ORDER OBJECT (ALIAS) ---
                 $orderObj = new DanaOrder();
                 $orderObj->setOrderTitle("Deposit Saldo");
-                $orderObj->setOrderMemo("Topup ID: " . $member->id);
+                $orderObj->setOrderMemo("Topup User ID: " . $member->id);
 
-                // 3. EnvInfo (MINIMALIS & AMAN)
+                // --- B. ENV INFO ---
                 $envInfo = new EnvInfo();
                 $envInfo->setSourcePlatform("IPG");
-                $envInfo->setTerminalType("SYSTEM"); // Ubah ke SYSTEM agar lebih umum
-                // $envInfo->setOrderTerminalType("APP"); // Hapus dulu jika tidak wajib
-                // $envInfo->setClientIp($request->ip()); // Hapus dulu, kadang validasi IP ketat
+                $envInfo->setTerminalType("WEB");
+                $envInfo->setOrderTerminalType("APP");
+                $envInfo->setWebsiteLanguage("ID");
+                $envInfo->setClientIp($request->ip() ?? '127.0.0.1');
 
-                // 4. Additional Info
+                // --- C. ADDITIONAL INFO (FIX PRODUCT CODE) ---
                 $addInfo = new WidgetPaymentRequestAdditionalInfo();
-                $addInfo->setProductCode("DIGITAL_PRODUCT"); // KEMBALI KE STANDARD
-                // $addInfo->setMcc("5411"); // Hapus MCC untuk mencegah salah format
+
+                // [FIX UTAMA DI SINI]
+                // Jangan pakai "DIGITAL_PRODUCT", tapi pakai kode testing ini:
+                $addInfo->setProductCode("51051000100000000001");
+
+                $addInfo->setMcc("5411");
                 $addInfo->setOrder($orderObj);
                 $addInfo->setEnvInfo($envInfo);
 
-                // 5. Request Utama
+                // --- REQUEST UTAMA ---
                 $paymentRequest = new WidgetPaymentRequest();
                 $paymentRequest->setMerchantId($merchantId);
                 $paymentRequest->setPartnerReferenceNo($refNo);
 
-                // Format Amount: STRING INTEGER (Tanpa desimal .00)
-                // Solusi Error 4005401 Invalid Field Format
-                $amountStr = number_format($request->amount, 0, '', '');
-
                 $money = new Money();
-                $money->setValue($amountStr);
+                $money->setValue(number_format($request->amount, 2, '.', ''));
                 $money->setCurrency("IDR");
                 $paymentRequest->setAmount($money);
 
-                // Redirect URL
                 $urlParam = new UrlParam();
                 $urlParam->setUrl(url('/member/dashboard'));
                 $urlParam->setType("PAY_RETURN");
                 $urlParam->setIsDeeplink("Y");
                 $paymentRequest->setUrlParams([$urlParam]);
 
-                // HAPUS validUpTo (Gunakan default DANA saja agar tidak salah format tanggal)
-                // $paymentRequest->setValidUpTo(...);
-
+                $paymentRequest->setValidUpTo(now()->addHour()->format('Y-m-d\TH:i:sP'));
                 $paymentRequest->setAdditionalInfo($addInfo);
 
-                Log::info("[DANA SDK] Request Ref: " . $refNo . " Amount: " . $amountStr);
+                Log::info("[DANA SDK] Sending Request Ref: " . $refNo);
 
-                // 6. EKSEKUSI
+                // EKSEKUSI
                 $result = $apiInstance->widgetPayment($paymentRequest);
 
                 $redirectUrl = null;
@@ -1612,15 +1609,16 @@ public function checkTopupStatus(Request $request)
                         ]);
                     return redirect($redirectUrl);
                 } else {
-                    throw new \Exception("Empty Redirect URL from DANA.");
+                    throw new \Exception("Gagal mendapatkan link pembayaran (Empty URL).");
                 }
 
             } catch (\Exception $e) {
                 $errorMsg = $e->getMessage();
+                // Tangkap pesan error spesifik DANA
                 if (method_exists($e, 'getResponseBody')) {
                     $body = $e->getResponseBody();
-                    Log::error("[DANA SDK ERROR]", (array)$body);
                     if ($body && isset($body->responseMessage)) {
+                        // Tambahkan Kode Error agar mudah di-debug
                         $code = $body->responseCode ?? '';
                         $errorMsg = "DANA ($code): " . $body->responseMessage;
                     }
