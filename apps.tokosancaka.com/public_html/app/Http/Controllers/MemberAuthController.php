@@ -1484,7 +1484,7 @@ public function checkTopupStatus(Request $request)
     public function storeDeposit(Request $request)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:1000',
+            'amount'         => 'required|numeric|min:1000',
             'payment_method' => 'nullable|in:BANK_TRANSFER,DANA',
         ]);
 
@@ -1496,11 +1496,10 @@ public function checkTopupStatus(Request $request)
                 return back()->with('error', 'Silakan hubungkan akun DANA Anda terlebih dahulu.');
             }
 
-            // Cek Config
             $merchantId = config('services.dana.merchant_id');
             if (empty($merchantId)) return back()->with('error', 'Config Error: Merchant ID Missing.');
 
-            // Idempotency Check
+            // IDEMPOTENCY CHECK
             $existingTx = DB::table('dana_transactions')
                 ->where('affiliate_id', $member->id)
                 ->where('type', 'DEPOSIT')
@@ -1520,19 +1519,19 @@ public function checkTopupStatus(Request $request)
             } else {
                 $refNo = 'DEP-' . time() . mt_rand(100, 999);
                 DB::table('dana_transactions')->insert([
-                    'tenant_id' => $member->tenant_id ?? 1,
+                    'tenant_id'    => $member->tenant_id ?? 1,
                     'affiliate_id' => $member->id,
-                    'type' => 'DEPOSIT',
+                    'type'         => 'DEPOSIT',
                     'reference_no' => $refNo,
-                    'phone' => $member->whatsapp ?? '',
-                    'amount' => $request->amount,
-                    'status' => 'INIT',
-                    'created_at' => now()
+                    'phone'        => $member->whatsapp ?? '',
+                    'amount'       => $request->amount,
+                    'status'       => 'INIT',
+                    'created_at'   => now()
                 ]);
             }
 
             try {
-                // 1. Setup Config
+                // 1. Config
                 $config = new Configuration();
                 $config->setApiKey('PRIVATE_KEY', config('services.dana.private_key'));
                 $config->setApiKey('X_PARTNER_ID', config('services.dana.x_partner_id'));
@@ -1541,60 +1540,54 @@ public function checkTopupStatus(Request $request)
 
                 $apiInstance = new WidgetApi(null, $config);
 
-                // 2. Setup Money Object
-                $money = new Money();
-                $money->setValue(number_format($request->amount, 2, '.', ''));
-                $money->setCurrency("IDR");
-
-                // --- [BARU] SETUP PAY OPTION DETAIL ---
-                // Ini membantu DANA mengenali metode bayar yang diinginkan
-                $payOption = new PayOptionDetail();
-                $payOption->setPayMethod("DANA");  // Metode Utama
-                $payOption->setPayOption("DANA");  // Sub-opsi (Saldo DANA)
-                $payOption->setTransAmount($money); // Nominal
-                // $payOption->setFeeAmount($feeMoney); // Jika ada fee, set disini
-
-                // --- SETUP ORDER & ENV INFO ---
+                // 2. Order Object
                 $orderObj = new DanaOrder();
                 $orderObj->setOrderTitle("Deposit Saldo");
-                $orderObj->setOrderMemo("Topup User ID: " . $member->id);
+                $orderObj->setOrderMemo("Topup ID: " . $member->id);
 
+                // 3. EnvInfo (MINIMALIS & AMAN)
                 $envInfo = new EnvInfo();
                 $envInfo->setSourcePlatform("IPG");
-                $envInfo->setTerminalType("WEB");
-                $envInfo->setOrderTerminalType("APP");
-                $envInfo->setWebsiteLanguage("ID");
-                $envInfo->setClientIp($request->ip() ?? '127.0.0.1');
+                $envInfo->setTerminalType("SYSTEM"); // Ubah ke SYSTEM agar lebih umum
+                // $envInfo->setOrderTerminalType("APP"); // Hapus dulu jika tidak wajib
+                // $envInfo->setClientIp($request->ip()); // Hapus dulu, kadang validasi IP ketat
 
-                // --- ADDITIONAL INFO ---
+                // 4. Additional Info
                 $addInfo = new WidgetPaymentRequestAdditionalInfo();
-                // Kode Produk Testing Sandbox (WAJIB PAKAI INI AGAR TIDAK ERROR 403)
-                $addInfo->setProductCode("51051000100000000001");
-                $addInfo->setMcc("5411");
+                $addInfo->setProductCode("DIGITAL_PRODUCT"); // KEMBALI KE STANDARD
+                // $addInfo->setMcc("5411"); // Hapus MCC untuk mencegah salah format
                 $addInfo->setOrder($orderObj);
                 $addInfo->setEnvInfo($envInfo);
 
-                // 3. BUILD REQUEST UTAMA
+                // 5. Request Utama
                 $paymentRequest = new WidgetPaymentRequest();
                 $paymentRequest->setMerchantId($merchantId);
                 $paymentRequest->setPartnerReferenceNo($refNo);
+
+                // Format Amount: STRING INTEGER (Tanpa desimal .00)
+                // Solusi Error 4005401 Invalid Field Format
+                $amountStr = number_format($request->amount, 0, '', '');
+
+                $money = new Money();
+                $money->setValue($amountStr);
+                $money->setCurrency("IDR");
                 $paymentRequest->setAmount($money);
 
-                // Masukkan Pay Option Detail (Wajib dalam bentuk Array)
-                $paymentRequest->setPayOptionDetails([$payOption]);
-
+                // Redirect URL
                 $urlParam = new UrlParam();
                 $urlParam->setUrl(url('/member/dashboard'));
                 $urlParam->setType("PAY_RETURN");
                 $urlParam->setIsDeeplink("Y");
                 $paymentRequest->setUrlParams([$urlParam]);
 
-                $paymentRequest->setValidUpTo(now()->addHour()->format('Y-m-d\TH:i:sP'));
+                // HAPUS validUpTo (Gunakan default DANA saja agar tidak salah format tanggal)
+                // $paymentRequest->setValidUpTo(...);
+
                 $paymentRequest->setAdditionalInfo($addInfo);
 
-                Log::info("[DANA SDK] Sending Request Ref: " . $refNo);
+                Log::info("[DANA SDK] Request Ref: " . $refNo . " Amount: " . $amountStr);
 
-                // 4. EKSEKUSI
+                // 6. EKSEKUSI
                 $result = $apiInstance->widgetPayment($paymentRequest);
 
                 $redirectUrl = null;
@@ -1614,16 +1607,16 @@ public function checkTopupStatus(Request $request)
                         ]);
                     return redirect($redirectUrl);
                 } else {
-                    throw new \Exception("Gagal mendapatkan link pembayaran (Empty URL).");
+                    throw new \Exception("Empty Redirect URL from DANA.");
                 }
 
             } catch (\Exception $e) {
                 $errorMsg = $e->getMessage();
-                // Parsing Error Body dari SDK
                 if (method_exists($e, 'getResponseBody')) {
                     $body = $e->getResponseBody();
+                    Log::error("[DANA SDK ERROR]", (array)$body);
                     if ($body && isset($body->responseMessage)) {
-                        $code = $body->responseCode ?? 'Unknown';
+                        $code = $body->responseCode ?? '';
                         $errorMsg = "DANA ($code): " . $body->responseMessage;
                     }
                 }
