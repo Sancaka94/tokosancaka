@@ -26,11 +26,14 @@ class TenantPaymentController extends Controller
         // Ambil User yang sedang login
         $user = Auth::user();
         if (!$user) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+            }
+            return redirect()->route('login')->with('error', 'Sesi habis, silakan login kembali.');
         }
 
-        // 1. Logika Tenant (Untuk isi tenant_id)
-        $tenantId = 1; // Default ke 1 sesuai contoh data Anda
+        // 1. Logika Tenant
+        $tenantId = 1;
         $tenant = $request->get('current_tenant');
 
         if (!$tenant) {
@@ -47,11 +50,10 @@ class TenantPaymentController extends Controller
         try {
             $dokuService = new DokuJokulService();
 
-            // 2. Generate Reference No (Format: DEP-DOKU-TIMESTAMP-RAND)
-            // Format disesuaikan agar mirip dengan 'DEP-...' di database Anda
+            // 2. Generate Reference No
             $referenceNo = 'DEP-DOKU-' . time() . rand(100, 999);
 
-            // 3. Siapkan Data Customer (Wajib untuk Doku)
+            // 3. Siapkan Data Customer
             $customerData = [
                 'name'  => $user->name,
                 'email' => $user->email,
@@ -61,25 +63,34 @@ class TenantPaymentController extends Controller
             // 4. Request Payment URL ke DOKU
             $paymentUrl = $dokuService->createPayment($referenceNo, $request->amount, $customerData);
 
-            // 5. [PENTING] Simpan Transaksi ke Database (Tabel top_ups)
+            // 5. Simpan Transaksi ke Database
             TopUp::create([
                 'tenant_id'      => $tenantId,
-                'affiliate_id'   => $user->id,        // Mapping User ID ke affiliate_id
-                'reference_no'   => $referenceNo,     // Mapping Invoice ke reference_no
+                'affiliate_id'   => $user->id,
+                'reference_no'   => $referenceNo,
                 'amount'         => $request->amount,
-                'unique_code'    => 0,                // Doku tidak butuh kode unik (0)
-                'total_amount'   => $request->amount, // Total sama dengan amount (tanpa kode unik)
+                'unique_code'    => 0,
+                'total_amount'   => $request->amount,
                 'status'         => 'PENDING',
                 'payment_method' => 'DOKU',
-                'response_payload' => [               // Simpan URL disini karena tidak ada kolom payment_url
+                'response_payload' => [
                     'payment_url' => $paymentUrl,
                     'generated_by' => 'TenantPaymentController'
                 ]
             ]);
 
-            // Simpan session (opsional)
             session(['doku_url' => $paymentUrl]);
 
+            // ============================================================
+            // [FIX] LOGIKA CABANG: REDIRECT VS JSON
+            // ============================================================
+
+            // Jika request datang dari Form HTML (Browser), langsung Redirect ke DOKU
+            if (!$request->wantsJson()) {
+                return redirect()->away($paymentUrl);
+            }
+
+            // Jika request datang dari API/AJAX, kembalikan JSON
             return response()->json([
                 'success' => true,
                 'url'     => $paymentUrl
@@ -87,37 +98,40 @@ class TenantPaymentController extends Controller
 
         } catch (\Exception $e) {
             Log::error("LOG LOG: Gagal generate TopUp DOKU: " . $e->getMessage());
+
+            // Error handling untuk Browser
+            if (!$request->wantsJson()) {
+                return redirect()->back()->with('error', 'Gagal memproses pembayaran: ' . $e->getMessage());
+            }
+
+            // Error handling untuk API
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
     /**
-     * 2. Fungsi Cek Status (Untuk Polling Frontend)
+     * 2. Fungsi Cek Status (GET) - Tetap return JSON karena dipanggil via JS Polling
      */
     public function checkStatus(Request $request)
     {
         try {
-            // Ambil invoice/reference_no dari request frontend
-            $invoice = $request->input('invoice'); // Di frontend kirimkan 'invoice' = reference_no
+            $invoice = $request->input('invoice');
 
             if ($invoice) {
-                // Cek Status Topup spesifik berdasarkan reference_no
                 $topup = TopUp::where('reference_no', $invoice)->first();
 
-                // Cek status SUCCESS (sesuaikan string di DB Anda jika 'PAID' atau 'SUCCESS')
                 if ($topup && in_array($topup->status, ['SUCCESS', 'PAID'])) {
                     return response()->json([
                         'active' => true,
                         'status' => 'success',
                         'message' => 'Top Up Berhasil!',
-                        'redirect_url' => url()->previous() // Reload halaman
+                        'redirect_url' => url()->previous()
                     ]);
                 }
-                // Jika masih pending
                 return response()->json(['active' => false, 'status' => 'pending']);
             }
 
-            // Fallback: Logic cek tenant active (Sesuai kode asli Anda)
+            // Fallback Logic
             $host = $request->getHost();
             $subdomain = explode('.', $host)[0];
 
