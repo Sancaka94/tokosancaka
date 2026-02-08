@@ -1486,9 +1486,8 @@ public function checkTopupStatus(Request $request)
     // Private Key (Format 1 Baris)
     private $rawPrivateKey = "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDNVB5kzP1G9sggIGAyNzIHaK9fY5pmP2HUhDsYY0eSrljlgksAOVHgaCION0vZ4679ZRQXWZciJqZLXAhJE8Iyna9RNL4bM2qDk3RvMR3xnaDRA97FofxL99fMFXl2vVn4k6Az3PGZtSKjGOtb1E02F/iJckZVO3jBacVKbUUS6e8Dut8wScw0R5VLAurNIvLxFoYJa3mPkVmx77fkL9S0qTbu/cRLayhguiPzg/P9DlQYa5ah7lT92P+79dSBp7TxrQbbm6Yic1WfsS3deREV1qp30om2frp5lyOpcrxcs+5dGV0viRV41bg4LOFjD1uIc7YiXEJn8ZIW37K1ZvJrAgMBAAECggEAA91U8x2+mKLVcnFZjihmyyfnwRpdUhZYT4krmZJoyvR4HN2+bqMljN044t6ckV3NMdzAq43Wn+BtWdbCGyoBijVYkuU0vMtTcmWIl/0rLJyEZdq2Sy740i84gxFWZ2s58clJhyBd9cAohjxWVbShvWZnGaMqerkzVSSZ/4Qd/DSdVxU2+YuooLq3QgVasmlZkSy4W720Q2Op6NS8joq0LRHxQRRbvl9J99zs+3cTtSfVK3nLOixhiLu0O/keek8yZ6Kw98Rms/od1TWDY0ivo24y0ABfnWOOy6f/+v3MzKq2ghvFIX0ft6Z79EDt839AjJXW82l5E085J7qY66kKhQKBgQDnAb1iVLL6ycR3RqBCR0MYBdJC8uNdgxw/vi6+fic7MAYY9/FsdDVQr0do4tTCkIwjcHoOPGwrwYl3xnTzDSgd5cX0wU0hbBXrSfN+zZjkwf+8eec+mIvMBV3UMe2kJ/Z8aWvtUmhqVK9fgAqggiFNGmIAjmxJPi3iBdl9Qvrm1QKBgQDjiymT8cSl9bMqUQxG0ggfTFXlZFiVBlmk5qYEcbSaz247Hqo2sLR5it4qHxiWV/QqXabhVYFkQcLTd3Qgj9t8TwWOvSYN69gBxW3dYqsptYVQ8lywjKKt3WKVGSKOgqslMwXnJTHZ/PycBDigDP1nmhczmx0DEQFVltW3n+GUPwKBgCSAzeBf6fhfMcB3VJOklyGQqe0SXINGWIxqDRDk9mYP7Ka9Z1Tv+AzL5cjZLy2fkcV33JGrUpyHdKWMoqZVieVPjbxjX0DMx5nqkaOT8XkUfsjVqojlqhGPN4h0a0zpU7XNItTZlM5Ym23H2eYLKh/470uPNeVNAgsZSYjVsLgRAoGAJuEaY5sF3M2UpYBftqIgnShv7NgugpgpLRH0AAJlt6YF0bg1oU6kJ7hgqZXSn627nJmP8CSqDTVnUrawcvfhquXdrzwGio5nxDW1xgQb9u57Lw+aYthE26xeMdevneYZ1CtZsNscH4EosIfQHRjbG56qpDi2xlVbgwJY1h1NcAUCgYB28OEqvgeYcu2YJfcn66kgd/eTNPiHrGxDL6zhU7MDOl07Cm7AaRFeyLuYrHchI2cbGSc5ssZNYjf5Fp9mh6XrNR/qAr2HmcN0nJdx1gTNIP2bYRxzrqLqfxoHSKmORMh4BCS+saRwkmMdIFzXdNVOL5vXkAGZnIBgAJ/9t+HC0w==";
 
-   public function storeDeposit(Request $request)
+    public function storeDeposit(Request $request)
     {
-        // 1. Validasi Input
         $request->validate([
             'amount'         => 'required|numeric|min:1000',
             'payment_method' => 'nullable|in:BANK_TRANSFER,DANA',
@@ -1497,11 +1496,7 @@ public function checkTopupStatus(Request $request)
         $member = Auth::guard('member')->user();
         $method = $request->payment_method ?? 'BANK_TRANSFER';
 
-        // =================================================================
-        // OPSI 1: VIA DANA (SDK FIX FORMAT)
-        // =================================================================
         if ($method === 'DANA') {
-
             if (empty($member->dana_access_token)) {
                 return back()->with('error', 'Silakan hubungkan akun DANA Anda terlebih dahulu.');
             }
@@ -1541,7 +1536,7 @@ public function checkTopupStatus(Request $request)
             }
 
             try {
-                // 1. Setup Config
+                // 1. Config
                 $config = new Configuration();
                 $config->setApiKey('PRIVATE_KEY', config('services.dana.private_key'));
                 $config->setApiKey('X_PARTNER_ID', config('services.dana.x_partner_id'));
@@ -1550,52 +1545,52 @@ public function checkTopupStatus(Request $request)
 
                 $apiInstance = new WidgetApi(null, $config);
 
-                // 2. Setup Order Object (Pakai Alias DanaOrder untuk hindari bentrok)
+                // 2. Order Object
                 $orderObj = new DanaOrder();
                 $orderObj->setOrderTitle("Deposit Saldo");
-                $orderObj->setOrderMemo("Topup User ID: " . $member->id);
+                $orderObj->setOrderMemo("Topup ID: " . $member->id);
 
-                // 3. Setup EnvInfo (Wajib untuk Fraud Detection)
+                // 3. EnvInfo (MINIMALIS & AMAN)
                 $envInfo = new EnvInfo();
                 $envInfo->setSourcePlatform("IPG");
-                $envInfo->setTerminalType("WEB");
-                $envInfo->setOrderTerminalType("APP");
-                $envInfo->setWebsiteLanguage("ID");
-                $envInfo->setClientIp($request->ip() ?? '127.0.0.1');
+                $envInfo->setTerminalType("SYSTEM"); // Ubah ke SYSTEM agar lebih umum
+                // $envInfo->setOrderTerminalType("APP"); // Hapus dulu jika tidak wajib
+                // $envInfo->setClientIp($request->ip()); // Hapus dulu, kadang validasi IP ketat
 
-                // 4. Setup Additional Info
+                // 4. Additional Info
                 $addInfo = new WidgetPaymentRequestAdditionalInfo();
-                // KODE SAKTI SANDBOX (Wajib ini agar tidak 403 Not Permitted)
-                $addInfo->setProductCode("51051000100000000001");
-                $addInfo->setMcc("5411");
+                $addInfo->setProductCode("DIGITAL_PRODUCT"); // KEMBALI KE STANDARD
+                // $addInfo->setMcc("5411"); // Hapus MCC untuk mencegah salah format
                 $addInfo->setOrder($orderObj);
                 $addInfo->setEnvInfo($envInfo);
 
-                // 5. Setup Request Utama
+                // 5. Request Utama
                 $paymentRequest = new WidgetPaymentRequest();
                 $paymentRequest->setMerchantId($merchantId);
                 $paymentRequest->setPartnerReferenceNo($refNo);
 
-                // Set Amount
+                // Format Amount: STRING INTEGER (Tanpa desimal .00)
+                // Solusi Error 4005401 Invalid Field Format
+                $amountStr = number_format($request->amount, 0, '', '');
+
                 $money = new Money();
-                $money->setValue(number_format($request->amount, 2, '.', ''));
+                $money->setValue($amountStr);
                 $money->setCurrency("IDR");
                 $paymentRequest->setAmount($money);
 
-                // Set Redirect URL
+                // Redirect URL
                 $urlParam = new UrlParam();
                 $urlParam->setUrl(url('/member/dashboard'));
                 $urlParam->setType("PAY_RETURN");
                 $urlParam->setIsDeeplink("Y");
                 $paymentRequest->setUrlParams([$urlParam]);
 
-                // Set Expiry (1 Jam)
-                $paymentRequest->setValidUpTo(now()->addHour()->format('Y-m-d\TH:i:sP'));
+                // HAPUS validUpTo (Gunakan default DANA saja agar tidak salah format tanggal)
+                // $paymentRequest->setValidUpTo(...);
 
-                // Masukkan Additional Info
                 $paymentRequest->setAdditionalInfo($addInfo);
 
-                Log::info("[DANA SDK] Sending Request Ref: " . $refNo);
+                Log::info("[DANA SDK] Request Ref: " . $refNo . " Amount: " . $amountStr);
 
                 // 6. EKSEKUSI
                 $result = $apiInstance->widgetPayment($paymentRequest);
@@ -1617,15 +1612,14 @@ public function checkTopupStatus(Request $request)
                         ]);
                     return redirect($redirectUrl);
                 } else {
-                    throw new \Exception("Gagal mendapatkan link pembayaran (Empty URL).");
+                    throw new \Exception("Empty Redirect URL from DANA.");
                 }
 
             } catch (\Exception $e) {
-                // Debugging Error Body
                 $errorMsg = $e->getMessage();
                 if (method_exists($e, 'getResponseBody')) {
                     $body = $e->getResponseBody();
-                    Log::error("[DANA SDK ERROR BODY]", (array)$body);
+                    Log::error("[DANA SDK ERROR]", (array)$body);
                     if ($body && isset($body->responseMessage)) {
                         $code = $body->responseCode ?? '';
                         $errorMsg = "DANA ($code): " . $body->responseMessage;
