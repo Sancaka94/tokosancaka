@@ -775,7 +775,7 @@
                 this.variants = []; // Reset dulu
 
                 try {
-                    let url = `/percetakan/public/products/${productId}/variants`;
+                    let url = `/products/${productId}/variants`;
                     let response = await fetch(url);
                     if (!response.ok) throw new Error('Gagal ambil data');
 
@@ -843,7 +843,7 @@
 
                 try {
                     // Cek URL Target
-                    let url = `/percetakan/public/products/${this.activeProductId}/variants`;
+                    let url = `/products/${this.activeProductId}/variants`;
                     console.log("🔥 LOG 3 [URL]: Menembak ke ->", url);
 
                     let response = await fetch(url, {
