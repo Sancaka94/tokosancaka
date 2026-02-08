@@ -37,7 +37,7 @@ use Dana\Widget\v1\Api\WidgetApi;
 use Dana\Widget\v1\Model\WidgetPaymentRequest;
 use Dana\Widget\v1\Model\Money;
 use Dana\Widget\v1\Model\WidgetPaymentRequestAdditionalInfo;
-use Dana\Widget\v1\Model\WidgetPaymentRequestAdditionalInfoOrder;
+// use Dana\Widget\v1\Model\WidgetPaymentRequestAdditionalInfoOrder;
 use Dana\Widget\v1\Model\UrlParam;
 
 
