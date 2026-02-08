@@ -177,6 +177,55 @@ class DokuWebhookController extends Controller
                 }
             }
 
+            // -------------------------------------------------------------
+                // A.2.B TOP UP SALDO POS (POSTOPUP-) -> DATABASE KEDUA
+                // -------------------------------------------------------------
+                else if (Str::startsWith($orderId, 'POSTOPUP-')) {
+
+                    Log::info("🚀 LOG POS: Webhook Masuk untuk Invoice POS: $orderId");
+
+                    try {
+                        // Konek langsung ke Database Kedua (Tanpa Model agar lebih aman di App Pertama)
+                        $dbSecond = DB::connection('mysql_second');
+
+                        // 1. Cari Transaksi di tabel 'top_ups' Database Kedua
+                        $transaction = $dbSecond->table('top_ups')
+                                            ->where('reference_no', $orderId)
+                                            ->first();
+
+                        if ($transaction) {
+                            if ($transaction->status !== 'SUCCESS') {
+
+                                // 2. Update Status Transaksi di DB SECOND
+                                $dbSecond->table('top_ups')
+                                         ->where('id', $transaction->id)
+                                         ->update([
+                                             'status' => 'SUCCESS',
+                                             'updated_at' => now()
+                                         ]);
+
+                                // 3. Update Saldo User di DB SECOND
+                                $affected = $dbSecond->table('users')
+                                            ->where('id', $transaction->affiliate_id)
+                                            ->increment('saldo', $transaction->amount);
+
+                                if ($affected) {
+                                    Log::info("💰 SALDO POS BERTAMBAH: User ID {$transaction->affiliate_id} +{$transaction->amount}");
+                                } else {
+                                    Log::error("❌ Gagal Update Saldo User ID {$transaction->affiliate_id} di DB Second.");
+                                }
+
+                            } else {
+                                Log::info("⚠️ TopUp POS $orderId sudah sukses sebelumnya.");
+                            }
+                        } else {
+                            Log::error("❌ Data TopUp POS tidak ditemukan di DB Second: $orderId");
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("❌ Gagal Proses TopUp POS: " . $e->getMessage());
+                    }
+                }
+
                 // -------------------------------------------------------------
                 // A.3 ORDER PERCETAKAN (SCK-PRT-)
                 // -------------------------------------------------------------
@@ -200,49 +249,7 @@ class DokuWebhookController extends Controller
                     }
                 }
 
-                // -------------------------------------------------------------
-                // A.4 TOP UP SALDO POS (POSTOPUP-) -> DATABASE KEDUA
-                // -------------------------------------------------------------
-                else if (Str::startsWith($orderId, 'POSTOPUP-')) {
 
-                    Log::info("LOG POS: Webhook Masuk untuk Invoice POS: $orderId");
-
-                    try {
-                        // 1. Cari di DB SECOND (Pakai Model PosTopUp)
-                        $transaction = \App\Models\PosTopUp::where('reference_no', $orderId)->first();
-
-                        if ($transaction) {
-                            if ($transaction->status !== 'SUCCESS') {
-
-                                // 2. Update Status Transaksi di DB SECOND
-                                $transaction->update(['status' => 'SUCCESS']);
-
-                                // 3. Update Saldo User di DB SECOND
-                                // Kita gunakan Query Builder 'mysql_second' agar aman
-                                $affected = DB::connection('mysql_second')->table('users')
-                                    ->where('id', $transaction->affiliate_id)
-                                    ->increment('saldo', $transaction->amount);
-
-                                if ($affected) {
-                                    Log::info("💰 SALDO POS BERTAMBAH: User ID {$transaction->affiliate_id} +{$transaction->amount}");
-                                } else {
-                                    Log::error("❌ Gagal Update Saldo User ID {$transaction->affiliate_id} di DB Second.");
-                                }
-
-                            } else {
-                                Log::info("⚠️ TopUp POS $orderId sudah sukses sebelumnya.");
-                            }
-                        } else {
-                            Log::error("❌ Data TopUp POS tidak ditemukan: $orderId");
-                        }
-                    } catch (\Exception $e) {
-                        Log::error("❌ Gagal Proses TopUp POS: " . $e->getMessage());
-                    }
-                }
-
-                // -------------------------------------------------------------
-                // A.4.B TOP UP LAMA (DEP-) -> DATABASE PERTAMA (JANGAN DIHAPUS)
-                // -------------------------------------------------------------
 
                 // -------------------------------------------------------------
                 // A.4 DELEGASI KE CONTROLLER LAIN (TOPUP, INV, CHECKOUT)
