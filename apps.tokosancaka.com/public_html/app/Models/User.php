@@ -24,6 +24,7 @@ class User extends Authenticatable
         'tenant_id', // Penanda User milik Toko mana
         'role',      // Jabatan (admin, staff, finance, operator, super_admin)
         'permissions', // <--- WAJIB ADA: Untuk menyimpan array hak akses (checklist)
+        'saldo', // <--- TAMBAHKAN INI WAJIB
     ];
 
     /**
@@ -47,6 +48,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'permissions' => 'array', // <--- PENTING: Mengubah JSON di DB jadi Array PHP otomatis
+            'saldo' => 'decimal:2', // Agar dibaca sebagai angka
         ];
     }
 
