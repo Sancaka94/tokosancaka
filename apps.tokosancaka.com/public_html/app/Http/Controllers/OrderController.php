@@ -771,14 +771,8 @@ class OrderController extends Controller
             }
 
             // ============================================================
-            // LANGKAH 3 & 4: LOGIKA BARU (KIRIM PAKET & CEK SALDO ADMIN)
+            // LANGKAH 3: LOGIKA PENGIRIMAN & PEMBAYARAN
             // ============================================================
-
-            $paymentUrl = null;
-            $paymentStatus = 'unpaid';
-            $changeAmount = 0;
-            $triggerWaType = null;
-            $isShippingSuccess = false;
 
             // === SKENARIO A: PENGIRIMAN PAKET (SHIPPING) ===
             if ($request->delivery_type === 'shipping') {
@@ -788,18 +782,16 @@ class OrderController extends Controller
                     throw new \Exception("Sesi Admin berakhir. Silakan login ulang.");
                 }
 
-                Log::info("Cek Saldo Admin ID: {$currentUser->id}, Saldo: {$currentUser->saldo}, Biaya: {$finalPrice}");
+                // [PERBAIKAN LOGIKA] Admin hanya bayar ONGKIR ke Pusat via Saldo
+                $tagihanKeAdmin = (int) $biayaOngkir;
 
-                // 2. CEK SALDO
-                if ($currentUser->saldo >= $finalPrice) {
-                    // ---------------------------------------------------------
-                    // KONDISI 1: SALDO CUKUP -> POTONG SALDO & BOOKING KURIR
-                    // ---------------------------------------------------------
+                Log::info("Cek Saldo Admin ID: {$currentUser->id}, Saldo: {$currentUser->saldo}, Tagihan (Ongkir): {$tagihanKeAdmin}");
 
-                    // A. Potong Saldo Admin
-                    $currentUser->decrement('saldo', $finalPrice);
+                // 2. CEK SALDO ADMIN
+                if ($currentUser->saldo >= $tagihanKeAdmin) {
 
-                    // (Opsional) Catat Mutasi Pengeluaran Admin disini jika ada tabel mutasi
+                    // A. Potong Saldo Admin (Hanya Ongkir)
+                    $currentUser->decrement('saldo', $tagihanKeAdmin);
 
                     // B. PROSES KIRIMINAJA (Booking Kurir)
                     Log::info("[SHIPPING] Saldo Cukup. Memproses KiriminAja...");
@@ -812,21 +804,19 @@ class OrderController extends Controller
                     }
 
                     $serviceCode = $request->courier_code;
-                    // Mapping manual sederhana (Fallback)
                     if (empty($serviceCode)) $serviceCode = 'jne';
 
                     $isInstant = (str_contains($serviceCode, 'gosend') || str_contains($serviceCode, 'grab'));
                     $kaResponse = null;
 
                     if ($isInstant) {
-                        // Payload Instant
-                        if (!$destLat || !$destLng) throw new \Exception("Gagal Instant: Koordinat tujuan hilang.");
+                         if (!$destLat || !$destLng) throw new \Exception("Gagal Instant: Koordinat tujuan hilang.");
 
-                        $instantPayload = [
-                            'order_id'   => $orderNumber,
-                            'service'    => $serviceCode,
-                            'item_price' => (int) $subtotal,
-                            'origin'     => [
+                         $instantPayload = [
+                            'order_id'    => $orderNumber,
+                            'service'     => $serviceCode,
+                            'item_price'  => (int) $subtotal,
+                            'origin'      => [
                                 'lat'     => config('services.kiriminaja.origin_lat'),
                                 'long'    => config('services.kiriminaja.origin_long'),
                                 'address' => config('services.kiriminaja.origin_address'),
@@ -843,7 +833,6 @@ class OrderController extends Controller
                     } else {
                         // Payload Reguler
                         $pickupSchedule = now()->addMinutes(60)->format('Y-m-d H:i:s');
-                        // Jika sudah sore (diatas jam 2 siang) atau hari Minggu, geser ke besok pagi
                         if (now()->hour >= 14 || now()->isSunday()) {
                             $pickupSchedule = now()->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
                         }
@@ -878,19 +867,17 @@ class OrderController extends Controller
                         ];
                         $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
                     }
-                    // --- Selesai Payload KiriminAja ---
 
                     // Cek Hasil KiriminAja
                     if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
                         $shippingRef = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
 
-                        // Update Order Jadi Lunas & Ada Resi
                         $order->update([
                             'shipping_ref'   => $shippingRef,
-                            'note'           => $catatanSistem . "\n[RESI OTOMATIS] Ref: " . $shippingRef . "\n[SALDO ADMIN] Terpotong Rp " . number_format($finalPrice),
+                            'note'           => $catatanSistem . "\n[RESI OTOMATIS] Ref: " . $shippingRef . "\n[SALDO ADMIN] Terpotong Ongkir Rp " . number_format($tagihanKeAdmin),
                             'payment_status' => 'paid',
-                            'payment_method' => 'saldo_admin', // Tandai pembayaran by sistem
-                            'status'         => 'processing' // Langsung diproses
+                            'payment_method' => 'saldo_admin', // Tandai dibayar pakai saldo
+                            'status'         => 'processing'
                         ]);
 
                         $paymentStatus = 'paid';
@@ -899,48 +886,24 @@ class OrderController extends Controller
                         $isShippingSuccess = true;
 
                     } else {
-                        // Jika KiriminAja Gagal, Refund Saldo & Throw Error agar transaksi rollback
-                        $currentUser->increment('saldo', $finalPrice);
+                        // Jika Gagal Booking Kurir, REFUND Saldo Admin
+                        $currentUser->increment('saldo', $tagihanKeAdmin);
                         throw new \Exception("Gagal Booking Kurir: " . ($kaResponse['text'] ?? 'Unknown Error'));
                     }
 
                 } else {
-                    // ---------------------------------------------------------
-                    // KONDISI 2: SALDO TIDAK CUKUP -> ALIH KE DOKU (ONLINE PAYMENT)
-                    // ---------------------------------------------------------
-                    Log::info("[SHIPPING] Saldo Admin Tidak Cukup. Redirect ke DOKU...");
+                    // [PERBAIKAN] Jika Saldo Kurang -> JANGAN ke DOKU, tapi suruh Topup
+                    Log::warning("[SHIPPING] Saldo Admin Tidak Cukup untuk Ongkir.");
 
-                    // 1. Generate Link DOKU
-                    // Gunakan email user/admin jika ada, atau default toko
-                    $billingEmail = ($currentUser && $currentUser->email) ? $currentUser->email : 'tokosancaka@gmail.com';
-                    $dokuData = ['name' => $customerName, 'email' => $billingEmail, 'phone' => $customerPhone];
-
-                    // Memanggil Doku Service
-                    $paymentUrl = $dokuService->createPayment($order->order_number, $finalPrice, $dokuData);
-
-                    if (empty($paymentUrl)) throw new \Exception("Gagal Membuat Link Pembayaran DOKU.");
-
-                    // 2. Update Order: Unpaid & Simpan URL
-                    // JANGAN BOOKING KURIR DULU (Status tetap pending/unpaid)
-                    $order->update([
-                        'payment_status' => 'unpaid',
-                        'payment_method' => 'doku',
-                        'payment_url'    => $paymentUrl,
-                        'note'           => $catatanSistem . "\n[SALDO KURANG] Menunggu pembayaran Online via DOKU."
-                    ]);
-
-                    $paymentStatus = 'unpaid';
-                    $metodeBayarFix = 'doku';
-                    $triggerWaType = 'unpaid'; // Nanti kirim WA tagihan
+                    throw new \Exception("Saldo Deposit Kurang untuk membayar Ongkir (Rp " . number_format($tagihanKeAdmin) . "). Saldo Anda: Rp " . number_format($currentUser->saldo) . ". Silakan Topup Saldo terlebih dahulu.");
                 }
 
             } else {
                 // === SKENARIO B: PICKUP / NON-SHIPPING (Logika Lama) ===
-
                 switch ($metodeBayarFix) {
                     case 'cash':
                         $cashReceived = (int) $request->cash_amount;
-                        if ($cashReceived < $finalPrice) throw new \Exception("Uang tunai kurang!");
+                        // if ($cashReceived < $finalPrice) throw new \Exception("Uang tunai kurang!"); // Opsional validasi
                         $changeAmount = $cashReceived - $finalPrice;
                         $order->update([
                             'status'=>'processing',
