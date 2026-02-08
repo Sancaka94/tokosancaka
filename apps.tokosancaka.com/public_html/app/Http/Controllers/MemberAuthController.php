@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 use Carbon\Carbon; // <--- Pastikan baris ini ada di paling atas file
 
 // Models
-// use App\Models\Order;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\OrderDetail;
 use App\Models\OrderAttachment;
@@ -42,7 +42,7 @@ use Dana\Widget\v1\Model\UrlParam;
 // Class Penting dari Snippet Bapak:
 // use Dana\Widget\v1\Model\WidgetPaymentRequestAdditionalInfo;
 use Dana\Widget\v1\Model\EnvInfo;
-use Dana\Widget\v1\Model\Order;
+use Dana\Widget\v1\Model\Order as DanaOrder;
 
 class MemberAuthController extends Controller
 {
@@ -1549,7 +1549,7 @@ public function checkTopupStatus(Request $request)
                 // 2. Siapkan Objek-Objek Pendukung (Sesuai Struktur Class Bapak)
 
                 // --- A. ORDER OBJECT ---
-                $orderObj = new Order();
+                $orderObj = new DanaOrder(); // <--- Ganti jadi DanaOrder
                 $orderObj->setOrderTitle("Deposit Saldo");
                 $orderObj->setOrderMemo("Topup User ID: " . $member->id);
                 // $orderObj->setMerchantTransType("01"); // Opsional jika diminta
