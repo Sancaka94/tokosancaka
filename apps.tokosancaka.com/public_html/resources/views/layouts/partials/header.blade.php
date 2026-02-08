@@ -149,82 +149,90 @@
         </div>
     </div>
 
+   {{-- ================================================================= --}}
+    {{-- [MODAL TOPUP] - GUNAKAN X-TELEPORT AGAR KELUAR DARI HEADER        --}}
     {{-- ================================================================= --}}
-    {{-- [MODAL TOPUP]                                                     --}}
-    {{-- ================================================================= --}}
-    <div x-show="topupOpen"
-         class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
-         style="display: none;"
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0">
 
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all"
-             @click.outside="topupOpen = false"
+    {{-- Bungkus dengan template x-teleport="body" --}}
+    <template x-teleport="body">
+
+        <div x-show="topupOpen"
+             class="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+             style="display: none;"
              x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
              x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
 
-            {{-- Modal Header --}}
-            <div class="bg-blue-600 px-6 py-4 flex justify-between items-center">
-                <div class="text-white">
-                    <h3 class="text-lg font-bold">Isi Saldo</h3>
-                    <p class="text-blue-100 text-xs">Topup aman & instan via DOKU</p>
+            {{-- Tambahkan @click.outside di sini untuk menutup modal --}}
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all relative"
+                 @click.outside="topupOpen = false"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 translate-y-4 scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-4 scale-95">
+
+                {{-- Modal Header --}}
+                <div class="bg-blue-600 px-6 py-4 flex justify-between items-center relative z-10">
+                    <div class="text-white">
+                        <h3 class="text-lg font-bold">Isi Saldo</h3>
+                        <p class="text-blue-100 text-xs">Topup aman & instan via DOKU</p>
+                    </div>
+                    <button @click="topupOpen = false" class="text-blue-100 hover:text-white bg-blue-500/30 hover:bg-blue-500/50 rounded-xl p-2 transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                <button @click="topupOpen = false" class="text-blue-100 hover:text-white bg-blue-500/30 hover:bg-blue-500/50 rounded-xl p-2 transition-colors">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
 
-            {{-- Modal Body --}}
-            <form action="{{ route('topup.process', $params) }}" method="POST" class="p-6">
-                @csrf
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Nominal Topup</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 font-bold">Rp</span>
-                            <input type="number" name="amount" x-model="topupAmount" required min="10000"
-                                   class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-bold text-slate-800 placeholder:font-normal"
-                                   placeholder="Min. 10.000">
+                {{-- Modal Body --}}
+                {{-- Gunakan parameter $params yang sudah didefinisikan di PHP atas --}}
+                <form action="{{ route('topup.process', ['subdomain' => request()->getHost() == env('APP_URL') ? 'admin' : explode('.', request()->getHost())[0]]) }}" method="POST" class="p-6">
+                    @csrf
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Nominal Topup</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 font-bold">Rp</span>
+                                <input type="number" name="amount" x-model="topupAmount" required min="10000"
+                                       class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-bold text-slate-800 placeholder:font-normal"
+                                       placeholder="Min. 10.000">
+                            </div>
+                        </div>
+
+                        {{-- Quick Amount --}}
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" @click="topupAmount = 50000" class="py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-200 rounded-lg transition-all">
+                                50.000
+                            </button>
+                            <button type="button" @click="topupAmount = 100000" class="py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-200 rounded-lg transition-all">
+                                100.000
+                            </button>
+                            <button type="button" @click="topupAmount = 500000" class="py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-200 rounded-lg transition-all">
+                                500.000
+                            </button>
+                        </div>
+
+                        <div class="p-4 bg-blue-50 rounded-xl border border-blue-100 flex gap-3">
+                            <div class="shrink-0 text-blue-600 mt-0.5"><i class="fas fa-info-circle"></i></div>
+                            <p class="text-xs text-blue-800 leading-relaxed">
+                                Anda akan diarahkan ke halaman pembayaran DOKU (QRIS, VA, E-Wallet). Saldo otomatis masuk setelah bayar.
+                            </p>
                         </div>
                     </div>
 
-                    {{-- Quick Amount --}}
-                    <div class="grid grid-cols-3 gap-2">
-                        <button type="button" @click="topupAmount = 50000" class="py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-200 rounded-lg transition-all">
-                            50.000
-                        </button>
-                        <button type="button" @click="topupAmount = 100000" class="py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-200 rounded-lg transition-all">
-                            100.000
-                        </button>
-                        <button type="button" @click="topupAmount = 500000" class="py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-200 rounded-lg transition-all">
-                            500.000
+                    <div class="mt-6">
+                        <button type="submit" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all flex justify-center items-center gap-2">
+                            <span>Lanjut Pembayaran</span>
+                            <i class="fas fa-arrow-right"></i>
                         </button>
                     </div>
-
-                    <div class="p-4 bg-blue-50 rounded-xl border border-blue-100 flex gap-3">
-                        <div class="shrink-0 text-blue-600 mt-0.5"><i class="fas fa-info-circle"></i></div>
-                        <p class="text-xs text-blue-800 leading-relaxed">
-                            Anda akan diarahkan ke halaman pembayaran DOKU (QRIS, VA, E-Wallet). Saldo otomatis masuk setelah bayar.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="mt-6">
-                    <button type="submit" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all flex justify-center items-center gap-2">
-                        <span>Lanjut Pembayaran</span>
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
-    </div>
+
+    </template>
 
 </header>
