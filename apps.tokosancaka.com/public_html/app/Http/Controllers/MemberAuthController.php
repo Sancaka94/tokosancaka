@@ -1725,6 +1725,12 @@ public function checkTopupStatus(Request $request)
         $baseUrl = config('services.dana.base_url'); // e.g: https://api.sandbox.dana.id
         $fullUrl = $baseUrl . $path;
 
+        Log::info("[SNAP DEBUG]", [
+        'stringToSign' => $stringToSign, // <--- Ini penting buat debug
+        'clientId_used' => config('services.dana.x_partner_id'),
+        'merchantId_used' => config('services.dana.merchant_id')
+        ]);
+
         Log::info("[SNAP REQUEST]", [
             'url' => $fullUrl,
             'body' => $body
