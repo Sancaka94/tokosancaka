@@ -1562,6 +1562,7 @@ public function checkTopupStatus(Request $request)
                 $envInfo->setWebsiteLanguage("ID");
                 $envInfo->setClientIp($request->ip() ?? '127.0.0.1');
 
+
                 // --- C. ADDITIONAL INFO OBJECT ---
                 $addInfo = new WidgetPaymentRequestAdditionalInfo();
                 $addInfo->setProductCode("DIGITAL_PRODUCT"); // Atau kode panjang tadi "510510..."
