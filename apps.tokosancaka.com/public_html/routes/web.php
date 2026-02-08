@@ -548,3 +548,15 @@ Route::middleware(['auth'])->group(function () {
 });
 
 
+// Route Group untuk Tenant (biasanya di dalam Route::domain atau middleware auth)
+Route::group(['middleware' => ['web', 'auth']], function () {
+
+    // 1. Route Proses Topup (POST dari Modal Header)
+    Route::post('/topup/process', [TenantPaymentController::class, 'generateUrl'])
+        ->name('topup.process');
+
+    // 2. Route Cek Status (Untuk Polling JS - Opsional tapi disarankan)
+    Route::get('/topup/status', [TenantPaymentController::class, 'checkStatus'])
+        ->name('topup.status');
+
+});
