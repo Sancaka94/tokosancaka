@@ -1536,7 +1536,7 @@ public function checkTopupStatus(Request $request)
             }
 
             try {
-                // 1. Config
+                // 1. Config SDK
                 $config = new Configuration();
                 $config->setApiKey('PRIVATE_KEY', config('services.dana.private_key'));
                 $config->setApiKey('X_PARTNER_ID', config('services.dana.x_partner_id'));
@@ -1545,53 +1545,53 @@ public function checkTopupStatus(Request $request)
 
                 $apiInstance = new WidgetApi(null, $config);
 
-                // 2. Setup EnvInfo (PAKAI ENUM AGAR TIDAK INVALID FORMAT)
-                $envInfo = new EnvInfo();
-                $envInfo->setSourcePlatform(SourcePlatform::IPG); // Enum: IPG
-                $envInfo->setTerminalType(TerminalType::WEB);     // Enum: WEB
-                $envInfo->setOrderTerminalType(OrderTerminalType::WEB); // Enum: WEB
-                $envInfo->setWebsiteLanguage("ID");
-                $envInfo->setClientIp($request->ip() ?? '127.0.0.1');
-
-                // 3. Setup Order
+                // 2. Order Object
                 $orderObj = new DanaOrder();
                 $orderObj->setOrderTitle("Deposit Saldo");
-                $orderObj->setOrderMemo("Topup User ID: " . $member->id);
+                $orderObj->setOrderMemo("Topup ID: " . $member->id);
+
+                // 3. EnvInfo (STANDAR)
+                $envInfo = new EnvInfo();
+                $envInfo->setSourcePlatform("IPG");
+                $envInfo->setTerminalType("WEB");
+                $envInfo->setWebsiteLanguage("ID");
+                $envInfo->setClientIp("127.0.0.1"); // Hardcode IPv4 (Aman)
 
                 // 4. Additional Info
                 $addInfo = new WidgetPaymentRequestAdditionalInfo();
-                // KODE PRODUK SAKTI (Wajib di Sandbox agar tidak 403 Not Permitted)
+                // Gunakan Kode Produk Sakti (Bypass 403 Not Permitted)
                 $addInfo->setProductCode("51051000100000000001");
-                // MCC Optional: Jika error format, kosongkan. Jika wajib, pakai "5411"
-                $addInfo->setMcc("5411");
-                $addInfo->setEnvInfo($envInfo);
                 $addInfo->setOrder($orderObj);
+                $addInfo->setEnvInfo($envInfo);
+                // $addInfo->setMcc("5411"); // Opsional, matikan dulu agar aman format
 
                 // 5. Request Utama
                 $paymentRequest = new WidgetPaymentRequest();
                 $paymentRequest->setMerchantId($merchantId);
                 $paymentRequest->setPartnerReferenceNo($refNo);
 
-                // Set Amount (String Format 2 Desimal)
+                // --- FIX AMOUNT SESUAI SPEC MONEY ---
+                // "10000.00" (Wajib 2 desimal dengan titik)
+                $amountString = number_format($request->amount, 2, '.', '');
+
                 $money = new Money();
-                $money->setValue(number_format($request->amount, 2, '.', ''));
+                $money->setValue($amountString);
                 $money->setCurrency("IDR");
                 $paymentRequest->setAmount($money);
 
-                // Redirect URL (Type PAY_RETURN)
+                // Redirect URL
                 $urlParam = new UrlParam();
                 $urlParam->setUrl(url('/member/dashboard'));
-                // Gunakan String manual 'PAY_RETURN' jika Enum Type::PAY_RETURN tidak terbaca
                 $urlParam->setType("PAY_RETURN");
                 $urlParam->setIsDeeplink("Y");
                 $paymentRequest->setUrlParams([$urlParam]);
 
-                // ValidUpTo (Gunakan format standard ISO8601 dengan P)
+                // Expiry (Opsional, tapi jika diminta formatnya ISO8601)
                 $paymentRequest->setValidUpTo(now()->addHour()->format('Y-m-d\TH:i:sP'));
 
                 $paymentRequest->setAdditionalInfo($addInfo);
 
-                Log::info("[DANA SDK] Sending Request Ref: " . $refNo);
+                Log::info("[DANA SDK] Request Ref: $refNo | Amount: $amountString");
 
                 // 6. EKSEKUSI
                 $result = $apiInstance->widgetPayment($paymentRequest);
@@ -1613,15 +1613,14 @@ public function checkTopupStatus(Request $request)
                         ]);
                     return redirect($redirectUrl);
                 } else {
-                    throw new \Exception("Gagal mendapatkan link pembayaran (Empty URL).");
+                    throw new \Exception("Empty Redirect URL.");
                 }
 
             } catch (\Exception $e) {
                 $errorMsg = $e->getMessage();
-                // Debugging Error Body dari SDK
                 if (method_exists($e, 'getResponseBody')) {
                     $body = $e->getResponseBody();
-                    Log::error("[DANA SDK ERROR BODY]", (array)$body);
+                    Log::error("[DANA SDK ERROR]", (array)$body);
                     if ($body && isset($body->responseMessage)) {
                         $code = $body->responseCode ?? '';
                         $errorMsg = "DANA ($code): " . $body->responseMessage;
