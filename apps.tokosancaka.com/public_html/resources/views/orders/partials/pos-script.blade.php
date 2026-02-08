@@ -1110,6 +1110,10 @@ function posSystem() {
             console.log("LOG: Memulai proses Checkout...");
             console.log("LOG: Metode Pembayaran: " + this.paymentMethod);
 
+            // ============================================================
+            // 1. VALIDASI INPUT (SEMUA LOGIC LAMA TETAP ADA)
+            // ============================================================
+
             // Validasi Khusus Antar Jemput
             if (this.deliveryType === 'delivery') {
                 if (!this.customerAddressDetail || this.customerAddressDetail.length < 5) {
@@ -1123,6 +1127,7 @@ function posSystem() {
                 }
             }
 
+            // Validasi Shipping Guest
             if (this.customerType === 'guest' && this.deliveryType === 'shipping') {
                 if (!this.customerName || this.customerName.trim().length < 3) {
                     alert('❌ Mohon isi NAMA PENERIMA untuk keperluan pengiriman ekspedisi!');
@@ -1137,6 +1142,8 @@ function posSystem() {
                     return;
                 }
             }
+
+            // Validasi Metode Pembayaran
             if (this.paymentMethod === 'cash') {
                 if (!this.cashAmount || this.change < 0) { alert('❌ Uang tunai kurang!'); return; }
             }
@@ -1153,11 +1160,10 @@ function posSystem() {
                 if (!this.affiliatePin || this.affiliatePin.length < 4) { alert('❌ Masukkan PIN Keamanan!'); return; }
             }
             else if (this.paymentMethod === 'dana') {
-            console.log("LOG: Persiapan pengalihan ke DANA Gateway...");
-            // DANA tidak butuh validasi saldo di sisi client karena diproses di gateway
+                console.log("LOG: Persiapan pengalihan ke DANA Gateway...");
             }
 
-
+            // Validasi Shipping (Kurir)
             if (this.deliveryType === 'shipping') {
                 if (!this.destinationDistrictId) {
                     alert('❌ Harap pilih lokasi tujuan pengiriman!');
@@ -1169,6 +1175,9 @@ function posSystem() {
                 }
             }
 
+            // ============================================================
+            // 2. PERSIAPAN DATA (FORM DATA) - TETAP LENGKAP
+            // ============================================================
             this.isProcessing = true;
             console.log("LOG: Mengirim data ke Server Sancaka...");
 
@@ -1178,6 +1187,7 @@ function posSystem() {
             formData.append('coupon', this.couponCode);
             formData.append('payment_method', this.paymentMethod);
             formData.append('customer_note', this.customerNote);
+
             // Tambahkan data GPS ke FormData
             formData.append('latitude', this.latitude);
             formData.append('longitude', this.longitude);
@@ -1198,7 +1208,7 @@ function posSystem() {
                 formData.append('payment_channel', this.paymentChannel);
             }
 
-            // Logic Customer ID lebih aman
+            // Logic Customer ID
             if(this.selectedCustomerId) {
                 formData.append('customer_id', this.selectedCustomerId);
             }
@@ -1209,42 +1219,48 @@ function posSystem() {
             if(this.paymentMethod === 'cash') formData.append('cash_amount', this.cashAmount);
             if(this.paymentMethod === 'affiliate_balance') formData.append('affiliate_pin', this.affiliatePin);
 
+            // Upload Files Loop
             this.uploadedFiles.forEach((item, index) => {
                 formData.append(`attachments[${index}]`, item.file);
-
                 formData.append(`attachment_details[${index}][color]`, item.isColor ? 'Color' : 'BW');
                 formData.append(`attachment_details[${index}][size]`, item.paperSize);
                 formData.append(`attachment_details[${index}][qty]`, item.qty);
             });
 
+            // ============================================================
+            // 3. KIRIM KE SERVER (BAGIAN INI YANG DIPERBAIKI ERROR HANDLINGNYA)
+            // ============================================================
             try {
                 const response = await fetch("{{ route('orders.store') }}", {
                     method: "POST",
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Accept': 'application/json'
+                        'Accept': 'application/json' // WAJIB: Agar server return JSON walau error 500
                     },
                     body: formData
                 });
 
-                const contentType = response.headers.get("content-type");
-                if (!contentType || !contentType.includes("application/json")) {
-                    throw new Error("Terjadi kesalahan Server (Error 500).");
+                // --- [PERBAIKAN UTAMA MULAI DISINI] ---
+                // Kita coba parse JSON dulu apapun status codenya (200, 400, 500)
+                let result;
+                try {
+                    result = await response.json();
+                } catch (err) {
+                    // Jika gagal parse JSON (misal server down parah / return HTML)
+                    throw new Error("Terjadi kesalahan Server (Gagal parsing JSON).");
                 }
 
-                const result = await response.json();
-                console.log("LOG: Response Server Diterima:", result);
+                // A. JIKA SUKSES (Status 200/201 dan logic 'success')
+                if (response.ok && result.status === 'success') {
+                    console.log("LOG: Response Sukses:", result);
 
-                // --- KODE REVISI FINAL (ANTI BLOKIR & PASTI JALAN) ---
-                if (result.status === 'success') {
-
-                    // 1. Cek jika harus bayar online (DANA/Tripay)
+                    // 1. Cek jika harus bayar online (DANA/Tripay/Doku via Redirect)
                     if (result.payment_url) {
                         window.location.href = result.payment_url;
                         return;
                     }
 
-                    // 2. LOGIKA PRINT STRUK
+                    // 2. LOGIKA PRINT STRUK & SWEETALERT (TETAP SAMA)
                     const invoiceUrl = "{{ url('/invoice') }}/" + result.invoice;
                     const printUrl = "{{ url('/orders') }}/" + result.order_id + "/print-struk";
 
@@ -1254,7 +1270,7 @@ function posSystem() {
                             text: 'Pilih metode cetak atau lihat invoice',
                             icon: 'success',
                             showCancelButton: true,
-                            showDenyButton: true, // Kita pakai 3 tombol biar lengkap
+                            showDenyButton: true,
                             confirmButtonColor: '#3085d6',
                             denyButtonColor: '#10b981',
                             cancelButtonColor: '#64748b',
@@ -1264,49 +1280,86 @@ function posSystem() {
                             allowOutsideClick: false
                         }).then((resSwal) => {
                             if (resSwal.isConfirmed) {
-                                // 1. Cari atau buat elemen iframe tersembunyi
+                                // Logic Print iframe tersembunyi
                                 let printFrame = document.getElementById('printFrame');
                                 if (!printFrame) {
                                     printFrame = document.createElement('iframe');
                                     printFrame.id = 'printFrame';
-                                    printFrame.style.display = 'none'; // Sembunyikan dari pandangan
+                                    printFrame.style.display = 'none';
                                     document.body.appendChild(printFrame);
                                 }
-
-                                // 2. Isi iframe dengan URL print struk
                                 printFrame.src = printUrl;
-
-                                // 3. Tunggu sampai konten selesai dimuat, baru panggil print
                                 printFrame.onload = function() {
                                     printFrame.contentWindow.focus();
                                     printFrame.contentWindow.print();
-
-                                    // 4. Setelah print selesai, arahkan ke invoice di tab yang sama
-                                    setTimeout(() => {
-                                        window.location.href = invoiceUrl;
-                                    }, 500);
+                                    setTimeout(() => { window.location.href = invoiceUrl; }, 500);
                                 };
-
                             } else if (resSwal.isDenied) {
-                                // Cuma lihat invoice
                                 window.location.href = invoiceUrl;
                             } else {
-                                // Klik tutup/batal -> Reset halaman POS biar bisa transaksi lagi
                                 window.location.reload();
                             }
                         });
                     } else {
-                        // Fallback kalau Swal mati
+                        // Fallback jika Swal tidak ada
                         window.location.href = invoiceUrl;
                     }
                 }
+                // B. JIKA ERROR DARI SERVER (Status 400/500 tapi ada JSON message)
+                else {
+                    let msg = result.message || "Gagal memproses pesanan.";
+
+                    // --- [DETEKSI ERROR SALDO KURANG] ---
+                    // Cek apakah pesan error mengandung kata 'saldo' dan 'topup'
+                    if (msg.toLowerCase().includes('saldo') && msg.toLowerCase().includes('topup')) {
+
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                title: '⚠️ SALDO DEPOSIT KURANG',
+                                html: `
+                                    <div class="text-left text-sm text-gray-600">
+                                        <p class="mb-3">${msg}</p>
+                                        <div class="bg-red-50 border border-red-200 rounded p-3 text-red-700">
+                                            <p class="font-bold text-xs uppercase mb-1">Solusi:</p>
+                                            Silakan Top Up saldo admin terlebih dahulu.
+                                        </div>
+                                    </div>
+                                `,
+                                icon: 'error',
+                                showCloseButton: true,
+                                showCancelButton: true,
+                                focusConfirm: false,
+                                confirmButtonText: '➕ Top Up Sekarang',
+                                confirmButtonColor: '#10b981', // Hijau
+                                cancelButtonText: 'Kembali',
+                                cancelButtonColor: '#64748b',
+                            }).then((act) => {
+                                if (act.isConfirmed) {
+                                    // Trigger event untuk membuka modal Topup (jika pakai Alpine event)
+                                    window.dispatchEvent(new CustomEvent('open-topup-modal'));
+
+                                    // Scroll ke atas sebagai fallback
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }
+                            });
+                            return; // Stop disini, jangan alert error lagi
+                        }
+                    }
+
+                    // Jika bukan masalah saldo, lempar error biasa
+                    throw new Error(msg);
+                }
+
             } catch (error) {
                 console.error("LOG ERROR:", error);
+                // Jangan tampilkan alert double jika sudah ditangani Swal Saldo
+                if (typeof Swal !== 'undefined' && Swal.isVisible()) {
+                    return;
+                }
                 alert('❌ Gagal: ' + error.message);
             } finally {
                 this.isProcessing = false;
             }
-
         }
     }
 }
