@@ -865,10 +865,6 @@
     @include('orders.partials.noteModal')
     @include('orders.partials.payment-modal')
 
-    <script>
-        @include('orders.partials.pos-script')
-    </script>
-
     {{-- AUDIO ELEMENTS --}}
     <audio id="audio-success" src="https://tokosancaka.com/public/sound/beep.mp3" preload="auto"></audio>
     <audio id="audio-error" src="https://tokosancaka.com/public/sound/beep-gagal.mp3" preload="auto"></audio>
@@ -923,6 +919,166 @@
         </div>
     </div>
 </div>
+
+{{-- MODAL TOP UP SALDO (Global Listener) --}}
+<div x-data="topUpSystem()"
+     @open-topup-modal.window="openModal()"
+     class="relative z-[99999]"
+     aria-labelledby="modal-title"
+     role="dialog"
+     aria-modal="true"
+     x-show="isOpen"
+     x-cloak
+     style="display: none;">
+
+    {{-- Backdrop Gelap --}}
+    <div x-show="isOpen"
+         x-transition:enter="ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm"></div>
+
+    <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+
+            {{-- Panel Modal --}}
+            <div x-show="isOpen"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 class="relative transform overflow-hidden rounded-2xl bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6 border border-gray-100">
+
+                <div>
+                    <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50 ring-4 ring-green-100">
+                        <i class="fas fa-wallet text-green-600 text-2xl"></i>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <h3 class="text-xl font-bold leading-6 text-gray-900" id="modal-title">Top Up Saldo</h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500">Saldo digunakan untuk membayar ongkos kirim ke pusat. Minimal Rp 10.000.</p>
+                        </div>
+
+                        {{-- Input Nominal --}}
+                        <div class="mt-5 relative rounded-xl shadow-sm">
+                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                                <span class="text-gray-500 font-bold">Rp</span>
+                            </div>
+                            <input type="number" x-model="amount"
+                                   class="block w-full rounded-xl border-0 py-3 pl-12 pr-4 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-green-600 text-lg font-bold"
+                                   placeholder="0">
+                        </div>
+
+                        {{-- Pilihan Cepat --}}
+                        <div class="mt-4 grid grid-cols-3 gap-2">
+                            <button @click="amount = 50000" class="px-2 py-2 text-xs font-semibold border border-gray-200 rounded-lg hover:bg-green-50 hover:text-green-700 hover:border-green-200 transition">50.000</button>
+                            <button @click="amount = 100000" class="px-2 py-2 text-xs font-semibold border border-gray-200 rounded-lg hover:bg-green-50 hover:text-green-700 hover:border-green-200 transition">100.000</button>
+                            <button @click="amount = 200000" class="px-2 py-2 text-xs font-semibold border border-gray-200 rounded-lg hover:bg-green-50 hover:text-green-700 hover:border-green-200 transition">200.000</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 sm:mt-8 grid grid-cols-2 gap-3">
+                    <button type="button" @click="isOpen = false"
+                            class="inline-flex w-full justify-center rounded-xl bg-white px-3 py-3 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition">
+                        Batal
+                    </button>
+                    <button type="button" @click="processTopUp()"
+                            :disabled="isLoading"
+                            class="inline-flex w-full justify-center rounded-xl bg-green-600 px-3 py-3 text-sm font-bold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition gap-2 items-center">
+                        <span x-show="!isLoading">Bayar Sekarang <i class="fas fa-arrow-right text-xs"></i></span>
+                        <span x-show="isLoading"><i class="fas fa-circle-notch fa-spin"></i> Proses...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+        @include('orders.partials.pos-script')
+</script>
+
+{{-- SCRIPT KHUSUS TOPUP --}}
+<script>
+function topUpSystem() {
+    return {
+        isOpen: false,
+        amount: '',
+        isLoading: false,
+
+        openModal() {
+            this.isOpen = true;
+            this.amount = ''; // Reset input
+            // Auto focus input (delay dikit biar modal render dulu)
+            setTimeout(() => {
+                this.$el.querySelector('input[type="number"]')?.focus();
+            }, 100);
+        },
+
+        async processTopUp() {
+            if (!this.amount || this.amount < 10000) {
+                // Gunakan Swal jika ada, else alert biasa
+                if(typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'warning', title: 'Minimal Rp 10.000', timer: 1500, showConfirmButton: false });
+                } else {
+                    alert('Minimal Top Up Rp 10.000');
+                }
+                return;
+            }
+
+            this.isLoading = true;
+
+            try {
+                // Request ke Backend untuk dapat URL DOKU
+                const response = await fetch("{{ route('tenant.payment.url') }}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({
+                        amount: this.amount
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.url) {
+                    // --- BUKA DI TAB BARU ---
+                    window.open(result.url, '_blank');
+
+                    this.isOpen = false;
+
+                    // Beri info ke user
+                    if(typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Halaman Pembayaran Terbuka',
+                            html: 'Silakan selesaikan pembayaran di tab baru.<br>Saldo akan masuk otomatis setelah lunas.',
+                            icon: 'info',
+                            confirmButtonText: 'Oke, Mengerti'
+                        });
+                    }
+                } else {
+                    alert('Gagal: ' + (result.error || 'Terjadi kesalahan'));
+                }
+
+            } catch (error) {
+                console.error(error);
+                alert('Terjadi kesalahan koneksi.');
+            } finally {
+                this.isLoading = false;
+            }
+        }
+    }
+}
+</script>
 
 </body>
 </html>
