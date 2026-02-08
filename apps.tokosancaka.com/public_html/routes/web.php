@@ -559,4 +559,7 @@ Route::group(['middleware' => ['web', 'auth']], function () {
     Route::get('/topup/status', [TenantPaymentController::class, 'checkStatus'])
         ->name('topup.status');
 
+    Route::post('/tenant/payment/url', [TenantPaymentController::class, 'generateUrl'])
+    ->name('tenant.payment.url');
+
 });
