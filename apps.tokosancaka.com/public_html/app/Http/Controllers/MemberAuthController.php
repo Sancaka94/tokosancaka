@@ -1540,7 +1540,8 @@ public function checkTopupStatus(Request $request)
             // Format Data
             $amt = number_format($request->amount, 2, '.', '');
             // Format Timezone +0700 (Format paling aman untuk DANA)
-            $timestamp = date("Y-m-d\TH:i:sO");
+            // Gunakan 'P' agar menghasilkan +07:00 (Ada titik duanya)
+            $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
 
             // --- RAKIT BODY JSON MANUAL ---
             $body = [
