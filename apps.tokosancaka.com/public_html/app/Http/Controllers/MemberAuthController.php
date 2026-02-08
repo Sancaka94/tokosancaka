@@ -30,20 +30,25 @@ use App\Services\KiriminAjaService;
 use App\Services\DanaSignatureService; // <--- TAMBAHKAN INI
  // Pastikan Model Order diimport
 
-// TAMBAHKAN INI UNTUK SDK DANA
+// SDK Models
+use Dana\Widget\v1\Model\WidgetPaymentRequest;
+use Dana\Widget\v1\Model\Money;
+use Dana\Widget\v1\Model\UrlParam;
+use Dana\Widget\v1\Model\WidgetPaymentRequestAdditionalInfo;
+use Dana\Widget\v1\Model\EnvInfo;
+use Dana\Widget\v1\Model\Order as DanaOrder; // Alias biar ga bentrok
+
+// SDK Enums (DATA DARI ANDA)
+use Dana\Widget\v1\Enum\PayMethod;
+use Dana\Widget\v1\Enum\SourcePlatform;
+use Dana\Widget\v1\Enum\TerminalType;
+use Dana\Widget\v1\Enum\OrderTerminalType;
+use Dana\Widget\v1\Enum\Type; // Untuk UrlParam type (PAY_RETURN)
+
+// Config
 use Dana\Configuration;
 use Dana\Env;
 use Dana\Widget\v1\Api\WidgetApi;
-use Dana\Widget\v1\Model\WidgetPaymentRequest;
-use Dana\Widget\v1\Model\Money;
-use Dana\Widget\v1\Model\WidgetPaymentRequestAdditionalInfo;
-// use Dana\Widget\v1\Model\WidgetPaymentRequestAdditionalInfoOrder;
-use Dana\Widget\v1\Model\UrlParam;
-// Class Penting dari Snippet Bapak:
-// use Dana\Widget\v1\Model\WidgetPaymentRequestAdditionalInfo;
-use Dana\Widget\v1\Model\EnvInfo;
-use Dana\Widget\v1\Model\Order as DanaOrder;
-use Dana\Widget\v1\Model\PayOptionDetail; // <--- TAMBAHAN BARU
 
 class MemberAuthController extends Controller
 {
