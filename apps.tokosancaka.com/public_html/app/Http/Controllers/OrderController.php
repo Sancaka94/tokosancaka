@@ -1148,7 +1148,7 @@ class OrderController extends Controller
                     //    if (empty($paymentUrl)) throw new \Exception("Gagal DOKU.");
                     //    $order->update(['payment_url' => $paymentUrl]);
                     //    break;
-
+                }
 
                 }
 
