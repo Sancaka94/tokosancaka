@@ -1477,7 +1477,11 @@ public function checkTopupStatus(Request $request)
     // Private Key (Format 1 Baris)
     private $rawPrivateKey = "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDNVB5kzP1G9sggIGAyNzIHaK9fY5pmP2HUhDsYY0eSrljlgksAOVHgaCION0vZ4679ZRQXWZciJqZLXAhJE8Iyna9RNL4bM2qDk3RvMR3xnaDRA97FofxL99fMFXl2vVn4k6Az3PGZtSKjGOtb1E02F/iJckZVO3jBacVKbUUS6e8Dut8wScw0R5VLAurNIvLxFoYJa3mPkVmx77fkL9S0qTbu/cRLayhguiPzg/P9DlQYa5ah7lT92P+79dSBp7TxrQbbm6Yic1WfsS3deREV1qp30om2frp5lyOpcrxcs+5dGV0viRV41bg4LOFjD1uIc7YiXEJn8ZIW37K1ZvJrAgMBAAECggEAA91U8x2+mKLVcnFZjihmyyfnwRpdUhZYT4krmZJoyvR4HN2+bqMljN044t6ckV3NMdzAq43Wn+BtWdbCGyoBijVYkuU0vMtTcmWIl/0rLJyEZdq2Sy740i84gxFWZ2s58clJhyBd9cAohjxWVbShvWZnGaMqerkzVSSZ/4Qd/DSdVxU2+YuooLq3QgVasmlZkSy4W720Q2Op6NS8joq0LRHxQRRbvl9J99zs+3cTtSfVK3nLOixhiLu0O/keek8yZ6Kw98Rms/od1TWDY0ivo24y0ABfnWOOy6f/+v3MzKq2ghvFIX0ft6Z79EDt839AjJXW82l5E085J7qY66kKhQKBgQDnAb1iVLL6ycR3RqBCR0MYBdJC8uNdgxw/vi6+fic7MAYY9/FsdDVQr0do4tTCkIwjcHoOPGwrwYl3xnTzDSgd5cX0wU0hbBXrSfN+zZjkwf+8eec+mIvMBV3UMe2kJ/Z8aWvtUmhqVK9fgAqggiFNGmIAjmxJPi3iBdl9Qvrm1QKBgQDjiymT8cSl9bMqUQxG0ggfTFXlZFiVBlmk5qYEcbSaz247Hqo2sLR5it4qHxiWV/QqXabhVYFkQcLTd3Qgj9t8TwWOvSYN69gBxW3dYqsptYVQ8lywjKKt3WKVGSKOgqslMwXnJTHZ/PycBDigDP1nmhczmx0DEQFVltW3n+GUPwKBgCSAzeBf6fhfMcB3VJOklyGQqe0SXINGWIxqDRDk9mYP7Ka9Z1Tv+AzL5cjZLy2fkcV33JGrUpyHdKWMoqZVieVPjbxjX0DMx5nqkaOT8XkUfsjVqojlqhGPN4h0a0zpU7XNItTZlM5Ym23H2eYLKh/470uPNeVNAgsZSYjVsLgRAoGAJuEaY5sF3M2UpYBftqIgnShv7NgugpgpLRH0AAJlt6YF0bg1oU6kJ7hgqZXSn627nJmP8CSqDTVnUrawcvfhquXdrzwGio5nxDW1xgQb9u57Lw+aYthE26xeMdevneYZ1CtZsNscH4EosIfQHRjbG56qpDi2xlVbgwJY1h1NcAUCgYB28OEqvgeYcu2YJfcn66kgd/eTNPiHrGxDL6zhU7MDOl07Cm7AaRFeyLuYrHchI2cbGSc5ssZNYjf5Fp9mh6XrNR/qAr2HmcN0nJdx1gTNIP2bYRxzrqLqfxoHSKmORMh4BCS+saRwkmMdIFzXdNVOL5vXkAGZnIBgAJ/9t+HC0w==";
 
-public function storeDeposit(Request $request)
+    /**
+     * PROSES DEPOSIT (VIA SDK DANA)
+     * Fokus: Fixing Error 4005402 (Mandatory Field)
+     */
+    public function storeDeposit(Request $request)
     {
         // 1. Validasi Input
         $request->validate([
@@ -1489,7 +1493,7 @@ public function storeDeposit(Request $request)
         $method = $request->payment_method ?? 'BANK_TRANSFER';
 
         // =================================================================
-        // OPSI 1: VIA DANA (PAYLOAD BARU)
+        // OPSI 1: VIA DANA (SDK)
         // =================================================================
         if ($method === 'DANA') {
 
@@ -1498,7 +1502,15 @@ public function storeDeposit(Request $request)
                 return back()->with('error', 'Silakan hubungkan akun DANA Anda terlebih dahulu.');
             }
 
-            // IDEMPOTENCY CHECK (Cek Transaksi Gantung)
+            // --- A. CEK CONFIG (CRITICAL) ---
+            // Seringkali error 400 terjadi karena merchant_id di .env tidak terbaca
+            $merchantId = config('services.dana.merchant_id');
+            if (empty($merchantId)) {
+                Log::error('[DANA CONFIG] Merchant ID Kosong/Null!');
+                return back()->with('error', 'Config Error: Merchant ID Missing.');
+            }
+
+            // --- B. IDEMPOTENCY CHECK ---
             $existingTx = DB::table('dana_transactions')
                 ->where('affiliate_id', $member->id)
                 ->where('type', 'DEPOSIT')
@@ -1512,13 +1524,12 @@ public function storeDeposit(Request $request)
                 $refNo = $existingTx->reference_no;
                 if (!empty($existingTx->response_payload)) {
                     $savedData = json_decode($existingTx->response_payload, true);
-                    $url = $savedData['webRedirectUrl'] ?? null;
+                    // Cek berbagai kemungkinan key redirect
+                    $url = $savedData['webRedirectUrl'] ?? $savedData['checkoutUrl'] ?? null;
                     if ($url) return redirect($url);
                 }
             } else {
-                // Transaksi Baru
                 $refNo = 'DEP-' . time() . mt_rand(100, 999);
-
                 DB::table('dana_transactions')->insert([
                     'tenant_id'    => $member->tenant_id ?? 1,
                     'affiliate_id' => $member->id,
@@ -1531,105 +1542,108 @@ public function storeDeposit(Request $request)
                 ]);
             }
 
-            // Setup Variabel
-            $amt = number_format($request->amount, 2, '.', '');
-            $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'); // Format Wajib: +07:00
-
-            // --- RAKIT BODY JSON (SESUAI REQUEST ANDA) ---
-            $body = [
-                "partnerReferenceNo" => $refNo,
-                "merchantId"         => config('services.dana.merchant_id'),
-                "amount" => [
-                    "value"    => $amt,
-                    "currency" => "IDR"
-                ],
-                // Structure AdditionalInfo Baru
-                "additionalInfo" => [
-                    "productCode" => "51051000100000000001", // Kode Produk Spesifik dari Sample
-                    "envInfo" => [
-                        "sourcePlatform"    => "IPG",
-                        "terminalType"      => "WEB",
-                        "orderTerminalType" => "APP",
-                        "websiteLanguage"   => "ID",
-                        // Field kosong sesuai sample (biarkan string kosong)
-                        "appVersion"        => "",
-                        "clientIp"          => $request->ip(),
-                        "extendInfo"        => "",
-                        "merchantAppVersion"=> "",
-                        "orderOsType"       => "",
-                        "osType"            => "",
-                        "sdkVersion"        => "",
-                        "sessionId"         => "",
-                        "tokenId"           => ""
-                    ],
-                    "order" => [
-                        "orderTitle" => "Deposit Saldo" // Judul Transaksi
-                    ],
-                    "mcc" => "" // Merchant Category Code (Kosongkan sesuai sample)
-                ],
-                // UrlParams TETAP WAJIB agar user bisa balik ke website setelah bayar
-                "urlParams" => [
-                    [
-                        "url"        => url('/member/dashboard'),
-                        "type"       => "PAY_RETURN",
-                        "isDeeplink" => "Y"
-                    ]
-                ]
-            ];
-
+            // --- C. MULAI REQUEST SDK ---
             try {
-                // KIRIM REQUEST
-                $response = $this->sendSnapRequest(
-                    '/rest/redirection/v1.0/debit/payment-host-to-host',
-                    'POST',
-                    $body,
-                    $timestamp
-                );
+                // 1. Setup Config
+                $config = new Configuration();
+                $config->setApiKey('PRIVATE_KEY', config('services.dana.private_key'));
+                $config->setApiKey('X_PARTNER_ID', config('services.dana.x_partner_id'));
+                $config->setApiKey('ORIGIN', config('services.dana.origin'));
+                $config->setApiKey('DANA_ENV', Env::SANDBOX);
 
-                // Handle Conflict RefNo (4045418)
-                if (isset($response['responseCode']) && $response['responseCode'] == '4045418') {
-                    Log::warning("[DANA RETRY] RefNo Conflict. New Ref Generated.");
+                $apiInstance = new WidgetApi(null, $config);
 
-                    $newRefNo = 'DEP-' . time() . mt_rand(1000, 9999);
-                    DB::table('dana_transactions')->where('reference_no', $refNo)->update(['reference_no' => $newRefNo]);
+                // 2. Buat Object Request Utama
+                $paymentRequest = new WidgetPaymentRequest();
 
-                    $body['partnerReferenceNo'] = $newRefNo;
-                    $refNo = $newRefNo;
+                // [MANDATORY 1] Merchant ID & RefNo
+                $paymentRequest->setMerchantId($merchantId);
+                $paymentRequest->setPartnerReferenceNo($refNo);
 
-                    // Retry
-                    $response = $this->sendSnapRequest(
-                        '/rest/redirection/v1.0/debit/payment-host-to-host',
-                        'POST',
-                        $body,
-                        $timestamp
-                    );
+                // [MANDATORY 2] Amount
+                $money = new Money();
+                $money->setValue(number_format($request->amount, 2, '.', ''));
+                $money->setCurrency("IDR");
+                $paymentRequest->setAmount($money);
+
+                // [MANDATORY 3] Redirect URL (UrlParams)
+                $urlParam = new UrlParam();
+                $urlParam->setUrl(url('/member/dashboard'));
+                $urlParam->setType("PAY_RETURN");
+                $urlParam->setIsDeeplink("Y");
+                $paymentRequest->setUrlParams([$urlParam]);
+
+                // [MANDATORY 4] Expiry Period (Wajib di beberapa versi SDK)
+                // Format: 60m (60 menit)
+                $paymentRequest->setValidUpTo(now()->addMinutes(30)->format('Y-m-d\TH:i:sP'));
+
+                // [MANDATORY 5] Additional Info & Order
+                // Kita gunakan stdClass agar aman dari error "Class Not Found"
+                $addInfo = new \stdClass();
+                $addInfo->productCode = "DIGITAL_PRODUCT";
+
+                $orderObj = new \stdClass();
+                $orderObj->orderTitle = "Deposit Saldo";
+                $orderObj->orderMemo  = "Topup User ID: " . $member->id;
+
+                $addInfo->order = $orderObj;
+
+                // Masukkan additional info ke request
+                $paymentRequest->setAdditionalInfo($addInfo);
+
+                // --- [DEBUGGING LOG] ---
+                // Kita intip isi JSON sebelum dikirim ke DANA
+                // Cek file storage/logs/laravel.log setelah run ini
+                $debugBody = json_encode($paymentRequest, JSON_PRETTY_PRINT);
+                Log::info("[DANA SDK DEBUG] Request Body yang akan dikirim:\n" . $debugBody);
+
+                // 3. EKSEKUSI
+                $result = $apiInstance->widgetPayment($paymentRequest);
+
+                // 4. Handling Result
+                // Cek getter redirect url yang tersedia
+                $redirectUrl = null;
+                if (method_exists($result, 'getWebRedirectUrl')) {
+                    $redirectUrl = $result->getWebRedirectUrl();
+                } elseif (isset($result->webRedirectUrl)) {
+                    $redirectUrl = $result->webRedirectUrl;
                 }
 
-                // Cek Hasil
-                if (isset($response['webRedirectUrl'])) {
+                if ($redirectUrl) {
                     DB::table('dana_transactions')
                         ->where('reference_no', $refNo)
                         ->update([
                             'status' => 'PENDING',
-                            'response_payload' => json_encode($response),
+                            'response_payload' => json_encode($result),
                             'updated_at' => now()
                         ]);
-
-                    return redirect($response['webRedirectUrl']);
+                    return redirect($redirectUrl);
                 } else {
-                    $errCode = $response['responseCode'] ?? 'UNKNOWN';
-                    $errMsg  = $response['responseMessage'] ?? 'Gagal mendapatkan link.';
-
-                    DB::table('dana_transactions')
-                        ->where('reference_no', $refNo)
-                        ->update(['status' => 'FAILED', 'response_payload' => json_encode($response), 'updated_at' => now()]);
-
-                    return back()->with('error', "DANA Error ($errCode): $errMsg");
+                    Log::error("[DANA SDK FAIL] Result OK tapi URL kosong.", (array)$result);
+                    throw new \Exception("Gagal mendapatkan link pembayaran.");
                 }
 
             } catch (\Exception $e) {
-                Log::error('[DANA ERROR] ' . $e->getMessage());
-                return back()->with('error', 'Gagal Deposit: ' . $e->getMessage());
+                // Tangkap Detail Error dari SDK
+                $errorMsg = $e->getMessage();
+
+                // Cek Response Body dari Guzzle Exception
+                if (method_exists($e, 'getResponseBody')) {
+                    $body = $e->getResponseBody();
+                    Log::error("[DANA SDK 400 RESPONSE]", (array)$body);
+
+                    if ($body && isset($body->responseMessage)) {
+                        $errorMsg = "DANA: " . $body->responseMessage . " (" . ($body->responseCode ?? '') . ")";
+                    }
+                }
+
+                // Update DB
+                DB::table('dana_transactions')
+                    ->where('reference_no', $refNo)
+                    ->update(['status' => 'FAILED', 'response_payload' => $errorMsg, 'updated_at' => now()]);
+
+                Log::error('[DANA SDK EXCEPTION] ' . $errorMsg);
+                return back()->with('error', $errorMsg);
             }
         }
 
