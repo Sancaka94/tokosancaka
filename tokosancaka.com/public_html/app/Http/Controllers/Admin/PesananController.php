@@ -1894,34 +1894,18 @@ public function cetakThermal($resi)
      * HELPER: Simpan Transaksi Keuangan (HANYA JIKA STATUS SUKSES)
      * Cash Basis: Pencatatan dilakukan saat paket benar-benar selesai.
      */
-    // Hapus "Ke" agar sesuai dengan panggilan dari Webhook
     public static function simpanKeuangan(Pesanan $pesanan)
     {
         try {
-            // ==========================================================
             // 1. VALIDASI STATUS (GATEKEEPER)
-            // ==========================================================
-            // Daftar status yang dianggap "Uang Masuk / Transaksi Selesai"
-            $statusSukses = [
-                'Selesai',
-                'Terkirim',
-                'Delivered',
-                'Success',
-                'Berhasil',
-                'Finished'
-            ];
-
-            // Normalisasi status database agar huruf besar/kecil tidak masalah
+            $statusSukses = ['Selesai', 'Terkirim', 'Delivered', 'Success', 'Berhasil', 'Finished'];
             $currentStatus = ucwords(strtolower($pesanan->status_pesanan));
 
-            // JIKA STATUS BELUM SUKSES -> STOP / JANGAN SIMPAN
             if (!in_array($currentStatus, $statusSukses)) {
                 return;
             }
 
-            // ==========================================================
-            // 2. HITUNG DISKON & PROFIT
-            // ==========================================================
+            // 2. HITUNG DISKON & PROFIT DARI TABEL EKSPEDISI
             $ekspedisiRules = DB::table('Ekspedisi')->get();
             $diskonPersen = 0;
             $expStr = strtolower($pesanan->expedition);
@@ -1943,62 +1927,72 @@ public function cetakThermal($resi)
             }
 
             // ==========================================================
-            // 3. HITUNG NOMINAL
+            // 3. HITUNG NOMINAL (PERBAIKAN UTAMA DISINI)
             // ==========================================================
-            $ongkirPublish = (float) $pesanan->shipping_cost; // Omzet
-            $nilaiDiskon   = $ongkirPublish * $diskonPersen;  // Profit
-            $modalReal     = $ongkirPublish - $nilaiDiskon;   // Beban Pokok
 
-            // Validasi nominal
-            if ($ongkirPublish <= 0) return;
+            // A. TENTUKAN OMZET (Pemasukan)
+            // Prioritas 1: Ambil dari kolom 'price' (Total bayar customer)
+            $omzet = (float) $pesanan->price;
 
-            // Pastikan Resi Ada (Karena status sudah selesai, resi pasti ada)
+            // Prioritas 2: Jika 'price' kosong/NULL, pakai 'shipping_cost' (Ongkir Publish)
+            if ($omzet <= 0) {
+                $omzet = (float) $pesanan->shipping_cost;
+            }
+
+            // Tambahan: Jika ada biaya lain (optional, sesuaikan kebutuhan)
+            // $omzet += (float) $pesanan->insurance_cost;
+
+            // B. TENTUKAN MODAL (Pengeluaran ke Pusat)
+            $ongkirPublish = (float) $pesanan->shipping_cost;
+            $nilaiDiskon   = $ongkirPublish * $diskonPersen;
+
+            // Modal = Ongkir Publish dikurangi Jatah Komisi/Diskon
+            $modalReal = $ongkirPublish - $nilaiDiskon;
+
+            // Pastikan tidak menyimpan data kosong
+            if ($omzet <= 0 && $modalReal <= 0) return;
+
             $resiFinal = $pesanan->resi ?? $pesanan->nomor_invoice;
 
             // ==========================================================
-            // 4. EKSEKUSI PENYIMPANAN (UPDATE OR CREATE)
+            // 4. EKSEKUSI PENYIMPANAN
             // ==========================================================
-            // Menggunakan updateOrCreate agar jika webhook terkirim 2x, data tidak dobel.
 
-            // A. PEMASUKAN (Pendapatan Jasa)
+            // A. CATAT PEMASUKAN (PENJUALAN) -> Agar Omzet Muncul
             Keuangan::updateOrCreate(
                 [
-                    // Kunci Unik (Syarat agar tidak dobel)
                     'nomor_invoice' => $pesanan->nomor_invoice,
                     'jenis'         => 'Pemasukan',
-                    'kategori'      => 'Pendapatan Jasa Pengiriman'
+                    'kategori'      => 'Penjualan Jasa Pengiriman' // Kategori Pendapatan
                 ],
                 [
-                    // Data yang diupdate/disimpan
-                    'kode_akun'     => '4101', // Akun Pendapatan
-                    'tanggal'       => now()->toDateString(), // Tanggal SELESAI (bukan tanggal order)
+                    'kode_akun'     => '4101',
+                    'tanggal'       => now()->toDateString(),
                     'unit_usaha'    => 'Ekspedisi',
-                    'keterangan'    => "Pendapatan Resi: " . $resiFinal . " (" . $pesanan->expedition . ")",
-                    'jumlah'        => $ongkirPublish,
+                    'keterangan'    => "Penjualan Resi: " . $resiFinal . " (" . $pesanan->expedition . ")",
+                    'jumlah'        => $omzet, // NILAI POSITIF (Hijau)
                     'updated_at'    => now()
                 ]
             );
 
-            // B. PENGELUARAN (Beban/Modal ke Pusat)
+            // B. CATAT PENGELUARAN (BEBAN/MODAL) -> Agar Profit Terhitung Benar
             Keuangan::updateOrCreate(
                 [
-                    // Kunci Unik
                     'nomor_invoice' => $pesanan->nomor_invoice,
                     'jenis'         => 'Pengeluaran',
-                    'kategori'      => 'Beban Ekspedisi'
+                    'kategori'      => 'Beban Ekspedisi' // Kategori Beban
                 ],
                 [
-                    // Data yang diupdate/disimpan
-                    'kode_akun'     => '5101', // Akun Beban
+                    'kode_akun'     => '5101',
                     'tanggal'       => now()->toDateString(),
                     'unit_usaha'    => 'Ekspedisi',
                     'keterangan'    => "Setor Modal ke Pusat: " . $resiFinal . " (Profit " . ($diskonPersen * 100) . "%)",
-                    'jumlah'        => $modalReal,
+                    'jumlah'        => $modalReal, // NILAI PENGURANG (Merah)
                     'updated_at'    => now()
                 ]
             );
 
-            Log::info("Keuangan CASH BASIS Tersimpan: Invoice {$pesanan->nomor_invoice} | Status: {$currentStatus}");
+            Log::info("Keuangan Tersimpan: Invoice {$pesanan->nomor_invoice} | Omzet: {$omzet} | Modal: {$modalReal}");
 
         } catch (Exception $e) {
             Log::error('Keuangan Error:', ['invoice' => $pesanan->nomor_invoice, 'msg' => $e->getMessage()]);
