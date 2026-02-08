@@ -774,6 +774,9 @@ class OrderController extends Controller
             // LANGKAH 3: LOGIKA PENGIRIMAN & PEMBAYARAN
             // ============================================================
 
+            // [FIX] Inisialisasi variabel agar tidak error saat Cash/Saldo
+            $paymentUrl = null;
+
             // === SKENARIO A: PENGIRIMAN PAKET (SHIPPING) ===
             if ($request->delivery_type === 'shipping') {
 
