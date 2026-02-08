@@ -514,7 +514,7 @@
         {{-- Pagination --}}
         @if ($orders->hasPages())
         <div class="mt-4 p-4 border-t border-gray-200">
-            {{ $orders->appends(request()->query())->links() }}
+            {{ $orders->appends(request()->query())->links('vendor.pagination.tailwind') }}
         </div>
         @endif
     </div>

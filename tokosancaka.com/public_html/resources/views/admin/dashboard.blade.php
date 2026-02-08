@@ -655,261 +655,360 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // --- Inisialisasi & Setup Chart ---
-        const notificationTableBody = document.getElementById('notification-table-body');
-        let adminTransactionChart, spxScanChart, expeditionRankChart, expeditionOmzetChart;
+    // =================================================================
+    // 1. VARIABEL GLOBAL (Agar chart bisa di-reset saat pindah halaman)
+    // =================================================================
+    var chartInstances = {
+        adminTransaction: null,
+        spxScan: null,
+        expeditionRank: null,
+        expeditionOmzet: null
+    };
 
-        function showNotificationModal(title, message, url) {
-            window.dispatchEvent(new CustomEvent('new-notification', { detail: { title, message, url } }));
-        }
+    // Flag agar listener realtime tidak dobel
+    window.isDashboardEchoInitialized = window.isDashboardEchoInitialized || false;
 
-        function addNotificationToTable(notification) {
-            if (!notificationTableBody) return;
-            const noNotificationRow = document.getElementById('no-notification-row');
-            if (noNotificationRow) noNotificationRow.remove();
-            const newRow = document.createElement('tr');
-            newRow.className = 'hover:bg-gray-50 bg-red-50 font-semibold';
-            newRow.innerHTML = `
-                <td class="px-6 py-4">
-                    <a href="${notification.url || '#'}" class="block text-gray-800 hover:text-red-600">
-                        <p class="font-medium">${notification.title || 'Notifikasi'}</p>
-                        <p class="text-xs text-gray-600">${notification.message || 'Tidak ada detail.'}</p>
-                    </a>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-gray-500">Baru saja</td>`;
-            notificationTableBody.prepend(newRow);
-        }
+    // =================================================================
+    // 2. FUNGSI UTAMA: INISIALISASI CHART & UI
+    // =================================================================
+    function initDashboardCharts() {
+        // --- A. Hancurkan Chart Lama (Wajib untuk Livewire SPA) ---
+        if (chartInstances.adminTransaction) { chartInstances.adminTransaction.destroy(); chartInstances.adminTransaction = null; }
+        if (chartInstances.spxScan) { chartInstances.spxScan.destroy(); chartInstances.spxScan = null; }
+        if (chartInstances.expeditionRank) { chartInstances.expeditionRank.destroy(); chartInstances.expeditionRank = null; }
+        if (chartInstances.expeditionOmzet) { chartInstances.expeditionOmzet.destroy(); chartInstances.expeditionOmzet = null; }
 
-        // Fungsi pembantu untuk menggambar logo agar tidak gepeng
-        function createLogoPlugin(logos) {
-            return {
-                id: 'yAxisLogos',
-                afterDraw: (chart) => {
-                    const { ctx, scales: { y } } = chart;
-                    y.ticks.forEach((tick, index) => {
-                        const img = new Image();
-                        img.src = logos[index];
-                        if (img.complete || img.height > 0) {
-                            const yPos = y.getPixelForTick(index);
-                            const targetW = 40, targetH = 30;
-                            const ratio = img.width / img.height;
-                            let drawW = targetW, drawH = targetW / ratio;
-                            if (drawH > targetH) { drawH = targetH; drawW = targetH * ratio; }
-                            ctx.drawImage(img, y.left - 80 + (targetW - drawW) / 2, yPos - (drawH / 2), drawW, drawH);
-                        } else {
-                            img.onload = () => chart.draw();
-                        }
-                    });
-                }
-            };
-        }
+        // --- B. Konfigurasi Warna & Tema ---
+        const isDarkMode = localStorage.getItem('darkMode') === 'true';
+        const textColor = isDarkMode ? '#9ca3af' : '#4b5563';
+        const gridColor = isDarkMode ? '#374151' : '#e5e7eb';
+        
+        const brandColors = {
+            'JNT': '#ff0000', 'JNTCARGO': '#008d36', 'JTCARGO': '#008d36',
+            'POSINDONESIA': '#ff6600', 'JNE': '#0054a6', 'SPX': '#ee4d2d',
+            'LION': '#e21f26', 'IDX': '#ff0000', 'SICEPAT': '#d40f17'
+        };
 
-        function initCharts() {
-            const isDarkMode = localStorage.getItem('darkMode') === 'true';
-            const brandColors = {
-                'JNT': '#ff0000', 'JNTCARGO': '#008d36', 'JTCARGO': '#008d36',
-                'POSINDONESIA': '#ff6600', 'JNE': '#0054a6', 'SPX': '#ee4d2d',
-                'LION': '#e21f26', 'IDX': '#ff0000'
-            };
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } },
+                x: { ticks: { color: textColor }, grid: { color: gridColor } }
+            },
+            plugins: { legend: { display: false } }
+        };
 
-            const chartOptions = (isDark) => ({
-                responsive: true, maintainAspectRatio: false,
-                scales: { 
-                    y: { beginAtZero: true, ticks: { color: isDark ? '#9ca3af' : '#4b5563' }, grid: { color: isDark ? '#374151' : '#e5e7eb' } },
-                    x: { ticks: { color: isDark ? '#9ca3af' : '#4b5563' }, grid: { color: isDark ? '#374151' : '#e5e7eb' } }
-                },
-                plugins: { legend: { labels: { color: isDark ? '#9ca3af' : '#4b5563' } } }
+        // --- C. Plugin Logo (Gambar di Sumbu Y) ---
+        const logoPlugin = {
+            id: 'yAxisLogos',
+            afterDraw: (chart) => {
+                const { ctx, scales: { y } } = chart;
+                const logos = chart.config.data.logoUrls || []; // Ambil custom property logoUrls
+                if (!y || logos.length === 0) return;
+
+                y.ticks.forEach((tick, index) => {
+                    if (!logos[index]) return;
+                    const img = new Image();
+                    img.src = logos[index];
+                    
+                    if (img.complete && img.naturalHeight !== 0) {
+                        const yPos = y.getPixelForTick(index);
+                        const targetW = 30, targetH = 20; // Ukuran logo
+                        ctx.drawImage(img, y.left - 50, yPos - (targetH / 2), targetW, targetH);
+                    } else {
+                        // Trik agar gambar muncul setelah loading selesai tanpa loop infinite
+                        img.onload = () => { if(chart.ctx) chart.draw(); };
+                    }
+                });
+            }
+        };
+
+        // --- D. Helper URL Logo ---
+        const getLogos = (labels) => {
+            if (!labels || !Array.isArray(labels)) return [];
+            return labels.map(l => {
+                const clean = l ? l.toLowerCase().replace(/[^a-z0-9]/g, '') : 'default';
+                return `{{ asset('public/storage/logo-ekspedisi') }}/${clean}.png`;
             });
+        };
 
-            // 1. Admin Transaction Chart
-            const ctx = document.getElementById('adminTransactionChart');
-            if (ctx) {
-                const chartData = @json($chartData ?? ['labels' => [], 'data' => []]);
-                adminTransactionChart = new Chart(ctx, { 
-                    type: 'line', 
-                    data: { 
-                        labels: chartData.labels, 
-                        datasets: [{ label: 'Total Pendapatan', data: chartData.data, borderColor: 'rgb(79, 70, 229)', backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true, tension: 0.4 }] 
-                    }, 
-                    options: chartOptions(isDarkMode) 
-                });
-            }
+        // --- E. Render Chart 1: Pendapatan ---
+        const ctx1 = document.getElementById('adminTransactionChart');
+        if (ctx1) {
+            const data1 = @json($chartData ?? ['labels' => [], 'data' => []]);
+            chartInstances.adminTransaction = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: data1.labels || [],
+                    datasets: [{
+                        label: 'Total Pendapatan',
+                        data: data1.data || [],
+                        borderColor: 'rgb(79, 70, 229)',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        fill: true, tension: 0.4
+                    }]
+                },
+                options: commonOptions
+            });
+        }
 
-            // 2. SPX Scan Chart
-            const spxCtx = document.getElementById('spxScanChart');
-            if (spxCtx) {
-                const spxChartData = @json($spxChartData ?? ['labels' => [], 'data' => []]);
-                spxScanChart = new Chart(spxCtx, { 
-                    type: 'bar', 
-                    data: { 
-                        labels: spxChartData.labels, 
-                        datasets: [{ label: 'Total Scan SPX', data: spxChartData.data, borderColor: 'rgb(239, 68, 68)', backgroundColor: 'rgba(239, 68, 68, 0.5)', borderWidth: 1 }] 
-                    }, 
-                    options: chartOptions(isDarkMode) 
-                });
-            }
+        // --- F. Render Chart 2: SPX Scan ---
+        const ctx2 = document.getElementById('spxScanChart');
+        if (ctx2) {
+            const data2 = @json($spxChartData ?? ['labels' => [], 'data' => []]);
+            chartInstances.spxScan = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: data2.labels || [],
+                    datasets: [{
+                        label: 'Scan SPX',
+                        data: data2.data || [],
+                        borderColor: 'rgb(239, 68, 68)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.5)',
+                        borderWidth: 1
+                    }]
+                },
+                options: commonOptions
+            });
+        }
 
-            // 3. Expedition Rank Chart
-            const countCtx = document.getElementById('expeditionRankChart');
-            if (countCtx) {
-                const countData = @json($expeditionData);
-                const countLogos = countData.labels.map(l => `{{ asset('public/storage/logo-ekspedisi') }}/${l.toLowerCase().replace(/\s+/g, '')}.png`);
-                expeditionRankChart = new Chart(countCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: countData.labels,
-                        datasets: [{
-                            data: countData.data,
-                            backgroundColor: countData.labels.map(l => brandColors[l.toUpperCase().replace(/\s+/g, '')] || '#4f46e5'),
-                            borderRadius: 6, barThickness: 28
-                        }]
+        // --- G. Render Chart 3: Rank Ekspedisi (Total Kiriman) ---
+        const ctx3 = document.getElementById('expeditionRankChart');
+        if (ctx3) {
+            const data3 = @json($expeditionData ?? ['labels' => [], 'data' => []]);
+            const labels3 = data3.labels || [];
+            
+            chartInstances.expeditionRank = new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: labels3,
+                    logoUrls: getLogos(labels3), // Simpan URL untuk plugin
+                    datasets: [{
+                        data: data3.data || [],
+                        backgroundColor: labels3.map(l => brandColors[l.toUpperCase().replace(/\s+/g, '')] || '#4f46e5'),
+                        borderRadius: 6, barThickness: 20
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: { padding: { left: 60, right: 20 } },
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, grid: { display: false } },
+                        y: { grid: { display: false }, ticks: { padding: 10, font: { weight: 'bold' } } }
+                    }
+                },
+                plugins: [logoPlugin]
+            });
+        }
+
+        // --- H. Render Chart 4: Omzet Ekspedisi ---
+        const ctx4 = document.getElementById('expeditionOmzetChart');
+        if (ctx4) {
+            const data4 = @json($expeditionOmzetData ?? ['labels' => [], 'data' => []]);
+            const labels4 = data4.labels || [];
+
+            chartInstances.expeditionOmzet = new Chart(ctx4, {
+                type: 'bar',
+                data: {
+                    labels: labels4,
+                    logoUrls: getLogos(labels4),
+                    datasets: [{
+                        data: data4.data || [],
+                        backgroundColor: labels4.map(l => brandColors[l.toUpperCase().replace(/\s+/g, '')] || '#10b981'),
+                        borderRadius: 6, barThickness: 20
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: { padding: { left: 60, right: 20 } },
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (ctx) => ' Omzet: ' + new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(ctx.parsed.x) } }
                     },
-                    options: {
-                        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                        layout: { padding: { left: 85, right: 35 } },
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            x: { beginAtZero: true, grid: { display: false } },
-                            y: { grid: { display: false }, ticks: { padding: 25, font: { weight: 'bold' } } }
-                        }
-                    },
-                    plugins: [createLogoPlugin(countLogos)]
-                });
-            }
-
-            // 4. Expedition Omzet Chart
-            const omzetCtx = document.getElementById('expeditionOmzetChart');
-            if (omzetCtx) {
-                const omzetData = @json($expeditionOmzetData);
-                const omzetLogos = omzetData.labels.map(l => `{{ asset('public/storage/logo-ekspedisi') }}/${l.toLowerCase().replace(/\s+/g, '')}.png`);
-                expeditionOmzetChart = new Chart(omzetCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: omzetData.labels,
-                        datasets: [{
-                            data: omzetData.data,
-                            backgroundColor: omzetData.labels.map(l => brandColors[l.toUpperCase().replace(/\s+/g, '')] || '#10b981'),
-                            borderRadius: 6, barThickness: 28
-                        }]
-                    },
-                    options: {
-                        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                        layout: { padding: { left: 85, right: 45 } },
-                        plugins: { 
-                            legend: { display: false },
-                            tooltip: { callbacks: { label: (ctx) => ' Omzet: ' + new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(ctx.parsed.x) } }
+                    scales: {
+                        x: { 
+                            ticks: { callback: (v) => 'Rp ' + (v/1000000).toFixed(1) + 'Jt' } // Format Jutaan
                         },
-                        scales: {
-                            x: { ticks: { callback: (v) => 'Rp ' + v.toLocaleString('id-ID') } },
-                            y: { grid: { display: false }, ticks: { padding: 25, font: { weight: 'bold' } } }
-                        }
-                    },
-                    plugins: [createLogoPlugin(omzetLogos)]
+                        y: { grid: { display: false }, ticks: { padding: 10, font: { weight: 'bold' } } }
+                    }
+                },
+                plugins: [logoPlugin]
+            });
+        }
+
+        // --- I. Re-attach Search Listener (Penting saat Navigasi) ---
+        const searchInput = document.getElementById('searchPesanan');
+        if(searchInput){
+            // Hapus listener lama (trick cloning) agar tidak numpuk
+            const newSearchInput = searchInput.cloneNode(true);
+            searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+            
+            newSearchInput.addEventListener('input', function(e) {
+                const term = e.target.value.toLowerCase();
+                document.querySelectorAll('.pesanan-item').forEach(item => {
+                    const text = item.getAttribute('data-search');
+                    item.style.display = text.includes(term) ? 'flex' : 'none';
                 });
-            }
+            });
         }
+    }
 
-        // --- Fungsi Realtime Lainnya (Tetap Seperti Kode Anda) ---
-        function updateStats(stats) {
-            if (!stats) return;
-            const fmt = (val) => new Intl.NumberFormat('id-ID').format(val);
-            if(document.getElementById('total-pendapatan')) document.getElementById('total-pendapatan').textContent = `Rp ${fmt(stats.totalPendapatan)}`;
-            if(document.getElementById('total-pesanan')) document.getElementById('total-pesanan').textContent = fmt(stats.totalPesanan);
-            if(document.getElementById('jumlah-toko')) document.getElementById('jumlah-toko').textContent = fmt(stats.jumlahToko);
-            if(document.getElementById('pengguna-baru')) document.getElementById('pengguna-baru').textContent = fmt(stats.penggunaBaru);
+    // =================================================================
+    // 3. FUNGSI UPDATE DATA REALTIME (Dipanggil oleh Echo)
+    // =================================================================
+    
+    // Update Angka Statistik (Kotak Atas)
+    function updateStats(stats) {
+        if (!stats) return;
+        const fmt = (val) => new Intl.NumberFormat('id-ID').format(val);
+        if(document.getElementById('total-pendapatan')) document.getElementById('total-pendapatan').textContent = `Rp ${fmt(stats.totalPendapatan)}`;
+        if(document.getElementById('total-pesanan')) document.getElementById('total-pesanan').textContent = fmt(stats.totalPesanan);
+        if(document.getElementById('jumlah-toko')) document.getElementById('jumlah-toko').textContent = fmt(stats.jumlahToko);
+        if(document.getElementById('pengguna-baru')) document.getElementById('pengguna-baru').textContent = fmt(stats.penggunaBaru);
+    }
+
+    // Update Data Chart Tanpa Reload
+    function updateChart(chart, newData) {
+        if (!chart || !newData) return;
+        if (newData.labels) chart.data.labels = newData.labels;
+        if (newData.data && chart.data.datasets.length > 0) {
+            chart.data.datasets[0].data = newData.data;
         }
+        chart.update();
+    }
 
-        function updateRecentActivity(activities) {
-            const container = document.getElementById('recent-activity-container');
-            if (!container) return;
-            container.innerHTML = ''; 
-            if (activities && activities.length > 0) {
-                activities.forEach(pesanan => {
-                    const parts = (pesanan.expedition || '').split('-');
-                    const kodeEks = parts[1] ? parts[1].toLowerCase() : 'default';
-                    const logoUrl = `{{ asset('public/storage/logo-ekspedisi') }}/${kodeEks}.png`;
-                    const resi = pesanan.resi || pesanan.nomor_invoice;
-                    const html = `
-                        <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
-                            <div class="mt-1">
-                                <div class="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
-                                    <img src="${logoUrl}" class="w-10 h-10 object-contain" onerror="this.src='{{ asset('public/storage/uploads/sancaka.png') }}'">
+    // Update List Aktivitas Terbaru
+    function updateRecentActivity(activities) {
+        const container = document.getElementById('recent-activity-container');
+        if (!container) return;
+        container.innerHTML = ''; 
+        if (activities && activities.length > 0) {
+            activities.forEach(pesanan => {
+                const parts = (pesanan.expedition || '').split('-');
+                const kodeEks = parts[1] ? parts[1].toLowerCase() : 'default';
+                const logoUrl = `{{ asset('public/storage/logo-ekspedisi') }}/${kodeEks}.png`;
+                const resi = pesanan.resi || pesanan.nomor_invoice;
+                const html = `
+                    <div class="pesanan-item flex items-start py-3 border-b border-gray-100 last:border-0 hover:bg-blue-50 transition-colors rounded-lg px-2" 
+                         data-search="${(resi + ' ' + (pesanan.pembeli?.store_name||'') + ' ' + (pesanan.pembeli?.nama_lengkap||'')).toLowerCase()}">
+                        <div class="mt-1 flex-shrink-0">
+                            <div class="w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
+                                <img src="${logoUrl}" class="w-10 h-10 object-contain" onerror="this.src='{{ asset('public/storage/uploads/sancaka.png') }}'">
+                            </div>
+                        </div>
+                        <div class="ml-4 flex-1">
+                            <div class="flex justify-between items-start">
+                                <div class="flex flex-col">
+                                    <p class="text-sm font-bold text-gray-800 tracking-tight">${resi}</p>
+                                </div>
+                                <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                                    Rp ${new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost)}
+                                </span>
+                            </div>
+                            <div class="mt-2 space-y-1">
+                                <div class="flex items-center text-xs text-green-600 font-bold">
+                                    <i class="fas fa-store w-4 mr-1"></i>
+                                    <span>${pesanan.nama_toko_anda || 'Tanpa Toko'}</span>
                                 </div>
                             </div>
-                            <div class="ml-3 flex-1">
-                                <div class="flex justify-between items-start">
-                                    <div class="flex flex-col">
-                                        <p class="text-sm font-bold text-gray-800">${resi}</p>
-                                    </div>
-                                    <span class="text-xs font-bold text-green-600">Rp ${new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost)}</span>
-                                </div>
-                                <div class="mt-1 flex flex-col gap-0.5">
-                                    <div class="flex items-center text-xs text-red-600 font-semibold">
-                                        <span>${pesanan.nama_toko_anda || 'Tanpa Toko'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>`;
-                    container.insertAdjacentHTML('beforeend', html);
-                });
-            }
+                        </div>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', html);
+            });
         }
+    }
 
-        function updateChart(chart, newData) {
-            if (!chart || !newData) return;
-            if (newData.labels) chart.data.labels = newData.labels;
-            if (newData.data && chart.data.datasets.length > 0) {
-                chart.data.datasets[0].data = newData.data;
-            }
-            chart.update();
-        }
+    function addNotificationToTable(notification) {
+        const tbody = document.getElementById('notification-table-body');
+        if (!tbody) return;
+        const newRow = document.createElement('tr');
+        newRow.className = 'hover:bg-gray-50 bg-red-50 font-semibold';
+        newRow.innerHTML = `
+            <td class="px-6 py-4">
+                <a href="${notification.url || '#'}" class="block text-gray-800 hover:text-red-600">
+                    <p class="font-medium">${notification.title || 'Notifikasi'}</p>
+                    <p class="text-xs text-gray-600">${notification.message || 'Tidak ada detail.'}</p>
+                </a>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-500">Baru saja</td>`;
+        tbody.prepend(newRow);
+    }
 
-        // --- Panggil Fungsi ---
-        initCharts();
+    // =================================================================
+    // 4. EVENT LISTENERS (Eksekusi Kode)
+    // =================================================================
 
-        // Echo Listeners
-        if (typeof window.Echo !== 'undefined' && {{ Auth::check() && strtolower(Auth::user()->role) === 'admin' ? 'true' : 'false' }}) {
+    // A. Saat Halaman Pertama Kali Dimuat
+    document.addEventListener('DOMContentLoaded', function() {
+        initDashboardCharts();
+        
+        // Init Echo Realtime (Hanya sekali per sesi halaman)
+        if (typeof window.Echo !== 'undefined' && !window.isDashboardEchoInitialized && {{ Auth::check() && strtolower(Auth::user()->role) === 'admin' ? 'true' : 'false' }}) {
+            
             window.Echo.private('admin-notifications')
                 .listen('AdminNotificationEvent', (e) => {
-                    showNotificationModal(e.title, e.message, e.url);
+                    window.dispatchEvent(new CustomEvent('new-notification', { detail: e }));
                     addNotificationToTable(e);
                 });
+
             window.Echo.private('admin-dashboard')
                 .listen('DashboardUpdated', (e) => {
                     updateStats(e.stats);
-                    updateChart(adminTransactionChart, e.chartData);
-                    updateChart(spxScanChart, e.spxChartData);
+                    updateChart(chartInstances.adminTransaction, e.chartData);
+                    updateChart(chartInstances.spxScan, e.spxChartData);
                     updateRecentActivity(e.pesananTerbaru);
                 });
+            
+            window.isDashboardEchoInitialized = true;
+            console.log("Dashboard Realtime Initialized");
         }
     });
-</script>
 
-{{-- Script Pencarian Real-time --}}
-<script>
-document.getElementById('searchPesanan').addEventListener('input', function(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    const items = document.querySelectorAll('.pesanan-item');
-    
-    items.forEach(item => {
-        const text = item.getAttribute('data-search');
-        if (text.includes(searchTerm)) {
-            item.style.display = 'flex';
-        } else {
-            item.style.display = 'none';
+    // B. Saat Navigasi Livewire Selesai (Pindah Halaman Tanpa Reload)
+    document.addEventListener('livewire:navigated', function() {
+        initDashboardCharts(); // Gambar ulang chart karena canvas baru saja dirender
+    });
+
+    // C. Fix Resize Tab Alpine (Agar Chart Tidak Gepeng)
+    document.addEventListener('alpine:init', () => {
+        Alpine.watch(
+            () => Alpine.store('activeTab'), // Pantau variabel (jika ada di store)
+            () => { 
+                setTimeout(() => {
+                    if(chartInstances.expeditionRank) chartInstances.expeditionRank.resize();
+                    if(chartInstances.expeditionOmzet) chartInstances.expeditionOmzet.resize();
+                }, 300);
+            }
+        );
+    });
+
+    // Fallback: Pantau klik tombol Tab manual
+    document.addEventListener('click', function(e) {
+        if(e.target.closest('[x-data] button')) {
+            setTimeout(() => {
+                if(chartInstances.expeditionRank) chartInstances.expeditionRank.resize();
+                if(chartInstances.expeditionOmzet) chartInstances.expeditionOmzet.resize();
+            }, 300);
         }
     });
-});
-</script>
 
-<script>
-function copyResi() {
-    const text = document.getElementById('resi-text').innerText;
-    navigator.clipboard.writeText(text).then(() => {
-        alert('Resi berhasil disalin');
-    });
-}
-</script>
+    // =================================================================
+    // 5. HELPER GLOBAL
+    // =================================================================
+    window.copyResi = function() {
+        const textElement = document.getElementById('resi-text');
+        if(textElement) {
+            navigator.clipboard.writeText(textElement.innerText.trim()).then(() => {
+                alert('Resi berhasil disalin');
+            });
+        }
+    };
 
+</script>
 @endpush

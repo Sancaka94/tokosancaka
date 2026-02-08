@@ -1,37 +1,41 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" 
-      x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" 
-      x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))" 
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
+      x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }"
+      x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))"
       :class="{ 'dark': darkMode }">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    
+
     <title>@yield('title', 'Admin Panel') - {{ config('app.name', 'Sancaka Express') }}</title>
 
     <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    {{-- 1. HAPUS SCRIPT ALPINE CDN INI (Livewire sudah bawa Alpine sendiri) --}}
+    {{-- <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script> --}}
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    @livewireStyles
 
     <style>
         [x-cloak] { display: none !important; }
-        
+
         /* Custom Scrollbar yang rapi */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
+
         /* Utility */
         .modal-transition { transition: opacity 0.3s ease, transform 0.3s ease; }
         .modal-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
@@ -40,7 +44,7 @@
         /* Teks Vertikal untuk tombol Monitor */
         .writing-vertical { writing-mode: vertical-rl; text-orientation: mixed; }
 
-        
+
 
         /* Preloader Styles */
 #preloader {
@@ -93,7 +97,7 @@
 }
 
     </style>
-    
+
     @stack('styles')
 </head>
 
@@ -116,16 +120,16 @@
 
     {{-- WRAPPER UTAMA --}}
     <div x-data="{ sidebarOpen: window.innerWidth > 1024 }"
-         x-cloak 
-         @resize.window="sidebarOpen = window.innerWidth > 1024" 
+         x-cloak
+         @resize.window="sidebarOpen = window.innerWidth > 1024"
          class="flex h-screen w-full bg-gray-100">
-         
+
         {{-- 1. SIDEBAR KIRI --}}
         @include('layouts.partials.sidebar')
 
         {{-- 2. AREA KANAN (Header + Konten + Sidebar Monitor) --}}
         <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
-            
+
             {{-- Header --}}
             @include('layouts.partials.header')
 
@@ -138,10 +142,10 @@
 
         </div>
     </div>
-    
+
     <!-- Tombol & Modal Chat (Global) -->
     {{-- ... (Modal Chat Anda, biarkan saja) ... --}}
-    
+
     {{-- SweetAlert Scripts --}}
     @if(session('success'))
     <script>
@@ -158,7 +162,7 @@
     @auth
     <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.3/dist/echo.iife.js"></script>
-    
+
     @if(strtolower(Auth::user()->role) === 'admin')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -181,7 +185,7 @@
                     }
                 }
             }
-            
+
             function showBrowserNotification(title, message, url) {
                 if (!('Notification' in window) || Notification.permission !== 'granted') {
                     return; // Jangan lakukan apa-apa jika tidak diizinkan
@@ -198,14 +202,14 @@
                     };
                 }
             }
-            
+
             // Meminta izin saat halaman pertama kali dimuat
             requestNotificationPermission();
 
             // ======================================================================
             // == [MULAI] LOGIKA BARU NOTIFIKASI DROPDOWN (MENGGANTIKAN KODE LAMA)
             // ======================================================================
-            
+
             /**
              * [BARU] Fungsi untuk menandai notifikasi sebagai dibaca, lalu mengarahkan.
              */
@@ -220,7 +224,7 @@
                             'Accept': 'application/json'
                         },
                     });
-                    
+
                     const result = await response.json();
 
                     if (result.status === 'success') {
@@ -233,7 +237,7 @@
                             badge.style.display = 'none';
                         }
                     }
-                    
+
                 } catch (error) {
                     console.error('Gagal menandai notifikasi:', error);
                 } finally {
@@ -268,9 +272,9 @@
             async function loadInitialNotifications() {
                 try {
                     // Pastikan rute ini benar
-                    const response = await fetch('{{ route('admin.notifications.getUnread') }}'); 
+                    const response = await fetch('{{ route('admin.notifications.getUnread') }}');
                     if (!response.ok) throw new Error('Network response was not ok');
-                    
+
                     const data = await response.json();
 
                     // [PENTING] Ini adalah ID baru dari HTML Anda
@@ -318,7 +322,7 @@
                                         Lacak
                                     </a>`;
                             }
-                            
+
                              // Tombol "Lihat"
                             const lihatButtonHtml = `
                                 <button onclick="event.preventDefault(); markAndRedirect('${notification.id}', '${url}')"
@@ -330,7 +334,7 @@
                             // Buat baris tabel (tr)
                             const row = document.createElement('tr');
                             row.className = 'hover:bg-gray-50';
-                            
+
                             // [PERBAIKAN DARI ANDA] Menggunakan break-words alih-alih truncate
                             row.innerHTML = `
                                 <td class="px-4 py-3 align-top w-2/3 overflow-hidden break-words">
@@ -367,7 +371,7 @@
 
                     const data = await response.json();
                     const badge = document.getElementById('notification-count-badge');
-                    
+
                     if (data.count > 0) {
                         badge.textContent = data.count > 9 ? '9+' : data.count;
                         badge.style.display = 'flex';
@@ -378,10 +382,10 @@
                     console.warn('Gagal mengambil hitungan notifikasi:', error);
                 }
             }
-            
+
             // Panggil hitungan saat halaman dimuat
             fetchNotificationCount();
-            
+
             // [PENTING] Buat fungsi loadInitialNotifications TERSEDIA SECARA GLOBAL
             // agar Alpine.js di header.blade.php bisa memanggilnya
             // (Tombol @click di header ada di file lain, jadi fungsi ini harus global)
@@ -390,7 +394,7 @@
             // ======================================================================
             // == [AKHIR] LOGIKA BARU NOTIFIKASI
             // ======================================================================
-            
+
 
             // ======================================================================
             // == INISIALISASI LARAVEL ECHO (Ini sudah benar, biarkan)
@@ -409,7 +413,7 @@
                         authEndpoint: '/broadcasting/auth',
                         auth: { headers: { 'X-CSRF-TOKEN': csrfToken } },
                     });
-                    
+
                     window.EchoInitialized = true;
                     console.log("Laravel Echo initialized for admin.");
 
@@ -437,16 +441,16 @@
                             // [PERBAIKAN] Saat notifikasi baru masuk, cukup update angkanya
                             fetchNotificationCount();
                         });
-                        
+
                     // Listener untuk Notifikasi Umum (Database)
                     const userId = {{ auth()->id() }};
                     window.Echo.private(`App.Models.User.${userId}`)
                         .on('pusher:subscription_succeeded', () => console.log(`Subscribed to 'App.Models.User.${userId}' channel!`))
                         .on('pusher:subscription_error', (status) => console.error(`Subscription to 'App.Models.User.${userId}' failed. Status:`, status))
                         .notification((notification) => {
-                            
+
                             console.log('NOTIFIKASI BARU DITERIMA (dari NotifikasiUmum):', notification);
-                            
+
                             const data = notification.data ? notification.data : notification;
 
                             // Tampilkan notifikasi di browser (Pop-up Desktop)
@@ -455,10 +459,10 @@
                                 data.pesan_utama, // <-- DIPERBAIKI
                                 data.url          // <-- DIPERBAIKI
                             );
-                            
-                            // [PERBAIKAN] Update angka badge. 
+
+                            // [PERBAIKAN] Update angka badge.
                             // Daftar lengkap akan di-refresh saat user mengklik lonceng.
-                            fetchNotificationCount(); 
+                            fetchNotificationCount();
                         });
 
                 } catch (error) { console.error("Failed to initialize Echo:", error); }
@@ -503,7 +507,7 @@
 
             // 1. Buka/Tutup Sidebar
             sidebar.classList.toggle('-translate-x-full');
-            
+
             // 2. Tampilkan/Sembunyikan Overlay
             if (overlay) overlay.classList.toggle('hidden');
 
@@ -520,7 +524,7 @@
             }
         }
 
-        // Jalankan logika rotasi sekali saat halaman dimuat 
+        // Jalankan logika rotasi sekali saat halaman dimuat
         // untuk memastikan arah panah sesuai status awal sidebar
         if(sidebar && icon) {
              if (sidebar.classList.contains('-translate-x-full')) {
@@ -539,7 +543,7 @@
     // Fungsi untuk mengontrol preloader agar hanya muncul sekali per sesi
     (function() {
         const preloader = document.getElementById('preloader');
-        
+
         // Cek apakah user sudah pernah melihat loading di sesi ini
         if (sessionStorage.getItem('sancaka_loaded')) {
             // Jika sudah pernah, langsung hilangkan preloader tanpa animasi
@@ -559,6 +563,9 @@
         }
     })();
 </script>
+
+{{-- 4. TAMBAHKAN SCRIPT LIVEWIRE DISINI (SEBELUM BODY TUTUP) --}}
+    @livewireScripts
 
 </body>
 </html>
