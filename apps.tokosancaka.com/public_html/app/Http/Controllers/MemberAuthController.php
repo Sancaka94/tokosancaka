@@ -1477,7 +1477,11 @@ public function checkTopupStatus(Request $request)
     // Private Key (Format 1 Baris)
     private $rawPrivateKey = "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDNVB5kzP1G9sggIGAyNzIHaK9fY5pmP2HUhDsYY0eSrljlgksAOVHgaCION0vZ4679ZRQXWZciJqZLXAhJE8Iyna9RNL4bM2qDk3RvMR3xnaDRA97FofxL99fMFXl2vVn4k6Az3PGZtSKjGOtb1E02F/iJckZVO3jBacVKbUUS6e8Dut8wScw0R5VLAurNIvLxFoYJa3mPkVmx77fkL9S0qTbu/cRLayhguiPzg/P9DlQYa5ah7lT92P+79dSBp7TxrQbbm6Yic1WfsS3deREV1qp30om2frp5lyOpcrxcs+5dGV0viRV41bg4LOFjD1uIc7YiXEJn8ZIW37K1ZvJrAgMBAAECggEAA91U8x2+mKLVcnFZjihmyyfnwRpdUhZYT4krmZJoyvR4HN2+bqMljN044t6ckV3NMdzAq43Wn+BtWdbCGyoBijVYkuU0vMtTcmWIl/0rLJyEZdq2Sy740i84gxFWZ2s58clJhyBd9cAohjxWVbShvWZnGaMqerkzVSSZ/4Qd/DSdVxU2+YuooLq3QgVasmlZkSy4W720Q2Op6NS8joq0LRHxQRRbvl9J99zs+3cTtSfVK3nLOixhiLu0O/keek8yZ6Kw98Rms/od1TWDY0ivo24y0ABfnWOOy6f/+v3MzKq2ghvFIX0ft6Z79EDt839AjJXW82l5E085J7qY66kKhQKBgQDnAb1iVLL6ycR3RqBCR0MYBdJC8uNdgxw/vi6+fic7MAYY9/FsdDVQr0do4tTCkIwjcHoOPGwrwYl3xnTzDSgd5cX0wU0hbBXrSfN+zZjkwf+8eec+mIvMBV3UMe2kJ/Z8aWvtUmhqVK9fgAqggiFNGmIAjmxJPi3iBdl9Qvrm1QKBgQDjiymT8cSl9bMqUQxG0ggfTFXlZFiVBlmk5qYEcbSaz247Hqo2sLR5it4qHxiWV/QqXabhVYFkQcLTd3Qgj9t8TwWOvSYN69gBxW3dYqsptYVQ8lywjKKt3WKVGSKOgqslMwXnJTHZ/PycBDigDP1nmhczmx0DEQFVltW3n+GUPwKBgCSAzeBf6fhfMcB3VJOklyGQqe0SXINGWIxqDRDk9mYP7Ka9Z1Tv+AzL5cjZLy2fkcV33JGrUpyHdKWMoqZVieVPjbxjX0DMx5nqkaOT8XkUfsjVqojlqhGPN4h0a0zpU7XNItTZlM5Ym23H2eYLKh/470uPNeVNAgsZSYjVsLgRAoGAJuEaY5sF3M2UpYBftqIgnShv7NgugpgpLRH0AAJlt6YF0bg1oU6kJ7hgqZXSn627nJmP8CSqDTVnUrawcvfhquXdrzwGio5nxDW1xgQb9u57Lw+aYthE26xeMdevneYZ1CtZsNscH4EosIfQHRjbG56qpDi2xlVbgwJY1h1NcAUCgYB28OEqvgeYcu2YJfcn66kgd/eTNPiHrGxDL6zhU7MDOl07Cm7AaRFeyLuYrHchI2cbGSc5ssZNYjf5Fp9mh6XrNR/qAr2HmcN0nJdx1gTNIP2bYRxzrqLqfxoHSKmORMh4BCS+saRwkmMdIFzXdNVOL5vXkAGZnIBgAJ/9t+HC0w==";
 
- public function storeDeposit(Request $request)
+/**
+     * PROSES DEPOSIT (METODE MANUAL / DIRECT API)
+     * Metode ini lebih stabil dan mudah di-debug daripada SDK
+     */
+    public function storeDeposit(Request $request)
     {
         // 1. Validasi Input
         $request->validate([
@@ -1489,22 +1493,16 @@ public function checkTopupStatus(Request $request)
         $method = $request->payment_method ?? 'BANK_TRANSFER';
 
         // =================================================================
-        // OPSI 1: VIA DANA (SDK REVISED)
+        // OPSI 1: VIA DANA (DIRECT API)
         // =================================================================
         if ($method === 'DANA') {
 
+            // Cek Binding
             if (empty($member->dana_access_token)) {
                 return back()->with('error', 'Silakan hubungkan akun DANA Anda terlebih dahulu.');
             }
 
-            // A. DEBUGGING CONFIG (Pastikan tidak null)
-            $merchantId = config('services.dana.merchant_id');
-            if (empty($merchantId)) {
-                Log::error('[DANA CONFIG ERROR] Merchant ID Kosong di .env');
-                return back()->with('error', 'Konfigurasi Server Error: Merchant ID Missing.');
-            }
-
-            // B. IDEMPOTENCY CHECK
+            // --- IDEMPOTENCY CHECK (Cek Transaksi Gantung) ---
             $existingTx = DB::table('dana_transactions')
                 ->where('affiliate_id', $member->id)
                 ->where('type', 'DEPOSIT')
@@ -1514,6 +1512,7 @@ public function checkTopupStatus(Request $request)
                 ->orderBy('created_at', 'desc')
                 ->first();
 
+            // Jika ada transaksi gantung, pakai link lama
             if ($existingTx) {
                 $refNo = $existingTx->reference_no;
                 if (!empty($existingTx->response_payload)) {
@@ -1522,8 +1521,10 @@ public function checkTopupStatus(Request $request)
                     if ($url) return redirect($url);
                 }
             } else {
+                // Transaksi Baru
                 $refNo = 'DEP-' . time() . mt_rand(100, 999);
-                // Insert INIT
+
+                // Simpan status INIT
                 DB::table('dana_transactions')->insert([
                     'tenant_id'    => $member->tenant_id ?? 1,
                     'affiliate_id' => $member->id,
@@ -1536,110 +1537,99 @@ public function checkTopupStatus(Request $request)
                 ]);
             }
 
-            // --- MULAI LOGIC SDK ---
+            // Format Data
+            $amt = number_format($request->amount, 2, '.', '');
+            // Format Timezone +0700 (Format paling aman untuk DANA)
+            $timestamp = date("Y-m-d\TH:i:sO");
+
+            // --- RAKIT BODY JSON MANUAL ---
+            $body = [
+                "partnerReferenceNo" => $refNo,
+                "merchantId"         => config('services.dana.merchant_id'),
+                "amount" => [
+                    "value"    => $amt,
+                    "currency" => "IDR"
+                ],
+                "urlParams" => [
+                    [
+                        "url"        => url('/member/dashboard'),
+                        "type"       => "PAY_RETURN",
+                        "isDeeplink" => "Y"
+                    ]
+                ],
+                "additionalInfo" => [
+                    "productCode" => "DIGITAL_PRODUCT",
+                    "order" => [
+                        "orderTitle" => "Deposit Saldo",
+                        "orderMemo"  => "Topup User ID: " . $member->id
+                    ]
+                ]
+            ];
+
             try {
-                // 1. Setup Config
-                $config = new Configuration();
-                $config->setApiKey('PRIVATE_KEY', config('services.dana.private_key'));
-                $config->setApiKey('X_PARTNER_ID', config('services.dana.x_partner_id'));
-                $config->setApiKey('ORIGIN', config('services.dana.origin'));
-                $config->setApiKey('DANA_ENV', Env::SANDBOX);
+                // KIRIM REQUEST
+                $response = $this->sendSnapRequest(
+                    '/rest/redirection/v1.0/debit/payment-host-to-host',
+                    'POST',
+                    $body,
+                    $timestamp
+                );
 
-                $apiInstance = new WidgetApi(null, $config);
+                // Handle Idempotency Conflict (Error 4045418)
+                if (isset($response['responseCode']) && $response['responseCode'] == '4045418') {
+                    Log::warning("[DANA RETRY] RefNo Conflict. Generating New.");
 
-                // 2. Buat Request Object
-                $paymentRequest = new WidgetPaymentRequest();
-                $paymentRequest->setPartnerReferenceNo($refNo);
-                $paymentRequest->setMerchantId($merchantId); // Pastikan ini string angka panjang
+                    $newRefNo = 'DEP-' . time() . mt_rand(1000, 9999);
+                    DB::table('dana_transactions')->where('reference_no', $refNo)->update(['reference_no' => $newRefNo]);
+                    $body['partnerReferenceNo'] = $newRefNo;
+                    $refNo = $newRefNo;
 
-                // Set Nominal (String format)
-                $money = new Money();
-                $money->setValue(number_format($request->amount, 2, '.', ''));
-                $money->setCurrency("IDR");
-                $paymentRequest->setAmount($money);
-
-                // Set Redirect URL
-                $urlParam = new UrlParam();
-                $urlParam->setUrl(url('/member/dashboard'));
-                $urlParam->setType("PAY_RETURN");
-                $urlParam->setIsDeeplink("Y");
-                $paymentRequest->setUrlParams([$urlParam]);
-
-                // 3. FIX: Gunakan stdClass untuk AdditionalInfo (Bypass Class Missing)
-                // Ini akan memastikan struktur JSON { "productCode": "...", "order": { ... } } terbentuk benar
-                $addInfo = new \stdClass();
-                $addInfo->productCode = "DIGITAL_PRODUCT";
-
-                $orderObj = new \stdClass();
-                $orderObj->orderTitle = "Deposit Saldo";
-                $orderObj->orderMemo  = "Topup User ID: " . $member->id;
-
-                $addInfo->order = $orderObj;
-
-                // Masukkan ke request (SDK biasanya terima object apa saja di sini)
-                $paymentRequest->setAdditionalInfo($addInfo);
-
-                // [DEBUG LOG] Intip isi Body sebelum dikirim
-                Log::info("[DANA SDK DEBUG] Request Body:", json_decode(json_encode($paymentRequest), true));
-
-                // 4. EKSEKUSI
-                $result = $apiInstance->widgetPayment($paymentRequest);
-
-                // 5. Ambil URL
-                // Cek method getter yang tersedia atau akses property langsung jika public
-                $redirectUrl = null;
-                if (method_exists($result, 'getWebRedirectUrl')) {
-                    $redirectUrl = $result->getWebRedirectUrl();
-                } elseif (isset($result->webRedirectUrl)) {
-                    $redirectUrl = $result->webRedirectUrl;
+                    // Retry Request
+                    $response = $this->sendSnapRequest(
+                        '/rest/redirection/v1.0/debit/payment-host-to-host',
+                        'POST',
+                        $body,
+                        $timestamp
+                    );
                 }
 
-                if ($redirectUrl) {
-                    // Update DB: PENDING
+                // Cek Hasil Sukses
+                if (isset($response['webRedirectUrl'])) {
                     DB::table('dana_transactions')
                         ->where('reference_no', $refNo)
                         ->update([
                             'status' => 'PENDING',
-                            'response_payload' => json_encode($result),
+                            'response_payload' => json_encode($response),
                             'updated_at' => now()
                         ]);
 
-                    return redirect($redirectUrl);
+                    return redirect($response['webRedirectUrl']);
                 } else {
-                    // Cek response code dari result jika ada error logic tapi HTTP 200
-                    Log::error("[DANA SDK FAIL] No Redirect URL.", (array)$result);
-                    throw new \Exception("Gagal mendapatkan link pembayaran dari DANA.");
+                    // Gagal
+                    $errCode = $response['responseCode'] ?? 'UNKNOWN';
+                    $errMsg  = $response['responseMessage'] ?? 'Gagal mendapatkan link pembayaran.';
+
+                    DB::table('dana_transactions')
+                        ->where('reference_no', $refNo)
+                        ->update(['status' => 'FAILED', 'response_payload' => json_encode($response), 'updated_at' => now()]);
+
+                    return back()->with('error', "DANA Error ($errCode): $errMsg");
                 }
 
             } catch (\Exception $e) {
-                // Tangkap Body Error dari Guzzle jika ada (untuk detail 400 Bad Request)
-                $errorMsg = $e->getMessage();
+                Log::error('[DANA MANUAL ERROR] ' . $e->getMessage());
 
-                // Cek apakah ini error dari SDK Guzzle Exception
-                if (method_exists($e, 'getResponseBody')) {
-                    $body = $e->getResponseBody();
-                    Log::error("[DANA SDK 400 BODY]", (array)$body);
-                    if ($body && isset($body->responseMessage)) {
-                        $errorMsg = "DANA: " . $body->responseMessage;
-                    }
-                }
-
-                // Update DB: FAILED
+                // Update Status Gagal
                 DB::table('dana_transactions')
                     ->where('reference_no', $refNo)
-                    ->update([
-                        'status' => 'FAILED',
-                        'response_payload' => $errorMsg,
-                        'updated_at' => now()
-                    ]);
+                    ->update(['status' => 'FAILED', 'response_payload' => $e->getMessage(), 'updated_at' => now()]);
 
-                Log::error('[DANA SDK EXCEPTION] ' . $errorMsg);
-                return back()->with('error', 'Gagal Deposit: ' . $errorMsg);
+                return back()->with('error', 'Gagal Deposit: ' . $e->getMessage());
             }
         }
 
         // =================================================================
-        // OPSI 2: BANK TRANSFER (Manual)
+        // OPSI 2: BANK TRANSFER
         // =================================================================
         else {
             return $this->processBankTransfer($request, $member);
@@ -1647,14 +1637,70 @@ public function checkTopupStatus(Request $request)
     }
 
     /**
-     * PROSES BANK TRANSFER MANUAL (Kode Unik)
+     * HELPER MANUAL REQUEST (DIRECT API)
+     * Menggantikan SDK yang bermasalah.
+     */
+    private function sendSnapRequest($path, $method, $body, $timestamp)
+    {
+        // 1. Minify JSON
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        // 2. Generate Signature
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = $method . "|" . $path . "||" . $hashedBody . "|" . $timestamp;
+
+        // 3. Ambil Key
+        $privateKeyContent = config('services.dana.private_key');
+        if (!$privateKeyContent) throw new \Exception("Private Key DANA belum disetting di .env");
+
+        // Format Key ke PEM
+        $cleanKey = preg_replace('/-{5}(BEGIN|END) PRIVATE KEY-{5}|\r|\n|\s/', '', $privateKeyContent);
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . chunk_split($cleanKey, 64, "\n") . "-----END PRIVATE KEY-----";
+
+        // 4. Sign
+        $binarySig = "";
+        if (!openssl_sign($stringToSign, $binarySig, $formattedKey, OPENSSL_ALGO_SHA256)) {
+             throw new \Exception("Gagal membuat Signature (OpenSSL Error): " . openssl_error_string());
+        }
+        $signature = base64_encode($binarySig);
+
+        // 5. Header
+        $headers = [
+            'Content-Type'  => 'application/json',
+            'X-PARTNER-ID'  => config('services.dana.x_partner_id'), // Client ID
+            'X-EXTERNAL-ID' => (string) Str::uuid(),
+            'X-TIMESTAMP'   => $timestamp,
+            'X-SIGNATURE'   => $signature,
+            'CHANNEL-ID'    => '95221',
+            'ORIGIN'        => config('services.dana.origin'),
+        ];
+
+        // 6. Kirim
+        $baseUrl = config('services.dana.base_url', 'https://api.sandbox.dana.id');
+        $response = Http::withHeaders($headers)
+                        ->withBody($jsonBody, 'application/json')
+                        ->post($baseUrl . $path);
+
+        // Log Debug
+        Log::info("[DANA MANUAL REQUEST]", ['url' => $baseUrl.$path, 'body' => $body]);
+        Log::info("[DANA MANUAL RESPONSE]", ['status' => $response->status(), 'body' => $response->json()]);
+
+        if ($response->failed() && empty($response->json())) {
+             throw new \Exception("DANA HTTP Error: " . $response->status());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * PROSES BANK TRANSFER MANUAL
      */
     private function processBankTransfer($request, $member)
     {
         $uniqueCode     = mt_rand(111, 999);
         $amountOriginal = $request->amount;
         $amountTotal    = $amountOriginal + $uniqueCode;
-        $refNo          = 'DEP-B-' . date('ymd') . rand(1000, 9999); // Beda prefix biar tidak bentrok
+        $refNo          = 'DEP-B-' . date('ymd') . rand(1000, 9999);
 
         DB::beginTransaction();
         try {
@@ -1674,100 +1720,18 @@ public function checkTopupStatus(Request $request)
 
             $formattedTotal = number_format($amountTotal, 0, ',', '.');
 
-            // Kirim Notif WA (Jika function ada)
-            $msg = "📥 *TIKET DEPOSIT*\n\nHalo {$member->name},\nSilakan transfer TEPAT senilai:\n💰 *Rp {$formattedTotal}*\n\nRef: {$refNo}\n\n_Sistem akan memverifikasi otomatis dalam 5-10 menit._";
+            // WA Notif
+            $msg = "📥 *TIKET DEPOSIT*\n\nRef: {$refNo}\nSilakan transfer TEPAT: *Rp {$formattedTotal}*";
             if (method_exists($this, 'sendWhatsApp')) {
                 $this->sendWhatsApp($member->whatsapp, $msg);
             }
 
-            return back()->with('success', "Tiket Deposit Dibuat! Silakan transfer Rp {$formattedTotal}");
+            return back()->with('success', "Tiket Dibuat! Transfer Rp {$formattedTotal}");
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("[BANK TRF ERROR] " . $e->getMessage());
-            return back()->with('error', 'Gagal membuat tiket deposit: ' . $e->getMessage());
+            return back()->with('error', 'Gagal: ' . $e->getMessage());
         }
-    }
-
-    /**
-     * HELPER SNAP API (Direct Debit)
-     * Menangani Signature, Header, dan HTTP Request ke DANA
-     */
-    private function sendSnapRequest($path, $method, $body, $timestamp)
-    {
-        // 1. Minify JSON
-        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-        // 2. Generate Signature String
-        // SNAP Standard: HTTPMethod|EndpointUrl||LowerCase(Sha256(Body))|Timestamp
-        $hashedBody = strtolower(hash('sha256', $jsonBody));
-        $stringToSign = $method . "|" . $path . "||" . $hashedBody . "|" . $timestamp;
-
-        // 3. Ambil Private Key dari Config (.env)
-        $privateKeyContent = config('services.dana.private_key');
-
-        if (!$privateKeyContent) {
-            throw new \Exception("DANA Private Key belum disetting di .env");
-        }
-
-        // 4. Format Key ke Standar PEM (Wajib 64 chars per line)
-        // Bersihkan header/footer lama atau spasi yang tidak perlu
-        $cleanKey = preg_replace('/-{5}(BEGIN|END) PRIVATE KEY-{5}|\r|\n|\s/', '', $privateKeyContent);
-
-        // Bungkus ulang
-        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" .
-                        chunk_split($cleanKey, 64, "\n") .
-                        "-----END PRIVATE KEY-----";
-
-        // 5. Sign menggunakan OpenSSL (SHA256)
-        $binarySig = "";
-
-        if (!openssl_sign($stringToSign, $binarySig, $formattedKey, OPENSSL_ALGO_SHA256)) {
-             throw new \Exception("OpenSSL Signing Failed: " . openssl_error_string());
-        }
-
-        $signature = base64_encode($binarySig);
-
-        // 6. Headers Wajib SNAP
-        $headers = [
-            'Content-Type'  => 'application/json',
-            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-            'X-EXTERNAL-ID' => (string) Str::uuid(),
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'CHANNEL-ID'    => '95221', // Kode Channel DANA (biasanya fixed)
-            'ORIGIN'        => config('services.dana.origin'), // Domain Merchant Anda
-        ];
-
-        // 7. Kirim Request
-        $baseUrl = config('services.dana.base_url'); // e.g: https://api.sandbox.dana.id
-        $fullUrl = $baseUrl . $path;
-
-        Log::info("[SNAP DEBUG]", [
-        'stringToSign' => $stringToSign, // <--- Ini penting buat debug
-        'clientId_used' => config('services.dana.x_partner_id'),
-        'merchantId_used' => config('services.dana.merchant_id')
-        ]);
-
-        Log::info("[SNAP REQUEST]", [
-            'url' => $fullUrl,
-            'body' => $body
-        ]);
-
-        $response = Http::withHeaders($headers)
-                        ->withBody($jsonBody, 'application/json')
-                        ->post($fullUrl);
-
-        Log::info("[SNAP RESPONSE]", [
-            'status' => $response->status(),
-            'body' => $response->json()
-        ]);
-
-        if ($response->failed() && empty($response->json())) {
-             throw new \Exception("DANA HTTP Error: " . $response->status());
-        }
-
-        return $response->json();
     }
 
 }
