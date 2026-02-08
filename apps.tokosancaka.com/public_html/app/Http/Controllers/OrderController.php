@@ -775,7 +775,11 @@ class OrderController extends Controller
             // ============================================================
 
             // [FIX] Inisialisasi variabel agar tidak error saat Cash/Saldo
+            // [FIX] Inisialisasi Variabel Wajib (PENTING)
             $paymentUrl = null;
+            $paymentStatus = 'unpaid';
+            $changeAmount = 0;
+            $triggerWaType = null;
 
             // === SKENARIO A: PENGIRIMAN PAKET (SHIPPING) ===
             if ($request->delivery_type === 'shipping') {
