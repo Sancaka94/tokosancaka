@@ -4,42 +4,41 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\BelongsToTenant; // <-- Pastikan ini di-import
-
+use App\Traits\BelongsToTenant; // [WAJIB] Import Trait Tenant
 
 class TopUp extends Model
 {
     use HasFactory;
-    use BelongsToTenant; // <-- Pastikan ini dipasang di dalam class
+    use BelongsToTenant; // [WAJIB] Aktifkan Filter Tenant Otomatis
 
- protected $table = 'top_ups';
+    protected $table = 'top_ups';
 
-    // 1. Konstanta Status (Best Practice agar tidak Typo)
+    // Konstanta Status (Agar koding lebih rapi & konsisten)
     const STATUS_PENDING = 'PENDING';
-    const STATUS_SUCCESS = 'SUCCESS'; // Sesuaikan dengan DB jika pakai 'PAID'
-    const STATUS_PAID    = 'PAID';    // Alias untuk SUCCESS jika DB pakai ini
+    const STATUS_SUCCESS = 'SUCCESS';
+    const STATUS_PAID    = 'PAID';    // Alias untuk SUCCESS
     const STATUS_FAILED  = 'FAILED';
     const STATUS_EXPIRED = 'EXPIRED';
 
-    // 2. Kolom yang boleh diisi (Mass Assignment)
+    // Kolom yang boleh diisi (Mass Assignment)
     protected $fillable = [
-        'tenant_id',
-        'affiliate_id',   // Relasi ke User/Member
-        'reference_no',   // ID Transaksi (Invoice)
-        'amount',         // Nominal Request
-        'unique_code',    // Kode Unik (jika transfer bank manual)
-        'total_amount',   // Nominal + Kode Unik
-        'status',         // PENDING, SUCCESS, FAILED
-        'payment_method', // DOKU, BANK_TRANSFER, dll
-        'response_payload' // JSON response dari Payment Gateway
+        'tenant_id',        // Wajib ada di database & fillable
+        'affiliate_id',     // ID Member / User yang melakukan TopUp
+        'reference_no',     // Invoice (misal: POSTOPUP-...)
+        'amount',           // Nominal TopUp
+        'unique_code',      // Kode Unik (jika transfer manual)
+        'total_amount',     // Nominal + Kode Unik
+        'status',           // Status Transaksi
+        'payment_method',   // DOKU, BANK_TRANSFER, dll
+        'response_payload'  // JSON data dari Payment Gateway
     ];
 
-    // 3. Casting Tipe Data Otomatis
+    // Casting Tipe Data
     protected $casts = [
         'amount'           => 'decimal:2',
         'total_amount'     => 'decimal:2',
         'unique_code'      => 'integer',
-        'response_payload' => 'array', // [PENTING] Agar JSON di DB otomatis jadi Array di PHP
+        'response_payload' => 'array', // Otomatis convert JSON DB ke Array PHP
         'created_at'       => 'datetime',
         'updated_at'       => 'datetime',
     ];
@@ -49,17 +48,18 @@ class TopUp extends Model
     // =================================================================
 
     /**
-     * Relasi ke Affiliate (Member/User yang Topup)
+     * Relasi ke Member Affiliate (User)
+     * Menghubungkan kolom 'affiliate_id' di tabel top_ups ke tabel 'users'
      */
     public function affiliate()
     {
-        // Sesuaikan 'App\Models\Affiliate' jika model user Anda bernama 'User'
-        // Jika affiliate_id menyimpan ID dari tabel users, ganti ke User::class
-        return $this->belongsTo(Affiliate::class, 'affiliate_id');
+        // Pastikan 'User' adalah model untuk member Anda
+        return $this->belongsTo(User::class, 'affiliate_id');
     }
 
     /**
-     * Relasi ke Tenant (Pemilik Toko/Subdomain)
+     * Relasi ke Tenant (Toko)
+     * Digunakan oleh Trait BelongsToTenant
      */
     public function tenant()
     {
@@ -67,23 +67,24 @@ class TopUp extends Model
     }
 
     // =================================================================
-    // ACCESSOR (ATTRIBUTE TAMBAHAN)
+    // HELPER ATTRIBUTES
     // =================================================================
 
     /**
-     * Helper untuk menampilkan rupiah dengan mudah
-     * Cara pakai: $topup->formatted_total
+     * Helper cek apakah sudah lunas
+     * Penggunaan: if ($topUp->is_paid) { ... }
      */
-    public function getFormattedTotalAttribute()
+    public function getIsPaidAttribute()
     {
-        return 'Rp ' . number_format($this->total_amount, 0, ',', '.');
+        return in_array($this->status, [self::STATUS_SUCCESS, self::STATUS_PAID]);
     }
 
     /**
-     * Helper untuk cek apakah pembayaran sukses
+     * Helper format rupiah
+     * Penggunaan: $topUp->formatted_amount
      */
-    public function isPaid()
+    public function getFormattedAmountAttribute()
     {
-        return in_array($this->status, [self::STATUS_SUCCESS, self::STATUS_PAID]);
+        return 'Rp ' . number_format($this->total_amount, 0, ',', '.');
     }
 }
