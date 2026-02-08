@@ -1477,11 +1477,7 @@ public function checkTopupStatus(Request $request)
     // Private Key (Format 1 Baris)
     private $rawPrivateKey = "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDNVB5kzP1G9sggIGAyNzIHaK9fY5pmP2HUhDsYY0eSrljlgksAOVHgaCION0vZ4679ZRQXWZciJqZLXAhJE8Iyna9RNL4bM2qDk3RvMR3xnaDRA97FofxL99fMFXl2vVn4k6Az3PGZtSKjGOtb1E02F/iJckZVO3jBacVKbUUS6e8Dut8wScw0R5VLAurNIvLxFoYJa3mPkVmx77fkL9S0qTbu/cRLayhguiPzg/P9DlQYa5ah7lT92P+79dSBp7TxrQbbm6Yic1WfsS3deREV1qp30om2frp5lyOpcrxcs+5dGV0viRV41bg4LOFjD1uIc7YiXEJn8ZIW37K1ZvJrAgMBAAECggEAA91U8x2+mKLVcnFZjihmyyfnwRpdUhZYT4krmZJoyvR4HN2+bqMljN044t6ckV3NMdzAq43Wn+BtWdbCGyoBijVYkuU0vMtTcmWIl/0rLJyEZdq2Sy740i84gxFWZ2s58clJhyBd9cAohjxWVbShvWZnGaMqerkzVSSZ/4Qd/DSdVxU2+YuooLq3QgVasmlZkSy4W720Q2Op6NS8joq0LRHxQRRbvl9J99zs+3cTtSfVK3nLOixhiLu0O/keek8yZ6Kw98Rms/od1TWDY0ivo24y0ABfnWOOy6f/+v3MzKq2ghvFIX0ft6Z79EDt839AjJXW82l5E085J7qY66kKhQKBgQDnAb1iVLL6ycR3RqBCR0MYBdJC8uNdgxw/vi6+fic7MAYY9/FsdDVQr0do4tTCkIwjcHoOPGwrwYl3xnTzDSgd5cX0wU0hbBXrSfN+zZjkwf+8eec+mIvMBV3UMe2kJ/Z8aWvtUmhqVK9fgAqggiFNGmIAjmxJPi3iBdl9Qvrm1QKBgQDjiymT8cSl9bMqUQxG0ggfTFXlZFiVBlmk5qYEcbSaz247Hqo2sLR5it4qHxiWV/QqXabhVYFkQcLTd3Qgj9t8TwWOvSYN69gBxW3dYqsptYVQ8lywjKKt3WKVGSKOgqslMwXnJTHZ/PycBDigDP1nmhczmx0DEQFVltW3n+GUPwKBgCSAzeBf6fhfMcB3VJOklyGQqe0SXINGWIxqDRDk9mYP7Ka9Z1Tv+AzL5cjZLy2fkcV33JGrUpyHdKWMoqZVieVPjbxjX0DMx5nqkaOT8XkUfsjVqojlqhGPN4h0a0zpU7XNItTZlM5Ym23H2eYLKh/470uPNeVNAgsZSYjVsLgRAoGAJuEaY5sF3M2UpYBftqIgnShv7NgugpgpLRH0AAJlt6YF0bg1oU6kJ7hgqZXSn627nJmP8CSqDTVnUrawcvfhquXdrzwGio5nxDW1xgQb9u57Lw+aYthE26xeMdevneYZ1CtZsNscH4EosIfQHRjbG56qpDi2xlVbgwJY1h1NcAUCgYB28OEqvgeYcu2YJfcn66kgd/eTNPiHrGxDL6zhU7MDOl07Cm7AaRFeyLuYrHchI2cbGSc5ssZNYjf5Fp9mh6XrNR/qAr2HmcN0nJdx1gTNIP2bYRxzrqLqfxoHSKmORMh4BCS+saRwkmMdIFzXdNVOL5vXkAGZnIBgAJ/9t+HC0w==";
 
-/**
-     * PROSES DEPOSIT (METODE MANUAL / DIRECT API)
-     * Metode ini lebih stabil dan mudah di-debug daripada SDK
-     */
-    public function storeDeposit(Request $request)
+public function storeDeposit(Request $request)
     {
         // 1. Validasi Input
         $request->validate([
@@ -1493,7 +1489,7 @@ public function checkTopupStatus(Request $request)
         $method = $request->payment_method ?? 'BANK_TRANSFER';
 
         // =================================================================
-        // OPSI 1: VIA DANA (DIRECT API)
+        // OPSI 1: VIA DANA (PAYLOAD BARU)
         // =================================================================
         if ($method === 'DANA') {
 
@@ -1502,7 +1498,7 @@ public function checkTopupStatus(Request $request)
                 return back()->with('error', 'Silakan hubungkan akun DANA Anda terlebih dahulu.');
             }
 
-            // --- IDEMPOTENCY CHECK (Cek Transaksi Gantung) ---
+            // IDEMPOTENCY CHECK (Cek Transaksi Gantung)
             $existingTx = DB::table('dana_transactions')
                 ->where('affiliate_id', $member->id)
                 ->where('type', 'DEPOSIT')
@@ -1512,7 +1508,6 @@ public function checkTopupStatus(Request $request)
                 ->orderBy('created_at', 'desc')
                 ->first();
 
-            // Jika ada transaksi gantung, pakai link lama
             if ($existingTx) {
                 $refNo = $existingTx->reference_no;
                 if (!empty($existingTx->response_payload)) {
@@ -1524,7 +1519,6 @@ public function checkTopupStatus(Request $request)
                 // Transaksi Baru
                 $refNo = 'DEP-' . time() . mt_rand(100, 999);
 
-                // Simpan status INIT
                 DB::table('dana_transactions')->insert([
                     'tenant_id'    => $member->tenant_id ?? 1,
                     'affiliate_id' => $member->id,
@@ -1537,13 +1531,11 @@ public function checkTopupStatus(Request $request)
                 ]);
             }
 
-            // Format Data
+            // Setup Variabel
             $amt = number_format($request->amount, 2, '.', '');
-            // Format Timezone +0700 (Format paling aman untuk DANA)
-            // Gunakan 'P' agar menghasilkan +07:00 (Ada titik duanya)
-            $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'); // Format Wajib: +07:00
 
-            // --- RAKIT BODY JSON MANUAL ---
+            // --- RAKIT BODY JSON (SESUAI REQUEST ANDA) ---
             $body = [
                 "partnerReferenceNo" => $refNo,
                 "merchantId"         => config('services.dana.merchant_id'),
@@ -1551,22 +1543,39 @@ public function checkTopupStatus(Request $request)
                     "value"    => $amt,
                     "currency" => "IDR"
                 ],
+                // Structure AdditionalInfo Baru
+                "additionalInfo" => [
+                    "productCode" => "51051000100000000001", // Kode Produk Spesifik dari Sample
+                    "envInfo" => [
+                        "sourcePlatform"    => "IPG",
+                        "terminalType"      => "WEB",
+                        "orderTerminalType" => "APP",
+                        "websiteLanguage"   => "ID",
+                        // Field kosong sesuai sample (biarkan string kosong)
+                        "appVersion"        => "",
+                        "clientIp"          => $request->ip(),
+                        "extendInfo"        => "",
+                        "merchantAppVersion"=> "",
+                        "orderOsType"       => "",
+                        "osType"            => "",
+                        "sdkVersion"        => "",
+                        "sessionId"         => "",
+                        "tokenId"           => ""
+                    ],
+                    "order" => [
+                        "orderTitle" => "Deposit Saldo" // Judul Transaksi
+                    ],
+                    "mcc" => "" // Merchant Category Code (Kosongkan sesuai sample)
+                ],
+                // UrlParams TETAP WAJIB agar user bisa balik ke website setelah bayar
                 "urlParams" => [
                     [
                         "url"        => url('/member/dashboard'),
                         "type"       => "PAY_RETURN",
                         "isDeeplink" => "Y"
                     ]
-                ],
-                "additionalInfo" => [
-                    "productCode" => "DIGITAL_PRODUCT",
-                    "order" => [
-                        "orderTitle" => "Deposit Saldo",
-                        "orderMemo"  => "Topup User ID: " . $member->id
-                    ]
                 ]
             ];
-
 
             try {
                 // KIRIM REQUEST
@@ -1577,16 +1586,17 @@ public function checkTopupStatus(Request $request)
                     $timestamp
                 );
 
-                // Handle Idempotency Conflict (Error 4045418)
+                // Handle Conflict RefNo (4045418)
                 if (isset($response['responseCode']) && $response['responseCode'] == '4045418') {
-                    Log::warning("[DANA RETRY] RefNo Conflict. Generating New.");
+                    Log::warning("[DANA RETRY] RefNo Conflict. New Ref Generated.");
 
                     $newRefNo = 'DEP-' . time() . mt_rand(1000, 9999);
                     DB::table('dana_transactions')->where('reference_no', $refNo)->update(['reference_no' => $newRefNo]);
+
                     $body['partnerReferenceNo'] = $newRefNo;
                     $refNo = $newRefNo;
 
-                    // Retry Request
+                    // Retry
                     $response = $this->sendSnapRequest(
                         '/rest/redirection/v1.0/debit/payment-host-to-host',
                         'POST',
@@ -1595,7 +1605,7 @@ public function checkTopupStatus(Request $request)
                     );
                 }
 
-                // Cek Hasil Sukses
+                // Cek Hasil
                 if (isset($response['webRedirectUrl'])) {
                     DB::table('dana_transactions')
                         ->where('reference_no', $refNo)
@@ -1607,9 +1617,8 @@ public function checkTopupStatus(Request $request)
 
                     return redirect($response['webRedirectUrl']);
                 } else {
-                    // Gagal
                     $errCode = $response['responseCode'] ?? 'UNKNOWN';
-                    $errMsg  = $response['responseMessage'] ?? 'Gagal mendapatkan link pembayaran.';
+                    $errMsg  = $response['responseMessage'] ?? 'Gagal mendapatkan link.';
 
                     DB::table('dana_transactions')
                         ->where('reference_no', $refNo)
@@ -1619,20 +1628,12 @@ public function checkTopupStatus(Request $request)
                 }
 
             } catch (\Exception $e) {
-                Log::error('[DANA MANUAL ERROR] ' . $e->getMessage());
-
-                // Update Status Gagal
-                DB::table('dana_transactions')
-                    ->where('reference_no', $refNo)
-                    ->update(['status' => 'FAILED', 'response_payload' => $e->getMessage(), 'updated_at' => now()]);
-
+                Log::error('[DANA ERROR] ' . $e->getMessage());
                 return back()->with('error', 'Gagal Deposit: ' . $e->getMessage());
             }
         }
 
-        // =================================================================
-        // OPSI 2: BANK TRANSFER
-        // =================================================================
+        // BANK TRANSFER (Tetap Sama)
         else {
             return $this->processBankTransfer($request, $member);
         }
