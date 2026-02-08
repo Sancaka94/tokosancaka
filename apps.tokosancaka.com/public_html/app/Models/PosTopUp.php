@@ -4,16 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\BelongsToTenant; // <-- Pastikan ini di-import
-
+use App\Traits\BelongsToTenant; // [KEMBALIKAN INI]
 
 class PosTopUp extends Model
 {
     use HasFactory;
-    use BelongsToTenant; // <-- Pastikan ini dipasang di dalam class
+    use BelongsToTenant; // [KEMBALIKAN INI] Agar otomatis filter by tenant
 
-    // KUNCI: Gunakan koneksi database kedua
-    protected $connection = 'mysql_second';
+    // Karena ini di-deploy di Aplikasi Kedua (POS), gunakan koneksi default
     protected $table = 'top_ups';
 
     const STATUS_PENDING = 'PENDING';
@@ -21,7 +19,7 @@ class PosTopUp extends Model
     const STATUS_FAILED  = 'FAILED';
 
     protected $fillable = [
-        'tenant_id',
+        'tenant_id',      // [KEMBALIKAN INI]
         'affiliate_id',
         'reference_no',
         'amount',
