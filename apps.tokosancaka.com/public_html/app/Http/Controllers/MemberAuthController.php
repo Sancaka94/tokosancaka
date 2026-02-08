@@ -1573,13 +1573,20 @@ public function checkTopupStatus(Request $request)
                 $paymentRequest->setUrlParams([$urlParam]);
 
                 // Set Info Tambahan (Judul Transaksi di Apps DANA)
-                $orderInfo = new WidgetPaymentRequestAdditionalInfoOrder();
-                $orderInfo->setOrderTitle("Deposit Saldo");
-                $orderInfo->setOrderMemo("Topup User: " . $member->name);
+                // Set Info Tambahan
+                // Kita coba bypass Class yang hilang dengan Array atau stdClass
+                $orderData = [
+                    "orderTitle" => "Deposit Saldo",
+                    "orderMemo"  => "Topup User ID: " . $member->id
+                ];
 
                 $addInfo = new WidgetPaymentRequestAdditionalInfo();
                 $addInfo->setProductCode("DIGITAL_PRODUCT");
-                $addInfo->setOrder($orderInfo);
+
+                // Coba setOrder dengan Array
+                // Jika error, SDK akan bilang "Expected Class X, got Array" -> Kita jadi tau nama Class X nya
+                $addInfo->setOrder($orderData);
+
                 $paymentRequest->setAdditionalInfo($addInfo);
 
                 // C. EKSEKUSI REQUEST KE DANA
