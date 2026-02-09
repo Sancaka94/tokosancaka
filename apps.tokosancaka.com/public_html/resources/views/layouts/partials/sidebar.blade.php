@@ -269,7 +269,7 @@
                     Edit Profile
                 </a>
 
-                @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
+                @if(in_array(Auth::user()->role, ['super_admin']))
                     <a href="{{ url('admin/logs') }}" target="_blank"
                        class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl text-red-500 hover:bg-red-50 transition-colors">
                         System Log
