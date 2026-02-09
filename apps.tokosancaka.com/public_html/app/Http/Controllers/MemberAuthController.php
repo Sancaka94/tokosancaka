@@ -1580,7 +1580,7 @@ public function checkTopupStatus(Request $request)
 
             // 4. Additional Info
             $addInfo = new WidgetPaymentRequestAdditionalInfo();
-            $addInfo->setProductCode("PAYMENT_METHODS");
+            $addInfo->setProductCode("51051000100000000001");
             // $addInfo->setMcc("5411"); // Opsional
             $addInfo->setOrder($orderObj);
             $addInfo->setEnvInfo($envInfo);
