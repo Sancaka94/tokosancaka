@@ -47,6 +47,7 @@ use App\Http\Controllers\TenantPaymentController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\TenantDashboardController;
+use App\Http\Controllers\DanaWebhookController;
 
 
 Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
@@ -106,13 +107,8 @@ Route::resource('dana_response_codes', DanaResponseCodeController::class);
 | DANA WIDGET / API / TESTING (SECONDARY)
 |--------------------------------------------------------------------------
 */
-
-//Route::post('/dana/notify', [OrderController::class, 'handleDanaCallback'])->name('dana.notify');
-
-// Pastikan baris ini yang aktif di routes
-Route::post('/dana/notify', [OrderController::class, 'handleDanaWebhook'])->name('dana.notify');
-// Webhook Notification
-//Route::post('/dana/notify', [DanaWidgetController::class, 'handleNotify'])->name('dana.notify');
+// Halaman Notify (Webhook Endpoint)
+Route::post('/dana/notify', [App\Http\Controllers\DanaWebhookController::class, 'handleNotify'])->name('dana.notify');
 
 // Halaman Return Sukses
 Route::get('/dana/return', function () {return view('dana_success');})->name('dana.return');
