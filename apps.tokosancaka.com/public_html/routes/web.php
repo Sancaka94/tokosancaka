@@ -113,6 +113,8 @@ Route::post('/dana/notify', [App\Http\Controllers\DanaWebhookController::class, 
 // Halaman Return Sukses
 Route::get('/dana/return', function () {return view('dana_success');})->name('dana.return');
 
+Route::get('/dana/check-status/{reference_no}', [MemberAuthController::class, 'checkAcquiringStatus']);
+
 /*
 
 // Payment & Transaction

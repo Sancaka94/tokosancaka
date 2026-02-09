@@ -1810,4 +1810,96 @@ public function checkTopupStatus(Request $request)
     }
 
 
+    // -------------------------------------------------------------------------
+    // CEK STATUS TRANSAKSI MANUAL (RESCUE)
+    // -------------------------------------------------------------------------
+    public function checkAcquiringStatus(Request $request)
+    {
+        // 1. Ambil RefNo dari Input (DEP-xxxxx)
+        $refNo = $request->reference_no;
+        Log::info('[MANUAL CHECK] Memulai pengecekan...', ['ref' => $refNo]);
+
+        // 2. Cari Data di Database
+        $trx = DB::table('dana_transactions')->where('reference_no', $refNo)->first();
+        if (!$trx) return back()->with('error', 'Transaksi tidak ditemukan di database.');
+
+        // 3. Setup Request ke DANA (Acquiring Order Query)
+        $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+
+        $payload = [
+            "request" => [
+                "head" => [
+                    "version"      => "2.0",
+                    "function"     => "dana.acquiring.order.query",
+                    "clientId"     => config('services.dana.x_partner_id'),
+                    "clientSecret" => config('services.dana.client_secret'),
+                    "reqTime"      => $timestamp,
+                    "reqMsgId"     => (string) Str::uuid(),
+                    "reserve"      => "{}"
+                ],
+                "body" => [
+                    "merchantId" => config('services.dana.merchant_id'),
+                    "merchantTransId" => $refNo // Kunci Pencarian
+                ]
+            ]
+        ];
+
+        // 4. Generate Signature
+        $jsonToSign = json_encode($payload['request'], JSON_UNESCAPED_SLASHES);
+        $signature  = $this->generateSignature($jsonToSign);
+
+        try {
+            // 5. Kirim Request
+            $response = Http::post('https://api.sandbox.dana.id/dana/acquiring/order/query.htm', [
+                "request"   => $payload['request'],
+                "signature" => $signature
+            ]);
+
+            $result = $response->json();
+            Log::info('[MANUAL CHECK] Response:', ['res' => $result]);
+
+            // 6. Cek Status dari DANA
+            $resBody = $result['response']['body'] ?? [];
+            $resStatus = $resBody['resultInfo']['resultStatus'] ?? 'F';
+            $orderStatus = $resBody['acquirementStatus'] ?? 'UNKNOWN'; // SUCCESS / CLOSED / FAILED
+
+            // JIKA SUKSES BAYAR (Status di DANA: SUCCESS atau FINISHED)
+            if ($resStatus == 'S' && ($orderStatus == 'SUCCESS' || $orderStatus == 'FINISHED')) {
+
+                // Cek apakah di DB kita masih PENDING/INIT?
+                if ($trx->status != 'SUCCESS') {
+                    DB::beginTransaction();
+                    try {
+                        // A. Update Status Transaksi
+                        DB::table('dana_transactions')->where('id', $trx->id)->update([
+                            'status' => 'SUCCESS',
+                            'response_payload' => json_encode($result),
+                            'updated_at' => now()
+                        ]);
+
+                        // B. Tambah Saldo Member
+                        DB::table('affiliates')->where('id', $trx->affiliate_id)->increment('balance', $trx->amount);
+
+                        // C. Kurangi Saldo DANA User (Estimasi/Pencatatan)
+                        DB::table('affiliates')->where('id', $trx->affiliate_id)->decrement('dana_user_balance', $trx->amount);
+
+                        DB::commit();
+                        return back()->with('success', '✅ Transaksi berhasil diverifikasi & Saldo Masuk!');
+                    } catch (\Exception $e) {
+                        DB::rollBack();
+                        return back()->with('error', 'Database Error: ' . $e->getMessage());
+                    }
+                } else {
+                    return back()->with('warning', 'Transaksi ini sudah Sukses sebelumnya.');
+                }
+            } else {
+                return back()->with('error', 'Status di DANA: ' . $orderStatus);
+            }
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+        }
+    }
+
+
 }
