@@ -1550,7 +1550,7 @@ public function checkTopupStatus(Request $request)
 
                 // 3. Eksekusi Request Manual (Tanpa SDK)
                 // Endpoint untuk pembayaran menggunakan Token Binding
-                $path = "/v1.0/debit/payment-host-to-host";
+                $path = "/rest/redirection/v1.0/debit/payment-host-to-host";
 
                 // Kirim request DENGAN Access Token milik user
                 $response = $this->sendSnapRequest(
