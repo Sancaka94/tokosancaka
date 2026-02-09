@@ -15,6 +15,7 @@ class VerifyCsrfToken extends Middleware
         // Matikan CSRF untuk Login & Logout
         'login',
         'logout',
+        'dana/notify',  // Sesuaikan dengan URL di screenshot
 
         // Jaga-jaga jika register juga bermasalah
         'register',
