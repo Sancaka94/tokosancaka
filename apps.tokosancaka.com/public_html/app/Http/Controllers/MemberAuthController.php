@@ -1601,8 +1601,20 @@ public function checkTopupStatus(Request $request)
             $paymentRequest->setAmount($money);
 
             // Redirect URL
+            // Redirect URL
             $urlParam = new UrlParam();
-            $urlParam->setUrl(url('/member/dashboard'));
+
+            // --- PERBAIKAN: GUNAKAN URL ABSOLUTE YANG SESUAI TENANT SAAT INI ---
+            // Pastikan protocol HTTPS dipaksa
+            $returnUrl = route('member.dashboard');
+            if (!str_contains($returnUrl, 'https://')) {
+                $returnUrl = str_replace('http://', 'https://', $returnUrl);
+            }
+
+            // Log URL kembalian untuk memastikan
+            Log::info('[DEPOSIT-LOG] Return URL set to:', ['url' => $returnUrl]);
+
+            $urlParam->setUrl($returnUrl);
             $urlParam->setType("PAY_RETURN");
             $urlParam->setIsDeeplink("Y");
             $paymentRequest->setUrlParams([$urlParam]);
