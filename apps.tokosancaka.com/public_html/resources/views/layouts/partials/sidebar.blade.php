@@ -140,7 +140,7 @@
         @endif
 
         {{-- DATA TENANT (LINK MANUAL) --}}
-        @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
+        @if(in_array(Auth::user()->role, ['super_admin']))
              {{-- Kita gunakan URL manual saja untuk tenant list agar aman --}}
             <a href="{{ url('admin/list-customer') }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
