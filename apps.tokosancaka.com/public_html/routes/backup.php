@@ -51,7 +51,7 @@ Route::domain('apps.tokosancaka.com')->group(function () {
     Route::post('/join-partner/forgot-pin', [AffiliateController::class, 'forgotPin'])->name('affiliate.forgot_pin');
 
     // Webhook Global (DANA/Payment Gateway) - Wajib di domain utama
-    Route::post('/dana/notify', [OrderController::class, 'handleDanaWebhook'])->name('dana.notify');
+    // Route::post('/dana/notify', [OrderController::class, 'handleDanaWebhook'])->name('dana.notify');
 
     // Log Error Client
     Route::post('/log-client-error', function (Request $request) {
