@@ -32,47 +32,78 @@ use App\Models\ProductVariant; // <--- TAMBAHKAN INI
 
 class DanaWebhookController extends Controller
 {
-    /**
-     * MASTER HANDLER UNTUK SEMUA WEBHOOK DANA
-     */
     public function handleNotify(Request $request)
-    {
-        // 1. Log Request Masuk (Pusat Log)
-        Log::info("[DANA-WEBHOOK-MASTER] Hit Masuk", $request->all());
+{
+    // --- MODE DEBUG ON ---
+    try {
+        // 1. Cek apakah Log aktif
+        Log::info("[DANA-DEBUG] Hit Masuk", $request->all());
 
-        try {
-            $data = $request->all();
-            $refNo = $data['partnerReferenceNo'] ?? '';
-            $status = $data['orderStatus'] ?? '';
+        // 2. Ambil Data
+        $data = $request->all();
+        $refNo = $data['partnerReferenceNo'] ?? null;
+        $status = $data['orderStatus'] ?? null;
 
-            // 2. DETEKSI TIPE TRANSAKSI BERDASARKAN PREFIX REF NO
-
-            // KASUS A: Deposit (Kode: DEP-xxxx)
-            if (Str::startsWith($refNo, 'DEP-')) {
-                return $this->handleDeposit($data);
-            }
-
-            // KASUS B: Order / Belanja (Kode: ORD-xxxx atau INV-xxxx)
-            if (Str::startsWith($refNo, 'ORD-') || Str::startsWith($refNo, 'INV-')) {
-                return $this->handleOrder($data);
-            }
-
-            // KASUS C: Member Registration (Kode: MEM-xxxx)
-            if (Str::startsWith($refNo, 'MEM-')) {
-                // return $this->handleMemberAuth($data);
-                // Anda bisa buat method handleMemberAuth di bawah
-            }
-
-            // Jika tidak dikenali
-            Log::warning("[DANA-WEBHOOK-MASTER] Prefix RefNo tidak dikenali: $refNo");
-            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success (Ignored)']);
-
-        } catch (\Exception $e) {
-            Log::error("[DANA-WEBHOOK-MASTER] FATAL ERROR: " . $e->getMessage());
-            // Tetap return 500 agar DANA tahu ada error di server kita
-            return response()->json(['responseCode' => '500', 'message' => 'Internal Server Error'], 500);
+        // Cek struktur amount (sering error disini jika JSON salah)
+        if (isset($data['amount']) && is_array($data['amount'])) {
+            $paidAmount = (float) ($data['amount']['value'] ?? 0);
+        } else {
+            $paidAmount = 0;
         }
+
+        if (!$refNo) {
+            throw new \Exception("Parameter partnerReferenceNo tidak ditemukan di JSON body.");
+        }
+
+        // 3. Cek DB Connection & Transaksi
+        $trx = DB::table('dana_transactions')->where('reference_no', $refNo)->first();
+
+        if (!$trx) {
+            return response()->json([
+                'status' => 'warning',
+                'message' => "Transaksi $refNo tidak ditemukan di Database."
+            ]);
+        }
+
+        // 4. Simulasi Logic (Tanpa Update dulu biar aman, kita cek errornya dmn)
+        // Kalau code sampai sini jalan, berarti masalah bukan di logic awal
+
+        // Coba Update DB (Test Write)
+        if ($status === 'FINISHED') {
+             DB::beginTransaction();
+
+             // Tes Update status
+             DB::table('dana_transactions')->where('id', $trx->id)->update(['updated_at' => now()]);
+
+             // Tes Increment Saldo
+             DB::table('affiliates')->where('id', $trx->affiliate_id)->increment('balance', $paidAmount);
+
+             DB::commit();
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Code Berjalan Lancar!',
+            'data_received' => [
+                'ref' => $refNo,
+                'status' => $status,
+                'amount' => $paidAmount
+            ]
+        ]);
+
+    } catch (\Throwable $e) {
+        // --- TANGKAP ERROR DAN TAMPILKAN DI POSTMAN ---
+        // Jika DB::rollback perlu
+        if (DB::transactionLevel() > 0) DB::rollBack();
+
+        return response()->json([
+            'ERROR_TYPE' => 'CRITICAL_ERROR',
+            'MESSAGE' => $e->getMessage(),
+            'FILE' => $e->getFile(),
+            'LINE' => $e->getLine()
+        ], 500);
     }
+}
 
     /**
      * LOGIKA KHUSUS DEPOSIT
