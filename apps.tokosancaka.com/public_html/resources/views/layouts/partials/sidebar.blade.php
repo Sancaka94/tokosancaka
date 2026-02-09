@@ -59,7 +59,7 @@
 
 
         {{-- STATUS LANGGANAN --}}
-        @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
+        @if(in_array(Auth::user()->role, ['super_admin']))
             {{-- Pastikan route ini ada, jika tidak, arahkan ke dashboard --}}
             @if(Route::has('tenant.dashboard'))
             <a href="{{ route('tenant.dashboard', $params) }}"
