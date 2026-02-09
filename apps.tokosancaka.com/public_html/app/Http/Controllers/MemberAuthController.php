@@ -1528,9 +1528,12 @@ public function checkTopupStatus(Request $request)
             return back()->with('error', 'Silakan hubungkan akun DANA Anda terlebih dahulu.');
         }
 
-        // HARDCODE NOMINAL KECIL (TESTING)
-        $realAmount = 1000;
-        Log::info("[DEPOSIT-LOG] Set Amount", ['original' => $request->amount, 'used_testing' => $realAmount]);
+        // --- PERUBAHAN DI SINI ---
+        // Gunakan nilai dari Input UI/Blade
+        $realAmount = $request->amount;
+
+        Log::info("[DEPOSIT-LOG] Set Amount Real", ['amount' => $realAmount]);
+        // -------------------------
 
         // Config Check
         $merchantId = config('services.dana.merchant_id');
