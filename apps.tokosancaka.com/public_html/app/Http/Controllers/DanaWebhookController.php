@@ -34,74 +34,87 @@ class DanaWebhookController extends Controller
 {
     public function handleNotify(Request $request)
 {
-    // --- MODE DEBUG ON ---
+    // 1. LOG BAHWA DATA MASUK
+    Log::info("[DANA-REAL] Webhook Masuk!", $request->all());
+
     try {
-        // 1. Cek apakah Log aktif
-        Log::info("[DANA-DEBUG] Hit Masuk", $request->all());
-
-        // 2. Ambil Data
         $data = $request->all();
-        $refNo = $data['partnerReferenceNo'] ?? null;
-        $status = $data['orderStatus'] ?? null;
 
-        // Cek struktur amount (sering error disini jika JSON salah)
-        if (isset($data['amount']) && is_array($data['amount'])) {
-            $paidAmount = (float) ($data['amount']['value'] ?? 0);
-        } else {
-            $paidAmount = 0;
-        }
+        // Ambil Data Penting
+        $refNo  = $data['partnerReferenceNo'] ?? null;
+        $status = $data['orderStatus'] ?? null; // FINISHED / SUCCESS
+
+        // Ambil Nominal (Pastikan aman dari null)
+        $amountVal = $data['amount']['value'] ?? 0;
+        $paidAmount = (float) $amountVal;
 
         if (!$refNo) {
-            throw new \Exception("Parameter partnerReferenceNo tidak ditemukan di JSON body.");
+            Log::warning("[DANA-REAL] RefNo tidak ada.");
+            return response()->json(['res' => 'NO_REF'], 400);
         }
 
-        // 3. Cek DB Connection & Transaksi
+        // 2. CARI TRANSAKSI DI DATABASE
         $trx = DB::table('dana_transactions')->where('reference_no', $refNo)->first();
 
+        // Jika transaksi tidak ada, atau SUDAH SUKSES sebelumnya, langsung return OK (biar DANA gak kirim ulang)
         if (!$trx) {
-            return response()->json([
-                'status' => 'warning',
-                'message' => "Transaksi $refNo tidak ditemukan di Database."
+            Log::info("[DANA-REAL] Transaksi tidak ditemukan: $refNo");
+            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
+        }
+
+        if ($trx->status === 'SUCCESS') {
+            Log::info("[DANA-REAL] Transaksi sudah sukses sebelumnya: $refNo");
+            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
+        }
+
+        // 3. PROSES UPDATE (Hanya jika status FINISHED)
+        if ($status === 'FINISHED' || $status === 'SUCCESS') {
+
+            DB::beginTransaction();
+            try {
+                // A. Update Status Transaksi jadi SUCCESS
+                DB::table('dana_transactions')->where('id', $trx->id)->update([
+                    'status' => 'SUCCESS',
+                    'updated_at' => now(),
+                    'response_payload' => json_encode($data)
+                ]);
+
+                // B. Tambah Saldo Member
+                DB::table('affiliates')->where('id', $trx->affiliate_id)->increment('balance', $paidAmount);
+
+                // C. Kurangi Saldo DANA User (Pencatatan)
+                DB::table('affiliates')->where('id', $trx->affiliate_id)->decrement('dana_user_balance', $paidAmount);
+
+                DB::commit();
+
+                Log::info("[DANA-REAL] ✅ SUKSES UPDATE SALDO: $refNo sebesar Rp $paidAmount");
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error("[DANA-REAL] Gagal Update DB: " . $e->getMessage());
+                // Jangan return 500 jika ini terjadi biar DANA nyoba lagi nanti
+                return response()->json(['responseCode' => '500', 'message' => 'DB Error'], 500);
+            }
+
+        } elseif ($status === 'FAILED') {
+            // Jika Gagal
+            DB::table('dana_transactions')->where('id', $trx->id)->update([
+                'status' => 'FAILED',
+                'updated_at' => now(),
+                'response_payload' => json_encode($data)
             ]);
+            Log::info("[DANA-REAL] Transaksi Gagal: $refNo");
         }
 
-        // 4. Simulasi Logic (Tanpa Update dulu biar aman, kita cek errornya dmn)
-        // Kalau code sampai sini jalan, berarti masalah bukan di logic awal
-
-        // Coba Update DB (Test Write)
-        if ($status === 'FINISHED') {
-             DB::beginTransaction();
-
-             // Tes Update status
-             DB::table('dana_transactions')->where('id', $trx->id)->update(['updated_at' => now()]);
-
-             // Tes Increment Saldo
-             DB::table('affiliates')->where('id', $trx->affiliate_id)->increment('balance', $paidAmount);
-
-             DB::commit();
-        }
-
+        // 4. BALASAN WAJIB "200 OK" KE DANA
         return response()->json([
-            'status' => 'success',
-            'message' => 'Code Berjalan Lancar!',
-            'data_received' => [
-                'ref' => $refNo,
-                'status' => $status,
-                'amount' => $paidAmount
-            ]
+            'responseCode' => '2000000',
+            'responseMessage' => 'Success'
         ]);
 
-    } catch (\Throwable $e) {
-        // --- TANGKAP ERROR DAN TAMPILKAN DI POSTMAN ---
-        // Jika DB::rollback perlu
-        if (DB::transactionLevel() > 0) DB::rollBack();
-
-        return response()->json([
-            'ERROR_TYPE' => 'CRITICAL_ERROR',
-            'MESSAGE' => $e->getMessage(),
-            'FILE' => $e->getFile(),
-            'LINE' => $e->getLine()
-        ], 500);
+    } catch (\Exception $e) {
+        Log::error("[DANA-REAL] Crash: " . $e->getMessage());
+        return response()->json(['responseCode' => '500', 'message' => 'Internal Error'], 500);
     }
 }
 
