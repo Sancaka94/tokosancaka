@@ -1,7 +1,19 @@
 {
-    "version": "1.0.0.354",
-    "last_update": "10 Feb 2026 00:49",
+    "version": "1.0.0.356",
+    "last_update": "10 Feb 2026 00:51",
     "commits": [
+        {
+            "hash": "56fc810",
+            "date": "2026-02-10 00:51:54 +0700",
+            "author": "Admin Sancaka",
+            "message": "Update System"
+        },
+        {
+            "hash": "407b5e4",
+            "date": "2026-02-10 00:49:04 +0700",
+            "author": "Admin Sancaka",
+            "message": "Auto Bump Version"
+        },
         {
             "hash": "32a49db",
             "date": "2026-02-10 00:48:58 +0700",
@@ -107,18 +119,6 @@
         {
             "hash": "e584925",
             "date": "2026-02-09 15:07:41 +0700",
-            "author": "Admin Sancaka",
-            "message": "Auto Bump Version"
-        },
-        {
-            "hash": "f384d8d",
-            "date": "2026-02-09 15:07:36 +0700",
-            "author": "Admin Sancaka",
-            "message": "Update System"
-        },
-        {
-            "hash": "ba05bd7",
-            "date": "2026-02-09 15:07:09 +0700",
             "author": "Admin Sancaka",
             "message": "Auto Bump Version"
         }
