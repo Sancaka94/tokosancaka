@@ -1646,7 +1646,7 @@ public function checkTopupStatus(Request $request)
         $stringToSign = $method . "|" . $path . "||" . $hashedBody . "|" . $timestamp;
 
         // Log String to Sign (Debug Signature jika 401)
-        // Log::debug("String to Sign: " . $stringToSign);
+        Log::debug("String to Sign: " . $stringToSign);
 
         // 3. Ambil Key
         $privateKeyContent = config('services.dana.private_key');
