@@ -1601,24 +1601,40 @@ public function checkTopupStatus(Request $request)
             $paymentRequest->setAmount($money);
 
             // Redirect URL
-            // Redirect URL
+            //$urlParam->setUrl('https://apps.tokosancaka.com/member/dashboard');
+            //$urlParam->setUrl(url('/member/dashboard'));
+            //$urlParam->setType("PAY_RETURN");
+            //urlParam->setIsDeeplink("Y");
+            //$paymentRequest->setUrlParams([$urlParam]);
+            //$paymentRequest->setAdditionalInfo($addInfo);
+
+            // ... di dalam function processDanaPayment ...
+
+            // 1. INISIALISASI OBJEK DULU (Wajib ada baris ini)
             $urlParam = new UrlParam();
 
-            // --- PERBAIKAN: GUNAKAN URL ABSOLUTE YANG SESUAI TENANT SAAT INI ---
-            // Pastikan protocol HTTPS dipaksa
+            // 2. SET URL (Gunakan Logic Multi-Tenant)
+            // Laravel 'route()' otomatis mendeteksi domain/subdomain yang sedang dipakai user.
+            // Jadi jika user akses dari 'toko-a.apps...', route() akan menghasilkan 'toko-a.apps...' juga.
             $returnUrl = route('member.dashboard');
+
+            // Paksa HTTPS (DANA wajib HTTPS)
             if (!str_contains($returnUrl, 'https://')) {
                 $returnUrl = str_replace('http://', 'https://', $returnUrl);
             }
 
-            // Log URL kembalian untuk memastikan
-            Log::info('[DEPOSIT-LOG] Return URL set to:', ['url' => $returnUrl]);
+            // Log untuk memastikan URL sudah benar sebelum dikirim
+            Log::info('[DANA RETURN URL]', ['url' => $returnUrl]);
 
             $urlParam->setUrl($returnUrl);
             $urlParam->setType("PAY_RETURN");
             $urlParam->setIsDeeplink("Y");
+
+            // Masukkan ke Payment Request
             $paymentRequest->setUrlParams([$urlParam]);
             $paymentRequest->setAdditionalInfo($addInfo);
+
+            // ... lanjut kirim ke SDK ...
 
             // LOG PAYLOAD SDK SEBELUM KIRIM
             // Kita coba convert object ke array jika method tersedia, atau log parameter kunci
