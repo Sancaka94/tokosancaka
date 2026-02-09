@@ -1544,11 +1544,11 @@ public function checkTopupStatus(Request $request)
                 $envInfo->setSourcePlatform("IPG");
                 $envInfo->setTerminalType("WEB");
                 $envInfo->setWebsiteLanguage("ID");
-                $envInfo->setClientIp("127.0.0.1"); // IPv4 Only
+                $envInfo->setClientIp("82.25.62.13"); // IPv4 Only
 
                 // 4. Additional Info
                 $addInfo = new WidgetPaymentRequestAdditionalInfo();
-                $addInfo->setProductCode("DIGITAL_PRODUCT");
+                $addInfo->setProductCode("PAYMENT_METHODS");
                 // HAPUS MCC (Biarkan Default agar tidak konflik izin)
                 // $addInfo->setMcc("5411");
                 $addInfo->setOrder($orderObj);
