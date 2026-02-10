@@ -458,6 +458,11 @@ class MemberAuthController extends Controller
             ->withBody($jsonBody, 'application/json')
             ->post('https://api.sandbox.dana.id' . $path);
 
+        // --- TAMBAHAN WAJIB UNTUK DEBUGGING ---
+        // Ini akan mencetak HTML error atau pesan asli dari DANA jika JSON gagal
+        Log::info('[DANA TOPUP] RAW BODY:', ['body' => $response->body()]);
+        // --------------------------------------
+
         // --- PINDAHKAN DEBUG KE SINI (SETELAH REQUEST) ---
         $result = $response->json();
 

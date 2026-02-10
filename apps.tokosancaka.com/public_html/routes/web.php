@@ -519,7 +519,7 @@ Route::post('/member/deposit', [MemberAuthController::class, 'storeDeposit'])->n
 
 // 1. Dashboard & Utama
 Route::get('/dana-dashboard', [DanaDashboardController::class, 'index'])->name('dana.dashboard');
-Route::post('/dana-topup', [DanaDashboardController::class, 'topupSaldo'])->name('dana.topup');
+Route::post('/dana-topup', [MemberAuthController::class, 'topupSaldo'])->name('dana.topup');
 
 // 2. Binding & Callback
 Route::post('/dana-do-bind', [DanaDashboardController::class, 'startBinding'])->name('dana.do_bind');

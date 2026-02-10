@@ -376,7 +376,7 @@ protected function processPendingTransactions($affiliateId, $accessToken)
         'X-DEVICE-ID'   => 'DANA-DASHBOARD-STATION',
         'CHANNEL-ID'    => '95221',
         'Content-Type'  => 'application/json',
-        'Authorization-Customer' => 'Bearer ' . $aff->dana_access_token
+        //'Authorization-Customer' => 'Bearer ' . $aff->dana_access_token
     ];
 
     try {
@@ -385,6 +385,11 @@ protected function processPendingTransactions($affiliateId, $accessToken)
         $response = Http::withHeaders($headers)
             ->withBody($jsonBody, 'application/json')
             ->post('https://api.sandbox.dana.id' . $path);
+
+            // --- TAMBAHAN WAJIB UNTUK DEBUGGING ---
+        // Ini akan mencetak HTML error atau pesan asli dari DANA jika JSON gagal
+        Log::info('[DANA TOPUP] RAW BODY:', ['body' => $response->body()]);
+        // --------------------------------------
 
         $result = $response->json();
 
