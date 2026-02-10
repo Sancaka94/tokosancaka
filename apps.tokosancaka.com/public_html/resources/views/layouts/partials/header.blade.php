@@ -1,5 +1,5 @@
 <header class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-40"
-        x-data="{ userOpen: false, topupOpen: false, topupAmount: '' }">
+        x-data="{ userOpen: false, topupOpen: false, topupAmount: '', paymentMethod: 'DOKU' }">
 
     {{-- ================================================================= --}}
     {{-- [LOGIC PENYELAMAT] AMBIL SUBDOMAIN MANUAL UNTUK HEADER            --}}
@@ -49,7 +49,7 @@
                 {{-- [BARU] Tombol Topup (+) --}}
                 <button @click="topupOpen = true"
                         class="h-[46px] w-[46px] rounded-2xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all border border-blue-500"
-                        title="Top Up Saldo via DOKU">
+                        title="Top Up Saldo">
                     <i class="fas fa-plus text-sm"></i>
                 </button>
             </div>
@@ -180,7 +180,7 @@
                 <div class="bg-blue-600 px-6 py-4 flex justify-between items-center relative z-10">
                     <div class="text-white">
                         <h3 class="text-lg font-bold">Isi Saldo</h3>
-                        <p class="text-blue-100 text-xs">Topup aman & instan via DOKU</p>
+                        <p class="text-blue-100 text-xs">Pilih nominal dan metode pembayaran</p>
                     </div>
                     <button @click="topupOpen = false" class="text-blue-100 hover:text-white bg-blue-500/30 hover:bg-blue-500/50 rounded-xl p-2 transition-colors">
                         <i class="fas fa-times"></i>
@@ -191,7 +191,12 @@
                 {{-- Gunakan parameter $params yang sudah didefinisikan di PHP atas --}}
                 <form action="{{ route('topup.process', ['subdomain' => request()->getHost() == env('APP_URL') ? 'admin' : explode('.', request()->getHost())[0]]) }}" method="POST" class="p-6">
                     @csrf
-                    <div class="space-y-4">
+
+                    {{-- Input Hidden Metode Pembayaran --}}
+                    <input type="hidden" name="payment_method" :value="paymentMethod">
+
+                    <div class="space-y-5">
+                        {{-- 1. Pilih Nominal --}}
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">Nominal Topup</label>
                             <div class="relative">
@@ -200,25 +205,67 @@
                                        class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-bold text-slate-800 placeholder:font-normal"
                                        placeholder="Min. 10.000">
                             </div>
+
+                            {{-- Quick Amount Buttons --}}
+                            <div class="grid grid-cols-3 gap-2 mt-2">
+                                <button type="button" @click="topupAmount = 50000" class="py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-200 rounded-lg transition-all">
+                                    50.000
+                                </button>
+                                <button type="button" @click="topupAmount = 100000" class="py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-200 rounded-lg transition-all">
+                                    100.000
+                                </button>
+                                <button type="button" @click="topupAmount = 500000" class="py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-200 rounded-lg transition-all">
+                                    500.000
+                                </button>
+                            </div>
                         </div>
 
-                        {{-- Quick Amount --}}
-                        <div class="grid grid-cols-3 gap-2">
-                            <button type="button" @click="topupAmount = 50000" class="py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-200 rounded-lg transition-all">
-                                50.000
-                            </button>
-                            <button type="button" @click="topupAmount = 100000" class="py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-200 rounded-lg transition-all">
-                                100.000
-                            </button>
-                            <button type="button" @click="topupAmount = 500000" class="py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-200 rounded-lg transition-all">
-                                500.000
-                            </button>
+                        {{-- 2. Pilih Metode Pembayaran --}}
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Metode Pembayaran</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                {{-- Opsi DANA --}}
+                                <div @click="paymentMethod = 'DANA'"
+                                     class="cursor-pointer border-2 rounded-xl p-3 flex flex-col items-center justify-center gap-2 transition-all relative overflow-hidden"
+                                     :class="paymentMethod === 'DANA' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-300'">
+
+                                    <div class="h-8 flex items-center">
+                                        {{-- Ganti src dengan logo DANA Anda --}}
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png" class="h-6 object-contain" alt="DANA">
+                                    </div>
+                                    <span class="text-xs font-bold text-slate-700">DANA (Auto)</span>
+
+                                    {{-- Checkmark Icon --}}
+                                    <div x-show="paymentMethod === 'DANA'" class="absolute top-2 right-2 text-blue-600">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                </div>
+
+                                {{-- Opsi DOKU (Lainnya) --}}
+                                <div @click="paymentMethod = 'DOKU'"
+                                     class="cursor-pointer border-2 rounded-xl p-3 flex flex-col items-center justify-center gap-2 transition-all relative overflow-hidden"
+                                     :class="paymentMethod === 'DOKU' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-300'">
+
+                                    <div class="h-8 flex items-center gap-2">
+                                        <i class="fas fa-qrcode text-2xl text-slate-600"></i>
+                                        <span class="text-xs font-bold text-slate-500">+VA/Retail</span>
+                                    </div>
+                                    <span class="text-xs font-bold text-slate-700">Metode Lain</span>
+
+                                    {{-- Checkmark Icon --}}
+                                    <div x-show="paymentMethod === 'DOKU'" class="absolute top-2 right-2 text-blue-600">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
+                        {{-- Info Box --}}
                         <div class="p-4 bg-blue-50 rounded-xl border border-blue-100 flex gap-3">
                             <div class="shrink-0 text-blue-600 mt-0.5"><i class="fas fa-info-circle"></i></div>
                             <p class="text-xs text-blue-800 leading-relaxed">
-                                Anda akan diarahkan ke halaman pembayaran DOKU (QRIS, VA, E-Wallet). Saldo otomatis masuk setelah bayar.
+                                <span x-show="paymentMethod === 'DANA'">Pembayaran instan menggunakan Saldo DANA Anda yang sudah terhubung.</span>
+                                <span x-show="paymentMethod === 'DOKU'">Pilihan lengkap: QRIS, Virtual Account (BCA, Mandiri, dll), dan Gerai Retail.</span>
                             </p>
                         </div>
                     </div>
