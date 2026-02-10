@@ -9,255 +9,290 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use App\Models\PosTopUp; // Pastikan model ini ada
+use App\Models\PosTopUp;
 use Throwable;
+
+// --- 1. IMPORT DANA SDK (WAJIB ADA) ---
+use Dana\Widget\v1\Model\WidgetPaymentRequest;
+use Dana\Widget\v1\Model\Money;
+use Dana\Widget\v1\Model\UrlParam;
+use Dana\Widget\v1\Model\WidgetPaymentRequestAdditionalInfo;
+use Dana\Widget\v1\Model\EnvInfo;
+use Dana\Widget\v1\Model\Order as DanaOrder;
+use Dana\Widget\v1\Enum\PayMethod;
+use Dana\Widget\v1\Enum\SourcePlatform;
+use Dana\Widget\v1\Enum\TerminalType;
+use Dana\Widget\v1\Enum\OrderTerminalType;
+use Dana\Widget\v1\Enum\Type;
+use Dana\Configuration;
+use Dana\Env;
+use Dana\Widget\v1\Api\WidgetApi;
 
 class TenantPaymentController extends Controller
 {
-    /**
-     * KONFIGURASI URL CALLBACK PUSAT
-     * Ini alamat controller "DanaGatewayController" di domain utama.
-     * JANGAN DIUBAH KECUALI DOMAIN UTAMA BERUBAH.
-     */
     private const CENTRAL_CALLBACK_URL = 'https://apps.tokosancaka.com/dana/callback';
 
-    /**
-     * 1. GENERATE URL (ENTRY POINT)
-     * Menentukan metode pembayaran (DANA vs DOKU)
-     */
     public function generateUrl(Request $request)
     {
-        // Validasi Input
         $request->validate([
             'amount' => 'required|numeric|min:10000',
             'payment_method' => 'nullable|in:DOKU,DANA'
         ]);
 
-        // Ambil User yang Login (Tabel Users / Tenant Admin)
         $user = Auth::user();
 
         if (!$user) {
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
             }
-            return redirect()->route('login')->with('error', 'Sesi habis, silakan login kembali.');
+            return redirect()->route('login')->with('error', 'Sesi habis.');
         }
 
-        // A. DETEKSI TENANT ID
-        // Prioritas 1: Dari kolom tenant_id di user
-        $tenantId = $user->tenant_id ?? null;
-
-        // Prioritas 2: Dari Subdomain URL saat ini (Fallback)
-        if (!$tenantId) {
-            $host = $request->getHost(); // misal: bakso.tokosancaka.com
-            $subdomain = explode('.', $host)[0];
-            $tenantData = DB::table('tenants')->where('subdomain', $subdomain)->first();
-            $tenantId = $tenantData ? $tenantData->id : 1; // Default ke ID 1 (Pusat) jika tidak ketemu
-        }
-
-        // B. PILIH METODE PEMBAYARAN
+        $tenantId = $user->tenant_id ?? 1;
         $method = $request->payment_method ?? 'DOKU';
 
         if ($method === 'DANA') {
+            // Panggil fungsi SDK baru
             return $this->processDanaPayment($request, $user, $tenantId);
         } else {
             return $this->processDokuPayment($request, $user, $tenantId);
         }
     }
 
-    /**
-     * 2. LOGIC START BINDING (INTEGRASI GATEWAY PUSAT)
-     * Mengarahkan Admin Toko ke DANA dengan "Titipan Pesan" (State)
-     */
     public function startBinding(Request $request)
     {
-        $user = Auth::user(); // User dari tabel 'users'
-
-        if (!$user) {
-            return redirect('/login')->with('error', 'Silakan login terlebih dahulu.');
-        }
-
-        // 1. Ambil Subdomain Tenant Saat Ini (Agar nanti bisa pulang ke sini)
+        $user = Auth::user();
         $subdomain = explode('.', $request->getHost())[0];
         $tenantId  = $user->tenant_id ?? 1;
 
-        // 2. Buat State Khusus Tenant untuk Gateway Pusat
-        // Format: ACTION - USER_ID - SUBDOMAIN - TENANT_ID
-        // Gateway Pusat akan membaca ini untuk tahu kemana harus redirect balik & tabel mana yang diupdate
         $state = "BIND_TENANT-{$user->id}-{$subdomain}-{$tenantId}";
 
-        // 3. Setup URL DANA
         $clientId = config('services.dana.x_partner_id');
-
-        // PENTING: Redirect URL harus ke Gateway Pusat (Fixed URL di Domain Utama)
-        // Jangan gunakan route() lokal karena subdomainnya akan berubah-ubah
         $encodedCallback = urlencode(self::CENTRAL_CALLBACK_URL);
-
         $requestId = Str::uuid();
 
-        // 4. Redirect ke DANA
-        // Scopes: QUERY_BALANCE, MINI_DANA, DEFAULT_BASIC_PROFILE
         $danaUrl = "https://m.sandbox.dana.id/d/portal/oauth?partnerId={$clientId}&scopes=QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE&requestId={$requestId}&redirectUrl={$encodedCallback}&state={$state}&terminalType=WEB";
-
-        Log::info("[TENANT BINDING] Redirecting User ID {$user->id} to DANA via Central Gateway. State: $state");
 
         return redirect()->away($danaUrl);
     }
 
     /**
-     * 3. LOGIC PEMBAYARAN DANA (ACQUIRING / DIRECT DEBIT)
+     * PROSES DANA (MENGGUNAKAN SDK - HASIL COPY DARI MEMBER)
      */
     private function processDanaPayment($request, $user, $tenantId)
     {
-        Log::info("[DANA TOPUP] Start Tenant User: {$user->id} (Tenant: $tenantId)");
+        Log::info("[DEPOSIT-LOG] Masuk Flow DANA (Tenant)", ['user_id' => $user->id]);
 
-        // Cek Token di Tabel Users (Admin Toko)
-        // Pastikan kolom 'dana_access_token' ada di tabel users
-        $accessToken = $user->dana_access_token;
-
-        if (!$accessToken) {
-            // Jika belum binding, arahkan ke startBinding
-            // Jika request AJAX (JSON), kirim response suruh redirect
+        // CEK TOKEN
+        if (empty($user->dana_access_token)) {
+            Log::warning("[DEPOSIT-LOG] DANA Token Missing", ['user_id' => $user->id]);
+            // Jika AJAX
             if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Akun DANA belum terhubung.',
-                    'action'  => 'BIND_REQUIRED',
-                    'url'     => route('tenant.dana.start') // Pastikan route ini ada di web.php tenant
-                ], 400);
+                return response()->json(['success' => false, 'message' => 'Token DANA tidak ditemukan.'], 400);
             }
-            // Jika request biasa, redirect langsung
-            return redirect()->route('tenant.dana.start')->with('error', 'Hubungkan akun DANA Anda terlebih dahulu.');
+            return redirect()->route('tenant.dana.start')->with('error', 'Silakan hubungkan akun DANA Anda terlebih dahulu.');
         }
 
-        // Setup Payload Order DANA
-        $refNo = 'DEP-DANA-' . time() . mt_rand(100, 999);
-        $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        // Gunakan nilai dari Input UI/Blade
+        $realAmount = $request->amount;
 
-        $payload = [
-            "request" => [
-                "head" => [
-                    "version"      => "2.0",
-                    "function"     => "dana.acquiring.order.create",
-                    "clientId"     => config('services.dana.x_partner_id'),
-                    "clientSecret" => config('services.dana.client_secret'),
-                    "reqTime"      => $timestamp,
-                    "reqMsgId"     => (string) Str::uuid(),
-                    "reserve"      => "{}"
-                ],
-                "body" => [
-                    "merchantId" => config('services.dana.merchant_id'),
-                    "merchantTransId" => $refNo,
-                    "order" => [
-                        "orderTitle" => "Topup Saldo POS",
-                        "orderAmount" => [
-                            "currency" => "IDR",
-                            "value" => number_format($request->amount, 2, '.', '') // Format string 2 desimal
-                        ],
-                        "merchantTransType" => "01",
-                        "orderMemo" => "Topup Tenant ID: " . $tenantId
-                    ],
-                    "envInfo" => [
-                        "sourcePlatform" => "IPG",
-                        "terminalType"   => "SYSTEM"
-                    ],
-                    // Sertakan Access Token User
-                    "userCredential" => [
-                        "accessToken" => $accessToken
-                    ]
-                ]
-            ]
-        ];
+        Log::info("[DEPOSIT-LOG] Set Amount Real", ['amount' => $realAmount]);
 
-        // Generate Signature
-        $jsonToSign = json_encode($payload['request'], JSON_UNESCAPED_SLASHES);
-        $signature  = $this->generateSignature($jsonToSign);
+        // Config Check
+        $merchantId = config('services.dana.merchant_id');
+        if (empty($merchantId)) {
+            Log::error("[DEPOSIT-LOG] Config Error: Merchant ID Kosong");
+            return back()->with('error', 'Config Error: Merchant ID Missing.');
+        }
+
+        // Init DB Transaction Record
+        $refNo = 'DEP-T-' . time() . mt_rand(100, 999); // DEP-T (Tenant)
+
+        Log::info("[DEPOSIT-LOG] Membuat Record DB (INIT)", ['ref_no' => $refNo]);
+
+        // Masukkan ke tabel dana_transactions (Sesuai request untuk menyamakan)
+        DB::table('dana_transactions')->insert([
+            'tenant_id'    => $tenantId,
+            'affiliate_id' => $user->id, // Simpan ID User Admin disini
+            'type'         => 'DEPOSIT',
+            'reference_no' => $refNo,
+            'phone'        => $user->phone ?? '',
+            'amount'       => $realAmount,
+            'status'       => 'INIT',
+            'created_at'   => now()
+        ]);
+
+        // Juga simpan ke PosTopUp agar logic checkStatus Tenant jalan
+        PosTopUp::create([
+            'tenant_id'      => $tenantId,
+            'affiliate_id'   => $user->id,
+            'reference_no'   => $refNo,
+            'amount'         => $realAmount,
+            'unique_code'    => 0,
+            'total_amount'   => $realAmount,
+            'status'         => 'PENDING',
+            'payment_method' => 'DANA',
+            'response_payload' => null
+        ]);
 
         try {
-            // SIMPAN LOG TRANSAKSI (PENDING)
-            // Catatan: 'affiliate_id' disini diisi User ID (Admin) karena ini tabel pos_topups
-            PosTopUp::create([
-                'tenant_id'      => $tenantId,
-                'affiliate_id'   => $user->id,
-                'reference_no'   => $refNo,
-                'amount'         => $request->amount,
-                'unique_code'    => 0,
-                'total_amount'   => $request->amount,
-                'status'         => 'PENDING',
-                'payment_method' => 'DANA',
-                'response_payload' => json_encode(['init_payload' => $payload])
+            // 1. Config SDK
+            Log::info("[DEPOSIT-LOG] Menginisialisasi SDK Configuration");
+            $config = new Configuration();
+            $config->setApiKey('PRIVATE_KEY', config('services.dana.private_key'));
+            $config->setApiKey('X_PARTNER_ID', config('services.dana.x_partner_id'));
+            $config->setApiKey('ORIGIN', config('services.dana.origin'));
+            $config->setApiKey('DANA_ENV', Env::SANDBOX);
+
+            $apiInstance = new WidgetApi(null, $config);
+
+            // 2. Order
+            $orderObj = new DanaOrder();
+            $orderObj->setOrderTitle("Topup Saldo Toko"); // Ubah Judul Dikit
+            $orderObj->setOrderMemo("Topup Admin ID " . $user->id);
+
+            // 3. EnvInfo
+            $envInfo = new EnvInfo();
+            $envInfo->setSourcePlatform("IPG");
+            $envInfo->setTerminalType("WEB");
+            $envInfo->setWebsiteLanguage("ID");
+            $envInfo->setClientIp("82.25.62.13");
+
+            // 4. Additional Info
+            $addInfo = new WidgetPaymentRequestAdditionalInfo();
+            $addInfo->setProductCode("51051000100000000001");
+            $addInfo->setOrder($orderObj);
+            $addInfo->setEnvInfo($envInfo);
+
+            // 5. Request Object
+            $paymentRequest = new WidgetPaymentRequest();
+            $paymentRequest->setMerchantId($merchantId);
+            $paymentRequest->setPartnerReferenceNo($refNo);
+
+            // Amount (Strict 2 Decimal)
+            $amountString = number_format($realAmount, 2, '.', '');
+            $money = new Money();
+            $money->setValue($amountString);
+            $money->setCurrency("IDR");
+            $paymentRequest->setAmount($money);
+
+            // --- REDIRECT URL LOGIC (TENANT) ---
+            $urlParam = new UrlParam();
+
+            // Arahkan ke Dashboard Tenant
+            $returnUrl = route('dashboard');
+
+            // Paksa HTTPS
+            if (!str_contains($returnUrl, 'https://')) {
+                $returnUrl = str_replace('http://', 'https://', $returnUrl);
+            }
+
+            Log::info('[DANA RETURN URL]', ['url' => $returnUrl]);
+
+            $urlParam->setUrl($returnUrl);
+            $urlParam->setType("PAY_RETURN");
+            $urlParam->setIsDeeplink("Y");
+
+            $paymentRequest->setUrlParams([$urlParam]);
+            $paymentRequest->setAdditionalInfo($addInfo);
+
+            // LOG PAYLOAD SDK
+            Log::info("[DEPOSIT-LOG] SDK Request Payload Siap", [
+                'merchant_id' => $merchantId,
+                'ref_no' => $refNo,
+                'amount' => $amountString
             ]);
 
-            // Request API DANA
-            Log::info('[DANA TOPUP] Sending Request Tenant...', ['ref' => $refNo]);
+            // 6. EKSEKUSI API
+            Log::info("[DEPOSIT-LOG] Mengirim Request ke DANA...");
+            $result = $apiInstance->widgetPayment($paymentRequest);
+            Log::info("[DEPOSIT-LOG] Response Diterima dari DANA", ['response' => (array)$result]);
 
-            $response = Http::post('https://api.sandbox.dana.id/dana/acquiring/order/create.htm', [
-                "request"   => $payload['request'],
-                "signature" => $signature
-            ]);
+            // 7. HANDLE RESPONSE
+            $redirectUrl = null;
+            if (method_exists($result, 'getWebRedirectUrl')) {
+                $redirectUrl = $result->getWebRedirectUrl();
+            } elseif (isset($result->webRedirectUrl)) {
+                $redirectUrl = $result->webRedirectUrl;
+            }
 
-            $result = $response->json();
-            Log::info('[DANA TOPUP] Response:', ['res' => $result]);
+            if ($redirectUrl) {
+                Log::info("[DEPOSIT-LOG] Redirect URL ditemukan. Update DB PENDING.", ['url' => $redirectUrl]);
 
-            $resBody = $result['response']['body'] ?? [];
-            $resStatus = $resBody['resultInfo']['resultStatus'] ?? 'F';
+                // Update kedua tabel
+                DB::table('dana_transactions')
+                    ->where('reference_no', $refNo)
+                    ->update([
+                        'status' => 'PENDING',
+                        'response_payload' => json_encode($result),
+                        'updated_at' => now()
+                    ]);
 
-            // JIKA BERHASIL CREATE ORDER (Dapat Checkout URL)
-            if ($resStatus == 'S') {
-                $checkoutUrl = $resBody['checkoutUrl'] ?? null;
+                PosTopUp::where('reference_no', $refNo)->update(['response_payload' => json_encode($result)]);
 
-                if ($checkoutUrl) {
-                    // Update Log dengan Response sukses
-                    PosTopUp::where('reference_no', $refNo)->update(['response_payload' => json_encode($result)]);
+                // JIKA REQUEST JSON (AJAX)
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => true, 'url' => $redirectUrl]);
+                }
 
-                    if (!$request->wantsJson()) {
-                        return redirect()->away($checkoutUrl);
-                    }
-                    return response()->json(['success' => true, 'url' => $checkoutUrl]);
+                return redirect($redirectUrl);
+            } else {
+                Log::error("[DEPOSIT-LOG] Redirect URL NULL", ['full_response' => json_encode($result)]);
+                throw new \Exception("Empty Redirect URL form DANA Response.");
+            }
+
+        } catch (\Exception $e) {
+            $errorMsg = $e->getMessage();
+
+            if (method_exists($e, 'getResponseBody')) {
+                $body = $e->getResponseBody();
+                Log::error("[DEPOSIT-LOG] SDK API ERROR BODY", (array)$body);
+                if ($body && isset($body->responseMessage)) {
+                    $code = $body->responseCode ?? '';
+                    $errorMsg = "DANA ($code): " . $body->responseMessage;
                 }
             }
 
-            // JIKA GAGAL
-            $errMsg = $resBody['resultInfo']['resultMsg'] ?? 'Gagal membuat order.';
+            Log::error('[DEPOSIT-LOG] EXCEPTION THROWN: ' . $errorMsg);
+
+            DB::table('dana_transactions')
+                ->where('reference_no', $refNo)
+                ->update([
+                    'status' => 'FAILED',
+                    'response_payload' => $errorMsg,
+                    'updated_at' => now()
+                ]);
+
             PosTopUp::where('reference_no', $refNo)->update(['status' => 'FAILED']);
 
-            if (!$request->wantsJson()) return redirect()->back()->with('error', $errMsg);
-            return response()->json(['success' => false, 'message' => $errMsg], 400);
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $errorMsg], 500);
+            }
 
-        } catch (\Exception $e) {
-            Log::error("[DANA TOPUP] Error: " . $e->getMessage());
-            if (!$request->wantsJson()) return redirect()->back()->with('error', 'System Error');
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            return back()->with('error', $errorMsg);
         }
     }
 
-    /**
-     * 4. LOGIC PEMBAYARAN DOKU (EXISTING)
-     */
     private function processDokuPayment($request, $user, $tenantId)
     {
         try {
             $dokuService = new DokuJokulService();
-            // Prefix Ref No DOKU
             $referenceNo = 'POSTOPUP-' . $user->id . '-' . time() . '-' . rand(100, 999);
 
             $customerData = [
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone ?? '08123456789'
+                'name' => $user->name, 'email' => $user->email, 'phone' => $user->phone ?? '08123456789'
             ];
 
             $paymentUrl = $dokuService->createPayment($referenceNo, $request->amount, $customerData);
 
-            // Simpan Transaksi DOKU
             PosTopUp::create([
-                'tenant_id'      => $tenantId,
-                'affiliate_id'   => $user->id, // User ID
-                'reference_no'   => $referenceNo,
-                'amount'         => $request->amount,
-                'unique_code'    => 0,
-                'total_amount'   => $request->amount,
-                'status'         => 'PENDING',
+                'tenant_id' => $tenantId,
+                'affiliate_id' => $user->id,
+                'reference_no' => $referenceNo,
+                'amount' => $request->amount,
+                'unique_code' => 0,
+                'total_amount' => $request->amount,
+                'status' => 'PENDING',
                 'payment_method' => 'DOKU',
                 'response_payload' => ['payment_url' => $paymentUrl]
             ]);
@@ -274,44 +309,34 @@ class TenantPaymentController extends Controller
         }
     }
 
-    /**
-     * 5. CEK STATUS & SMART REDIRECT
-     * Mengarahkan user kembali ke subdomain tenant yang benar setelah bayar
-     */
     public function checkStatus(Request $request)
     {
         try {
             $invoice = $request->input('invoice');
-
-            // Konfigurasi Domain Utama (Ganti sesuai .env)
             $appDomain = env('APP_URL_DOMAIN', 'tokosancaka.com');
             $scheme = $request->secure() ? 'https://' : 'http://';
-
-            // Fallback Subdomain saat ini
             $currentSubdomain = explode('.', $request->getHost())[0];
 
-            // A. JIKA ADA INVOICE (Cek Transaksi Spesifik)
             if ($invoice) {
-                // Cari transaksi di tabel pos_topups
+                // Cek PosTopUp (karena di processDanaPayment kita juga simpan ke PosTopUp)
                 $topup = PosTopUp::where('reference_no', $invoice)->first();
 
-                // Jika Transaksi Ditemukan dan SUKSES
+                // Alternatif: Cek dana_transactions jika PosTopUp belum update
+                if (!$topup) {
+                     $danaTrx = DB::table('dana_transactions')->where('reference_no', $invoice)->first();
+                     if ($danaTrx && $danaTrx->status == 'SUCCESS') {
+                         return response()->json(['active' => true, 'status' => 'success', 'message' => 'Top Up Berhasil (DANA)']);
+                     }
+                }
+
                 if ($topup && in_array($topup->status, ['SUCCESS', 'PAID'])) {
-
-                    // --- SMART REDIRECT LOGIC ---
-                    $redirectUrl = url()->previous(); // Default (Refresh halaman)
-
-                    // Cari Tenant pemilik transaksi ini
+                    $redirectUrl = url()->previous();
                     $trxTenant = DB::table('tenants')->where('id', $topup->tenant_id)->first();
 
                     if ($trxTenant) {
-                        // Paksa URL ke Dashboard Subdomain Tenant yang Benar
-                        // Contoh: https://bakso.tokosancaka.com/dashboard
                         $redirectUrl = $scheme . $trxTenant->subdomain . '.' . $appDomain . '/dashboard';
                     }
-                    // -----------------------------
 
-                    // Refresh Saldo User Login (untuk update UI real-time)
                     $currentBalance = 0;
                     if (Auth::check()) {
                         $currentBalance = Auth::user()->fresh()->saldo;
@@ -325,12 +350,10 @@ class TenantPaymentController extends Controller
                         'redirect_url' => $redirectUrl
                     ]);
                 }
-
-                // Jika masih Pending
                 return response()->json(['active' => false, 'status' => 'pending']);
             }
 
-            // B. JIKA TANPA INVOICE (Cek Status Tenant untuk Landing Page)
+            // Fallback
             $tenant = DB::table('tenants')->where('subdomain', $currentSubdomain)->first();
             if ($tenant && $tenant->status === 'active') {
                 return response()->json([
@@ -345,20 +368,5 @@ class TenantPaymentController extends Controller
         } catch (Throwable $e) {
             return response()->json(['active' => false, 'error' => $e->getMessage()], 200);
         }
-    }
-
-    /**
-     * HELPER: SIGNATURE DANA (SHA256 with Private Key)
-     */
-    private function generateSignature($stringToSign) {
-        $privateKeyContent = config('services.dana.private_key');
-
-        // Bersihkan Key
-        $cleanKey = preg_replace('/-{5}(BEGIN|END) PRIVATE KEY-{5}|\r|\n|\s/', '', $privateKeyContent);
-        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . chunk_split($cleanKey, 64, "\n") . "-----END PRIVATE KEY-----";
-
-        $binarySignature = "";
-        openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256);
-        return base64_encode($binarySignature);
     }
 }
