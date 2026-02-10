@@ -51,6 +51,14 @@ use App\Http\Controllers\DanaWebhookController;
 use App\Http\Controllers\DanaGatewayController;
 
 
+
+
+    // Route Invoice (Publik)
+    Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('invoice.show');
+
+    Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('orders.invoice');
+
+
 Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
 
 // Fonte Kirim Admin Ketika Suspend
@@ -572,12 +580,6 @@ Route::group(['middleware' => ['web', 'auth']], function () {
 });
 
 
-Route::domain('{subdomain}.' . env('APP_URL_DOMAIN', 'tokosancaka.com'))->group(function () {
-
-    // Route Invoice (Publik)
-    Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('invoice.show');
-
-    Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('orders.invoice');
 
 
-});
+
