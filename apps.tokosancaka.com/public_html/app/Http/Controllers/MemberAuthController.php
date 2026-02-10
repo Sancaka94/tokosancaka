@@ -148,242 +148,51 @@ class MemberAuthController extends Controller
         return redirect()->route('member.login');
     }
 
-   // 1. START BINDING (LOGIKA AWAL BOS)
+   /**
+     * 1. START BINDING (MODIFIKASI UNTUK CENTRAL GATEWAY)
+     * Mengarahkan Member ke DANA dengan State khusus
+     */
     public function startBinding(Request $request)
     {
-        // [LOG 1] Tanda mulai proses
-        Log::info('================================================================');
-        Log::info('[BINDING] 🚀 1. MEMULAI PROSES REDIRECT KE DANA PORTAL');
-        Log::info('================================================================');
-
-        // Log info dasar user
-        Log::info('[BINDING] Client IP: ' . $request->ip());
-        Log::info('[BINDING] User Agent: ' . $request->header('User-Agent'));
-
-        // ---------------------------------------------------------------------
-        // 1. AMBIL DATA DINAMIS (MEMBER, TENANT, SUBDOMAIN)
-        // ---------------------------------------------------------------------
-
-        // Cek Auth Guard Member
+        // A. Ambil Data Member yang Login
         $member = Auth::guard('member')->user();
 
-        // Fallback jika testing tanpa login (Not Recommended for Production)
-        $memberId = $member ? $member->id : ($request->affiliate_id ?? 11);
-        $tenantId = $member ? $member->tenant_id : ($request->tenant_id ?? 1);
-        $memberName = $member ? $member->name : 'Guest/Test';
-
-        // Deteksi Subdomain dari Route Parameter (sesuai setup routing Anda)
-        // Jika null/kosong, default ke 'apps' (pusat)
-        $currentSubdomain = $request->route('subdomain') ?? 'apps';
-
-        Log::info("[BINDING] 👤 User Info:", [
-            'name' => $memberName,
-            'id' => $memberId,
-            'tenant_id' => $tenantId,
-            'origin_subdomain' => $currentSubdomain
-        ]);
-
-        // ---------------------------------------------------------------------
-        // 2. FORMAT STATE (PENTING UNTUK CALLBACK)
-        // Format: TIPE - ID_MEMBER - SUBDOMAIN - TENANT_ID
-        // Contoh: MEMBER-11-apps-1
-        // ---------------------------------------------------------------------
-        $state = "MEMBER-{$memberId}-{$currentSubdomain}-{$tenantId}";
-
-        // [LOG 2] Pengecekan Config
-        $partnerId   = config('services.dana.x_partner_id');
-        $merchantId  = config('services.dana.merchant_id');
-
-        // Kita kunci Redirect URL ke Pusat (Apps) agar tidak perlu whitelist banyak subdomain di DANA
-        $redirectUrl = 'https://apps.tokosancaka.com/dana/callback';
-
-        Log::info('[BINDING] ⚙️ Config & State:', [
-            'partnerId' => $partnerId ? '✅ OK' : '❌ NULL',
-            'merchantId' => $merchantId ? '✅ OK' : '❌ NULL',
-            'redirectUrl' => $redirectUrl,
-            'generated_state' => $state
-        ]);
-
-        // Generate External ID Unik
-        $timestamp  = now('Asia/Jakarta')->toIso8601String();
-        $externalId = 'BIND-' . $state . '-' . time();
-
-        // ---------------------------------------------------------------------
-        // 3. SUSUN PARAMETER
-        // ---------------------------------------------------------------------
-        $queryParams = [
-            'partnerId'   => $partnerId,
-            'timestamp'   => $timestamp,
-            'externalId'  => $externalId,
-            'merchantId'  => $merchantId,
-            'redirectUrl' => $redirectUrl,
-            'state'       => $state, // <--- Membawa semua info penting
-            'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
-        ];
-
-        // [LOG 3] Log Payload
-        Log::info('[BINDING] 📦 Payload Parameter:', $queryParams);
-
-        // Build URL
-        $baseUrl = "https://m.sandbox.dana.id/d/portal/oauth";
-        $finalRedirectUrl = $baseUrl . "?" . http_build_query($queryParams);
-
-        // [LOG 4] Log URL Final
-        Log::info('[BINDING] 🔗 GENERATED URL (Siap Redirect):');
-        Log::info($finalRedirectUrl);
-
-        Log::info('[BINDING] ✅ Proses controller selesai, melempar user ke DANA...');
-        Log::info('================================================================');
-
-        return redirect($finalRedirectUrl);
-    }
-
-   public function handleCallback(Request $request)
-{
-    Log::info('[DANA CALLBACK] Mendapatkan Auth Code:', $request->all());
-
-    $authCode = $request->input('auth_code');
-    $state    = $request->input('state'); // Format: MEMBER-{id}-{subdomain}-{tenant_id}
-
-    // -------------------------------------------------------------------------
-    // 1. LOGIKA CEK & PARSING STATE (User ID, Subdomain, Tenant ID)
-    // -------------------------------------------------------------------------
-
-    // Default values jika state tidak sesuai format
-    $affiliateId = 11;
-    $tenantId    = 1;
-    $subdomain   = 'apps';
-
-    if ($state) {
-        // Pecah string state berdasarkan separator "-"
-        $parts = explode('-', $state);
-
-        // Validasi struktur state (minimal ada 4 bagian: TIPE-ID-SUB-TENANT)
-        // Contoh: MEMBER-11-apps-1
-        if (count($parts) >= 4) {
-            $affiliateId = $parts[1]; // Index 1 adalah ID User/Affiliate
-            $subdomain   = $parts[2]; // Index 2 adalah Subdomain
-            $tenantId    = $parts[3]; // Index 3 adalah Tenant ID
-        } elseif (strpos($state, 'ID-') !== false) {
-            // Fallback untuk format lama (jika ada)
-            $affiliateId = str_replace('ID-', '', $state);
-        }
-    }
-
-    Log::info('[DANA CALLBACK] State Parsed:', [
-        'affiliate_id' => $affiliateId,
-        'tenant_id'    => $tenantId,
-        'subdomain'    => $subdomain,
-        'original_state' => $state
-    ]);
-
-    // -------------------------------------------------------------------------
-    // 2. VALIDASI DASAR
-    // -------------------------------------------------------------------------
-
-    if (!$authCode) {
-        return redirect()->route('member.dashboard')->with('error', 'Auth Code Kosong / User Membatalkan');
-    }
-
-    // Pastikan Affiliate ID Valid/Ada di DB
-    $affiliate = DB::table('affiliates')->where('id', $affiliateId)->first();
-    if (!$affiliate) {
-        Log::error('[DANA CALLBACK] Affiliate ID tidak ditemukan: ' . $affiliateId);
-        return redirect()->route('member.login')->with('error', 'User tidak ditemukan.');
-    }
-
-    // 3. Simpan Auth Code sementara
-    DB::table('affiliates')->where('id', $affiliateId)->update([
-        'dana_auth_code' => $authCode,
-        'updated_at' => now()
-    ]);
-
-    try {
-        // Setup Parameter API
-        $timestamp  = now('Asia/Jakarta')->toIso8601String();
-        $clientId   = config('services.dana.x_partner_id');
-        $externalId = (string) time();
-
-        // Signature B2B2C: ClientID|Timestamp
-        $stringToSign = $clientId . "|" . $timestamp;
-        $signature    = $this->generateSignature($stringToSign);
-
-        $path = '/v1.0/access-token/b2b2c.htm';
-        $body = [
-            'grantType'      => 'authorization_code',
-            'authCode'       => $authCode,
-            'additionalInfo' => (object)[]
-        ];
-
-        // Request ke DANA
-        $response = Http::withHeaders([
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'X-PARTNER-ID'  => $clientId,
-            'X-CLIENT-KEY'  => $clientId,
-            'X-EXTERNAL-ID' => $externalId,
-            'Content-Type'  => 'application/json'
-        ])->post('https://api.sandbox.dana.id' . $path, $body);
-
-        $result = $response->json();
-
-        // Kode sukses DANA Sandbox biasanya 2007400 untuk B2B2C, tapi bisa juga 2001100
-        $successCodes = ['2001100', '2007400', '2000000'];
-
-        if (isset($result['responseCode']) && in_array($result['responseCode'], $successCodes)) {
-
-            // A. UPDATE TOKEN KE DATABASE
-            DB::table('affiliates')->where('id', $affiliateId)->update([
-                'dana_access_token' => $result['accessToken'],
-                'updated_at'        => now()
-            ]);
-
-            // B. CATAT KE RIWAYAT TRANSAKSI
-            try {
-                DB::table('dana_transactions')->insert([
-                    'tenant_id'    => $tenantId,    // <-- Sudah terisi dari hasil parsing di atas
-                    'affiliate_id' => $affiliateId, // <-- Sudah terisi
-                    'type'         => 'BINDING',
-                    'reference_no' => $externalId,
-                    'phone'        => '-',
-                    'amount'       => 0,
-                    'status'       => 'SUCCESS',
-                    'response_payload' => json_encode($result),
-                    'created_at'   => now()
-                ]);
-            } catch (\Exception $dbEx) {
-                Log::error('[DANA CALLBACK] Gagal simpan log transaksi: ' . $dbEx->getMessage());
-            }
-
-            // Redirect sukses
-            return redirect()->route('member.dashboard')->with('success', '✅ Akun Berhasil Terhubung!');
+        if (!$member) {
+            return redirect()->route('member.login')->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        // JIKA GAGAL TUKAR TOKEN
-        try {
-            DB::table('dana_transactions')->insert([
-                'tenant_id'    => $tenantId, // Tetap catat tenant ID meski gagal
-                'affiliate_id' => $affiliateId,
-                'type'         => 'BINDING',
-                'reference_no' => $externalId,
-                'phone'        => '-',
-                'amount'       => 0,
-                'status'       => 'FAILED',
-                'response_payload' => json_encode($result),
-                'created_at'   => now()
-            ]);
-        } catch (\Exception $dbEx) {
-            Log::error('[DANA CALLBACK] Gagal simpan log error: ' . $dbEx->getMessage());
-        }
+        // B. Deteksi Data Identitas
+        $memberId  = $member->id;
+        $tenantId  = $member->tenant_id ?? 1;
 
-        Log::error('[EXCHANGE FAILED]', $result);
-        return redirect()->route('member.dashboard')->with('error', 'Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+        // Ambil Subdomain saat ini (misal: 'member' atau 'mitra1')
+        // Agar nanti Gateway Pusat bisa memulangkan user ke sini
+        $currentSubdomain = explode('.', $request->getHost())[0];
 
-    } catch (\Exception $e) {
-        Log::error('[DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
-        return redirect()->route('member.dashboard')->with('error', 'Sistem Error: ' . $e->getMessage());
+        // ---------------------------------------------------------------------
+        // C. FORMAT STATE KHUSUS GATEWAY PUSAT (PENTING!)
+        // Format: ACTION - ID_MEMBER - SUBDOMAIN - TENANT_ID
+        // ---------------------------------------------------------------------
+        $state = "BIND_MEMBER-{$memberId}-{$currentSubdomain}-{$tenantId}";
+
+        // D. Konfigurasi URL
+        $partnerId  = config('services.dana.x_partner_id');
+
+        // Redirect URL WAJIB ke Controller Pusat (DanaGatewayController)
+        // Jangan ubah URL ini, harus sama persis dengan yang di Dashboard DANA
+        $centralCallbackUrl = 'https://apps.tokosancaka.com/dana/callback';
+
+        $encodedRedirect = urlencode($centralCallbackUrl);
+        $requestId = \Illuminate\Support\Str::uuid();
+
+        // E. Generate URL DANA
+        $danaUrl = "https://m.sandbox.dana.id/d/portal/oauth?partnerId={$partnerId}&scopes=QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE&requestId={$requestId}&redirectUrl={$encodedRedirect}&state={$state}&terminalType=WEB";
+
+        Log::info("[MEMBER BINDING] Redirecting to DANA via Central Gateway. State: $state");
+
+        return redirect()->away($danaUrl);
     }
-}
+
 
     // 3. CEK SALDO USER (LOGIKA SNAP 2001100 - TIDAK DIRUBAH)
     public function checkBalance(Request $request)
