@@ -79,6 +79,7 @@ class TenantMiddleware
         // API & Payment Gateway harus lolos tanpa cek tenant
         if (
             $request->is('api/*') ||
+            $request->is('dana/*') ||  // <--- TAMBAHKAN BARIS INI (PENTING!)
             $request->is('tenant/generate-payment') ||
             $request->routeIs('tenant.suspended')
         ) {
