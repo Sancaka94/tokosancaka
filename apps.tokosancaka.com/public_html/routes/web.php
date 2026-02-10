@@ -54,9 +54,9 @@ use App\Http\Controllers\DanaGatewayController;
 
 
     // Route Invoice (Publik)
-    Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('invoice.show');
+    // Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('invoice.show');
 
-    //Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('orders.invoice');
+Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('orders.invoice');
 
 
 Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');

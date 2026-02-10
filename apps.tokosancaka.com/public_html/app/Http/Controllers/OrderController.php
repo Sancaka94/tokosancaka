@@ -969,7 +969,7 @@ class OrderController extends Controller
 
                             $urlParam = new UrlParam();
                             $currentSubdomain = explode('.', $request->getHost())[0];
-                            $returnUrl = route('invoice.show', ['subdomain' => $currentSubdomain, 'orderNumber' => $orderNumber]);
+                            $returnUrl = route('orders.invoice', ['subdomain' => $currentSubdomain, 'orderNumber' => $orderNumber]);
 
                             if (!str_contains($returnUrl, 'https://')) {
                                 $returnUrl = str_replace('http://', 'https://', $returnUrl);
