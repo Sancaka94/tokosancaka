@@ -31,6 +31,17 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\ProductVariant; // <--- TAMBAHKAN INI
 
+// --- [IMPORT DANA SDK (WAJIB ADA)] ---
+use Dana\Widget\v1\Model\WidgetPaymentRequest;
+use Dana\Widget\v1\Model\Money;
+use Dana\Widget\v1\Model\UrlParam;
+use Dana\Widget\v1\Model\WidgetPaymentRequestAdditionalInfo;
+use Dana\Widget\v1\Model\EnvInfo;
+use Dana\Widget\v1\Model\Order as DanaOrder;
+use Dana\Configuration;
+use Dana\Env;
+use Dana\Widget\v1\Api\WidgetApi;
+
 // Services
 use App\Services\DokuJokulService;
 use App\Services\KiriminAjaService;
@@ -919,6 +930,84 @@ class OrderController extends Controller
                         ]);
                         $paymentStatus='paid';
                         $triggerWaType='paid';
+                        break;
+
+                    // --- [BARU] DANA SDK (ACQUIRING / WIDGET) ---
+                    case 'dana_sdk':
+                        Log::info("[DANA SDK] Requesting Widget URL for Order #{$orderNumber}");
+                        try {
+                            $config = new Configuration();
+                            $config->setApiKey('PRIVATE_KEY', config('services.dana.private_key'));
+                            $config->setApiKey('X_PARTNER_ID', config('services.dana.x_partner_id'));
+                            $config->setApiKey('ORIGIN', config('services.dana.origin'));
+                            $config->setApiKey('DANA_ENV', Env::SANDBOX);
+
+                            $apiInstance = new WidgetApi(null, $config);
+
+                            $orderObj = new DanaOrder();
+                            $orderObj->setOrderTitle("Invoice #" . $orderNumber);
+                            $orderObj->setOrderMemo("Pembayaran Order di " . ($this->tenantId == 1 ? 'Sancaka' : 'Toko Cabang'));
+
+                            $envInfo = new EnvInfo();
+                            $envInfo->setSourcePlatform("IPG");
+                            $envInfo->setTerminalType("WEB");
+                            $envInfo->setWebsiteLanguage("ID");
+
+                            $addInfo = new WidgetPaymentRequestAdditionalInfo();
+                            $addInfo->setProductCode("51051000100000000001");
+                            $addInfo->setOrder($orderObj);
+                            $addInfo->setEnvInfo($envInfo);
+
+                            $paymentRequest = new WidgetPaymentRequest();
+                            $paymentRequest->setMerchantId(config('services.dana.merchant_id'));
+                            $paymentRequest->setPartnerReferenceNo($orderNumber);
+
+                            $money = new Money();
+                            $money->setValue(number_format($finalPrice, 2, '.', ''));
+                            $money->setCurrency("IDR");
+                            $paymentRequest->setAmount($money);
+
+                            $urlParam = new UrlParam();
+                            $currentSubdomain = explode('.', $request->getHost())[0];
+                            $returnUrl = route('invoice.show', ['subdomain' => $currentSubdomain, 'orderNumber' => $orderNumber]);
+
+                            if (!str_contains($returnUrl, 'https://')) {
+                                $returnUrl = str_replace('http://', 'https://', $returnUrl);
+                            }
+
+                            $urlParam->setUrl($returnUrl);
+                            $urlParam->setType("PAY_RETURN");
+                            $urlParam->setIsDeeplink("Y");
+
+                            $paymentRequest->setUrlParams([$urlParam]);
+                            $paymentRequest->setAdditionalInfo($addInfo);
+
+                            Log::info("[DANA SDK] Sending request to DANA...");
+                            $result = $apiInstance->widgetPayment($paymentRequest);
+
+                            if (method_exists($result, 'getWebRedirectUrl')) {
+                                $paymentUrl = $result->getWebRedirectUrl();
+                            } elseif (isset($result->webRedirectUrl)) {
+                                $paymentUrl = $result->webRedirectUrl;
+                            }
+
+                            if ($paymentUrl) {
+                                $order->update(['payment_url' => $paymentUrl]);
+                                $triggerWaType = 'unpaid';
+                                Log::info("[DANA SDK] Success. URL: $paymentUrl");
+                            } else {
+                                throw new \Exception("Gagal mendapatkan URL Pembayaran DANA SDK (Empty Response).");
+                            }
+                        } catch (\Exception $e) {
+                            $errorMsg = $e->getMessage();
+                            if (method_exists($e, 'getResponseBody')) {
+                                $body = $e->getResponseBody();
+                                if ($body && isset($body->responseMessage)) {
+                                    $errorMsg = "DANA ($body->responseCode): " . $body->responseMessage;
+                                }
+                            }
+                            Log::error("[DANA SDK] Error: " . $errorMsg);
+                        }
                         break;
 
                     case 'doku':
