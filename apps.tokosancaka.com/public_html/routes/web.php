@@ -153,7 +153,6 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('orders.invoice');
 
 Route::middleware('auth')->group(function () {
 
@@ -568,6 +567,17 @@ Route::group(['middleware' => ['web', 'auth']], function () {
     Route::get('/tenant/dana/connect', [TenantPaymentController::class, 'startBinding'])
         ->name('tenant.dana.start');
 
+
+
+});
+
+
+Route::domain('{subdomain}.' . env('APP_URL_DOMAIN', 'tokosancaka.com'))->group(function () {
+
+    // Route Invoice (Publik)
+    Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('invoice.show');
+
+    Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('orders.invoice');
 
 
 });
