@@ -48,6 +48,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\TenantDashboardController;
 use App\Http\Controllers\DanaWebhookController;
+use App\Http\Controllers\DanaGatewayController;
 
 
 Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->name('orders.scan-product');
@@ -254,7 +255,8 @@ Route::prefix('member')->name('member.')->group(function () {
 
         Route::post('/transfer-bank', [MemberAuthController::class, 'transferToBank'])->name('transferBank');
 
-        Route::get('/connect', [MemberAuthController::class, 'startBinding'])->name('start');
+        // ✅ KODE BARU (ARAHKAN KE CONTROLLER PUSAT)
+        Route::get('/connect', [DanaGatewayController::class, 'startMemberBinding'])->name('start');
 
     });
 
