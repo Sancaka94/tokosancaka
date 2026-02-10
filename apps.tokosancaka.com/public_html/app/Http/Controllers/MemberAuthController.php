@@ -1515,33 +1515,37 @@ public function checkTopupStatus(Request $request)
         }
     }
 
-   /**
-     * PROSES DANA (SDK) - FIXED VERSION
+    /**
+     * PROSES DANA (SDK)
      */
     private function processDanaPayment($request, $member)
     {
         Log::info("[DEPOSIT-LOG] Masuk Flow DANA", ['member_id' => $member->id]);
 
-        // --- 1. VALIDASI DATA ---
+        // CEK TOKEN
         if (empty($member->dana_access_token)) {
+            Log::warning("[DEPOSIT-LOG] DANA Token Missing", ['member_id' => $member->id]);
             return back()->with('error', 'Silakan hubungkan akun DANA Anda terlebih dahulu.');
         }
 
-        // FIX: Pastikan nominal valid & float
-        $realAmount = (float) $request->amount;
-        if ($realAmount <= 0) {
-            return back()->with('error', 'Nominal deposit tidak valid.');
-        }
+        // --- PERUBAHAN DI SINI ---
+        // Gunakan nilai dari Input UI/Blade
+        $realAmount = $request->amount;
 
-        // Cek Config
+        Log::info("[DEPOSIT-LOG] Set Amount Real", ['amount' => $realAmount]);
+        // -------------------------
+
+        // Config Check
         $merchantId = config('services.dana.merchant_id');
         if (empty($merchantId)) {
             Log::error("[DEPOSIT-LOG] Config Error: Merchant ID Kosong");
-            return back()->with('error', 'Sistem Error: Konfigurasi Merchant ID hilang.');
+            return back()->with('error', 'Config Error: Merchant ID Missing.');
         }
 
-        // --- 2. INIT DATABASE (Status: INIT) ---
+        // Init DB Transaction Record
         $refNo = 'DEP-' . time() . mt_rand(100, 999);
+
+        Log::info("[DEPOSIT-LOG] Membuat Record DB (INIT)", ['ref_no' => $refNo]);
 
         DB::table('dana_transactions')->insert([
             'tenant_id'    => $member->tenant_id ?? 1,
@@ -1555,88 +1559,99 @@ public function checkTopupStatus(Request $request)
         ]);
 
         try {
-            // --- 3. KONFIGURASI SDK ---
+            // 1. Config SDK
+            Log::info("[DEPOSIT-LOG] Menginisialisasi SDK Configuration");
             $config = new Configuration();
             $config->setApiKey('PRIVATE_KEY', config('services.dana.private_key'));
             $config->setApiKey('X_PARTNER_ID', config('services.dana.x_partner_id'));
-            $config->setApiKey('ORIGIN', config('services.dana.origin')); // cth: https://tokosancaka.com
-
-            // FIX: Gunakan string 'SANDBOX' atau 'PRODUCTION' jika Class Env bermasalah
-            // Pastikan di .env DANA_ENV=SANDBOX untuk testing
-            $config->setApiKey('DANA_ENV', 'SANDBOX');
+            $config->setApiKey('ORIGIN', config('services.dana.origin'));
+            $config->setApiKey('DANA_ENV', Env::SANDBOX); // Pastikan Env class terimport
 
             $apiInstance = new WidgetApi(null, $config);
 
-            // --- 4. BUILD REQUEST OBJECT ---
-
-            // A. Order Info
+            // 2. Order
             $orderObj = new DanaOrder();
             $orderObj->setOrderTitle("Deposit Saldo");
             $orderObj->setOrderMemo("Topup ID " . $member->id);
 
-            // B. Env Info (CRITICAL FIX FOR 5005400)
+            // 3. EnvInfo
             $envInfo = new EnvInfo();
             $envInfo->setSourcePlatform("IPG");
             $envInfo->setTerminalType("WEB");
             $envInfo->setWebsiteLanguage("ID");
+            $envInfo->setClientIp("82.25.62.13"); // IPv4 Only (Hardcoded for dev/sandbox often required)
 
-            // FIX IP: Jangan hardcode IP. Gunakan IP User.
-            // Jika di localhost (127.0.0.1), gunakan dummy IP publik agar lolos validasi DANA.
-            $clientIp = request()->ip();
-            if (in_array($clientIp, ['127.0.0.1', '::1'])) {
-                $clientIp = '103.10.10.10'; // Dummy Public IP
-            }
-            $envInfo->setClientIp($clientIp);
-
-            // C. Additional Info
+            // 4. Additional Info
             $addInfo = new WidgetPaymentRequestAdditionalInfo();
-            // Pastikan Product Code ini sesuai dokumen DANA untuk "Top Up" atau "Payment"
             $addInfo->setProductCode("51051000100000000001");
+            // $addInfo->setMcc("5411"); // Opsional
             $addInfo->setOrder($orderObj);
             $addInfo->setEnvInfo($envInfo);
 
-            // D. Payment Request Utama
+            // 5. Request Object
             $paymentRequest = new WidgetPaymentRequest();
             $paymentRequest->setMerchantId($merchantId);
             $paymentRequest->setPartnerReferenceNo($refNo);
 
-            // E. Amount (CRITICAL FIX: STRICT STRING 2 DECIMAL)
-            // Contoh: 10000 -> "10000.00"
+            // Amount (Strict 2 Decimal)
             $amountString = number_format($realAmount, 2, '.', '');
             $money = new Money();
             $money->setValue($amountString);
             $money->setCurrency("IDR");
             $paymentRequest->setAmount($money);
 
-            // F. Return URL / Redirect
+            // Redirect URL
+            //$urlParam->setUrl('https://apps.tokosancaka.com/member/dashboard');
+            //$urlParam->setUrl(url('/member/dashboard'));
+            //$urlParam->setType("PAY_RETURN");
+            //urlParam->setIsDeeplink("Y");
+            //$paymentRequest->setUrlParams([$urlParam]);
+            //$paymentRequest->setAdditionalInfo($addInfo);
+
+            // ... di dalam function processDanaPayment ...
+
+            // 1. INISIALISASI OBJEK DULU (Wajib ada baris ini)
             $urlParam = new UrlParam();
 
-            // FIX: Generate URL dinamis & Paksa HTTPS
+            // 2. SET URL (Gunakan Logic Multi-Tenant)
+            // Laravel 'route()' otomatis mendeteksi domain/subdomain yang sedang dipakai user.
+            // Jadi jika user akses dari 'toko-a.apps...', route() akan menghasilkan 'toko-a.apps...' juga.
             $returnUrl = route('member.dashboard');
+
+            // Paksa HTTPS (DANA wajib HTTPS)
             if (!str_contains($returnUrl, 'https://')) {
                 $returnUrl = str_replace('http://', 'https://', $returnUrl);
             }
 
+            // Log untuk memastikan URL sudah benar sebelum dikirim
+            Log::info('[DANA RETURN URL]', ['url' => $returnUrl]);
+
             $urlParam->setUrl($returnUrl);
             $urlParam->setType("PAY_RETURN");
-            $urlParam->setIsDeeplink("Y"); // Y = Buka aplikasi DANA di HP jika ada
+            $urlParam->setIsDeeplink("Y");
 
+            // Masukkan ke Payment Request
             $paymentRequest->setUrlParams([$urlParam]);
             $paymentRequest->setAdditionalInfo($addInfo);
 
-            // --- 5. EKSEKUSI REQUEST ---
-            Log::info("[DEPOSIT-LOG] Sending Request to DANA...", [
-                'ref' => $refNo,
+            // ... lanjut kirim ke SDK ...
+
+            // LOG PAYLOAD SDK SEBELUM KIRIM
+            // Kita coba convert object ke array jika method tersedia, atau log parameter kunci
+            Log::info("[DEPOSIT-LOG] SDK Request Payload Siap", [
+                'merchant_id' => $merchantId,
+                'ref_no' => $refNo,
                 'amount' => $amountString,
-                'ip' => $clientIp
+                'add_info' => json_encode($addInfo) // Log struktur object jika memungkinkan
             ]);
 
+            // 6. EKSEKUSI API
+            Log::info("[DEPOSIT-LOG] Mengirim Request ke DANA...");
             $result = $apiInstance->widgetPayment($paymentRequest);
+            Log::info("[DEPOSIT-LOG] Response Diterima dari DANA", ['response' => (array)$result]);
 
-            // --- 6. HANDLE RESPONSE ---
+            // 7. HANDLE RESPONSE
             $redirectUrl = null;
-
-            // Cek berbagai kemungkinan format method getUrl
             if (method_exists($result, 'getWebRedirectUrl')) {
                 $redirectUrl = $result->getWebRedirectUrl();
             } elseif (isset($result->webRedirectUrl)) {
@@ -1644,49 +1659,43 @@ public function checkTopupStatus(Request $request)
             }
 
             if ($redirectUrl) {
-                // SUKSES: Update DB jadi PENDING
-                Log::info("[DEPOSIT-LOG] Success. Redirecting User.", ['url' => $redirectUrl]);
+                Log::info("[DEPOSIT-LOG] Redirect URL ditemukan. Update DB PENDING.", ['url' => $redirectUrl]);
 
                 DB::table('dana_transactions')
                     ->where('reference_no', $refNo)
                     ->update([
                         'status' => 'PENDING',
-                        'response_payload' => json_encode((array)$result),
+                        'response_payload' => json_encode($result),
                         'updated_at' => now()
                     ]);
 
-                // Gunakan away() agar header referer bersih ke DANA
-                return redirect()->away($redirectUrl);
+                return redirect($redirectUrl);
             } else {
-                throw new \Exception("Response DANA OK, tapi Redirect URL kosong.");
+                Log::error("[DEPOSIT-LOG] Redirect URL NULL", ['full_response' => json_encode($result)]);
+                throw new \Exception("Empty Redirect URL form DANA Response.");
             }
 
         } catch (\Exception $e) {
-            // --- 7. ERROR HANDLING & LOGGING ---
             $errorMsg = $e->getMessage();
-            $errorCode = 'UNKNOWN';
+            $logContext = ['file' => $e->getFile(), 'line' => $e->getLine()];
 
-            // Cek detail error dari Body Response SDK (Jika ada)
             if (method_exists($e, 'getResponseBody')) {
                 $body = $e->getResponseBody();
-                Log::error("[DEPOSIT-LOG] SDK ERROR DETAILS", (array)$body);
+                Log::error("[DEPOSIT-LOG] SDK API ERROR BODY", (array)$body);
 
-                if ($body) {
-                    // Ambil pesan error asli dari DANA
-                    $msg = $body->responseMessage ?? $errorMsg;
+                if ($body && isset($body->responseMessage)) {
                     $code = $body->responseCode ?? '';
-                    $errorMsg = "Gagal ($code): $msg";
+                    $errorMsg = "DANA ($code): " . $body->responseMessage;
                 }
             }
 
-            Log::error('[DEPOSIT-LOG] TRANSACTION FAILED: ' . $errorMsg);
+            Log::error('[DEPOSIT-LOG] EXCEPTION THROWN: ' . $errorMsg, $logContext);
 
-            // Update DB jadi FAILED
             DB::table('dana_transactions')
                 ->where('reference_no', $refNo)
                 ->update([
                     'status' => 'FAILED',
-                    'response_payload' => substr($errorMsg, 0, 500),
+                    'response_payload' => $errorMsg,
                     'updated_at' => now()
                 ]);
 
