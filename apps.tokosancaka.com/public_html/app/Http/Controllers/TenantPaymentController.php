@@ -296,4 +296,5 @@ class TenantPaymentController extends Controller
         openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256);
         return base64_encode($binarySignature);
     }
+
 }
