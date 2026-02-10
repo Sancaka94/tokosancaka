@@ -394,9 +394,7 @@
                             </div>
                         </div>
 
-                    </div>
-
-                    <div @click="paymentMethod = 'dana_sdk'"
+                        <div @click="paymentMethod = 'dana_sdk'"
                              class="relative flex flex-col items-center justify-center h-20 gap-1 p-2 transition border-2 cursor-pointer rounded-xl group active:scale-95"
                              :class="paymentMethod === 'dana_sdk' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50'">
 
@@ -409,6 +407,10 @@
                                 <i class="fas fa-check-circle text-[10px]"></i>
                             </div>
                         </div>
+
+                    </div>
+
+
 
 
                     <div class="pt-5 mt-5 border-t border-dashed border-slate-200">
