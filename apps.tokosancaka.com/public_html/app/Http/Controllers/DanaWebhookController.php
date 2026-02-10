@@ -11,110 +11,97 @@ use Exception;
 
 class DanaWebhookController extends Controller
 {
-    /**
-     * Main Handler untuk Notifikasi DANA
-     */
     public function handleNotify(Request $request)
     {
-        // 1. Log Request Masuk untuk Audit Trail
-        Log::info("[DANA-WEBHOOK] Incoming Hit", [
+        // 1. Log Payload Asli
+        Log::info("[DANA-WEBHOOK] Hit Masuk:", [
             'ip' => $request->ip(),
             'payload' => $request->all()
         ]);
 
         try {
-            // Validasi Signature (Opsional - Aktifkan jika sudah ada Secret Key)
-            if (!$this->isValidSignature($request)) {
-                Log::warning("[DANA-WEBHOOK] Invalid Signature from IP: " . $request->ip());
-                // Tetap return OK untuk security by obscurity, atau return 401 jika strict
-                return response()->json(['responseCode' => '401', 'responseMessage' => 'Unauthorized'], 401);
-            }
-
             $data = $request->all();
-            $refNo = $data['partnerReferenceNo'] ?? null;
-            $status = $data['orderStatus'] ?? null; // FINISHED / SUCCESS / FAILED
+
+            // --- PERBAIKAN DI SINI (Mapping Sesuai Webhook.site) ---
+
+            // Cek RefNo (Bisa 'originalPartnerReferenceNo' atau 'partnerReferenceNo')
+            $refNo = $data['originalPartnerReferenceNo'] ?? $data['partnerReferenceNo'] ?? null;
+
+            // Cek Status (Bisa 'transactionStatusDesc', 'orderStatus', atau 'latestTransactionStatus')
+            // '00' atau 'SUCCESS' atau 'FINISHED' dianggap sukses
+            $statusRaw = $data['transactionStatusDesc'] ?? $data['orderStatus'] ?? $data['latestTransactionStatus'] ?? 'UNKNOWN';
+
+            // Cek Amount
             $amountVal = $data['amount']['value'] ?? 0;
             $paidAmount = (float) $amountVal;
 
             if (empty($refNo)) {
-                return response()->json(['responseCode' => '400', 'responseMessage' => 'Missing Reference Number'], 400);
+                Log::warning("[DANA-WEBHOOK] RefNo Kosong/Tidak Dikenali.");
+                return response()->json(['res' => 'NO_REF'], 400);
             }
 
-            // 2. Mulai Database Transaction (ACID)
+            // 2. Database Transaction & Locking
             DB::beginTransaction();
 
             try {
-                // 3. ATOMIC LOCK: Ambil data dan kunci baris ini agar tidak bisa diedit proses lain
                 $trx = DB::table('dana_transactions')
                     ->where('reference_no', $refNo)
                     ->lockForUpdate()
                     ->first();
 
-                // Jika transaksi tidak ditemukan di database kita
                 if (!$trx) {
-                    Log::error("[DANA-WEBHOOK] Transaction Not Found: $refNo");
+                    Log::warning("[DANA-WEBHOOK] Transaksi tidak ada di DB: $refNo");
                     DB::rollBack();
-                    // Return 200 agar DANA berhenti mengirim ulang (Assume data mismatch)
                     return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
                 }
 
-                // 4. IDEMPOTENCY CHECK: Cek apakah sudah sukses sebelumnya?
                 if ($trx->status === 'SUCCESS' || $trx->status === 'PAID') {
-                    Log::info("[DANA-WEBHOOK] Idempotency: Transaction $refNo already completed.");
+                    Log::info("[DANA-WEBHOOK] Idempotency: $refNo sudah sukses sebelumnya.");
                     DB::rollBack();
                     return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
                 }
 
-                // 5. Routing Logic Berdasarkan Status DANA
-                if ($status === 'FINISHED' || $status === 'SUCCESS') {
+                // --- LOGIKA CEK STATUS BARU ---
+                $isSuccess = in_array($statusRaw, ['SUCCESS', 'FINISHED', '00']);
 
-                    // A. Update Status Table Transaksi DANA
+                if ($isSuccess) {
+                    // UPDATE SUKSES
                     DB::table('dana_transactions')->where('id', $trx->id)->update([
                         'status' => 'SUCCESS',
                         'response_payload' => json_encode($data),
                         'updated_at' => now()
                     ]);
 
-                    // B. Routing Berdasarkan Tipe (DEPOSIT vs ORDER)
+                    // TAMBAH SALDO
                     if ($trx->type === 'DEPOSIT') {
-                        $this->processDeposit($trx, $paidAmount);
-                    } elseif ($trx->type === 'ORDER') {
-                        $this->processOrder($trx, $paidAmount);
-                    } else {
-                        Log::warning("[DANA-WEBHOOK] Unknown Transaction Type: " . $trx->type);
+                        DB::table('affiliates')
+                            ->where('id', $trx->affiliate_id)
+                            ->increment('balance', $paidAmount);
+
+                        Log::info("[DANA-WEBHOOK] ✅ Saldo Masuk: $paidAmount ke User: $trx->affiliate_id");
                     }
-
-                    Log::info("[DANA-WEBHOOK] ✅ Transaction $refNo processed successfully.");
-
-                } elseif ($status === 'FAILED' || $status === 'CLOSED') {
-
-                    // Handle Status Gagal
+                } else {
+                    // UPDATE GAGAL
                     DB::table('dana_transactions')->where('id', $trx->id)->update([
                         'status' => 'FAILED',
                         'response_payload' => json_encode($data),
                         'updated_at' => now()
                     ]);
-
-                    Log::info("[DANA-WEBHOOK] ❌ Transaction $refNo marked as FAILED.");
+                    Log::info("[DANA-WEBHOOK] ❌ Transaksi Gagal/Pending: $statusRaw");
                 }
 
-                // 6. Commit Semua Perubahan Database
                 DB::commit();
 
             } catch (Exception $e) {
                 DB::rollBack();
-                throw $e; // Lempar ke catch utama
+                throw $e;
             }
 
-            // 7. Response Sukses Standar DANA
-            return response()->json([
-                'responseCode' => '2000000',
-                'responseMessage' => 'Success'
-            ]);
+            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
 
         } catch (Exception $e) {
-            Log::error("[DANA-WEBHOOK] System Error: " . $e->getMessage());
-            return response()->json(['responseCode' => '500', 'responseMessage' => 'Internal Server Error'], 500);
+            Log::error("[DANA-WEBHOOK] Error: " . $e->getMessage());
+            return response()->json(['responseCode' => '500', 'message' => 'Error'], 500);
         }
     }
 
