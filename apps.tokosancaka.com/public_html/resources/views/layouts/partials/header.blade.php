@@ -9,6 +9,9 @@
         $parts = explode('.', $host);
         $currentSubdomain = $parts[0] ?? 'admin';
         $params = ['subdomain' => $currentSubdomain];
+
+        // Ambil User Auth
+        $user = Auth::user();
     @endphp
 
     <div class="flex items-center gap-4">
@@ -29,11 +32,44 @@
     <div class="flex items-center gap-3 sm:gap-5">
 
         {{-- ================================================================= --}}
-        {{-- [WIDGET SALDO + TOMBOL TOPUP]                                     --}}
+        {{-- [WIDGET SALDO GROUP]                                              --}}
         {{-- ================================================================= --}}
         @auth
-            <div class="hidden sm:flex items-center gap-2">
-                {{-- Tampilan Saldo --}}
+            <div class="hidden sm:flex items-center gap-3">
+
+                {{-- [BARU] WIDGET SALDO DANA --}}
+                @if($user->dana_access_token)
+                    <div class="flex items-center gap-3 px-3 py-1.5 bg-blue-50/50 border border-blue-100 rounded-2xl cursor-default group relative">
+                        {{-- Logo DANA --}}
+                        <div class="h-8 w-8 rounded-xl bg-blue-100 p-1.5 flex items-center justify-center shadow-sm">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png" class="w-full h-full object-contain" alt="DANA">
+                        </div>
+
+                        {{-- Info Saldo --}}
+                        <div class="flex flex-col">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">DANA</span>
+
+                                {{-- Tombol Refresh (Opsional: Butuh Route Check Balance Tenant) --}}
+                                {{-- <a href="#" class="text-[8px] text-blue-400 hover:text-blue-600 transition"><i class="fas fa-sync-alt"></i></a> --}}
+                            </div>
+                            <span class="text-sm font-black text-slate-700 leading-none group-hover:text-blue-600 transition-colors">
+                                {{-- Menggunakan dana_balance dari tabel users (pastikan kolom ada, atau default 0) --}}
+                                Rp {{ number_format($user->dana_balance ?? 0, 0, ',', '.') }}
+                            </span>
+                        </div>
+                    </div>
+                @else
+                    {{-- JIKA BELUM CONNECT DANA --}}
+                    <a href="{{ route('tenant.dana.start') }}"
+                       class="flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-200 rounded-2xl text-xs font-bold text-slate-500 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all"
+                       title="Hubungkan DANA">
+                       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png" class="h-3 w-auto grayscale brightness-150 hover:grayscale-0">
+                       <span>Link DANA</span>
+                    </a>
+                @endif
+
+                {{-- WIDGET SALDO SYSTEM (EXISTING) --}}
                 <div class="flex items-center gap-3 px-3 py-1.5 bg-emerald-50/50 border border-emerald-100 rounded-2xl cursor-default group">
                     <div class="h-8 w-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-sm">
                         <i class="fas fa-wallet text-xs"></i>
@@ -41,12 +77,12 @@
                     <div class="flex flex-col">
                         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">Saldo Aktif</span>
                         <span class="text-sm font-black text-slate-700 leading-none group-hover:text-emerald-700 transition-colors">
-                            Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}
+                            Rp {{ number_format($user->saldo ?? 0, 0, ',', '.') }}
                         </span>
                     </div>
                 </div>
 
-                {{-- [BARU] Tombol Topup (+) --}}
+                {{-- TOMBOL TOPUP (+) --}}
                 <button @click="topupOpen = true"
                         class="h-[46px] w-[46px] rounded-2xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all border border-blue-500"
                         title="Top Up Saldo">
@@ -109,14 +145,27 @@
                         <p class="text-sm font-black text-slate-800 truncate">{{ Auth::user()->name }}</p>
 
                         {{-- Mobile Balance View --}}
-                        <div class="mt-2 sm:hidden flex items-center justify-between text-emerald-600 bg-emerald-50 px-3 py-2 rounded-xl">
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-wallet text-xs"></i>
-                                <span class="text-xs font-bold">Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</span>
+                        <div class="mt-2 sm:hidden space-y-2">
+                            {{-- DANA Mobile --}}
+                            @if($user->dana_access_token)
+                            <div class="flex items-center justify-between text-blue-600 bg-blue-50 px-3 py-2 rounded-xl">
+                                <div class="flex items-center gap-2">
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png" class="h-3 w-auto">
+                                    <span class="text-xs font-bold">Rp {{ number_format($user->dana_balance ?? 0, 0, ',', '.') }}</span>
+                                </div>
                             </div>
-                            <button @click="topupOpen = true; userOpen = false" class="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded shadow hover:bg-emerald-700">
-                                <i class="fas fa-plus"></i>
-                            </button>
+                            @endif
+
+                            {{-- Saldo System Mobile --}}
+                            <div class="flex items-center justify-between text-emerald-600 bg-emerald-50 px-3 py-2 rounded-xl">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-wallet text-xs"></i>
+                                    <span class="text-xs font-bold">Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</span>
+                                </div>
+                                <button @click="topupOpen = true; userOpen = false" class="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded shadow hover:bg-emerald-700">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -189,7 +238,7 @@
 
                 {{-- Modal Body --}}
                 {{-- Gunakan parameter $params yang sudah didefinisikan di PHP atas --}}
-                <form action="{{ route('topup.process', ['subdomain' => request()->getHost() == env('APP_URL') ? 'admin' : explode('.', request()->getHost())[0]]) }}" method="POST" class="p-6">
+                <form action="{{ route('tenant.payment.url') }}" method="POST" class="p-6">
                     @csrf
 
                     {{-- Input Hidden Metode Pembayaran --}}
