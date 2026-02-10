@@ -403,7 +403,7 @@
                             <img src="https://tokosancaka.com/storage/logo/dana.png" loading="lazy"
                                  alt="DANA Widget" class="object-contain h-4 mb-1 transition-all group-hover:scale-110">
 
-                            <span class="text-[10px] font-bold text-center uppercase tracking-tighter">DANA Widget</span>
+                            <span class="text-[10px] font-bold text-center uppercase tracking-tighter">SALDO DANA</span>
 
                             <div x-show="paymentMethod === 'dana_sdk'" class="absolute text-blue-500 top-1 right-1 animate-bounce">
                                 <i class="fas fa-check-circle text-[10px]"></i>
