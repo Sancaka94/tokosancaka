@@ -25,6 +25,10 @@ class User extends Authenticatable
         'role',      // Jabatan (admin, staff, finance, operator, super_admin)
         'permissions', // <--- WAJIB ADA: Untuk menyimpan array hak akses (checklist)
         'saldo', // <--- TAMBAHKAN INI WAJIB
+        // TAMBAHKAN 3 BARIS INI:
+        'dana_access_token',
+        'dana_token_expiry',
+        'dana_refresh_token',
     ];
 
     /**
