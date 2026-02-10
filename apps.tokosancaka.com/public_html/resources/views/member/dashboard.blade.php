@@ -4,25 +4,45 @@
 
 @section('content')
 
-{{-- 1. NOTIFIKASI SYSTEM --}}
+{{-- 1. NOTIFIKASI SYSTEM (UPDATED) --}}
     <div class="mb-6">
-        @if(session('success'))
+        {{-- LOGIC 1: Menangkap Success dari Session ATAU Parameter URL --}}
+        @php
+            // Cek Session dulu, kalau kosong cek URL parameter 'msg' jika statusnya success
+            $successMsg = session('success');
+            if (!$successMsg && request('dana_status') == 'success') {
+                $successMsg = urldecode(request('msg'));
+            }
+        @endphp
+
+        @if($successMsg)
         <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-sm animate-fade-in mb-3">
             <i class="fas fa-check-circle text-lg"></i>
             <div>
-                {{-- Tambahkan class 'whitespace-pre-line' agar \n terbaca sebagai Enter --}}
-                <p class="text-xs font-bold whitespace-pre-line">{{ session('success') }}</p>
+                <p class="text-xs font-bold whitespace-pre-line">{{ $successMsg }}</p>
                 @if(session('dana_report') && session('dana_report')->is_success)
                     <p class="text-[10px] opacity-80 mt-1">{{ session('dana_report')->description }}</p>
                 @endif
             </div>
+            {{-- Tombol Close Sederhana --}}
+            <button onclick="this.parentElement.remove()" class="ml-auto text-emerald-400 hover:text-emerald-700"><i class="fas fa-times"></i></button>
         </div>
         @endif
 
-        @if(session('error'))
+        {{-- LOGIC 2: Menangkap Error dari Session ATAU Parameter URL --}}
+        @php
+            $errorMsg = session('error');
+            // Cek URL jika status failed/error/cancelled
+            if (!$errorMsg && in_array(request('dana_status'), ['failed', 'error', 'cancelled'])) {
+                $errorMsg = urldecode(request('msg') ?? 'Terjadi kesalahan pada proses DANA.');
+            }
+        @endphp
+
+        @if($errorMsg)
         <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-sm animate-fade-in mb-3">
             <i class="fas fa-exclamation-triangle text-lg"></i>
-            <p class="text-xs font-bold">{{ session('error') }}</p>
+            <p class="text-xs font-bold">{{ $errorMsg }}</p>
+            <button onclick="this.parentElement.remove()" class="ml-auto text-rose-400 hover:text-rose-700"><i class="fas fa-times"></i></button>
         </div>
         @endif
     </div>
