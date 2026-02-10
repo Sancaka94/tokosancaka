@@ -17,6 +17,7 @@ class VerifyCsrfToken extends Middleware
         'logout',
         'dana/notify',  // Sesuaikan dengan URL di screenshot
         'dana/callback',
+        'dana/*',
 
         // Jaga-jaga jika register juga bermasalah
         'register',

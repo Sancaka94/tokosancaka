@@ -14,6 +14,11 @@ class TenantMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
+        // [DEBUG LOG] Cek apakah DANA sampai sini
+    if ($request->is('dana/*')) {
+        \Illuminate\Support\Facades\Log::info('Middleware: DANA Request Detected passing through...');
+        return $next($request); // <--- JALUR VIP (Loloskan langsung)
+    }
         // 1. AMBIL SUBDOMAIN
         $host = $request->getHost();
         $parts = explode('.', $host);
