@@ -7,22 +7,23 @@ use App\Services\DokuJokulService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http; // Tambahkan HTTP Client
-use Illuminate\Support\Str; // Tambahkan Str Helper
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use App\Models\PosTopUp;
-use App\Models\TopUp;
 use Throwable;
 
 class TenantPaymentController extends Controller
 {
     /**
-     * GENERATE URL PEMBAYARAN (DOKU & DANA)
+     * 1. GENERATE URL PEMBAYARAN (ENTRY POINT)
+     * Memilah metode pembayaran (DANA vs DOKU)
      */
     public function generateUrl(Request $request)
     {
+        // Validasi Input
         $request->validate([
             'amount' => 'required|numeric|min:10000',
-            'payment_method' => 'nullable|in:DOKU,DANA' // Tambahkan validasi metode
+            'payment_method' => 'nullable|in:DOKU,DANA'
         ]);
 
         $user = Auth::user();
@@ -30,20 +31,23 @@ class TenantPaymentController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
             }
-            return redirect()->route('login')->with('error', 'Sesi habis.');
+            return redirect()->route('login')->with('error', 'Sesi habis, silakan login kembali.');
         }
 
-        // 1. Ambil Tenant ID
+        // A. DETEKSI TENANT ID (Otomatis & Cerdas)
+        // Prioritas 1: Dari User (jika user terikat tenant)
         $tenantId = $user->tenant_id ?? null;
+
+        // Prioritas 2: Dari Subdomain URL saat ini
         if (!$tenantId) {
             $host = $request->getHost();
             $subdomain = explode('.', $host)[0];
             $tenantData = DB::table('tenants')->where('subdomain', $subdomain)->first();
-            $tenantId = $tenantData ? $tenantData->id : 1;
+            $tenantId = $tenantData ? $tenantData->id : 1; // Default ke Admin/Pusat (ID 1)
         }
 
-        // 2. CEK METODE PEMBAYARAN
-        $method = $request->payment_method ?? 'DOKU'; // Default ke DOKU
+        // B. PILIH PROSESOR PEMBAYARAN
+        $method = $request->payment_method ?? 'DOKU';
 
         if ($method === 'DANA') {
             return $this->processDanaPayment($request, $user, $tenantId);
@@ -53,82 +57,29 @@ class TenantPaymentController extends Controller
     }
 
     /**
-     * PROSES PEMBAYARAN VIA DOKU (Logic Lama Dipisah kesini)
-     */
-    private function processDokuPayment($request, $user, $tenantId)
-    {
-        try {
-            $dokuService = new DokuJokulService();
-            $referenceNo = 'POSTOPUP-' . $user->id . '-' . time() . '-' . rand(100, 999);
-
-            $customerData = [
-                'name'  => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone ?? '08123456789'
-            ];
-
-            $paymentUrl = $dokuService->createPayment($referenceNo, $request->amount, $customerData);
-
-            PosTopUp::create([
-                'tenant_id'      => $tenantId,
-                'affiliate_id'   => $user->id,
-                'reference_no'   => $referenceNo,
-                'amount'         => $request->amount,
-                'unique_code'    => 0,
-                'total_amount'   => $request->amount,
-                'status'         => 'PENDING',
-                'payment_method' => 'DOKU',
-                'response_payload' => [
-                    'payment_url' => $paymentUrl,
-                    'generated_by' => 'TenantPaymentController',
-                    'user_role'    => $user->role ?? 'unknown'
-                ]
-            ]);
-
-            session(['doku_url' => $paymentUrl]);
-
-            if (!$request->wantsJson()) {
-                return redirect()->away($paymentUrl);
-            }
-
-            return response()->json([
-                'success' => true,
-                'url'     => $paymentUrl
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error("LOG POS: Gagal generate TopUp DOKU: " . $e->getMessage());
-            if (!$request->wantsJson()) return redirect()->back()->with('error', 'Gagal: ' . $e->getMessage());
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * PROSES PEMBAYARAN VIA DANA (Logic Baru)
+     * 2. LOGIC PEMBAYARAN DANA (ACQUIRING / DIRECT DEBIT)
      */
     private function processDanaPayment($request, $user, $tenantId)
     {
-        Log::info("[DANA TOPUP] Memulai proses untuk User: {$user->id}, Tenant: {$tenantId}");
+        Log::info("[DANA TOPUP] Start. User: {$user->id}, Tenant: {$tenantId}");
 
-        // 1. Cek Apakah User Sudah Binding DANA?
-        // Asumsi ada kolom 'dana_access_token' di tabel users atau affiliates
+        // Cek Binding DANA (Wajib punya Token)
         $accessToken = $user->dana_access_token;
 
         if (!$accessToken) {
-            // Jika belum binding, arahkan ke route binding dulu
-            // Anda harus punya route 'dana.binding.start'
+            // Logic Redirect ke Binding jika belum terhubung
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Akun DANA belum terhubung.',
                     'action'  => 'BIND_REQUIRED',
-                    'url'     => route('member.dana.start') // Arahkan ke proses binding
+                    'url'     => route('member.dana.start')
                 ], 400);
             }
-            return redirect()->route('member.dana.start')->with('error', 'Silakan hubungkan akun DANA Anda terlebih dahulu.');
+            return redirect()->route('member.dana.start')->with('error', 'Hubungkan akun DANA Anda terlebih dahulu.');
         }
 
-        // 2. Setup Request DANA Acquiring (Create Order)
+        // Setup Payload DANA
         $refNo = 'DEP-DANA-' . time() . mt_rand(100, 999);
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
 
@@ -150,16 +101,15 @@ class TenantPaymentController extends Controller
                         "orderTitle" => "Topup Saldo POS",
                         "orderAmount" => [
                             "currency" => "IDR",
-                            "value" => number_format($request->amount, 2, '.', '') // Format 2 desimal string
+                            "value" => number_format($request->amount, 2, '.', '')
                         ],
-                        "merchantTransType" => "01", // 01 = Transaction
-                        "orderMemo" => "Topup Saldo Tenant ID: " . $tenantId
+                        "merchantTransType" => "01",
+                        "orderMemo" => "Topup Tenant ID: " . $tenantId
                     ],
                     "envInfo" => [
                         "sourcePlatform" => "IPG",
-                        "terminalType"   => "SYSTEM" // Atau WEB
+                        "terminalType"   => "SYSTEM"
                     ],
-                    // Sertakan Token User agar tidak perlu login lagi (langsung PIN)
                     "userCredential" => [
                         "accessToken" => $accessToken
                     ]
@@ -167,12 +117,12 @@ class TenantPaymentController extends Controller
             ]
         ];
 
-        // 3. Generate Signature
+        // Generate Signature
         $jsonToSign = json_encode($payload['request'], JSON_UNESCAPED_SLASHES);
-        $signature  = $this->generateSignature($jsonToSign); // Pastikan function ini ada di Controller atau Trait
+        $signature  = $this->generateSignature($jsonToSign);
 
         try {
-            // 4. Catat Transaksi PENDING ke DB
+            // Simpan Transaksi PENDING
             PosTopUp::create([
                 'tenant_id'      => $tenantId,
                 'affiliate_id'   => $user->id,
@@ -185,9 +135,8 @@ class TenantPaymentController extends Controller
                 'response_payload' => json_encode(['init_payload' => $payload])
             ]);
 
-            // 5. Kirim Request ke DANA
+            // Kirim ke DANA
             Log::info('[DANA TOPUP] Sending Request...', ['ref' => $refNo]);
-
             $response = Http::post('https://api.sandbox.dana.id/dana/acquiring/order/create.htm', [
                 "request"   => $payload['request'],
                 "signature" => $signature
@@ -196,33 +145,22 @@ class TenantPaymentController extends Controller
             $result = $response->json();
             Log::info('[DANA TOPUP] Response:', ['res' => $result]);
 
-            // 6. Cek Hasil
             $resBody = $result['response']['body'] ?? [];
             $resStatus = $resBody['resultInfo']['resultStatus'] ?? 'F';
 
             if ($resStatus == 'S') {
-                // Ambil URL Redirect (Checkout URL)
-                // DANA akan mengembalikan URL untuk user memasukkan PIN
                 $checkoutUrl = $resBody['checkoutUrl'] ?? null;
 
                 if ($checkoutUrl) {
-                    // Update Log
-                    PosTopUp::where('reference_no', $refNo)->update([
-                        'response_payload' => json_encode($result)
-                    ]);
+                    PosTopUp::where('reference_no', $refNo)->update(['response_payload' => json_encode($result)]);
 
-                    if (!$request->wantsJson()) {
-                        return redirect()->away($checkoutUrl);
-                    }
+                    if (!$request->wantsJson()) return redirect()->away($checkoutUrl);
 
-                    return response()->json([
-                        'success' => true,
-                        'url'     => $checkoutUrl
-                    ]);
+                    return response()->json(['success' => true, 'url' => $checkoutUrl]);
                 }
             }
 
-            // Jika Gagal
+            // Handle Error
             $errMsg = $resBody['resultInfo']['resultMsg'] ?? 'Gagal membuat order DANA.';
             PosTopUp::where('reference_no', $refNo)->update(['status' => 'FAILED']);
 
@@ -230,62 +168,111 @@ class TenantPaymentController extends Controller
             return response()->json(['success' => false, 'message' => $errMsg], 400);
 
         } catch (\Exception $e) {
-            Log::error("[DANA TOPUP] Exception: " . $e->getMessage());
+            Log::error("[DANA TOPUP] Error: " . $e->getMessage());
             if (!$request->wantsJson()) return redirect()->back()->with('error', 'System Error');
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
     /**
-     * HELPER SIGNATURE (Copy dari MemberAuthController jika belum ada trait)
+     * 3. LOGIC PEMBAYARAN DOKU (EXISTING)
      */
-    private function generateSignature($stringToSign) {
-        $privateKeyContent = config('services.dana.private_key');
+    private function processDokuPayment($request, $user, $tenantId)
+    {
+        try {
+            $dokuService = new DokuJokulService();
+            $referenceNo = 'POSTOPUP-' . $user->id . '-' . time() . '-' . rand(100, 999);
 
-        // Format Key ke PEM jika perlu
-        $cleanKey = preg_replace('/-{5}(BEGIN|END) PRIVATE KEY-{5}|\r|\n|\s/', '', $privateKeyContent);
-        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . chunk_split($cleanKey, 64, "\n") . "-----END PRIVATE KEY-----";
+            $customerData = [
+                'name' => $user->name, 'email' => $user->email, 'phone' => $user->phone ?? '08123456789'
+            ];
 
-        $binarySignature = "";
-        openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256);
-        return base64_encode($binarySignature);
+            $paymentUrl = $dokuService->createPayment($referenceNo, $request->amount, $customerData);
+
+            PosTopUp::create([
+                'tenant_id' => $tenantId, 'affiliate_id' => $user->id, 'reference_no' => $referenceNo,
+                'amount' => $request->amount, 'unique_code' => 0, 'total_amount' => $request->amount,
+                'status' => 'PENDING', 'payment_method' => 'DOKU',
+                'response_payload' => ['payment_url' => $paymentUrl]
+            ]);
+
+            session(['doku_url' => $paymentUrl]);
+
+            if (!$request->wantsJson()) return redirect()->away($paymentUrl);
+            return response()->json(['success' => true, 'url' => $paymentUrl]);
+
+        } catch (\Exception $e) {
+            Log::error("LOG POS DOKU Error: " . $e->getMessage());
+            if (!$request->wantsJson()) return redirect()->back()->with('error', 'Gagal: ' . $e->getMessage());
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
     }
 
+    /**
+     * 4. CEK STATUS & SMART REDIRECT (CORE LOGIC YANG ANDA MINTA)
+     * Dipanggil oleh Frontend (Polling) setiap beberapa detik
+     */
     public function checkStatus(Request $request)
     {
         try {
             $invoice = $request->input('invoice');
 
+            // Logika Fallback Default
+            $currentHost = $request->getHost();
+            $currentSubdomain = explode('.', $currentHost)[0];
+            $appDomain = env('APP_URL_DOMAIN', 'tokosancaka.com'); // Config Domain Utama
+            $scheme = $request->secure() ? 'https://' : 'http://';
+
+            // --- A. JIKA ADA INVOICE (Cek Transaksi Spesifik) ---
             if ($invoice) {
-                // Cek status di DB Lokal dulu
+                // Cari Transaksi + Load Data Tenantnya
+                // Pastikan model PosTopUp Anda punya method tenant() => return $this->belongsTo(Tenant::class);
+                // Jika tidak ada relasi Eloquent, kita pakai Query Builder manual di bawah
                 $topup = PosTopUp::where('reference_no', $invoice)->first();
 
                 if ($topup && in_array($topup->status, ['SUCCESS', 'PAID'])) {
+
+                    // [SMART REDIRECT LOGIC]
+                    // Jangan pakai url()->previous(), tapi bangun URL berdasarkan Tenant ID transaksi
+
+                    $targetRedirect = url()->previous(); // Default aman
+
+                    // Ambil Subdomain Tenant Pemilik Transaksi
+                    $trxTenant = DB::table('tenants')->where('id', $topup->tenant_id)->first();
+
+                    if ($trxTenant) {
+                        // Construct URL: https://[subdomain_tenant].tokosancaka.com/dashboard
+                        $targetRedirect = $scheme . $trxTenant->subdomain . '.' . $appDomain . '/dashboard';
+                    }
+
+                    // Refresh Saldo Auth User (untuk update UI realtime)
+                    $currentBalance = 0;
+                    if (Auth::check()) {
+                        $currentBalance = Auth::user()->fresh()->saldo;
+                    }
+
                     return response()->json([
                         'active' => true,
                         'status' => 'success',
                         'message' => 'Top Up Berhasil!',
-                        'current_balance' => Auth::user()->fresh()->saldo,
-                        'redirect_url' => url()->previous()
+                        'current_balance' => $currentBalance,
+                        'redirect_url' => $targetRedirect // <-- INI URL CERDASNYA
                     ]);
                 }
 
-                // [OPSIONAL] Jika masih PENDING dan metode DANA, bisa cek status ke API DANA (Acquiring Query)
-                // Implementasikan logic cek status ke DANA disini jika perlu real-time check
-
+                // Jika masih Pending
                 return response()->json(['active' => false, 'status' => 'pending']);
             }
 
-            // Fallback Logic (Tetap Sama)
-            $host = $request->getHost();
-            $subdomain = explode('.', $host)[0];
-            $tenant = DB::table('tenants')->where('subdomain', $subdomain)->first();
+            // --- B. JIKA TANPA INVOICE (Cek Status Tenant dari URL saat ini) ---
+            // Biasanya dipakai di Landing Page untuk cek apakah toko aktif/tidak
+            $tenant = DB::table('tenants')->where('subdomain', $currentSubdomain)->first();
 
             if ($tenant && $tenant->status === 'active') {
                 return response()->json([
                     'active' => true,
                     'message' => 'Akun Aktif',
-                    'redirect_url' => "https://{$tenant->subdomain}.tokosancaka.com/dashboard"
+                    'redirect_url' => $scheme . $tenant->subdomain . '.' . $appDomain . '/dashboard'
                 ]);
             }
 
@@ -294,5 +281,19 @@ class TenantPaymentController extends Controller
         } catch (Throwable $e) {
             return response()->json(['active' => false, 'error' => $e->getMessage()], 200);
         }
+    }
+
+    /**
+     * Helper Signature DANA
+     */
+    private function generateSignature($stringToSign) {
+        $privateKeyContent = config('services.dana.private_key');
+        // Bersihkan format key
+        $cleanKey = preg_replace('/-{5}(BEGIN|END) PRIVATE KEY-{5}|\r|\n|\s/', '', $privateKeyContent);
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . chunk_split($cleanKey, 64, "\n") . "-----END PRIVATE KEY-----";
+
+        $binarySignature = "";
+        openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256);
+        return base64_encode($binarySignature);
     }
 }
