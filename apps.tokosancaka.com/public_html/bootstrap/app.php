@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Console\Scheduling\Schedule; // <-- Tambahkan ini
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Http\Request; // Tambahan import
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -79,5 +80,13 @@ return Application::configure(basePath: dirname(__DIR__))
     })
 
     ->withExceptions(function (Exceptions $exceptions) {
+
+    $exceptions->render(function (TokenMismatchException $e, Request $request) {
+
+            // Arahkan paksa ke login
+            return redirect()
+                ->route('login')
+                ->with('error', 'Sesi Anda telah habis. Silakan login kembali.');
+        });
         //
     })->create();
