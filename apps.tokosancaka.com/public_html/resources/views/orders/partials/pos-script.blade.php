@@ -1163,6 +1163,12 @@ function posSystem() {
                 console.log("LOG: Persiapan pengalihan ke DANA Gateway...");
             }
 
+            // [TAMBAHKAN INI DI BAWAHNYA]
+            else if (this.paymentMethod === 'dana_sdk') {
+                console.log("LOG: Menggunakan DANA SDK (Widget).");
+                // Tidak butuh validasi khusus, lanjut ke submit
+            }
+
             // Validasi Shipping (Kurir)
             if (this.deliveryType === 'shipping') {
                 if (!this.destinationDistrictId) {
