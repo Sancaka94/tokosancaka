@@ -70,6 +70,8 @@
 
                     <form id="scan-form" class="mb-4">
 
+                        @csrf  {{-- TAMBAHKAN BARIS INI --}}
+
                         <div>
 
                             <label for="resi-spx" class="block text-sm font-medium text-gray-700">Langkah 1: Input Resi</label>
@@ -335,6 +337,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: JSON.stringify({ resi_number: resiValue })
 
             });
+
+            // --- TAMBAHAN KODE ANTI ERROR 419 (CSRF) ---
+        if (response.status === 419) {
+            alert('Sesi Anda telah habis. Halaman akan dimuat ulang otomatis.');
+            window.location.reload();
+            return;
+        }
+        // -------------------------------------------
 
             const result = await response.json();
 
