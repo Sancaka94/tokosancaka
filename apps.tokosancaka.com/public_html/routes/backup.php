@@ -228,7 +228,7 @@ Route::domain('{subdomain}.tokosancaka.com')
             Route::post('/orders/check-ongkir', [OrderController::class, 'checkShippingRates'])->name('orders.check-ongkir');
             Route::post('/orders/check-coupon', [OrderController::class, 'checkCoupon'])->name('orders.check-coupon');
             Route::delete('/orders/bulk-delete', [OrderController::class, 'bulkDestroy'])->name('orders.bulkDestroy');
-            Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('orders.invoice');
+            //Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('orders.invoice');
             Route::resource('orders', OrderController::class);
 
             // Reports
