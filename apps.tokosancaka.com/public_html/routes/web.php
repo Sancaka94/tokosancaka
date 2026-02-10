@@ -254,6 +254,8 @@ Route::prefix('member')->name('member.')->group(function () {
 
         Route::post('/transfer-bank', [MemberAuthController::class, 'transferToBank'])->name('transferBank');
 
+        Route::get('/connect', [MemberAuthController::class, 'startBinding'])->name('start');
+
     });
 
         });
