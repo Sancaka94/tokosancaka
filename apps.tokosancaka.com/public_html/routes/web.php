@@ -530,7 +530,7 @@ Route::post('/dana-check-balance', [DanaDashboardController::class, 'checkBalanc
 Route::post('/dana-check-merchant-balance', [DanaDashboardController::class, 'checkMerchantBalance'])->name('dana.check_merchant_balance');
 
 // 4. Disbursement / Inquiry
-Route::post('/dana-execute-disbursement', [DanaDashboardController::class, 'customerTopup'])->name('dana.execute_disbursement');
+Route::post('/dana-execute-disbursement', [MemberAuthController::class, 'customerTopup'])->name('dana.execute_disbursement');
 Route::post('/dana-account-inquiry', [DanaDashboardController::class, 'accountInquiry'])->name('dana.account_inquiry');
 
 
