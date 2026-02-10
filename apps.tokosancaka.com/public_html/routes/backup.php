@@ -114,14 +114,14 @@ Route::domain('{subdomain}.tokosancaka.com')
 
             // DANA Integration Member
             Route::prefix('dana')->name('dana.')->group(function () {
-                Route::post('/bind', [MemberAuthController::class, 'startBinding'])->name('startBinding');
+                Route::post('/bind', [DanaGatewayController::class, 'startBinding'])->name('startBinding');
                 Route::get('/callback', [DanaGatewayController::class, 'handleCallback'])->name('callback');
-                Route::post('/balance', [MemberAuthController::class, 'checkBalance'])->name('checkBalance');
-                Route::post('/bank-inquiry', [MemberAuthController::class, 'bankAccountInquiry'])->name('bankInquiry');
-                Route::post('/check-status', [MemberAuthController::class, 'checkTopupStatus'])->name('checkStatus');
-                Route::post('/transfer-bank', [MemberAuthController::class, 'transferToBank'])->name('transferBank');
-                Route::post('/customer-topup', [MemberAuthController::class, 'customerTopup'])->name('customerTopup');
-                Route::post('/topup', [MemberAuthController::class, 'topupSaldo'])->name('topup');
+                Route::post('/balance', [DanaGatewayController::class, 'checkBalance'])->name('checkBalance');
+                Route::post('/bank-inquiry', [DanaGatewayController::class, 'bankAccountInquiry'])->name('bankInquiry');
+                Route::post('/check-status', [DanaGatewayController::class, 'checkTopupStatus'])->name('checkStatus');
+                Route::post('/transfer-bank', [DanaGatewayController::class, 'transferToBank'])->name('transferBank');
+                Route::post('/customer-topup', [DanaGatewayController::class, 'customerTopup'])->name('customerTopup');
+                Route::post('/topup', [DanaGatewayController::class, 'topupSaldo'])->name('topup');
             });
         });
     });
