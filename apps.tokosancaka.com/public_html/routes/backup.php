@@ -119,7 +119,7 @@ Route::domain('{subdomain}.tokosancaka.com')
                 Route::post('/check-status', [MemberAuthController::class, 'checkTopupStatus'])->name('checkStatus');
                 Route::post('/transfer-bank', [MemberAuthController::class, 'transferToBank'])->name('transferBank');
                 Route::post('/customer-topup', [MemberAuthController::class, 'customerTopup'])->name('customerTopup');
-                Route::post('/topup', [DanaDashboardController::class, 'topupSaldo'])->name('topup');
+                Route::post('/topup', [MemberAuthController::class, 'topupSaldo'])->name('topup');
             });
         });
     });
@@ -167,17 +167,17 @@ Route::domain('{subdomain}.tokosancaka.com')
             Route::put('/affiliate/update/{id}', [AffiliateController::class, 'update'])->name('affiliate.update');
 
             // Dana Dashboard Admin
-            Route::prefix('dana')->name('dana.')->group(function () {
-                Route::get('/dashboard', [DanaDashboardController::class, 'index'])->name('dashboard');
-                Route::post('/do-bind', [DanaDashboardController::class, 'startBinding'])->name('do_bind');
-                Route::get('/callback', [DanaDashboardController::class, 'handleCallback'])->name('callback');
-                Route::post('/check-balance', [DanaDashboardController::class, 'checkBalance'])->name('check_balance');
-                Route::post('/check-merchant-balance', [DanaDashboardController::class, 'checkMerchantBalance'])->name('check_merchant_balance');
-                Route::post('/topup', [DanaDashboardController::class, 'topupSaldo'])->name('topup');
-                Route::post('/execute-disbursement', [DanaDashboardController::class, 'customerTopup'])->name('execute_disbursement');
-                Route::post('/account-inquiry', [DanaDashboardController::class, 'accountInquiry'])->name('account_inquiry');
-            });
-            Route::resource('dana_response_codes', DanaResponseCodeController::class)->except(['create', 'edit', 'show']);
+            //Route::prefix('dana')->name('dana.')->group(function () {
+            //    Route::get('/dashboard', [DanaDashboardController::class, 'index'])->name('dashboard');
+            //    Route::post('/do-bind', [DanaDashboardController::class, 'startBinding'])->name('do_bind');
+            //    Route::get('/callback', [DanaDashboardController::class, 'handleCallback'])->name('callback');
+            //    Route::post('/check-balance', [DanaDashboardController::class, 'checkBalance'])->name('check_balance');
+            //    Route::post('/check-merchant-balance', [DanaDashboardController::class, 'checkMerchantBalance'])->name('check_merchant_balance');
+            //    Route::post('/topup', [DanaDashboardController::class, 'topupSaldo'])->name('topup');
+            //    Route::post('/execute-disbursement', [DanaDashboardController::class, 'customerTopup'])->name('execute_disbursement');
+            //    Route::post('/account-inquiry', [DanaDashboardController::class, 'accountInquiry'])->name('account_inquiry');
+            //});
+            //Route::resource('dana_response_codes', DanaResponseCodeController::class)->except(['create', 'edit', 'show']);
         });
 
         // --- ROLE: FINANCE & ADMIN ---
