@@ -4,178 +4,191 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log; // Logging aktif
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Str;
-use Carbon\Carbon; // <--- Pastikan baris ini ada di paling atas file
-use App\Http\Controllers\DepositController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\MemberAuthController; // Import controller lain jika perlu
-
-// Models
+use Illuminate\Support\Facades\Log;
 use App\Models\Order;
-use App\Models\Product;
-use App\Models\OrderDetail;
-use App\Models\OrderAttachment;
-use App\Models\Coupon;
 use App\Models\Affiliate;
-use App\Models\Store;
-use App\Models\TopUp;
-use App\Models\User;
-use App\Models\Tenant;
-use App\Models\Category;
-use App\Models\Customer;
-use App\Models\ProductVariant; // <--- TAMBAHKAN INI
+use Exception;
 
 class DanaWebhookController extends Controller
 {
+    /**
+     * Main Handler untuk Notifikasi DANA
+     */
     public function handleNotify(Request $request)
-{
-    // 1. LOG BAHWA DATA MASUK
-    Log::info("[DANA-REAL] Webhook Masuk!", $request->all());
-
-    try {
-        $data = $request->all();
-
-        // Ambil Data Penting
-        $refNo  = $data['partnerReferenceNo'] ?? null;
-        $status = $data['orderStatus'] ?? null; // FINISHED / SUCCESS
-
-        // Ambil Nominal (Pastikan aman dari null)
-        $amountVal = $data['amount']['value'] ?? 0;
-        $paidAmount = (float) $amountVal;
-
-        if (!$refNo) {
-            Log::warning("[DANA-REAL] RefNo tidak ada.");
-            return response()->json(['res' => 'NO_REF'], 400);
-        }
-
-        // 2. CARI TRANSAKSI DI DATABASE
-        $trx = DB::table('dana_transactions')->where('reference_no', $refNo)->first();
-
-        // Jika transaksi tidak ada, atau SUDAH SUKSES sebelumnya, langsung return OK (biar DANA gak kirim ulang)
-        if (!$trx) {
-            Log::info("[DANA-REAL] Transaksi tidak ditemukan: $refNo");
-            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
-        }
-
-        if ($trx->status === 'SUCCESS') {
-            Log::info("[DANA-REAL] Transaksi sudah sukses sebelumnya: $refNo");
-            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
-        }
-
-        // 3. PROSES UPDATE (Hanya jika status FINISHED)
-        if ($status === 'FINISHED' || $status === 'SUCCESS') {
-
-            DB::beginTransaction();
-            try {
-                // A. Update Status Transaksi jadi SUCCESS
-                DB::table('dana_transactions')->where('id', $trx->id)->update([
-                    'status' => 'SUCCESS',
-                    'updated_at' => now(),
-                    'response_payload' => json_encode($data)
-                ]);
-
-                // B. Tambah Saldo Member
-                DB::table('affiliates')->where('id', $trx->affiliate_id)->increment('balance', $paidAmount);
-
-                // C. Kurangi Saldo DANA User (Pencatatan)
-                DB::table('affiliates')->where('id', $trx->affiliate_id)->decrement('dana_user_balance', $paidAmount);
-
-                DB::commit();
-
-                Log::info("[DANA-REAL] ✅ SUKSES UPDATE SALDO: $refNo sebesar Rp $paidAmount");
-
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error("[DANA-REAL] Gagal Update DB: " . $e->getMessage());
-                // Jangan return 500 jika ini terjadi biar DANA nyoba lagi nanti
-                return response()->json(['responseCode' => '500', 'message' => 'DB Error'], 500);
-            }
-
-        } elseif ($status === 'FAILED') {
-            // Jika Gagal
-            DB::table('dana_transactions')->where('id', $trx->id)->update([
-                'status' => 'FAILED',
-                'updated_at' => now(),
-                'response_payload' => json_encode($data)
-            ]);
-            Log::info("[DANA-REAL] Transaksi Gagal: $refNo");
-        }
-
-        // 4. BALASAN WAJIB "200 OK" KE DANA
-        return response()->json([
-            'responseCode' => '2000000',
-            'responseMessage' => 'Success'
+    {
+        // 1. Log Request Masuk untuk Audit Trail
+        Log::info("[DANA-WEBHOOK] Incoming Hit", [
+            'ip' => $request->ip(),
+            'payload' => $request->all()
         ]);
 
-    } catch (\Exception $e) {
-        Log::error("[DANA-REAL] Crash: " . $e->getMessage());
-        return response()->json(['responseCode' => '500', 'message' => 'Internal Error'], 500);
-    }
-}
-
-    /**
-     * LOGIKA KHUSUS DEPOSIT
-     */
-    private function handleDeposit($data)
-    {
-        Log::info("[DANA-WEBHOOK] Mendeteksi Transaksi DEPOSIT");
-
-        $refNo = $data['partnerReferenceNo'];
-        $status = $data['orderStatus'];
-        $amount = (float) ($data['amount']['value'] ?? 0);
-
-        // Cari Transaksi
-        $trx = DB::table('dana_transactions')->where('reference_no', $refNo)->first();
-
-        if (!$trx || $trx->status == 'SUCCESS') {
-            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
-        }
-
-        if ($status === 'FINISHED' || $status === 'SUCCESS') {
-            DB::beginTransaction();
-            try {
-                // Update Status Transaksi
-                DB::table('dana_transactions')
-                    ->where('id', $trx->id)
-                    ->update(['status' => 'SUCCESS', 'updated_at' => now(), 'response_payload' => json_encode($data)]);
-
-                // Tambah Saldo Affiliate
-                DB::table('affiliates')->where('id', $trx->affiliate_id)->increment('balance', $amount);
-                // Kurangi Saldo DANA User (Opsional/Estimasi)
-                DB::table('affiliates')->where('id', $trx->affiliate_id)->decrement('dana_user_balance', $amount);
-
-                DB::commit();
-                Log::info("[DANA-WEBHOOK] Deposit Sukses: $refNo");
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error("Gagal Update Deposit: ".$e->getMessage());
+        try {
+            // Validasi Signature (Opsional - Aktifkan jika sudah ada Secret Key)
+            if (!$this->isValidSignature($request)) {
+                Log::warning("[DANA-WEBHOOK] Invalid Signature from IP: " . $request->ip());
+                // Tetap return OK untuk security by obscurity, atau return 401 jika strict
+                return response()->json(['responseCode' => '401', 'responseMessage' => 'Unauthorized'], 401);
             }
-        } elseif ($status === 'FAILED') {
-            DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'FAILED']);
-        }
 
-        return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
+            $data = $request->all();
+            $refNo = $data['partnerReferenceNo'] ?? null;
+            $status = $data['orderStatus'] ?? null; // FINISHED / SUCCESS / FAILED
+            $amountVal = $data['amount']['value'] ?? 0;
+            $paidAmount = (float) $amountVal;
+
+            if (empty($refNo)) {
+                return response()->json(['responseCode' => '400', 'responseMessage' => 'Missing Reference Number'], 400);
+            }
+
+            // 2. Mulai Database Transaction (ACID)
+            DB::beginTransaction();
+
+            try {
+                // 3. ATOMIC LOCK: Ambil data dan kunci baris ini agar tidak bisa diedit proses lain
+                $trx = DB::table('dana_transactions')
+                    ->where('reference_no', $refNo)
+                    ->lockForUpdate()
+                    ->first();
+
+                // Jika transaksi tidak ditemukan di database kita
+                if (!$trx) {
+                    Log::error("[DANA-WEBHOOK] Transaction Not Found: $refNo");
+                    DB::rollBack();
+                    // Return 200 agar DANA berhenti mengirim ulang (Assume data mismatch)
+                    return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
+                }
+
+                // 4. IDEMPOTENCY CHECK: Cek apakah sudah sukses sebelumnya?
+                if ($trx->status === 'SUCCESS' || $trx->status === 'PAID') {
+                    Log::info("[DANA-WEBHOOK] Idempotency: Transaction $refNo already completed.");
+                    DB::rollBack();
+                    return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
+                }
+
+                // 5. Routing Logic Berdasarkan Status DANA
+                if ($status === 'FINISHED' || $status === 'SUCCESS') {
+
+                    // A. Update Status Table Transaksi DANA
+                    DB::table('dana_transactions')->where('id', $trx->id)->update([
+                        'status' => 'SUCCESS',
+                        'response_payload' => json_encode($data),
+                        'updated_at' => now()
+                    ]);
+
+                    // B. Routing Berdasarkan Tipe (DEPOSIT vs ORDER)
+                    if ($trx->type === 'DEPOSIT') {
+                        $this->processDeposit($trx, $paidAmount);
+                    } elseif ($trx->type === 'ORDER') {
+                        $this->processOrder($trx, $paidAmount);
+                    } else {
+                        Log::warning("[DANA-WEBHOOK] Unknown Transaction Type: " . $trx->type);
+                    }
+
+                    Log::info("[DANA-WEBHOOK] ✅ Transaction $refNo processed successfully.");
+
+                } elseif ($status === 'FAILED' || $status === 'CLOSED') {
+
+                    // Handle Status Gagal
+                    DB::table('dana_transactions')->where('id', $trx->id)->update([
+                        'status' => 'FAILED',
+                        'response_payload' => json_encode($data),
+                        'updated_at' => now()
+                    ]);
+
+                    Log::info("[DANA-WEBHOOK] ❌ Transaction $refNo marked as FAILED.");
+                }
+
+                // 6. Commit Semua Perubahan Database
+                DB::commit();
+
+            } catch (Exception $e) {
+                DB::rollBack();
+                throw $e; // Lempar ke catch utama
+            }
+
+            // 7. Response Sukses Standar DANA
+            return response()->json([
+                'responseCode' => '2000000',
+                'responseMessage' => 'Success'
+            ]);
+
+        } catch (Exception $e) {
+            Log::error("[DANA-WEBHOOK] System Error: " . $e->getMessage());
+            return response()->json(['responseCode' => '500', 'responseMessage' => 'Internal Server Error'], 500);
+        }
     }
 
     /**
-     * LOGIKA KHUSUS ORDER
+     * Logika Khusus Deposit: Tambah Saldo Member
      */
-    private function handleOrder($data)
+    private function processDeposit($trx, $amount)
     {
-        Log::info("[DANA-WEBHOOK] Mendeteksi Transaksi ORDER");
+        // Tambah Saldo Utama Member
+        $affected = DB::table('affiliates')
+            ->where('id', $trx->affiliate_id)
+            ->increment('balance', $amount);
 
-        $refNo = $data['partnerReferenceNo'];
-        $status = $data['orderStatus'];
+        if ($affected) {
+            Log::info("[DANA-WEBHOOK] Balance Updated for User ID: " . $trx->affiliate_id);
 
-        // Contoh Logika Order
-        // $order = Order::where('invoice_number', $refNo)->first();
-        // if ($status == 'FINISHED') { $order->update(['status' => 'PAID']); }
+            // Catat Mutasi Saldo (History)
+            DB::table('balance_mutations')->insert([
+                'affiliate_id' => $trx->affiliate_id,
+                'type' => 'CREDIT', // Masuk
+                'amount' => $amount,
+                'description' => 'Deposit via DANA (' . $trx->reference_no . ')',
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
+    }
 
-        return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
+    /**
+     * Logika Khusus Order: Update Status Pesanan Toko
+     */
+    private function processOrder($trx, $amount)
+    {
+        // Cari Order berdasarkan Nomor Referensi (Invoice)
+        // Asumsi: reference_no di dana_transactions sama dengan invoice_number di table orders
+        $order = Order::where('invoice_number', $trx->reference_no)->first();
+
+        if ($order) {
+            // Update Status Order Jadi PAID / PROCESSING
+            $order->update([
+                'payment_status' => 'PAID',
+                'status' => 'PROCESSING', // Atau status selanjutnya sesuai flow toko
+                'payment_method' => 'DANA',
+                'paid_at' => now()
+            ]);
+
+            Log::info("[DANA-WEBHOOK] Order Invoice " . $trx->reference_no . " status updated to PAID.");
+        } else {
+            Log::error("[DANA-WEBHOOK] Order Not Found for Ref: " . $trx->reference_no);
+        }
+    }
+
+    /**
+     * Validasi Signature untuk Keamanan (HMAC-SHA256)
+     */
+    private function isValidSignature(Request $request)
+    {
+        // Ambil Signature dari Header DANA
+        $signatureFromHeader = $request->header('X-Dana-Signature');
+
+        // Ambil Secret Key dari Config
+        $clientSecret = config('services.dana.client_secret');
+
+        if (empty($signatureFromHeader) || empty($clientSecret)) {
+            // Jika setting belum ada, anggap valid dulu (Mode Development)
+            // Ubah jadi return false jika sudah Production
+            return true;
+        }
+
+        // Generate Signature Lokal dari Body Content
+        $content = $request->getContent();
+        $generatedSignature = base64_encode(hash_hmac('sha256', $content, $clientSecret, true));
+
+        // Bandingkan Signature
+        return hash_equals($generatedSignature, $signatureFromHeader);
     }
 }
