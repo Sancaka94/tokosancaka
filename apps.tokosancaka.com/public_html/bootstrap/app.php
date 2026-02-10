@@ -81,9 +81,14 @@ return Application::configure(basePath: dirname(__DIR__))
 
     ->withExceptions(function (Exceptions $exceptions) {
 
-    $exceptions->render(function (TokenMismatchException $e, Request $request) {
+   $exceptions->render(function (TokenMismatchException $e, Request $request) {
 
-            // Arahkan paksa ke login
+            // 1. Jika error terjadi di Scanner/AJAX (biar JS tidak crash baca HTML)
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Sesi Berakhir', 'force_reload' => true], 419);
+            }
+
+            // 2. Jika error di Halaman Biasa (langsung lempar ke login)
             return redirect()
                 ->route('login')
                 ->with('error', 'Sesi Anda telah habis. Silakan login kembali.');
