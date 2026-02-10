@@ -26,6 +26,8 @@ use App\Http\Controllers\DanaResponseCodeController;
 use App\Http\Controllers\LogViewerController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\AuthController; // Tambahkan Controller Login Toko disini
+use App\Http\Controllers\DanaGatewayController;
+
 
 /*
 |==========================================================================
@@ -113,7 +115,7 @@ Route::domain('{subdomain}.tokosancaka.com')
             // DANA Integration Member
             Route::prefix('dana')->name('dana.')->group(function () {
                 Route::post('/bind', [MemberAuthController::class, 'startBinding'])->name('startBinding');
-                Route::get('/callback', [MemberAuthController::class, 'handleCallback'])->name('callback');
+                Route::get('/callback', [DanaGatewayController::class, 'handleCallback'])->name('callback');
                 Route::post('/balance', [MemberAuthController::class, 'checkBalance'])->name('checkBalance');
                 Route::post('/bank-inquiry', [MemberAuthController::class, 'bankAccountInquiry'])->name('bankInquiry');
                 Route::post('/check-status', [MemberAuthController::class, 'checkTopupStatus'])->name('checkStatus');
