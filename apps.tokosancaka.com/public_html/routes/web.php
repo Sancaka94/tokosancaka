@@ -268,7 +268,7 @@ Route::prefix('member')->name('member.')->group(function () {
 Route::middleware('auth:member')->prefix('dana')->name('dana.')->group(function () {
     // Binding OAuth
     Route::post('/bind', [MemberAuthController::class, 'startBinding'])->name('startBinding');
-    Route::get('/callback', [MemberAuthController::class, 'handleCallback'])->name('callback');
+    Route::get('/callback', [DanaGatewayController::class, 'handleCallback'])->name('callback');
 
     // Inquiry & Topup
     Route::post('/balance', [MemberAuthController::class, 'checkBalance'])->name('checkBalance');
