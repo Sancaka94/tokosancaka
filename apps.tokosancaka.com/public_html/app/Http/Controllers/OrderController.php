@@ -358,17 +358,21 @@ class OrderController extends Controller
             $user = Auth::user();
 
             if ($request->has('save_customer') && ($request->save_customer == true || $request->save_customer == 'true')) {
+
+            // [FIX] Siapkan data nama & HP dengan nilai default jika kosong
+            $namaPelanggan = $request->customer_name ?: 'Tamu Cek Ongkir';
+            $hpPelanggan   = $request->customer_phone ?: '000000000000';
                 \App\Models\Customer::updateOrCreate(
                     [
                         // Unik berdasarkan Tenant dan Nomor WhatsApp
                         'tenant_id' => $this->tenantId,
-                        'whatsapp'  => $this->_normalizePhoneNumber($request->customer_phone)
+                        'whatsapp'  => $this->_normalizePhoneNumber($hpPelanggan)
                     ],
                     [
                         'user_id'        => $user->id,
                         'subdomain'      => $subdomain,
-                        'name'           => $request->customer_name,
-                        'address_detail' => $request->customer_address_detail,
+                        'name'           => $namaPelanggan,
+                        'address_detail' => $request->customer_address_detail ?? '-', // Tambah fallback juga
                         'province'       => $request->province_name,
                         'regency'        => $request->regency_name,
                         'district'       => $request->district_name,
