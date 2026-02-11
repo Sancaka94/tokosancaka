@@ -281,19 +281,34 @@
 
     <div class="p-4 border-t border-slate-50 flex-shrink-0">
         <div class="bg-slate-50 rounded-2xl p-3 mb-3 flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
-                {{ substr(Auth::user()->name ?? 'AD', 0, 2) }}
-            </div>
-            <div class="overflow-hidden text-ellipsis whitespace-nowrap">
-                <p class="text-xs font-bold text-slate-800 leading-none mb-1">{{ Auth::user()->name ?? 'Administrator' }}</p>
-                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium
-                    @if(Auth::user()->role === 'super_admin') bg-purple-100 text-purple-800
-                    @elseif(Auth::user()->role === 'admin') bg-blue-100 text-blue-800
-                    @else bg-gray-100 text-gray-800 @endif uppercase">
-                    {{ str_replace('_', ' ', Auth::user()->role ?? 'User') }}
+        {{-- BAGIAN FOTO/LOGO --}}
+        <div class="w-10 h-10 rounded-xl bg-blue-100 flex-shrink-0 overflow-hidden flex items-center justify-center border border-blue-50">
+            @if(Auth::user()->logo)
+                {{-- Tampilkan Logo Upload --}}
+                <img src="{{ asset('storage/' . Auth::user()->logo) }}"
+                    class="w-full h-full object-cover"
+                    alt="User Logo">
+            @else
+                {{-- Fallback ke Inisial (Kode Lama) --}}
+                <span class="text-blue-600 font-bold text-sm uppercase">
+                    {{ substr(Auth::user()->name ?? 'AD', 0, 2) }}
                 </span>
-            </div>
+            @endif
         </div>
+
+        {{-- BAGIAN NAMA & ROLE --}}
+        <div class="overflow-hidden text-ellipsis whitespace-nowrap">
+            <p class="text-xs font-bold text-slate-800 leading-none mb-1 truncate max-w-[140px]">
+                {{ Auth::user()->name ?? 'Administrator' }}
+            </p>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium
+                @if(Auth::user()->role === 'super_admin') bg-purple-100 text-purple-800
+                @elseif(Auth::user()->role === 'admin') bg-blue-100 text-blue-800
+                @else bg-gray-100 text-gray-800 @endif uppercase">
+                {{ str_replace('_', ' ', Auth::user()->role ?? 'User') }}
+            </span>
+        </div>
+    </div>
 
         <form method="POST" action="{{ route('logout', $params) }}">
             @csrf
