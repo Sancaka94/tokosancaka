@@ -949,17 +949,40 @@ class OrderController extends Controller
                     if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
                         $shippingRef = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
 
-                        $order->update([
-                            'shipping_ref'   => $shippingRef,
-                            'note'           => $catatanSistem . "\n[RESI OTOMATIS] Ref: " . $shippingRef . "\n[SALDO ADMIN] Terpotong Ongkir Rp " . number_format($tagihanKeAdmin),
-                            'payment_status' => 'paid',
-                            'payment_method' => 'saldo_admin',
-                            'status'         => 'processing'
-                        ]);
+                        // --- [MULAI PERBAIKAN LOGIKA] ---
+                        // Cek apakah user memilih pembayaran Online (DANA/Tripay/Doku)
+                        $isOnlinePayment = in_array($inputMethod, ['dana', 'dana_sdk', 'tripay', 'doku']);
 
-                        $paymentStatus = 'paid';
-                        $metodeBayarFix = 'saldo_admin';
-                        $triggerWaType = 'paid';
+                        if ($isOnlinePayment) {
+                            // KASUS 1: BAYAR ONLINE (DANA/TRIPAY)
+                            // Jangan tandai lunas dulu, biarkan status 'unpaid' agar Switch Case di bawah jalan
+                            $order->update([
+                                'shipping_ref'   => $shippingRef,
+                                'note'           => $catatanSistem . "\n[RESI] " . $shippingRef,
+                                'payment_status' => 'unpaid', // Tetap UNPAID
+                                'status'         => 'pending'
+                            ]);
+
+                            // PENTING: Jangan ubah $metodeBayarFix agar masuk ke case 'dana_sdk' nanti
+                            // $metodeBayarFix tetap sesuai input awal ($request->payment_method)
+
+                        } else {
+                            // KASUS 2: BAYAR TUNAI / SALDO / COD
+                            // Tandai lunas karena Saldo Admin sudah terpotong untuk ongkir
+                            $order->update([
+                                'shipping_ref'   => $shippingRef,
+                                'note'           => $catatanSistem . "\n[RESI] " . $shippingRef . "\n[SALDO ADMIN] Terpotong Ongkir Rp " . number_format($tagihanKeAdmin),
+                                'payment_status' => 'paid',
+                                'payment_method' => 'saldo_admin', // Override method
+                                'status'         => 'processing'
+                            ]);
+
+                            $paymentStatus = 'paid';
+                            $metodeBayarFix = 'saldo_admin'; // Ubah agar switch case bawah skip payment gateway
+                            $triggerWaType = 'paid';
+                        }
+                        // --- [SELESAI PERBAIKAN] ---
+
                         $isShippingSuccess = true;
 
                     } else {
