@@ -70,7 +70,7 @@
                     <a href="{{ route('tenant.dana.start') }}"
                        class="flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-200 rounded-2xl text-xs font-bold text-slate-500 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all"
                        title="Hubungkan DANA">
-                       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png" class="h-3 w-auto grayscale brightness-150 hover:grayscale-0">
+                       <img src="https://tokosancaka.com/storage/logo/dana.png" class="h-3 w-auto grayscale brightness-150 hover:grayscale-0">
                        <span>Link DANA</span>
                     </a>
                 @endif
