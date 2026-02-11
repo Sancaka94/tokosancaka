@@ -521,7 +521,7 @@ class OrderController extends Controller
         }
     }
 
-/**
+    /**
      * Store a newly created resource in storage.
      */
     public function store(
@@ -800,6 +800,12 @@ class OrderController extends Controller
                     throw new \Exception("Sesi Admin berakhir. Silakan login ulang.");
                 }
 
+                // [BARU] VALIDASI ALAMAT PENGIRIM DARI DATABASE USER
+                // Pastikan user sudah melengkapi profilnya
+                if (empty($currentUser->district_id) || empty($currentUser->subdistrict_id)) {
+                    throw new \Exception("Alamat Toko/Pengirim belum lengkap. Silakan lengkapi di menu Profil (Kecamatan & Kelurahan wajib ada).");
+                }
+
                 // [PERBAIKAN LOGIKA] Admin hanya bayar ONGKIR ke Pusat via Saldo
                 $tagihanKeAdmin = (int) $biayaOngkir;
 
@@ -817,6 +823,7 @@ class OrderController extends Controller
                     // --- Mulai Logic Geocoding & Payload KiriminAja ---
                     $destLat = null; $destLng = null;
                     if ($request->filled('destination_text')) {
+                        // Geocoding untuk Destination (Penerima) tetap pakai helper karena input manual
                         $geo = $this->geocode($request->destination_text);
                         if ($geo) { $destLat = (string)$geo['lat']; $destLng = (string)$geo['lng']; }
                     }
@@ -827,18 +834,32 @@ class OrderController extends Controller
                     $isInstant = (str_contains($serviceCode, 'gosend') || str_contains($serviceCode, 'grab'));
                     $kaResponse = null;
 
+                    // [BARU] Susun Alamat Lengkap Pengirim dari Database
+                    $originFullAddress = $currentUser->address_detail . ', ' .
+                                         $currentUser->village . ', ' .
+                                         $currentUser->district . ', ' .
+                                         $currentUser->regency . ', ' .
+                                         $currentUser->province;
+
                     if ($isInstant) {
                          if (!$destLat || !$destLng) throw new \Exception("Gagal Instant: Koordinat tujuan hilang.");
+
+                         // [BARU] Validasi Koordinat Pengirim
+                         if (empty($currentUser->latitude) || empty($currentUser->longitude)) {
+                             throw new \Exception("Koordinat Toko belum disetting. Silakan update di menu Profil.");
+                         }
 
                          $instantPayload = [
                             'order_id'    => $orderNumber,
                             'service'     => $serviceCode,
                             'item_price'  => (int) $subtotal,
                             'origin'      => [
-                                'lat'     => config('services.kiriminaja.origin_lat'),
-                                'long'    => config('services.kiriminaja.origin_long'),
-                                'address' => config('services.kiriminaja.origin_address'),
-                                'phone'   => '085745808809', 'name' => 'Toko Sancaka'
+                                // [UPDATE] Ambil dari Database User
+                                'lat'     => (string) $currentUser->latitude,
+                                'long'    => (string) $currentUser->longitude,
+                                'address' => $originFullAddress,
+                                'phone'   => $currentUser->phone ?? '081234567890',
+                                'name'    => $currentUser->name
                             ],
                             'destination' => [
                                 'lat' => $destLat, 'long' => $destLng, 'address' => $request->destination_text,
@@ -856,11 +877,15 @@ class OrderController extends Controller
                         }
 
                         $kaPayload = [
-                            'address'      => config('services.kiriminaja.origin_address'),
-                            'phone'        => '085745808809', 'name' => 'Toko Sancaka',
-                            'kecamatan_id' => (int) config('services.kiriminaja.origin_district_id'),
-                            'kelurahan_id' => (int) config('services.kiriminaja.origin_subdistrict_id'),
-                            'zipcode'      => '63211', 'schedule' => $pickupSchedule,
+                            // [UPDATE] Ambil dari Database User
+                            'address'      => $originFullAddress,
+                            'phone'        => $currentUser->phone ?? '081234567890',
+                            'name'         => $currentUser->name,
+                            'kecamatan_id' => (int) $currentUser->district_id,    // Dari DB User
+                            'kelurahan_id' => (int) $currentUser->subdistrict_id, // Dari DB User
+                            'zipcode'      => $currentUser->postal_code ?? '00000',
+
+                            'schedule'     => $pickupSchedule,
                             'platform_name'=> 'Sancaka Store',
                             'packages'     => [[
                                 'order_id' => $orderNumber,
@@ -894,7 +919,7 @@ class OrderController extends Controller
                             'shipping_ref'   => $shippingRef,
                             'note'           => $catatanSistem . "\n[RESI OTOMATIS] Ref: " . $shippingRef . "\n[SALDO ADMIN] Terpotong Ongkir Rp " . number_format($tagihanKeAdmin),
                             'payment_status' => 'paid',
-                            'payment_method' => 'saldo_admin', // Tandai dibayar pakai saldo
+                            'payment_method' => 'saldo_admin',
                             'status'         => 'processing'
                         ]);
 
@@ -910,9 +935,7 @@ class OrderController extends Controller
                     }
 
                 } else {
-                    // [PERBAIKAN] Jika Saldo Kurang -> JANGAN ke DOKU, tapi suruh Topup
                     Log::warning("[SHIPPING] Saldo Admin Tidak Cukup untuk Ongkir.");
-
                     throw new \Exception("Saldo Deposit Kurang untuk membayar Ongkir (Rp " . number_format($tagihanKeAdmin) . "). Saldo Anda: Rp " . number_format($currentUser->saldo) . ". Silakan Topup Saldo terlebih dahulu.");
                 }
 
