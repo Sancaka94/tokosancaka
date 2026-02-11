@@ -81,6 +81,8 @@ function posSystem() {
 
         saveCustomer: true,
 
+        isCourierListOpen: true,
+
         // [TAMBAHKAN KELOMPOK INI] Agar data alamat lengkap bisa tersimpan ke DB
         selectedProvince: '',
         selectedRegency: '',
@@ -882,6 +884,10 @@ function posSystem() {
 
                 if (result.status === 'success') {
                     this.courierList = result.data;
+
+                     // Tambahkan baris ini (Reset status biar list muncul lagi):
+                     this.isCourierListOpen = true;
+                     this.selectedCourier = null; // Reset pilihan lama
                     // Log kecil untuk memastikan instruksi simpan terkirim
                     if(this.saveCustomer) console.log("✅ Perintah simpan data pelanggan dikirim ke server.");
                 } else {
@@ -898,6 +904,7 @@ function posSystem() {
         selectCourier(courier) {
             this.selectedCourier = courier;
             this.shippingCost = parseInt(courier.cost);
+            this.isCourierListOpen = false;
         },
 
         // ============================================================
