@@ -126,12 +126,21 @@
                     @endauth
                 </div>
 
+                {{-- FOTO PROFIL --}}
                 <div class="h-10 w-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-blue-400 p-0.5 shadow-lg shadow-blue-100 group-hover:rotate-3 transition-transform">
                     <div class="h-full w-full rounded-[14px] bg-white overflow-hidden p-0.5">
                         @auth
-                            <img class="h-full w-full object-cover rounded-[12px]"
-                                 src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&background=f1f5f9&color=2563eb&size=128&bold=true"
-                                 alt="{{ Auth::user()->name }}">
+                            {{-- LOGIC: Cek jika ada Logo di database --}}
+                            @if(Auth::user()->logo)
+                                <img class="h-full w-full object-cover rounded-[12px]"
+                                     src="{{ asset('storage/' . Auth::user()->logo) }}"
+                                     alt="{{ Auth::user()->name }}">
+                            @else
+                                {{-- Fallback ke UI Avatars --}}
+                                <img class="h-full w-full object-cover rounded-[12px]"
+                                     src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&background=f1f5f9&color=2563eb&size=128&bold=true"
+                                     alt="{{ Auth::user()->name }}">
+                            @endif
                         @else
                             <img class="h-full w-full object-cover rounded-[12px]"
                                  src="https://ui-avatars.com/api/?name=Guest&background=f1f5f9&color=64748b&size=128&bold=true"
