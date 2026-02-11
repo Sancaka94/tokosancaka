@@ -597,5 +597,5 @@ Route::middleware('auth')->group(function () {
 
 });
 
-
+Route::get('/orders/tripay-channels', [OrderController::class, 'tripayChannels'])->name('orders.tripay-channels');
 
