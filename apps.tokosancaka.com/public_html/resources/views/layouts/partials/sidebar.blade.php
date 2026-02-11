@@ -282,7 +282,7 @@
     <div class="p-4 border-t border-slate-50 flex-shrink-0">
         <div class="bg-slate-50 rounded-2xl p-3 mb-3 flex items-center gap-3">
         {{-- BAGIAN FOTO/LOGO --}}
-        <div class="w-10 h-10 rounded-xl bg-blue-100 flex-shrink-0 overflow-hidden flex items-center justify-center border border-blue-50">
+        <div class="w-10 h-10 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center border border-blue-50">
             @if(Auth::user()->logo)
                 {{-- Tampilkan Logo Upload --}}
                 <img src="{{ asset('storage/' . Auth::user()->logo) }}"
