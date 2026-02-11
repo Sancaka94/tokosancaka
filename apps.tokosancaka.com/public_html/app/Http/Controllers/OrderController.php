@@ -2407,4 +2407,43 @@ public function handleDanaCallback(Request $request)
     return view('orders.print_struk', compact('order', 'store'));
 }
 
+/**
+     * API: Ambil Daftar Channel Pembayaran Tripay
+     */
+    public function tripayChannels()
+    {
+        $apiKey = config('tripay.api_key');
+        $mode   = config('tripay.mode');
+
+        // Tentukan URL berdasarkan mode (Sandbox / Production)
+        $baseUrl = ($mode === 'production')
+            ? 'https://tripay.co.id/api/merchant/payment-channel'
+            : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
+
+        try {
+            // Request ke API Tripay
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Authorization' => 'Bearer ' . $apiKey
+            ])->get($baseUrl);
+
+            if ($response->successful()) {
+                return response()->json($response->json());
+            }
+
+            // Jika gagal respon dari Tripay
+            Log::error("Tripay Channel Error: " . $response->body());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data channel pembayaran.'
+            ], 500);
+
+        } catch (\Exception $e) {
+            Log::error("Tripay Connection Error: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi ke server pembayaran bermasalah.'
+            ], 500);
+        }
+    }
+
 }
