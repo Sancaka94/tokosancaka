@@ -2446,21 +2446,25 @@ public function handleDanaCallback(Request $request)
         }
     }
 
-    /**
-     * API: Ambil Daftar Channel Tripay (Sesuai nama route getPaymentChannels)
-     */
-    public function getPaymentChannels()
+   public function getPaymentChannels()
     {
         $apiKey = config('tripay.api_key');
         $mode   = config('tripay.mode');
+
+        if (empty($apiKey)) {
+            return response()->json(['status' => 'error', 'message' => 'API Key belum diisi'], 500);
+        }
 
         $baseUrl = ($mode === 'production')
             ? 'https://tripay.co.id/api/merchant/payment-channel'
             : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
 
         try {
+            // [SOLUSI ANTI CLOUDFLARE]
+            // Tambahkan User-Agent Chrome agar tidak dianggap bot
             $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey
+                'Authorization' => 'Bearer ' . $apiKey,
+                'User-Agent'    => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             ])->get($baseUrl);
 
             if ($response->successful()) {
@@ -2470,9 +2474,12 @@ public function handleDanaCallback(Request $request)
                 ]);
             }
 
+            // Debugging: Log error jika masih gagal
+            \Illuminate\Support\Facades\Log::error("Tripay Error: " . $response->body());
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Gagal mengambil data Tripay.'
+                'message' => 'Gagal ambil data (Cek Log): ' . $response->status()
             ], 500);
 
         } catch (\Exception $e) {
