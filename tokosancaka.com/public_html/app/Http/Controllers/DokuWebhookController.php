@@ -240,12 +240,12 @@ class DokuWebhookController extends Controller
                                 'status' => 'processing', // Langsung proses
                                 'updated_at' => now()->timezone('Asia/Jakarta')
                             ]);
-                            Log::info("✅ Order Percetakan $orderId LUNAS.");
+                            Log::info("✅ Order SancakaPOS $orderId LUNAS.");
                             // Notif manual string karena struktur tabel beda dengan tenant
-                             $this->_sendFonnteMessage('085745808809', "🖨️ Order Percetakan Masuk & Lunas: *$orderId*");
+                             $this->_sendFonnteMessage('085745808809', "🖨️ Order SancakaPOS Masuk & Lunas: *$orderId*");
                         }
                     } catch (\Exception $e) {
-                        Log::error("❌ Gagal Update Order Percetakan: " . $e->getMessage());
+                        Log::error("❌ Gagal Update Order SancakaPOS: " . $e->getMessage());
                     }
                 }
 
@@ -377,8 +377,8 @@ private function _sendFonnteNotification($subdomain)
                "Halo Owner *{$subdomain}*,\n" .
                "Pembayaran sewa Anda telah kami terima.\n\n" .
                "Status: *ACTIVE* ✅\n" .
-               "Sistem: *Database Percetakan*\n" .
-               "Link Login: https://{$subdomain}.tokosancaka.com/public/login\n\n" .
+               "Sistem: *Database SancakaPOS*\n" .
+               "Link Login: https://{$subdomain}.tokosancaka.com/login\n\n" .
                "_Pesanan Anda sudah bisa diakses. Terima kasih!_";
 
         // 4. Kirim ke User & Admin
