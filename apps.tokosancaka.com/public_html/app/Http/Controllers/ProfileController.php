@@ -3,21 +3,31 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Services\KiriminAjaService; // Pastikan Service ini di-import
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Http; // Wajib untuk Geocoding
-use Illuminate\Support\Facades\Log;  // Wajib untuk Debugging
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
-
-use App\Services\KiriminAjaService; // <--- WAJIB IMPORT INI
+use Exception;
 
 class ProfileController extends Controller
 {
     /**
-     * Menampilkan halaman edit profil.
+     * [FIX] Menampilkan Halaman Profil (Read Only)
+     */
+    public function index(Request $request): View
+    {
+        return view('profile.index', [
+            'user' => $request->user(),
+        ]);
+    }
+
+    /**
+     * Menampilkan Form Edit Profil.
      */
     public function edit(Request $request): View
     {
@@ -27,16 +37,14 @@ class ProfileController extends Controller
     }
 
     /**
-     * UPDATE 1: INFORMASI DASAR (Nama, Email, HP, Logo)
+     * Update Informasi Dasar (Nama, Email, HP, Foto)
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        // 1. Fill data standar (Name, Email)
         $request->user()->fill($request->validated());
 
-        // 2. Logic Update No WhatsApp (Phone)
+        // Update No HP (Sanitasi)
         if ($request->has('phone')) {
-            // Sanitasi nomor HP (hapus karakter aneh, ubah 62 jadi 0)
             $phone = preg_replace('/[^0-9]/', '', $request->phone);
             if (substr($phone, 0, 2) === '62') {
                 $phone = '0' . substr($phone, 2);
@@ -44,19 +52,15 @@ class ProfileController extends Controller
             $request->user()->phone = $phone;
         }
 
-        // 3. Logic Upload Logo / Foto Profil
+        // Upload Logo
         if ($request->hasFile('logo')) {
-            // Hapus foto lama jika ada (dan bukan foto default sistem jika ada logic itu)
             if ($request->user()->logo && Storage::disk('public')->exists($request->user()->logo)) {
                 Storage::disk('public')->delete($request->user()->logo);
             }
-
-            // Simpan foto baru
             $path = $request->file('logo')->store('profile-photos', 'public');
             $request->user()->logo = $path;
         }
 
-        // 4. Reset verifikasi email jika email berubah
         if ($request->user()->isDirty('email')) {
             $request->user()->email_verified_at = null;
         }
@@ -67,33 +71,29 @@ class ProfileController extends Controller
     }
 
     /**
-     * UPDATE 2: ALAMAT LENGKAP & KOORDINAT (Integrasi KiriminAja)
+     * Update Alamat Lengkap & Koordinat
      */
     public function updateAddress(Request $request): RedirectResponse
     {
-        // 1. Validasi Input
-        $validated = $request->validate([
+        $request->validate([
             'address_detail' => 'required|string|max:500',
             'province'       => 'required|string|max:100',
             'regency'        => 'required|string|max:100',
-            'district'       => 'required|string|max:100', // Kecamatan
-            'village'        => 'required|string|max:100', // Kelurahan
+            'district'       => 'required|string|max:100',
+            'village'        => 'required|string|max:100',
             'postal_code'    => 'required|string|max:10',
-            'district_id'    => 'required|integer',        // ID Kecamatan KiriminAja
-            'subdistrict_id' => 'nullable|integer',        // ID Kelurahan KiriminAja
+            'district_id'    => 'required|integer',
+            'subdistrict_id' => 'nullable|integer',
             'latitude'       => 'nullable|numeric',
             'longitude'      => 'nullable|numeric',
         ]);
 
         $user = $request->user();
-
-        // 2. Logika Koordinat (Fallback Geocoding)
-        // Jika frontend (JS) gagal mendapatkan lat/lng, kita cari manual via Nominatim API
         $lat = $request->latitude;
         $lng = $request->longitude;
 
+        // Fallback Geocoding jika Lat/Lng kosong
         if (empty($lat) || empty($lng) || $lat == 0 || $lng == 0) {
-            // Gabungkan alamat untuk pencarian
             $queryAddress = implode(', ', [
                 $request->village,
                 $request->district,
@@ -102,7 +102,6 @@ class ProfileController extends Controller
             ]);
 
             try {
-                // Panggil API OpenStreetMap (Gratis)
                 $response = Http::timeout(5)
                     ->withHeaders(['User-Agent' => 'AplikasiSancaka/1.0'])
                     ->get("https://nominatim.openstreetmap.org/search", [
@@ -115,24 +114,21 @@ class ProfileController extends Controller
                 if ($response->successful() && !empty($response[0])) {
                     $lat = $response[0]['lat'];
                     $lng = $response[0]['lon'];
-                    Log::info("Geocoding Success for User {$user->id}: $lat, $lng");
                 }
             } catch (\Exception $e) {
-                Log::error("Geocoding Failed for User {$user->id}: " . $e->getMessage());
-                // Biarkan null jika gagal total
+                Log::error("Geocoding Failed: " . $e->getMessage());
             }
         }
 
-        // 3. Simpan ke Database
         $user->update([
             'address_detail' => $request->address_detail,
             'province'       => $request->province,
             'regency'        => $request->regency,
-            'district'       => $request->district, // Nama Kecamatan
-            'village'        => $request->village,  // Nama Kelurahan
+            'district'       => $request->district,
+            'village'        => $request->village,
             'postal_code'    => $request->postal_code,
-            'district_id'    => $request->district_id,    // ID Kecamatan (Penting utk Ongkir)
-            'subdistrict_id' => $request->subdistrict_id ?? 0, // ID Kelurahan (Penting utk Ongkir)
+            'district_id'    => $request->district_id,
+            'subdistrict_id' => $request->subdistrict_id ?? 0,
             'latitude'       => $lat,
             'longitude'      => $lng,
         ]);
@@ -141,7 +137,23 @@ class ProfileController extends Controller
     }
 
     /**
-     * Delete the user's account.
+     * API Pencarian Alamat (Dipanggil AJAX)
+     */
+    public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
+    {
+        $request->validate(['search' => 'required|string|min:3']);
+
+        try {
+            $results = $kirimaja->searchAddress($request->input('search'));
+            return response()->json($results['data'] ?? []);
+        } catch (Exception $e) {
+            Log::error('Profile Address Search Failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Gagal mengambil data alamat.'], 500);
+        }
+    }
+
+    /**
+     * Hapus Akun
      */
     public function destroy(Request $request): RedirectResponse
     {
@@ -153,6 +165,10 @@ class ProfileController extends Controller
 
         Auth::logout();
 
+        if ($user->logo) {
+            Storage::disk('public')->delete($user->logo);
+        }
+
         $user->delete();
 
         $request->session()->invalidate();
@@ -161,26 +177,4 @@ class ProfileController extends Controller
         return Redirect::to('/');
     }
 
-    /**
-     * [BARU] API Pencarian Alamat untuk Form Profil
-     * Dipanggil via AJAX dari view profile.partials.update-profile-information-form
-     */
-    public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
-    {
-        $request->validate([
-            'search' => 'required|string|min:3'
-        ]);
-
-        try {
-            // Memanggil service KiriminAja untuk mencari kelurahan/kecamatan
-            $results = $kirimaja->searchAddress($request->input('search'));
-
-            // Mengembalikan response JSON untuk AlpineJS
-            return response()->json($results['data'] ?? []);
-
-        } catch (Exception $e) {
-            Log::error('Profile Address Search Failed: ' . $e->getMessage());
-            return response()->json(['error' => 'Gagal mengambil data alamat.'], 500);
-        }
-    }
 }
