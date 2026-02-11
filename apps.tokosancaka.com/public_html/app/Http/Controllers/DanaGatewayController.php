@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Auth; // [TAMBAHAN] Wajib ada untuk mengambil user login
 use Illuminate\Support\Str;
 
 class DanaGatewayController extends Controller
