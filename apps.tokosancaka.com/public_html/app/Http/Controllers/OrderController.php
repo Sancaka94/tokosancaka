@@ -962,19 +962,24 @@ class OrderController extends Controller
                     break;
 
                 // --- [INI YANG KITA TUNGGU] ---
+                // --- [METODE DANA SDK (WIDGET) - FIX MANDATORY FIELD] ---
                 case 'dana_sdk':
                     Log::info("[DANA SDK] Memulai request widget untuk Order #{$orderNumber}");
+
+                    // Pindahkan logic ke dalam try-catch yang me-lempar error (re-throw)
+                    // Supaya kalau DANA Error, Transaksi BATAL (Rollback) dan muncul pesan error di layar
                     try {
                         $config = new Configuration();
                         $config->setApiKey('PRIVATE_KEY', config('services.dana.private_key'));
                         $config->setApiKey('X_PARTNER_ID', config('services.dana.x_partner_id'));
                         $config->setApiKey('ORIGIN', config('services.dana.origin'));
-                        $config->setApiKey('DANA_ENV', Env::SANDBOX);
+                        $config->setApiKey('DANA_ENV', Env::SANDBOX); // Ubah ke Env::PRODUCTION jika live
 
                         $apiInstance = new WidgetApi(null, $config);
+
                         $orderObj = new DanaOrder();
                         $orderObj->setOrderTitle("Invoice #" . $orderNumber);
-                        $orderObj->setOrderMemo("Pembayaran Order");
+                        $orderObj->setOrderMemo("Pembayaran Order Sancaka"); // Tambah memo
 
                         $envInfo = new EnvInfo();
                         $envInfo->setSourcePlatform("IPG");
@@ -982,6 +987,11 @@ class OrderController extends Controller
                         $envInfo->setWebsiteLanguage("ID");
 
                         $addInfo = new WidgetPaymentRequestAdditionalInfo();
+
+                        // [FIX UTAMA: TAMBAHKAN PRODUCT CODE]
+                        // Kode ini wajib untuk DANA Widget / SNAP
+                        $addInfo->setProductCode("51051000100000000001");
+
                         $addInfo->setOrder($orderObj);
                         $addInfo->setEnvInfo($envInfo);
 
@@ -994,20 +1004,27 @@ class OrderController extends Controller
                         $money->setCurrency("IDR");
                         $paymentRequest->setAmount($money);
 
-                        // Return URL
+                        // Setup URL Redirect
                         $urlParam = new UrlParam();
                         $currentSubdomain = explode('.', $request->getHost())[0];
                         $returnUrl = route('orders.invoice', ['subdomain' => $currentSubdomain, 'orderNumber' => $orderNumber]);
-                        if (!str_contains($returnUrl, 'https://')) $returnUrl = str_replace('http://', 'https://', $returnUrl);
+
+                        // Paksa HTTPS jika di production/ngrok
+                        if (!str_contains($returnUrl, 'https://')) {
+                            $returnUrl = str_replace('http://', 'https://', $returnUrl);
+                        }
 
                         $urlParam->setUrl($returnUrl);
                         $urlParam->setType("PAY_RETURN");
                         $urlParam->setIsDeeplink("Y");
+
                         $paymentRequest->setUrlParams([$urlParam]);
                         $paymentRequest->setAdditionalInfo($addInfo);
 
+                        // Eksekusi Request
                         $result = $apiInstance->widgetPayment($paymentRequest);
 
+                        // Ambil URL dari berbagai kemungkinan respon SDK
                         if (method_exists($result, 'getWebRedirectUrl')) {
                             $paymentUrl = $result->getWebRedirectUrl();
                         } elseif (isset($result->webRedirectUrl)) {
@@ -1019,10 +1036,26 @@ class OrderController extends Controller
                             $triggerWaType = 'unpaid';
                             Log::info("[DANA SDK] Success URL: $paymentUrl");
                         } else {
-                            throw new \Exception("Gagal dapat URL DANA.");
+                            // Jika response 200 OK tapi URL kosong
+                            throw new \Exception("Respon DANA Sukses tapi URL Pembayaran kosong.");
                         }
+
                     } catch (\Exception $e) {
-                        Log::error("[DANA SDK] Error: " . $e->getMessage());
+                        Log::error("[DANA SDK] FATAL ERROR: " . $e->getMessage());
+
+                        // Ambil pesan error detail dari Body jika ada
+                        $pesanError = "Gagal koneksi ke DANA.";
+                        if (method_exists($e, 'getResponseBody')) {
+                            $body = $e->getResponseBody();
+                            Log::error("[DANA SDK] BODY: " . json_encode($body));
+                            if (isset($body->responseMessage)) {
+                                $pesanError .= " " . $body->responseMessage;
+                            }
+                        }
+
+                        // [PENTING] Lempar error lagi supaya Controller melakukan ROLLBACK
+                        // Jadi Order TIDAK TERSIMPAN jika DANA Gagal.
+                        throw new \Exception($pesanError);
                     }
                     break;
 
