@@ -205,6 +205,14 @@
                                         </div>
                                     </div>
 
+                                    <div class="mt-2 flex items-center gap-2 p-2 bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm">
+                                        <input type="checkbox" id="save_customer" x-model="saveCustomer"
+                                            class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 cursor-pointer">
+                                        <label for="save_customer" class="text-[10px] font-black text-emerald-700 uppercase cursor-pointer select-none">
+                                            <i class="fas fa-user-plus mr-1"></i> Simpan ke Daftar Pelanggan
+                                        </label>
+                                    </div>
+
                                     {{-- Dropdown Hasil Pencarian (Untuk Nama) --}}
                                     <div x-show="customerNameSearchResults.length > 0" @click.outside="customerNameSearchResults = []"
                                         class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
