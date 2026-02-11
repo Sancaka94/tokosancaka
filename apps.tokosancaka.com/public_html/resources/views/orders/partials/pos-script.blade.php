@@ -819,11 +819,29 @@ function posSystem() {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
                     body: JSON.stringify({
+                        // --- DATA UNTUK CEK ONGKIR ---
                         destination_district_id: this.destinationDistrictId,
                         destination_subdistrict_id: this.destinationSubdistrictId,
-                        postal_code: this.destinationZipCode,
                         destination_text: this.searchQuery,
-                        weight: finalWeight
+                        weight: finalWeight,
+
+                        // --- [TAMBAHAN] DATA UNTUK AUTO-SAVE CUSTOMER ---
+                        // 'save_customer' diambil dari checkbox x-model="saveCustomer"
+                        save_customer: this.saveCustomer,
+                        customer_name: this.customerName,
+                        customer_phone: this.customerPhone,
+                        customer_address_detail: this.customerAddressDetail,
+
+                        // Detail wilayah untuk kolom database CRM
+                        province_name: this.selectedProvince || '',
+                        regency_name: this.selectedRegency || '',
+                        district_name: this.selectedDistrict || '',
+                        village_name: this.selectedVillage || '',
+                        postal_code: this.destinationZipCode || '',
+
+                        // Koordinat tujuan (jika ada)
+                        receiver_lat: this.latitude,
+                        receiver_lng: this.longitude
                     })
                 });
 
@@ -831,6 +849,8 @@ function posSystem() {
 
                 if (result.status === 'success') {
                     this.courierList = result.data;
+                    // Beri feedback kecil di console
+                    if(this.saveCustomer) console.log("CRM: Instruksi simpan pelanggan terkirim.");
                 } else {
                     alert('Gagal cek ongkir: ' + result.message);
                 }

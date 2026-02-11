@@ -205,14 +205,6 @@
                                         </div>
                                     </div>
 
-                                    <div class="mt-2 flex items-center gap-2 p-2 bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm">
-                                        <input type="checkbox" id="save_customer" x-model="saveCustomer"
-                                            class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 cursor-pointer">
-                                        <label for="save_customer" class="text-[10px] font-black text-emerald-700 uppercase cursor-pointer select-none">
-                                            <i class="fas fa-user-plus mr-1"></i> Simpan ke Daftar Pelanggan
-                                        </label>
-                                    </div>
-
                                     {{-- Dropdown Hasil Pencarian (Untuk Nama) --}}
                                     <div x-show="customerNameSearchResults.length > 0" @click.outside="customerNameSearchResults = []"
                                         class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
@@ -266,21 +258,25 @@
                             <label class="text-[10px] font-bold text-slate-500">Cari Kecamatan / Kelurahan*</label>
                             <div class="relative mt-1">
                                 <input type="text" x-model="searchQuery" @input.debounce.500ms="searchLocation()" placeholder="Ketik nama kecamatan..."
-                                       class="w-full pl-8 pr-4 py-2 border rounded-lg border-slate-300 text-base sm:text-sm shadow-sm">
+                                    class="w-full pl-8 pr-4 py-2 border rounded-lg border-slate-300 text-base sm:text-sm shadow-sm">
                                 <i class="absolute text-xs fas fa-search left-3 top-3 text-slate-400"></i>
 
-                                <div x-show="searchResults.length > 0" @click.outside="searchResults = []" class="absolute z-50 w-full mt-1 overflow-y-auto bg-white border shadow-xl border-slate-200 rounded-lg max-h-48">
-                                    <template x-for="loc in searchResults">
-                                        <div @click="selectLocation(loc)" class="px-4 py-2 text-xs border-b cursor-pointer hover:bg-blue-50 border-slate-50">
-                                            <p class="font-bold text-slate-700" x-text="loc.full_address"></p>
-                                        </div>
-                                    </template>
                                 </div>
-                            </div>
                         </div>
+
                         <div class="mb-3">
                             <label class="text-[10px] font-bold text-slate-500">Detail Alamat (Jalan, RT/RW)*</label>
-                            <textarea x-model="customerAddressDetail" rows="2" class="w-full px-3 py-2 mt-1 border rounded-lg border-slate-300 text-base sm:text-sm resize-none shadow-sm"></textarea>
+                            <textarea x-model="customerAddressDetail" rows="2"
+                                    class="w-full px-3 py-2 mt-1 border rounded-lg border-slate-300 text-base sm:text-sm resize-none shadow-sm"
+                                    placeholder="Contoh: Jl. Sudirman No. 123, RT 01/02"></textarea>
+                        </div>
+
+                        <div class="mt-4 flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm transition-all hover:bg-emerald-100">
+                            <input type="checkbox" id="save_customer" x-model="saveCustomer"
+                                class="w-5 h-5 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 cursor-pointer">
+                            <label for="save_customer" class="text-xs font-black text-emerald-700 uppercase cursor-pointer select-none flex items-center gap-2">
+                                <i class="fas fa-user-plus text-sm"></i> SIMPAN KE DAFTAR PELANGGAN
+                            </label>
                         </div>
 
                         <div x-show="isLoadingShipping" class="py-4 text-center border border-dashed rounded-lg bg-slate-50 border-slate-300">
