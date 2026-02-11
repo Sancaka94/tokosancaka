@@ -29,6 +29,8 @@ class User extends Authenticatable
         'dana_access_token',
         'dana_token_expiry',
         'dana_refresh_token',
+
+        'dana_balance',  // <--- INI WAJIB ADA AGAR BISA DI-UPDATE
     ];
 
     /**
