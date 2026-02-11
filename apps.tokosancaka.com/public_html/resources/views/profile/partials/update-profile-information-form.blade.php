@@ -138,20 +138,21 @@
             </div>
 
             <ul x-show="results.length > 0"
-                class="absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto"
-                style="display: none;"
-                @click.outside="results = []">
-                <template x-for="item in results" :key="item.id">
-                    <li @click="selectAddress(item)"
-                        class="px-4 py-2 hover:bg-indigo-50 cursor-pointer text-sm text-gray-700 border-b last:border-b-0 flex justify-between items-center">
-                        <div>
-                            <span class="font-bold block" x-text="item.text"></span>
-                            <span class="text-xs text-gray-500" x-text="item.zip_code"></span>
-                        </div>
-                        <i class="fas fa-chevron-right text-xs text-gray-400"></i>
-                    </li>
-                </template>
-            </ul>
+    class="absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto"
+    style="display: none;"
+    @click.outside="results = []">
+    <template x-for="item in results" :key="item.id || Math.random()">
+        <li @click="selectAddress(item)"
+            class="px-4 py-2 hover:bg-indigo-50 cursor-pointer text-sm text-gray-700 border-b last:border-b-0 flex justify-between items-center">
+            <div>
+                {{-- GUNAKAN FUNGSI getLabel() AGAR TEKS PASTI MUNCUL --}}
+                <span class="font-bold block" x-text="getLabel(item)"></span>
+                <span class="text-xs text-gray-500" x-text="item.zip_code || item.postal_code"></span>
+            </div>
+            <i class="fas fa-chevron-right text-xs text-gray-400"></i>
+        </li>
+    </template>
+</ul>
             <p x-show="loading" class="text-xs text-blue-500 mt-1 animate-pulse">Sedang mencari data...</p>
         </div>
 
@@ -199,63 +200,95 @@
         </div>
     </form>
 
-    {{-- SCRIPT ALPINE JS UNTUK PENCARIAN --}}
-    <script>
-        function addressSearch() {
-            return {
-                query: '',
-                results: [],
-                loading: false,
-                // Data Awal dari Database
-                selected: {
-                    province: '{{ $user->province }}',
-                    regency: '{{ $user->regency }}',
-                    district: '{{ $user->district }}',
-                    village: '{{ $user->village }}',
-                    postal_code: '{{ $user->postal_code }}',
-                    district_id: '{{ $user->district_id }}',
-                    subdistrict_id: '{{ $user->subdistrict_id }}',
-                    lat: '{{ $user->latitude }}',
-                    lng: '{{ $user->longitude }}'
-                },
+   <script>
+    function addressSearch() {
+        return {
+            query: '',
+            results: [],
+            loading: false,
+            // Data Awal dari Database
+            selected: {
+                province: '{{ $user->province }}',
+                regency: '{{ $user->regency }}',
+                district: '{{ $user->district }}',
+                village: '{{ $user->village }}',
+                postal_code: '{{ $user->postal_code }}',
+                district_id: '{{ $user->district_id }}',
+                subdistrict_id: '{{ $user->subdistrict_id }}',
+                lat: '{{ $user->latitude }}',
+                lng: '{{ $user->longitude }}'
+            },
 
-                search() {
-                    if (this.query.length < 3) { this.results = []; return; }
-                    this.loading = true;
+            search() {
+                if (this.query.length < 3) { this.results = []; return; }
+                this.loading = true;
 
-                    // Panggil API Search Address (Pastikan route ini ada dan bisa diakses user)
-                    // Gunakan route 'api.search_address' atau sesuaikan dengan route Anda
-                    fetch(`{{ route('profile.search_address') }}?search=${this.query}`)
-                        .then(res => res.json())
-                        .then(data => {
+                // Panggil API
+                fetch(`{{ route('profile.search_address') }}?search=${this.query}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        this.loading = false;
+
+                        // [DEBUG] Cek hasil API di Console Browser (Tekan F12 -> Console)
+                        console.log("Hasil API KiriminAja:", data);
+
+                        if (Array.isArray(data)) {
                             this.results = data;
-                            this.loading = false;
-                        })
-                        .catch(() => {
-                            this.loading = false;
-                            this.results = [];
-                        });
-                },
+                        } else {
+                            // Jika formatnya { data: [...] }
+                            this.results = data.data || [];
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        this.loading = false;
+                        this.results = [];
+                    });
+            },
 
-                selectAddress(item) {
-                    // Parsing Text dari API KiriminAja (Format: Kelurahan, Kecamatan, Kota, Provinsi)
-                    const parts = item.text.split(',').map(s => s.trim());
+            // Fungsi untuk menampilkan teks di list (Handle beda versi API)
+            getLabel(item) {
+                // Coba ambil field yang mungkin muncul
+                return item.text || item.address || item.name || (item.kelurahan + ', ' + item.kecamatan) || 'Nama tidak ditemukan';
+            },
 
+            // Fungsi saat diklik
+            selectAddress(item) {
+                console.log("Item dipilih:", item); // Debug item yang dipilih
+
+                // Ambil teks lengkap
+                let fullText = this.getLabel(item);
+
+                // Parsing Text (Asumsi Format: Kelurahan, Kecamatan, Kota, Provinsi)
+                const parts = fullText.split(',').map(s => s.trim());
+
+                // LOGIKA MAPPING DATA (Sesuaikan urutan array jika hasil API berbeda)
+                // Jika format string: "Desa, Kec, Kab, Prov"
+                if (parts.length >= 4) {
                     this.selected.village = parts[0] || '';
                     this.selected.district = parts[1] || '';
                     this.selected.regency = parts[2] || '';
                     this.selected.province = parts[3] || '';
-                    this.selected.postal_code = item.zip_code || '';
-
-                    // Mapping ID untuk Ongkir
-                    this.selected.district_id = item.kecamatan_id || 0;
-                    this.selected.subdistrict_id = item.id || 0;
-
-                    // Reset pencarian
-                    this.query = '';
-                    this.results = [];
+                } else {
+                    // Fallback jika format string pendek (manual dari item object jika ada)
+                    this.selected.village = item.kelurahan || parts[0] || '';
+                    this.selected.district = item.kecamatan || parts[1] || '';
+                    this.selected.regency = item.kabupaten || item.city || '';
+                    this.selected.province = item.provinsi || item.province || '';
                 }
+
+                this.selected.postal_code = item.zip_code || item.postal_code || '';
+
+                // Mapping ID (Sangat Penting untuk Ongkir)
+                // Cek nama field ID kecamatan/kelurahan di console log
+                this.selected.district_id = item.kecamatan_id || item.district_id || 0;
+                this.selected.subdistrict_id = item.id || item.subdistrict_id || 0;
+
+                // Reset pencarian
+                this.query = '';
+                this.results = [];
             }
         }
-    </script>
+    }
+</script>
 </section>
