@@ -371,15 +371,19 @@ class OrderController extends Controller
                 'borzo'    => ['name' => 'Borzo',       'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png'],
             ];
 
-            // 2. CONFIG
-            $originDistrict    = config('services.kiriminaja.origin_district_id');
-            $originSubDistrict = config('services.kiriminaja.origin_subdistrict_id');
+            // [UPDATE] Ambil Data ORIGIN dari Database User (Bukan Config)
+            $user = Auth::user();
+            if (empty($user->district_id)) {
+                return response()->json(['status' => 'error', 'message' => 'Lengkapi alamat Anda di profil untuk cek ongkir.']);
+            }
 
-            $originLat = config('services.kiriminaja.origin_lat');
-            $originLng = config('services.kiriminaja.origin_long');
-            $originAddr = config('services.kiriminaja.origin_address', 'Toko Sancaka');
+            $originDistrict    = $user->district_id;
+            $originSubDistrict = $user->subdistrict_id ?? 0;
+            $originLat         = $user->latitude;
+            $originLng         = $user->longitude;
+            $originAddr        = $user->address_detail ?? $user->name;
 
-            Log::info("CONFIG ORIGIN: Lat: $originLat, Lng: $originLng");
+            Log::info("CEK ONGKIR USER ID {$user->id}: Dist: $originDistrict, Lat: $originLat");
 
             // 3. DATA TUJUAN
             $destDistrict    = $request->destination_district_id;
@@ -795,71 +799,73 @@ class OrderController extends Controller
             // === SKENARIO A: PENGIRIMAN PAKET (SHIPPING) ===
             if ($request->delivery_type === 'shipping') {
 
-                // 1. Validasi User Login
                 if (!$currentUser) {
                     throw new \Exception("Sesi Admin berakhir. Silakan login ulang.");
                 }
 
-                // [BARU] VALIDASI ALAMAT PENGIRIM DARI DATABASE USER
-                // Pastikan user sudah melengkapi profilnya
+                // [VALIDASI] Cek Kelengkapan Alamat Pengirim di Database User
                 if (empty($currentUser->district_id) || empty($currentUser->subdistrict_id)) {
-                    throw new \Exception("Alamat Toko/Pengirim belum lengkap. Silakan lengkapi di menu Profil (Kecamatan & Kelurahan wajib ada).");
+                    throw new \Exception("Alamat profil Anda belum lengkap (Kecamatan/Kelurahan belum diset). Silakan lengkapi di menu Profil agar bisa melakukan pengiriman.");
                 }
 
-                // [PERBAIKAN LOGIKA] Admin hanya bayar ONGKIR ke Pusat via Saldo
+                // Data Origin (Pengirim) diambil langsung dari Database User
+                $originDistrictId    = (int) $currentUser->district_id;
+                $originSubdistrictId = (int) $currentUser->subdistrict_id;
+                $originLat           = $currentUser->latitude;
+                $originLng           = $currentUser->longitude;
+                $originName          = $currentUser->name;
+                $originPhone         = $currentUser->phone ?? '085745808809'; // Fallback phone jika kosong
+
+                // Susun Alamat Lengkap Pengirim dari DB
+                $originFullAddress = implode(', ', array_filter([
+                    $currentUser->address_detail,
+                    $currentUser->village,
+                    $currentUser->district,
+                    $currentUser->regency,
+                    $currentUser->province,
+                    $currentUser->postal_code
+                ]));
+
+                // Admin membayar biaya ongkir ke pusat menggunakan Saldo System
                 $tagihanKeAdmin = (int) $biayaOngkir;
 
-                Log::info("Cek Saldo Admin ID: {$currentUser->id}, Saldo: {$currentUser->saldo}, Tagihan (Ongkir): {$tagihanKeAdmin}");
+                Log::info("SHIPPING PROCESS - User ID: {$currentUser->id}, Saldo: {$currentUser->saldo}, Tagihan: {$tagihanKeAdmin}");
 
-                // 2. CEK SALDO ADMIN
+                // 2. CEK SALDO ADMIN (Cukup untuk bayar ongkir atau tidak)
                 if ($currentUser->saldo >= $tagihanKeAdmin) {
 
-                    // A. Potong Saldo Admin (Hanya Ongkir)
+                    // A. Potong Saldo Admin
                     $currentUser->decrement('saldo', $tagihanKeAdmin);
 
                     // B. PROSES KIRIMINAJA (Booking Kurir)
-                    Log::info("[SHIPPING] Saldo Cukup. Memproses KiriminAja...");
+                    Log::info("[SHIPPING] Saldo Cukup. Memproses KiriminAja dengan Origin DB...");
 
-                    // --- Mulai Logic Geocoding & Payload KiriminAja ---
+                    // Geocoding untuk Destination (Penerima)
                     $destLat = null; $destLng = null;
                     if ($request->filled('destination_text')) {
-                        // Geocoding untuk Destination (Penerima) tetap pakai helper karena input manual
                         $geo = $this->geocode($request->destination_text);
                         if ($geo) { $destLat = (string)$geo['lat']; $destLng = (string)$geo['lng']; }
                     }
 
-                    $serviceCode = $request->courier_code;
-                    if (empty($serviceCode)) $serviceCode = 'jne';
-
+                    $serviceCode = $request->courier_code ?? 'jne';
                     $isInstant = (str_contains($serviceCode, 'gosend') || str_contains($serviceCode, 'grab'));
                     $kaResponse = null;
 
-                    // [BARU] Susun Alamat Lengkap Pengirim dari Database
-                    $originFullAddress = $currentUser->address_detail . ', ' .
-                                         $currentUser->village . ', ' .
-                                         $currentUser->district . ', ' .
-                                         $currentUser->regency . ', ' .
-                                         $currentUser->province;
-
                     if ($isInstant) {
-                         if (!$destLat || !$destLng) throw new \Exception("Gagal Instant: Koordinat tujuan hilang.");
-
-                         // [BARU] Validasi Koordinat Pengirim
-                         if (empty($currentUser->latitude) || empty($currentUser->longitude)) {
-                             throw new \Exception("Koordinat Toko belum disetting. Silakan update di menu Profil.");
-                         }
+                         // Validasi Koordinat (Wajib untuk Gosend/Grab)
+                         if (!$destLat || !$destLng) throw new \Exception("Gagal Instant: Koordinat tujuan tidak akurat. Mohon pilih lokasi dari saran pencarian.");
+                         if (empty($originLat) || empty($originLng)) throw new \Exception("Gagal Instant: Koordinat toko Anda belum diatur di Profil.");
 
                          $instantPayload = [
                             'order_id'    => $orderNumber,
                             'service'     => $serviceCode,
                             'item_price'  => (int) $subtotal,
                             'origin'      => [
-                                // [UPDATE] Ambil dari Database User
-                                'lat'     => (string) $currentUser->latitude,
-                                'long'    => (string) $currentUser->longitude,
+                                'lat'     => (string) $originLat,
+                                'long'    => (string) $originLng,
                                 'address' => $originFullAddress,
-                                'phone'   => $currentUser->phone ?? '081234567890',
-                                'name'    => $currentUser->name
+                                'phone'   => $originPhone,
+                                'name'    => $originName
                             ],
                             'destination' => [
                                 'lat' => $destLat, 'long' => $destLng, 'address' => $request->destination_text,
@@ -870,21 +876,19 @@ class OrderController extends Controller
                         $kaResponse = $kiriminAja->createInstantOrder($instantPayload);
 
                     } else {
-                        // Payload Reguler
+                        // Logic Jadwal Pickup Reguler
                         $pickupSchedule = now()->addMinutes(60)->format('Y-m-d H:i:s');
                         if (now()->hour >= 14 || now()->isSunday()) {
                             $pickupSchedule = now()->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
                         }
 
                         $kaPayload = [
-                            // [UPDATE] Ambil dari Database User
                             'address'      => $originFullAddress,
-                            'phone'        => $currentUser->phone ?? '081234567890',
-                            'name'         => $currentUser->name,
-                            'kecamatan_id' => (int) $currentUser->district_id,    // Dari DB User
-                            'kelurahan_id' => (int) $currentUser->subdistrict_id, // Dari DB User
+                            'phone'        => $originPhone,
+                            'name'         => $originName,
+                            'kecamatan_id' => $originDistrictId,    // Dari DB User
+                            'kelurahan_id' => $originSubdistrictId, // Dari DB User
                             'zipcode'      => $currentUser->postal_code ?? '00000',
-
                             'schedule'     => $pickupSchedule,
                             'platform_name'=> 'Sancaka Store',
                             'packages'     => [[
@@ -911,7 +915,7 @@ class OrderController extends Controller
                         $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
                     }
 
-                    // Cek Hasil KiriminAja
+                    // 3. CEK RESPON API KIRIMINAJA
                     if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
                         $shippingRef = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
 
@@ -929,14 +933,13 @@ class OrderController extends Controller
                         $isShippingSuccess = true;
 
                     } else {
-                        // Jika Gagal Booking Kurir, REFUND Saldo Admin
+                        // Kembalikan saldo jika booking gagal
                         $currentUser->increment('saldo', $tagihanKeAdmin);
                         throw new \Exception("Gagal Booking Kurir: " . ($kaResponse['text'] ?? 'Unknown Error'));
                     }
 
                 } else {
-                    Log::warning("[SHIPPING] Saldo Admin Tidak Cukup untuk Ongkir.");
-                    throw new \Exception("Saldo Deposit Kurang untuk membayar Ongkir (Rp " . number_format($tagihanKeAdmin) . "). Saldo Anda: Rp " . number_format($currentUser->saldo) . ". Silakan Topup Saldo terlebih dahulu.");
+                    throw new \Exception("Saldo tidak cukup untuk membayar Ongkir (Butuh: Rp " . number_format($tagihanKeAdmin) . "). Saldo Anda: Rp " . number_format($currentUser->saldo));
                 }
 
             } else {
