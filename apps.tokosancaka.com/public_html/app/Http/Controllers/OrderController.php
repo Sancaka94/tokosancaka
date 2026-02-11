@@ -946,34 +946,39 @@ class OrderController extends Controller
                     }
 
                     // 3. CEK RESPON API KIRIMINAJA
+                    // 3. CEK RESPON API KIRIMINAJA
                     if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
                         $shippingRef = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
 
-                        // --- [MULAI PERBAIKAN LOGIKA] ---
-                        // Cek apakah user memilih pembayaran Online (DANA/Tripay/Doku)
+                        // ============================================================
+                        // [FIX LOGIKA PEMBAYARAN ONLINE + PENGIRIMAN]
+                        // ============================================================
+                        // Cek apakah metode bayar aslinya adalah DANA/Tripay/Doku
                         $isOnlinePayment = in_array($inputMethod, ['dana', 'dana_sdk', 'tripay', 'doku']);
 
                         if ($isOnlinePayment) {
                             // KASUS 1: BAYAR ONLINE (DANA/TRIPAY)
-                            // Jangan tandai lunas dulu, biarkan status 'unpaid' agar Switch Case di bawah jalan
+                            // Jangan tandai lunas dulu! Biarkan status 'unpaid' agar Switch Case di bawah jalan
+                            // Admin menalangi ongkir dulu, nanti uangnya balik saat customer bayar DANA.
+
                             $order->update([
                                 'shipping_ref'   => $shippingRef,
-                                'note'           => $catatanSistem . "\n[RESI] " . $shippingRef,
-                                'payment_status' => 'unpaid', // Tetap UNPAID
-                                'status'         => 'pending'
+                                'note'           => $catatanSistem . "\n[RESI OTOMATIS] " . $shippingRef,
+                                'payment_status' => 'unpaid', // <--- TETAP UNPAID
+                                'status'         => 'pending' // <--- TETAP PENDING
                             ]);
 
-                            // PENTING: Jangan ubah $metodeBayarFix agar masuk ke case 'dana_sdk' nanti
-                            // $metodeBayarFix tetap sesuai input awal ($request->payment_method)
+                            // PENTING: Jangan ubah $metodeBayarFix!
+                            // Biarkan tetap 'dana_sdk' supaya masuk ke switch case di bawah.
 
                         } else {
                             // KASUS 2: BAYAR TUNAI / SALDO / COD
-                            // Tandai lunas karena Saldo Admin sudah terpotong untuk ongkir
+                            // Tandai lunas karena Saldo Admin sudah terpotong & Uang Cash sudah diterima
                             $order->update([
                                 'shipping_ref'   => $shippingRef,
-                                'note'           => $catatanSistem . "\n[RESI] " . $shippingRef . "\n[SALDO ADMIN] Terpotong Ongkir Rp " . number_format($tagihanKeAdmin),
+                                'note'           => $catatanSistem . "\n[RESI OTOMATIS] " . $shippingRef . "\n[SALDO ADMIN] Terpotong Ongkir Rp " . number_format($tagihanKeAdmin),
                                 'payment_status' => 'paid',
-                                'payment_method' => 'saldo_admin', // Override method
+                                'payment_method' => 'saldo_admin', // Override method jadi saldo_admin
                                 'status'         => 'processing'
                             ]);
 
@@ -981,7 +986,6 @@ class OrderController extends Controller
                             $metodeBayarFix = 'saldo_admin'; // Ubah agar switch case bawah skip payment gateway
                             $triggerWaType = 'paid';
                         }
-                        // --- [SELESAI PERBAIKAN] ---
 
                         $isShippingSuccess = true;
 
