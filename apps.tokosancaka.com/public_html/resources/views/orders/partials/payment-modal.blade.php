@@ -205,6 +205,7 @@
                                         </div>
                                     </div>
 
+
                                     {{-- Dropdown Hasil Pencarian (Untuk Nama) --}}
                                     <div x-show="customerNameSearchResults.length > 0" @click.outside="customerNameSearchResults = []"
                                         class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
@@ -255,14 +256,36 @@
 
                     <div x-show="deliveryType === 'shipping'">
                         <div class="mb-3">
-                            <label class="text-[10px] font-bold text-slate-500">Cari Kecamatan / Kelurahan*</label>
-                            <div class="relative mt-1">
-                                <input type="text" x-model="searchQuery" @input.debounce.500ms="searchLocation()" placeholder="Ketik nama kecamatan..."
-                                    class="w-full pl-8 pr-4 py-2 border rounded-lg border-slate-300 text-base sm:text-sm shadow-sm">
-                                <i class="absolute text-xs fas fa-search left-3 top-3 text-slate-400"></i>
+                        <label class="text-[10px] font-bold text-slate-500">Cari Kecamatan / Kelurahan*</label>
 
-                                </div>
+                        <div class="relative mt-1">
+                            <input type="text"
+                                x-model="searchQuery"
+                                @input.debounce.500ms="searchLocation()"
+                                placeholder="Ketik nama kecamatan..."
+                                class="w-full pl-8 pr-4 py-2 border rounded-lg border-slate-300 text-base sm:text-sm shadow-sm">
+
+                            <i class="absolute text-xs fas fa-search left-3 top-3 text-slate-400"></i>
+
+                            <ul x-show="searchResults.length > 0"
+                                style="display: none;"
+                                @click.outside="searchResults = []"
+                                class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+
+                                <template x-for="item in searchResults" :key="item.subdistrict_id">
+                                    <li @click="selectLocation(item)"
+                                        class="px-4 py-2 text-xs border-b cursor-pointer hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                                        <span x-text="item.full_address"></span>
+                                    </li>
+                                </template>
+
+                                <li x-show="searchResults.length === 0" class="px-4 py-2 text-xs text-red-500">
+                                    Tidak ditemukan
+                                </li>
+                            </ul>
+
                         </div>
+                    </div>
 
                         <div class="mb-3">
                             <label class="text-[10px] font-bold text-slate-500">Detail Alamat (Jalan, RT/RW)*</label>
