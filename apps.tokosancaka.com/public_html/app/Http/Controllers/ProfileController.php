@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Http; // Wajib untuk Geocoding
 use Illuminate\Support\Facades\Log;  // Wajib untuk Debugging
 use Illuminate\View\View;
 
+use App\Services\KiriminAjaService; // <--- WAJIB IMPORT INI
+
 class ProfileController extends Controller
 {
     /**
@@ -157,5 +159,28 @@ class ProfileController extends Controller
         $request->session()->regenerateToken();
 
         return Redirect::to('/');
+    }
+
+    /**
+     * [BARU] API Pencarian Alamat untuk Form Profil
+     * Dipanggil via AJAX dari view profile.partials.update-profile-information-form
+     */
+    public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
+    {
+        $request->validate([
+            'search' => 'required|string|min:3'
+        ]);
+
+        try {
+            // Memanggil service KiriminAja untuk mencari kelurahan/kecamatan
+            $results = $kirimaja->searchAddress($request->input('search'));
+
+            // Mengembalikan response JSON untuk AlpineJS
+            return response()->json($results['data'] ?? []);
+
+        } catch (Exception $e) {
+            Log::error('Profile Address Search Failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Gagal mengambil data alamat.'], 500);
+        }
     }
 }

@@ -591,4 +591,11 @@ Route::middleware('auth')->group(function () {
 
     // [BARU] Route Update Alamat Lengkap
     Route::patch('/profile/address', [ProfileController::class, 'updateAddress'])->name('profile.address.update');
+    // [FIX] Route API Search Alamat sekarang mengarah ke ProfileController
+    Route::get('/profile/search-address', [ProfileController::class, 'searchAddressApi'])
+        ->name('profile.search_address');
+
 });
+
+
+
