@@ -106,99 +106,99 @@
         </p>
     </header>
 
-    {{-- Form Address mengarah ke route 'profile.address.update' --}}
-    <form method="post" action="{{ route('profile.address.update') }}" class="space-y-6">
-        @csrf
-        @method('patch')
+    {{-- PENTING: x-data diletakkan di FORM agar mencakup semua input di dalamnya --}}
+<form method="post" action="{{ route('profile.address.update') }}" class="space-y-6" x-data="addressSearch()">
+    @csrf
+    @method('patch')
 
-        {{-- 1. ALAMAT DETAIL --}}
+    {{-- 1. ALAMAT DETAIL --}}
+    <div>
+        <x-input-label for="address_detail" :value="__('Detail Alamat (Jalan, No. Rumah, RT/RW)')" />
+        <textarea id="address_detail" name="address_detail" rows="3"
+            class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+            required>{{ old('address_detail', $user->address_detail) }}</textarea>
+        <x-input-error class="mt-2" :messages="$errors->get('address_detail')" />
+    </div>
+
+    {{-- 2. AUTOCOMPLETE PENCARIAN --}}
+    <div class="relative">
+        <x-input-label for="search_location" :value="__('Cari Kelurahan / Kecamatan')" />
+
+        <div class="relative">
+            <input type="text"
+                id="search_location"
+                class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm pl-10"
+                placeholder="Ketik nama kelurahan..."
+                x-model="query"
+                @input.debounce.500ms="search()"
+                autocomplete="off"
+            />
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-search text-gray-400"></i>
+            </div>
+        </div>
+
+        {{-- Dropdown Hasil --}}
+        <ul x-show="results.length > 0"
+            class="absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto"
+            style="display: none;"
+            @click.outside="results = []">
+            <template x-for="(item, index) in results" :key="index">
+                <li @click="selectAddress(item)"
+                    class="px-4 py-2 hover:bg-indigo-50 cursor-pointer text-sm text-gray-700 border-b last:border-b-0 flex justify-between items-center">
+                    <div>
+                        {{-- FIX: Menggunakan full_address dari Log Anda --}}
+                        <span class="font-bold block" x-text="item.full_address || item.text"></span>
+                    </div>
+                    <i class="fas fa-chevron-right text-xs text-gray-400"></i>
+                </li>
+            </template>
+        </ul>
+        <p x-show="loading" class="text-xs text-blue-500 mt-1 animate-pulse">Sedang mencari data...</p>
+    </div>
+
+    {{-- 3. HASIL DATA WILAYAH (READONLY) --}}
+    {{-- Karena x-data ada di <form>, input di bawah ini SEKARANG BISA baca 'selected' --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
         <div>
-            <x-input-label for="address_detail" :value="__('Detail Alamat (Jalan, No. Rumah, RT/RW)')" />
-            <textarea id="address_detail" name="address_detail" rows="3"
-                class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                required>{{ old('address_detail', $user->address_detail) }}</textarea>
-            <x-input-error class="mt-2" :messages="$errors->get('address_detail')" />
+            <x-input-label :value="__('Provinsi')" class="text-xs uppercase text-slate-500" />
+            <input type="text" name="province" x-model="selected.province" class="w-full bg-transparent border-0 border-b border-slate-300 focus:ring-0 p-0 text-sm font-semibold text-slate-700" readonly />
         </div>
-
-        {{-- 2. AUTOCOMPLETE PENCARIAN WILAYAH --}}
-        <div x-data="addressSearch()" class="relative">
-            <x-input-label for="search_location" :value="__('Cari Kelurahan / Kecamatan')" />
-
-            <div class="relative">
-                <input type="text"
-                    id="search_location"
-                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm pl-10"
-                    placeholder="Ketik nama kelurahan..."
-                    x-model="query"
-                    @input.debounce.500ms="search()"
-                />
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <i class="fas fa-search text-gray-400"></i>
-                </div>
-            </div>
-
-            <ul x-show="results.length > 0"
-    class="absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto"
-    style="display: none;"
-    @click.outside="results = []">
-    <template x-for="item in results" :key="item.id || Math.random()">
-        <li @click="selectAddress(item)"
-            class="px-4 py-2 hover:bg-indigo-50 cursor-pointer text-sm text-gray-700 border-b last:border-b-0 flex justify-between items-center">
-            <div>
-                {{-- GUNAKAN FUNGSI getLabel() AGAR TEKS PASTI MUNCUL --}}
-                <span class="font-bold block" x-text="getLabel(item)"></span>
-                <span class="text-xs text-gray-500" x-text="item.zip_code || item.postal_code"></span>
-            </div>
-            <i class="fas fa-chevron-right text-xs text-gray-400"></i>
-        </li>
-    </template>
-</ul>
-            <p x-show="loading" class="text-xs text-blue-500 mt-1 animate-pulse">Sedang mencari data...</p>
+        <div>
+            <x-input-label :value="__('Kota/Kabupaten')" class="text-xs uppercase text-slate-500" />
+            <input type="text" name="regency" x-model="selected.regency" class="w-full bg-transparent border-0 border-b border-slate-300 focus:ring-0 p-0 text-sm font-semibold text-slate-700" readonly />
         </div>
-
-        {{-- 3. HASIL DATA WILAYAH (READONLY) --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <div>
-                <x-input-label :value="__('Provinsi')" class="text-xs uppercase text-slate-500" />
-                <input type="text" name="province" x-model="selected.province" class="w-full bg-transparent border-0 border-b border-slate-300 focus:ring-0 p-0 text-sm font-semibold text-slate-700" readonly />
-            </div>
-            <div>
-                <x-input-label :value="__('Kota/Kabupaten')" class="text-xs uppercase text-slate-500" />
-                <input type="text" name="regency" x-model="selected.regency" class="w-full bg-transparent border-0 border-b border-slate-300 focus:ring-0 p-0 text-sm font-semibold text-slate-700" readonly />
-            </div>
-            <div>
-                <x-input-label :value="__('Kecamatan')" class="text-xs uppercase text-slate-500" />
-                <input type="text" name="district" x-model="selected.district" class="w-full bg-transparent border-0 border-b border-slate-300 focus:ring-0 p-0 text-sm font-semibold text-slate-700" readonly />
-            </div>
-            <div>
-                <x-input-label :value="__('Kelurahan')" class="text-xs uppercase text-slate-500" />
-                <input type="text" name="village" x-model="selected.village" class="w-full bg-transparent border-0 border-b border-slate-300 focus:ring-0 p-0 text-sm font-semibold text-slate-700" readonly />
-            </div>
-            <div>
-                <x-input-label :value="__('Kode Pos')" class="text-xs uppercase text-slate-500" />
-                <input type="text" name="postal_code" x-model="selected.postal_code" class="w-full bg-transparent border-0 border-b border-slate-300 focus:ring-0 p-0 text-sm font-semibold text-slate-700" readonly />
-            </div>
+        <div>
+            <x-input-label :value="__('Kecamatan')" class="text-xs uppercase text-slate-500" />
+            <input type="text" name="district" x-model="selected.district" class="w-full bg-transparent border-0 border-b border-slate-300 focus:ring-0 p-0 text-sm font-semibold text-slate-700" readonly />
         </div>
-
-        {{-- 4. DATA HIDDEN (ID WILAYAH & KOORDINAT) --}}
-        <input type="hidden" name="district_id" :value="selected.district_id">
-        <input type="hidden" name="subdistrict_id" :value="selected.subdistrict_id">
-        <input type="hidden" name="latitude" :value="selected.lat">
-        <input type="hidden" name="longitude" :value="selected.lng">
-
-        {{-- INFO KOORDINAT --}}
-        <div class="flex items-center gap-2 text-xs text-gray-500 bg-yellow-50 p-2 rounded border border-yellow-100">
-            <i class="fas fa-info-circle text-yellow-600"></i>
-            <span>Koordinat (Lat/Lng) akan otomatis dicari oleh sistem jika belum tersedia.</span>
+        <div>
+            <x-input-label :value="__('Kelurahan')" class="text-xs uppercase text-slate-500" />
+            <input type="text" name="village" x-model="selected.village" class="w-full bg-transparent border-0 border-b border-slate-300 focus:ring-0 p-0 text-sm font-semibold text-slate-700" readonly />
         </div>
-
-        <div class="flex items-center gap-4">
-            <x-primary-button>{{ __('Simpan Alamat') }}</x-primary-button>
-            @if (session('status') === 'address-updated')
-                <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2000)" class="text-sm text-green-600">{{ __('Alamat Berhasil Disimpan.') }}</p>
-            @endif
+        <div>
+            <x-input-label :value="__('Kode Pos')" class="text-xs uppercase text-slate-500" />
+            <input type="text" name="postal_code" x-model="selected.postal_code" class="w-full bg-transparent border-0 border-b border-slate-300 focus:ring-0 p-0 text-sm font-semibold text-slate-700" readonly />
         </div>
-    </form>
+    </div>
+
+    {{-- 4. DATA HIDDEN --}}
+    <input type="hidden" name="district_id" :value="selected.district_id">
+    <input type="hidden" name="subdistrict_id" :value="selected.subdistrict_id">
+    <input type="hidden" name="latitude" :value="selected.lat">
+    <input type="hidden" name="longitude" :value="selected.lng">
+
+    <div class="flex items-center gap-4">
+        <x-primary-button>{{ __('Simpan Alamat') }}</x-primary-button>
+        @if (session('status') === 'address-updated')
+            <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2000)" class="text-sm text-green-600">{{ __('Alamat Berhasil Disimpan.') }}</p>
+        @endif
+    </div>
+</form>
+
+    {{-- ========================================================================= --}}
+    {{-- SCRIPT ALPINE.JS UNTUK PENCARIAN ALAMAT DENGAN API KIRIMINAJA --}}
+    {{-- ========================================================================= --}}
 
    <script>
     function addressSearch() {
@@ -206,7 +206,7 @@
             query: '',
             results: [],
             loading: false,
-            // Data Awal dari Database
+            // Data Awal (Pastikan variable PHP ini terisi di view)
             selected: {
                 province: '{{ $user->province }}',
                 regency: '{{ $user->regency }}',
@@ -223,19 +223,13 @@
                 if (this.query.length < 3) { this.results = []; return; }
                 this.loading = true;
 
-                // Panggil API
                 fetch(`{{ route('profile.search_address') }}?search=${this.query}`)
                     .then(res => res.json())
                     .then(data => {
                         this.loading = false;
-
-                        // [DEBUG] Cek hasil API di Console Browser (Tekan F12 -> Console)
-                        console.log("Hasil API KiriminAja:", data);
-
                         if (Array.isArray(data)) {
                             this.results = data;
                         } else {
-                            // Jika formatnya { data: [...] }
                             this.results = data.data || [];
                         }
                     })
@@ -246,45 +240,37 @@
                     });
             },
 
-            // Fungsi untuk menampilkan teks di list (Handle beda versi API)
-            getLabel(item) {
-                // Coba ambil field yang mungkin muncul
-                return item.text || item.address || item.name || (item.kelurahan + ', ' + item.kecamatan) || 'Nama tidak ditemukan';
-            },
-
-            // Fungsi saat diklik
             selectAddress(item) {
-                console.log("Item dipilih:", item); // Debug item yang dipilih
+                console.log("Dipilih:", item);
 
-                // Ambil teks lengkap
-                let fullText = this.getLabel(item);
-
-                // Parsing Text (Asumsi Format: Kelurahan, Kecamatan, Kota, Provinsi)
+                // FIX: Ambil dari full_address sesuai log console
+                // Format: "Ketanggi, Ngawi, Ngawi, Jawa Timur, 63211"
+                let fullText = item.full_address || "";
                 const parts = fullText.split(',').map(s => s.trim());
 
-                // LOGIKA MAPPING DATA (Sesuaikan urutan array jika hasil API berbeda)
-                // Jika format string: "Desa, Kec, Kab, Prov"
+                // Mapping Manual berdasarkan urutan string
+                // Index 0: Kelurahan (Ketanggi)
+                // Index 1: Kecamatan (Ngawi)
+                // Index 2: Kota/Kab (Ngawi)
+                // Index 3: Provinsi (Jawa Timur)
+                // Index 4: Kode Pos (63211)
+
                 if (parts.length >= 4) {
-                    this.selected.village = parts[0] || '';
-                    this.selected.district = parts[1] || '';
-                    this.selected.regency = parts[2] || '';
-                    this.selected.province = parts[3] || '';
+                    this.selected.village = parts[0];
+                    this.selected.district = parts[1];
+                    this.selected.regency = parts[2];
+                    this.selected.province = parts[3];
+                    // Jika ada kode pos di array terakhir
+                    this.selected.postal_code = parts[4] || item.zip_code || '';
                 } else {
-                    // Fallback jika format string pendek (manual dari item object jika ada)
-                    this.selected.village = item.kelurahan || parts[0] || '';
-                    this.selected.district = item.kecamatan || parts[1] || '';
-                    this.selected.regency = item.kabupaten || item.city || '';
-                    this.selected.province = item.provinsi || item.province || '';
+                    // Fallback jika format beda
+                    this.selected.village = item.full_address;
                 }
 
-                this.selected.postal_code = item.zip_code || item.postal_code || '';
+                // ID dari API (Sesuai Log Console)
+                this.selected.district_id = item.district_id;        // Kecamatan ID
+                this.selected.subdistrict_id = item.subdistrict_id;  // Kelurahan ID
 
-                // Mapping ID (Sangat Penting untuk Ongkir)
-                // Cek nama field ID kecamatan/kelurahan di console log
-                this.selected.district_id = item.kecamatan_id || item.district_id || 0;
-                this.selected.subdistrict_id = item.id || item.subdistrict_id || 0;
-
-                // Reset pencarian
                 this.query = '';
                 this.results = [];
             }
