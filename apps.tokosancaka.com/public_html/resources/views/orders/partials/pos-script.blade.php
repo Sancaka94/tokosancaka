@@ -79,6 +79,8 @@ function posSystem() {
         scannerObj: null,
         isValidatingCoupon: false,
 
+        saveCustomer: true,
+
         // --- [BARU] STATE VARIAN ---
         variantSelectorOpen: false,      // Kontrol Modal Varian
         selectedProductForVariant: null, // Data produk induk sementara
