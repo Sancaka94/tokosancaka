@@ -81,6 +81,13 @@ function posSystem() {
 
         saveCustomer: true,
 
+        // [TAMBAHKAN KELOMPOK INI] Agar data alamat lengkap bisa tersimpan ke DB
+        selectedProvince: '',
+        selectedRegency: '',
+        selectedDistrict: '',
+        selectedVillage: '',
+        destinationZipCode: '', // Ubah dari destinationZipCode agar sinkron
+
         // --- [BARU] STATE VARIAN ---
         variantSelectorOpen: false,      // Kontrol Modal Varian
         selectedProductForVariant: null, // Data produk induk sementara
@@ -773,21 +780,29 @@ function posSystem() {
         // ============================================================
 
         async searchLocation() {
+            // 1. Validasi minimal karakter (biar gak boros API)
             if (this.searchQuery.length < 3) {
                 this.searchResults = [];
                 return;
             }
+
             this.isSearchingLocation = true;
+
             try {
-                const response = await fetch(`{{ route('orders.search-location') }}?query=${this.searchQuery}`);
+                // 2. Gunakan route search-location yang mengarah ke KiriminAjaService
+                const response = await fetch(`{{ route('orders.search-location') }}?query=${encodeURIComponent(this.searchQuery)}`);
                 const result = await response.json();
-                if (result.status === 'success') {
-                    this.searchResults = result.data;
+
+                // 3. Pastikan format 'result.data' atau 'result' saja sesuai return controller kamu
+                if (result.status === 'success' || result.status === true) {
+                    // [FIX] Pastikan mapping data-nya benar
+                    this.searchResults = result.data || result;
+                    console.log("Data ditemukan:", this.searchResults);
                 } else {
                     this.searchResults = [];
                 }
             } catch (error) {
-                console.error('Gagal cari lokasi:', error);
+                console.error('Gagal cari lokasi cok:', error);
                 this.searchResults = [];
             } finally {
                 this.isSearchingLocation = false;
@@ -795,21 +810,25 @@ function posSystem() {
         },
 
         selectLocation(location) {
-            this.searchQuery = location.full_address;
+            // 1. Ambil label lengkap (contoh: "Ketanggi, Ngawi, Ngawi, Jawa Timur, 63211")
+            let fullText = location.full_address || location.text || "";
+            this.searchQuery = fullText;
+
+            // 2. ID untuk Cek Ongkir KiriminAja
             this.destinationDistrictId = location.district_id;
             this.destinationSubdistrictId = location.subdistrict_id;
 
-            // --- TAMBAHKAN INI AGAR DATA ALAMAT LENGKAP SAAT DISIMPAN ---
-            const parts = location.full_address.split(',').map(s => s.trim());
+            // 3. Pecah Alamat untuk Database CRM (Simpan Pelanggan)
+            const parts = fullText.split(',').map(s => s.trim());
             if (parts.length >= 4) {
-                this.selectedVillage = parts[0];
-                this.selectedDistrict = parts[1];
-                this.selectedRegency = parts[2];
-                this.selectedProvince = parts[3];
+                this.selectedVillage = parts[0];  // Kelurahan
+                this.selectedDistrict = parts[1]; // Kecamatan
+                this.selectedRegency = parts[2];  // Kota/Kab
+                this.selectedProvince = parts[3]; // Provinsi
                 this.destinationZipCode = parts[4] || location.zip_code || '';
             }
-            // -----------------------------------------------------------
 
+            // 4. Reset dropdown & langsung panggil Cek Ongkir (yang didalamnya ada logic SAVE)
             this.searchResults = [];
             this.checkOngkir();
         },
