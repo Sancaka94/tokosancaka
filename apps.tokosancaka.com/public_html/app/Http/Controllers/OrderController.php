@@ -2446,4 +2446,41 @@ public function handleDanaCallback(Request $request)
         }
     }
 
+    /**
+     * API: Ambil Daftar Channel Tripay (Sesuai nama route getPaymentChannels)
+     */
+    public function getPaymentChannels()
+    {
+        $apiKey = config('tripay.api_key');
+        $mode   = config('tripay.mode');
+
+        $baseUrl = ($mode === 'production')
+            ? 'https://tripay.co.id/api/merchant/payment-channel'
+            : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Authorization' => 'Bearer ' . $apiKey
+            ])->get($baseUrl);
+
+            if ($response->successful()) {
+                return response()->json([
+                    'status' => 'success',
+                    'data'   => $response->json()['data'] ?? []
+                ]);
+            }
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengambil data Tripay.'
+            ], 500);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Koneksi Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 }
