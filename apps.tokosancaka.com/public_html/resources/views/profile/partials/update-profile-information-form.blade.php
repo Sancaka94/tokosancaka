@@ -225,7 +225,7 @@
 
                     // Panggil API Search Address (Pastikan route ini ada dan bisa diakses user)
                     // Gunakan route 'api.search_address' atau sesuaikan dengan route Anda
-                    fetch(`/api/search-address?search=${this.query}`)
+                    fetch(`{{ route('profile.search_address') }}?search=${this.query}`)
                         .then(res => res.json())
                         .then(data => {
                             this.results = data;
