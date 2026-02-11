@@ -29,7 +29,7 @@ class User extends Authenticatable
         'dana_access_token',
         'dana_token_expiry',
         'dana_refresh_token',
-
+        'phone', // <--- Cek ini juga di ProfileUpdateRequest
         'dana_balance',  // <--- INI WAJIB ADA AGAR BISA DI-UPDATE
         'logo', // <--- TAMBAHKAN INI JIKA INGIN SIMPAN LOGO USER
     ];
