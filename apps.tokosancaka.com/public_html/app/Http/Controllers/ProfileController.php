@@ -7,23 +7,15 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Storage; // [PENTING] Tambahkan ini untuk hapus/upload foto
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http; // Wajib untuk Geocoding
+use Illuminate\Support\Facades\Log;  // Wajib untuk Debugging
 use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
     /**
-     * Display the user's profile data (Read Only).
-     */
-    public function index(Request $request): View
-    {
-        return view('profile.index', [
-            'user' => $request->user(),
-        ]);
-    }
-
-    /**
-     * Display the user's profile form.
+     * Menampilkan halaman edit profil.
      */
     public function edit(Request $request): View
     {
@@ -33,43 +25,117 @@ class ProfileController extends Controller
     }
 
     /**
-     * Update the user's profile information.
+     * UPDATE 1: INFORMASI DASAR (Nama, Email, HP, Logo)
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        // 1. Isi data text dasar (Name, Email, Phone) dari validasi
+        // 1. Fill data standar (Name, Email)
         $request->user()->fill($request->validated());
 
-        // 2. LOGIC UPLOAD LOGO / FOTO PROFIL
+        // 2. Logic Update No WhatsApp (Phone)
+        if ($request->has('phone')) {
+            // Sanitasi nomor HP (hapus karakter aneh, ubah 62 jadi 0)
+            $phone = preg_replace('/[^0-9]/', '', $request->phone);
+            if (substr($phone, 0, 2) === '62') {
+                $phone = '0' . substr($phone, 2);
+            }
+            $request->user()->phone = $phone;
+        }
+
+        // 3. Logic Upload Logo / Foto Profil
         if ($request->hasFile('logo')) {
-            // A. Hapus foto lama jika ada (dan bukan default/avatar UI)
-            if ($request->user()->logo) {
+            // Hapus foto lama jika ada (dan bukan foto default sistem jika ada logic itu)
+            if ($request->user()->logo && Storage::disk('public')->exists($request->user()->logo)) {
                 Storage::disk('public')->delete($request->user()->logo);
             }
 
-            // B. Simpan foto baru ke folder 'profile-photos' di storage public
-            // Hasilnya path string: "profile-photos/namafile.jpg"
+            // Simpan foto baru
             $path = $request->file('logo')->store('profile-photos', 'public');
-
-            // C. Update kolom logo di database user
             $request->user()->logo = $path;
         }
 
-        // 3. LOGIC MANUAL NO WA (Opsional, jika tidak ter-cover oleh fill)
-        // Pastikan 'phone' ada di rules ProfileUpdateRequest
-        if ($request->has('phone')) {
-            $request->user()->phone = $request->phone;
-        }
-
-        // 4. Reset Verifikasi Email jika Email berubah
+        // 4. Reset verifikasi email jika email berubah
         if ($request->user()->isDirty('email')) {
             $request->user()->email_verified_at = null;
         }
 
-        // 5. Simpan Perubahan
         $request->user()->save();
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
+    }
+
+    /**
+     * UPDATE 2: ALAMAT LENGKAP & KOORDINAT (Integrasi KiriminAja)
+     */
+    public function updateAddress(Request $request): RedirectResponse
+    {
+        // 1. Validasi Input
+        $validated = $request->validate([
+            'address_detail' => 'required|string|max:500',
+            'province'       => 'required|string|max:100',
+            'regency'        => 'required|string|max:100',
+            'district'       => 'required|string|max:100', // Kecamatan
+            'village'        => 'required|string|max:100', // Kelurahan
+            'postal_code'    => 'required|string|max:10',
+            'district_id'    => 'required|integer',        // ID Kecamatan KiriminAja
+            'subdistrict_id' => 'nullable|integer',        // ID Kelurahan KiriminAja
+            'latitude'       => 'nullable|numeric',
+            'longitude'      => 'nullable|numeric',
+        ]);
+
+        $user = $request->user();
+
+        // 2. Logika Koordinat (Fallback Geocoding)
+        // Jika frontend (JS) gagal mendapatkan lat/lng, kita cari manual via Nominatim API
+        $lat = $request->latitude;
+        $lng = $request->longitude;
+
+        if (empty($lat) || empty($lng) || $lat == 0 || $lng == 0) {
+            // Gabungkan alamat untuk pencarian
+            $queryAddress = implode(', ', [
+                $request->village,
+                $request->district,
+                $request->regency,
+                $request->province
+            ]);
+
+            try {
+                // Panggil API OpenStreetMap (Gratis)
+                $response = Http::timeout(5)
+                    ->withHeaders(['User-Agent' => 'AplikasiSancaka/1.0'])
+                    ->get("https://nominatim.openstreetmap.org/search", [
+                        'q' => $queryAddress,
+                        'format' => 'json',
+                        'limit' => 1,
+                        'countrycodes' => 'id'
+                    ]);
+
+                if ($response->successful() && !empty($response[0])) {
+                    $lat = $response[0]['lat'];
+                    $lng = $response[0]['lon'];
+                    Log::info("Geocoding Success for User {$user->id}: $lat, $lng");
+                }
+            } catch (\Exception $e) {
+                Log::error("Geocoding Failed for User {$user->id}: " . $e->getMessage());
+                // Biarkan null jika gagal total
+            }
+        }
+
+        // 3. Simpan ke Database
+        $user->update([
+            'address_detail' => $request->address_detail,
+            'province'       => $request->province,
+            'regency'        => $request->regency,
+            'district'       => $request->district, // Nama Kecamatan
+            'village'        => $request->village,  // Nama Kelurahan
+            'postal_code'    => $request->postal_code,
+            'district_id'    => $request->district_id,    // ID Kecamatan (Penting utk Ongkir)
+            'subdistrict_id' => $request->subdistrict_id ?? 0, // ID Kelurahan (Penting utk Ongkir)
+            'latitude'       => $lat,
+            'longitude'      => $lng,
+        ]);
+
+        return Redirect::route('profile.edit')->with('status', 'address-updated');
     }
 
     /**
@@ -84,11 +150,6 @@ class ProfileController extends Controller
         $user = $request->user();
 
         Auth::logout();
-
-        // [OPSIONAL] Hapus foto profil saat akun dihapus
-        if ($user->logo) {
-            Storage::disk('public')->delete($user->logo);
-        }
 
         $user->delete();
 

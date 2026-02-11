@@ -583,4 +583,12 @@ Route::group(['middleware' => ['web', 'auth']], function () {
 
 
 
+Route::middleware('auth')->group(function () {
+    // Route Profile Bawaan
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update'); // Update Foto/Nama/HP
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // [BARU] Route Update Alamat Lengkap
+    Route::patch('/profile/address', [ProfileController::class, 'updateAddress'])->name('profile.address.update');
+});
