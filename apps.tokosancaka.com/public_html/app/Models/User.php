@@ -31,6 +31,7 @@ class User extends Authenticatable
         'dana_refresh_token',
 
         'dana_balance',  // <--- INI WAJIB ADA AGAR BISA DI-UPDATE
+        'logo', // <--- TAMBAHKAN INI JIKA INGIN SIMPAN LOGO USER
     ];
 
     /**
