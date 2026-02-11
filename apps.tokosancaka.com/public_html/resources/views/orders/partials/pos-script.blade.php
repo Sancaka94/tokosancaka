@@ -860,7 +860,7 @@ function posSystem() {
                         weight: finalWeight,
 
                         // --- [FIXED] DATA PELANGGAN UNTUK AUTO-SAVE ---
-                        save_customer: this.saveCustomer, // Mengambil status checkbox
+                        save_customer: (this.customerName && this.customerPhone && this.saveCustomer) ? true : false,
                         customer_name: this.customerName,
                         customer_phone: this.customerPhone,
                         customer_address_detail: this.customerAddressDetail,
