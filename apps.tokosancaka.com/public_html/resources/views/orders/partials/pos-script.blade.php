@@ -812,25 +812,35 @@ function posSystem() {
         },
 
         selectLocation(location) {
-            // 1. Ambil label lengkap (contoh: "Ketanggi, Ngawi, Ngawi, Jawa Timur, 63211")
+            // 1. Ambil teks lengkap
             let fullText = location.full_address || location.text || "";
             this.searchQuery = fullText;
 
-            // 2. ID untuk Cek Ongkir KiriminAja
+            // 2. Simpan ID
             this.destinationDistrictId = location.district_id;
             this.destinationSubdistrictId = location.subdistrict_id;
 
-            // 3. Pecah Alamat untuk Database CRM (Simpan Pelanggan)
+            // 3. PECAH ALAMAT JADI BAGIAN (PENTING BUAT DATABASE)
+            // Asumsi format API: "Kelurahan, Kecamatan, Kota, Provinsi, KodePos"
             const parts = fullText.split(',').map(s => s.trim());
+
+            // Reset dulu biar bersih
+            this.selectedVillage = '';
+            this.selectedDistrict = '';
+            this.selectedRegency = '';
+            this.selectedProvince = '';
+            this.destinationZipCode = '';
+
             if (parts.length >= 4) {
-                this.selectedVillage = parts[0];  // Kelurahan
+                this.selectedVillage  = parts[0]; // Kelurahan
                 this.selectedDistrict = parts[1]; // Kecamatan
-                this.selectedRegency = parts[2];  // Kota/Kab
+                this.selectedRegency  = parts[2]; // Kota/Kab
                 this.selectedProvince = parts[3]; // Provinsi
-                this.destinationZipCode = parts[4] || location.zip_code || '';
+                // Kadang kode pos ada di index 4
+                if(parts[4]) this.destinationZipCode = parts[4];
             }
 
-            // 4. Reset dropdown & langsung panggil Cek Ongkir (yang didalamnya ada logic SAVE)
+            // 4. Langsung Cek Ongkir
             this.searchResults = [];
             this.checkOngkir();
         },
@@ -854,27 +864,30 @@ function posSystem() {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                         'Accept': 'application/json'
                     },
+
                     body: JSON.stringify({
-                        // --- DATA ONGKIR ---
+                        // --- 1. DATA UTAMA ONGKIR ---
                         destination_district_id: this.destinationDistrictId,
                         destination_subdistrict_id: this.destinationSubdistrictId,
                         destination_text: this.searchQuery,
                         weight: finalWeight,
 
-                        // --- [FIXED] DATA PELANGGAN UNTUK AUTO-SAVE ---
-                        save_customer: (this.customerName && this.customerPhone && this.saveCustomer) ? true : false,
-                        customer_name: this.customerName,
-                        customer_phone: this.customerPhone,
-                        customer_address_detail: this.customerAddressDetail,
+                        // --- 2. DATA PELANGGAN (PERBAIKAN UTAMA) ---
+                        // Logika: Jika nama kosong, kirim 'Tamu Cek Ongkir' biar Controller gak error
+                        save_customer: this.saveCustomer,
+                        customer_name: (this.customerName && this.customerName.length > 0) ? this.customerName : 'Tamu Cek Ongkir',
+                        customer_phone: (this.customerPhone && this.customerPhone.length > 0) ? this.customerPhone : '0000000000',
+                        customer_address_detail: this.customerAddressDetail || '-',
 
-                        // Detail Wilayah (Pastikan variabel ini terisi saat selectLocation)
+                        // --- 3. DATA WILAYAH TEKS (Supaya Database Terisi Lengkap) ---
+                        // Pastikan variabel ini terisi saat selectLocation() berjalan
                         province_name: this.selectedProvince || '',
                         regency_name: this.selectedRegency || '',
                         district_name: this.selectedDistrict || '',
                         village_name: this.selectedVillage || '',
                         postal_code: this.destinationZipCode || '',
 
-                        // Koordinat (Jika ada)
+                        // --- 4. KOORDINAT (Jika Ada) ---
                         receiver_lat: this.latitude,
                         receiver_lng: this.longitude
                     })
