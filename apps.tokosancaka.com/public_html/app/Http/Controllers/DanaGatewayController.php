@@ -226,4 +226,99 @@ class DanaGatewayController extends Controller
 
         return base64_encode($binarySignature);
     }
+
+    /**
+     * [BARU] LOGIC: SINKRONISASI SALDO (CHECK BALANCE)
+     * Dipanggil via Route: /dana/sync
+     */
+    public function syncBalance()
+    {
+        $user = Auth::user();
+
+        // 1. Cek User & Token
+        if (!$user || !$user->dana_access_token) {
+            return back()->with('error', 'Akun DANA belum terhubung. Silakan hubungkan akun terlebih dahulu.');
+        }
+
+        try {
+            // 2. Persiapan Parameter
+            $timestamp  = now('Asia/Jakarta')->toIso8601String();
+            $clientId   = config('services.dana.x_partner_id'); // Pastikan config ini ada
+            $accessToken = $user->dana_access_token;
+
+            // Generate Request ID Unik
+            $requestId = Str::uuid()->toString();
+
+            // 3. Buat Request Body (Sesuai Standar DANA Balance Query)
+            // Struktur ini mungkin berbeda tergantung versi API DANA Anda (V1/V2/Snapshot)
+            $bodyArray = [
+                'request' => [
+                    'head' => [
+                        'version'      => '2.0',
+                        'function'     => 'dana.account.balance.query',
+                        'clientId'     => $clientId,
+                        'reqTime'      => $timestamp,
+                        'reqMsgId'     => $requestId,
+                        'accessToken'  => $accessToken
+                    ],
+                    'body' => [
+                        // Biasanya kosong untuk query balance, atau butuh 'userInfo'
+                    ]
+                ]
+            ];
+
+            // 4. Generate Signature
+            // Untuk POST JSON, Signature biasanya: ClientId + "|" + Timestamp + "|" + MinifiedJSONBody
+            $jsonBody     = json_encode($bodyArray);
+            $stringToSign = $clientId . "|" . $timestamp . "|" . $jsonBody;
+            $signature    = $this->generateSignature($stringToSign);
+
+            // 5. URL Endpoint (Gunakan Sandbox/Prod sesuai ENV)
+            // Contoh URL Sandbox API Balance
+            $apiUrl = 'https://api.sandbox.dana.id/v1.0/balance-inquiry.htm';
+
+            // 6. Kirim Request
+            $response = Http::withHeaders([
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => $clientId,
+                'X-EXTERNAL-ID' => $requestId,
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessToken // Kadang DANA butuh ini juga
+            ])->post($apiUrl, $bodyArray);
+
+            $result = $response->json();
+
+            Log::info("[DANA SYNC] Result for User {$user->id}: ", $result);
+
+            // 7. Cek Response & Update DB
+            // Sesuaikan parsing 'amount' dengan struktur response asli DANA Anda
+            if (isset($result['response']['body']['amount']['value'])) {
+
+                $amount = $result['response']['body']['amount']['value']; // Contoh: "50000.00"
+
+                // Bersihkan format (hilangkan .00 jika perlu)
+                $cleanAmount = floatval($amount);
+
+                // Update kolom dana_balance di tabel users
+                $user->update([
+                    'dana_balance' => $cleanAmount,
+                    'updated_at'   => now()
+                ]);
+
+                return back()->with('success', 'Saldo berhasil disinkronkan: Rp ' . number_format($cleanAmount, 0, ',', '.'));
+
+            } elseif (isset($result['responseCode']) && $result['responseCode'] != '2001100') {
+                // Token mungkin expired
+                return back()->with('error', 'Sesi DANA berakhir. Silakan hubungkan ulang akun.');
+            }
+
+            // Jika struktur JSON beda / gagal parsing
+            return back()->with('error', 'Gagal membaca respon saldo dari DANA.');
+
+        } catch (\Exception $e) {
+            Log::error("[DANA SYNC] Error: " . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem saat sinkronisasi.');
+        }
+    }
 }

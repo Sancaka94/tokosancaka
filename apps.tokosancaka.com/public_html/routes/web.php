@@ -576,7 +576,8 @@ Route::group(['middleware' => ['web', 'auth']], function () {
         ->name('tenant.dana.start');
 
 
-
+    Route::get('/dana/sync', [DanaGatewayController::class, 'syncBalance'])
+        ->name('tenant.dana.sync');
 });
 
 

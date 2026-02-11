@@ -46,15 +46,21 @@
                         </div>
 
                         {{-- Info Saldo --}}
+                        {{-- Info Saldo --}}
                         <div class="flex flex-col">
                             <div class="flex items-center justify-between gap-2">
                                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">DANA</span>
 
-                                {{-- Tombol Refresh (Opsional: Butuh Route Check Balance Tenant) --}}
-                                {{-- <a href="#" class="text-[8px] text-blue-400 hover:text-blue-600 transition"><i class="fas fa-sync-alt"></i></a> --}}
+                                {{-- TOMBOL SYNC --}}
+                                <a href="{{ route('tenant.dana.sync') }}"
+                                   class="text-[10px] text-blue-400 hover:text-blue-600 transition-all p-0.5 rounded-full hover:bg-blue-100 group/sync"
+                                   title="Sinkronkan Saldo">
+                                    {{-- Icon dengan animasi putar saat di-hover --}}
+                                    <i class="fas fa-sync-alt group-hover/sync:rotate-180 transition-transform duration-700"></i>
+                                </a>
                             </div>
+
                             <span class="text-sm font-black text-slate-700 leading-none group-hover:text-blue-600 transition-colors">
-                                {{-- Menggunakan dana_balance dari tabel users (pastikan kolom ada, atau default 0) --}}
                                 Rp {{ number_format($user->dana_balance ?? 0, 0, ',', '.') }}
                             </span>
                         </div>
