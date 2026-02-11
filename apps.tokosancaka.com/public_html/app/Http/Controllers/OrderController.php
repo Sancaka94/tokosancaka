@@ -339,11 +339,13 @@ class OrderController extends Controller
 
     /**
      * CEK ONGKIR (Menggabungkan Reguler & Instant dengan Lat/Long)
+     * UPDATE: Fix Simpan Customer & Koordinat
      */
     public function checkShippingRates(Request $request, KiriminAjaService $kiriminAja)
     {
         Log::info('CEK ONGKIR REQUEST:', $request->all());
 
+        // 1. Validasi Input
         $request->validate([
             'weight' => 'required|numeric',
             'destination_district_id' => 'required',
@@ -351,17 +353,42 @@ class OrderController extends Controller
         ]);
 
         try {
-            // [BARU] LOGIKA SAVE DATA PELANGGAN (Direct Save saat Cek Ongkir)
-            // Mengambil subdomain dari host request
+            // 2. Setup Awal
             $host = $request->getHost();
             $subdomain = explode('.', $host)[0];
             $user = Auth::user();
 
+            // ============================================================
+            // [STEP 1] LOGIKA GEOCODING (CARI KOORDINAT DULU)
+            // ============================================================
+            // Kita cari koordinatnya DULUAN sebelum simpan ke database
+            $destLat = $request->receiver_lat; // Ambil dari input GPS (kalau ada)
+            $destLng = $request->receiver_lng;
+
+            // Kalau GPS kosong tapi ada teks alamat, cari koordinat otomatis via Geocoding
+            if (empty($destLat) && $request->filled('destination_text')) {
+                $geo = $this->geocode($request->destination_text);
+                if ($geo) {
+                    $destLat = $geo['lat'];
+                    $destLng = $geo['lng'];
+                    Log::info("Geocoding Success: Lat $destLat, Lng $destLng");
+                }
+            }
+
+            // ============================================================
+            // [STEP 2] SIMPAN PELANGGAN (PINDAH KE SINI & DIPERBAIKI)
+            // ============================================================
             if ($request->has('save_customer') && ($request->save_customer == true || $request->save_customer == 'true')) {
 
-            // [FIX] Siapkan data nama & HP dengan nilai default jika kosong
-            $namaPelanggan = $request->customer_name ?: 'Tamu Cek Ongkir';
-            $hpPelanggan   = $request->customer_phone ?: '000000000000';
+                // Fallback: Jika Nama/HP Kosong, isi default biar DB gak error
+                $namaPelanggan = $request->customer_name ?: 'Tamu Cek Ongkir';
+                $hpPelanggan   = $request->customer_phone ?: '000000000000';
+
+                // Fallback: Jika Alamat Detail kosong/strip, isi dengan nama Kecamatan
+                $alamatDetail = ($request->customer_address_detail == '-' || empty($request->customer_address_detail))
+                                ? $request->destination_text
+                                : $request->customer_address_detail;
+
                 \App\Models\Customer::updateOrCreate(
                     [
                         // Unik berdasarkan Tenant dan Nomor WhatsApp
@@ -372,7 +399,11 @@ class OrderController extends Controller
                         'user_id'        => $user->id,
                         'subdomain'      => $subdomain,
                         'name'           => $namaPelanggan,
-                        'address_detail' => $request->customer_address_detail ?? '-', // Tambah fallback juga
+
+                        // Simpan Alamat & Koordinat yang sudah didapat di atas
+                        'address_detail' => $alamatDetail,
+                        'address'        => $alamatDetail, // Isi kolom address juga
+
                         'province'       => $request->province_name,
                         'regency'        => $request->regency_name,
                         'district'       => $request->district_name,
@@ -380,35 +411,19 @@ class OrderController extends Controller
                         'postal_code'    => $request->postal_code,
                         'district_id'    => $request->destination_district_id,
                         'subdistrict_id' => $request->destination_subdistrict_id,
-                        'latitude'       => $request->receiver_lat,
-                        'longitude'      => $request->receiver_lng,
+
+                        // [PENTING] Masukkan Koordinat Hasil Geocoding
+                        'latitude'       => $destLat,
+                        'longitude'      => $destLng,
                     ]
                 );
-                Log::info("Customer Auto-Saved via CheckRates: " . $request->customer_name);
+                Log::info("Customer Auto-Saved: $namaPelanggan | Loc: $destLat, $destLng");
             }
 
-            // 1. DEFINISI MAPPING LOGO KURIR
-            $courierMap = [
-                'gojek'    => ['name' => 'GoSend',      'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png'],
-                'grab'     => ['name' => 'GrabExpress', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png'],
-                'jne'      => ['name' => 'JNE',         'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
-                'jnt'      => ['name' => 'J&T Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png'],
-                'sicepat'  => ['name' => 'SiCepat',     'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png'],
-                'anteraja' => ['name' => 'Anteraja',    'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png'],
-                'posindonesia'      => ['name' => 'POS Indonesia','logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png'],
-                'tiki'     => ['name' => 'TIKI',        'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png'],
-                'lion'     => ['name' => 'Lion Parcel', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png'],
-                'ninja'    => ['name' => 'Ninja Express','logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png'],
-                'idx'      => ['name' => 'ID Express',  'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png'],
-                'spx'      => ['name' => 'SPX Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png'],
-                'sap'      => ['name' => 'SAP Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png'],
-                'ncs'      => ['name' => 'NCS Kurir',   'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLfUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg'],
-                'jtcargo'  => ['name' => 'J&T Cargo',   'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png'],
-                'borzo'    => ['name' => 'Borzo',       'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png'],
-            ];
-
+            // ============================================================
+            // [STEP 3] PERSIAPAN DATA ORIGIN (PENGIRIM)
+            // ============================================================
             // [UPDATE] Ambil Data ORIGIN dari Database User (Bukan Config)
-            $user = Auth::user();
             if (empty($user->district_id)) {
                 return response()->json(['status' => 'error', 'message' => 'Lengkapi alamat Anda di profil untuk cek ongkir.']);
             }
@@ -421,33 +436,37 @@ class OrderController extends Controller
 
             Log::info("CEK ONGKIR USER ID {$user->id}: Dist: $originDistrict, Lat: $originLat");
 
-            // 3. DATA TUJUAN
-            $destDistrict    = $request->destination_district_id;
-            // [PENTING] Ambil Kelurahan. Jika tidak ada, set 0 (tapi sebaiknya ada untuk POS)
-            $destSubDistrict = $request->destination_subdistrict_id ? (int)$request->destination_subdistrict_id : 0;
+            // ============================================================
+            // [STEP 4] REQUEST API REGULER (Kirim parameter subdistrict)
+            // ============================================================
 
-            Log::info("CEK ONGKIR: District: $destDistrict, SubDistrict (Kelurahan): $destSubDistrict");
-            // --- LOGIKA GEOCODING TUJUAN UNTUK INSTANT ---
-            $destLat = null;
-            $destLng = null;
-
-            if ($request->filled('destination_text')) {
-                $geo = $this->geocode($request->destination_text);
-                if ($geo) {
-                    $destLat = $geo['lat'];
-                    $destLng = $geo['lng'];
-                }
-            }
+            // Mapping Logo Kurir (Lengkap)
+            $courierMap = [
+                'gojek' => ['name' => 'GoSend',       'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png'],
+                'grab'  => ['name' => 'GrabExpress', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png'],
+                'jne'   => ['name' => 'JNE',         'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
+                'jnt'   => ['name' => 'J&T Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png'],
+                'sicepat' => ['name' => 'SiCepat',      'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png'],
+                'anteraja' => ['name' => 'Anteraja',    'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png'],
+                'posindonesia'      => ['name' => 'POS Indonesia','logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png'],
+                'tiki'  => ['name' => 'TIKI',        'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png'],
+                'lion'  => ['name' => 'Lion Parcel', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png'],
+                'ninja' => ['name' => 'Ninja Express','logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png'],
+                'idx'   => ['name' => 'ID Express',  'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png'],
+                'spx'   => ['name' => 'SPX Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png'],
+                'sap'   => ['name' => 'SAP Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png'],
+                'ncs'   => ['name' => 'NCS Kurir',   'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLfUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg'],
+                'jtcargo' => ['name' => 'J&T Cargo',   'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png'],
+                'borzo'   => ['name' => 'Borzo',       'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png'],
+            ];
 
             $formattedRates = [];
-            // 3. REQUEST API REGULER (Kirim parameter subdistrict)
-            Log::info("Mengambil Ongkir REGULER (Include Kelurahan)...");
 
-            // A. API REGULER (JNE, SICEPAT, DLL)
+            // Panggil API Reguler
             Log::info("Mengambil Ongkir REGULER...");
             $responseReguler = $kiriminAja->getExpressPricing(
                 (int) $originDistrict, (int) $originSubDistrict,
-                (int) $destDistrict, (int) $destSubDistrict,
+                (int) $request->destination_district_id, (int) ($request->destination_subdistrict_id ?? 0),
                 (int) $request->weight,
                 10, 10, 10, 1000, [], 'regular', 0
             );
@@ -467,8 +486,7 @@ class OrderController extends Controller
                         'service' => $rate['service_name'] ?? 'Layanan',
                         'cost'    => (int) $rate['cost'],
                         'etd'     => $rate['etd'] ?? '-',
-                        // === CRITICAL ADDITION ===
-                        'courier_code' => $rate['service'], // e.g., 'jne', 'sicepat' - This was missing!
+                        'courier_code' => $rate['service'],
                         'service_type' => $rate['service_type'],
                     ];
                 }
@@ -476,35 +494,22 @@ class OrderController extends Controller
                 Log::warning("Ongkir REGULER Gagal/Kosong", ['response' => $responseReguler]);
             }
 
-            // B. API INSTANT (GOJEK/GRAB)
+            // ============================================================
+            // [STEP 5] REQUEST API INSTANT (GOJEK/GRAB)
+            // ============================================================
             if ($destLat && $destLng && $originLat && $originLng) {
-                Log::info("Mencoba Ongkir INSTANT (Grab/Gojek)...");
-                Log::info("Route: $originLat,$originLng -> $destLat,$destLng");
+                Log::info("Mencoba Ongkir INSTANT (Grab/Gojek)... Route: $originLat,$originLng -> $destLat,$destLng");
 
-                // 1. PANGGIL FUNGSI DULU SAMPAI SELESAI (JANGAN DISELIPIN LOG DI DALAMNYA)
                 $responseInstant = $kiriminAja->getInstantPricing(
-                    (float) $originLat,
-                    (float) $originLng,
-                    $originAddr,
-                    (float) $destLat,
-                    (float) $destLng,
-                    $request->destination_text,
-                    (int) $request->weight,
-                    1000,
-                    'motor',
-                    ['gosend', 'grab_express']
+                    (float) $originLat, (float) $originLng, $originAddr,
+                    (float) $destLat, (float) $destLng, $request->destination_text,
+                    (int) $request->weight, 1000, 'motor', ['gosend', 'grab_express']
                 );
 
-                // 2. BARU LOG HASILNYA DISINI (DI BAWAHNYA)
                 Log::info("RESPONSE MENTAH INSTANT:", ['body' => $responseInstant]);
 
-                // --- UPDATE PARSING JSON SESUAI LOG TERBARU ---
-                $bodyResponse = $responseInstant;
-
-                if (isset($bodyResponse['status']) && $bodyResponse['status'] == true) {
-                    $instantResults = $bodyResponse['result'] ?? [];
-
-                    Log::info("Ongkir INSTANT Raw Result Count: " . count($instantResults));
+                if (isset($responseInstant['status']) && $responseInstant['status'] == true) {
+                    $instantResults = $responseInstant['result'] ?? [];
 
                     foreach ($instantResults as $courierData) {
                         $courierName = strtolower($courierData['name'] ?? 'instant'); // gosend / grab
@@ -515,10 +520,10 @@ class OrderController extends Controller
                             $totalPrice = $priceData['total_price'] ?? 0;
 
                             if ($totalPrice > 0) {
-                                // Mapping Logo Manual (karena API tidak kasih logo)
+                                // Mapping Logo Manual
                                 $logoUrl = null;
-                                if(str_contains($courierName, 'go')) $logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png';
-                                if(str_contains($courierName, 'grab')) $logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png';
+                                if(str_contains($courierName, 'go')) $logoUrl = $courierMap['gojek']['logo_url'];
+                                if(str_contains($courierName, 'grab')) $logoUrl = $courierMap['grab']['logo_url'];
 
                                 $formattedRates[] = [
                                     'code'    => 'kiriminaja_instant',
@@ -528,19 +533,19 @@ class OrderController extends Controller
                                     'cost'    => (int) $totalPrice,
                                     'etd'     => $costData['estimation'] ?? 'Instant',
                                 ];
-                                Log::info("INSTANT ADDED: $courierName - Rp $totalPrice");
                             }
                         }
                     }
                 } else {
                     Log::warning("Ongkir INSTANT Gagal/Tidak Ada Driver", ['response' => $responseInstant]);
                 }
-
             } else {
                 Log::info("Ongkir INSTANT Skipped: Koordinat tidak lengkap.");
             }
 
-            // C. GABUNGKAN HASIL & SORTIR
+            // ============================================================
+            // [STEP 6] SORTIR HARGA & RETURN
+            // ============================================================
             usort($formattedRates, function ($a, $b) {
                 return $a['cost'] <=> $b['cost'];
             });
