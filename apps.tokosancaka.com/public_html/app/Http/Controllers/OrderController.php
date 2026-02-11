@@ -351,6 +351,38 @@ class OrderController extends Controller
         ]);
 
         try {
+            // [BARU] LOGIKA SAVE DATA PELANGGAN (Direct Save saat Cek Ongkir)
+            // Mengambil subdomain dari host request
+            $host = $request->getHost();
+            $subdomain = explode('.', $host)[0];
+            $user = Auth::user();
+
+            if ($request->has('save_customer') && ($request->save_customer == true || $request->save_customer == 'true')) {
+                \App\Models\Customer::updateOrCreate(
+                    [
+                        // Unik berdasarkan Tenant dan Nomor WhatsApp
+                        'tenant_id' => $this->tenantId,
+                        'whatsapp'  => $this->_normalizePhoneNumber($request->customer_phone)
+                    ],
+                    [
+                        'user_id'        => $user->id,
+                        'subdomain'      => $subdomain,
+                        'name'           => $request->customer_name,
+                        'address_detail' => $request->customer_address_detail,
+                        'province'       => $request->province_name,
+                        'regency'        => $request->regency_name,
+                        'district'       => $request->district_name,
+                        'village'        => $request->village_name,
+                        'postal_code'    => $request->postal_code,
+                        'district_id'    => $request->destination_district_id,
+                        'subdistrict_id' => $request->destination_subdistrict_id,
+                        'latitude'       => $request->receiver_lat,
+                        'longitude'      => $request->receiver_lng,
+                    ]
+                );
+                Log::info("Customer Auto-Saved via CheckRates: " . $request->customer_name);
+            }
+
             // 1. DEFINISI MAPPING LOGO KURIR
             $courierMap = [
                 'gojek'    => ['name' => 'GoSend',      'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png'],
@@ -457,24 +489,18 @@ class OrderController extends Controller
                     1000,
                     'motor',
                     ['gosend', 'grab_express']
-                ); // <--- Tanda kurung tutup & titik koma ini WAJIB ada dulu
+                );
 
                 // 2. BARU LOG HASILNYA DISINI (DI BAWAHNYA)
                 Log::info("RESPONSE MENTAH INSTANT:", ['body' => $responseInstant]);
 
                 // --- UPDATE PARSING JSON SESUAI LOG TERBARU ---
-                // PERBAIKAN: Ambil langsung dari $responseInstant
                 $bodyResponse = $responseInstant;
 
                 if (isset($bodyResponse['status']) && $bodyResponse['status'] == true) {
                     $instantResults = $bodyResponse['result'] ?? [];
 
                     Log::info("Ongkir INSTANT Raw Result Count: " . count($instantResults));
-
-                    // Filter: Jika POS Indonesia muncul, pastikan logonya ada
-                    if ($serviceCode === 'pos' || $serviceCode === 'posindonesia') {
-                        $mapData = ['name' => 'POS Indonesia', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png'];
-                    }
 
                     foreach ($instantResults as $courierData) {
                         $courierName = strtolower($courierData['name'] ?? 'instant'); // gosend / grab
