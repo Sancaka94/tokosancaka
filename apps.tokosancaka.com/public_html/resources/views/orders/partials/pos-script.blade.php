@@ -796,6 +796,18 @@ function posSystem() {
             this.searchQuery = location.full_address;
             this.destinationDistrictId = location.district_id;
             this.destinationSubdistrictId = location.subdistrict_id;
+
+            // --- TAMBAHKAN INI AGAR DATA ALAMAT LENGKAP SAAT DISIMPAN ---
+            const parts = location.full_address.split(',').map(s => s.trim());
+            if (parts.length >= 4) {
+                this.selectedVillage = parts[0];
+                this.selectedDistrict = parts[1];
+                this.selectedRegency = parts[2];
+                this.selectedProvince = parts[3];
+                this.destinationZipCode = parts[4] || location.zip_code || '';
+            }
+            // -----------------------------------------------------------
+
             this.searchResults = [];
             this.checkOngkir();
         },
@@ -816,30 +828,30 @@ function posSystem() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({
-                        // --- DATA UNTUK CEK ONGKIR ---
+                        // --- DATA ONGKIR ---
                         destination_district_id: this.destinationDistrictId,
                         destination_subdistrict_id: this.destinationSubdistrictId,
                         destination_text: this.searchQuery,
                         weight: finalWeight,
 
-                        // --- [TAMBAHAN] DATA UNTUK AUTO-SAVE CUSTOMER ---
-                        // 'save_customer' diambil dari checkbox x-model="saveCustomer"
-                        save_customer: this.saveCustomer,
+                        // --- [FIXED] DATA PELANGGAN UNTUK AUTO-SAVE ---
+                        save_customer: this.saveCustomer, // Mengambil status checkbox
                         customer_name: this.customerName,
                         customer_phone: this.customerPhone,
                         customer_address_detail: this.customerAddressDetail,
 
-                        // Detail wilayah untuk kolom database CRM
+                        // Detail Wilayah (Pastikan variabel ini terisi saat selectLocation)
                         province_name: this.selectedProvince || '',
                         regency_name: this.selectedRegency || '',
                         district_name: this.selectedDistrict || '',
                         village_name: this.selectedVillage || '',
                         postal_code: this.destinationZipCode || '',
 
-                        // Koordinat tujuan (jika ada)
+                        // Koordinat (Jika ada)
                         receiver_lat: this.latitude,
                         receiver_lng: this.longitude
                     })
@@ -849,8 +861,8 @@ function posSystem() {
 
                 if (result.status === 'success') {
                     this.courierList = result.data;
-                    // Beri feedback kecil di console
-                    if(this.saveCustomer) console.log("CRM: Instruksi simpan pelanggan terkirim.");
+                    // Log kecil untuk memastikan instruksi simpan terkirim
+                    if(this.saveCustomer) console.log("✅ Perintah simpan data pelanggan dikirim ke server.");
                 } else {
                     alert('Gagal cek ongkir: ' + result.message);
                 }
