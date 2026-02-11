@@ -31,6 +31,19 @@ class User extends Authenticatable
         'dana_refresh_token',
         'phone', // <--- Cek ini juga di ProfileUpdateRequest
         'dana_balance',  // <--- INI WAJIB ADA AGAR BISA DI-UPDATE
+        // --- DATA ALAMAT LENGKAP (KIRIMINAJA) ---
+        'address_detail', // Alamat Jalan/RT/RW
+        'province',
+        'regency',        // Kota/Kabupaten
+        'district',       // Kecamatan
+        'village',        // Kelurahan
+        'postal_code',
+        'district_id',    // ID Kecamatan (API KiriminAja)
+        'subdistrict_id', // ID Kelurahan (API KiriminAja)
+
+        // --- KOORDINAT & LOGO ---
+        'latitude',
+        'longitude',
         'logo', // <--- TAMBAHKAN INI JIKA INGIN SIMPAN LOGO USER
     ];
 
