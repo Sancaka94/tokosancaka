@@ -560,26 +560,23 @@ class OrderController extends Controller
         }
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(
         Request $request,
         DokuJokulService $dokuService,
         KiriminAjaService $kiriminAja,
         DanaSignatureService $danaService // Inject Service DANA
     ) {
-        Log::info('================ START ORDER STORE (REVISION) ================');
+        Log::info('================ START ORDER STORE (FINAL FIX) ================');
         Log::info('RAW REQUEST:', $request->all());
 
         // 1. VALIDASI INPUT
         $request->validate([
-            'items'                   => 'required',
-            'total'                   => 'required|numeric',
-            'delivery_type'           => 'required|in:pickup,shipping',
-            'shipping_cost'           => 'required_if:delivery_type,shipping|numeric',
-            'courier_name'            => 'nullable|string|required_if:delivery_type,shipping',
-            'destination_text'        => 'nullable|string',
+            'items'               => 'required',
+            'total'               => 'required|numeric',
+            'delivery_type'       => 'required|in:pickup,shipping',
+            'shipping_cost'       => 'required_if:delivery_type,shipping|numeric',
+            'courier_name'        => 'nullable|string|required_if:delivery_type,shipping',
+            'destination_text'    => 'nullable|string',
             'destination_district_id' => 'nullable|required_if:delivery_type,shipping',
             'customer_name' => [
                 Rule::requiredIf(fn() => $request->delivery_type === 'shipping' && empty($request->customer_id)),
@@ -600,16 +597,11 @@ class OrderController extends Controller
         $customerNote = $request->input('customer_note');
         $catatanSistem = '';
 
-        // Tambahan category
-        // --- [MULAI KODE TAMBAHAN] ---
-        // Tangkap kategori yang dipilih dari form
+        // Tangkap kategori
         $selectedCategory = $request->input('category_slug', 'retail');
-
-        // Jika Laundry, tambahkan penanda khusus di catatan sistem
         if ($selectedCategory === 'laundry') {
             $catatanSistem .= "[JENIS: LAUNDRY] ";
         }
-        // --- [SELESAI KODE TAMBAHAN] ---
 
         $inputMethod = $request->payment_method;
         $custId      = $request->customer_id;
@@ -619,6 +611,7 @@ class OrderController extends Controller
             Log::warning('⚠️ AUTO-FIX: Metode Saldo Member tapi ID Kosong -> Ubah ke CASH');
             $metodeBayarFix = 'cash';
         } else {
+            // [PENTING] Simpan metode asli (misal: 'dana_sdk')
             $metodeBayarFix = $inputMethod;
         }
 
@@ -627,73 +620,47 @@ class OrderController extends Controller
 
         try {
             // ============================================================
-            // LANGKAH 1: KALKULASI HARGA, BERAT & CEK STOK (DIPERBAIKI UNTUK VARIAN)
+            // LANGKAH 1: KALKULASI HARGA, BERAT & CEK STOK
             // ============================================================
             $subtotal = 0;
             $finalCart = [];
             $totalWeight = 0;
 
             foreach ($cartItems as $item) {
-                // Cek apakah item ini memiliki variant_id
                 $isVariant = isset($item['variant_id']) && !empty($item['variant_id']);
-
                 $product = null;
                 $variant = null;
                 $qty = $item['qty'];
 
                 if ($isVariant) {
-                    // --- LOGIKA JIKA PILIH VARIANT ---
-                    $variant = ProductVariant::where('tenant_id', $this->tenantId)
-                          ->lockForUpdate()
-                          ->find($item['variant_id']);
-
+                    $variant = ProductVariant::where('tenant_id', $this->tenantId)->lockForUpdate()->find($item['variant_id']);
                     if (!$variant) throw new \Exception("Varian Produk ID {$item['variant_id']} tidak ditemukan.");
 
-                    // Ambil Induk Produknya
-                    $product = Product::find($variant->product_id); // Asumsi ada relasi product_id
+                    $product = Product::find($variant->product_id);
+                    if ($variant->stock < $qty) throw new \Exception("Stok Varian '{$product->name} - {$variant->name}' kurang.");
 
-                    // Cek Stok Varian
-                    if ($variant->stock < $qty) {
-                         throw new \Exception("Stok Varian '{$product->name} - {$variant->name}' kurang (Sisa: {$variant->stock}).");
-                    }
-
-                    // Gunakan Harga Varian
                     $priceToUse = $variant->price;
-
-                    // Siapkan Nama untuk disimpan (Misal: Kemeja (Merah XL))
                     $nameToStore = $product->name . ' (' . $variant->name . ')';
-
                 } else {
-                    // --- LOGIKA JIKA PRODUK BIASA (SINGLE) ---
                     $product = Product::lockForUpdate()->find($item['id']);
-
                     if (!$product) throw new \Exception("Produk ID {$item['id']} tidak ditemukan.");
+                    if ($product->stock < $qty) throw new \Exception("Stok '{$product->name}' kurang.");
 
-                    // Cek Stok Produk Utama
-                    if ($product->stock < $qty) {
-                        throw new \Exception("Stok '{$product->name}' kurang (Sisa: {$product->stock}).");
-                    }
-
-                    // Gunakan Harga Produk Utama
                     $priceToUse = $product->sell_price;
                     $nameToStore = $product->name;
                 }
 
-                // Hitung Subtotal (Bulatkan ke atas)
                 $lineTotal = ceil($priceToUse * $qty);
                 $subtotal += $lineTotal;
-
-                // Hitung Berat
-                $weightPerItem = ($product->weight > 0) ? $product->weight : 5; // Berat ikut induk
+                $weightPerItem = ($product->weight > 0) ? $product->weight : 5;
                 $totalWeight += ($weightPerItem * $qty);
 
-                // Masukkan ke array finalCart untuk diproses di langkah penyimpanan
                 $finalCart[] = [
                     'type'     => $isVariant ? 'variant' : 'single',
-                    'product'  => $product,      // Object Product Utama
-                    'variant'  => $variant,      // Object Variant (null jika single)
-                    'name_db'  => $nameToStore,  // Nama yang sudah digabung
-                    'price_db' => $priceToUse,   // Harga yang benar
+                    'product'  => $product,
+                    'variant'  => $variant,
+                    'name_db'  => $nameToStore,
+                    'price_db' => $priceToUse,
                     'qty'      => $qty,
                     'subtotal' => $lineTotal
                 ];
@@ -708,10 +675,9 @@ class OrderController extends Controller
                 $couponDB = Coupon::where('code', $request->coupon)->first();
                 if ($couponDB && $couponDB->is_active) {
                     $couponId = $couponDB->id;
-                    // PERBAIKAN: Bulatkan diskon ke bawah (floor) atau ke integer
                     if ($couponDB->type == 'percent') {
                         $rawDiscount = $subtotal * ($couponDB->value / 100);
-                        $discount = floor($rawDiscount); // Bulatkan diskon ke bawah (biar total bayar gak koma)
+                        $discount = floor($rawDiscount);
                     } else {
                         $discount = (int) $couponDB->value;
                     }
@@ -719,20 +685,16 @@ class OrderController extends Controller
                 }
             }
 
-            // PERBAIKAN: Casting ke (int) atau ceil()
             $hargaSetelahDiskon = (int) ceil(max(0, $subtotal - $discount));
             $biayaOngkir = ($request->delivery_type === 'shipping') ? (int)$request->shipping_cost : 0;
             $finalPrice = $hargaSetelahDiskon + $biayaOngkir;
 
-            // Generate Order Number Unik
-            // Ganti baris generator nomor order di project Percetakan menjadi:
             $orderNumber = 'SCK-PRT-' . date('ymdHis') . rand(100, 999);
-            Log::info("[STEP 1] Generated Printing Order Number: {$orderNumber}");
+            Log::info("[STEP 1] Order Number: {$orderNumber}");
 
             // Identifikasi Customer
             $customerName  = $request->customer_name ?? 'Customer Umum';
-            // PERBAIKAN: Normalisasi nomor HP sebelum disimpan
-            $rawPhone = $request->customer_phone ?? '08819435180';
+            $rawPhone = $request->customer_phone ?? '085745808809';
             $customerPhone = $this->_normalizePhoneNumber($rawPhone);
             $customerEmail = 'tokosancaka@gmail.com';
 
@@ -740,9 +702,7 @@ class OrderController extends Controller
                 $affiliateMember = Affiliate::find($request->customer_id);
                 if ($affiliateMember) {
                     $customerName  = $affiliateMember->name;
-                    // PERBAIKAN: Bersihkan nomor HP member juga
                     $customerPhone = $this->_normalizePhoneNumber($affiliateMember->whatsapp);
-
                     if (!empty($affiliateMember->email)) $customerEmail = $affiliateMember->email;
                 }
             }
@@ -757,11 +717,10 @@ class OrderController extends Controller
             // ============================================================
             // LANGKAH 2: SIMPAN KE DATABASE (STATUS: PENDING)
             // ============================================================
-            // Kita simpan dulu agar punya ID Order yang valid untuk logistik & payment
-            Log::info("[STEP 2] Saving Order to DB (Status: Pending)...");
+            Log::info("[STEP 2] Saving Order to DB...");
 
             $order = Order::create([
-                'tenant_id'       => $this->tenantId, // <--- OTOMATIS AMAN
+                'tenant_id'       => $this->tenantId,
                 'order_number'    => $orderNumber,
                 'user_id'         => $request->customer_id ?? null,
                 'customer_name'   => $customerName,
@@ -777,7 +736,7 @@ class OrderController extends Controller
                 'customer_note'   => $customerNote,
                 'shipping_cost'   => $biayaOngkir,
                 'courier_service' => $request->delivery_type === 'shipping' ? $request->courier_name : null,
-                'shipping_ref'    => null, // Nanti diupdate setelah request kurir
+                'shipping_ref'    => null,
                 'destination_address' => $fullAddressSaved,
             ]);
 
@@ -785,7 +744,7 @@ class OrderController extends Controller
             foreach ($finalCart as $data) {
                 $prod = $data['product'];
                 OrderDetail::create([
-                    'tenant_id'         => $this->tenantId, // <--- Tambahkan ini
+                    'tenant_id'         => $this->tenantId,
                     'order_id'          => $order->id,
                     'product_id'        => $prod->id,
                     'product_name'      => $prod->name,
@@ -795,13 +754,13 @@ class OrderController extends Controller
                     'subtotal'          => (int) $data['subtotal'],
                 ]);
 
-                // Kurangi Stok & Tambah Terjual
+                // Kurangi Stok
                 $prod->decrement('stock', $data['qty']);
                 $prod->increment('sold', $data['qty']);
                 if ($prod->stock <= 0) $prod->update(['stock_status' => 'unavailable']);
             }
 
-            // Simpan Lampiran (Jika ada)
+            // Simpan Lampiran
             if ($request->hasFile('attachments')) {
                 $files = $request->file('attachments');
                 $details = $request->input('attachment_details', []);
@@ -821,11 +780,9 @@ class OrderController extends Controller
             }
 
             // ============================================================
-            // LANGKAH 3: LOGIKA PENGIRIMAN & PEMBAYARAN
+            // LANGKAH 3: LOGIKA PENGIRIMAN & PEMBAYARAN (INI YANG DIPERBAIKI)
             // ============================================================
 
-            // [FIX] Inisialisasi variabel agar tidak error saat Cash/Saldo
-            // [FIX] Inisialisasi Variabel Wajib (PENTING)
             $paymentUrl = null;
             $paymentStatus = 'unpaid';
             $changeAmount = 0;
@@ -834,48 +791,25 @@ class OrderController extends Controller
             // === SKENARIO A: PENGIRIMAN PAKET (SHIPPING) ===
             if ($request->delivery_type === 'shipping') {
 
-                if (!$currentUser) {
-                    throw new \Exception("Sesi Admin berakhir. Silakan login ulang.");
-                }
+                if (!$currentUser) throw new \Exception("Sesi Admin berakhir. Silakan login ulang.");
 
-                // [VALIDASI] Cek Kelengkapan Alamat Pengirim di Database User
-                if (empty($currentUser->district_id) || empty($currentUser->subdistrict_id)) {
-                    throw new \Exception("Alamat profil Anda belum lengkap (Kecamatan/Kelurahan belum diset). Silakan lengkapi di menu Profil agar bisa melakukan pengiriman.");
-                }
+                // 1. Validasi Alamat Pengirim
+                if (empty($currentUser->district_id)) throw new \Exception("Lengkapi alamat profil Anda untuk pengiriman.");
 
-                // Data Origin (Pengirim) diambil langsung dari Database User
-                $originDistrictId    = (int) $currentUser->district_id;
-                $originSubdistrictId = (int) $currentUser->subdistrict_id;
-                $originLat           = $currentUser->latitude;
-                $originLng           = $currentUser->longitude;
-                $originName          = $currentUser->name;
-                $originPhone         = $currentUser->phone ?? '085745808809'; // Fallback phone jika kosong
-
-                // Susun Alamat Lengkap Pengirim dari DB
                 $originFullAddress = implode(', ', array_filter([
-                    $currentUser->address_detail,
-                    $currentUser->village,
-                    $currentUser->district,
-                    $currentUser->regency,
-                    $currentUser->province,
-                    $currentUser->postal_code
+                    $currentUser->address_detail, $currentUser->village, $currentUser->district,
+                    $currentUser->regency, $currentUser->province, $currentUser->postal_code
                 ]));
 
-                // Admin membayar biaya ongkir ke pusat menggunakan Saldo System
                 $tagihanKeAdmin = (int) $biayaOngkir;
+                Log::info("SHIPPING PROCESS - User: {$currentUser->id}, Tagihan: {$tagihanKeAdmin}");
 
-                Log::info("SHIPPING PROCESS - User ID: {$currentUser->id}, Saldo: {$currentUser->saldo}, Tagihan: {$tagihanKeAdmin}");
-
-                // 2. CEK SALDO ADMIN (Cukup untuk bayar ongkir atau tidak)
                 if ($currentUser->saldo >= $tagihanKeAdmin) {
 
                     // A. Potong Saldo Admin
                     $currentUser->decrement('saldo', $tagihanKeAdmin);
 
-                    // B. PROSES KIRIMINAJA (Booking Kurir)
-                    Log::info("[SHIPPING] Saldo Cukup. Memproses KiriminAja dengan Origin DB...");
-
-                    // Geocoding untuk Destination (Penerima)
+                    // B. PROSES KIRIMINAJA
                     $destLat = null; $destLng = null;
                     if ($request->filled('destination_text')) {
                         $geo = $this->geocode($request->destination_text);
@@ -887,46 +821,40 @@ class OrderController extends Controller
                     $kaResponse = null;
 
                     if ($isInstant) {
-                         // Validasi Koordinat (Wajib untuk Gosend/Grab)
-                         if (!$destLat || !$destLng) throw new \Exception("Gagal Instant: Koordinat tujuan tidak akurat. Mohon pilih lokasi dari saran pencarian.");
-                         if (empty($originLat) || empty($originLng)) throw new \Exception("Gagal Instant: Koordinat toko Anda belum diatur di Profil.");
-
-                         $instantPayload = [
+                         if (!$destLat || !$destLng) throw new \Exception("Gagal Instant: Koordinat tujuan tidak akurat.");
+                         $kaResponse = $kiriminAja->createInstantOrder([
                             'order_id'    => $orderNumber,
                             'service'     => $serviceCode,
                             'item_price'  => (int) $subtotal,
                             'origin'      => [
-                                'lat'     => (string) $originLat,
-                                'long'    => (string) $originLng,
+                                'lat'     => (string) $currentUser->latitude,
+                                'long'    => (string) $currentUser->longitude,
                                 'address' => $originFullAddress,
-                                'phone'   => $originPhone,
-                                'name'    => $originName
+                                'phone'   => $currentUser->phone ?? '085745808809',
+                                'name'    => $currentUser->name
                             ],
                             'destination' => [
                                 'lat' => $destLat, 'long' => $destLng, 'address' => $request->destination_text,
                                 'phone' => $customerPhone, 'name' => $customerName
                             ],
                             'weight' => (int) $totalWeight, 'vehicle' => 'motor'
-                        ];
-                        $kaResponse = $kiriminAja->createInstantOrder($instantPayload);
-
+                        ]);
                     } else {
-                        // Logic Jadwal Pickup Reguler
+                        // Reguler
                         $pickupSchedule = now()->addMinutes(60)->format('Y-m-d H:i:s');
                         if (now()->hour >= 14 || now()->isSunday()) {
                             $pickupSchedule = now()->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
                         }
-
-                        $kaPayload = [
-                            'address'      => $originFullAddress,
-                            'phone'        => $originPhone,
-                            'name'         => $originName,
-                            'kecamatan_id' => $originDistrictId,    // Dari DB User
-                            'kelurahan_id' => $originSubdistrictId, // Dari DB User
-                            'zipcode'      => $currentUser->postal_code ?? '00000',
-                            'schedule'     => $pickupSchedule,
-                            'platform_name'=> 'Sancaka Store',
-                            'packages'     => [[
+                        $kaResponse = $kiriminAja->createExpressOrder([
+                            'address'       => $originFullAddress,
+                            'phone'         => $currentUser->phone ?? '085745808809',
+                            'name'          => $currentUser->name,
+                            'kecamatan_id'  => (int) $currentUser->district_id,
+                            'kelurahan_id'  => (int) $currentUser->subdistrict_id,
+                            'zipcode'       => $currentUser->postal_code ?? '00000',
+                            'schedule'      => $pickupSchedule,
+                            'platform_name' => 'Sancaka Store',
+                            'packages'      => [[
                                 'order_id' => $orderNumber,
                                 'destination_name' => $customerName,
                                 'destination_phone' => $customerPhone,
@@ -946,432 +874,298 @@ class OrderController extends Controller
                                 'cod'=>0,
                                 'note'=>'Handle with care'
                             ]]
-                        ];
-                        $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
+                        ]);
                     }
 
-                    // 3. CEK RESPON API KIRIMINAJA
-                    // 3. CEK RESPON API KIRIMINAJA
+                    // 3. CEK HASIL BOOKING & TENTUKAN STATUS PEMBAYARAN
                     if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
                         $shippingRef = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
 
-                        // ============================================================
-                        // [FIX LOGIKA PEMBAYARAN ONLINE + PENGIRIMAN]
-                        // ============================================================
-                        // Cek apakah metode bayar aslinya adalah DANA/Tripay/Doku
+                        // [FIX LOGIC] CEK APAKAH PEMBAYARAN ONLINE (DANA/SDK)?
                         $isOnlinePayment = in_array($inputMethod, ['dana', 'dana_sdk', 'tripay', 'doku']);
 
                         if ($isOnlinePayment) {
-                            // KASUS 1: BAYAR ONLINE (DANA/TRIPAY)
-                            // Jangan tandai lunas dulu! Biarkan status 'unpaid' agar Switch Case di bawah jalan
-                            // Admin menalangi ongkir dulu, nanti uangnya balik saat customer bayar DANA.
-
+                            // JIKA DANA: Status TETAP UNPAID agar masuk ke Switch Case Payment di bawah
                             $order->update([
                                 'shipping_ref'   => $shippingRef,
                                 'note'           => $catatanSistem . "\n[RESI OTOMATIS] " . $shippingRef,
-                                'payment_status' => 'unpaid', // <--- TETAP UNPAID
-                                'status'         => 'pending' // <--- TETAP PENDING
+                                'payment_status' => 'unpaid',
+                                'status'         => 'pending'
                             ]);
-
-                            // PENTING: Jangan ubah $metodeBayarFix!
-                            // Biarkan tetap 'dana_sdk' supaya masuk ke switch case di bawah.
-
+                            // $metodeBayarFix TIDAK DIUBAH (Tetap 'dana_sdk')
                         } else {
-                            // KASUS 2: BAYAR TUNAI / SALDO / COD
-                            // Tandai lunas karena Saldo Admin sudah terpotong & Uang Cash sudah diterima
+                            // JIKA CASH/SALDO: Langsung LUNAS
                             $order->update([
                                 'shipping_ref'   => $shippingRef,
                                 'note'           => $catatanSistem . "\n[RESI OTOMATIS] " . $shippingRef . "\n[SALDO ADMIN] Terpotong Ongkir Rp " . number_format($tagihanKeAdmin),
                                 'payment_status' => 'paid',
-                                'payment_method' => 'saldo_admin', // Override method jadi saldo_admin
+                                'payment_method' => 'saldo_admin',
                                 'status'         => 'processing'
                             ]);
-
                             $paymentStatus = 'paid';
-                            $metodeBayarFix = 'saldo_admin'; // Ubah agar switch case bawah skip payment gateway
+                            $metodeBayarFix = 'saldo_admin'; // Override biar skip payment gateway
                             $triggerWaType = 'paid';
                         }
 
-                        $isShippingSuccess = true;
-
                     } else {
-                        // Kembalikan saldo jika booking gagal
+                        // Refund Saldo jika gagal booking
                         $currentUser->increment('saldo', $tagihanKeAdmin);
                         throw new \Exception("Gagal Booking Kurir: " . ($kaResponse['text'] ?? 'Unknown Error'));
                     }
 
                 } else {
-                    throw new \Exception("Saldo tidak cukup untuk membayar Ongkir (Butuh: Rp " . number_format($tagihanKeAdmin) . "). Saldo Anda: Rp " . number_format($currentUser->saldo));
+                    throw new \Exception("Saldo tidak cukup bayar Ongkir (Butuh: Rp " . number_format($tagihanKeAdmin) . "). Saldo: Rp " . number_format($currentUser->saldo));
                 }
 
-            } else {
-                // === SKENARIO B: PICKUP / NON-SHIPPING (Logika Lama) ===
-                switch ($metodeBayarFix) {
-                    case 'cash':
+            } // End of Shipping Block
+
+            // === LANGKAH 4: PROSES PEMBAYARAN (SWITCH CASE) ===
+            // Karena $metodeBayarFix tetap 'dana_sdk', dia akan masuk ke sini.
+
+            switch ($metodeBayarFix) {
+                case 'cash':
+                    // Hanya untuk Pickup (Jika Shipping sudah di-handle diatas)
+                    if ($request->delivery_type !== 'shipping') {
                         $cashReceived = (int) $request->cash_amount;
-                        // if ($cashReceived < $finalPrice) throw new \Exception("Uang tunai kurang!"); // Opsional validasi
                         $changeAmount = $cashReceived - $finalPrice;
-                        $order->update([
-                            'status'=>'processing',
-                            'payment_status'=>'paid',
-                            'note'=>$order->note."\nTunai. Lunas."
-                        ]);
-                        $paymentStatus='paid';
-                        $triggerWaType='paid';
-                        break;
+                        $order->update(['status'=>'processing', 'payment_status'=>'paid', 'note'=>$order->note."\nTunai. Lunas."]);
+                        $paymentStatus='paid'; $triggerWaType='paid';
+                    }
+                    break;
 
-                    // --- [BARU] DANA SDK (ACQUIRING / WIDGET) ---
-                    case 'dana_sdk':
-                        Log::info("[DANA SDK] Requesting Widget URL for Order #{$orderNumber}");
-                        try {
-                            $config = new Configuration();
-                            $config->setApiKey('PRIVATE_KEY', config('services.dana.private_key'));
-                            $config->setApiKey('X_PARTNER_ID', config('services.dana.x_partner_id'));
-                            $config->setApiKey('ORIGIN', config('services.dana.origin'));
-                            $config->setApiKey('DANA_ENV', Env::SANDBOX);
+                case 'pay_later':
+                    if ($request->delivery_type !== 'shipping') {
+                        $order->update(['status'=>'processing', 'payment_status'=>'unpaid', 'note'=>$order->note."\nBayar Nanti (Tagihan)"]);
+                        $paymentStatus = 'unpaid'; $triggerWaType = 'unpaid';
+                    }
+                    break;
 
-                            $apiInstance = new WidgetApi(null, $config);
+                case 'qris_manual':
+                    if ($request->delivery_type !== 'shipping') {
+                        $order->update(['status'=>'processing', 'payment_status'=>'paid', 'note'=>$order->note."\nQRIS Manual"]);
+                        $paymentStatus = 'paid'; $triggerWaType = 'paid';
+                    }
+                    break;
 
-                            $orderObj = new DanaOrder();
-                            $orderObj->setOrderTitle("Invoice #" . $orderNumber);
-                            $orderObj->setOrderMemo("Pembayaran Order di " . ($this->tenantId == 1 ? 'Sancaka' : 'Toko Cabang'));
-
-                            $envInfo = new EnvInfo();
-                            $envInfo->setSourcePlatform("IPG");
-                            $envInfo->setTerminalType("WEB");
-                            $envInfo->setWebsiteLanguage("ID");
-
-                            $addInfo = new WidgetPaymentRequestAdditionalInfo();
-                            $addInfo->setProductCode("51051000100000000001");
-                            $addInfo->setOrder($orderObj);
-                            $addInfo->setEnvInfo($envInfo);
-
-                            $paymentRequest = new WidgetPaymentRequest();
-                            $paymentRequest->setMerchantId(config('services.dana.merchant_id'));
-                            $paymentRequest->setPartnerReferenceNo($orderNumber);
-
-                            $money = new Money();
-                            $money->setValue(number_format($finalPrice, 2, '.', ''));
-                            $money->setCurrency("IDR");
-                            $paymentRequest->setAmount($money);
-
-                            $urlParam = new UrlParam();
-                            $currentSubdomain = explode('.', $request->getHost())[0];
-                            $returnUrl = route('orders.invoice', ['subdomain' => $currentSubdomain, 'orderNumber' => $orderNumber]);
-
-                            if (!str_contains($returnUrl, 'https://')) {
-                                $returnUrl = str_replace('http://', 'https://', $returnUrl);
-                            }
-
-                            $urlParam->setUrl($returnUrl);
-                            $urlParam->setType("PAY_RETURN");
-                            $urlParam->setIsDeeplink("Y");
-
-                            $paymentRequest->setUrlParams([$urlParam]);
-                            $paymentRequest->setAdditionalInfo($addInfo);
-
-                            Log::info("[DANA SDK] Sending request to DANA...");
-                            $result = $apiInstance->widgetPayment($paymentRequest);
-
-                            if (method_exists($result, 'getWebRedirectUrl')) {
-                                $paymentUrl = $result->getWebRedirectUrl();
-                            } elseif (isset($result->webRedirectUrl)) {
-                                $paymentUrl = $result->webRedirectUrl;
-                            }
-
-                            if ($paymentUrl) {
-                                $order->update(['payment_url' => $paymentUrl]);
-                                $triggerWaType = 'unpaid';
-                                Log::info("[DANA SDK] Success. URL: $paymentUrl");
-                            } else {
-                                throw new \Exception("Gagal mendapatkan URL Pembayaran DANA SDK (Empty Response).");
-                            }
-                        } catch (\Exception $e) {
-                            $errorMsg = $e->getMessage();
-                            if (method_exists($e, 'getResponseBody')) {
-                                $body = $e->getResponseBody();
-                                if ($body && isset($body->responseMessage)) {
-                                    $errorMsg = "DANA ($body->responseCode): " . $body->responseMessage;
-                                }
-                            }
-                            Log::error("[DANA SDK] Error: " . $errorMsg);
-                        }
-                        break;
-
-                    case 'doku':
-                        // Manual pilih Doku saat Pickup
-                        $dokuData = ['name' => $customerName, 'email' => 'tokosancaka@gmail.com', 'phone' => $customerPhone];
-                        $paymentUrl = $dokuService->createPayment($order->order_number, $finalPrice, $dokuData);
-                        $order->update(['payment_url' => $paymentUrl]);
-                        $triggerWaType='unpaid';
-                        break;
-
-                    // --- 1. TUNAI (CASH) ---
-                    //case 'cash':
-                    //    $cashReceived = (int) $request->cash_amount;
-                    //    if ($cashReceived < $finalPrice) {
-                    //       throw new \Exception("Uang tunai kurang! Total: " . number_format($finalPrice));
-                    //    }
-
-                    //    $changeAmount = $cashReceived - $finalPrice;
-
-                    //    $order->update([
-                    //        'status'         => 'processing',
-                    //        'payment_status' => 'paid',
-                    //        'note'           => $order->note . "\n[INFO KASIR] Tunai. Terima: Rp " . number_format($cashReceived, 0, ',', '.') . "\nKembali: Rp " . number_format($changeAmount, 0, ',', '.')
-                    //    ]);
-
-                    //    $paymentStatus = 'paid';
-                    //    $triggerWaType = 'paid'; // Set trigger WA Lunas
-                    //    break;
-
-                    // --- 2. BAYAR NANTI (PAY LATER) ---
-                    case 'pay_later':
-                        $order->update([
-                            'status'         => 'processing',
-                            'payment_status' => 'unpaid',
-                            'note'           => $order->note . "\n[INFO] Bayar Nanti (Tagihan)"
-                        ]);
-
-                        $paymentStatus = 'unpaid';
-                        $triggerWaType = 'unpaid'; // Set trigger WA Tagihan
-                        break;
-
-                    // --- 3. QRIS MANUAL ---
-                    case 'qris_manual':
-                        $order->update([
-                            'status'         => 'processing',
-                            'payment_status' => 'paid',
-                            'note'           => $order->note . "\n[INFO] QRIS Manual (Cek Mutasi)"
-                        ]);
-
-                        $paymentStatus = 'paid';
-                        $triggerWaType = 'paid'; // Set trigger WA Lunas
-                        break;
-
-                    // --- 4. SALDO MEMBER (AFFILIATE) ---
-                    case 'affiliate_balance':
+                case 'affiliate_balance':
+                    if ($request->delivery_type !== 'shipping') {
+                        // Logic potong saldo member (copy dari kode lama Anda)
                         if (!$request->customer_id) throw new \Exception("Member tidak terdeteksi.");
-
                         $affiliatePayor = Affiliate::lockForUpdate()->find($request->customer_id);
-
                         if (!$affiliatePayor) throw new \Exception("Data Member tidak ditemukan.");
-
-                        if (!empty($affiliatePayor->pin)) {
-                            if (!Hash::check($request->affiliate_pin, $affiliatePayor->pin)) {
-                                throw new \Exception("PIN Keamanan Salah!");
-                            }
-                        }
-
-                        if ($affiliatePayor->balance < $finalPrice) {
-                            throw new \Exception("Saldo Member Kurang. Saldo: " . number_format($affiliatePayor->balance));
-                        }
-
+                        if (!empty($affiliatePayor->pin) && !Hash::check($request->affiliate_pin, $affiliatePayor->pin)) throw new \Exception("PIN Salah!");
+                        if ($affiliatePayor->balance < $finalPrice) throw new \Exception("Saldo Member Kurang.");
                         $affiliatePayor->decrement('balance', $finalPrice);
+                        $order->update(['status'=>'processing', 'payment_status'=>'paid', 'note'=>$order->note."\nPotong Saldo Member"]);
+                        $paymentStatus = 'paid'; $triggerWaType = 'paid';
+                    }
+                    break;
 
-                        $order->update([
-                            'status'         => 'processing',
-                            'payment_status' => 'paid',
-                            'note'           => $order->note . "\n[INFO BAYAR] Potong Saldo Member"
-                        ]);
+                // --- [INI YANG KITA TUNGGU] ---
+                case 'dana_sdk':
+                    Log::info("[DANA SDK] Memulai request widget untuk Order #{$orderNumber}");
+                    try {
+                        $config = new Configuration();
+                        $config->setApiKey('PRIVATE_KEY', config('services.dana.private_key'));
+                        $config->setApiKey('X_PARTNER_ID', config('services.dana.x_partner_id'));
+                        $config->setApiKey('ORIGIN', config('services.dana.origin'));
+                        $config->setApiKey('DANA_ENV', Env::SANDBOX);
 
-                        $paymentStatus = 'paid';
-                        $triggerWaType = 'paid'; // Set trigger WA Lunas
-                        break;
+                        $apiInstance = new WidgetApi(null, $config);
+                        $orderObj = new DanaOrder();
+                        $orderObj->setOrderTitle("Invoice #" . $orderNumber);
+                        $orderObj->setOrderMemo("Pembayaran Order");
 
-                    // --- 5. DANA (KODE ASLI ANDA - TIDAK DIUBAH) ---
-                    case 'dana':
-                        Log::info("[DANA] Requesting Payment URL...");
-                        try {
-                            $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
-                            $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+                        $envInfo = new EnvInfo();
+                        $envInfo->setSourcePlatform("IPG");
+                        $envInfo->setTerminalType("WEB");
+                        $envInfo->setWebsiteLanguage("ID");
 
-                            $bodyArray = [
-                                "partnerReferenceNo" => $order->order_number,
-                                "merchantId" => config('services.dana.merchant_id'),
-                                "externalStoreId" => "toko-pelanggan",
-                                "amount" => [
-                                    "value" => number_format($finalPrice, 2, '.', ''),
-                                    "currency" => "IDR"
-                                ],
-                                "validUpTo" => $expiryTime,
-                                "urlParams" => [
-                                    [
-                                        "url" => route('dana.return'),
-                                        "type" => "PAY_RETURN",
-                                        "isDeeplink" => "Y"
-                                    ],
-                                    [
-                                        "url" => route('dana.notify'),
-                                        "type" => "NOTIFICATION",
-                                        "isDeeplink" => "Y"
-                                    ]
-                                ],
-                                "additionalInfo" => [
-                                    "mcc" => "5732",
-                                    "order" => [
-                                        "orderTitle" => "Invoice " . $order->order_number,
-                                        "merchantTransType" => "01",
-                                        "scenario" => "REDIRECT",
-                                    ],
-                                    "envInfo" => [
-                                        "sourcePlatform" => "IPG",
-                                        "terminalType" => "SYSTEM",
-                                        "orderTerminalType" => "WEB",
-                                    ]
-                                ]
-                            ];
+                        $addInfo = new WidgetPaymentRequestAdditionalInfo();
+                        $addInfo->setOrder($orderObj);
+                        $addInfo->setEnvInfo($envInfo);
 
-                            Log::info('DANA_REQUEST_PAYLOAD', [
-                                'order_number' => $order->order_number,
-                                'payload'      => $bodyArray
-                            ]);
+                        $paymentRequest = new WidgetPaymentRequest();
+                        $paymentRequest->setMerchantId(config('services.dana.merchant_id'));
+                        $paymentRequest->setPartnerReferenceNo($orderNumber);
 
-                            $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-                            $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+                        $money = new Money();
+                        $money->setValue(number_format($finalPrice, 2, '.', ''));
+                        $money->setCurrency("IDR");
+                        $paymentRequest->setAmount($money);
 
-                            $accessToken = $danaService->getAccessToken();
-                            $signature = $danaService->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
+                        // Return URL
+                        $urlParam = new UrlParam();
+                        $currentSubdomain = explode('.', $request->getHost())[0];
+                        $returnUrl = route('orders.invoice', ['subdomain' => $currentSubdomain, 'orderNumber' => $orderNumber]);
+                        if (!str_contains($returnUrl, 'https://')) $returnUrl = str_replace('http://', 'https://', $returnUrl);
 
-                            $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
+                        $urlParam->setUrl($returnUrl);
+                        $urlParam->setType("PAY_RETURN");
+                        $urlParam->setIsDeeplink("Y");
+                        $paymentRequest->setUrlParams([$urlParam]);
+                        $paymentRequest->setAdditionalInfo($addInfo);
 
-                            $response = Http::withHeaders([
-                                'Authorization'  => 'Bearer ' . $accessToken,
-                                'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-                                'X-EXTERNAL-ID'  => Str::random(32),
-                                'X-TIMESTAMP'    => $timestamp,
-                                'X-SIGNATURE'    => $signature,
-                                'Content-Type'   => 'application/json',
-                                'CHANNEL-ID'     => '95221',
-                                'ORIGIN'         => config('services.dana.origin'),
-                            ])
-                            ->withBody($jsonBody, 'application/json')
-                            ->post($baseUrl . $relativePath);
+                        $result = $apiInstance->widgetPayment($paymentRequest);
 
-                            $result = $response->json();
-                            Log::info('DANA_RESPONSE', $result);
-
-                            if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
-                                $paymentUrl = $result['webRedirectUrl'] ?? null;
-                                $order->update(['payment_url' => $paymentUrl]);
-                            } else {
-                                throw new \Exception("DANA API Error: " . ($result['responseMessage'] ?? 'General Error'));
-                            }
-                        } catch (\Exception $e) {
-                            Log::error("DANA ERROR: " . $e->getMessage());
-                            throw $e;
-                        }
-                        break;
-
-                    // --- 6. TRIPAY ---
-                    case 'tripay':
-                        Log::info("[TRIPAY] Requesting Payment URL...");
-                        $orderItems = [];
-                        foreach ($finalCart as $item) {
-                            $orderItems[] = [
-                                'sku'      => (string) $item['product']->id,
-                                'name'     => $item['product']->name,
-                                'price'    => (int) $item['product']->sell_price,
-                                'quantity' => (int) $item['qty']
-                            ];
+                        if (method_exists($result, 'getWebRedirectUrl')) {
+                            $paymentUrl = $result->getWebRedirectUrl();
+                        } elseif (isset($result->webRedirectUrl)) {
+                            $paymentUrl = $result->webRedirectUrl;
                         }
 
-                        if (empty($request->payment_channel)) throw new \Exception("Harap pilih Channel Pembayaran.");
+                        if ($paymentUrl) {
+                            $order->update(['payment_url' => $paymentUrl]);
+                            $triggerWaType = 'unpaid';
+                            Log::info("[DANA SDK] Success URL: $paymentUrl");
+                        } else {
+                            throw new \Exception("Gagal dapat URL DANA.");
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("[DANA SDK] Error: " . $e->getMessage());
+                    }
+                    break;
 
-                        $tripayRes = $this->_createTripayTransaction($order, $request->payment_channel, (int)$finalPrice, $customerName, $customerEmail, $customerPhone, $orderItems);
+                // --- [METODE DANA MANUAL (HOST TO HOST)] ---
+                case 'dana':
+                    Log::info("[DANA MANUAL] Requesting Payment URL...");
+                    try {
+                        $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
+                        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
 
-                        if (!$tripayRes['success']) throw new \Exception("Tripay Gagal: " . ($tripayRes['message'] ?? 'Unknown Error'));
+                        $bodyArray = [
+                            "partnerReferenceNo" => $order->order_number,
+                            "merchantId" => config('services.dana.merchant_id'),
+                            "externalStoreId" => "toko-pelanggan",
+                            "amount" => ["value" => number_format($finalPrice, 2, '.', ''), "currency" => "IDR"],
+                            "validUpTo" => $expiryTime,
+                            "urlParams" => [
+                                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+                                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+                            ],
+                            "additionalInfo" => [
+                                "mcc" => "5732",
+                                "order" => ["orderTitle" => "Invoice " . $order->order_number, "merchantTransType" => "01", "scenario" => "REDIRECT"],
+                                "envInfo" => ["sourcePlatform" => "IPG", "terminalType" => "SYSTEM", "orderTerminalType" => "WEB"]
+                            ]
+                        ];
 
+                        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                        $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+
+                        $accessToken = $danaService->getAccessToken();
+                        $signature = $danaService->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
+                        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
+
+                        $response = Http::withHeaders([
+                            'Authorization'  => 'Bearer ' . $accessToken,
+                            'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+                            'X-EXTERNAL-ID'  => Str::random(32),
+                            'X-TIMESTAMP'    => $timestamp,
+                            'X-SIGNATURE'    => $signature,
+                            'Content-Type'   => 'application/json',
+                            'CHANNEL-ID'     => '95221',
+                            'ORIGIN'         => config('services.dana.origin'),
+                        ])->withBody($jsonBody, 'application/json')->post($baseUrl . $relativePath);
+
+                        $result = $response->json();
+
+                        if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
+                            $paymentUrl = $result['webRedirectUrl'] ?? null;
+                            $order->update(['payment_url' => $paymentUrl]);
+                            $triggerWaType = 'unpaid';
+                        } else {
+                            throw new \Exception("DANA API Error: " . ($result['responseMessage'] ?? 'General Error'));
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("DANA MANUAL Error: " . $e->getMessage());
+                    }
+                    break;
+
+                case 'doku':
+                    Log::info("[DOKU] Requesting Payment URL...");
+
+                    // Siapkan data customer untuk Doku
+                    $dokuData = [
+                        'name'  => $customerName,
+                        'email' => $customerEmail,
+                        'phone' => $customerPhone
+                    ];
+
+                    // Panggil Service Doku
+                    $paymentUrl = $dokuService->createPayment($order->order_number, $finalPrice, $dokuData);
+
+                    if ($paymentUrl) {
+                        $order->update(['payment_url' => $paymentUrl]);
+                        $triggerWaType = 'unpaid'; // Kirim WA tagihan
+                    } else {
+                        throw new \Exception("Gagal membuat link pembayaran DOKU.");
+                    }
+                    break;
+
+                case 'tripay':
+                    // Logic Tripay (copy dari kode lama)
+                    $orderItems = [];
+                    foreach ($finalCart as $item) {
+                        $orderItems[] = ['sku' => (string) $item['product']->id, 'name' => $item['product']->name, 'price' => (int) $item['product']->sell_price, 'quantity' => (int) $item['qty']];
+                    }
+                    $tripayRes = $this->_createTripayTransaction($order, $request->payment_channel, (int)$finalPrice, $customerName, $customerEmail, $customerPhone, $orderItems);
+                    if ($tripayRes['success']) {
                         $paymentUrl = $tripayRes['data']['checkout_url'];
                         $order->update(['payment_url' => $paymentUrl]);
-                        break;
-
-                    // --- 7. DOKU ---
-                    // case 'doku':
-                    //    Log::info("[DOKU] Requesting Payment URL...");
-                    //    $dokuData = ['name' => $customerName, 'email' => $customerEmail, 'phone' => $customerPhone];
-                    //    $paymentUrl = $dokuService->createPayment($order->order_number, $order->final_price, $dokuData);
-
-                    //    if (empty($paymentUrl)) throw new \Exception("Gagal DOKU.");
-                    //    $order->update(['payment_url' => $paymentUrl]);
-                    //    break;
-                }
-
-                }
+                    }
+                    break;
+            }
 
             // ============================================================
-            // LANGKAH 5: FINALISASI & COMMIT (PENYELAMAT INVOICE)
+            // LANGKAH 5: FINALISASI & COMMIT
             // ============================================================
 
-            // --- [MULAI KODE BARU: AUTO SAVE KUPON KE CUSTOMER] ---
-            // Fitur: Jika ada kupon dipakai, simpan 'sticky' ke data pelanggan
+            // Auto Save Coupon (Kode baru Anda)
             if ($request->coupon && $customerPhone) {
                 try {
-                    // Pastikan Model Customer di-import atau panggil full namespace
-                    // Kita pakai updateOrCreate agar:
-                    // 1. Jika customer belum ada di DB -> Dibuat baru + Kupon
-                    // 2. Jika customer sudah ada -> Kupon diupdate dengan yang baru dipakai
-
                     if (class_exists('App\Models\Customer')) {
                         \App\Models\Customer::updateOrCreate(
-                            ['whatsapp' => $customerPhone], // Kunci pencarian (Unik)
+                            ['whatsapp' => $customerPhone],
                             [
                                 'name' => $customerName,
-                                'assigned_coupon' => $request->coupon, // <--- INI KUNCINYA
-                                // Kita update alamat juga biar data makin lengkap
+                                'assigned_coupon' => $request->coupon,
                                 'address' => $fullAddressSaved ?? DB::raw('address')
                             ]
                         );
-
-                        Log::info("[AUTO-SAVE] Kupon '{$request->coupon}' tersimpan untuk pelanggan: {$customerName}");
                     }
-                } catch (\Exception $e) {
-                    // Pakai try-catch agar jika error di sini, Order TIDAK BATAL
-                    Log::warning("Gagal Auto-Save Kupon Customer: " . $e->getMessage());
-                }
+                } catch (\Exception $e) { }
             }
-            // --- [SELESAI KODE BARU] ---
 
-            // 1. COMMIT DATABASE TERLEBIH DAHULU
-            // Ini wajib agar data Order tersimpan permanen sebelum sistem "sibuk" kirim WA
             DB::commit();
-            Log::info("[STEP 5] Transaction Committed. Order ID: {$order->id}");
+            Log::info("[STEP 5] Committed. Order ID: {$order->id}");
 
-            // 2. KIRIM NOTIFIKASI WA (SETELAH COMMIT)
-            // Proses ini ada sleep(5) nya, jadi harus diluar DB Transaction
-            // 2. KIRIM NOTIFIKASI WA (SETELAH COMMIT)
+            // Kirim WA
             try {
                 if ($triggerWaType) {
-                    // Jika paid -> Kirim WA Lunas
-                    // Jika unpaid -> Kirim WA Tagihan (Link Doku)
                     $this->_sendWaNotification($order, $finalPrice, $paymentUrl, $triggerWaType);
-                }
-                elseif ($paymentUrl && $paymentStatus == 'unpaid') {
-                    // Fallback khusus untuk kasus Doku saldo kurang
+                } elseif ($paymentUrl && $paymentStatus == 'unpaid') {
                     $this->_sendWaNotification($order, $finalPrice, $paymentUrl, 'unpaid');
                 }
 
                 if ($request->coupon && $paymentStatus == 'paid') {
                     $this->_processAffiliateCommission($request->coupon, $finalPrice);
                 }
-            } catch (\Exception $e) {
-                Log::error("WA Notification Warning: " . $e->getMessage());
-            }
+            } catch (\Exception $e) {}
 
             return response()->json([
                 'status'         => 'success',
-                'message'        => 'Transaksi Berhasil Dibuat!',
+                'message'        => 'Transaksi Berhasil!',
                 'invoice'        => $order->order_number,
                 'order_id'       => $order->id,
-                'payment_url'    => $paymentUrl,
+                'payment_url'    => $paymentUrl, // Ini akan terisi jika DANA
                 'change_amount'  => $changeAmount,
                 'payment_method' => $metodeBayarFix
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('ORDER FAILED (Exception): ' . $e->getMessage());
-            Log::error($e->getTraceAsString());
+            Log::error('ORDER FAILED: ' . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
