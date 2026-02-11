@@ -79,6 +79,21 @@
                         Data Pelanggan & Pengiriman
                     </label>
 
+                    <div class="bg-blue-50 p-3 rounded-xl border border-blue-100 mb-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+                            <i class="fas fa-store"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[10px] font-bold text-blue-400 uppercase leading-none mb-1">Toko Pengirim (Origin)</p>
+                            <h4 class="text-sm font-black text-blue-900 truncate">{{ Auth::user()->name }}</h4>
+                            <p class="text-[10px] text-blue-600 truncate italic">
+                                {{ Auth::user()->village }}, {{ Auth::user()->district }} ({{ Auth::user()->postal_code }})
+                            </p>
+                        </div>
+                    </div>
+
+                    {{-- Pilih Tipe Pelanggan --}}
+
                     <div class="flex w-full p-1 mb-4 border bg-slate-100 border-slate-200 rounded-xl sm:w-80">
                         <button @click="customerType = 'guest'; selectedCustomerId = '';"
                                 class="flex-1 py-2 text-xs font-bold transition-all rounded-lg active:scale-95"
