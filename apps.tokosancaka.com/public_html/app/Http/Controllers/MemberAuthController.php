@@ -763,7 +763,18 @@ public function customerTopup(Request $request)
             ]);
 
             Log::error('[DANA TOPUP] Gagal API:', ['msg' => $resMsg, 'code' => $resCode]);
-            return back()->with('error', "Gagal DANA ($resCode): $resMsg");
+
+            // 2. LOGIKA PESAN ERROR CUSTOM
+            // Default pesan (jika error lain)
+            $pesanUntukUser = "Gagal DANA ($resCode): $resMsg";
+
+            // Jika errornya General Error (5003800)
+            if ($resCode == '5003800') {
+                $pesanUntukUser = "Mohon maaf, terjadi gangguan pada sistem, silakan coba beberapa saat lagi";
+            }
+
+            // Kembalikan pesan yang sudah disesuaikan
+            return back()->with('error', $pesanUntukUser);
         }
 
     } catch (\Exception $e) {
