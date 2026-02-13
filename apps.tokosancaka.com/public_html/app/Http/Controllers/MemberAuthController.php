@@ -637,11 +637,11 @@ public function customerTopup(Request $request)
 
     // --- [SETUP REQUEST] ---
     $timestamp = now('Asia/Jakarta')->toIso8601String();
-    
+
     // --- [MODIFIKASI SEMENTARA UNTUK TEST POSTMAN] ---
     // Agar bisa kirim RefNo yang SAMA tapi Amount BEDA
     if ($request->has('manual_ref')) {
-        $partnerRef = $request->manual_ref; 
+        $partnerRef = $request->manual_ref;
     } else {
         $partnerRef = date('YmdHis') . mt_rand(1000, 9999);
     }
@@ -662,7 +662,7 @@ public function customerTopup(Request $request)
             "currency" => "IDR"
         ],
         "transactionDate" => $timestamp,
-        "categoryId"      => "6", 
+        "categoryId"      => "6",
         "additionalInfo"  => [
             "fundType" => "AGENT_TOPUP_FOR_USER_SETTLE"
         ]
@@ -670,7 +670,7 @@ public function customerTopup(Request $request)
 
     // --- [ENDPOINT & SIGNATURE] ---
     // Endpoint sudah diperbaiki sesuai instruksi
-    $path = '/rest/v1.0/emoney/topup'; 
+    $path = '/rest/v1.0/emoney/topup';
 
     $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
     $hashedBody = strtolower(hash('sha256', $jsonBody));
@@ -697,7 +697,7 @@ public function customerTopup(Request $request)
             ->post('https://api.sandbox.dana.id' . $path);
 
         $result = $response->json();
-        
+
         Log::info('[DANA TOPUP] Response:', ['body' => $response->body()]);
 
         $resCode = $result['responseCode'] ?? '500';
@@ -706,7 +706,7 @@ public function customerTopup(Request $request)
 
         // --- [VALIDASI SUKSES (2003800)] ---
         if ($codeCheck === '2003800') {
-            
+
             DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
 
             DB::table('dana_transactions')->insert([
@@ -720,12 +720,12 @@ public function customerTopup(Request $request)
                 'response_payload' => json_encode($result),
                 'created_at' => now()
             ]);
-            
+
             return back()->with('success', '✅ Topup Berhasil Dikirim!');
 
         } else {
             // --- [ERROR HANDLING] ---
-            
+
             DB::table('dana_transactions')->insert([
                 'tenant_id'    => $aff->tenant_id ?? 1,
                 'affiliate_id' => $aff->id,
