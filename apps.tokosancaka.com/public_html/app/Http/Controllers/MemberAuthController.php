@@ -618,53 +618,38 @@ private function sendWhatsApp($to, $message)
 
 public function customerTopup(Request $request)
 {
-    // --- [0] VALIDASI INPUT ---
+    // --- [VALIDASI INPUT] ---
     $request->validate([
         'affiliate_id' => 'required|exists:affiliates,id',
         'phone'        => 'required|numeric',
         'amount'       => 'required|numeric|min:1000',
     ]);
 
-    // Config Helper (Opsional, sesuaikan dengan config Anda)
-    $waToken = config('services.fonnte.token', 'ynMyPswSKr14wdtXMJF7');
-    $adminWA = config('services.admin_wa', '6285745808809');
-
-    // --- [LOG 1] START PROCESS ---
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
-
     if (!$aff) return back()->with('error', 'Affiliate tidak ditemukan.');
 
-    // Cek Saldo
     if ($aff->balance < $request->amount) {
         return back()->with('error', 'Saldo tidak mencukupi.');
     }
 
-    // --- [LOG 2] SANITASI NOMOR (FIX UTAMA DISINI) ---
-    // DANA Wajib format 628xxx.
-    $rawPhone = preg_replace('/[^0-9]/', '', $request->phone);
+    $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
+    if (substr($cleanPhone, 0, 1) === '0') $cleanPhone = '62' . substr($cleanPhone, 1);
 
-    if (substr($rawPhone, 0, 2) === '62') {
-        $cleanPhone = $rawPhone;
-    } elseif (substr($rawPhone, 0, 1) === '0') {
-        $cleanPhone = '62' . substr($rawPhone, 1);
-    } elseif (substr($rawPhone, 0, 1) === '8') {
-        // MENANGANI KASUS INPUT: 85745808809 -> JADI 6285745808809
-        $cleanPhone = '62' . $rawPhone;
-    } else {
-        // Fallback
-        $cleanPhone = '62' . $rawPhone;
-    }
-
-    Log::info('[DANA TOPUP] Phone Sanitized:', ['raw' => $request->phone, 'clean' => $cleanPhone]);
-
-    // --- [SETUP API v1.0] ---
-    // Sesuai Screenshot Mandatory Testing Anda
+    // --- [SETUP REQUEST] ---
     $timestamp = now('Asia/Jakarta')->toIso8601String();
-    $partnerRef = date('YmdHis') . mt_rand(1000, 9999);
+    
+    // --- [MODIFIKASI SEMENTARA UNTUK TEST POSTMAN] ---
+    // Agar bisa kirim RefNo yang SAMA tapi Amount BEDA
+    if ($request->has('manual_ref')) {
+        $partnerRef = $request->manual_ref; 
+    } else {
+        $partnerRef = date('YmdHis') . mt_rand(1000, 9999);
+    }
+    // --------------------------------------------------
+
     $amountStr = number_format((float)$request->amount, 2, '.', '');
 
-    // --- [BODY REQUEST v1.0] ---
-    // Struktur ini WAJIB untuk endpoint /emoney/topup.htm
+    // --- [BODY REQUEST] ---
     $body = [
         "partnerReferenceNo" => $partnerRef,
         "customerNumber"     => $cleanPhone,
@@ -672,23 +657,23 @@ public function customerTopup(Request $request)
             "value"    => $amountStr,
             "currency" => "IDR"
         ],
-        // [PENTING] Fee Amount wajib ada di v1.0
         "feeAmount" => [
             "value"    => "0.00",
             "currency" => "IDR"
         ],
         "transactionDate" => $timestamp,
-        "categoryId"      => "6", // Kategori Pulsa/E-money
+        "categoryId"      => "6", 
         "additionalInfo"  => [
-            // [PENTING] Tipe Dana untuk Disbursement
             "fundType" => "AGENT_TOPUP_FOR_USER_SETTLE"
         ]
     ];
 
-    // --- [SIGNATURE] ---
+    // --- [ENDPOINT & SIGNATURE] ---
+    // Endpoint sudah diperbaiki sesuai instruksi
+    $path = '/rest/v1.0/emoney/topup'; 
+
     $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
     $hashedBody = strtolower(hash('sha256', $jsonBody));
-    $path = '/rest/v1.0/emoney/topup'; // Endpoint yang BENAR
     $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
     $signature = $this->generateSignature($stringToSign);
 
@@ -712,21 +697,18 @@ public function customerTopup(Request $request)
             ->post('https://api.sandbox.dana.id' . $path);
 
         $result = $response->json();
+        
+        Log::info('[DANA TOPUP] Response:', ['body' => $response->body()]);
 
-        // Log Raw Body untuk debug jika error lagi
-        Log::info('[DANA TOPUP] RAW Response:', ['body' => $response->body()]);
-
-        // --- [CEK RESPONSE CODE v1.0] ---
         $resCode = $result['responseCode'] ?? '500';
         $resMsg  = $result['responseMessage'] ?? 'Unknown Error';
+        $codeCheck = trim((string)$resCode);
 
-        // 2003800 adalah kode SUKSES untuk Topup v1.0
-        if ($resCode == '2003800') {
-
-            // 1. Potong Saldo Affiliate
+        // --- [VALIDASI SUKSES (2003800)] ---
+        if ($codeCheck === '2003800') {
+            
             DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
 
-            // 2. Catat Transaksi Sukses
             DB::table('dana_transactions')->insert([
                 'tenant_id'    => $aff->tenant_id ?? 1,
                 'affiliate_id' => $aff->id,
@@ -738,18 +720,12 @@ public function customerTopup(Request $request)
                 'response_payload' => json_encode($result),
                 'created_at' => now()
             ]);
-
-            // 3. Kirim WA Sukses
-            if (method_exists($this, 'sendWhatsApp')) {
-                $msg = "✅ *TOPUP SUKSES*\n\nRef: $partnerRef\nKe: $cleanPhone\nRp " . number_format($request->amount);
-                $this->sendWhatsApp($cleanPhone, $msg, $waToken);
-            }
-
+            
             return back()->with('success', '✅ Topup Berhasil Dikirim!');
 
         } else {
-            // GAGAL
-            // Jangan potong saldo
+            // --- [ERROR HANDLING] ---
+            
             DB::table('dana_transactions')->insert([
                 'tenant_id'    => $aff->tenant_id ?? 1,
                 'affiliate_id' => $aff->id,
@@ -762,19 +738,19 @@ public function customerTopup(Request $request)
                 'created_at' => now()
             ]);
 
-            Log::error('[DANA TOPUP] Gagal API:', ['msg' => $resMsg, 'code' => $resCode]);
+            Log::error('[DANA TOPUP] Gagal API:', ['msg' => $resMsg, 'code' => $codeCheck]);
 
-            // 2. LOGIKA PESAN ERROR CUSTOM
-            // Default pesan (jika error lain)
-            $pesanUntukUser = "Gagal DANA ($resCode): $resMsg";
-
-            // Jika errornya General Error (5003800)
-            if ($resCode == '5003800') {
-                $pesanUntukUser = "Mohon maaf, terjadi gangguan pada sistem, silakan coba beberapa saat lagi";
+            // 1. GENERAL ERROR (5003800)
+            if ($codeCheck === '5003800') {
+                return back()->with('error', 'Mohon maaf, terjadi gangguan pada sistem, silakan coba beberapa saat lagi');
             }
 
-            // Kembalikan pesan yang sudah disesuaikan
-            return back()->with('error', $pesanUntukUser);
+            // 2. INCONSISTENT REQUEST (4043818) - INI YANG KITA CARI
+            if ($codeCheck === '4043818') {
+                return back()->with('error', 'Gagal: Data transaksi tidak konsisten. Silakan ulangi transaksi baru.');
+            }
+
+            return back()->with('error', "Gagal DANA ($codeCheck): $resMsg");
         }
 
     } catch (\Exception $e) {
