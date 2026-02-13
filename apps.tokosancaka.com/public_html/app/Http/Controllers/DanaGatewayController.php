@@ -616,4 +616,48 @@ class DanaGatewayController extends Controller
     }
 }
 
+ // 3. CEK SALDO USER (LOGIKA SNAP 2001100 - TIDAK DIRUBAH)
+    public function checkBalance(Request $request)
+    {
+        $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
+        $accessToken = $request->access_token ?? $aff->dana_access_token;
+
+        if (!$accessToken) return back()->with('error', 'Token Kosong.');
+
+        $timestamp = now('Asia/Jakarta')->toIso8601String();
+        $path = '/v1.0/balance-inquiry.htm';
+        $body = [
+            'partnerReferenceNo' => 'BAL' . time(),
+            'balanceTypes' => ['BALANCE'],
+            'additionalInfo' => ['accessToken' => $accessToken]
+        ];
+
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+        $signature = $this->generateSignature($stringToSign);
+
+        $response = Http::withHeaders([
+            'X-TIMESTAMP'   => $timestamp,
+            'X-SIGNATURE'   => $signature,
+            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+            'X-EXTERNAL-ID' => (string) time(),
+            'X-DEVICE-ID'   => 'DANA-DASHBOARD-STATION',
+            'CHANNEL-ID'    => '95221',
+            'ORIGIN'        => config('services.dana.origin'),
+            'Authorization-Customer' => 'Bearer ' . $accessToken,
+            'Content-Type'  => 'application/json'
+        ])->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+
+        $result = $response->json();
+
+        if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
+            $amount = $result['accountInfos'][0]['availableBalance']['value'];
+            // Simpan ke dana_user_balance (Pemisah Profit)
+            DB::table('affiliates')->where('id', $request->affiliate_id)->update(['dana_user_balance' => $amount, 'updated_at' => now()]);
+            return back()->with('success', 'Saldo Real DANA Terupdate!');
+        }
+        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Error'));
+    }
+
 }
