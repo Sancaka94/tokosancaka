@@ -224,6 +224,21 @@
                                     {{ $trx->status }}
                                 </span>
                             </td>
+                            {{-- TAMBAHAN: Tombol Cek Status --}}
+                            <td class="px-4 py-4 text-center">
+                                @if($trx->type == 'TOPUP') {{-- Hanya munculkan tombol jika tipe TOPUP (sesuai skenario) --}}
+                                    <form action="{{ route('dana.checkTopupStatus') }}" method="POST">
+                                        @csrf
+                                        <input type="hidden" name="affiliate_id" value="{{ $member->id }}">
+                                        <input type="hidden" name="reference_no" value="{{ $trx->reference_no }}">
+                                        <button type="submit" class="text-[9px] bg-blue-50 text-blue-600 border border-blue-200 px-2 py-1 rounded hover:bg-blue-600 hover:text-white transition font-bold uppercase tracking-wide">
+                                            <i class="fas fa-search mr-1"></i> Cek Status
+                                        </button>
+                                    </form>
+                                @else
+                                    <span class="text-[9px] text-slate-300">-</span>
+                                @endif
+                            </td>
                         </tr>
                         @empty
                         <tr>
