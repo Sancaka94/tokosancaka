@@ -600,4 +600,5 @@ Route::middleware('auth')->group(function () {
 Route::get('/orders/tripay-channels', [OrderController::class, 'tripayChannels'])->name('orders.tripay-channels');
 
 // Route untuk Cek Status Transaksi DANA
-Route::post('/member/dana/check-status', [App\Http\Controllers\MemberAuthController::class, 'checkTopupStatus'])->name('dana.checkTopupStatus');
+Route::post('/member/dana/check-status', [DanaGatewayController::class, 'checkTopupStatus'])
+    ->name('dana.checkTopupStatus');
