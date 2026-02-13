@@ -3,11 +3,52 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log; // Logging aktif
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Auth; // [TAMBAHAN] Wajib ada untuk mengambil user login
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
+use Carbon\Carbon; // <--- Pastikan baris ini ada di paling atas file
+
+// Models
+use App\Models\Order;
+use App\Models\Product;
+use App\Models\OrderDetail;
+use App\Models\OrderAttachment;
+use App\Models\Coupon;
+use App\Models\Affiliate;
+use App\Models\Store;
+use App\Models\TopUp;
+use App\Models\User;
+
+// Services
+use App\Services\DokuJokulService;
+use App\Services\KiriminAjaService;
+use App\Services\DanaSignatureService; // <--- TAMBAHKAN INI
+ // Pastikan Model Order diimport
+
+// SDK Models
+use Dana\Widget\v1\Model\WidgetPaymentRequest;
+use Dana\Widget\v1\Model\Money;
+use Dana\Widget\v1\Model\UrlParam;
+use Dana\Widget\v1\Model\WidgetPaymentRequestAdditionalInfo;
+use Dana\Widget\v1\Model\EnvInfo;
+use Dana\Widget\v1\Model\Order as DanaOrder; // Alias biar ga bentrok
+
+// SDK Enums (DATA DARI ANDA)
+use Dana\Widget\v1\Enum\PayMethod;
+use Dana\Widget\v1\Enum\SourcePlatform;
+use Dana\Widget\v1\Enum\TerminalType;
+use Dana\Widget\v1\Enum\OrderTerminalType;
+use Dana\Widget\v1\Enum\Type; // Untuk UrlParam type (PAY_RETURN)
+
+// Config
+use Dana\Configuration;
+use Dana\Env;
+use Dana\Widget\v1\Api\WidgetApi;
 
 class DanaGatewayController extends Controller
 {
