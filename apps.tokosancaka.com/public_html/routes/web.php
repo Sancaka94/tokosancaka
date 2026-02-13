@@ -254,13 +254,13 @@ Route::prefix('member')->name('member.')->group(function () {
 
         // --- FITUR DISBURSEMENT TO BANK ---
         // Rute untuk validasi rekening bank (Inquiry)
-        Route::post('/bank-inquiry', [MemberAuthController::class, 'bankAccountInquiry'])->name('bankInquiry');
+        Route::post('/bank-inquiry', [DanaGatewayController::class, 'bankAccountInquiry'])->name('bankInquiry');
 
         // --- FITUR PENGECEKAN STATUS ---
         // Rute untuk sinkronisasi status transaksi secara manual
-        Route::post('/check-status', [MemberAuthController::class, 'checkTopupStatus'])->name('checkStatus');
+        Route::post('/check-status', [DanaGatewayController::class, 'checkTopupStatus'])->name('checkStatus');
 
-        Route::post('/transfer-bank', [MemberAuthController::class, 'transferToBank'])->name('transferBank');
+        Route::post('/transfer-bank', [DanaGatewayController::class, 'transferToBank'])->name('transferBank');
 
         // ✅ KODE BARU (ARAHKAN KE CONTROLLER PUSAT)
         Route::get('/connect', [DanaGatewayController::class, 'startMemberBinding'])->name('start');
@@ -274,13 +274,13 @@ Route::prefix('member')->name('member.')->group(function () {
 // Diletakkan di dalam middleware auth:member agar aman
 Route::middleware('auth:member')->prefix('dana')->name('dana.')->group(function () {
     // Binding OAuth
-    Route::post('/bind', [MemberAuthController::class, 'startBinding'])->name('startBinding');
+    Route::post('/bind', [DanaGatewayController::class, 'startBinding'])->name('startBinding');
     Route::get('/callback', [DanaGatewayController::class, 'handleCallback'])->name('callback');
 
     // Inquiry & Topup
-    Route::post('/balance', [MemberAuthController::class, 'checkBalance'])->name('checkBalance');
-    Route::post('/inquiry', [MemberAuthController::class, 'accountInquiry'])->name('accountInquiry');
-    Route::post('/topup', [MemberAuthController::class, 'customerTopup'])->name('customerTopup');
+    Route::post('/balance', [DanaGatewayController::class, 'checkBalance'])->name('checkBalance');
+    Route::post('/inquiry', [DanaGatewayController::class, 'accountInquiry'])->name('accountInquiry');
+    Route::post('/topup', [DanaGatewayController::class, 'customerTopup'])->name('customerTopup');
 });
 
 // Route untuk halaman Cara / Panduan
