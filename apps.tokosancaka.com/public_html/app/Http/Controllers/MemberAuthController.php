@@ -654,14 +654,9 @@ public function customerTopup(Request $request)
     // --- [SETUP REQUEST] ---
     $timestamp = now('Asia/Jakarta')->toIso8601String();
 
-    // --- [MODIFIKASI SEMENTARA UNTUK TEST POSTMAN] ---
-    // Agar bisa kirim RefNo yang SAMA tapi Amount BEDA
-    if ($request->has('manual_ref')) {
-        $partnerRef = $request->manual_ref;
-    } else {
-        $partnerRef = date('YmdHis') . mt_rand(1000, 9999);
-    }
-    // --------------------------------------------------
+    // --- [MODIFIKASI: HARDCODE REF NO] ---
+    // Pakai nama ini terus biar DANA bingung
+    $partnerRef = "REF-TEST-INCONSISTENT-999";
 
     $amountStr = number_format((float)$request->amount, 2, '.', '');
 
