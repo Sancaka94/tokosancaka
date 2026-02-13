@@ -379,7 +379,7 @@ class DanaGatewayController extends Controller
                 $status = $result['latestTransactionStatus']; // 00 = Sukses
 
                 // Ambil data detail untuk notifikasi
-                $refNo    = $result['referenceNo'] ?? '-';
+                $refNo    = $result['referenceNo'] ?? $result['originalReferenceNo'] ?? '-';
                 $srvCode  = $result['serviceCode'] ?? '-';
                 $desc     = $result['transactionStatusDesc'] ?? '-';
 
