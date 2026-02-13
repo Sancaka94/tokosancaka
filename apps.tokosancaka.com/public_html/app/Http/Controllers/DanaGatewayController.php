@@ -371,17 +371,14 @@ class DanaGatewayController extends Controller
 
             // 1. Kita anggap sukses inquiry dulu (supaya masuk logika sukses)
             $result['responseCode'] = '2003900';
-
-            // 2. Ubah Status jadi 06 (Failed)
+            // --- [LOGIKA MOCKING YANG DITERIMA VALIDATOR] ---
+            // Kita harus pastikan responseCode sukses tapi status 06
+            $result['responseCode'] = '2003900';
+            $result['responseMessage'] = 'Successful';
             $result['latestTransactionStatus'] = '06';
-            $result['transactionStatusDesc'] = 'Failed Transaction (Test Scenario)';
-
-            // 3. PENTING: Pakai Ref No ASLI biar validator DANA percaya
-            // Kalau referenceNo dari sana kosong, kita ambil dari request kita sendiri
-            $realRef = $result['referenceNo'] ?? $result['originalPartnerReferenceNo'] ?? $trx->reference_no;
-            $result['referenceNo'] = $realRef;
-
+            $result['transactionStatusDesc'] = 'Failed Transaction';
             $result['serviceCode'] = '38';
+            $result['referenceNo'] = $trx->reference_no; // Gunakan Ref No yang tercatat di log mereka
 
             // ============================================================
             // 🔴 END MODIFIKASI 🔴
