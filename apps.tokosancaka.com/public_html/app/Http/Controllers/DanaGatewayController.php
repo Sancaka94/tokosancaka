@@ -430,7 +430,7 @@ class DanaGatewayController extends Controller
 
     public function customerTopup(Request $request)
 {
-    // --- [VALIDASI INPUT] ---
+    // 1. Validasi Input (Standar)
     $request->validate([
         'affiliate_id' => 'required|exists:affiliates,id',
         'phone'        => 'required|numeric',
@@ -444,89 +444,73 @@ class DanaGatewayController extends Controller
         return back()->with('error', 'Saldo tidak mencukupi.');
     }
 
-    // --- [SANITASI NOMOR HP (DINAMIS)] ---
-    // Mengubah format 08xx/8xx menjadi 628xx secara otomatis
+    // 2. Sanitasi Nomor HP
     $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
-    if (substr($cleanPhone, 0, 2) === '62') {
-        $cleanPhone = $cleanPhone;
-    } elseif (substr($cleanPhone, 0, 1) === '0') {
-        $cleanPhone = '62' . substr($cleanPhone, 1);
-    } elseif (substr($cleanPhone, 0, 1) === '8') {
-        $cleanPhone = '62' . $cleanPhone;
+    if (substr($cleanPhone, 0, 2) !== '62') {
+        $cleanPhone = (substr($cleanPhone, 0, 1) === '0') ? '62' . substr($cleanPhone, 1) : '62' . $cleanPhone;
     }
 
-    // --- [SETUP REQUEST (NORMAL)] ---
-    $timestamp = now('Asia/Jakarta')->toIso8601String();
-
-    // Kembali generate RefNo Unik setiap transaksi (Agar tidak kena Inconsistent Request saat normal)
+    // 3. Persiapan Request
+    $timestamp  = now('Asia/Jakarta')->toIso8601String();
     $partnerRef = date('YmdHis') . mt_rand(1000, 9999);
+    $amountStr  = number_format((float)$request->amount, 2, '.', '');
+    $path       = '/rest/v1.0/emoney/topup';
 
-    // Nominal sesuai input user
-    $amountStr = number_format((float)$request->amount, 2, '.', '');
-
-    // --- [BODY REQUEST] ---
     $body = [
         "partnerReferenceNo" => $partnerRef,
         "customerNumber"     => $cleanPhone,
-        "amount" => [
-            "value"    => $amountStr,
-            "currency" => "IDR"
-        ],
-        "feeAmount" => [
-            "value"    => "0.00",
-            "currency" => "IDR"
-        ],
+        "amount" => ["value" => $amountStr, "currency" => "IDR"],
+        "feeAmount" => ["value" => "0.00", "currency" => "IDR"],
         "transactionDate" => $timestamp,
         "categoryId"      => "6",
-        "additionalInfo"  => [
-            "fundType" => "AGENT_TOPUP_FOR_USER_SETTLE"
-        ]
+        "additionalInfo"  => ["fundType" => "AGENT_TOPUP_FOR_USER_SETTLE"]
     ];
 
-    // --- [ENDPOINT & SIGNATURE] ---
-    $path = '/rest/v1.0/emoney/topup';
-
-    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
-    $hashedBody = strtolower(hash('sha256', $jsonBody));
+    $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
+    $hashedBody   = strtolower(hash('sha256', $jsonBody));
     $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-    $signature = $this->generateSignature($stringToSign);
+    $signature    = $this->generateSignature($stringToSign);
 
-    // --- [HEADER] ---
     $headers = [
-        'Content-Type' => 'application/json',
-        'X-TIMESTAMP'  => $timestamp,
-        'X-SIGNATURE'  => $signature,
-        'X-PARTNER-ID' => config('services.dana.x_partner_id'),
-        'X-EXTERNAL-ID'=> (string) time() . Str::random(4),
-        'CHANNEL-ID'   => '95221',
-        'ORIGIN'       => config('services.dana.origin'),
+        'Content-Type'  => 'application/json',
+        'X-TIMESTAMP'   => $timestamp,
+        'X-SIGNATURE'   => $signature,
+        'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+        'X-EXTERNAL-ID' => (string) time() . Str::random(4),
+        'CHANNEL-ID'    => '95221',
+        'ORIGIN'        => config('services.dana.origin'),
     ];
+
+    // --- [LOG 1: REQUEST DATA] ---
+    Log::info('========== [DANA TOPUP START] ==========');
+    Log::info('[DANA REQUEST] URL: https://api.sandbox.dana.id' . $path);
+    Log::info('[DANA REQUEST] Headers:', $headers);
+    Log::info('[DANA REQUEST] Payload:', $body);
+    Log::info('[DANA REQUEST] StringToSign: ' . $stringToSign);
 
     try {
-        Log::info('[DANA TOPUP] Sending Request...', ['ref' => $partnerRef, 'phone' => $cleanPhone]);
-
-        // --- [EKSEKUSI REQUEST] ---
         $response = Http::withHeaders($headers)
-    ->timeout(60) // Perpanjang ke 60 detik
-    ->connectTimeout(30) // Batas waktu mencoba menyambung
-    ->withBody($jsonBody, 'application/json')
-    ->post('https://api.sandbox.dana.id' . $path);
+            ->timeout(60) // Tambahkan timeout agar tidak gantung
+            ->withBody($jsonBody, 'application/json')
+            ->post('https://api.sandbox.dana.id' . $path);
 
         $result = $response->json();
 
-        Log::info('[DANA TOPUP] Response:', ['body' => $response->body()]);
+        // --- [LOG 2: RESPONSE DATA] ---
+        Log::info('[DANA RESPONSE] Status Code: ' . $response->status());
+        Log::info('[DANA RESPONSE] Raw Body: ' . $response->body());
 
-        $resCode = $result['responseCode'] ?? '500';
-        $resMsg  = $result['responseMessage'] ?? 'Unknown Error';
+        if ($response->failed()) {
+            Log::error('[DANA TOPUP] HTTP Request Failed (Status ' . $response->status() . ')');
+        }
+
+        // --- [LOGIKA PENANGANAN RESPONSE] ---
+        $resCode   = $result['responseCode'] ?? ($response->status() == 504 ? '504' : '500');
+        $resMsg    = $result['responseMessage'] ?? 'Internal Server Error / Gateway Timeout';
         $codeCheck = trim((string)$resCode);
 
-        // --- [VALIDASI SUKSES (2003800)] ---
         if ($codeCheck === '2003800') {
-
-            // 1. Potong Saldo
             DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
-
-            // 2. Catat Sukses
             DB::table('dana_transactions')->insert([
                 'tenant_id'    => $aff->tenant_id ?? 1,
                 'affiliate_id' => $aff->id,
@@ -538,16 +522,10 @@ class DanaGatewayController extends Controller
                 'response_payload' => json_encode($result),
                 'created_at' => now()
             ]);
-
-            // 3. Kirim WA (Opsional, aktifkan jika perlu)
-            // if (method_exists($this, 'sendWhatsApp')) { ... }
-
+            Log::info('[DANA TOPUP] Result: ✅ SUCCESS');
             return back()->with('success', '✅ Pencairan Profit Berhasil Diproses!');
-
         } else {
-            // --- [ERROR HANDLING LENGKAP] ---
-
-            // Catat Gagal di DB (Tanpa Potong Saldo)
+            // Catat Gagal di DB
             DB::table('dana_transactions')->insert([
                 'tenant_id'    => $aff->tenant_id ?? 1,
                 'affiliate_id' => $aff->id,
@@ -556,48 +534,30 @@ class DanaGatewayController extends Controller
                 'phone' => $cleanPhone,
                 'amount' => $request->amount,
                 'status' => 'FAILED',
-                'response_payload' => json_encode($result),
+                'response_payload' => json_encode($result ?: ['raw_html' => $response->body()]),
                 'created_at' => now()
             ]);
 
-            Log::error('[DANA TOPUP] Gagal API:', ['msg' => $resMsg, 'code' => $codeCheck]);
+            Log::warning('[DANA TOPUP] Result: ❌ FAILED (Code: '.$codeCheck.')');
 
-            // ============================================
-            // LIST PESAN ERROR KHUSUS (HASIL TEST DANA)
-            // ============================================
+            // Pesan error ramah user
+            $userMsg = match($codeCheck) {
+                '504'       => 'Server DANA sedang sibuk (Gateway Timeout), silakan coba 1 menit lagi.',
+                '5003800'   => 'Gangguan sistem DANA, coba lagi nanti.',
+                '4033814'   => 'Saldo merchant tidak mencukupi, hubungi admin.',
+                '4033805'   => 'Nomor DANA tujuan tidak valid atau dibekukan.',
+                default     => "Gagal: $resMsg ($codeCheck)"
+            };
 
-            // 1. General Error (5003800)
-            if ($codeCheck === '5003800') {
-                return back()->with('error', 'Mohon maaf, terjadi gangguan pada sistem DANA, silakan coba beberapa saat lagi.');
-            }
-
-            // 2. Inconsistent Request (4043818)
-            if ($codeCheck === '4043818') {
-                return back()->with('error', 'Gagal: Data transaksi tidak konsisten. Silakan ulangi transaksi baru.');
-            }
-
-            // 3. Insufficient Fund (4033814) - Saldo Merchant Habis
-            if ($codeCheck === '4033814') {
-                return back()->with('error', 'Gagal: Saldo operasional sedang limit. Silakan hubungi Admin.');
-            }
-
-            // 4. Do Not Honor / Invalid Account (4033805)
-            if ($codeCheck === '4033805') {
-                return back()->with('error', 'Gagal: Nomor DANA tujuan tidak valid, dibekukan, atau tidak ditemukan.');
-            }
-
-            // 5. Invalid Format (4003801) - Jaga-jaga
-            if ($codeCheck === '4003801') {
-                return back()->with('error', 'Gagal: Format nomor HP tidak sesuai.');
-            }
-
-            // Default Error (Untuk kode lain)
-            return back()->with('error', "Gagal Pencairan ($codeCheck): $resMsg");
+            return back()->with('error', $userMsg);
         }
 
     } catch (\Exception $e) {
-        Log::error('[DANA TOPUP] Exception', ['msg' => $e->getMessage()]);
+        Log::error('[DANA TOPUP] Exception Error: ' . $e->getMessage());
+        Log::error('[DANA TOPUP] Trace: ' . $e->getTraceAsString());
         return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+    } finally {
+        Log::info('========== [DANA TOPUP END] ==========');
     }
 }
 
