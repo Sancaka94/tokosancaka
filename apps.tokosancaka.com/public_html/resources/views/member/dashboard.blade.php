@@ -19,7 +19,8 @@
         <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-sm animate-fade-in mb-3">
             <i class="fas fa-check-circle text-lg"></i>
             <div>
-                <p class="text-xs font-bold whitespace-pre-line">{{ $successMsg }}</p>
+                {{-- Gunakan {!! !!} agar kode HTML seperti <br> dan <b> terbaca --}}
+                <p class="text-xs font-bold whitespace-pre-line">{!! $successMsg !!}</p>
                 @if(session('dana_report') && session('dana_report')->is_success)
                     <p class="text-[10px] opacity-80 mt-1">{{ session('dana_report')->description }}</p>
                 @endif
@@ -41,7 +42,7 @@
         @if($errorMsg)
         <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-sm animate-fade-in mb-3">
             <i class="fas fa-exclamation-triangle text-lg"></i>
-            <p class="text-xs font-bold">{{ $errorMsg }}</p>
+            <p class="text-xs font-bold">{!! $errorMsg !!}</p>
             <button onclick="this.parentElement.remove()" class="ml-auto text-rose-400 hover:text-rose-700"><i class="fas fa-times"></i></button>
         </div>
         @endif
