@@ -801,14 +801,14 @@ public function checkTopupStatus(Request $request)
     if (!$trx) return back()->with('error', 'Data transaksi tidak ditemukan di database.');
 
     $timestamp = now('Asia/Jakarta')->toIso8601String();
-    $path = '/v1.0/emoney/topup-status.htm';
+    $path = '/rest/v1.0/emoney/topup-status';
 
     // --- [BODY] SESUAI DOKUMENTASI ---
     $body = [
         "originalPartnerReferenceNo" => $trx->reference_no, // Required
         "originalReferenceNo"        => "", // Opsional, bisa kosong jika belum ada
         "originalExternalId"         => "", // Opsional
-        "serviceCode"                => "38", // Wajib "38" untuk Topup
+        "serviceCode"                => "XX", // Wajib "38" untuk Topup
         "additionalInfo"             => (object)[]
     ];
 
