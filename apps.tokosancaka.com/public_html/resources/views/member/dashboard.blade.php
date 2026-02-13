@@ -60,9 +60,9 @@
                 <button onclick="this.parentElement.parentElement.remove()" class="text-amber-500 hover:text-amber-800"><i class="fas fa-times"></i></button>
             </div>
 
-            {{-- Menggunakan {{ }} (bukan {!! !!}) agar tag HTML DANA tidak merusak layout aplikasi Anda --}}
-            <div class="bg-slate-900 rounded-xl p-3 max-h-64 overflow-y-auto">
-                <pre class="text-[10px] text-green-400 font-mono whitespace-pre-wrap break-words">{{ session('debug_error') }}</pre>
+            {{-- Menggunakan iframe srcdoc agar HTML dari DANA ter-render visual tapi tidak merusak layout web Anda --}}
+            <div class="bg-white rounded-xl overflow-hidden border border-amber-200">
+                <iframe class="w-full h-64 border-0" srcdoc="{{ session('debug_error') }}"></iframe>
             </div>
             <p class="text-[9px] mt-2 italic text-amber-700">*Gunakan informasi log ini untuk di-screenshot jika ingin lapor ke pihak DANA.</p>
         </div>
