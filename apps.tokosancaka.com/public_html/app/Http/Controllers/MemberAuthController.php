@@ -632,8 +632,24 @@ public function customerTopup(Request $request)
         return back()->with('error', 'Saldo tidak mencukupi.');
     }
 
+   // --- [SANITASI NOMOR HP (PERBAIKAN)] ---
+    // Hapus semua karakter selain angka
     $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
-    if (substr($cleanPhone, 0, 1) === '0') $cleanPhone = '62' . substr($cleanPhone, 1);
+
+    // Logika Deteksi Format
+    if (substr($cleanPhone, 0, 2) === '62') {
+        // Jika sudah 62, biarkan (Contoh: 62812...)
+        $cleanPhone = $cleanPhone;
+    } elseif (substr($cleanPhone, 0, 1) === '0') {
+        // Jika 08, ubah jadi 628 (Contoh: 0812... -> 62812...)
+        $cleanPhone = '62' . substr($cleanPhone, 1);
+    } elseif (substr($cleanPhone, 0, 1) === '8') {
+        // Jika langsung 8, tambah 62 (Contoh: 812... -> 62812...)
+        $cleanPhone = '62' . $cleanPhone;
+    }
+
+    // Debug Log untuk memastikan nomor sudah benar sebelum dikirim
+    Log::info('[DANA PHONE CHECK] Raw: ' . $request->phone . ' -> Clean: ' . $cleanPhone);
 
     // --- [SETUP REQUEST] ---
     $timestamp = now('Asia/Jakarta')->toIso8601String();
