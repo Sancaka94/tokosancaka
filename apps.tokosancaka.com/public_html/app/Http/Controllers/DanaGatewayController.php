@@ -341,7 +341,7 @@ class DanaGatewayController extends Controller
             "originalPartnerReferenceNo" => $trx->reference_no,
             "originalReferenceNo"        => "",
             "originalExternalId"         => "",
-            "serviceCode"                => "38", // Code 38 = Topup (Normal)
+            "serviceCode"                => "XX", // Code 38 = Topup (Normal)
             "additionalInfo"             => (object)[]
         ];
 
