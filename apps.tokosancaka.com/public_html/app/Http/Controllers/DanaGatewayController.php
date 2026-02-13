@@ -507,8 +507,10 @@ class DanaGatewayController extends Controller
 
         // --- [EKSEKUSI REQUEST] ---
         $response = Http::withHeaders($headers)
-            ->withBody($jsonBody, 'application/json')
-            ->post('https://api.sandbox.dana.id' . $path);
+    ->timeout(60) // Perpanjang ke 60 detik
+    ->connectTimeout(30) // Batas waktu mencoba menyambung
+    ->withBody($jsonBody, 'application/json')
+    ->post('https://api.sandbox.dana.id' . $path);
 
         $result = $response->json();
 
