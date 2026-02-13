@@ -688,7 +688,7 @@ public function customerTopup(Request $request)
     // --- [SIGNATURE] ---
     $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
     $hashedBody = strtolower(hash('sha256', $jsonBody));
-    $path = '/v1.0/emoney/topup.htm';
+    $path = '/rest/v1.0/emoney/topup'; // Endpoint yang BENAR
     $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
     $signature = $this->generateSignature($stringToSign);
 
