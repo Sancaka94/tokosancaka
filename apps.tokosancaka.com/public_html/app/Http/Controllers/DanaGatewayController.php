@@ -549,7 +549,9 @@ class DanaGatewayController extends Controller
                 default     => "Gagal: $resMsg ($codeCheck)"
             };
 
-            return back()->with('error', $userMsg);
+            return back()
+                ->with('error', $userMsg)
+                ->with('debug_error', $response->body());
         }
 
     } catch (\Exception $e) {
