@@ -651,21 +651,28 @@ public function customerTopup(Request $request)
     // Debug Log untuk memastikan nomor sudah benar sebelum dikirim
     Log::info('[DANA PHONE CHECK] Raw: ' . $request->phone . ' -> Clean: ' . $cleanPhone);
 
-    // --- [SETUP REQUEST] ---
+   // --- [SETUP REQUEST] ---
     $timestamp = now('Asia/Jakarta')->toIso8601String();
+    $partnerRef = date('YmdHis') . mt_rand(1000, 9999);
 
-    // --- [MODIFIKASI: HARDCODE REF NO] ---
-    // Pakai nama ini terus biar DANA bingung
-    $partnerRef = "REF-TEST-INCONSISTENT-999";
+    // ==========================================
+    // MODIFIKASI KHUSUS TEST "INSUFFICIENT FUND"
+    // ==========================================
 
-    $amountStr = number_format((float)$request->amount, 2, '.', '');
+    // 1. Paksa Nomor HP sesuai Skenario DANA
+    $cleanPhone = '6281298055129';
+
+    // 2. Paksa Nominal jadi 10 Rupiah (Sesuai Skenario 1-10 IDR)
+    $amountStr = '10.00';
+
+    // ==========================================
 
     // --- [BODY REQUEST] ---
     $body = [
         "partnerReferenceNo" => $partnerRef,
-        "customerNumber"     => $cleanPhone,
+        "customerNumber"     => $cleanPhone, // Ini akan pakai 6281298055129
         "amount" => [
-            "value"    => $amountStr,
+            "value"    => $amountStr, // Ini akan pakai 10.00
             "currency" => "IDR"
         ],
         "feeAmount" => [
@@ -750,6 +757,12 @@ public function customerTopup(Request $request)
             ]);
 
             Log::error('[DANA TOPUP] Gagal API:', ['msg' => $resMsg, 'code' => $codeCheck]);
+
+            // TAMBAHKAN INI DI DALAM BLOK ELSE:
+            // Skenario: Insufficient Fund (4033814)
+            if ($codeCheck === '4033814') {
+                return back()->with('error', 'Gagal: Saldo Merchant Tidak Cukup (Skenario Test Sukses).');
+            }
 
             // 1. GENERAL ERROR (5003800)
             if ($codeCheck === '5003800') {
