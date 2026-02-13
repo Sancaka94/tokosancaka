@@ -857,16 +857,6 @@ public function checkTopupStatus(Request $request)
             }
         }
 
-        // TAMBAHKAN LOGIKA INI BOS:
-        elseif ($resCode == '4043901') {
-            // Jika DANA bilang tidak ketemu, tandai Gagal Permanen
-            DB::table('dana_transactions')->where('id', $trx->id)->update([
-                'status' => 'FAILED',
-                'retry_count' => 5 // Hentikan Auto-Retry
-            ]);
-            return back()->with('error', '❌ Transaksi Tidak Ditemukan di DANA (Silakan coba Topup ulang).');
-        }
-
         // TAMBAHKAN INI UNTUK MENANGKAP HASIL TEST:
         elseif ($resCode == '4003901') {
             return back()->with('error', 'Test Berhasil: Invalid Field Format (4003901) terdeteksi!');
