@@ -46,6 +46,28 @@
             <button onclick="this.parentElement.remove()" class="ml-auto text-rose-400 hover:text-rose-700"><i class="fas fa-times"></i></button>
         </div>
         @endif
+
+        {{-- ========================================== --}}
+        {{-- TAMBAHKAN KODE INI UNTUK MENAMPILKAN LOG --}}
+        {{-- ========================================== --}}
+        @if(session('debug_error'))
+        <div class="bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded-2xl shadow-sm animate-fade-in mb-6">
+            <div class="flex justify-between items-center mb-2 border-b border-amber-200 pb-2">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-bug text-lg"></i>
+                    <span class="font-black text-xs uppercase tracking-widest">Detail Log Server (Debug)</span>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-amber-500 hover:text-amber-800"><i class="fas fa-times"></i></button>
+            </div>
+
+            {{-- Menggunakan {{ }} (bukan {!! !!}) agar tag HTML DANA tidak merusak layout aplikasi Anda --}}
+            <div class="bg-slate-900 rounded-xl p-3 max-h-64 overflow-y-auto">
+                <pre class="text-[10px] text-green-400 font-mono whitespace-pre-wrap break-words">{{ session('debug_error') }}</pre>
+            </div>
+            <p class="text-[9px] mt-2 italic text-amber-700">*Gunakan informasi log ini untuk di-screenshot jika ingin lapor ke pihak DANA.</p>
+        </div>
+        @endif
+        {{-- ========================================== --}}
     </div>
 
     {{-- 2. CARD SALDO UTAMA --}}
