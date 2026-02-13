@@ -632,47 +632,32 @@ public function customerTopup(Request $request)
         return back()->with('error', 'Saldo tidak mencukupi.');
     }
 
-    // --- [SANITASI NOMOR HP (PERBAIKAN)] ---
-    // Hapus semua karakter selain angka
+    // --- [SANITASI NOMOR HP (DINAMIS)] ---
+    // Mengubah format 08xx/8xx menjadi 628xx secara otomatis
     $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
-
-    // Logika Deteksi Format
     if (substr($cleanPhone, 0, 2) === '62') {
-        // Jika sudah 62, biarkan (Contoh: 62812...)
         $cleanPhone = $cleanPhone;
     } elseif (substr($cleanPhone, 0, 1) === '0') {
-        // Jika 08, ubah jadi 628 (Contoh: 0812... -> 62812...)
         $cleanPhone = '62' . substr($cleanPhone, 1);
     } elseif (substr($cleanPhone, 0, 1) === '8') {
-        // Jika langsung 8, tambah 62 (Contoh: 812... -> 62812...)
         $cleanPhone = '62' . $cleanPhone;
     }
 
-    // Debug Log untuk memastikan nomor sudah benar sebelum dikirim
-    Log::info('[DANA PHONE CHECK] Raw: ' . $request->phone . ' -> Clean: ' . $cleanPhone);
-
-  // --- [SETUP REQUEST] ---
+    // --- [SETUP REQUEST (NORMAL)] ---
     $timestamp = now('Asia/Jakarta')->toIso8601String();
+
+    // Kembali generate RefNo Unik setiap transaksi (Agar tidak kena Inconsistent Request saat normal)
     $partnerRef = date('YmdHis') . mt_rand(1000, 9999);
 
-    // ==========================================
-    // MODIFIKASI KHUSUS TEST "DO NOT HONOR"
-    // ==========================================
-
-    // 1. Paksa Nomor HP (Pilih salah satu dari request DANA)
-    $cleanPhone = '628996647679';
-
-    // 2. Paksa Nominal jadi 10 Rupiah
-    $amountStr = '10.00';
-
-    // ==========================================
+    // Nominal sesuai input user
+    $amountStr = number_format((float)$request->amount, 2, '.', '');
 
     // --- [BODY REQUEST] ---
     $body = [
         "partnerReferenceNo" => $partnerRef,
-        "customerNumber"     => $cleanPhone, // Ini akan otomatis pakai 628996647679
+        "customerNumber"     => $cleanPhone,
         "amount" => [
-            "value"    => $amountStr, // Ini akan otomatis pakai 10.00
+            "value"    => $amountStr,
             "currency" => "IDR"
         ],
         "feeAmount" => [
@@ -687,7 +672,6 @@ public function customerTopup(Request $request)
     ];
 
     // --- [ENDPOINT & SIGNATURE] ---
-    // Endpoint sudah diperbaiki sesuai instruksi
     $path = '/rest/v1.0/emoney/topup';
 
     $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
@@ -707,7 +691,7 @@ public function customerTopup(Request $request)
     ];
 
     try {
-        Log::info('[DANA TOPUP] Sending Request...', ['ref' => $partnerRef]);
+        Log::info('[DANA TOPUP] Sending Request...', ['ref' => $partnerRef, 'phone' => $cleanPhone]);
 
         // --- [EKSEKUSI REQUEST] ---
         $response = Http::withHeaders($headers)
@@ -725,8 +709,10 @@ public function customerTopup(Request $request)
         // --- [VALIDASI SUKSES (2003800)] ---
         if ($codeCheck === '2003800') {
 
+            // 1. Potong Saldo
             DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
 
+            // 2. Catat Sukses
             DB::table('dana_transactions')->insert([
                 'tenant_id'    => $aff->tenant_id ?? 1,
                 'affiliate_id' => $aff->id,
@@ -739,11 +725,15 @@ public function customerTopup(Request $request)
                 'created_at' => now()
             ]);
 
-            return back()->with('success', '✅ Topup Berhasil Dikirim!');
+            // 3. Kirim WA (Opsional, aktifkan jika perlu)
+            // if (method_exists($this, 'sendWhatsApp')) { ... }
+
+            return back()->with('success', '✅ Pencairan Profit Berhasil Diproses!');
 
         } else {
-            // --- [ERROR HANDLING] ---
+            // --- [ERROR HANDLING LENGKAP] ---
 
+            // Catat Gagal di DB (Tanpa Potong Saldo)
             DB::table('dana_transactions')->insert([
                 'tenant_id'    => $aff->tenant_id ?? 1,
                 'affiliate_id' => $aff->id,
@@ -758,29 +748,37 @@ public function customerTopup(Request $request)
 
             Log::error('[DANA TOPUP] Gagal API:', ['msg' => $resMsg, 'code' => $codeCheck]);
 
-            // Skenario: Do Not Honor (4033805)
-            // Artinya: Akun tujuan tidak valid / dibekukan / tidak ditemukan
-            if ($codeCheck === '4033805') {
-                return back()->with('error', 'Gagal: Nomor DANA tujuan tidak valid atau sedang dinonaktifkan (Do Not Honor).');
-            }
+            // ============================================
+            // LIST PESAN ERROR KHUSUS (HASIL TEST DANA)
+            // ============================================
 
-            // TAMBAHKAN INI DI DALAM BLOK ELSE:
-            // Skenario: Insufficient Fund (4033814)
-            if ($codeCheck === '4033814') {
-                return back()->with('error', 'Gagal: Saldo Merchant Tidak Cukup (Skenario Test Sukses).');
-            }
-
-            // 1. GENERAL ERROR (5003800)
+            // 1. General Error (5003800)
             if ($codeCheck === '5003800') {
-                return back()->with('error', 'Mohon maaf, terjadi gangguan pada sistem, silakan coba beberapa saat lagi');
+                return back()->with('error', 'Mohon maaf, terjadi gangguan pada sistem DANA, silakan coba beberapa saat lagi.');
             }
 
-            // 2. INCONSISTENT REQUEST (4043818) - INI YANG KITA CARI
+            // 2. Inconsistent Request (4043818)
             if ($codeCheck === '4043818') {
                 return back()->with('error', 'Gagal: Data transaksi tidak konsisten. Silakan ulangi transaksi baru.');
             }
 
-            return back()->with('error', "Gagal DANA ($codeCheck): $resMsg");
+            // 3. Insufficient Fund (4033814) - Saldo Merchant Habis
+            if ($codeCheck === '4033814') {
+                return back()->with('error', 'Gagal: Saldo operasional sedang limit. Silakan hubungi Admin.');
+            }
+
+            // 4. Do Not Honor / Invalid Account (4033805)
+            if ($codeCheck === '4033805') {
+                return back()->with('error', 'Gagal: Nomor DANA tujuan tidak valid, dibekukan, atau tidak ditemukan.');
+            }
+
+            // 5. Invalid Format (4003801) - Jaga-jaga
+            if ($codeCheck === '4003801') {
+                return back()->with('error', 'Gagal: Format nomor HP tidak sesuai.');
+            }
+
+            // Default Error (Untuk kode lain)
+            return back()->with('error', "Gagal Pencairan ($codeCheck): $resMsg");
         }
 
     } catch (\Exception $e) {
