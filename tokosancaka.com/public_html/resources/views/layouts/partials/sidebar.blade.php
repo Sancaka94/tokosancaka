@@ -125,6 +125,40 @@
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Formulir Perizinan</span>
             </a>
 
+            {{-- MENU BARU: SEMINAR & ABSENSI --}}
+            <div x-data="{ open: {{ request()->routeIs('admin.seminar.*') ? 'true' : 'false' }} }"
+                 x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                 x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true">
+
+                <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
+                        class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('admin.seminar.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                    <span class="flex items-center">
+                        <i class="fa-solid fa-users-viewfinder fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.seminar.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Event Seminar</span>
+                    </span>
+                    <div :class="(isExpanded || isHovered) ? 'flex' : 'flex lg:hidden'" class="items-center ml-auto">
+                        <span id="menu-seminar-badge" class="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-white bg-red-500 rounded-md mr-2 hidden">0</span>
+                        <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
+                           :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->routeIs('admin.seminar.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
+                    </div>
+                </button>
+
+                <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
+                    <ul class="pl-9 pr-2 py-1 space-y-1">
+                        <li>
+                            <a href="{{ route('admin.seminar.index') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.seminar.index') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                Data Peserta
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('admin.seminar.scan') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.seminar.scan') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                Scanner Absensi
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
             <a href="{{ route('admin.pelanggan.index') }}" wire:navigate
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.pelanggan.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
