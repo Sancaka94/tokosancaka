@@ -914,19 +914,39 @@ Route::prefix('admin')->name('admin.')->group(function () {
 });
 
 
-// --- PUBLIC: FORMULIR & TIKET ---
+// ====================================================
+// 1. BAGIAN PUBLIC (Bisa Diakses Siapa Saja)
+// ====================================================
+
+// Halaman Formulir Pendaftaran
 Route::get('/seminar/daftar', [SeminarController::class, 'create'])->name('seminar.form');
+
+// Proses Simpan Data Pendaftaran
 Route::post('/seminar/daftar', [SeminarController::class, 'store'])->name('seminar.store');
+
+// Halaman E-Tiket (Setelah Daftar)
 Route::get('/seminar/tiket/{ticket_number}', [SeminarController::class, 'showTicket'])->name('seminar.ticket');
 
-// --- ADMIN: DATA & SCANNER ---
+
+// ====================================================
+// 2. BAGIAN ADMIN (Hanya Panitia)
+// ====================================================
+// Sebaiknya dibungkus middleware auth/admin jika aplikasi sudah live
 Route::prefix('admin')->name('admin.')->group(function () {
-    // List Peserta
+
+    // Dashboard Data Peserta & Statistik
     Route::get('/seminar/peserta', [SeminarController::class, 'index'])->name('seminar.index');
 
-    // Halaman Scanner (Buka Kamera)
+    // Halaman Scanner Kamera (Untuk Absensi)
     Route::get('/seminar/scan', [SeminarController::class, 'scanPage'])->name('seminar.scan');
 
-    // Proses Scan (API Internal)
+    // Proses Logic Absensi (Dipanggil AJAX dari Scanner)
     Route::post('/seminar/process-scan', [SeminarController::class, 'processScan'])->name('seminar.process_scan');
+
+    // Export Data ke PDF
+    Route::get('/seminar/export/pdf', [SeminarController::class, 'exportPdf'])->name('seminar.export.pdf');
+
+    // Export Data ke Excel
+    Route::get('/seminar/export/excel', [SeminarController::class, 'exportExcel'])->name('seminar.export.excel');
+
 });
