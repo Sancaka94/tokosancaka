@@ -11,12 +11,12 @@
     .sidebar-scrollbar:hover::-webkit-scrollbar-thumb { background: #cbd5e1; }
 </style>
 
-<div x-data="{ 
-        isExpanded: false, 
-        isHovered: false, 
+<div x-data="{
+        isExpanded: false,
+        isHovered: false,
         isMobile: window.innerWidth < 1024,
-        searchQuery: '' 
-     }" 
+        searchQuery: ''
+     }"
      @resize.window="isMobile = window.innerWidth < 1024"
      class="h-full flex flex-col">
 
@@ -76,9 +76,9 @@
         {{-- Mengubah p-3 menjadi p-2 --}}
         <div class="p-2" :class="(isExpanded || isHovered) ? '' : 'lg:hidden'">
             <div class="relative">
-                <input type="text" 
-                       x-model="searchQuery" 
-                       class="w-full bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-9 p-1.5 transition-all" 
+                <input type="text"
+                       x-model="searchQuery"
+                       class="w-full bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-9 p-1.5 transition-all"
                        placeholder="Cari menu...">
                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <i class="fa-solid fa-search text-gray-400 text-xs"></i>
@@ -96,35 +96,43 @@
 
             {{-- ================= UTAMA ================= --}}
 
-            <a href="{{ route('admin.dashboard') }}" wire:navigate 
+            <a href="{{ route('admin.dashboard') }}" wire:navigate
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.dashboard') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                 <i class="fa-solid fa-house-chimney fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.dashboard') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Dashboard</span>
             </a>
 
-            <a href="{{ url('admin/email') }}" wire:navigate 
+            <a href="{{ url('admin/email') }}" wire:navigate
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.index*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                 <i class="fa-solid fa-inbox fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.index*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Email Sancaka</span>
             </a>
 
-            <a href="https://tokosancaka.com/admin/chat" 
+            <a href="https://tokosancaka.com/admin/chat"
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->is('admin/chat*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                 <i class="fa-solid fa-comment-dots fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->is('admin/chat*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Chat Customer</span>
             </a>
 
-            <a href="{{ route('admin.pelanggan.index') }}" wire:navigate 
+            {{-- MENU BARU: FORMULIR PERIZINAN --}}
+            <a href="{{ route('admin.perizinan.index') }}" wire:navigate
+               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+               class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.perizinan.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                <i class="fa-solid fa-file-contract fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.perizinan.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Formulir Perizinan</span>
+            </a>
+
+            <a href="{{ route('admin.pelanggan.index') }}" wire:navigate
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.pelanggan.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                 <i class="fa-solid fa-users fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.pelanggan.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Data Pelanggan</span>
             </a>
 
-            <a href="{{ route('admin.spx_scans.monitor.index') }}" wire:navigate 
+            <a href="{{ route('admin.spx_scans.monitor.index') }}" wire:navigate
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.spx_scans.monitor.index') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                 <i class="fa-solid fa-truck fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.spx_scans.monitor.index') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
@@ -137,7 +145,7 @@
             <div x-data="{ open: {{ request()->routeIs(['admin.registrations.*', 'admin.customers.*', 'admin.roles.*']) ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                  x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true">
-                
+
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs(['admin.registrations.*', 'admin.customers.*', 'admin.roles.*']) ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
@@ -146,11 +154,11 @@
                     </span>
                     <div :class="(isExpanded || isHovered) ? 'flex' : 'flex lg:hidden'" class="items-center ml-auto">
                         <span id="menu-pengguna-badge" class="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-white bg-green-500 rounded-md mr-2 hidden">0</span>
-                        <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200" 
+                        <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
                            :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->routeIs(['admin.registrations.*', 'admin.customers.*', 'admin.roles.*']) ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
                     </div>
                 </button>
-                
+
                 <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
                     <ul class="pl-9 pr-2 py-1 space-y-1">
                         <li><a href="{{ route('admin.registrations.index') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="flex justify-between items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.registrations.*') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}"><span>Persetujuan</span><span id="persetujuan-badge" class="inline-flex items-center justify-center px-1.5 text-[10px] font-bold text-white bg-green-500 rounded-md hidden">0</span></a></li>
@@ -162,7 +170,7 @@
             </div>
 
             {{-- Wilayah --}}
-            <a href="{{ route('admin.wilayah.index') }}" wire:navigate 
+            <a href="{{ route('admin.wilayah.index') }}" wire:navigate
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.wilayah.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                 <i class="fa-solid fa-map-marked-alt fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.wilayah.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
@@ -170,7 +178,7 @@
             </a>
 
             {{-- Pencarian Kode Pos --}}
-            <a href="{{ route('admin.kodepos.index') }}" wire:navigate 
+            <a href="{{ route('admin.kodepos.index') }}" wire:navigate
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.kodepos.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                 <i class="fa-solid fa-magnifying-glass-location fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.kodepos.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
@@ -183,7 +191,7 @@
             <div x-data="{ open: {{ request()->is('admin/products*') || request()->is('admin/spx-scans*') || request()->routeIs('admin.reviews.*') || request()->routeIs('admin.stores.*') || request()->routeIs('admin.orders.*') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                  x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true">
-                
+
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->is('admin/products*') || request()->is('admin/spx-scans*') || request()->routeIs('admin.reviews.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
@@ -196,7 +204,7 @@
                            :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->is('admin/products*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
                     </div>
                 </button>
-                
+
                 <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
                     <ul class="pl-9 pr-2 py-1 space-y-1">
                         <li><a href="{{ route('admin.reviews.index') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.reviews.*') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">Manajemen Ulasan</a></li>
@@ -222,7 +230,7 @@
             <div x-data="{ open: {{ request()->is('admin/pesanan*') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                  x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true">
-                
+
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->is('admin/pesanan*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
@@ -256,7 +264,7 @@
             </div>
 
             {{-- Produk Katalog --}}
-            <a href="{{ route('admin.marketplace.index') }}" wire:navigate 
+            <a href="{{ route('admin.marketplace.index') }}" wire:navigate
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.marketplace.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                 <i class="fa-solid fa-store fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.marketplace.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
@@ -266,7 +274,7 @@
             {{-- ================= LOGISTIK & PPOB ================= --}}
 
             {{-- Master Ekspedisi --}}
-            <a href="{{ route('admin.ekspedisi.index') }}" wire:navigate 
+            <a href="{{ route('admin.ekspedisi.index') }}" wire:navigate
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.ekspedisi.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                 <i class="fas fa-truck-moving fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.ekspedisi.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
@@ -277,7 +285,7 @@
             <div x-data="{ open: {{ request()->routeIs('admin.couriers.*') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                  x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true">
-                
+
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('admin.couriers.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
@@ -299,7 +307,7 @@
             <div x-data="{ open: {{ request()->routeIs('admin.ppob.*') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                  x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true">
-                
+
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('admin.ppob.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
@@ -323,7 +331,7 @@
             <div x-data="{ open: {{ request()->routeIs('admin.saldo.requests.*') || request()->routeIs('admin.keuangan.*') || request()->routeIs('admin.akuntansi.*') || request()->routeIs('admin.laporan.*') || request()->is('admin/wallet*') || request()->routeIs('admin.coa.*') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                  x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true">
-                
+
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('admin.saldo.requests.*') || request()->routeIs('admin.keuangan.*') || request()->routeIs('admin.akuntansi.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
@@ -412,7 +420,7 @@
             {{-- ================= KOMUNIKASI & BLOG ================= --}}
 
             {{-- Buku Alamat --}}
-            <a href="{{ route('admin.kontak.index') }}" wire:navigate 
+            <a href="{{ route('admin.kontak.index') }}" wire:navigate
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.kontak.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                 <i class="fa-solid fa-address-book fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.kontak.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
@@ -423,7 +431,7 @@
             <div x-data="{ open: {{ request()->routeIs('broadcast.*') || request()->is('whatsapp*') || request()->routeIs('admin.wa.scan') || request()->routeIs('admin.fonnte.scan') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                  x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true">
-                
+
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('broadcast.*') || request()->is('whatsapp*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
@@ -447,7 +455,7 @@
             <div x-data="{ open: {{ request()->is('admin/posts*') || request()->is('admin/categories*') || request()->is('admin/tags*') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                  x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true">
-                
+
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->is('admin/posts*') || request()->is('admin/categories*') || request()->is('admin/tags*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
@@ -473,7 +481,7 @@
             <div x-data="{ open: {{ request()->routeIs('admin.logs.show') || request()->routeIs('admin.activity-log.index') || request()->routeIs('admin.settings.*') || request()->routeIs('admin.category-attributes.*') || request()->routeIs('admin.sliders.*') || request()->routeIs('info.edit') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                  x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true">
-                
+
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group text-gray-600 hover:bg-blue-600 hover:text-white">
                     <span class="flex items-center">
