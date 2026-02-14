@@ -183,7 +183,7 @@
                     <i class="fas fa-chevron-down text-[10px] transition-transform duration-300" :class="open ? 'rotate-180' : ''"></i>
                 </button>
 
-                <div x-show="open" x-collapse x-cloak class="mt-1 ml-7 border-l-2 border-slate-100 space-y-1">
+                <div x-show="open" x-collapse class="mt-1 ml-7 border-l-2 border-slate-100 space-y-1">
                     <a href="{{ route('finance.index', $params) }}"
                        class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
                        {{ request()->routeIs('finance.index') ? 'text-blue-600 bg-blue-50/50 border-l-2 border-blue-600 -ml-[2px]' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50' }}">
@@ -224,7 +224,7 @@
                     <i class="fas fa-chevron-down text-[10px] transition-transform duration-300" :class="open ? 'rotate-180' : ''"></i>
                 </button>
 
-                <div x-show="open" x-collapse x-cloak class="mt-1 ml-7 border-l-2 border-slate-100 space-y-1">
+                <div x-show="open" x-collapse class="mt-1 ml-7 border-l-2 border-slate-100 space-y-1">
                     <a href="{{ route('employees.index', $params) }}"
                        class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
                        {{ request()->routeIs('employees.index') ? 'text-blue-600 bg-blue-50/50 border-l-2 border-blue-600 -ml-[2px]' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50' }}">
@@ -257,7 +257,7 @@
                 <i class="fas fa-chevron-down text-[10px] transition-transform duration-300" :class="open ? 'rotate-180' : ''"></i>
             </button>
 
-            <div x-show="open" x-collapse x-cloak class="mt-1 ml-7 border-l-2 border-slate-100 space-y-1">
+            <div x-show="open" x-collapse class="mt-1 ml-7 border-l-2 border-slate-100 space-y-1">
                 <a href="{{ route('profile.index', $params) }}"
                    class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
                    {{ request()->routeIs('profile.index') ? 'text-blue-600 bg-blue-50/50 border-l-2 border-blue-600 -ml-[2px]' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50' }}">
