@@ -11,12 +11,14 @@ class SeminarParticipant extends Model
 
     protected $table = 'seminar_participants';
 
+    // BAGIAN INI YANG WAJIB DIUPDATE
     protected $fillable = [
         'ticket_number',
         'nama',
         'email',
         'instansi',
         'no_wa',
+        'nib_status',    // <--- PASTIKAN BARIS INI ADA
         'is_checked_in',
         'check_in_at',
     ];
