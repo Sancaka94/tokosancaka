@@ -4,7 +4,7 @@
 --}}
 
 <aside
-    x-cloak
+
     :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
     class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transition-transform duration-300 transform lg:relative lg:translate-x-0 shadow-sm flex flex-col h-full">
 
