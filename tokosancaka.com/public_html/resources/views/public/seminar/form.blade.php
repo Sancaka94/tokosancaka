@@ -57,7 +57,7 @@
                                 <label class="form-label fw-bold small text-uppercase text-secondary">Nama Lengkap</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light border-end-0"><i class="fas fa-user text-primary"></i></span>
-                                    <input type="text" name="nama" class="form-control border-start-0 ps-0" required placeholder="Nama sesuai sertifikat">
+                                    <input type="text" name="nama" class="form-control border-start-0 ps-0" required placeholder="Nama sesuai KTP">
                                 </div>
                             </div>
 
