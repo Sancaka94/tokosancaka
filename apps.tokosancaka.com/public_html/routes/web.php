@@ -16,6 +16,8 @@ require __DIR__ . '/backup.php';
 |--------------------------------------------------------------------------
 | Jika URL tidak ketemu di backup.php, Laravel akan mencari di sini.
 */
+use App\Livewire\PosSystem; // <--- Jangan lupa import di paling atas
+
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -50,9 +52,6 @@ use App\Http\Controllers\TenantDashboardController;
 use App\Http\Controllers\DanaWebhookController;
 use App\Http\Controllers\DanaGatewayController;
 
-
-
-
     // Route Invoice (Publik)
     // Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('invoice.show');
 
@@ -66,7 +65,6 @@ Route::get('/orders/scan-product', [OrderController::class, 'scanProduct'])->nam
 // File: routes/web.php
 Route::post('/hubungi-admin-manual', [App\Http\Controllers\TenantController::class, 'hubungiAdmin'])
     ->name('tenant.hubungi.admin'); // Nama ini harus sama dengan yang di Middleware
-
 
 Route::post('/log-client-error', function (Request $request) {
     // Ambil data dari JS
@@ -109,7 +107,6 @@ Route::resource('dana_response_codes', DanaResponseCodeController::class);
     // 2. Untuk menyimpan perubahan varian (saat tombol simpan di modal diklik)
     Route::post('/products/{product}/variants', [ProductController::class, 'updateVariants'])
         ->name('products.variants.update');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -160,7 +157,6 @@ Route::post('/products/store', [ProductController::class, 'store'])->name('produ
 Route::get('/', function () {
     return view('welcome');
 });
-
 
 Route::middleware('auth')->group(function () {
 
@@ -300,7 +296,8 @@ Route::get('/cara', function () {
 
 
 // Halaman POS (Create)
-Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
+// Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
+Route::get('/orders/create', PosSystem::class)->name('orders.create');
 
 // Helpers (Pencarian Lokasi & Payment Channel)
 Route::get('/orders/search-location', [OrderController::class, 'searchLocation'])->name('orders.search-location');
