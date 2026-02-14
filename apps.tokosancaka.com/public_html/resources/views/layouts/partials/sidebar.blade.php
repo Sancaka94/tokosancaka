@@ -14,6 +14,8 @@
         // Ambil bagian depan (toko1), jika gagal pakai 'admin'
         $currentSubdomain = $parts[0] ?? 'admin';
 
+
+
         // Fungsi bantu agar tidak capek ngetik array parameter
         // Kita suntikkan subdomain ke semua route
         $params = ['subdomain' => $currentSubdomain];
