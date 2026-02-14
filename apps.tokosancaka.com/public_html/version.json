@@ -1,7 +1,19 @@
 {
-    "version": "1.0.0.671",
-    "last_update": "14 Feb 2026 17:22",
+    "version": "1.0.0.673",
+    "last_update": "14 Feb 2026 20:20",
     "commits": [
+        {
+            "hash": "3610700",
+            "date": "2026-02-14 20:17:04 +0700",
+            "author": "Admin Sancaka",
+            "message": "Fix: Sapu bersih cache, menghapus vendor dan file zip dari repository"
+        },
+        {
+            "hash": "f6df8c3",
+            "date": "2026-02-14 17:22:38 +0700",
+            "author": "Admin Sancaka",
+            "message": "Auto Bump Version"
+        },
         {
             "hash": "5157288",
             "date": "2026-02-14 17:22:33 +0700",
@@ -107,18 +119,6 @@
         {
             "hash": "f47450e",
             "date": "2026-02-14 13:20:22 +0700",
-            "author": "Admin Sancaka",
-            "message": "Auto Bump Version"
-        },
-        {
-            "hash": "7d2cfb3",
-            "date": "2026-02-14 13:20:15 +0700",
-            "author": "Admin Sancaka",
-            "message": "Update System"
-        },
-        {
-            "hash": "fb2974b",
-            "date": "2026-02-14 13:08:52 +0700",
             "author": "Admin Sancaka",
             "message": "Auto Bump Version"
         }
