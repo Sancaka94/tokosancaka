@@ -82,7 +82,7 @@
             </p>
         </div>
 
-        <a href="{{ route('orders.create', $params) }}">Buat Pesanan</a>
+        <a href="{{ route('orders.create', ['subdomain' => $currentSubdomain]) }}">Buat Pesanan</a>
            class="flex items-center gap-3 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-xl shadow-blue-200 transition-all transform hover:-translate-y-1 active:scale-95">
             <i class="fas fa-plus-circle text-lg"></i>
             <span>Buat Transaksi Baru</span>
