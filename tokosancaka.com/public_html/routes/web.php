@@ -101,6 +101,7 @@ use App\Http\Controllers\Admin\AdminReviewController;
 use App\Http\Controllers\Admin\AdminLogController;
 use App\Http\Controllers\SellerRegisterController;
 use App\Http\Controllers\SellerReviewController;
+use App\Http\Controllers\Admin\PerizinanController;
 
 // Website fontend WA Integration
 //use App\Http\Controllers\WhatsappController;
@@ -901,3 +902,12 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth']], function () {
 });
 
 // ----------------------------Pentup PUSH WA--------------------------------------//
+
+// Halaman Public (Formulir)
+Route::get('/formulir-perizinan', [PerizinanController::class, 'create'])->name('perizinan.form');
+Route::post('/formulir-perizinan', [PerizinanController::class, 'store'])->name('perizinan.store');
+
+// Halaman Admin (CRUD) - Pastikan sudah ada middleware auth/admin jika perlu
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::resource('perizinan', PerizinanController::class);
+});
