@@ -7,17 +7,32 @@
     <title>@yield('title', 'Sancaka POS') - Dashboard</title>
 
     <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
+
+    {{-- Tailwind CSS --}}
     <script src="https://cdn.tailwindcss.com"></script>
+
+    {{-- Font Awesome & Google Fonts --}}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
+    {{-- Lucide Icons --}}
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    {{-- [PERUBAHAN 1] LIVEWIRE STYLES --}}
+    @livewireStyles
+
+    {{-- [PERUBAHAN 2] ALPINE PLUGINS --}}
+    {{-- Load Plugin Alpine (seperti Collapse) SEBELUM core Alpine/Livewire --}}
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
 
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    {{--
+       [PENTING] Saya MENGHAPUS script CDN Alpine Core manual:
+       <script defer src="...alpine.min.js"></script>
+       Karena Livewire 3 sudah otomatis menyertakan Alpine.js.
+       Jika dipasang dobel, fitur interaktif akan error.
+    --}}
 
-    {{-- Asset Echo & Pusher tetap di sini sesuai permintaan (Jangan dirubah) --}}
+    {{-- Asset Echo & Pusher (Tetap) --}}
     <script src="{{ asset('libs/pusher.min.js') }}"></script>
     <script src="{{ asset('libs/echo.js') }}"></script>
     <script>
@@ -50,25 +65,15 @@
 <body class="antialiased text-slate-700" x-data="{ sidebarOpen: false }">
 
     {{-- LOGIKA CEK EXPIRED & REDIRECT --}}
-@if(Auth::user()->tenant->expired_at && now()->gt(Auth::user()->tenant->expired_at))
-
-    {{-- PENTING: Cek agar tidak redirect jika SUDAH di halaman suspended --}}
-    @if(!request()->is('*account-suspended*'))
-        <script>
-            // Ambil subdomain tenant saat ini
-            var subdomain = "{{ Auth::user()->tenant->subdomain }}";
-
-            // Arahkan ke URL Suspended
-            window.location.href = "https://" + subdomain + ".tokosancaka.com/account-suspended";
-        </script>
-
-        {{-- Hentikan rendering sisa halaman agar user tidak bisa melihat konten sekilas --}}
-        @php exit; @endphp
+    @if(Auth::check() && Auth::user()->tenant && Auth::user()->tenant->expired_at && now()->gt(Auth::user()->tenant->expired_at))
+        @if(!request()->is('*account-suspended*'))
+            <script>
+                var subdomain = "{{ Auth::user()->tenant->subdomain }}";
+                window.location.href = "https://" + subdomain + ".tokosancaka.com/account-suspended";
+            </script>
+            @php exit; @endphp
+        @endif
     @endif
-
-@endif
-
-
 
     <div class="flex h-screen overflow-hidden">
         {{-- Sidebar Include --}}
@@ -81,6 +86,7 @@
             {{-- Main Content --}}
             <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-6 custom-scrollbar">
                 <div class="max-w-7xl mx-auto">
+                    {{-- Alert Flash Message (Bisa diganti komponen Livewire jika mau) --}}
                     @if(session('success'))
                     <div class="mb-6 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl">
                         <i data-lucide="check-circle" class="w-5 h-5"></i>
@@ -88,6 +94,11 @@
                     </div>
                     @endif
 
+                    {{--
+                        Area Konten Utama.
+                        Jika menggunakan Full Page Component Livewire,
+                        Anda bisa mengganti @yield('content') dengan {{ $slot }}
+                    --}}
                     @yield('content')
 
                     <footer class="mt-12 text-center text-xs text-slate-400 pb-6 font-medium">
@@ -97,6 +108,9 @@
             </main>
         </div>
     </div>
+
+    {{-- [PERUBAHAN 3] LIVEWIRE SCRIPTS --}}
+    @livewireScripts
 
     @stack('scripts')
     <script>lucide.createIcons();</script>
