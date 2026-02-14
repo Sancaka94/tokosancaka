@@ -188,7 +188,7 @@ Route::middleware('auth')->group(function () {
 
 
     // Daftar Produk & Form Tambah
-    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    // Route::get('/products', [ProductController::class, 'index'])->name('products.index');
     // Proses Simpan Produk Baru
     Route::post('/products', [ProductController::class, 'store'])->name('products.store');
     // Hapus Produk
