@@ -34,6 +34,7 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PondokController;
 use App\Http\Controllers\Api\KontakController; // API
 use App\Http\Controllers\Customer\KontakController as CustomerKontakController;
+use App\Http\Controllers\SeminarController;
 
 // Products & Marketplace
 use App\Http\Controllers\EtalaseController;
@@ -910,4 +911,22 @@ Route::post('/formulir-perizinan', [PerizinanController::class, 'store'])->name(
 // Halaman Admin (CRUD) - Pastikan sudah ada middleware auth/admin jika perlu
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::resource('perizinan', PerizinanController::class);
+});
+
+
+// --- PUBLIC: FORMULIR & TIKET ---
+Route::get('/seminar/daftar', [SeminarController::class, 'create'])->name('seminar.form');
+Route::post('/seminar/daftar', [SeminarController::class, 'store'])->name('seminar.store');
+Route::get('/seminar/tiket/{ticket_number}', [SeminarController::class, 'showTicket'])->name('seminar.ticket');
+
+// --- ADMIN: DATA & SCANNER ---
+Route::prefix('admin')->name('admin.')->group(function () {
+    // List Peserta
+    Route::get('/seminar/peserta', [SeminarController::class, 'index'])->name('seminar.index');
+
+    // Halaman Scanner (Buka Kamera)
+    Route::get('/seminar/scan', [SeminarController::class, 'scanPage'])->name('seminar.scan');
+
+    // Proses Scan (API Internal)
+    Route::post('/seminar/process-scan', [SeminarController::class, 'processScan'])->name('seminar.process_scan');
 });
