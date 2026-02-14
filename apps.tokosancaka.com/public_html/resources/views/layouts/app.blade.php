@@ -19,7 +19,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     {{-- [PERUBAHAN 1] LIVEWIRE STYLES --}}
-    @livewireStyles
+
 
     {{-- [PERUBAHAN 2] ALPINE PLUGINS --}}
     {{-- Load Plugin Alpine (seperti Collapse) SEBELUM core Alpine/Livewire --}}
@@ -111,8 +111,7 @@
         </div>
     </div>
 
-    {{-- [PERUBAHAN 3] LIVEWIRE SCRIPTS --}}
-    @livewireScripts
+
 
     @stack('scripts')
     <script>lucide.createIcons();</script>
