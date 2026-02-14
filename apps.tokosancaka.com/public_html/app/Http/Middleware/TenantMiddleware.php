@@ -6,57 +6,33 @@ use Closure;
 use Illuminate\Http\Request;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\View;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log; // Aku nambah iki ben gak error
+use Illuminate\Support\Facades\URL; // Wajib Import
+use Illuminate\Support\Facades\Config; // Tambahkan ini
+use Illuminate\Support\Facades\DB;     // Tambahkan ini
 
 class TenantMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        // 1. JUPUK SUBDOMAIN (Contoh: 'apps', 'toko1', 'demo')
+        // [DEBUG LOG] Cek apakah DANA sampai sini
+    if ($request->is('dana/*')) {
+        \Illuminate\Support\Facades\Log::info('Middleware: DANA Request Detected passing through...');
+        return $next($request); // <--- JALUR VIP (Loloskan langsung)
+    }
+        // 1. AMBIL SUBDOMAIN
         $host = $request->getHost();
         $parts = explode('.', $host);
         $subdomain = $parts[0];
 
-        // Set default URL ben gak error route
-        URL::defaults(['subdomain' => $subdomain]);
+        \Illuminate\Support\Facades\URL::defaults(['subdomain' => $subdomain]);
 
-        // -------------------------------------------------------------
-        // [RULE 0] JALUR VIP (API, DANA, PAYMENT) - GAK USAH DICEK
-        // -------------------------------------------------------------
-        if (
-            $request->is('api/*') ||
-            $request->is('dana/*') ||
-            $request->is('tenant/generate-payment') ||
-            $request->routeIs('tenant.suspended')
-        ) {
-            return $next($request);
-        }
-
-        // -------------------------------------------------------------
-        // [RULE 1] KHUSUS DOMAIN UTAMA (APPS / WWW) - IKI SING GARAI ERROR MAU
-        // -------------------------------------------------------------
-        if ($subdomain === 'apps' || $subdomain === 'www') {
-
-            // KITA NGAPUSI SYSTEM, BEN DIKIRA ONO TENANT E
-            $systemTenant = new Tenant();
-            $systemTenant->name = 'Sancaka Central Admin';
-            $systemTenant->subdomain = 'apps';
-            $systemTenant->status = 'active';
-
-            // Share data 'palsu' iki nang View ben gak error variable
-            View::share('currentTenant', $systemTenant);
-
-            return $next($request);
-        }
-
-        // -------------------------------------------------------------
-        // [RULE 2] KHUSUS DEMO
+       // -------------------------------------------------------------
+        // [MAGIC FIX: PAKSA CONFIG DI RUNTIME]
         // -------------------------------------------------------------
         if ($subdomain === 'demo') {
-            // Setting database manual gawe demo
+
+            // 1. Kita definisikan manual koneksinya di sini (Bypass file config/database.php)
+            //    Ini menjamin Laravel "melihat" koneksi mysql_demo
             config(['database.connections.mysql_demo' => [
                 'driver'    => 'mysql',
                 'host'      => env('DB_HOST_DEMO', '127.0.0.1'),
@@ -71,32 +47,61 @@ class TenantMiddleware
                 'engine'    => null,
             ]]);
 
+            // 2. Set Default ke koneksi yang baru saja kita buat
             Config::set('database.default', 'mysql_demo');
+
+            // 3. Purge & Reconnect (Wajib)
             DB::purge('mysql_demo');
             DB::reconnect('mysql_demo');
 
-            // Share Dummy Tenant demo
-            $demoTenant = new Tenant();
-            $demoTenant->name = 'Toko Demo Sancaka';
-            $demoTenant->subdomain = 'demo';
-            $demoTenant->status = 'active';
-            View::share('currentTenant', $demoTenant);
+            // 4. (Opsional) Dummy Tenant untuk mencegah Error di View
+            //$demoTenant = new \stdClass();
+            //$demoTenant->name = 'Toko Demo Sancaka';
+            //$demoTenant->subdomain = 'demo';
+            //$demoTenant->status = 'active';
+            View::share('currentTenant');
 
             return $next($request);
         }
 
         // -------------------------------------------------------------
-        // [RULE 3] CEK DATABASE TENANT (GAWE TOKO MEMBER)
+        // [RULE 1] JIKA AKSES DOMAIN UTAMA (APPS), LANGSUNG LEWAT
+        // -------------------------------------------------------------
+        // PENTING: 'apps' dan 'www' tidak boleh dicek di database tenant
+        if ($subdomain === 'apps' || $subdomain === 'www') {
+            return $next($request);
+        }
+
+        // -------------------------------------------------------------
+        // [RULE 2] SET DEFAULT URL PARAMETER (WAJIB PALING ATAS)
+        // -------------------------------------------------------------
+        // Agar tidak error "Missing parameter: subdomain"
+        //URL::defaults(['subdomain' => $subdomain]);
+
+        // -------------------------------------------------------------
+        // [RULE 3] WHITELIST ROUTE TERTENTU
+        // -------------------------------------------------------------
+        // API & Payment Gateway harus lolos tanpa cek tenant
+        if (
+            $request->is('api/*') ||
+            $request->is('dana/*') ||  // <--- TAMBAHKAN BARIS INI (PENTING!)
+            $request->is('tenant/generate-payment') ||
+            $request->routeIs('tenant.suspended')
+        ) {
+            return $next($request);
+        }
+
+        // -------------------------------------------------------------
+        // [RULE 4] CEK DATABASE TENANT (Untuk subdomain selain apps & demo)
         // -------------------------------------------------------------
         $tenant = Tenant::where('subdomain', $subdomain)->first();
 
-        // Nek tenant gak onok -> Lempar nang pendaftaran
         if (!$tenant) {
             return redirect()->away('https://apps.tokosancaka.com/daftar-pos');
         }
 
         // -------------------------------------------------------------
-        // [RULE 4] CEK MASA AKTIF / EXPIRED
+        // [RULE 5] CEK EXPIRED / INACTIVE
         // -------------------------------------------------------------
         if ($tenant->expired_at && now()->gt($tenant->expired_at)) {
             if ($tenant->status !== 'inactive') {
@@ -112,7 +117,7 @@ class TenantMiddleware
         }
 
         // -------------------------------------------------------------
-        // [RULE 5] BERES KABEH, LEBOKNO DATA NANG SYSTEM
+        // [RULE 6] INJEKSI DATA KE APLIKASI
         // -------------------------------------------------------------
         $request->merge(['tenant' => $tenant]);
         View::share('currentTenant', $tenant);

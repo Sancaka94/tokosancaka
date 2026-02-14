@@ -39,22 +39,28 @@ class ProductController extends Controller implements HasMiddleware
     }
 
     public function __construct(Request $request)
-    {
-        // 1. Deteksi Subdomain & Tenant
-        $host = $request->getHost();
-        $subdomain = explode('.', $host)[0];
+{
+    // 1. Deteksi Subdomain
+    $host = $request->getHost();
+    $subdomain = explode('.', $host)[0];
 
-        $tenant = Tenant::where('subdomain', $subdomain)->first();
-
-        // Strict Check: Jika tenant tidak ada, error 404
-        if (!$tenant) {
-            abort(404, 'Toko/Tenant tidak ditemukan.');
-        }
-
-        $this->tenantId = $tenant->id;
-
-        // Middleware Auth dipindah ke fungsi static middleware() di atas ^
+    // --- LOGIKA BARU ---
+    if ($subdomain === 'apps' || $subdomain === 'www') {
+        // Jika akses dari admin pusat, kita set ID tenant dummy atau ID khusus (misal 0 atau 1)
+        // Pastikan logic query Product::where('tenant_id', ...) nanti bisa menangani ini.
+        $this->tenantId = 1; // Contoh: ID 1 dianggap milik admin pusat
+        return; // Langsung keluar, jangan cek database tenant
     }
+    // -------------------
+
+    $tenant = Tenant::where('subdomain', $subdomain)->first();
+
+    if (!$tenant) {
+        abort(404, 'Toko/Tenant tidak ditemukan.');
+    }
+
+    $this->tenantId = $tenant->id;
+}
 
     /**
      * Menampilkan daftar produk
