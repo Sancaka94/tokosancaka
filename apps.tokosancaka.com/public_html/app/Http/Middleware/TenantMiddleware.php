@@ -25,7 +25,7 @@ class TenantMiddleware
         $subdomain = $parts[0];
 
         \Illuminate\Support\Facades\URL::defaults(['subdomain' => $subdomain]);
-
+        
        // -------------------------------------------------------------
         // [MAGIC FIX: PAKSA CONFIG DI RUNTIME]
         // -------------------------------------------------------------

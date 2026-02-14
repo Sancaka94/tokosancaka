@@ -70,7 +70,7 @@ Route::domain('apps.tokosancaka.com')->group(function () {
 |==========================================================================
 */
 Route::domain('{subdomain}.tokosancaka.com')
-    ->middleware(['tenant']) // <--- Middleware TenantMiddleware WAJIB DISINI
+    ->middleware(['web','tenant']) // <--- Middleware TenantMiddleware WAJIB DISINI
     ->group(function () {
 
     require __DIR__.'/auth.php'; // <--- INI WAJIB DIMATIKAN!

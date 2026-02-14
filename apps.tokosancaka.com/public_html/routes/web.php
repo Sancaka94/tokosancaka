@@ -16,7 +16,7 @@ require __DIR__ . '/backup.php';
 |--------------------------------------------------------------------------
 | Jika URL tidak ketemu di backup.php, Laravel akan mencari di sini.
 */
-use App\Livewire\PosSystem; // <--- Jangan lupa import di paling atas
+// use App\Livewire\PosSystem; // <--- Jangan lupa import di paling atas
 
 
 use Illuminate\Support\Facades\Route;
@@ -296,8 +296,8 @@ Route::get('/cara', function () {
 
 
 // Halaman POS (Create)
-// Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
-Route::get('/orders/create', PosSystem::class)->name('orders.create');
+Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
+// Route::get('/orders/create', PosSystem::class)->name('orders.create');
 
 // Helpers (Pencarian Lokasi & Payment Channel)
 Route::get('/orders/search-location', [OrderController::class, 'searchLocation'])->name('orders.search-location');
@@ -330,7 +330,10 @@ Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show'
 
 // Fitur Scan Barcode (Prioritas Utama)
 // Resource Controller (Menangani seluruh sisa CRUD standar)
+
 Route::resource('orders', OrderController::class);
+
+
 
 Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
 
