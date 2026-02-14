@@ -99,6 +99,8 @@
                         Jika menggunakan Full Page Component Livewire,
                         Anda bisa mengganti @yield('content') dengan {{ $slot }}
                     --}}
+                    {{-- @yield('content') --}}
+                    {{ $slot ?? '' }}
                     @yield('content')
 
                     <footer class="mt-12 text-center text-xs text-slate-400 pb-6 font-medium">
