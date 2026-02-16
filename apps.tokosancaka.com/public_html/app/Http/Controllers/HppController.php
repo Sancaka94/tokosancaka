@@ -17,9 +17,8 @@ class HppController extends Controller
      */
     public function index()
     {
-        // Ambil produk tipe 'good' (Barang Jadi) atau 'service' (Jasa)
-        // Material tidak perlu dihitung karena itu bahan baku
-        $products = Product::whereIn('type', ['good', 'service'])
+        // PERBAIKAN: Ganti 'good' menjadi 'physical' sesuai data database Anda
+        $products = Product::whereIn('type', ['physical', 'service'])
                            ->orderBy('name', 'asc')
                            ->paginate(10);
 
