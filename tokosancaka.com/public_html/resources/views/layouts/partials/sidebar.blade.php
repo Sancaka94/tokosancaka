@@ -355,9 +355,12 @@
                             <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">PPOB</span>
                         </div>
                     </span>
+                    <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
+                        <span id="menu-ppob-badge" class="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-white bg-green-500 rounded-md mr-2 hidden">0</span>
                     <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
                        :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->routeIs('admin.ppob.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
-                </button>
+                    </div>
+                    </button>
                 <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
                     <ul class="pl-9 pr-2 py-1 space-y-1">
                         <li><a href="{{ route('admin.ppob.index') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.ppob.index') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">Produk PPOB</a></li>
