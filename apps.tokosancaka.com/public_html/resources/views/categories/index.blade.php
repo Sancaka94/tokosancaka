@@ -18,15 +18,28 @@
     </div>
     @endif
 
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-2xl font-black text-slate-800 tracking-tight">Kategori Produk & Layanan</h1>
-            <p class="text-xs text-slate-500">Atur kategori untuk mengelompokkan barang fisik atau layanan jasa.</p>
+    <div class="flex flex-col mb-6">
+
+        {{-- [BARU] TOMBOL KEMBALI --}}
+        <div class="mb-4">
+            <a href="javascript:history.back()"
+               class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-xl text-slate-600 text-sm font-bold hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm">
+                <i class="fas fa-arrow-left"></i>
+                <span>Kembali</span>
+            </a>
         </div>
-        {{-- Tombol Tambah (Hanya muncul di Mobile agar bisa scroll ke form) --}}
-        <button @click="resetForm(); window.scrollTo({top:0, behavior:'smooth'})" class="md:hidden px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-200">
-            <i class="fas fa-plus mr-1"></i> Tambah
-        </button>
+
+        <div class="flex justify-between items-end">
+            <div>
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight">Kategori Produk & Layanan</h1>
+                <p class="text-xs text-slate-500">Atur kategori untuk mengelompokkan barang fisik atau layanan jasa.</p>
+            </div>
+
+            {{-- Tombol Tambah (Hanya muncul di Mobile) --}}
+            <button @click="resetForm(); window.scrollTo({top:0, behavior:'smooth'})" class="md:hidden px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-200 transition active:scale-95">
+                <i class="fas fa-plus mr-1"></i> Tambah
+            </button>
+        </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
