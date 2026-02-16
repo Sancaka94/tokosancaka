@@ -51,6 +51,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\TenantDashboardController;
 use App\Http\Controllers\DanaWebhookController;
 use App\Http\Controllers\DanaGatewayController;
+use App\Http\Controllers\HppController;
 
     // Route Invoice (Publik)
     // Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('invoice.show');
@@ -602,3 +603,12 @@ Route::get('/orders/tripay-channels', [OrderController::class, 'tripayChannels']
 // Route untuk Cek Status Transaksi DANA
 Route::post('/member/dana/check-status', [DanaGatewayController::class, 'checkTopupStatus'])
     ->name('dana.checkTopupStatus');
+
+// Hitung HPP
+Route::middleware(['auth'])->group(function () {
+    // Simpan Settingan Resep HPP
+    Route::post('/products/{id}/hpp', [HppController::class, 'updateRecipe']);
+
+    // Tombol "Produksi / Rakit Barang"
+    Route::post('/products/manufacture', [HppController::class, 'manufacture']);
+});
