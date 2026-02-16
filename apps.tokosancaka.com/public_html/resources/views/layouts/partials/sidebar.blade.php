@@ -46,11 +46,12 @@
 
             <p class="text-[9px] text-slate-400 mt-0.5 flex items-center justify-center gap-1 group-hover:text-blue-500">
                 {{-- Pastikan variabel ini sesuai dengan AppServiceProvider ($app_last_update) --}}
-                <span class="text-3xl font-black text-blue-700">{{ $version ?? '1.0.0' }}</span>
+                <span>Updated: {{ $app_last_update ?? '-' }}</span>
                 <i class="fas fa-history text-[8px] opacity-0 group-hover:opacity-100 transition-opacity"></i>
             </p>
         </a>
     </div>
+
 
     <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
 
