@@ -606,6 +606,14 @@ Route::post('/member/dana/check-status', [DanaGatewayController::class, 'checkTo
 
 // Hitung HPP
 Route::middleware(['auth'])->group(function () {
+    // 1. Halaman List Produk untuk dipilih (Menu Utama HPP)
+    Route::get('/hpp-calculator', [HppController::class, 'index'])->name('hpp.index');
+
+    // 2. Halaman Detail Kalkulator (Tampilan Tabel Input yg tadi dibuat)
+    Route::get('/hpp-calculator/{id}/analysis', [HppController::class, 'analysis'])->name('hpp.analysis');
+
+    // 3. Proses Simpan Resep/BOM ke Database
+    Route::post('/hpp-calculator/{id}/update', [HppController::class, 'updateRecipe'])->name('hpp.updateRecipe');
     // Simpan Settingan Resep HPP
     Route::post('/products/{id}/hpp', [HppController::class, 'updateRecipe']);
 
