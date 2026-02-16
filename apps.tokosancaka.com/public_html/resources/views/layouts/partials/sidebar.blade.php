@@ -36,12 +36,17 @@
 
     <div class="px-6 pb-4 pt-2 text-center">
         {{-- Klik versi untuk melihat detail update --}}
-        <a href="{{ route('admin.changelog') }}" class="group block hover:bg-slate-50 rounded-lg py-2 transition-colors cursor-pointer" title="Lihat Riwayat Update">
-            <p class="text-[10px] text-slate-400 font-medium group-hover:text-blue-500">
-                Version <span class="text-slate-600 font-bold group-hover:text-blue-600">{{ $app_version ?? '1.0' }}</span>
+        <a href="{{ route('admin.changelog') }}"
+        class="group block bg-blue-50 hover:bg-blue-100 border border-blue-100 rounded-lg py-2 transition-colors cursor-pointer"
+        title="Lihat Riwayat Update">
+
+            <p class="text-[10px] text-slate-500 font-medium group-hover:text-blue-600">
+                Version <span class="text-slate-700 font-bold group-hover:text-blue-800">{{ $app_version ?? '1.0' }}</span>
             </p>
-            <p class="text-[9px] text-slate-300 mt-0.5 flex items-center justify-center gap-1">
-                <span>Updated: {{ $version ?? '1.0.0' }}</span>
+
+            <p class="text-[9px] text-slate-400 mt-0.5 flex items-center justify-center gap-1 group-hover:text-blue-500">
+                {{-- Pastikan variabel ini sesuai dengan AppServiceProvider ($app_last_update) --}}
+                <span>Updated: {{ $version ?? '-' }}</span>
                 <i class="fas fa-history text-[8px] opacity-0 group-hover:opacity-100 transition-opacity"></i>
             </p>
         </a>
