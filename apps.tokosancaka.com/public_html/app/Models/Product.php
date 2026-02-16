@@ -115,5 +115,35 @@ class Product extends Model
         });
     }
 
+    // Relasi ke Resep (Bahan-bahan penyusun produk ini)
+    public function recipeItems()
+    {
+        return $this->hasMany(ProductRecipe::class, 'parent_product_id');
+    }
+
+    // [FITUR UTAMA] Hitung HPP Realtime
+    public function getCalculatedHppAttribute()
+    {
+        // 1. Jika ini barang dagang murni / bahan baku (tidak punya resep)
+        if ($this->recipeItems->count() == 0) {
+            return $this->base_price; // Ambil dari harga beli terakhir
+        }
+
+        // 2. Jika punya resep (Manufaktur / Jasa), hitung total biaya komponennya
+        $totalHpp = 0;
+        foreach ($this->recipeItems as $item) {
+            if ($item->child_product_id) {
+                // Ambil harga beli (base_price) dari bahan baku saat ini
+                $bahanBaku = $item->childProduct;
+                $hargaBahan = $bahanBaku ? $bahanBaku->base_price : 0;
+                $totalHpp += ($hargaBahan * $item->quantity);
+            } else {
+                // Biaya custom (Tenaga kerja, Listrik, Air)
+                $totalHpp += ($item->cost_per_unit * $item->quantity);
+            }
+        }
+
+        return $totalHpp;
+    }
 
 }
