@@ -68,7 +68,7 @@
                                     </td>
                                     {{-- Qty --}}
                                     <td class="px-4 py-2">
-                                        <input type="number" step="0.001" x-model="item.quantity" class="w-full text-center pl-6 pr-2 py-1.5 text-xs font-bold border-slate-300 rounded-lg focus:ring-blue-500">
+                                        <input type="number" step="0.001" x-model="item.quantity" class="w-full text-left pl-6 pr-2 py-1.5 text-xs font-bold border-slate-300 rounded-lg focus:ring-blue-500">
                                     </td>
                                     {{-- Cost --}}
                                     <td class="px-4 py-2">
