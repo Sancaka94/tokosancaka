@@ -63,7 +63,7 @@
                                             </select>
                                             <input x-show="!item.child_product_id" type="text" x-model="item.custom_name"
                                                    placeholder="Nama biaya (misal: Listrik)"
-                                                   class="w-full text-xs border-slate-300 rounded-lg bg-slate-50 placeholder-slate-400 focus:ring-blue-500">
+                                                   class="w-full text-right pl-6 pr-2 py-1.5 text-xs font-bold border-slate-300 rounded-lg focus:ring-blue-500">
                                         </div>
                                     </td>
                                     {{-- Qty --}}
