@@ -170,6 +170,19 @@
             </a>
         @endif
 
+        {{-- [BARU] MENU ANALISA HPP --}}
+        {{-- HPP biasanya rahasia dapur, jadi batasi ke Admin & Super Admin saja --}}
+        @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
+            <a wire:navigate.hover href="{{ route('hpp.index', $params) }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+               {{ request()->routeIs('hpp.*')
+                 ? 'bg-blue-50 text-blue-600'
+                 : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600' }}">
+                <i class="fas fa-calculator w-5 text-center"></i>
+                <span>Kalkulator HPP</span>
+            </a>
+        @endif
+
         {{-- KEUANGAN --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin', 'keuangan', 'finance']))
             <div class="pt-5 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
