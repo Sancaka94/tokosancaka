@@ -15,8 +15,6 @@
 
     <title>@yield('title', 'Sancaka POS') - Dashboard</title>
 
-
-
     <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
 
     {{-- Tailwind CSS --}}
