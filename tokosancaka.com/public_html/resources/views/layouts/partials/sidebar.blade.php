@@ -350,14 +350,12 @@
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('admin.ppob.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
-                        <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                             <i class="fa-solid fa-mobile-screen-button fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.ppob.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                             <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">PPOB</span>
-                        </div>
                     </span>
                     <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                         <span id="menu-ppob-badge" class="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-white bg-green-500 rounded-md mr-2 hidden">0</span>
-                    <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
+                        <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
                        :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->routeIs('admin.ppob.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
                     </div>
                     </button>
