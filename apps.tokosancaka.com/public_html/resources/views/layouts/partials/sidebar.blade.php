@@ -33,7 +33,7 @@
         </a>
     </div>
 
-         {{-- FOOTER VERSI OTOMATIS --}}
+
     <div class="px-6 pb-4 pt-2 text-center">
         {{-- Klik versi untuk melihat detail update --}}
         <a href="{{ route('admin.changelog') }}" class="group block hover:bg-slate-50 rounded-lg py-2 transition-colors cursor-pointer" title="Lihat Riwayat Update">
