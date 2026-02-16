@@ -30,7 +30,7 @@ class CategoryController extends Controller
     /**
      * Menampilkan daftar kategori
      */
-    public function index()
+    public function index($subdomain)
     {
         // Filter kategori berdasarkan tenant_id
         $categories = Category::where('tenant_id', $this->tenantId)
@@ -43,7 +43,7 @@ class CategoryController extends Controller
     /**
      * Menampilkan form tambah kategori
      */
-    public function create()
+    public function create($subdomain)
     {
         return view('categories.create');
     }
@@ -51,7 +51,7 @@ class CategoryController extends Controller
     /**
      * Menyimpan kategori baru ke database
      */
-    public function store(Request $request)
+    public function store(Request $request, $subdomain)
     {
         // 1. Validasi Input
         $request->validate([
@@ -111,7 +111,7 @@ class CategoryController extends Controller
     /**
      * Menampilkan form edit kategori
      */
-    public function edit($id)
+    public function edit($subdomain, $id)
     {
         // Cari data dan pastikan milik tenant ini
         $category = Category::where('tenant_id', $this->tenantId)
@@ -130,7 +130,7 @@ class CategoryController extends Controller
     /**
      * Memperbarui data kategori
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $subdomain, $id)
     {
         // Cari data dan pastikan milik tenant ini
         $category = Category::where('tenant_id', $this->tenantId)
@@ -195,7 +195,7 @@ class CategoryController extends Controller
     /**
      * Menghapus kategori
      */
-    public function destroy($id)
+    public function destroy($subdomain, $id)
     {
         // Cari data dan pastikan milik tenant ini
         $category = Category::where('tenant_id', $this->tenantId)
