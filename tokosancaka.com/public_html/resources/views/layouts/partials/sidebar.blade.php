@@ -504,13 +504,16 @@
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->is('admin/posts*') || request()->is('admin/categories*') || request()->is('admin/tags*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
-                        <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
+
                             <i class="fa-solid fa-newspaper fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->is('admin/posts*') || request()->is('admin/categories*') || request()->is('admin/tags*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                             <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Blog</span>
-                        </div>
+
                     </span>
+                    <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                     <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
                        :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->is('admin/posts*') || request()->is('admin/categories*') || request()->is('admin/tags*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
+
+                    </div>
                 </button>
                 <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
                     <ul class="pl-9 pr-2 py-1 space-y-1">
