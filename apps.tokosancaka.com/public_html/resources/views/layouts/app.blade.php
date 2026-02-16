@@ -18,30 +18,30 @@
     {{-- Lucide Icons --}}
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    {{-- [PERUBAHAN] Load Alpine.js secara Manual --}}
-    {{-- Karena Livewire sudah dihapus, kita butuh ini agar Sidebar & Dropdown tetap jalan --}}
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    {{-- [LIVEWIRE STYLES] Wajib ada di dalam Head --}}
+    @livewireStyles
 
-    {{-- Asset Echo & Pusher --}}
+    {{-- Asset Echo & Pusher (Opsional jika pakai Reverb) --}}
     <script src="{{ asset('libs/pusher.min.js') }}"></script>
     <script src="{{ asset('libs/echo.js') }}"></script>
     <script>
-        if (typeof Echo !== 'undefined') {
-            window.Pusher = Pusher;
-            try {
-                window.Echo = new Echo({
-                    broadcaster: 'reverb',
-                    key: "{{ env('REVERB_APP_KEY') }}",
-                    wsHost: window.location.hostname,
-                    wsPort: 8081,
-                    wssPort: 8081,
-                    forceTLS: false,
-                    disableStats: true,
-                    enabledTransports: ['ws', 'wss'],
-                });
-            } catch (err) { console.error("Error Config:", err); }
-        }
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof Echo !== 'undefined' && typeof Pusher !== 'undefined') {
+                window.Pusher = Pusher;
+                try {
+                    window.Echo = new Echo({
+                        broadcaster: 'reverb',
+                        key: "{{ env('REVERB_APP_KEY') }}",
+                        wsHost: window.location.hostname,
+                        wsPort: 8081,
+                        wssPort: 8081,
+                        forceTLS: false,
+                        disableStats: true,
+                        enabledTransports: ['ws', 'wss'],
+                    });
+                } catch (err) { console.error("Error Config:", err); }
+            }
+        });
     </script>
 
     <style>
@@ -50,43 +50,55 @@
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+
+        /* Animasi Loading Bar Livewire */
+        .nprogress-custom-parent { overflow: hidden; position: relative; }
+        .nprogress-custom-parent #nprogress .spinner, .nprogress-custom-parent #nprogress .bar { position: absolute; }
     </style>
     @stack('styles')
 </head>
 <body class="antialiased text-slate-700" x-data="{ sidebarOpen: false }">
 
-    {{-- LOGIKA CEK EXPIRED & REDIRECT --}}
-    @if(Auth::check() && Auth::user()->tenant && Auth::user()->tenant->expired_at && now()->gt(Auth::user()->tenant->expired_at))
+    {{-- [LOGIC PENYELAMAT] Cek Expired --}}
+    @if(Auth::check() && optional(Auth::user()->tenant)->expired_at && now()->gt(Auth::user()->tenant->expired_at))
         @if(!request()->is('*account-suspended*'))
             <script>
-                var subdomain = "{{ Auth::user()->tenant->subdomain }}";
-                window.location.href = "https://" + subdomain + ".tokosancaka.com/account-suspended";
+                window.location.href = "https://{{ Auth::user()->tenant->subdomain }}.tokosancaka.com/account-suspended";
             </script>
             @php exit; @endphp
         @endif
     @endif
 
     <div class="flex h-screen overflow-hidden">
+
         {{-- Sidebar Include --}}
         @include('layouts.partials.sidebar')
 
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+
+            {{-- [LIVEWIRE LOADING INDICATOR] Bar biru di atas saat pindah halaman --}}
+            <div wire:loading.delay class="fixed top-0 left-0 w-full h-1 bg-blue-500 z-[9999] shadow-[0_0_10px_#3b82f6]"></div>
+
             {{-- Header Include --}}
             @include('layouts.partials.header')
 
             {{-- Main Content --}}
-            <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-6 custom-scrollbar">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-6 custom-scrollbar relative">
                 <div class="max-w-7xl mx-auto">
+
                     {{-- Alert Flash Message --}}
                     @if(session('success'))
-                    <div class="mb-6 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl">
+                    <div class="mb-6 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl animate-fade-in-down">
                         <i data-lucide="check-circle" class="w-5 h-5"></i>
                         <span class="text-sm font-medium">{{ session('success') }}</span>
                     </div>
                     @endif
 
-                    {{-- Area Konten Utama (Kembali ke Standard Blade) --}}
+                    {{-- Area Konten Utama --}}
                     @yield('content')
+
+                    {{-- Slot Tambahan jika pakai Full Livewire Component --}}
+                    {{ $slot ?? '' }}
 
                     <footer class="mt-12 text-center text-xs text-slate-400 pb-6 font-medium">
                         &copy; {{ date('Y') }} <span class="text-blue-600">Sancaka</span><span class="text-red-600">POS</span>. Digitalizing Your Business.
@@ -96,7 +108,21 @@
         </div>
     </div>
 
+    {{-- [LIVEWIRE SCRIPTS] Wajib ada sebelum tutup Body --}}
+    @livewireScripts
+
+    {{-- Alpine.js (Jika Livewire v3, Alpine sudah include otomatis. Jika v2, perlu manual) --}}
+    {{-- Karena Anda pakai Livewire v4.1 (modern), kita hapus load manual Alpine agar tidak bentrok --}}
+
     @stack('scripts')
-    <script>lucide.createIcons();</script>
+
+    <script>
+        lucide.createIcons();
+
+        // Re-init Lucide Icons saat Livewire navigasi selesai (SPA Mode)
+        document.addEventListener('livewire:navigated', () => {
+            lucide.createIcons();
+        });
+    </script>
 </body>
 </html>
