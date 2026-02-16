@@ -259,7 +259,7 @@
     function categoryManager() {
         return {
             isEditMode: false,
-            formAction: "{{ route('categories.store') }}",
+            formAction: "{{ route('tenant.categories.store') }}",
 
             // Model Data Form
             form: {
@@ -304,7 +304,7 @@
             // Reset form kembali ke mode Tambah
             resetForm() {
                 this.isEditMode = false;
-                this.formAction = "{{ route('categories.store') }}";
+                this.formAction = "{{ route('tenant.categories.store') }}";
 
                 this.form.id = null;
                 this.form.name = '';
