@@ -46,7 +46,7 @@
 
             <p class="text-[9px] text-slate-400 mt-0.5 flex items-center justify-center gap-1 group-hover:text-blue-500">
                 {{-- Pastikan variabel ini sesuai dengan AppServiceProvider ($app_last_update) --}}
-                <span>Updated: {{ $version ?? '-' }}</span>
+                <span class="text-3xl font-black text-blue-700">{{ $version ?? '1.0.0' }}</span>
                 <i class="fas fa-history text-[8px] opacity-0 group-hover:opacity-100 transition-opacity"></i>
             </p>
         </a>
