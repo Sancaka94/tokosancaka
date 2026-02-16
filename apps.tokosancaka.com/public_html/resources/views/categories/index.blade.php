@@ -21,8 +21,9 @@
     <div class="flex flex-col mb-6">
 
         {{-- [BARU] TOMBOL KEMBALI --}}
+        {{-- [BARU] TOMBOL KEMBALI KE URL / --}}
         <div class="mb-4">
-            <a href="javascript:history.back()"
+            <a href="{{ url('/') }}"
                class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-xl text-slate-600 text-sm font-bold hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm">
                 <i class="fas fa-arrow-left"></i>
                 <span>Kembali</span>
