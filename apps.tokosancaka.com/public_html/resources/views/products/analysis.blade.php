@@ -45,25 +45,24 @@
                 </div>
 
                 <div class="overflow-x-auto p-4">
-                    <table class="w-full text-left text-sm border-collapse">
-                        <thead class="bg-slate-100 text-slate-600 uppercase text-[11px] font-bold tracking-wider border border-slate-200">
-                            <tr>
-                                <th class="px-4 py-3 border border-slate-200 min-w-[250px]">Bahan Baku / Biaya</th>
-                                <th class="px-2 py-3 border border-slate-200 w-24 text-center">Qty</th>
-                                <th class="px-2 py-3 border border-slate-200 w-36 text-right">Biaya Satuan</th>
-                                <th class="px-4 py-3 border border-slate-200 w-36 text-right bg-slate-50">Subtotal</th>
-                                <th class="px-2 py-3 border border-slate-200 w-10 text-center"></th>
+                    <table class="w-full text-left text-sm border-separate border-spacing-y-2">
+                        <thead>
+                            <tr class="text-slate-500 uppercase text-[11px] font-bold tracking-wider">
+                                <th class="px-2 pb-2">Bahan Baku / Biaya</th>
+                                <th class="px-2 pb-2 w-24 text-center">Qty</th>
+                                <th class="px-2 pb-2 w-40 text-right">Biaya Satuan</th>
+                                <th class="px-4 pb-2 w-36 text-right">Subtotal</th>
+                                <th class="px-2 pb-2 w-10"></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-200 border border-slate-200">
+                        <tbody>
                             <template x-for="(item, index) in items" :key="index">
-                                <tr class="hover:bg-slate-50 transition">
-
+                                <tr>
                                     {{-- Input Nama / Dropdown --}}
-                                    <td class="px-3 py-3 border border-slate-200 align-top">
+                                    <td class="align-top">
                                         <div class="flex flex-col gap-2">
                                             <select x-model="item.child_product_id" @change="updateCostFromMaterial(index, $event)"
-                                                    class="w-full text-xs font-medium text-slate-700 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 py-2 bg-white shadow-sm">
+                                                    class="w-full text-xs font-bold text-slate-700 border-2 border-slate-300 rounded-lg focus:ring-0 focus:border-blue-600 py-2.5 bg-white shadow-sm h-10">
                                                 <option value="">-- Input Manual / Tenaga --</option>
                                                 @foreach($materials as $mat)
                                                     <option value="{{ $mat->id }}" data-price="{{ $mat->base_price }}">
@@ -73,50 +72,50 @@
                                             </select>
                                             <input x-show="!item.child_product_id" type="text" x-model="item.custom_name"
                                                    placeholder="Contoh: Listrik / Tinta"
-                                                   class="w-full text-xs border border-slate-300 rounded-md px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm">
+                                                   class="w-full text-xs font-bold border-2 border-slate-300 rounded-lg px-3 py-2 bg-slate-50 focus:bg-white focus:border-blue-600 transition-all h-10 placeholder-slate-400">
                                         </div>
                                     </td>
 
                                     {{-- Input Qty --}}
-                                    <td class="px-2 py-3 border border-slate-200 align-top">
+                                    <td class="align-top px-1">
                                         <input type="number" step="0.0001" x-model="item.quantity"
-                                               class="w-full text-center text-sm font-bold text-slate-800 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 py-2 shadow-sm">
+                                               class="w-full text-center text-sm font-black text-slate-800 border-2 border-slate-300 rounded-lg focus:ring-0 focus:border-blue-600 py-2 h-10 shadow-sm">
                                     </td>
 
                                     {{-- Input Biaya Satuan --}}
-                                    <td class="px-2 py-3 border border-slate-200 align-top">
+                                    <td class="align-top px-1">
                                         <div class="relative">
-                                            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">Rp</span>
+                                            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rp</span>
                                             <input type="number" step="1" x-model="item.cost" :readonly="!!item.child_product_id"
-                                                   class="w-full text-right pl-7 pr-2 py-2 text-sm font-bold border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 shadow-sm"
+                                                   class="w-full text-right pl-7 pr-2 py-2 text-sm font-black border-2 border-slate-300 rounded-lg focus:ring-0 focus:border-blue-600 h-10 shadow-sm"
                                                    :class="item.child_product_id ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-800'">
                                         </div>
                                     </td>
 
                                     {{-- Subtotal (Readonly) --}}
-                                    <td class="px-4 py-3 border border-slate-200 align-middle text-right bg-slate-50">
+                                    <td class="align-middle text-right bg-slate-50 rounded-lg px-4 border border-slate-200">
                                         <span class="font-black text-slate-700" x-text="formatRupiah(item.quantity * item.cost)"></span>
                                     </td>
 
                                     {{-- Hapus --}}
-                                    <td class="px-2 py-3 border border-slate-200 align-middle text-center">
-                                        <button @click="removeItem(index)" class="w-7 h-7 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-600 hover:border-red-300 transition shadow-sm">
+                                    <td class="align-middle text-center">
+                                        <button @click="removeItem(index)" class="w-8 h-8 rounded-lg bg-white border-2 border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-600 hover:border-red-400 transition shadow-sm">
                                             <i class="fas fa-trash-alt text-xs"></i>
                                         </button>
                                     </td>
                                 </tr>
                             </template>
                             <tr x-show="items.length === 0">
-                                <td colspan="5" class="py-8 text-center text-slate-400 bg-slate-50 border border-slate-200 border-dashed">
+                                <td colspan="5" class="py-8 text-center text-slate-400 bg-slate-50 border-2 border-slate-200 border-dashed rounded-xl">
                                     <i class="fas fa-arrow-up mb-2"></i><br>
                                     Silakan tambah komponen biaya di atas.
                                 </td>
                             </tr>
                         </tbody>
-                        <tfoot class="bg-slate-100 border border-slate-200">
+                        <tfoot>
                             <tr>
-                                <td colspan="3" class="px-4 py-3 text-right font-bold text-slate-600 uppercase text-xs tracking-wider">Total HPP (Modal):</td>
-                                <td class="px-4 py-3 text-right font-black text-slate-800 text-lg border-l border-slate-200 bg-white">
+                                <td colspan="3" class="px-4 py-4 text-right font-bold text-slate-600 uppercase text-xs tracking-wider">Total HPP (Modal):</td>
+                                <td class="px-4 py-4 text-right font-black text-slate-800 text-xl border-t-2 border-slate-200">
                                     <span x-text="formatRupiah(totalHpp)"></span>
                                 </td>
                                 <td></td>
@@ -126,7 +125,7 @@
                 </div>
             </div>
 
-            {{-- 2. ANALISA BEP (DESAIN BARU - GRADIENT CARD) --}}
+            {{-- 2. ANALISA BEP (DENGAN PERBAIKAN BUG TAMPILAN) --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                 {{-- Kiri: Input Biaya Operasional --}}
@@ -141,7 +140,7 @@
                             <div class="relative">
                                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">Rp</span>
                                 <input type="number" x-model="fixedCost"
-                                       class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                                       class="w-full pl-9 pr-4 py-2 border-2 border-slate-300 rounded-lg text-sm font-bold text-slate-700 focus:ring-0 focus:border-blue-600 shadow-sm"
                                        placeholder="Contoh: 1.500.000">
                             </div>
                             <p class="text-[10px] text-slate-400 mt-1">*Total Gaji, Listrik, Sewa, Internet, dll.</p>
@@ -151,15 +150,15 @@
                             <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Target Penjualan Harian</label>
                             <div class="flex items-center gap-2">
                                 <input type="number" x-model="salesPerDay"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                                       class="w-full px-4 py-2 border-2 border-slate-300 rounded-lg text-sm font-bold text-slate-700 focus:ring-0 focus:border-blue-600 shadow-sm"
                                        placeholder="10">
-                                <span class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-2 rounded-lg border border-slate-200">Unit/Hari</span>
+                                <span class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-2.5 rounded-lg border border-slate-200">Unit/Hari</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- Kanan: Hasil Analisa (Gradient Card seperti Referensi) --}}
+                {{-- Kanan: Hasil Analisa (Gradient Card) --}}
                 <div class="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl shadow-lg p-6 text-white relative overflow-hidden flex flex-col justify-center min-h-[220px]">
                     {{-- Dekorasi Background --}}
                     <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white opacity-10 rounded-full blur-3xl"></div>
@@ -178,13 +177,16 @@
                         </div>
                     </div>
 
+                    {{-- PERBAIKAN UTAMA: Menggunakan x-text, BUKAN {{ }} --}}
                     <div class="mt-6 pt-4 border-t border-white/20 text-center relative z-10">
                         <p class="text-xs leading-relaxed opacity-90" x-show="profit > 0 && fixedCost > 0">
-                            Anda harus menjual <span class="font-bold border-b border-white/50">@{{ formatRupiah(bepUnit, false) }} unit</span> sebulan<br>untuk menutup biaya operasional Rp @{{ formatRupiah(fixedCost, false) }}.
+                            Anda harus menjual <span class="font-bold border-b border-white/50" x-text="formatRupiah(bepUnit, false) + ' unit'"></span> sebulan<br>untuk menutup biaya operasional Rp <span x-text="formatRupiah(fixedCost, false)"></span>.
                         </p>
+
                         <p class="text-xs font-bold bg-red-500/20 py-2 rounded text-center border border-red-400/50" x-show="profit <= 0">
                             <i class="fas fa-exclamation-triangle mr-1"></i> Harga Jual terlalu rendah! (Rugi)
                         </p>
+
                         <p class="text-xs opacity-70" x-show="profit > 0 && fixedCost == 0">
                             Isi biaya operasional di samping untuk melihat analisa.
                         </p>
@@ -197,7 +199,7 @@
 
         {{-- KOLOM KANAN: SIMULASI HARGA (Sticky - 4 Kolom) --}}
         <div class="lg:col-span-4 space-y-6">
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 sticky top-6 overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 sticky top-6 overflow-hidden">
                 <div class="p-5 bg-slate-900 text-white flex justify-between items-center">
                     <h3 class="font-bold flex items-center gap-2"><i class="fas fa-calculator text-slate-400"></i> Simulasi Harga</h3>
                 </div>
@@ -242,7 +244,7 @@
                         <div class="relative group">
                             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-lg group-focus-within:text-blue-600 transition-colors">Rp</span>
                             <input type="number" x-model="sellingPrice"
-                                   class="w-full pl-12 pr-4 py-4 text-center text-3xl font-black text-slate-900 border-2 border-slate-300 rounded-xl focus:ring-0 focus:border-blue-600 transition-all shadow-sm">
+                                   class="w-full pl-12 pr-4 py-4 text-center text-3xl font-black text-slate-900 border-2 border-slate-300 rounded-2xl focus:ring-0 focus:border-blue-600 transition-all shadow-sm">
                         </div>
                     </div>
 
@@ -254,7 +256,7 @@
                             <span class="text-sm font-bold" x-text="formatRupiah(profit)"></span>
                         </div>
                         <div class="p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-colors duration-300"
-                             :class="realMargin >= 20 ? 'bg-blue-50 border-blue-200 text-blue-700' : (realMargin > 0 ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-red-50 border-red-200 text-red-700')">
+                             :class="realMargin >= 20 ? 'bg-blue-50 border-blue-100 text-blue-700' : (realMargin > 0 ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-red-50 border-red-100 text-red-700')">
                             <span class="text-[9px] font-black uppercase opacity-70">Margin Real</span>
                             <span class="text-sm font-bold" x-text="realMargin + '%'"></span>
                         </div>
@@ -267,7 +269,7 @@
     </div>
 </div>
 
-{{-- SCRIPT LOGIC (TIDAK ADA PERUBAHAN LOGIC) --}}
+{{-- SCRIPT LOGIC (TIDAK ADA PERUBAHAN) --}}
 <script>
     function hppCalculator(initialItems, currentBasePrice, currentSellPrice) {
         return {
