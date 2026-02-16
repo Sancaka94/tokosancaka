@@ -366,8 +366,10 @@ Route::post('/join-partner/forgot-pin', [AffiliateController::class, 'forgotPin'
 // Pastikan baris ini ada di paling bawah untuk memuat rute Login/Register
 require __DIR__.'/auth.php';
 
+
+
 // Route untuk Kategori
-Route::resource('categories', CategoryController::class);
+// Route::resource('categories', CategoryController::class);
 
 /*
 |--------------------------------------------------------------------------
