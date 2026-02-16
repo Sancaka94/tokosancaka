@@ -323,11 +323,16 @@
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('admin.couriers.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
-                        <i class="fa-solid fa-truck-fast fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.couriers.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
-                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Manajemen Kurir</span>
+
+                            <i class="fa-solid fa-truck-fast fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.couriers.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                            <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Manajemen Kurir</span>
+
                     </span>
-                    <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
+                    <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
+                        <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
                        :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->routeIs('admin.couriers.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
+
+                    </div>
                 </button>
                 <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
                     <ul class="pl-9 pr-2 py-1 space-y-1">
@@ -345,8 +350,10 @@
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('admin.ppob.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
-                        <i class="fa-solid fa-mobile-screen-button fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.ppob.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
-                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">PPOB</span>
+                        <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
+                            <i class="fa-solid fa-mobile-screen-button fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.ppob.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                            <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">PPOB</span>
+                        </div>
                     </span>
                     <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
                        :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->routeIs('admin.ppob.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
@@ -469,12 +476,16 @@
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('broadcast.*') || request()->is('whatsapp*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
-                        <i class="fa-brands fa-whatsapp fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('broadcast.*') || request()->is('whatsapp*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
-                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Chat Whatsapp</span>
+
+                            <i class="fa-brands fa-whatsapp fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('broadcast.*') || request()->is('whatsapp*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                            <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Chat Whatsapp</span>
+
                     </span>
-                    <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
+                    <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
+                        <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
                        :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->routeIs('broadcast.*') || request()->is('whatsapp*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
-                </button>
+                    </div>
+                    </button>
                 <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
                     <ul class="pl-9 pr-2 py-1 space-y-1">
                         <li><a href="{{ route('admin.wa.scan') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.wa.scan') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">Scan PushWA</a></li>
@@ -493,8 +504,10 @@
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->is('admin/posts*') || request()->is('admin/categories*') || request()->is('admin/tags*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
-                        <i class="fa-solid fa-newspaper fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->is('admin/posts*') || request()->is('admin/categories*') || request()->is('admin/tags*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
-                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Blog</span>
+                        <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
+                            <i class="fa-solid fa-newspaper fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->is('admin/posts*') || request()->is('admin/categories*') || request()->is('admin/tags*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                            <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Blog</span>
+                        </div>
                     </span>
                     <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
                        :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->is('admin/posts*') || request()->is('admin/categories*') || request()->is('admin/tags*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
@@ -519,11 +532,14 @@
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group text-gray-600 hover:bg-blue-600 hover:text-white">
                     <span class="flex items-center">
-                        <i class="fa-solid fa-gears fa-fw w-5 h-5 mr-2 flex-shrink-0 text-gray-400 group-hover:text-white"></i>
-                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Pengaturan</span>
+                            <i class="fa-solid fa-gears fa-fw w-5 h-5 mr-2 flex-shrink-0 text-gray-400 group-hover:text-white"></i>
+                            <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Pengaturan</span>
+
                     </span>
-                    <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200 text-gray-400 group-hover:text-white"
-                       :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180' : ''"></i>
+                        <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
+                            <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200 text-gray-400 group-hover:text-white"
+                            :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180' : ''"></i>
+                       </div>
                 </button>
                 <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
                     <ul class="pl-9 pr-2 py-1 space-y-1">
