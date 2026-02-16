@@ -6,7 +6,7 @@
     {{-- Header Greeting --}}
     <div class="mb-6 flex items-center justify-between">
         <h2 class="text-2xl font-bold text-slate-800">
-            Halo, <span class="text-blue-600">{{ $user->name }}</span>
+            Halo Kak, <span class="text-blue-600">{{ $user->name }}</span>
         </h2>
     </div>
 
