@@ -217,7 +217,7 @@
                                         </button>
 
                                         {{-- TOMBOL HAPUS --}}
-                                        <form action="{{ route('tenant.categories.destroy', $cat->id) }}" method="POST" onsubmit="return confirm('Yakin hapus kategori {{ $cat->name }}?');">
+                                        <form action="{{ route('categories.destroy', $cat->id) }}" method="POST" onsubmit="return confirm('Yakin hapus kategori {{ $cat->name }}?');">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="h-8 w-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition border border-red-100 shadow-sm"
@@ -259,7 +259,7 @@
     function categoryManager() {
         return {
             isEditMode: false,
-            formAction: "{{ route('tenant.categories.store') }}",
+            formAction: "{{ route('categories.store') }}",
 
             // Model Data Form
             form: {
@@ -304,7 +304,7 @@
             // Reset form kembali ke mode Tambah
             resetForm() {
                 this.isEditMode = false;
-                this.formAction = "{{ route('tenant.categories.store') }}";
+                this.formAction = "{{ route('categories.store') }}";
 
                 this.form.id = null;
                 this.form.name = '';

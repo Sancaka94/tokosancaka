@@ -368,10 +368,8 @@ require __DIR__.'/auth.php';
 
 
 
-Route::domain('{subdomain}.tokosancaka.com')->name('tenant.')->group(function () {
-    // Nanti namanya jadi: tenant.categories.index, tenant.categories.destroy, dll
-    Route::resource('categories', CategoryController::class);
-});
+// Route untuk Kategori
+// Route::resource('categories', CategoryController::class);
 
 /*
 |--------------------------------------------------------------------------
