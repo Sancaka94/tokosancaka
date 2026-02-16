@@ -186,7 +186,7 @@
                         <i class="fa-solid fa-users-gear fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs(['admin.registrations.*', 'admin.customers.*', 'admin.roles.*']) ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                         <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Pengguna & Role</span>
                     </span>
-                    <div :class="(isExpanded || isHovered) ? 'flex' : 'flex lg:hidden'" class="items-center ml-auto">
+                    <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                         <span id="menu-pengguna-badge" class="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-white bg-green-500 rounded-md mr-2 hidden">0</span>
                         <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
                            :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->routeIs(['admin.registrations.*', 'admin.customers.*', 'admin.roles.*']) ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
@@ -232,7 +232,7 @@
                         <i class="fa-solid fa-store fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->is('admin/products*') || request()->is('admin/spx-scans*') || request()->routeIs('admin.reviews.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                         <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Marketplace</span>
                     </span>
-                    <div :class="(isExpanded || isHovered) ? 'flex' : 'flex lg:hidden'" class="items-center ml-auto">
+                    <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                         <span id="menu-marketplace-badge" class="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-white bg-green-500 rounded-md mr-2 hidden">0</span>
                         <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
                            :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->is('admin/products*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
@@ -271,7 +271,7 @@
                         <i class="fa-solid fa-cart-shopping fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->is('admin/pesanan*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                         <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Pesanan</span>
                     </span>
-                    <div :class="(isExpanded || isHovered) ? 'flex' : 'flex lg:hidden'" class="items-center ml-auto">
+                    <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                         <span id="menu-pesanan-badge" class="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-white bg-green-500 rounded-md mr-2 hidden">0</span>
                         <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
                            :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->is('admin/pesanan*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
@@ -372,7 +372,7 @@
                         <i class="fa-solid fa-chart-pie fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.saldo.requests.*') || request()->routeIs('admin.keuangan.*') || request()->routeIs('admin.akuntansi.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                         <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Laporan Keuangan</span>
                     </span>
-                    <div :class="(isExpanded || isHovered) ? 'flex' : 'flex lg:hidden'" class="items-center ml-auto">
+                    <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                         <span id="menu-keuangan-badge" class="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-white bg-orange-500 rounded-md mr-2 hidden">0</span>
                         <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
                            :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->routeIs('admin.saldo.requests.*') || request()->routeIs('admin.keuangan.*') || request()->routeIs('admin.akuntansi.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
