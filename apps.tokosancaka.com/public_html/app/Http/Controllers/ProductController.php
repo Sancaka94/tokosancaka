@@ -45,13 +45,14 @@ class ProductController extends Controller implements HasMiddleware
     $subdomain = explode('.', $host)[0];
 
     // --- LOGIKA BARU ---
-    if ($subdomain === 'apps' || $subdomain === 'www') {
-        // Jika akses dari admin pusat, kita set ID tenant dummy atau ID khusus (misal 0 atau 1)
-        // Pastikan logic query Product::where('tenant_id', ...) nanti bisa menangani ini.
-        $this->tenantId = 1; // Contoh: ID 1 dianggap milik admin pusat
-        return; // Langsung keluar, jangan cek database tenant
+    // Tambahkan 'admin' di sini
+    if ($subdomain === 'apps' || $subdomain === 'www' || $subdomain === 'admin') {
+
+        // ID 1 adalah Admin Pusat (Sesuai database Anda)
+        $this->tenantId = 1;
+
+        return; // Langsung keluar, logic selesai.
     }
-    // -------------------
 
     $tenant = Tenant::where('subdomain', $subdomain)->first();
 
@@ -582,11 +583,17 @@ class ProductController extends Controller implements HasMiddleware
     }
 
     public function apiList() {
-        $products = Product::where('tenant_id', $this->tenantId)
+        // Gunakan withoutGlobalScopes() untuk menembus filter otomatis
+        $products = Product::withoutGlobalScopes()
+                        ->where('tenant_id', $this->tenantId) // Pastikan ID 1 terpakai
                         ->with('category')
-                        ->where('stock_status', 'available')
+                        ->where('stock_status', 'available') // Hanya ambil yang stok ada
                         ->latest()
                         ->get();
+
+        // Debugging (Opsional: Kalau masih kosong, buka komentar baris bawah ini cek di console)
+        Log::info("Request API List dari Tenant ID: " . $this->tenantId . " Jumlah: " . $products->count());
+
         return response()->json($products);
     }
 
