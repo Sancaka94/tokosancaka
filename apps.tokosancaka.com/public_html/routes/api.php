@@ -54,10 +54,36 @@ Route::get('/categories', [CategoryController::class, 'index']);
 // Scan Barcode (Cek Harga/Stok)
 Route::get('/orders/scan-product', [OrderController::class, 'scanProduct']);
 Route::get('/products/{product}/variants', [ProductController::class, 'getVariants']);
+
 // Tambahkan route ini:
-Route::get('/categories', function () {
+// Route::get('/categories', function () {
     // Ambil kategori yang aktif saja & urutkan sesuai keinginan
-    return Category::where('is_active', 1)->get();
+//    return Category::where('is_active', 1)->get();
+//});
+
+// GANTI BAGIAN INI (Sekitar baris 58-62)
+Route::get('/categories', function (\Illuminate\Http\Request $request) {
+    // 1. Deteksi Subdomain Manual
+    $host = $request->getHost();
+    $parts = explode('.', $host);
+    $subdomain = $parts[0]; // ambil 'admin', 'demo', atau 'toko-a'
+
+    // 2. Cari Tenant ID-nya di Database
+    // Kita cari ID tenant pemilik subdomain ini
+    $tenant = \Illuminate\Support\Facades\DB::table('tenants')
+                ->where('subdomain', $subdomain)
+                ->first();
+
+    if (!$tenant) {
+        return response()->json(['error' => 'Toko tidak ditemukan'], 404);
+    }
+
+    // 3. Ambil Kategori milik Tenant tersebut
+    // Kita filter manual 'where tenant_id' untuk bypass error Global Scope
+    return Category::withoutGlobalScopes() // Jaga-jaga ada scope yang memblokir
+                   ->where('tenant_id', $tenant->id)
+                   ->where('is_active', 1)
+                   ->get();
 });
 
 // --- ORDERS / TRANSAKSI POS ---
