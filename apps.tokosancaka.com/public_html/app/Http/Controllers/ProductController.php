@@ -583,16 +583,34 @@ class ProductController extends Controller implements HasMiddleware
     }
 
     public function apiList() {
-        // Gunakan withoutGlobalScopes() untuk menembus filter otomatis
         $products = Product::withoutGlobalScopes()
-                        ->where('tenant_id', $this->tenantId) // Pastikan ID 1 terpakai
+                        ->where('tenant_id', $this->tenantId)
                         ->with('category')
-                        ->where('stock_status', 'available') // Hanya ambil yang stok ada
+                        ->where('stock_status', 'available')
                         ->latest()
-                        ->get();
+                        ->get()
+                        ->map(function($product) {
+                            // KITA FORMAT ULANG DATANYA BIAR COCOK DENGAN ELECTRON
+                            return [
+                                'id' => $product->id,
+                                'tenant_id' => $product->tenant_id,
+                                'category_id' => $product->category_id,
+                                'name' => $product->name,
 
-        // Debugging (Opsional: Kalau masih kosong, buka komentar baris bawah ini cek di console)
-        Log::info("Request API List dari Tenant ID: " . $this->tenantId . " Jumlah: " . $products->count());
+                                // INI KUNCINYA: Kita buat kolom 'price' yang isinya dari 'sell_price'
+                                'price' => $product->sell_price,
+                                'sell_price' => $product->sell_price, // Tetap sertakan aslinya jaga-jaga
+                                'base_price' => $product->base_price,
+
+                                'stock' => $product->stock,
+                                'unit' => $product->unit,
+                                'barcode' => $product->barcode,
+                                'sku' => $product->sku,
+                                'image' => $product->image,
+                                'category_name' => $product->category ? $product->category->name : '-', // Tambahan info kategori
+                                'has_variant' => $product->has_variant,
+                            ];
+                        });
 
         return response()->json($products);
     }
