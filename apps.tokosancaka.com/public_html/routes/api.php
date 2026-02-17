@@ -63,25 +63,29 @@ Route::get('/products/{product}/variants', [ProductController::class, 'getVarian
 
 // GANTI BAGIAN INI (Sekitar baris 58-62)
 Route::get('/categories', function (\Illuminate\Http\Request $request) {
-    // 1. Deteksi Subdomain Manual
+    // 1. Ambil Subdomain
     $host = $request->getHost();
-    $parts = explode('.', $host);
-    $subdomain = $parts[0]; // ambil 'admin', 'demo', atau 'toko-a'
+    $subdomain = explode('.', $host)[0];
 
-    // 2. Cari Tenant ID-nya di Database
-    // Kita cari ID tenant pemilik subdomain ini
-    $tenant = \Illuminate\Support\Facades\DB::table('tenants')
-                ->where('subdomain', $subdomain)
-                ->first();
+    // 2. LOGIKA BARU: Cek "Kartu VIP" untuk 'apps'
+    // Jika subdomain adalah 'apps' ATAU 'admin', kita anggap dia ID 1
+    if ($subdomain === 'apps' || $subdomain === 'admin' || $subdomain === 'www') {
+        $tenantId = 1;
+    } else {
+        // Jika bukan, baru cari di database
+        $tenant = \Illuminate\Support\Facades\DB::table('tenants')
+                    ->where('subdomain', $subdomain)
+                    ->first();
 
-    if (!$tenant) {
-        return response()->json(['error' => 'Toko tidak ditemukan'], 404);
+        if (!$tenant) {
+            return response()->json(['error' => 'Toko tidak ditemukan'], 404);
+        }
+        $tenantId = $tenant->id;
     }
 
-    // 3. Ambil Kategori milik Tenant tersebut
-    // Kita filter manual 'where tenant_id' untuk bypass error Global Scope
-    return Category::withoutGlobalScopes() // Jaga-jaga ada scope yang memblokir
-                   ->where('tenant_id', $tenant->id)
+    // 3. Ambil Kategori dengan ID yang sudah ditentukan
+    return \App\Models\Category::withoutGlobalScopes()
+                   ->where('tenant_id', $tenantId)
                    ->where('is_active', 1)
                    ->get();
 });
