@@ -258,7 +258,7 @@ class MemberAuthController extends Controller
         return back()->with('error', 'Gagal Cek Merchant');
     }
 
-    public function generateSignature($stringToSign) {
+    private function generateSignature($stringToSign) {
         $privateKey = config('services.dana.private_key');
         $binarySignature = "";
         openssl_sign($stringToSign, $binarySignature, $privateKey, OPENSSL_ALGO_SHA256);
@@ -618,172 +618,167 @@ private function sendWhatsApp($to, $message)
 
 public function customerTopup(Request $request)
 {
-    // --- [VALIDASI INPUT] ---
+    // --- [1. VALIDASI INPUT] ---
     $request->validate([
         'affiliate_id' => 'required|exists:affiliates,id',
         'phone'        => 'required|numeric',
-        'amount'       => 'required|numeric|min:1',
+        // Minimal Rp10.000 (sesuaikan kebijakan DANA/Bapak), atau Rp1.000
+        'amount'       => 'required|numeric|min:1000',
     ]);
 
-    $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
-    if (!$aff) return back()->with('error', 'Affiliate tidak ditemukan.');
-
-    if ($aff->balance < $request->amount) {
-        return back()->with('error', 'Saldo tidak mencukupi.');
-    }
-
-    // --- [SANITASI NOMOR HP (DINAMIS)] ---
-    // Mengubah format 08xx/8xx menjadi 628xx secara otomatis
+    // --- [2. SANITASI NOMOR HP] ---
     $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
-    if (substr($cleanPhone, 0, 2) === '62') {
-        $cleanPhone = $cleanPhone;
-    } elseif (substr($cleanPhone, 0, 1) === '0') {
+    if (str_starts_with($cleanPhone, '0')) {
         $cleanPhone = '62' . substr($cleanPhone, 1);
-    } elseif (substr($cleanPhone, 0, 1) === '8') {
+    } elseif (str_starts_with($cleanPhone, '8')) {
         $cleanPhone = '62' . $cleanPhone;
     }
 
-    // --- [SETUP REQUEST (NORMAL)] ---
-    $timestamp = now('Asia/Jakarta')->toIso8601String();
-
-    // Kembali generate RefNo Unik setiap transaksi (Agar tidak kena Inconsistent Request saat normal)
+    $amount = (float) $request->amount;
     $partnerRef = date('YmdHis') . mt_rand(1000, 9999);
+    $trxId = null;
 
-    // Nominal sesuai input user
-    $amountStr = number_format((float)$request->amount, 2, '.', '');
-
-    // --- [BODY REQUEST] ---
-    $body = [
-    "partnerReferenceNo" => "1771397079",
-    "customerNumber"     => "6281298055138",
-    "amount" => [
-        "value"    => "1.00",
-        "currency" => "IDR"
-    ],
-    "feeAmount" => [
-        "value"    => "1.00",
-        "currency" => "IDR"
-    ],
-    // Hardcoded sesuai instruksi untuk trigger timeout
-    "transactionDate" => "2030-05-01T00:46:43+07:00",
-    "additionalInfo"  => [
-        "fundType" => "AGENT_TOPUP_FOR_USER_SETTLE"
-    ]
-];
-
-    // --- [ENDPOINT & SIGNATURE] ---
-    $path = '/rest/v1.0/emoney/topup';
-
-    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
-    $hashedBody = strtolower(hash('sha256', $jsonBody));
-    $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-    $signature = $this->generateSignature($stringToSign);
-
-    // --- [HEADER] ---
-    $headers = [
-        'Content-Type' => 'application/json',
-        'X-TIMESTAMP'  => $timestamp,
-        'X-SIGNATURE'  => $signature,
-        'X-PARTNER-ID' => config('services.dana.x_partner_id'),
-        'X-EXTERNAL-ID'=> (string) time() . Str::random(4),
-        'CHANNEL-ID'   => '95221',
-        'ORIGIN'       => config('services.dana.origin'),
-    ];
-
+    // --- [3. DATABASE TRANSACTION (AMANKAN SALDO)] ---
     try {
-        Log::info('[DANA TOPUP] Sending Request...', ['ref' => $partnerRef, 'phone' => $cleanPhone]);
+        DB::beginTransaction();
 
-        // --- [EKSEKUSI REQUEST] ---
-        $response = Http::withHeaders($headers)
+        // Lock Saldo User
+        $aff = DB::table('affiliates')
+            ->where('id', $request->affiliate_id)
+            ->lockForUpdate()
+            ->first();
+
+        if ($aff->balance < $amount) {
+            DB::rollBack();
+            return back()->with('error', 'Saldo tidak mencukupi.');
+        }
+
+        // Potong Saldo (Pending State)
+        DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $amount);
+
+        // Catat Transaksi Pending
+        $trxId = DB::table('dana_transactions')->insertGetId([
+            'tenant_id'    => $aff->tenant_id ?? 1,
+            'affiliate_id' => $aff->id,
+            'type'         => 'TOPUP',
+            'reference_no' => $partnerRef,
+            'phone'        => $cleanPhone,
+            'amount'       => $amount,
+            'status'       => 'PENDING',
+            'created_at'   => now(),
+            'updated_at'   => now()
+        ]);
+
+        DB::commit();
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->with('error', 'Database Error: ' . $e->getMessage());
+    }
+
+    // --- [4. API REQUEST KE DANA] ---
+    try {
+        $timestamp = now('Asia/Jakarta')->toIso8601String();
+        $amountStr = number_format($amount, 2, '.', ''); // Format 10000.00
+
+        $body = [
+            "partnerReferenceNo" => $partnerRef,
+            "customerNumber"     => $cleanPhone,
+            "amount" => [
+                "value"    => $amountStr,
+                "currency" => "IDR"
+            ],
+            "feeAmount" => [
+                "value"    => "0.00", // Fee biasanya 0 atau ditanggung user
+                "currency" => "IDR"
+            ],
+            "transactionDate" => $timestamp, // WAKTU SEKARANG (REAL)
+            "categoryId"      => "6",
+            "additionalInfo"  => [
+                "fundType" => "AGENT_TOPUP_FOR_USER_SETTLE"
+            ]
+        ];
+
+        // Setup Request
+        $path = '/rest/v1.0/emoney/topup';
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
+        // Pastikan generateSignature public atau bisa diakses
+        $signature = $this->generateSignature($stringToSign);
+
+        $headers = [
+            'Content-Type' => 'application/json',
+            'X-TIMESTAMP'  => $timestamp,
+            'X-SIGNATURE'  => $signature,
+            'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+            'X-EXTERNAL-ID'=> (string) time() . \Illuminate\Support\Str::random(4),
+            'CHANNEL-ID'   => '95221',
+            'ORIGIN'       => config('services.dana.origin'),
+        ];
+
+        // Eksekusi API
+        $response = Http::timeout(60) // Timeout wajar 60 detik
+            ->withHeaders($headers)
             ->withBody($jsonBody, 'application/json')
             ->post('https://api.sandbox.dana.id' . $path);
 
         $result = $response->json();
-
-        Log::info('[DANA TOPUP] Response:', ['body' => $response->body()]);
-
-        $resCode = $result['responseCode'] ?? '500';
+        $resCode = trim((string)($result['responseCode'] ?? '500'));
         $resMsg  = $result['responseMessage'] ?? 'Unknown Error';
-        $codeCheck = trim((string)$resCode);
 
-        // --- [VALIDASI SUKSES (2003800)] ---
-        if ($codeCheck === '2003800') {
+        // --- [5. HANDLE RESPON] ---
 
-            // 1. Potong Saldo
-            DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
-
-            // 2. Catat Sukses
-            DB::table('dana_transactions')->insert([
-                'tenant_id'    => $aff->tenant_id ?? 1,
-                'affiliate_id' => $aff->id,
-                'type' => 'TOPUP',
-                'reference_no' => $partnerRef,
-                'phone' => $cleanPhone,
-                'amount' => $request->amount,
+        if ($resCode === '2003800') {
+            // SUKSES
+            DB::table('dana_transactions')->where('id', $trxId)->update([
                 'status' => 'SUCCESS',
                 'response_payload' => json_encode($result),
-                'created_at' => now()
+                'updated_at' => now()
             ]);
 
-            // 3. Kirim WA (Opsional, aktifkan jika perlu)
-            // if (method_exists($this, 'sendWhatsApp')) { ... }
-
-            return back()->with('success', '✅ Pencairan Profit Berhasil Diproses!');
+            return back()->with('success', '✅ Pencairan ke DANA Berhasil!');
 
         } else {
-            // --- [ERROR HANDLING LENGKAP] ---
+            // GAGAL -> REFUND SALDO
+            DB::transaction(function() use ($trxId, $aff, $amount, $result) {
+                DB::table('affiliates')->where('id', $aff->id)->increment('balance', $amount);
+                DB::table('dana_transactions')->where('id', $trxId)->update([
+                    'status' => 'FAILED',
+                    'response_payload' => json_encode($result),
+                    'updated_at' => now()
+                ]);
+            });
 
-            // Catat Gagal di DB (Tanpa Potong Saldo)
-            DB::table('dana_transactions')->insert([
-                'tenant_id'    => $aff->tenant_id ?? 1,
-                'affiliate_id' => $aff->id,
-                'type' => 'TOPUP',
-                'reference_no' => $partnerRef,
-                'phone' => $cleanPhone,
-                'amount' => $request->amount,
-                'status' => 'FAILED',
-                'response_payload' => json_encode($result),
-                'created_at' => now()
-            ]);
+            // Mapping Pesan Error User Friendly
+            $userMsg = match ($resCode) {
+                '5003800' => 'DANA sedang gangguan, coba lagi nanti.',
+                '4043818' => 'Data transaksi inkonsisten.',
+                '4033814' => 'Saldo Operasional Limit.',
+                '4033805' => 'Nomor DANA Salah/Tidak Aktif.',
+                '4003801' => 'Format Nomor HP Salah.',
+                default   => "Gagal ($resCode): $resMsg"
+            };
 
-            Log::error('[DANA TOPUP] Gagal API:', ['msg' => $resMsg, 'code' => $codeCheck]);
-
-            // ============================================
-            // LIST PESAN ERROR KHUSUS (HASIL TEST DANA)
-            // ============================================
-
-            // 1. General Error (5003800)
-            if ($codeCheck === '5003800') {
-                return back()->with('error', 'Mohon maaf, terjadi gangguan pada sistem DANA, silakan coba beberapa saat lagi.');
-            }
-
-            // 2. Inconsistent Request (4043818)
-            if ($codeCheck === '4043818') {
-                return back()->with('error', 'Gagal: Data transaksi tidak konsisten. Silakan ulangi transaksi baru.');
-            }
-
-            // 3. Insufficient Fund (4033814) - Saldo Merchant Habis
-            if ($codeCheck === '4033814') {
-                return back()->with('error', 'Gagal: Saldo operasional sedang limit. Silakan hubungi Admin.');
-            }
-
-            // 4. Do Not Honor / Invalid Account (4033805)
-            if ($codeCheck === '4033805') {
-                return back()->with('error', 'Gagal: Nomor DANA tujuan tidak valid, dibekukan, atau tidak ditemukan.');
-            }
-
-            // 5. Invalid Format (4003801) - Jaga-jaga
-            if ($codeCheck === '4003801') {
-                return back()->with('error', 'Gagal: Format nomor HP tidak sesuai.');
-            }
-
-            // Default Error (Untuk kode lain)
-            return back()->with('error', "Gagal Pencairan ($codeCheck): $resMsg");
+            return back()->with('error', $userMsg);
         }
 
     } catch (\Exception $e) {
-        Log::error('[DANA TOPUP] Exception', ['msg' => $e->getMessage()]);
-        return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+        // ERROR SISTEM -> REFUND SALDO
+        if ($trxId) {
+            DB::transaction(function() use ($trxId, $aff, $amount, $e) {
+                DB::table('affiliates')->where('id', $aff->id)->increment('balance', $amount);
+                DB::table('dana_transactions')->where('id', $trxId)->update([
+                    'status' => 'ERROR_SYSTEM',
+                    'response_payload' => json_encode(['error' => $e->getMessage()]),
+                    'updated_at' => now()
+                ]);
+            });
+        }
+
+        Log::error('[DANA ERROR]', ['msg' => $e->getMessage()]);
+        return back()->with('error', 'Terjadi kesalahan sistem (Saldo dikembalikan).');
     }
 }
 
