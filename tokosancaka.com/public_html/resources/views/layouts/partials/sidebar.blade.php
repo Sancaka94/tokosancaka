@@ -369,6 +369,14 @@
 
             {{-- ================= KEUANGAN ================= --}}
 
+            {{-- MENU BARU: CASHFLOW --}}
+            <a href="{{ route('cashflow.index') }}" wire:navigate
+               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+               class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('cashflow.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                <i class="fa-solid fa-money-bill-trend-up fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('cashflow.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Cashflow Harian</span>
+            </a>
+
             {{-- Laporan Keuangan --}}
             <div x-data="{ open: {{ request()->routeIs('admin.saldo.requests.*') || request()->routeIs('admin.keuangan.*') || request()->routeIs('admin.akuntansi.*') || request()->routeIs('admin.laporan.*') || request()->is('admin/wallet*') || request()->routeIs('admin.coa.*') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
