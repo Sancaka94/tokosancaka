@@ -258,7 +258,7 @@ class MemberAuthController extends Controller
         return back()->with('error', 'Gagal Cek Merchant');
     }
 
-    private function generateSignature($stringToSign) {
+    public function generateSignature($stringToSign) {
         $privateKey = config('services.dana.private_key');
         $binarySignature = "";
         openssl_sign($stringToSign, $binarySignature, $privateKey, OPENSSL_ALGO_SHA256);
