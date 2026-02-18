@@ -658,5 +658,13 @@ Route::get('/cek-status-dana', function () {
     ])
     ->post('https://api.sandbox.dana.id' . $path, $payload);
 
-    return $response->json();
+    $status = $response->status();
+    $body = $response->body();
+
+    // TAMPILKAN HASIL PAKSA (DEBUG)
+    dd([
+        'HTTP Status' => $status,
+        'Response Body (Mentah)' => $body,
+        'JSON Parsed' => $response->json()
+    ]);
 });
