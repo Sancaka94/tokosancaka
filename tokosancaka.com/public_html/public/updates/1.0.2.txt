@@ -1,0 +1,4 @@
+- Perbaikan bug pada fitur cetak struk.
+- Penambahan fitur scan barcode QRIS.
+- Optimasi kecepatan loading database.
+- Jumlah Sisa stok barang

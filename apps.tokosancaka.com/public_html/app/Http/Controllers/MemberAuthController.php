@@ -622,7 +622,7 @@ public function customerTopup(Request $request)
     $request->validate([
         'affiliate_id' => 'required|exists:affiliates,id',
         'phone'        => 'required|numeric',
-        'amount'       => 'required|numeric|min:1000',
+        'amount'       => 'required|numeric|min:1',
     ]);
 
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
