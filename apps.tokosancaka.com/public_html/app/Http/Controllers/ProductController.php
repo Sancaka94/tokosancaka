@@ -585,7 +585,7 @@ class ProductController extends Controller implements HasMiddleware
     public function apiList() {
         $products = Product::withoutGlobalScopes()
                         ->where('tenant_id', $this->tenantId)
-                        ->with('category, variants')
+                        ->with('category', 'variants')
                         ->where('stock_status', 'available')
                         ->latest()
                         ->get()
