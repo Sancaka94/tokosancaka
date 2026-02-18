@@ -967,4 +967,11 @@ Route::prefix('admin')->group(function () {
     // Export Routes
     Route::get('/cashflow/export/excel', [CashflowController::class, 'exportExcel'])->name('cashflow.export.excel');
     Route::get('/cashflow/export/pdf', [CashflowController::class, 'exportPdf'])->name('cashflow.export.pdf');
+
+    // Laporan Keuangan
+    // Route Manajemen Kontak (Hutang Piutang)
+    Route::get('/contacts', [App\Http\Controllers\CashflowContactController::class, 'index'])->name('contacts.index');
+    Route::post('/contacts', [App\Http\Controllers\CashflowContactController::class, 'store'])->name('contacts.store');
+    Route::put('/contacts/{id}', [App\Http\Controllers\CashflowContactController::class, 'update'])->name('contacts.update');
+    Route::delete('/contacts/{id}', [App\Http\Controllers\CashflowContactController::class, 'destroy'])->name('contacts.destroy');
 });
