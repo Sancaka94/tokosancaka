@@ -362,112 +362,112 @@ class DanaGatewayController extends Controller
         }
     }
 
-   public function checkTopupStatus(Request $request)
-    {
-        // Validasi
-        $trx = DB::table('dana_transactions')->where('reference_no', $request->reference_no)->first();
-        if (!$trx) return back()->with('error', 'Transaksi tidak ditemukan.');
 
-        $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
+public function checkTopupStatus(Request $request)
+{
+    // --- [VALIDASI DATA] ---
+    $trx = DB::table('dana_transactions')->where('reference_no', $request->reference_no)->first();
+    $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
 
-        // Setup Request
-        $timestamp = now('Asia/Jakarta')->toIso8601String();
-        $path = '/rest/v1.0/emoney/topup-status';
+    if (!$trx || !$aff) return back()->with('error', 'Data transaksi valid tidak ditemukan.');
 
-        $body = [
-            "originalPartnerReferenceNo" => $trx->reference_no,
-            "originalReferenceNo"        => "",
-            "originalExternalId"         => "",
-            "serviceCode"                => "38",
-            "additionalInfo"             => (object)[]
-        ];
+    // --- [SETUP REQUEST] ---
+    $timestamp = now('Asia/Jakarta')->toIso8601String();
+    $path = '/rest/v1.0/emoney/topup-status'; // Endpoint Status
 
-        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
-        $hashedBody = strtolower(hash('sha256', $jsonBody));
-        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-        $signature = $this->generateSignature($stringToSign);
+    $body = [
+        "originalPartnerReferenceNo" => $trx->reference_no,
+        "originalReferenceNo"        => "",
+        "originalExternalId"         => "",
+        "serviceCode"                => "38",
+        "additionalInfo"             => (object)[]
+    ];
 
-        $headers = [
-            'Content-Type'   => 'application/json',
-            'Authorization'  => 'Bearer ' . $aff->dana_access_token,
-            'X-TIMESTAMP'    => $timestamp,
-            'X-SIGNATURE'    => $signature,
-            'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-            'X-EXTERNAL-ID'  => (string) time() . Str::random(6),
-            'CHANNEL-ID'     => '95221'
-        ];
+    // --- [SIGNATURE & HEADERS] ---
+    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+    $hashedBody = strtolower(hash('sha256', $jsonBody));
+    $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+    $signature = $this->generateSignature($stringToSign);
 
-        try {
-            Log::info('[DANA STATUS] Checking...', ['ref' => $trx->reference_no]);
+    $headers = [
+        'Content-Type' => 'application/json',
+        'X-TIMESTAMP'  => $timestamp,
+        'X-SIGNATURE'  => $signature,
+        'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+        'X-EXTERNAL-ID'=> (string) time() . \Illuminate\Support\Str::random(6),
+        'CHANNEL-ID'   => '95221',
+        'ORIGIN'       => config('services.dana.origin'),
+    ];
 
-            $response = Http::withHeaders($headers)
-                ->withBody($jsonBody, 'application/json')
-                ->post('https://api.sandbox.dana.id' . $path);
+    try {
+        // Hit API DANA
+        $response = Http::timeout(40)
+            ->withHeaders($headers)
+            ->withBody($jsonBody, 'application/json')
+            ->post('https://api.sandbox.dana.id' . $path);
 
-            $result = $response->json();
+        $result = $response->json();
+        $resCode = $result['responseCode'] ?? '500';
 
-            // ============================================================
-            // 🔴 START MODIFIKASI: STATUS 06 (DENGAN REF NO ASLI) 🔴
-            // ============================================================
+        // --- [LOGIC UTAMA PERBAIKAN] ---
+        if ($resCode === '2003900') {
 
-            // 1. Kita anggap sukses inquiry dulu (supaya masuk logika sukses)
-            $result['responseCode'] = '2003900';
-            // --- [LOGIKA MOCKING YANG DITERIMA VALIDATOR] ---
-            // Kita harus pastikan responseCode sukses tapi status 06
-            $result['responseCode'] = '2003900';
-            $result['responseMessage'] = 'Successful';
-            $result['latestTransactionStatus'] = '06';
-            $result['transactionStatusDesc'] = 'Failed Transaction';
-            $result['serviceCode'] = '38';
-            $result['referenceNo'] = $trx->reference_no; // Gunakan Ref No yang tercatat di log mereka
+            // Ambil status terbaru
+            $danaStatus = $result['latestTransactionStatus'] ?? 'Unknown';
+            $msgDesc    = $result['transactionStatusDesc'] ?? 'No Description';
 
-            // ============================================================
-            // 🔴 END MODIFIKASI 🔴
-            // ============================================================
-
-            $resCode = $result['responseCode'] ?? '';
-
-            if ($resCode == '2003900') {
-                $status = $result['latestTransactionStatus'];
-
-                $refNo    = $result['referenceNo'] ?? '-';
-                $srvCode  = $result['serviceCode'] ?? '-';
-                $desc     = $result['transactionStatusDesc'] ?? '-';
-
-                // FORMAT PESAN (HTML Support {!! !!} di View)
-                $msgDetail  = "✅ <b>Inquiry Berhasil!</b><br>";
-                $msgDetail .= "Ref No: $refNo<br>";
-                $msgDetail .= "Service: $srvCode<br>";
-                $msgDetail .= "Latest Status: $status<br>";
-                $msgDetail .= "Desc: $desc";
-
-                // Update ke Database
-                if ($status == '00') {
-                    DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'SUCCESS']);
-                    return back()->with('success', $msgDetail);
-                }
-                // HANDLER STATUS 06
-                elseif ($status == '06') {
-                    DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'FAILED']);
-                    // Pakai 'success' agar alert warna hijau (sesuai permintaan "Merchant shows transaction as successful inquiry")
-                    // Tapi isinya status 06
-                    return back()->with('success', $msgDetail);
-                }
-                elseif (in_array($status, ['01', '02', '03'])) {
-                    return back()->with('warning', "⏳ Status Pending: $status ($desc)");
-                } else {
-                    DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'FAILED']);
-                    return back()->with('error', "❌ Gagal: $status ($desc)");
-                }
+            // 1. SUKSES (00)
+            if ($danaStatus === '00') {
+                DB::table('dana_transactions')->where('id', $trx->id)->update([
+                    'status' => 'SUCCESS',
+                    'updated_at' => now(),
+                    'response_payload' => json_encode($result)
+                ]);
+                return back()->with('success', '✅ Transaksi SUKSES (Confirmed).');
             }
 
-            return back()->with('error', "Gagal Cek Status ($resCode)");
+            // 2. PENDING / IN PROCESS (06, 10, 01) <-- PERBAIKAN DISINI
+            // Kita tambahkan '06' agar tidak dianggap gagal
+            elseif (in_array($danaStatus, ['06', '10', '01', '02', '03'])) {
+                DB::table('dana_transactions')->where('id', $trx->id)->update([
+                    'status' => 'PENDING',
+                    'updated_at' => now(),
+                    'response_payload' => json_encode($result)
+                ]);
+                return back()->with('warning', "⏳ Transaksi Sedang Diproses (Status: $danaStatus). Harap tunggu.");
+            }
 
-        } catch (\Exception $e) {
-             Log::error('[DANA STATUS] Error', ['msg' => $e->getMessage()]);
-             return back()->with('error', 'System Error: ' . $e->getMessage());
+            // 3. GAGAL (Selain kode di atas)
+            else {
+                // Jangan lupa balikin saldo jika tadinya kepotong tapi ternyata gagal
+                // (Optional: tergantung logic bisnis Bapak, mau refund otomatis atau manual)
+                 DB::transaction(function() use ($trx, $aff, $result) {
+                    // Jika status sebelumnya bukan FAILED, kita refund
+                    if ($trx->status !== 'FAILED' && $trx->status !== 'SUCCESS') {
+                        DB::table('affiliates')->where('id', $aff->id)->increment('balance', $trx->amount);
+                    }
+
+                    DB::table('dana_transactions')->where('id', $trx->id)->update([
+                        'status' => 'FAILED',
+                        'updated_at' => now(),
+                        'response_payload' => json_encode($result)
+                    ]);
+                });
+
+                return back()->with('error', "❌ Transaksi GAGAL ($danaStatus): $msgDesc");
+            }
+
+        } else {
+            // Error dari API (Bukan 2003900)
+            $errMsg = $result['responseMessage'] ?? 'Unknown Error';
+            return back()->with('error', "Gagal Cek Status ($resCode): $errMsg");
         }
+
+    } catch (\Exception $e) {
+        Log::error('[DANA STATUS] Error', ['msg' => $e->getMessage()]);
+        return back()->with('error', 'Sistem Error: ' . $e->getMessage());
     }
+}
 
     public function customerTopup(Request $request)
 {
