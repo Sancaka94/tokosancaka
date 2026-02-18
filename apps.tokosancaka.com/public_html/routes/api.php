@@ -15,6 +15,7 @@ use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\MemberAuthController;
 use App\Http\Controllers\DanaWidgetController;
+use App\Http\Controllers\AuthController;
 use App\Models\Category; // Pastikan Model Category sudah di-import
 use App\Http\Controllers\TenantPaymentController;
 
@@ -39,6 +40,9 @@ Route::get('/kiriminaja/set-callback', [OrderController::class, 'setCallback']);
 | Contoh: http://domain.com/api/products
 |
 */
+
+// Route Login untuk Desktop
+Route::post('/login', [AuthController::class, 'loginApi']);
 
 // =================================================================
 // 1. PUBLIC ROUTES (Bisa diakses tanpa login/token khusus sementara)
