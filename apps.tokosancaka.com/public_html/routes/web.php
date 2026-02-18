@@ -635,7 +635,7 @@ Route::get('/cek-status-dana', function () {
     ];
 
     $timestamp = now()->toIso8601String();
-    $path = '/rest/v1.0/transaction/status'; // Pastikan endpoint ini benar sesuai dokum DANA Bapak
+    $path = '/rest/v1.0/emoney/topup-status'; // Pastikan endpoint ini benar sesuai dokum DANA Bapak
 
     // 2. Generate Signature
     $jsonBody = json_encode($payload, JSON_UNESCAPED_SLASHES);
