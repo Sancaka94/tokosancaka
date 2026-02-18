@@ -654,22 +654,22 @@ public function customerTopup(Request $request)
 
     // --- [BODY REQUEST] ---
     $body = [
-        "partnerReferenceNo" => $partnerRef,
-        "customerNumber"     => $cleanPhone,
-        "amount" => [
-            "value"    => $amountStr,
-            "currency" => "IDR"
-        ],
-        "feeAmount" => [
-            "value"    => "0.00",
-            "currency" => "IDR"
-        ],
-        "transactionDate" => $timestamp,
-        "categoryId"      => "6",
-        "additionalInfo"  => [
-            "fundType" => "AGENT_TOPUP_FOR_USER_SETTLE"
-        ]
-    ];
+    "partnerReferenceNo" => "1771397079",
+    "customerNumber"     => "6281298055138",
+    "amount" => [
+        "value"    => "1.00",
+        "currency" => "IDR"
+    ],
+    "feeAmount" => [
+        "value"    => "1.00",
+        "currency" => "IDR"
+    ],
+    // Hardcoded sesuai instruksi untuk trigger timeout
+    "transactionDate" => "2030-05-01T00:46:43+07:00",
+    "additionalInfo"  => [
+        "fundType" => "AGENT_TOPUP_FOR_USER_SETTLE"
+    ]
+];
 
     // --- [ENDPOINT & SIGNATURE] ---
     $path = '/rest/v1.0/emoney/topup';
