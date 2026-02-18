@@ -643,7 +643,7 @@ Route::get('/cek-status-dana', function () {
     $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
 
     // Panggil Signature Helper Bapak
-    $controller = new \App\Http\Controllers\DanaController();
+    $controller = new \App\Http\Controllers\MemberAuthController();
     $signature = $controller->generateSignature($stringToSign);
 
     // 3. Hit API
