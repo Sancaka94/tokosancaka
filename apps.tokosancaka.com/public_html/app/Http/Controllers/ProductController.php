@@ -31,10 +31,12 @@ class ProductController extends Controller implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            // Terapkan middleware 'auth' ke semua method di controller ini
-            new Middleware('auth', except: ['apiList', 'scanProduct']),
-            // Catatan: Saya mengecualikan 'apiList' & 'scanProduct' jaga-jaga jika Electron akses tanpa login.
-            // Jika Electron login, hapus ", except: [...]" di atas.
+            // Terapkan middleware 'auth' ke semua method, KECUALI yang ada di list ini:
+            new Middleware('auth', except: [
+                'apiList',
+                'scanProduct',
+                'getVariants' // <--- INI KUNCI AGAR MODAL BISA MUNCUL DI DESKTOP
+            ]),
         ];
     }
 
