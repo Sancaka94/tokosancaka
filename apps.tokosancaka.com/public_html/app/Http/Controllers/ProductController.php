@@ -585,7 +585,7 @@ class ProductController extends Controller implements HasMiddleware
     public function apiList() {
         $products = Product::withoutGlobalScopes()
                         ->where('tenant_id', $this->tenantId)
-                        ->with('category')
+                        ->with('category, variants')
                         ->where('stock_status', 'available')
                         ->latest()
                         ->get()
@@ -608,7 +608,7 @@ class ProductController extends Controller implements HasMiddleware
                                 'sku' => $product->sku,
                                 'image' => $product->image,
                                 'category_name' => $product->category ? $product->category->name : '-', // Tambahan info kategori
-                                'has_variant' => $product->has_variant,
+                                'has_variant' => $product->variants && $product->variants->isNotEmpty() ? true : ($product->has_variant == 1),
                             ];
                         });
 
