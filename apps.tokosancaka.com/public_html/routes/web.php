@@ -623,22 +623,33 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/products/manufacture', [HppController::class, 'manufacture']);
 });
 
-Route::get('/test-dana-retry', function () {
-    // 1. SETUP DATA
-    $refNo = "1771397079"; // RefNo yang diminta Pak Anaibaho
-    $timestamp = now()->toIso8601String(); // Waktu request sekarang
-    $futureDate = "2030-05-01T00:46:43+07:00"; // Trigger Timeout DANA
+Route::get('/final-check-status', function () {
+    // 1. DATA TRANSAKSI (Sesuai Retry Tadi)
+    $refNo = "1771397079";
+    $timestamp = now()->toIso8601String();
 
+    // Gunakan Endpoint Status
+    $path = '/rest/v1.0/emoney/topup-status';
+
+    // Payload Status
+    $body = [
+        "originalPartnerReferenceNo" => $refNo,
+        "originalReferenceNo"        => "",
+        "originalExternalId"         => "",
+        "serviceCode"                => "38",
+        "additionalInfo"             => (object)[]
+    ];
+
+    // 2. GENERATE SIGNATURE
     $controller = new \App\Http\Controllers\MemberAuthController();
+    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+    $hashedBody = strtolower(hash('sha256', $jsonBody));
+    $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+    $signature = $controller->generateSignature($stringToSign);
 
-    // --- FUNGSI HELPER REQUEST ---
-    $sendRequest = function($path, $body, $method = 'POST') use ($controller, $timestamp) {
-        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
-        $hashedBody = strtolower(hash('sha256', $jsonBody));
-        $stringToSign = $method . ":" . $path . ":" . $hashedBody . ":" . $timestamp;
-        $signature = $controller->generateSignature($stringToSign);
-
-        return Http::timeout(60) // Tunggu maks 60 detik
+    // 3. HIT API & DEBUG HASILNYA
+    try {
+        $response = Http::timeout(30)
             ->withHeaders([
                 'Content-Type' => 'application/json',
                 'X-TIMESTAMP'  => $timestamp,
@@ -649,50 +660,15 @@ Route::get('/test-dana-retry', function () {
                 'ORIGIN'       => config('services.dana.origin'),
             ])
             ->post('https://api.sandbox.dana.id' . $path, $body);
-    };
 
-    // ==========================================
-    // LANGKAH 1: RETRY TOPUP (Kirim Ulang)
-    // ==========================================
-    $topupPayload = [
-        "partnerReferenceNo" => $refNo,
-        "customerNumber"     => "6281298055138",
-        "amount"             => ["value" => "1.00", "currency" => "IDR"],
-        "feeAmount"          => ["value" => "1.00", "currency" => "IDR"],
-        "transactionDate"    => $futureDate,
-        "additionalInfo"     => ["fundType" => "AGENT_TOPUP_FOR_USER_SETTLE"]
-    ];
+        // KITA PAKSA KELUAR SEMUA DATANYA
+        dd([
+            '1. HTTP CODE' => $response->status(),
+            '2. RAW BODY'  => $response->body(), // Ini yang penting
+            '3. JSON'      => $response->json(),
+        ]);
 
-    try {
-        $topupResponse = $sendRequest('/rest/v1.0/emoney/topup', $topupPayload);
-        $topupResult = $topupResponse->json();
     } catch (\Exception $e) {
-        $topupResult = ["error" => $e->getMessage()];
+        dd("ERROR KONEKSI: " . $e->getMessage());
     }
-
-    // ==========================================
-    // LANGKAH 2: CEK STATUS (Langsung setelah Topup)
-    // ==========================================
-    $statusPayload = [
-        "originalPartnerReferenceNo" => $refNo,
-        "originalReferenceNo"        => "",
-        "originalExternalId"         => "",
-        "serviceCode"                => "38",
-        "additionalInfo"             => (object)[]
-    ];
-
-    try {
-        // Beri jeda 2 detik biar server DANA nafas dulu
-        sleep(2);
-        $statusResponse = $sendRequest('/rest/v1.0/transaction/status', $statusPayload);
-        $statusResult = $statusResponse->json();
-    } catch (\Exception $e) {
-        $statusResult = ["error" => $e->getMessage()];
-    }
-
-    // TAMPILKAN HASIL AKHIR
-    dd([
-        '1. HASIL TOPUP ULANG' => $topupResult,
-        '2. HASIL CEK STATUS'  => $statusResult
-    ]);
 });
