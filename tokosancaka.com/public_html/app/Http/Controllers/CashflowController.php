@@ -254,7 +254,7 @@ class CashflowController extends Controller
                    "Data telah tersimpan di sistem.";
 
         Http::withHeaders([
-            'Authorization' => 'TOKEN_FONNTE_ANDA_DISINI', // Ganti dengan Token Asli
+            'Authorization' => 'ynMyPswSKr14wdtXMJF7', // Ganti dengan Token Asli
         ])->post('https://api.fonnte.com/send', [
             'target' => '085745808809', // Nomor Tujuan Admin
             'message' => $message,
