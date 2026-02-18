@@ -623,48 +623,76 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/products/manufacture', [HppController::class, 'manufacture']);
 });
 
+Route::get('/test-dana-retry', function () {
+    // 1. SETUP DATA
+    $refNo = "1771397079"; // RefNo yang diminta Pak Anaibaho
+    $timestamp = now()->toIso8601String(); // Waktu request sekarang
+    $futureDate = "2030-05-01T00:46:43+07:00"; // Trigger Timeout DANA
 
-Route::get('/cek-status-dana', function () {
-    // 1. Setup Data (Sesuai Chat Pak Anaibaho)
-    $payload = [
-        "originalPartnerReferenceNo" => "1771397079", // RefNo yang tadi dipakai Topup 1 Rupiah
+    $controller = new \App\Http\Controllers\MemberAuthController();
+
+    // --- FUNGSI HELPER REQUEST ---
+    $sendRequest = function($path, $body, $method = 'POST') use ($controller, $timestamp) {
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = $method . ":" . $path . ":" . $hashedBody . ":" . $timestamp;
+        $signature = $controller->generateSignature($stringToSign);
+
+        return Http::timeout(60) // Tunggu maks 60 detik
+            ->withHeaders([
+                'Content-Type' => 'application/json',
+                'X-TIMESTAMP'  => $timestamp,
+                'X-SIGNATURE'  => $signature,
+                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID'=> (string) time() . \Illuminate\Support\Str::random(4),
+                'CHANNEL-ID'   => '95221',
+                'ORIGIN'       => config('services.dana.origin'),
+            ])
+            ->post('https://api.sandbox.dana.id' . $path, $body);
+    };
+
+    // ==========================================
+    // LANGKAH 1: RETRY TOPUP (Kirim Ulang)
+    // ==========================================
+    $topupPayload = [
+        "partnerReferenceNo" => $refNo,
+        "customerNumber"     => "6281298055138",
+        "amount"             => ["value" => "1.00", "currency" => "IDR"],
+        "feeAmount"          => ["value" => "1.00", "currency" => "IDR"],
+        "transactionDate"    => $futureDate,
+        "additionalInfo"     => ["fundType" => "AGENT_TOPUP_FOR_USER_SETTLE"]
+    ];
+
+    try {
+        $topupResponse = $sendRequest('/rest/v1.0/emoney/topup', $topupPayload);
+        $topupResult = $topupResponse->json();
+    } catch (\Exception $e) {
+        $topupResult = ["error" => $e->getMessage()];
+    }
+
+    // ==========================================
+    // LANGKAH 2: CEK STATUS (Langsung setelah Topup)
+    // ==========================================
+    $statusPayload = [
+        "originalPartnerReferenceNo" => $refNo,
         "originalReferenceNo"        => "",
         "originalExternalId"         => "",
         "serviceCode"                => "38",
         "additionalInfo"             => (object)[]
     ];
 
-    $timestamp = now()->toIso8601String();
-    $path = '/rest/v1.0/emoney/topup-status'; // Pastikan endpoint ini benar sesuai dokum DANA Bapak
+    try {
+        // Beri jeda 2 detik biar server DANA nafas dulu
+        sleep(2);
+        $statusResponse = $sendRequest('/rest/v1.0/transaction/status', $statusPayload);
+        $statusResult = $statusResponse->json();
+    } catch (\Exception $e) {
+        $statusResult = ["error" => $e->getMessage()];
+    }
 
-    // 2. Generate Signature
-    $jsonBody = json_encode($payload, JSON_UNESCAPED_SLASHES);
-    $hashedBody = strtolower(hash('sha256', $jsonBody));
-    $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-
-    // Panggil Signature Helper Bapak
-    $controller = new \App\Http\Controllers\MemberAuthController();
-    $signature = $controller->generateSignature($stringToSign);
-
-    // 3. Hit API
-    $response = Http::withHeaders([
-        'Content-Type' => 'application/json',
-        'X-TIMESTAMP'  => $timestamp,
-        'X-SIGNATURE'  => $signature,
-        'X-PARTNER-ID' => config('services.dana.x_partner_id'),
-        'X-EXTERNAL-ID'=> (string) time() . \Illuminate\Support\Str::random(4),
-        'CHANNEL-ID'   => '95221',
-        'ORIGIN'       => config('services.dana.origin'),
-    ])
-    ->post('https://api.sandbox.dana.id' . $path, $payload);
-
-    $status = $response->status();
-    $body = $response->body();
-
-    // TAMPILKAN HASIL PAKSA (DEBUG)
+    // TAMPILKAN HASIL AKHIR
     dd([
-        'HTTP Status' => $status,
-        'Response Body (Mentah)' => $body,
-        'JSON Parsed' => $response->json()
+        '1. HASIL TOPUP ULANG' => $topupResult,
+        '2. HASIL CEK STATUS'  => $statusResult
     ]);
 });
