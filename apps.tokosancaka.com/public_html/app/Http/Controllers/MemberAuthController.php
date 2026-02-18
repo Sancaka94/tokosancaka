@@ -803,7 +803,7 @@ public function checkTopupStatus(Request $request)
         "originalPartnerReferenceNo" => $trx->reference_no, // Required
         "originalReferenceNo"        => "", // Opsional, bisa kosong jika belum ada
         "originalExternalId"         => "", // Opsional
-        "serviceCode"                => "XX", // Wajib "38" untuk Topup
+        "serviceCode"                => "38", // Wajib "38" untuk Topup
         "additionalInfo"             => (object)[]
     ];
 
