@@ -104,6 +104,8 @@ use App\Http\Controllers\SellerRegisterController;
 use App\Http\Controllers\SellerReviewController;
 use App\Http\Controllers\Admin\PerizinanController;
 
+use App\Http\Controllers\CashflowController;
+
 // Website fontend WA Integration
 //use App\Http\Controllers\WhatsappController;
 
@@ -949,4 +951,20 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // Export Data ke Excel
     Route::get('/seminar/export/excel', [SeminarController::class, 'exportExcel'])->name('seminar.export.excel');
 
+});
+
+
+// Halaman Public untuk Input
+Route::get('/input-keuangan', [CashflowController::class, 'create'])->name('cashflow.public');
+Route::post('/input-keuangan', [CashflowController::class, 'store'])->name('cashflow.store');
+
+// Halaman Admin (Pastikan sudah dibungkus middleware auth jika perlu)
+Route::prefix('admin')->group(function () {
+    Route::get('/cashflow', [CashflowController::class, 'index'])->name('cashflow.index');
+    Route::put('/cashflow/{id}', [CashflowController::class, 'update'])->name('cashflow.update');
+    Route::delete('/cashflow/{id}', [CashflowController::class, 'destroy'])->name('cashflow.destroy');
+
+    // Export Routes
+    Route::get('/cashflow/export/excel', [CashflowController::class, 'exportExcel'])->name('cashflow.export.excel');
+    Route::get('/cashflow/export/pdf', [CashflowController::class, 'exportPdf'])->name('cashflow.export.pdf');
 });
