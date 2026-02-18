@@ -371,8 +371,15 @@ class ProductController extends Controller implements HasMiddleware
     // API UNTUK MODAL VARIAN (AJAX)
     // ================================================================
 
-    public function getVariants($subdomain, $id)
+    // PERBAIKAN: Parameter dibuat fleksibel (Hybrid Web/API)
+    public function getVariants($arg1, $arg2 = null)
     {
+        // LOGIKA: Jika arg1 berupa angka, berarti itu ID (dari API Desktop).
+        // Jika arg1 string (subdomain), maka ID ada di arg2 (dari Web).
+        $id = is_numeric($arg1) ? $arg1 : $arg2;
+
+        if (!$id) return response()->json(['error' => 'ID Produk invalid'], 400);
+
         $product = Product::where('tenant_id', $this->tenantId)
                           ->where('id', $id)
                           ->first();
@@ -381,6 +388,7 @@ class ProductController extends Controller implements HasMiddleware
             return response()->json(['error' => 'Produk tidak ditemukan.'], 404);
         }
 
+        // Return format yang sesuai dengan Frontend (Object dengan key 'variants')
         return response()->json([
             'product_name' => $product->name,
             'variants'     => $product->variants()
@@ -389,8 +397,11 @@ class ProductController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function updateVariants(Request $request, $subdomain, $id)
+   public function updateVariants(Request $request, $arg1, $arg2 = null)
     {
+        // LOGIKA HYBRID: Deteksi ID
+        $id = is_numeric($arg1) ? $arg1 : $arg2;
+
         $product = Product::where('tenant_id', $this->tenantId)
                           ->where('id', $id)
                           ->firstOrFail();
@@ -414,6 +425,7 @@ class ProductController extends Controller implements HasMiddleware
                 $parentType = ($prefixInduk === '200') ? 'service' : 'physical';
             }
 
+            // Hapus varian lama
             ProductVariant::where('product_id', $product->id)
                           ->where('tenant_id', $this->tenantId)
                           ->delete();
@@ -425,6 +437,7 @@ class ProductController extends Controller implements HasMiddleware
                     if (empty($varBarcode)) {
                         $varBarcode = $this->generateSmartBarcode($parentType);
                     }
+
                     $variantSku = $variant['sku'] ?? null;
                     if (empty($variantSku)) {
                         $variantSku = $this->generateSku($product->name, $variant['name']);
@@ -585,30 +598,31 @@ class ProductController extends Controller implements HasMiddleware
     public function apiList() {
         $products = Product::withoutGlobalScopes()
                         ->where('tenant_id', $this->tenantId)
-                        ->with('category', 'variants')
+                        // PERBAIKAN: Gunakan Array [] agar kedua relasi terambil
+                        ->with(['category', 'variants'])
                         ->where('stock_status', 'available')
                         ->latest()
                         ->get()
                         ->map(function($product) {
-                            // KITA FORMAT ULANG DATANYA BIAR COCOK DENGAN ELECTRON
                             return [
                                 'id' => $product->id,
                                 'tenant_id' => $product->tenant_id,
                                 'category_id' => $product->category_id,
                                 'name' => $product->name,
-
-                                // INI KUNCINYA: Kita buat kolom 'price' yang isinya dari 'sell_price'
                                 'price' => $product->sell_price,
-                                'sell_price' => $product->sell_price, // Tetap sertakan aslinya jaga-jaga
+                                'sell_price' => $product->sell_price,
                                 'base_price' => $product->base_price,
-
                                 'stock' => $product->stock,
                                 'unit' => $product->unit,
                                 'barcode' => $product->barcode,
                                 'sku' => $product->sku,
                                 'image' => $product->image,
-                                'category_name' => $product->category ? $product->category->name : '-', // Tambahan info kategori
-                                'has_variant' => $product->variants && $product->variants->isNotEmpty() ? true : ($product->has_variant == 1),
+                                'category_name' => $product->category ? $product->category->name : '-',
+
+                                // LOGIKA: Cek relasi variants. Jika kosong, fallback ke kolom database
+                                'has_variant' => ($product->variants && $product->variants->count() > 0)
+                                                    ? true
+                                                    : ($product->has_variant == 1),
                             ];
                         });
 
@@ -640,4 +654,6 @@ class ProductController extends Controller implements HasMiddleware
 
         return $finalBarcode;
     }
+
+
 }
