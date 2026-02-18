@@ -622,3 +622,41 @@ Route::middleware(['auth'])->group(function () {
     // Tombol "Produksi / Rakit Barang"
     Route::post('/products/manufacture', [HppController::class, 'manufacture']);
 });
+
+
+Route::get('/cek-status-dana', function () {
+    // 1. Setup Data (Sesuai Chat Pak Anaibaho)
+    $payload = [
+        "originalPartnerReferenceNo" => "1771397079", // RefNo yang tadi dipakai Topup 1 Rupiah
+        "originalReferenceNo"        => "",
+        "originalExternalId"         => "",
+        "serviceCode"                => "38",
+        "additionalInfo"             => (object)[]
+    ];
+
+    $timestamp = now()->toIso8601String();
+    $path = '/rest/v1.0/transaction/status'; // Pastikan endpoint ini benar sesuai dokum DANA Bapak
+
+    // 2. Generate Signature
+    $jsonBody = json_encode($payload, JSON_UNESCAPED_SLASHES);
+    $hashedBody = strtolower(hash('sha256', $jsonBody));
+    $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
+    // Panggil Signature Helper Bapak
+    $controller = new \App\Http\Controllers\DanaController();
+    $signature = $controller->generateSignature($stringToSign);
+
+    // 3. Hit API
+    $response = Http::withHeaders([
+        'Content-Type' => 'application/json',
+        'X-TIMESTAMP'  => $timestamp,
+        'X-SIGNATURE'  => $signature,
+        'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+        'X-EXTERNAL-ID'=> (string) time() . \Illuminate\Support\Str::random(4),
+        'CHANNEL-ID'   => '95221',
+        'ORIGIN'       => config('services.dana.origin'),
+    ])
+    ->post('https://api.sandbox.dana.id' . $path, $payload);
+
+    return $response->json();
+});

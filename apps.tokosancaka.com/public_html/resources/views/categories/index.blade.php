@@ -20,7 +20,7 @@
 
     <div class="flex flex-col mb-6">
 
-        {{-- [BARU] TOMBOL KEMBALI --}}
+       
         {{-- [BARU] TOMBOL KEMBALI KE URL / --}}
         <div class="mb-4">
             <a href="{{ url('/products') }}"
