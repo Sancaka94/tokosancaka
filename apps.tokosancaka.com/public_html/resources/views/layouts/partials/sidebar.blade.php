@@ -189,6 +189,26 @@
                 Keuangan & Laporan
             </div>
 
+            {{-- [BARU] MENU CASHFLOW & HUTANG --}}
+            <a wire:navigate.hover href="{{ route('cashflow.index', $params) }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+               {{ request()->routeIs('cashflow.*')
+                 ? 'bg-blue-50 text-blue-600'
+                 : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600' }}">
+                <i class="fas fa-money-bill-wave w-5 text-center"></i>
+                <span>Cashflow Harian</span>
+            </a>
+
+            <a wire:navigate.hover href="{{ route('contacts.index', $params) }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+               {{ request()->routeIs('contacts.*')
+                 ? 'bg-blue-50 text-blue-600'
+                 : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600' }}">
+                <i class="fas fa-address-book w-5 text-center"></i>
+                <span>Data Kontak & Hutang</span>
+            </a>
+            {{-- [/BARU] --}}
+
             <div x-data="{ open: {{ request()->routeIs('finance.*') ? 'true' : 'false' }} }">
                 <button @click="open = !open" type="button"
                     class="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200
