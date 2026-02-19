@@ -52,6 +52,8 @@ use App\Http\Controllers\TenantDashboardController;
 use App\Http\Controllers\DanaWebhookController;
 use App\Http\Controllers\DanaGatewayController;
 use App\Http\Controllers\HppController;
+use App\Http\Controllers\CashflowController;
+use App\Http\Controllers\CashflowContactController;
 
 
 use Illuminate\Support\Facades\Http;
@@ -634,104 +636,45 @@ Route::middleware(['auth'])->group(function () {
 Route::post('/dana/consult-pay', [DanaGatewayController::class, 'consultPay']);
 Route::get('/dana/consult-pay', [OrderController::class, 'consultPay']);
 
-Route::get('/test-dana-4000002-combo', function (DanaSignatureService $danaService) {
-    $path = '/v1.0/payment-gateway/consult-pay.htm';
-    $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
+/*
+|--------------------------------------------------------------------------
+| PUBLIC ROUTES (Form Input Keuangan)
+|--------------------------------------------------------------------------
+| Route ini bisa diakses tanpa perlu login, sesuai dengan permintaan
+| bahwa form input berada di public.
+*/
 
-    // Ambil token asli
-    $accessToken = $danaService->getAccessToken();
-    $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
+Route::get('/input-keuangan', [CashflowController::class, 'create'])->name('cashflow.create');
+Route::post('/input-keuangan', [CashflowController::class, 'store'])->name('cashflow.store');
 
-    // Body Normal
-    $body = [
-        "merchantId" => config('services.dana.merchant_id'),
-        "amount" => ["value" => "150000.00", "currency" => "IDR"],
-        "externalStoreId" => "toko-pelanggan",
-        "additionalInfo" => [
-            "buyer" => ["externalUserType" => "", "nickname" => "", "externalUserId" => "USR-123", "userId" => ""],
-            "envInfo" => [
-                "sessionId" => Str::random(32), "tokenId" => (string) Str::uuid(),
-                "websiteLanguage" => "id_ID", "clientIp" => "127.0.0.1",
-                "osType" => "Windows.PC", "appVersion" => "1.0", "sdkVersion" => "1.0",
-                "sourcePlatform" => "IPG", "orderOsType" => "WEB",
-                "merchantAppVersion" => "1.0", "terminalType" => "SYSTEM",
-                "orderTerminalType" => "WEB", "extendInfo" => json_encode(["deviceId" => "TEST"])
-            ],
-            "merchantTransType" => "DEFAULT"
-        ]
-    ];
-    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    $signature = $danaService->generateSignature('POST', $path, $jsonBody, $timestamp);
 
-    $results = [];
+/*
+|--------------------------------------------------------------------------
+| ADMIN ROUTES (Membutuhkan Login)
+|--------------------------------------------------------------------------
+| Route ini dibungkus dalam prefix 'admin' dan middleware 'auth'
+| agar hanya staff/admin yang bisa melihat laporan dan mengelola data.
+*/
 
-    // =========================================================================
-    // HIT 1: Kosongkan Header X-PARTNER-ID (Invalid Credential Header)
-    // =========================================================================
-    $res1 = Http::withHeaders([
-        'Authorization'  => 'Bearer ' . $accessToken,
-        'X-TIMESTAMP'    => $timestamp,
-        'X-SIGNATURE'    => $signature,
-        'X-PARTNER-ID'   => '', // <-- SENGAJA DIKOSONGKAN
-        'X-EXTERNAL-ID'  => Str::random(32),
-        'Content-Type'   => 'application/json',
-        'CHANNEL-ID'     => '95221',
-        'ORIGIN'         => config('services.dana.origin'),
-    ])->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
-    $results['test_1_empty_partner_id'] = $res1->json();
+Route::prefix('admin')->middleware(['auth'])->group(function () {
 
-    // =========================================================================
-    // HIT 2: Kosongkan Header X-SIGNATURE (Invalid Credential Header)
-    // =========================================================================
-    $res2 = Http::withHeaders([
-        'Authorization'  => 'Bearer ' . $accessToken,
-        'X-TIMESTAMP'    => $timestamp,
-        'X-SIGNATURE'    => '', // <-- SENGAJA DIKOSONGKAN
-        'X-PARTNER-ID'   => config('services.dana.merchant_id'),
-        'X-EXTERNAL-ID'  => Str::random(32),
-        'Content-Type'   => 'application/json',
-        'CHANNEL-ID'     => '95221',
-        'ORIGIN'         => config('services.dana.origin'),
-    ])->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
-    $results['test_2_empty_signature'] = $res2->json();
+    // ==========================================
+    // 1. ROUTE CASHFLOW (Dashboard Laporan)
+    // ==========================================
+    Route::get('/cashflow', [CashflowController::class, 'index'])->name('cashflow.index');
+    Route::delete('/cashflow/{id}', [CashflowController::class, 'destroy'])->name('cashflow.destroy');
 
-    // =========================================================================
-    // HIT 3: Token Authorization Kosong atau Kata "unauthorized request"
-    // =========================================================================
-    $res3 = Http::withHeaders([
-        'Authorization'  => 'Bearer unauthorized request', // <-- MENGIKUTI TEKS INSTRUKSI MENTAH
-        'X-TIMESTAMP'    => $timestamp,
-        'X-SIGNATURE'    => $signature,
-        'X-PARTNER-ID'   => config('services.dana.merchant_id'),
-        'X-EXTERNAL-ID'  => Str::random(32),
-        'Content-Type'   => 'application/json',
-        'CHANNEL-ID'     => '95221',
-        'ORIGIN'         => config('services.dana.origin'),
-    ])->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
-    $results['test_3_literal_unauthorized_token'] = $res3->json();
+    // Fitur Export Cashflow
+    Route::get('/cashflow/export/pdf', [CashflowController::class, 'exportPdf'])->name('cashflow.export.pdf');
+    Route::get('/cashflow/export/excel', [CashflowController::class, 'exportExcel'])->name('cashflow.export.excel');
 
-    // =========================================================================
-    // HIT 4: Hapus "amount" dari Body (Invalid Mandatory Field Body)
-    // =========================================================================
-    $bodyNoAmount = $body;
-    unset($bodyNoAmount['amount']); // <-- HAPUS AMOUNT
-    $jsonNoAmount = json_encode($bodyNoAmount, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    $sigNoAmount = $danaService->generateSignature('POST', $path, $jsonNoAmount, $timestamp);
 
-    $res4 = Http::withHeaders([
-        'Authorization'  => 'Bearer ' . $accessToken,
-        'X-TIMESTAMP'    => $timestamp,
-        'X-SIGNATURE'    => $sigNoAmount,
-        'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-        'X-EXTERNAL-ID'  => Str::random(32),
-        'Content-Type'   => 'application/json',
-        'CHANNEL-ID'     => '95221',
-        'ORIGIN'         => config('services.dana.origin'),
-    ])->withBody($jsonNoAmount, 'application/json')->post($baseUrl . $path);
-    $results['test_4_missing_amount_body'] = $res4->json();
+    // ==========================================
+    // 2. ROUTE KONTAK & HUTANG PIUTANG
+    // ==========================================
+    Route::get('/contacts', [CashflowContactController::class, 'index'])->name('contacts.index');
+    Route::post('/contacts', [CashflowContactController::class, 'store'])->name('contacts.store');
+    Route::put('/contacts/{id}', [CashflowContactController::class, 'update'])->name('contacts.update');
+    Route::delete('/contacts/{id}', [CashflowContactController::class, 'destroy'])->name('contacts.destroy');
 
-    return response()->json([
-        'status' => 'Combo 4000002 Fired!',
-        'results' => $results
-    ]);
 });

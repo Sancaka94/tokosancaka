@@ -4,7 +4,25 @@
 <div class="p-6 bg-gray-50 min-h-screen">
 
     <div class="mb-8">
-        <h2 class="text-3xl font-bold text-gray-800 mb-6">Dashboard Keuangan</h2>
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-3xl font-bold text-gray-800">Dashboard Keuangan</h2>
+
+            <a href="{{ route('cashflow.create') }}" class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-lg shadow-md transition-all hover:-translate-y-0.5">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                Catat Transaksi
+            </a>
+        </div>
+
+        @if(session('success'))
+            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded text-sm font-medium">
+                {{ session('success') }}
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded text-sm font-medium">
+                {{ session('error') }}
+            </div>
+        @endif
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white rounded-xl shadow-md p-6 border-l-8 border-blue-600">
@@ -71,7 +89,7 @@
                 <tr>
                     <th scope="col" class="px-6 py-4">No</th>
                     <th scope="col" class="px-6 py-4">Tanggal</th>
-                    <th scope="col" class="px-6 py-4">Nama</th>
+                    <th scope="col" class="px-6 py-4">Kategori / Kontak</th>
                     <th scope="col" class="px-6 py-4">Keterangan</th>
                     <th scope="col" class="px-6 py-4 text-right">Pemasukan</th>
                     <th scope="col" class="px-6 py-4 text-right">Pengeluaran</th>
@@ -83,8 +101,13 @@
                 <tr class="bg-white border-b hover:bg-gray-50">
                     <td class="px-6 py-4 font-medium text-gray-900">{{ $data->firstItem() + $key }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">{{ \Carbon\Carbon::parse($item->date)->format('d M Y') }}</td>
-                    <td class="px-6 py-4 font-bold text-gray-800">{{ $item->name }}</td>
-                    <td class="px-6 py-4 text-gray-600">{{ $item->description }}</td>
+                    <td class="px-6 py-4">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded block mb-1 w-max">
+                            {{ str_replace('_', ' ', $item->category ?? 'UMUM') }}
+                        </span>
+                        <span class="font-bold text-gray-800">{{ $item->name }}</span>
+                    </td>
+                    <td class="px-6 py-4 text-gray-600">{{ $item->description ?? '-' }}</td>
 
                     <td class="px-6 py-4 text-right">
                         @if($item->type == 'income')
@@ -104,10 +127,10 @@
 
                     <td class="px-6 py-4 text-center">
                         <div class="flex item-center justify-center space-x-2">
-                            <form action="{{ route('cashflow.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Yakin hapus data ini?')">
+                            <form action="{{ route('cashflow.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Yakin hapus data ini? (Jika ini hutang/piutang, saldo akan di-rollback)')">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="p-2 text-white bg-red-500 hover:bg-red-600 rounded-lg shadow-sm" title="Hapus">
+                                <button type="submit" class="p-2 text-white bg-red-500 hover:bg-red-600 rounded-lg shadow-sm transition-colors" title="Hapus">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                 </button>
                             </form>
@@ -124,7 +147,7 @@
             </tbody>
         </table>
 
-        <div class="p-4">
+        <div class="p-4 border-t border-gray-100">
             {{ $data->links() }}
         </div>
     </div>
