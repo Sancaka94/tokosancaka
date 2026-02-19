@@ -148,6 +148,7 @@
             </div>
         </div>
 
+
         {{-- Pelanggan --}}
         <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-500">
             <div class="relative z-10">
