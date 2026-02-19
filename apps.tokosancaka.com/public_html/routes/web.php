@@ -632,91 +632,97 @@ Route::middleware(['auth'])->group(function () {
 
 
 Route::get('/test-dana-inconsistent', function (DanaSignatureService $danaSignatureService) {
-    Log::info("[DANA MANUAL TEST] Requesting Payment URL...");
+    Log::info("[DANA TEST] Memulai Skenario Inconsistent Request...");
 
-    // 1. Persiapan Variabel Tiruan (Mocking)
-    $order = (object) [
-        'order_number' => 'TEST-DANA-' . time(),
+    // 1. Kunci partnerReferenceNo agar SAMA untuk kedua request
+    $orderNumber = 'TEST-INCONSISTENT-' . time();
+    $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+    $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
+    $accessToken = $danaSignatureService->getAccessToken();
+
+    // ==========================================
+    // REQUEST 1: Harga Normal (Rp 100.000)
+    // ==========================================
+    $timestamp1 = Carbon::now('Asia/Jakarta')->toIso8601String();
+    $expiryTime1 = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+
+    $body1 = [
+        "partnerReferenceNo" => $orderNumber, // <-- Sama
+        "merchantId" => config('services.dana.merchant_id'),
+        "externalStoreId" => "toko-pelanggan",
+        "amount" => ["value" => "100000.00", "currency" => "IDR"], // <-- Harga 1
+        "validUpTo" => $expiryTime1,
+        "urlParams" => [
+            ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+            ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+        ],
+        "additionalInfo" => [
+            "mcc" => "5732",
+            "order" => ["orderTitle" => "Invoice " . $orderNumber, "merchantTransType" => "01", "scenario" => "REDIRECT"],
+            "envInfo" => ["sourcePlatform" => "IPG", "terminalType" => "SYSTEM", "orderTerminalType" => "WEB"]
+        ]
     ];
-    $finalPrice = 15000; // Contoh harga
 
-    try {
-        $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
-        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+    $jsonBody1 = json_encode($body1, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $signature1 = $danaSignatureService->generateSignature('POST', $relativePath, $jsonBody1, $timestamp1);
 
-        // Payload sesuai request awalmu
-        $bodyArray = [
-            "partnerReferenceNo" => $order->order_number,
-            "merchantId" => config('services.dana.merchant_id'),
-            "externalStoreId" => "toko-pelanggan",
-            "amount" => ["value" => number_format($finalPrice, 2, '.', ''), "currency" => "IDR"],
-            "validUpTo" => $expiryTime,
-            "urlParams" => [
-                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
-            ],
-            "additionalInfo" => [
-                "mcc" => "5732",
-                "order" => [
-                    "orderTitle" => "Invoice " . $order->order_number,
-                    "merchantTransType" => "01",
-                    "scenario" => "REDIRECT"
-                ],
-                "envInfo" => [
-                    "sourcePlatform" => "IPG",
-                    "terminalType" => "SYSTEM",
-                    "orderTerminalType" => "WEB"
-                ]
-            ]
-        ];
+    $response1 = Http::withHeaders([
+        'Authorization'  => 'Bearer ' . $accessToken,
+        'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+        'X-EXTERNAL-ID'  => Str::random(32),
+        'X-TIMESTAMP'    => $timestamp1,
+        'X-SIGNATURE'    => $signature1,
+        'Content-Type'   => 'application/json',
+        'CHANNEL-ID'     => '95221',
+        'ORIGIN'         => config('services.dana.origin'),
+    ])->withBody($jsonBody1, 'application/json')->post($baseUrl . $relativePath);
 
-        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+    $result1 = $response1->json();
 
-        // 2. Memanggil fungsi dari DanaSignatureService kamu
-        $accessToken = $danaSignatureService->getAccessToken();
-        $signature = $danaSignatureService->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
 
-        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
+    // ==========================================
+    // REQUEST 2: Harga Berbeda (Rp 200.000) untuk Order yang SAMA
+    // ==========================================
+    // Jeda 1 detik untuk memastikan urutan log rapi (opsional)
+    sleep(1);
 
-        // 3. Mengirim Request ke DANA
-        $response = Http::withHeaders([
-            'Authorization'  => 'Bearer ' . $accessToken,
-            'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-            'X-EXTERNAL-ID'  => Str::random(32),
-            'X-TIMESTAMP'    => $timestamp,
-            'X-SIGNATURE'    => $signature,
-            'Content-Type'   => 'application/json',
-            'CHANNEL-ID'     => '95221',
-            'ORIGIN'         => config('services.dana.origin'),
-        ])->withBody($jsonBody, 'application/json')->post($baseUrl . $relativePath);
+    $timestamp2 = Carbon::now('Asia/Jakarta')->toIso8601String();
+    $expiryTime2 = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
 
-        $result = $response->json();
+    $body2 = $body1; // Copy struktur body pertama
+    $body2['amount']['value'] = "200000.00"; // <-- HARGA DIUBAH (Skenario Inconsistent)
+    $body2['validUpTo'] = $expiryTime2;
 
-        // 4. Evaluasi Hasil
-        if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
-            $paymentUrl = $result['webRedirectUrl'] ?? null;
+    $jsonBody2 = json_encode($body2, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    // Signature wajib di-generate ulang karena Payload (Harga) dan Timestamp berubah
+    $signature2 = $danaSignatureService->generateSignature('POST', $relativePath, $jsonBody2, $timestamp2);
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Payment URL berhasil dibuat.',
-                'payment_url' => $paymentUrl,
-                'data' => $result
-            ]);
-        } else {
-            return response()->json([
-                'status' => 'failed',
-                'message' => "DANA API Error: " . ($result['responseMessage'] ?? 'General Error'),
-                'data' => $result
-            ], 400);
-        }
+    $response2 = Http::withHeaders([
+        'Authorization'  => 'Bearer ' . $accessToken,
+        'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+        'X-EXTERNAL-ID'  => Str::random(32),
+        'X-TIMESTAMP'    => $timestamp2,
+        'X-SIGNATURE'    => $signature2,
+        'Content-Type'   => 'application/json',
+        'CHANNEL-ID'     => '95221',
+        'ORIGIN'         => config('services.dana.origin'),
+    ])->withBody($jsonBody2, 'application/json')->post($baseUrl . $relativePath);
 
-    } catch (\Exception $e) {
-        Log::error("DANA MANUAL Error: " . $e->getMessage());
+    $result2 = $response2->json();
 
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
-        ], 500);
-    }
+    // ==========================================
+    // KEMBALIKAN HASIL
+    // ==========================================
+    return response()->json([
+        'status' => 'Testing Selesai',
+        'partnerReferenceNo_used' => $orderNumber,
+        'step_1' => [
+            'description' => 'Membuat order pertama (Rp 100.000). Harusnya Sukses (2005400).',
+            'response' => $result1
+        ],
+        'step_2' => [
+            'description' => 'Membuat order kedua dengan No sama tapi harga beda (Rp 200.000). Harusnya Inconsistent Request (4045418).',
+            'response' => $result2
+        ]
+    ]);
 });
