@@ -2,6 +2,18 @@
 
 @section('content')
 <div class="py-10 px-4">
+
+    <div class="max-w-3xl mx-auto mb-6 flex flex-wrap gap-2">
+        <a href="{{ route('cashflow.index') }}" class="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2">
+            <i class="fas fa-arrow-left"></i>
+            <span>Dashboard Harian</span>
+        </a>
+        <a href="{{ route('contacts.index') }}" class="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2">
+            <i class="fas fa-address-book"></i>
+            <span>Data Kontak & Hutang</span>
+        </a>
+    </div>
+
     <div class="bg-white w-full max-w-3xl mx-auto rounded-2xl shadow-xl overflow-hidden" x-data="{
         tipe: 'income',
         kategori: 'general',
@@ -29,12 +41,14 @@
 
         <div class="p-8">
             @if(session('success'))
-                <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-r-lg font-medium">
+                <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-r-lg font-medium flex items-center gap-2">
+                    <i class="fas fa-check-circle"></i>
                     {{ session('success') }}
                 </div>
             @endif
             @if(session('error'))
-                <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-r-lg font-medium">
+                <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-r-lg font-medium flex items-center gap-2">
+                    <i class="fas fa-exclamation-triangle"></i>
                     {{ session('error') }}
                 </div>
             @endif

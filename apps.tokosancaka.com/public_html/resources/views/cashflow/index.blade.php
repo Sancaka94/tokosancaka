@@ -4,13 +4,25 @@
 <div class="p-6 bg-gray-50 min-h-screen">
 
     <div class="mb-8">
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
             <h2 class="text-3xl font-bold text-gray-800">Dashboard Keuangan</h2>
 
-            <a href="{{ route('cashflow.create') }}" class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-lg shadow-md transition-all hover:-translate-y-0.5">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                Catat Transaksi
-            </a>
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ route('cashflow.index') }}" class="inline-flex items-center justify-center gap-2 bg-slate-600 hover:bg-slate-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-sm transition-colors">
+                    <i class="fas fa-chart-line"></i>
+                    <span class="hidden sm:inline">Dashboard Harian</span>
+                </a>
+
+                <a href="{{ route('contacts.index') }}" class="inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 px-4 rounded-lg shadow-sm transition-colors">
+                    <i class="fas fa-address-book"></i>
+                    <span class="hidden sm:inline">Data Kontak</span>
+                </a>
+
+                <a href="{{ route('cashflow.create') }}" class="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-5 rounded-lg shadow-md transition-all hover:-translate-y-0.5">
+                    <i class="fas fa-edit"></i>
+                    <span>Catat Transaksi</span>
+                </a>
+            </div>
         </div>
 
         @if(session('success'))
@@ -64,7 +76,7 @@
 
                 <div class="pb-0.5">
                     <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                        <i class="fas fa-filter"></i>
                         Filter
                     </button>
                 </div>
@@ -72,11 +84,11 @@
 
             <div class="flex gap-2">
                 <a href="{{ route('cashflow.export.pdf') }}" target="_blank" class="text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-4 py-2.5 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    <i class="fas fa-file-pdf"></i>
                     PDF
                 </a>
                 <a href="{{ route('cashflow.export.excel') }}" target="_blank" class="text-white bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-4 py-2.5 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <i class="fas fa-file-excel"></i>
                     Excel
                 </a>
             </div>
@@ -131,7 +143,7 @@
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="p-2 text-white bg-red-500 hover:bg-red-600 rounded-lg shadow-sm transition-colors" title="Hapus">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    <i class="fas fa-trash-alt"></i>
                                 </button>
                             </form>
                         </div>
