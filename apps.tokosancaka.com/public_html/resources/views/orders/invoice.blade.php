@@ -194,7 +194,6 @@
         resultDiv.classList.add('hidden');
 
         try {
-            // Memanggil endpoint DANA Consult Pay yang kita buat di Controller
             const response = await fetch(`/dana/consult-pay?amount=${amount}`, {
                 method: 'GET',
                 headers: {
@@ -209,21 +208,51 @@
                 let html = '<div class="grid grid-cols-1 gap-2 mt-3">';
 
                 res.payment_methods.forEach(method => {
-                    // Cek jika ada promo
                     let promoBadge = '';
                     if (method.promoInfos && method.promoInfos.length > 0) {
                         promoBadge = `<span class="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-bold ml-2 animate-pulse"><i class="fas fa-tags"></i> Ada Promo!</span>`;
                     }
 
-                    // Format nama metode biar lebih rapi
+                    // Format Nama
                     let rawName = method.payOption ? method.payOption : method.payMethod;
                     let methodName = rawName.replace(/_/g, ' ');
 
+                    // ==========================================
+                    // MAPPING LOGO BERDASARKAN STRING
+                    // ==========================================
+                    let logoUrl = '';
+                    let searchString = rawName.toUpperCase();
+
+                    // Gunakan URL absolute mengarah ke public/assets
+                    const baseUrl = "{{ url('/assets') }}/";
+
+                    if (searchString.includes('BNI')) logoUrl = baseUrl + 'bni.webp';
+                    else if (searchString.includes('BRI')) logoUrl = baseUrl + 'bri.webp';
+                    else if (searchString.includes('BCA')) logoUrl = baseUrl + 'bca.webp';
+                    else if (searchString.includes('BTPN')) logoUrl = baseUrl + 'btpn.png';
+                    else if (searchString.includes('CIMB')) logoUrl = baseUrl + 'cimb.svg';
+                    else if (searchString.includes('BSI')) logoUrl = baseUrl + 'bsi.png';
+                    else if (searchString.includes('MANDIRI')) logoUrl = baseUrl + 'mandiri.webp'; // Asumsi ada mandiri.webp
+                    else if (searchString.includes('DANAMON')) logoUrl = baseUrl + 'danamon.png';
+                    else if (searchString.includes('QRIS')) logoUrl = baseUrl + 'qris.png'; // Asumsi ada qris.png
+                    else if (searchString.includes('GOPAY')) logoUrl = baseUrl + 'gopay.webp';
+                    else if (method.payMethod === 'CARD') logoUrl = baseUrl + 'card.png';
+                    else if (method.payMethod === 'BALANCE') logoUrl = baseUrl + 'dana.webp';
+
+                    // HTML untuk Icon/Logo
+                    let iconHtml = '';
+                    if (logoUrl) {
+                        iconHtml = `<img src="${logoUrl}" alt="${methodName}" class="w-12 h-8 object-contain">`;
+                    } else {
+                        // Fallback jika logo tidak ditemukan
+                        iconHtml = `<div class="w-10 h-8 rounded bg-blue-50 flex justify-center items-center text-blue-500"><i class="fas fa-credit-card"></i></div>`;
+                    }
+
                     html += `
                     <div class="bg-white p-3 rounded-lg border border-blue-200 flex justify-between items-center shadow-sm hover:border-blue-400 transition">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded bg-blue-50 flex justify-center items-center text-blue-500">
-                                <i class="fas fa-credit-card"></i>
+                        <div class="flex items-center gap-3 w-full">
+                            <div class="flex-shrink-0 flex items-center justify-center w-12">
+                                ${iconHtml}
                             </div>
                             <div class="flex flex-col text-left">
                                 <span class="text-xs font-bold text-slate-700">${methodName}</span>
@@ -237,11 +266,10 @@
 
                 html += '</div>';
 
-                // Jika pesanan dibuat menggunakan DANA, tampilkan tombol bayar juga
                 @if($order->payment_url)
                 html += `
-                <a href="{{ $order->payment_url }}" class="mt-3 w-full py-2.5 bg-green-500 text-white rounded-lg text-xs font-bold shadow hover:bg-green-600 transition flex justify-center items-center gap-2 block text-center">
-                    <i class="fas fa-lock"></i> Lanjutkan Pembayaran
+                <a href="{{ $order->payment_url }}" class="mt-4 w-full py-3 bg-green-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-green-600 transition flex justify-center items-center gap-2 block text-center">
+                    <i class="fas fa-lock"></i> Lanjutkan Pembayaran via DANA
                 </a>`;
                 @endif
 
@@ -255,7 +283,6 @@
             resultDiv.innerHTML = `<div class="text-xs text-red-600 p-3 bg-red-50 border border-red-200 rounded-lg text-center"><i class="fas fa-wifi"></i> Gagal terhubung ke server DANA.</div>`;
             resultDiv.classList.remove('hidden');
         } finally {
-            // Kembalikan tombol ke bentuk semula
             btn.innerHTML = '<i class="fas fa-search"></i> Cek Pembayaran DANA';
             btn.disabled = false;
         }
