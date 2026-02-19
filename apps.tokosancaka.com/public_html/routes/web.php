@@ -634,19 +634,15 @@ Route::middleware(['auth'])->group(function () {
 Route::post('/dana/consult-pay', [DanaGatewayController::class, 'consultPay']);
 Route::get('/dana/consult-pay', [OrderController::class, 'consultPay']);
 
-Route::get('/test-dana-consult-error', function (DanaSignatureService $danaService) {
+Route::get('/test-dana-4000002', function (DanaSignatureService $danaService) {
     $path = '/v1.0/payment-gateway/consult-pay.htm';
     $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
 
-    // Ambil token asli dulu
-    $accessToken = $danaService->getAccessToken();
+    $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
 
-    // =========================================================================
-    // SKENARIO 1: Invalid Field Format (4000001) - Empty merchantId
-    // =========================================================================
-    $timestamp1 = Carbon::now('Asia/Jakarta')->toIso8601String();
-    $body1 = [
-        "merchantId" => "", // <-- SENGAJA DIKOSONGKAN SESUAI SKENARIO DANA
+    // Body normal
+    $body = [
+        "merchantId" => config('services.dana.merchant_id'),
         "amount" => ["value" => "150000.00", "currency" => "IDR"],
         "externalStoreId" => "toko-pelanggan",
         "additionalInfo" => [
@@ -663,60 +659,28 @@ Route::get('/test-dana-consult-error', function (DanaSignatureService $danaServi
         ]
     ];
 
-    $jsonBody1 = json_encode($body1, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    $signature1 = $danaService->generateSignature('POST', $path, $jsonBody1, $timestamp1);
+    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $signature = $danaService->generateSignature('POST', $path, $jsonBody, $timestamp);
 
-    $response1 = Http::withHeaders([
-        'Authorization'  => 'Bearer ' . $accessToken,
-        'X-TIMESTAMP'    => $timestamp1,
-        'X-SIGNATURE'    => $signature1,
+    // =========================================================================
+    // TRICK-NYA DI SINI: Kita SENGAJA TIDAK MENGIRIM header 'Authorization'
+    // =========================================================================
+    $response = Http::withHeaders([
+        // 'Authorization'  => 'Bearer ' . $accessToken,  // <-- HEADER INI KITA HAPUS
+        'X-TIMESTAMP'    => $timestamp,
+        'X-SIGNATURE'    => $signature,
         'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
         'X-EXTERNAL-ID'  => Str::random(32),
         'Content-Type'   => 'application/json',
         'CHANNEL-ID'     => '95221',
         'ORIGIN'         => config('services.dana.origin'),
-    ])->withBody($jsonBody1, 'application/json')->post($baseUrl . $path);
+    ])->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
 
-    $result1 = $response1->json();
+    $result = $response->json();
 
-    // =========================================================================
-    // SKENARIO 2: Invalid Mandatory Field (4000002) - Unauthorized Request
-    // =========================================================================
-    sleep(1); // Kasih jeda 1 detik agar request tidak bertabrakan
-    $timestamp2 = Carbon::now('Asia/Jakarta')->toIso8601String();
-
-    $body2 = $body1;
-    $body2['merchantId'] = config('services.dana.merchant_id'); // Kembalikan ID ke normal
-
-    $jsonBody2 = json_encode($body2, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    $signature2 = $danaService->generateSignature('POST', $path, $jsonBody2, $timestamp2);
-
-    $response2 = Http::withHeaders([
-        // <-- KITA SENGAJA MENGIRIM TOKEN INVALID UNTUK MEMICU UNAUTHORIZED (4000002)
-        'Authorization'  => 'Bearer TOKEN_YANG_SALAH_DAN_TIDAK_VALID_12345',
-        'X-TIMESTAMP'    => $timestamp2,
-        'X-SIGNATURE'    => $signature2,
-        'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-        'X-EXTERNAL-ID'  => Str::random(32),
-        'Content-Type'   => 'application/json',
-        'CHANNEL-ID'     => '95221',
-        'ORIGIN'         => config('services.dana.origin'),
-    ])->withBody($jsonBody2, 'application/json')->post($baseUrl . $path);
-
-    $result2 = $response2->json();
-
-    // =========================================================================
-    // KEMBALIKAN HASIL UNTUK DILIHAT
-    // =========================================================================
     return response()->json([
-        'status' => 'Testing Error Consult Pay Selesai',
-        'test_1_empty_merchant_id' => [
-            'expected_code' => '4000001',
-            'response' => $result1
-        ],
-        'test_2_unauthorized' => [
-            'expected_code' => '4000002',
-            'response' => $result2
-        ]
+        'status' => 'Testing 4000002 Selesai',
+        'expected_code' => '4000002',
+        'response' => $result
     ]);
 });
