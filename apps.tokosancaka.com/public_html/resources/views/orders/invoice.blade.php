@@ -8,165 +8,175 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @media print {
+            @page { size: landscape; }
             .no-print { display: none !important; }
-            body { background: white; }
-            .print-container { box-shadow: none; border: none; margin: 0; padding: 0; }
+            body { background: white; padding: 0 !important; }
+            .print-container { box-shadow: none; border: none; margin: 0; padding: 0; max-width: 100% !important;}
         }
     </style>
 </head>
-<body class="bg-slate-100 font-sans text-slate-800 min-h-screen flex items-center justify-center p-4">
+<body class="bg-slate-100 font-sans text-slate-800 min-h-screen flex items-center justify-center p-4 md:p-8">
 
-    <div class="print-container w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+    <div class="print-container w-full max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 flex flex-col">
 
-        <div class="bg-slate-900 text-white p-6 text-center relative overflow-hidden">
-            <div class="relative z-10">
-                <h1 class="text-2xl font-black tracking-widest uppercase mb-1">Sancaka Store</h1>
-                <p class="text-xs text-slate-400">Jl.Dr.Wahidin No.18A RT.22/05 Ketanggi Ngawi 63211</p>
-                <p class="text-xs text-slate-400">WhatsApp: 0857-4580-8809</p>
-            </div>
-            <div class="absolute -top-10 -right-10 w-32 h-32 bg-slate-800 rounded-full opacity-50"></div>
-            <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-slate-800 rounded-full opacity-50"></div>
-        </div>
-
-        <div class="p-6 border-b border-dashed border-slate-300 bg-slate-50">
-            <div class="flex justify-between items-start mb-4">
+        <div class="bg-slate-900 text-white p-6 md:p-8 text-center md:text-left relative overflow-hidden">
+            <div class="relative z-10 flex flex-col md:flex-row justify-between md:items-center gap-4">
                 <div>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase">Pelanggan</p>
-                    <h3 class="font-bold text-sm text-slate-800">{{ $order->customer_name }}</h3>
-                    <p class="text-xs text-slate-500">{{ $order->customer_phone }}</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase">Invoice</p>
-                    <h3 class="font-bold text-sm text-slate-800">#{{ $order->order_number }}</h3>
-                    <p class="text-xs text-slate-500">{{ $order->created_at->format('d M Y, H:i') }}</p>
+                    <h1 class="text-2xl md:text-3xl font-black tracking-widest uppercase mb-1">Sancaka Store</h1>
+                    <p class="text-xs md:text-sm text-slate-400">Jl.Dr.Wahidin No.18A RT.22/05 Ketanggi Ngawi 63211</p>
+                    <p class="text-xs md:text-sm text-slate-400">WhatsApp: 0857-4580-8809</p>
                 </div>
             </div>
-
-            <div class="bg-white p-2 border rounded text-center flex justify-between items-center">
-                <span class="text-xs font-bold text-slate-500">Status Pembayaran</span>
-                <span class="font-black uppercase text-xs px-2 py-1 rounded {{ $order->payment_status == 'paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
-                    {{ $order->payment_status == 'paid' ? 'LUNAS' : 'BELUM LUNAS' }}
-                </span>
-            </div>
+            <div class="absolute -top-10 -right-10 w-32 h-32 md:w-48 md:h-48 bg-slate-800 rounded-full opacity-50"></div>
+            <div class="absolute -bottom-10 -left-10 w-32 h-32 md:w-48 md:h-48 bg-slate-800 rounded-full opacity-50"></div>
         </div>
 
-        @if($order->payment_method == 'pay_later' && $order->payment_status == 'unpaid')
-        <div class="p-6 bg-amber-50 border-b border-dashed border-slate-300 text-center">
-            <div class="flex flex-col items-center">
-                <div class="bg-amber-100 text-amber-600 w-10 h-10 rounded-full flex items-center justify-center mb-2">
-                    <i class="fas fa-exclamation-triangle"></i>
+        <div class="flex flex-col md:flex-row flex-grow">
+
+            <div class="w-full md:w-5/12 border-b md:border-b-0 md:border-r border-dashed border-slate-300 bg-slate-50 flex flex-col">
+                <div class="p-6">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Pelanggan</p>
+                            <h3 class="font-bold text-sm text-slate-800">{{ $order->customer_name }}</h3>
+                            <p class="text-xs text-slate-500">{{ $order->customer_phone }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Invoice</p>
+                            <h3 class="font-bold text-sm text-slate-800">#{{ $order->order_number }}</h3>
+                            <p class="text-xs text-slate-500">{{ $order->created_at->format('d M Y, H:i') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-3 border border-slate-200 rounded-lg text-center flex justify-between items-center shadow-sm">
+                        <span class="text-xs font-bold text-slate-500">Status Pembayaran</span>
+                        <span class="font-black uppercase text-xs px-2 py-1 rounded {{ $order->payment_status == 'paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600' }}">
+                            {{ $order->payment_status == 'paid' ? 'LUNAS' : 'BELUM LUNAS' }}
+                        </span>
+                    </div>
                 </div>
-                <h4 class="text-sm font-bold text-amber-800 uppercase mb-1">Tagihan Belum Dibayar</h4>
-                <p class="text-xs text-slate-600 mb-4 px-4 leading-relaxed">
-                    Mohon segera lakukan pelunasan melalui QRIS di bawah ini. Tunjukkan bukti transfer ke kasir.
-                </p>
 
-                <div class="bg-white p-2 border border-slate-200 rounded-lg shadow-sm mb-3">
-                    <img src="https://tokosancaka.com/storage/loundry/qris_loundry.jpeg" alt="QRIS Pembayaran" class="w-32 h-32 object-contain">
+                @if($order->payment_method == 'pay_later' && $order->payment_status == 'unpaid')
+                <div class="p-6 bg-amber-50 border-t border-dashed border-slate-300 text-center flex-grow">
+                    <div class="flex flex-col items-center">
+                        <div class="bg-amber-100 text-amber-600 w-10 h-10 rounded-full flex items-center justify-center mb-2">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h4 class="text-sm font-bold text-amber-800 uppercase mb-1">Tagihan Belum Dibayar</h4>
+                        <p class="text-xs text-slate-600 mb-4 px-2 leading-relaxed">
+                            Mohon segera lakukan pelunasan melalui QRIS di bawah ini. Tunjukkan bukti transfer ke kasir.
+                        </p>
+
+                        <div class="bg-white p-2 border border-slate-200 rounded-lg shadow-sm mb-3">
+                            <img src="https://tokosancaka.com/storage/loundry/qris_loundry.jpeg" alt="QRIS Pembayaran" class="w-32 h-32 md:w-40 md:h-40 object-contain">
+                        </div>
+
+                        <a href="https://tokosancaka.com/storage/loundry/qris_loundry.jpeg" download target="_blank"
+                           class="flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg text-xs font-bold shadow hover:bg-amber-700 transition w-full">
+                            <i class="fas fa-download"></i> Download QRIS
+                        </a>
+                    </div>
+                </div>
+                @endif
+
+                {{-- ================================================================= --}}
+                {{-- FITUR BARU: CONSULT PAY DANA (Hanya muncul jika belum lunas) --}}
+                {{-- ================================================================= --}}
+                @if($order->payment_status == 'unpaid')
+                <div class="p-6 bg-blue-50 border-t border-dashed border-slate-300 no-print flex-grow">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fas fa-wallet text-blue-600"></i>
+                        <h4 class="text-sm font-bold text-blue-900 uppercase">Promo & Metode DANA</h4>
+                    </div>
+                    <p class="text-xs text-slate-600 mb-4">Cek daftar promo dan metode pembayaran yang tersedia di DANA untuk tagihan ini.</p>
+
+                    <button onclick="fetchConsultPay({{ $order->final_price }})" id="btn-consult-pay" class="w-full py-2.5 bg-blue-600 text-white rounded-lg text-xs font-bold shadow hover:bg-blue-700 transition flex justify-center items-center gap-2">
+                        <i class="fas fa-search"></i> Cek Pembayaran DANA
+                    </button>
+
+                    <div id="consult-pay-result" class="mt-4 hidden space-y-2"></div>
+                </div>
+                @endif
+                {{-- ================================================================= --}}
+            </div>
+
+            <div class="w-full md:w-7/12 flex flex-col bg-white">
+                <div class="p-6 flex-grow overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-[10px] text-slate-400 uppercase border-b border-slate-200">
+                                <th class="pb-2 font-bold">Produk</th>
+                                <th class="pb-2 text-right font-bold w-16">Jml</th>
+                                <th class="pb-2 text-right font-bold w-28">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-slate-600">
+                            @foreach($order->items as $item)
+                            <tr class="border-b border-dashed border-slate-100 last:border-0">
+                                <td class="py-3 pr-2">
+                                    <div class="font-bold text-slate-800">{{ $item->product_name }}</div>
+                                    <div class="text-[10px] text-slate-400">@ Rp {{ number_format($item->price_at_order,0,',','.') }}</div>
+                                </td>
+                                <td class="py-3 text-right align-top font-bold">x{{ $item->quantity }}</td>
+                                <td class="py-3 text-right align-top font-bold text-slate-800">
+                                    Rp {{ number_format($item->subtotal,0,',','.') }}
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
 
-                <a href="https://tokosancaka.com/storage/loundry/qris_loundry.jpeg" download target="_blank"
-                   class="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg text-xs font-bold shadow hover:bg-amber-700 transition">
-                    <i class="fas fa-download"></i> Download QRIS
-                </a>
+                <div class="bg-slate-50 p-6 border-t border-slate-200 space-y-2">
+                    <div class="flex justify-between text-xs text-slate-500">
+                        <span>Subtotal</span>
+                        <span>Rp {{ number_format($order->total_price, 0, ',', '.') }}</span>
+                    </div>
+
+                    @if($order->discount_amount > 0)
+                    <div class="flex justify-between text-xs text-emerald-600 font-bold">
+                        <span>Diskon</span>
+                        <span>- Rp {{ number_format($order->discount_amount, 0, ',', '.') }}</span>
+                    </div>
+                    @endif
+
+                    @if($order->shipping_cost > 0)
+                    <div class="flex justify-between text-xs text-blue-600">
+                        <span>Ongkir ({{ $order->courier_service }})</span>
+                        <span>+ Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}</span>
+                    </div>
+                    @endif
+
+                    <div class="border-t border-dashed border-slate-300 my-3 pt-3"></div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="font-black text-slate-800 text-lg">TOTAL TAGIHAN</span>
+                        <span class="font-black text-slate-800 text-xl {{ $order->payment_status == 'unpaid' ? 'text-red-600' : '' }}">
+                            Rp {{ number_format($order->final_price, 0, ',', '.') }}
+                        </span>
+                    </div>
+
+                    <div class="text-[10px] text-slate-400 text-right mt-1">
+                        Metode Bayar: <span class="font-bold uppercase text-slate-600">{{ str_replace('_', ' ', $order->payment_method) }}</span>
+                    </div>
+                </div>
+
+                <div class="p-6 bg-white border-t border-slate-200 flex flex-col sm:flex-row gap-3 no-print">
+                    <a href="{{ route('orders.create') }}" class="flex-1 py-3 text-center bg-slate-100 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-200 transition">
+                        <i class="fas fa-arrow-left"></i> Kembali
+                    </a>
+
+                    <button onclick="printStrukThermal()" class="flex-1 sm:min-w-[120px] py-3 text-center bg-blue-600 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-receipt"></i> Cetak 58mm
+                    </button>
+
+                    <button onclick="window.print()" class="flex-1 py-3 text-center bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-slate-800 transition">
+                        <i class="fas fa-print"></i> Cetak A4
+                    </button>
+                </div>
             </div>
+
         </div>
-        @endif
-
-        {{-- ================================================================= --}}
-        {{-- FITUR BARU: CONSULT PAY DANA (Hanya muncul jika belum lunas) --}}
-        {{-- ================================================================= --}}
-        @if($order->payment_status == 'unpaid')
-        <div class="p-6 bg-blue-50 border-b border-dashed border-slate-300 no-print">
-            <div class="flex items-center gap-2 mb-2">
-                <i class="fas fa-wallet text-blue-600"></i>
-                <h4 class="text-sm font-bold text-blue-900 uppercase">Promo & Metode DANA</h4>
-            </div>
-            <p class="text-xs text-slate-600 mb-4">Cek daftar promo dan metode pembayaran yang tersedia di DANA untuk tagihan ini.</p>
-
-            <button onclick="fetchConsultPay({{ $order->final_price }})" id="btn-consult-pay" class="w-full py-2.5 bg-blue-600 text-white rounded-lg text-xs font-bold shadow hover:bg-blue-700 transition flex justify-center items-center gap-2">
-                <i class="fas fa-search"></i> Cek Pembayaran DANA
-            </button>
-
-            <div id="consult-pay-result" class="mt-4 hidden space-y-2"></div>
-        </div>
-        @endif
-        {{-- ================================================================= --}}
-
-        <div class="p-6">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-[10px] text-slate-400 uppercase border-b border-slate-200">
-                        <th class="pb-2 font-bold">Produk</th>
-                        <th class="pb-2 text-right font-bold">Jml</th>
-                        <th class="pb-2 text-right font-bold">Total</th>
-                    </tr>
-                </thead>
-                <tbody class="text-slate-600">
-                    @foreach($order->items as $item)
-                    <tr class="border-b border-dashed border-slate-100 last:border-0">
-                        <td class="py-2 pr-2">
-                            <div class="font-bold text-slate-800">{{ $item->product_name }}</div>
-                            <div class="text-[10px] text-slate-400">@ Rp {{ number_format($item->price_at_order,0,',','.') }}</div>
-                        </td>
-                        <td class="py-2 text-right align-top font-bold">x{{ $item->quantity }}</td>
-                        <td class="py-2 text-right align-top font-bold text-slate-800">
-                            Rp {{ number_format($item->subtotal,0,',','.') }}
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        <div class="bg-slate-50 p-6 border-t border-slate-200 space-y-2">
-            <div class="flex justify-between text-xs text-slate-500">
-                <span>Subtotal</span>
-                <span>Rp {{ number_format($order->total_price, 0, ',', '.') }}</span>
-            </div>
-
-            @if($order->discount_amount > 0)
-            <div class="flex justify-between text-xs text-emerald-600 font-bold">
-                <span>Diskon</span>
-                <span>- Rp {{ number_format($order->discount_amount, 0, ',', '.') }}</span>
-            </div>
-            @endif
-
-            @if($order->shipping_cost > 0)
-            <div class="flex justify-between text-xs text-blue-600">
-                <span>Ongkir ({{ $order->courier_service }})</span>
-                <span>+ Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}</span>
-            </div>
-            @endif
-
-            <div class="border-t border-dashed border-slate-300 my-2 pt-2"></div>
-
-            <div class="flex justify-between items-center">
-                <span class="font-black text-slate-800 text-lg">TOTAL TAGIHAN</span>
-                <span class="font-black text-slate-800 text-lg {{ $order->payment_status == 'unpaid' ? 'text-red-600' : '' }}">
-                    Rp {{ number_format($order->final_price, 0, ',', '.') }}
-                </span>
-            </div>
-
-            <div class="text-[10px] text-slate-400 text-center mt-4 bg-white p-2 rounded border border-slate-100">
-                Metode Bayar: <span class="font-bold uppercase text-slate-600">{{ str_replace('_', ' ', $order->payment_method) }}</span>
-            </div>
-        </div>
-
-        <div class="p-6 bg-white border-t border-slate-200 flex gap-3 no-print">
-            <a href="{{ route('orders.create') }}" class="flex-1 py-3 text-center bg-slate-100 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-200 transition">
-                <i class="fas fa-arrow-left"></i> Kembali
-            </a>
-
-            <button onclick="printStrukThermal()" class="flex-1 min-w-[120px] py-3 text-center bg-blue-600 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-blue-700 transition">
-                <i class="fas fa-receipt"></i> Cetak 58mm
-            </button>
-
-            <button onclick="window.print()" class="flex-1 py-3 text-center bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-slate-800 transition">
-                <i class="fas fa-print"></i> Cetak A4
-            </button>
-        </div>
-
     </div>
 
     <script>
