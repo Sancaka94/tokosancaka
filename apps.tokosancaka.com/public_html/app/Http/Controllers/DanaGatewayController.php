@@ -648,6 +648,100 @@ public function checkTopupStatus(Request $request)
         return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Error'));
     }
 
+    // =========================================================================
+    // FITUR BARU: CONSULT PAY (Mengambil Daftar Metode Pembayaran & Promo)
+    // =========================================================================
+    public function consultPay(Request $request)
+    {
+        // 1. Validasi Input (opsional, sesuaikan kebutuhan SancakaPOS)
+        $amount = $request->input('amount', '150000.00'); // Contoh nominal
 
+        Log::info("[DANA CONSULT PAY] Meminta daftar metode pembayaran untuk nominal: Rp " . $amount);
+
+        try {
+            // 2. Persiapan Parameter SNAP API
+            $timestamp = now('Asia/Jakarta')->toIso8601String();
+            $path = '/v1.0/payment-gateway/consult-pay.htm';
+            $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
+
+            // 3. Siapkan Payload Sesuai Dokumentasi
+            $body = [
+                "merchantId" => config('services.dana.merchant_id'),
+                "amount" => [
+                    "value" => number_format((float)$amount, 2, '.', ''),
+                    "currency" => "IDR"
+                ],
+                "externalStoreId" => "toko-pelanggan",
+                "additionalInfo" => [
+                    "buyer" => [
+                        "externalUserType" => "",
+                        "nickname" => "",
+                        "externalUserId" => "USR-" . time(), // Sesuaikan dengan ID User kamu
+                        "userId" => ""
+                    ],
+                    "envInfo" => [
+                        "sessionId" => Str::random(32),
+                        "tokenId" => (string) Str::uuid(),
+                        "websiteLanguage" => "id_ID",
+                        "clientIp" => $request->ip() ?? "127.0.0.1",
+                        "osType" => "Windows.PC",
+                        "appVersion" => "1.0",
+                        "sdkVersion" => "1.0",
+                        "sourcePlatform" => "IPG",
+                        "orderOsType" => "WEB",
+                        "merchantAppVersion" => "1.0",
+                        "terminalType" => "SYSTEM",
+                        "orderTerminalType" => "WEB",
+                        "extendInfo" => json_encode(["deviceId" => Str::random(16)])
+                    ],
+                    "merchantTransType" => "DEFAULT"
+                ]
+            ];
+
+            // 4. Generate Signature dengan Format SNAP API (METHOD:PATH:HASH_BODY:TIMESTAMP)
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $hashedBody = strtolower(hash('sha256', $jsonBody));
+            $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
+            $signature = $this->generateSignature($stringToSign);
+
+            // 5. Kirim Request ke DANA
+            $response = Http::withHeaders([
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'Content-Type'  => 'application/json',
+                'CHANNEL-ID'    => '95221',
+                'ORIGIN'        => config('services.dana.origin'),
+            ])->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
+
+            $result = $response->json();
+
+            // 6. Evaluasi Hasil (Kode Sukses: 2000000)
+            if (isset($result['responseCode']) && $result['responseCode'] === '2000000') {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Berhasil mengambil daftar metode pembayaran.',
+                    'payment_methods' => $result['paymentInfos'] ?? [],
+                    'raw_data' => $result
+                ]);
+            } else {
+                Log::warning("[DANA CONSULT PAY] Gagal mengambil data.", ['result' => $result]);
+                return response()->json([
+                    'status' => 'failed',
+                    'message' => "Consult Pay Error: " . ($result['responseMessage'] ?? 'Unknown Error'),
+                    'error_code' => $result['responseCode'] ?? null
+                ], 400);
+            }
+
+        } catch (\Exception $e) {
+            Log::error("[DANA CONSULT PAY ERROR] " . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
 }
