@@ -4,7 +4,6 @@
 
 @section('content')
 
-
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
         <div>
             <h1 class="text-3xl font-black text-slate-900 tracking-tight">Ringkasan Operasional</h1>
@@ -18,6 +17,76 @@
             <i class="fas fa-plus-circle text-lg"></i>
             <span>Buat Transaksi Baru</span>
         </a>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mb-8">
+        <form action="{{ route('dashboard') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-end">
+            <div class="w-full md:w-auto flex-1">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Periode Mulai</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-calendar-alt text-slate-400"></i>
+                    </div>
+                    <input type="date" name="start_date" value="{{ request('start_date') }}" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                </div>
+            </div>
+
+            <div class="w-full md:w-auto flex-1">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Sampai Tanggal</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-calendar-check text-slate-400"></i>
+                    </div>
+                    <input type="date" name="end_date" value="{{ request('end_date') }}" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                </div>
+            </div>
+
+            <div class="w-full md:w-1/3 flex-1">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Cari Resi / Order / Ref</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-slate-400"></i>
+                    </div>
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Ketik nomor resi..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                </div>
+            </div>
+
+            <div class="w-full md:w-auto flex-1">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Status Kiriman</label>
+                <select name="shipping_status" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    <option value="">Semua Status</option>
+                    <option value="Selesai Terkirim" {{ request('shipping_status') == 'Selesai Terkirim' ? 'selected' : '' }}>Selesai Terkirim</option>
+                    <option value="Belum Dikirim" {{ request('shipping_status') == 'Belum Dikirim' ? 'selected' : '' }}>Belum Dikirim</option>
+                    <option value="Menunggu Pickup" {{ request('shipping_status') == 'Menunggu Pickup' ? 'selected' : '' }}>Menunggu Pickup</option>
+                    <option value="Gagal" {{ request('shipping_status') == 'Gagal' ? 'selected' : '' }}>Gagal / Cancel</option>
+                </select>
+            </div>
+
+            <div class="w-full md:w-auto">
+                <button type="submit" class="w-full md:w-auto px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-md transition-all">
+                    <i class="fas fa-filter mr-2"></i> Terapkan
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white border-l-4 border-emerald-500 p-4 rounded-xl shadow-sm hover:shadow-md transition-all">
+            <p class="text-[10px] uppercase font-bold text-slate-400 mb-1"><i class="fas fa-box-check text-emerald-500 mr-1"></i> Selesai Terkirim</p>
+            <h4 class="text-2xl font-black text-slate-800">{{ $countSelesai ?? 0 }} <span class="text-xs font-normal text-slate-400">Paket</span></h4>
+        </div>
+        <div class="bg-white border-l-4 border-slate-400 p-4 rounded-xl shadow-sm hover:shadow-md transition-all">
+            <p class="text-[10px] uppercase font-bold text-slate-400 mb-1"><i class="fas fa-box text-slate-400 mr-1"></i> Belum Dikirim</p>
+            <h4 class="text-2xl font-black text-slate-800">{{ $countBelumDikirim ?? 0 }} <span class="text-xs font-normal text-slate-400">Paket</span></h4>
+        </div>
+        <div class="bg-white border-l-4 border-amber-500 p-4 rounded-xl shadow-sm hover:shadow-md transition-all">
+            <p class="text-[10px] uppercase font-bold text-slate-400 mb-1"><i class="fas fa-truck-loading text-amber-500 mr-1"></i> Menunggu Pickup</p>
+            <h4 class="text-2xl font-black text-slate-800">{{ $countPickup ?? 0 }} <span class="text-xs font-normal text-slate-400">Paket</span></h4>
+        </div>
+        <div class="bg-white border-l-4 border-red-500 p-4 rounded-xl shadow-sm hover:shadow-md transition-all">
+            <p class="text-[10px] uppercase font-bold text-slate-400 mb-1"><i class="fas fa-box-open text-red-500 mr-1"></i> Gagal / Cancel</p>
+            <h4 class="text-2xl font-black text-slate-800">{{ $countGagal ?? 0 }} <span class="text-xs font-normal text-slate-400">Paket</span></h4>
+        </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
@@ -107,6 +176,18 @@
             </div>
         </div>
     </div>
+
+
+    <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 mb-10">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="font-black text-slate-800 text-lg flex items-center gap-3">
+                <span class="w-2 h-6 bg-purple-600 rounded-full"></span>
+                Perbandingan Omzet (Bulan Ini vs Lalu)
+            </h3>
+        </div>
+        <div id="chart-comparison" class="w-full h-[380px]"></div>
+    </div>
+
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
@@ -201,3 +282,89 @@
 
     </div>
 @endsection
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Ambil data dari Controller (Pastikan data ini sudah dipassing dari DashboardController)
+        var dataBulanIni = {!! json_encode(array_values($dataBulanIni ?? array_fill(0, 31, 0))) !!};
+        var dataBulanLalu = {!! json_encode(array_values($dataBulanLalu ?? array_fill(0, 31, 0))) !!};
+        var dataTigaBulanLalu = {!! json_encode(array_values($dataTigaBulanLalu ?? array_fill(0, 31, 0))) !!};
+
+        var options = {
+            series: [{
+                name: 'Bulan Ini',
+                type: 'area', // Gelombang (Area)
+                data: dataBulanIni
+            }, {
+                name: 'Bulan Lalu',
+                type: 'column', // Balok
+                data: dataBulanLalu
+            }, {
+                name: '3 Bulan Lalu',
+                type: 'line', // Garis
+                data: dataTigaBulanLalu
+            }],
+            chart: {
+                height: 380,
+                type: 'line',
+                toolbar: { show: false },
+                fontFamily: 'Inter, sans-serif'
+            },
+            stroke: {
+                curve: 'smooth',
+                width: [3, 0, 3] // Ketebalan: Area(3), Balok(0), Garis(3)
+            },
+            fill: {
+                type: ['gradient', 'solid', 'solid'],
+                gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.4,
+                    opacityTo: 0.05,
+                    stops: [0, 90, 100]
+                }
+            },
+            colors: ['#ef4444', '#10b981', '#3b82f6'], // Merah, Hijau, Biru
+            xaxis: {
+                categories: Array.from({length: 31}, (_, i) => i + 1), // Tgl 1 - 31
+                title: {
+                    text: 'Tanggal (1-31)',
+                    style: { color: '#94a3b8', fontSize: '10px', fontWeight: 700 }
+                },
+                labels: { style: { colors: '#64748b' } }
+            },
+            yaxis: {
+                labels: {
+                    style: { colors: '#64748b' },
+                    formatter: function (value) {
+                        if(value >= 1000000) return "Rp " + (value / 1000000).toFixed(1) + " Jt";
+                        if(value >= 1000) return "Rp " + (value / 1000).toFixed(1) + " Rb";
+                        return "Rp " + value;
+                    }
+                }
+            },
+            tooltip: {
+                shared: true,
+                intersect: false,
+                y: {
+                    formatter: function (y) {
+                        if (typeof y !== "undefined") {
+                            return "Rp " + new Intl.NumberFormat('id-ID').format(y);
+                        }
+                        return y;
+                    }
+                }
+            },
+            dataLabels: { enabled: false },
+            legend: {
+                position: 'top',
+                horizontalAlign: 'right'
+            }
+        };
+
+        var chart = new ApexCharts(document.querySelector("#chart-comparison"), options);
+        chart.render();
+    });
+</script>
+@endpush
