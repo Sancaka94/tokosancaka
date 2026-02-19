@@ -181,7 +181,7 @@
                         <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{{ $product->unit }}</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-sm font-black text-slate-900 leading-none">Rp {{ number_format($product->sale_price, 0, ',', '.') }}</p>
+                        <p class="text-sm font-black text-slate-900 leading-none">Rp {{ number_format($product->sell_price, 0, ',', '.') }}</p>
                     </div>
                 </div>
                 @empty
