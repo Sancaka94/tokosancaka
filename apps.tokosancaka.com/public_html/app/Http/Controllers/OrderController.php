@@ -2562,7 +2562,7 @@ public function handleDanaCallback(Request $request)
             $result = $response->json();
 
             // 6. Evaluasi Hasil (Kode Sukses: 2000000)
-            if (isset($result['responseCode']) && $result['responseCode'] === '2000000') {
+            if (isset($result['responseCode']) && str_starts_with($result['responseCode'], '200')) {
                 return response()->json([
                     'status' => 'success',
                     'message' => 'Berhasil mengambil daftar metode pembayaran DANA.',

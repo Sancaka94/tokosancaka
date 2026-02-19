@@ -216,7 +216,8 @@
                     }
 
                     // Format nama metode biar lebih rapi
-                    let methodName = method.payOption.replace(/_/g, ' ');
+                    let rawName = method.payOption ? method.payOption : method.payMethod;
+                    let methodName = rawName.replace(/_/g, ' ');
 
                     html += `
                     <div class="bg-white p-3 rounded-lg border border-blue-200 flex justify-between items-center shadow-sm hover:border-blue-400 transition">
