@@ -634,13 +634,15 @@ Route::middleware(['auth'])->group(function () {
 Route::post('/dana/consult-pay', [DanaGatewayController::class, 'consultPay']);
 Route::get('/dana/consult-pay', [OrderController::class, 'consultPay']);
 
-Route::get('/test-dana-4000002', function (DanaSignatureService $danaService) {
+Route::get('/test-dana-4000002-combo', function (DanaSignatureService $danaService) {
     $path = '/v1.0/payment-gateway/consult-pay.htm';
     $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
 
+    // Ambil token asli
+    $accessToken = $danaService->getAccessToken();
     $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
 
-    // Body normal
+    // Body Normal
     $body = [
         "merchantId" => config('services.dana.merchant_id'),
         "amount" => ["value" => "150000.00", "currency" => "IDR"],
@@ -658,29 +660,78 @@ Route::get('/test-dana-4000002', function (DanaSignatureService $danaService) {
             "merchantTransType" => "DEFAULT"
         ]
     ];
-
     $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $signature = $danaService->generateSignature('POST', $path, $jsonBody, $timestamp);
 
+    $results = [];
+
     // =========================================================================
-    // TRICK-NYA DI SINI: Kita SENGAJA TIDAK MENGIRIM header 'Authorization'
+    // HIT 1: Kosongkan Header X-PARTNER-ID (Invalid Credential Header)
     // =========================================================================
-    $response = Http::withHeaders([
-        // 'Authorization'  => 'Bearer ' . $accessToken,  // <-- HEADER INI KITA HAPUS
+    $res1 = Http::withHeaders([
+        'Authorization'  => 'Bearer ' . $accessToken,
         'X-TIMESTAMP'    => $timestamp,
         'X-SIGNATURE'    => $signature,
-        'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+        'X-PARTNER-ID'   => '', // <-- SENGAJA DIKOSONGKAN
         'X-EXTERNAL-ID'  => Str::random(32),
         'Content-Type'   => 'application/json',
         'CHANNEL-ID'     => '95221',
         'ORIGIN'         => config('services.dana.origin'),
     ])->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
+    $results['test_1_empty_partner_id'] = $res1->json();
 
-    $result = $response->json();
+    // =========================================================================
+    // HIT 2: Kosongkan Header X-SIGNATURE (Invalid Credential Header)
+    // =========================================================================
+    $res2 = Http::withHeaders([
+        'Authorization'  => 'Bearer ' . $accessToken,
+        'X-TIMESTAMP'    => $timestamp,
+        'X-SIGNATURE'    => '', // <-- SENGAJA DIKOSONGKAN
+        'X-PARTNER-ID'   => config('services.dana.merchant_id'),
+        'X-EXTERNAL-ID'  => Str::random(32),
+        'Content-Type'   => 'application/json',
+        'CHANNEL-ID'     => '95221',
+        'ORIGIN'         => config('services.dana.origin'),
+    ])->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
+    $results['test_2_empty_signature'] = $res2->json();
+
+    // =========================================================================
+    // HIT 3: Token Authorization Kosong atau Kata "unauthorized request"
+    // =========================================================================
+    $res3 = Http::withHeaders([
+        'Authorization'  => 'Bearer unauthorized request', // <-- MENGIKUTI TEKS INSTRUKSI MENTAH
+        'X-TIMESTAMP'    => $timestamp,
+        'X-SIGNATURE'    => $signature,
+        'X-PARTNER-ID'   => config('services.dana.merchant_id'),
+        'X-EXTERNAL-ID'  => Str::random(32),
+        'Content-Type'   => 'application/json',
+        'CHANNEL-ID'     => '95221',
+        'ORIGIN'         => config('services.dana.origin'),
+    ])->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
+    $results['test_3_literal_unauthorized_token'] = $res3->json();
+
+    // =========================================================================
+    // HIT 4: Hapus "amount" dari Body (Invalid Mandatory Field Body)
+    // =========================================================================
+    $bodyNoAmount = $body;
+    unset($bodyNoAmount['amount']); // <-- HAPUS AMOUNT
+    $jsonNoAmount = json_encode($bodyNoAmount, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $sigNoAmount = $danaService->generateSignature('POST', $path, $jsonNoAmount, $timestamp);
+
+    $res4 = Http::withHeaders([
+        'Authorization'  => 'Bearer ' . $accessToken,
+        'X-TIMESTAMP'    => $timestamp,
+        'X-SIGNATURE'    => $sigNoAmount,
+        'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+        'X-EXTERNAL-ID'  => Str::random(32),
+        'Content-Type'   => 'application/json',
+        'CHANNEL-ID'     => '95221',
+        'ORIGIN'         => config('services.dana.origin'),
+    ])->withBody($jsonNoAmount, 'application/json')->post($baseUrl . $path);
+    $results['test_4_missing_amount_body'] = $res4->json();
 
     return response()->json([
-        'status' => 'Testing 4000002 Selesai',
-        'expected_code' => '4000002',
-        'response' => $result
+        'status' => 'Combo 4000002 Fired!',
+        'results' => $results
     ]);
 });
