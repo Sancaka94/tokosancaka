@@ -8,9 +8,25 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\Tenant;
 
 class CashflowController extends Controller
 {
+     // 1. Siapkan variabel penampung ID Tenant
+    protected $tenantId;
+
+    public function __construct(Request $request)
+    {
+        // 2. Deteksi Tenant dari Subdomain URL (Berlaku untuk semua fungsi)
+        $host = $request->getHost();
+        $subdomain = explode('.', $host)[0];
+
+        // 3. Cari data Tenant-nya
+        $tenant = \App\Models\Tenant::where('subdomain', $subdomain)->first();
+
+        // 4. Simpan ID-nya. Jika tidak ketemu, default ke 1 (Pusat)
+        $this->tenantId = $tenant ? $tenant->id : 1;
+    }
     /**
      * Halaman Public untuk Input Data
      */
