@@ -630,102 +630,93 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/products/manufacture', [HppController::class, 'manufacture']);
 });
 
+// DANA CONSULT PAY (Untuk Cek Ketersediaan Saldo Sebelum Topup)
+Route::post('/dana/consult-pay', [DanaGatewayController::class, 'consultPay']);
+Route::get('/dana/consult-pay', [OrderController::class, 'consultPay']);
 
-Route::get('/test-dana-inconsistent', function (DanaSignatureService $danaSignatureService) {
-    Log::info("[DANA TEST] Memulai Skenario Inconsistent Request...");
-
-    // 1. Kunci partnerReferenceNo agar SAMA untuk kedua request
-    $orderNumber = 'TEST-INCONSISTENT-' . time();
-    $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+Route::get('/test-dana-consult-error', function (DanaSignatureService $danaService) {
+    $path = '/v1.0/payment-gateway/consult-pay.htm';
     $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
-    $accessToken = $danaSignatureService->getAccessToken();
 
-    // ==========================================
-    // REQUEST 1: Harga Normal (Rp 100.000)
-    // ==========================================
+    // Ambil token asli dulu
+    $accessToken = $danaService->getAccessToken();
+
+    // =========================================================================
+    // SKENARIO 1: Invalid Field Format (4000001) - Empty merchantId
+    // =========================================================================
     $timestamp1 = Carbon::now('Asia/Jakarta')->toIso8601String();
-    $expiryTime1 = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
-
     $body1 = [
-        "partnerReferenceNo" => $orderNumber, // <-- Sama
-        "merchantId" => config('services.dana.merchant_id'),
+        "merchantId" => "", // <-- SENGAJA DIKOSONGKAN SESUAI SKENARIO DANA
+        "amount" => ["value" => "150000.00", "currency" => "IDR"],
         "externalStoreId" => "toko-pelanggan",
-        "amount" => ["value" => "100000.00", "currency" => "IDR"], // <-- Harga 1
-        "validUpTo" => $expiryTime1,
-        "urlParams" => [
-            ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-            ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
-        ],
         "additionalInfo" => [
-            "mcc" => "5732",
-            "order" => ["orderTitle" => "Invoice " . $orderNumber, "merchantTransType" => "01", "scenario" => "REDIRECT"],
-            "envInfo" => ["sourcePlatform" => "IPG", "terminalType" => "SYSTEM", "orderTerminalType" => "WEB"]
+            "buyer" => ["externalUserType" => "", "nickname" => "", "externalUserId" => "USR-123", "userId" => ""],
+            "envInfo" => [
+                "sessionId" => Str::random(32), "tokenId" => (string) Str::uuid(),
+                "websiteLanguage" => "id_ID", "clientIp" => "127.0.0.1",
+                "osType" => "Windows.PC", "appVersion" => "1.0", "sdkVersion" => "1.0",
+                "sourcePlatform" => "IPG", "orderOsType" => "WEB",
+                "merchantAppVersion" => "1.0", "terminalType" => "SYSTEM",
+                "orderTerminalType" => "WEB", "extendInfo" => json_encode(["deviceId" => "TEST"])
+            ],
+            "merchantTransType" => "DEFAULT"
         ]
     ];
 
     $jsonBody1 = json_encode($body1, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    $signature1 = $danaSignatureService->generateSignature('POST', $relativePath, $jsonBody1, $timestamp1);
+    $signature1 = $danaService->generateSignature('POST', $path, $jsonBody1, $timestamp1);
 
     $response1 = Http::withHeaders([
         'Authorization'  => 'Bearer ' . $accessToken,
-        'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-        'X-EXTERNAL-ID'  => Str::random(32),
         'X-TIMESTAMP'    => $timestamp1,
         'X-SIGNATURE'    => $signature1,
+        'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+        'X-EXTERNAL-ID'  => Str::random(32),
         'Content-Type'   => 'application/json',
         'CHANNEL-ID'     => '95221',
         'ORIGIN'         => config('services.dana.origin'),
-    ])->withBody($jsonBody1, 'application/json')->post($baseUrl . $relativePath);
+    ])->withBody($jsonBody1, 'application/json')->post($baseUrl . $path);
 
     $result1 = $response1->json();
 
-
-    // ==========================================
-    // REQUEST 2: Harga Berbeda (Rp 200.000) untuk Order yang SAMA
-    // ==========================================
-    // Jeda 1 detik untuk memastikan urutan log rapi (opsional)
-    sleep(1);
-
+    // =========================================================================
+    // SKENARIO 2: Invalid Mandatory Field (4000002) - Unauthorized Request
+    // =========================================================================
+    sleep(1); // Kasih jeda 1 detik agar request tidak bertabrakan
     $timestamp2 = Carbon::now('Asia/Jakarta')->toIso8601String();
-    $expiryTime2 = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
 
-    $body2 = $body1; // Copy struktur body pertama
-    $body2['amount']['value'] = "200000.00"; // <-- HARGA DIUBAH (Skenario Inconsistent)
-    $body2['validUpTo'] = $expiryTime2;
+    $body2 = $body1;
+    $body2['merchantId'] = config('services.dana.merchant_id'); // Kembalikan ID ke normal
 
     $jsonBody2 = json_encode($body2, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    // Signature wajib di-generate ulang karena Payload (Harga) dan Timestamp berubah
-    $signature2 = $danaSignatureService->generateSignature('POST', $relativePath, $jsonBody2, $timestamp2);
+    $signature2 = $danaService->generateSignature('POST', $path, $jsonBody2, $timestamp2);
 
     $response2 = Http::withHeaders([
-        'Authorization'  => 'Bearer ' . $accessToken,
-        'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-        'X-EXTERNAL-ID'  => Str::random(32),
+        // <-- KITA SENGAJA MENGIRIM TOKEN INVALID UNTUK MEMICU UNAUTHORIZED (4000002)
+        'Authorization'  => 'Bearer TOKEN_YANG_SALAH_DAN_TIDAK_VALID_12345',
         'X-TIMESTAMP'    => $timestamp2,
         'X-SIGNATURE'    => $signature2,
+        'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+        'X-EXTERNAL-ID'  => Str::random(32),
         'Content-Type'   => 'application/json',
         'CHANNEL-ID'     => '95221',
         'ORIGIN'         => config('services.dana.origin'),
-    ])->withBody($jsonBody2, 'application/json')->post($baseUrl . $relativePath);
+    ])->withBody($jsonBody2, 'application/json')->post($baseUrl . $path);
 
     $result2 = $response2->json();
 
-    // ==========================================
-    // KEMBALIKAN HASIL
-    // ==========================================
+    // =========================================================================
+    // KEMBALIKAN HASIL UNTUK DILIHAT
+    // =========================================================================
     return response()->json([
-        'status' => 'Testing Selesai',
-        'partnerReferenceNo_used' => $orderNumber,
-        'step_1' => [
-            'description' => 'Membuat order pertama (Rp 100.000). Harusnya Sukses (2005400).',
+        'status' => 'Testing Error Consult Pay Selesai',
+        'test_1_empty_merchant_id' => [
+            'expected_code' => '4000001',
             'response' => $result1
         ],
-        'step_2' => [
-            'description' => 'Membuat order kedua dengan No sama tapi harga beda (Rp 200.000). Harusnya Inconsistent Request (4045418).',
+        'test_2_unauthorized' => [
+            'expected_code' => '4000002',
             'response' => $result2
         ]
     ]);
 });
-
-Route::post('/dana/consult-pay', [DanaGatewayController::class, 'consultPay']);
-Route::get('/dana/consult-pay', [OrderController::class, 'consultPay']);
