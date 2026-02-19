@@ -73,6 +73,26 @@
         </div>
         @endif
 
+        {{-- ================================================================= --}}
+        {{-- FITUR BARU: CONSULT PAY DANA (Hanya muncul jika belum lunas) --}}
+        {{-- ================================================================= --}}
+        @if($order->payment_status == 'unpaid')
+        <div class="p-6 bg-blue-50 border-b border-dashed border-slate-300 no-print">
+            <div class="flex items-center gap-2 mb-2">
+                <i class="fas fa-wallet text-blue-600"></i>
+                <h4 class="text-sm font-bold text-blue-900 uppercase">Promo & Metode DANA</h4>
+            </div>
+            <p class="text-xs text-slate-600 mb-4">Cek daftar promo dan metode pembayaran yang tersedia di DANA untuk tagihan ini.</p>
+
+            <button onclick="fetchConsultPay({{ $order->final_price }})" id="btn-consult-pay" class="w-full py-2.5 bg-blue-600 text-white rounded-lg text-xs font-bold shadow hover:bg-blue-700 transition flex justify-center items-center gap-2">
+                <i class="fas fa-search"></i> Cek Pembayaran DANA
+            </button>
+
+            <div id="consult-pay-result" class="mt-4 hidden space-y-2"></div>
+        </div>
+        @endif
+        {{-- ================================================================= --}}
+
         <div class="p-6">
             <table class="w-full text-sm">
                 <thead>
@@ -138,7 +158,6 @@
                 <i class="fas fa-arrow-left"></i> Kembali
             </a>
 
-            {{-- TOMBOL BARU: CETAK STRUK THERMAL (Bluetooth) --}}
             <button onclick="printStrukThermal()" class="flex-1 min-w-[120px] py-3 text-center bg-blue-600 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-blue-700 transition">
                 <i class="fas fa-receipt"></i> Cetak 58mm
             </button>
@@ -152,19 +171,94 @@
 
     <script>
     function printStrukThermal() {
-        // Ambil ID order atau order number untuk memanggil route struk
         const printUrl = "{{ url('/orders') }}/{{ $order->id }}/print-struk";
-
-        // Membuka jendela baru dengan ukuran kecil agar browser mobile lebih mudah mendeteksi format struk
         const printWindow = window.open(printUrl, 'PrintStruk', 'width=400,height=600');
-
-        // Fokuskan ke jendela print
         if (printWindow) {
             printWindow.focus();
         } else {
             alert('Mohon izinkan popup di browser Anda untuk mencetak struk.');
         }
     }
-</script>
+
+    // =================================================================
+    // FUNGSI JAVASCRIPT UNTUK MEMANGGIL CONSULT PAY DANA
+    // =================================================================
+    async function fetchConsultPay(amount) {
+        const btn = document.getElementById('btn-consult-pay');
+        const resultDiv = document.getElementById('consult-pay-result');
+
+        // Ubah tampilan tombol menjadi loading
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Mencari...';
+        btn.disabled = true;
+        resultDiv.innerHTML = '';
+        resultDiv.classList.add('hidden');
+
+        try {
+            // Memanggil endpoint DANA Consult Pay yang kita buat di Controller
+            const response = await fetch(`/dana/consult-pay?amount=${amount}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const res = await response.json();
+
+            if (res.status === 'success' && res.payment_methods.length > 0) {
+                let html = '<div class="grid grid-cols-1 gap-2 mt-3">';
+
+                res.payment_methods.forEach(method => {
+                    // Cek jika ada promo
+                    let promoBadge = '';
+                    if (method.promoInfos && method.promoInfos.length > 0) {
+                        promoBadge = `<span class="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-bold ml-2 animate-pulse"><i class="fas fa-tags"></i> Ada Promo!</span>`;
+                    }
+
+                    // Format nama metode biar lebih rapi
+                    let methodName = method.payOption.replace(/_/g, ' ');
+
+                    html += `
+                    <div class="bg-white p-3 rounded-lg border border-blue-200 flex justify-between items-center shadow-sm hover:border-blue-400 transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded bg-blue-50 flex justify-center items-center text-blue-500">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
+                            <div class="flex flex-col text-left">
+                                <span class="text-xs font-bold text-slate-700">${methodName}</span>
+                                <span class="text-[10px] text-slate-400 uppercase">${method.payMethod}</span>
+                            </div>
+                        </div>
+                        ${promoBadge}
+                    </div>
+                    `;
+                });
+
+                html += '</div>';
+
+                // Jika pesanan dibuat menggunakan DANA, tampilkan tombol bayar juga
+                @if($order->payment_url)
+                html += `
+                <a href="{{ $order->payment_url }}" class="mt-3 w-full py-2.5 bg-green-500 text-white rounded-lg text-xs font-bold shadow hover:bg-green-600 transition flex justify-center items-center gap-2 block text-center">
+                    <i class="fas fa-lock"></i> Lanjutkan Pembayaran
+                </a>`;
+                @endif
+
+                resultDiv.innerHTML = html;
+                resultDiv.classList.remove('hidden');
+            } else {
+                resultDiv.innerHTML = `<div class="text-xs text-red-600 p-3 bg-red-50 border border-red-200 rounded-lg text-center"><i class="fas fa-exclamation-circle"></i> Tidak ada metode pembayaran tambahan yang tersedia.</div>`;
+                resultDiv.classList.remove('hidden');
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<div class="text-xs text-red-600 p-3 bg-red-50 border border-red-200 rounded-lg text-center"><i class="fas fa-wifi"></i> Gagal terhubung ke server DANA.</div>`;
+            resultDiv.classList.remove('hidden');
+        } finally {
+            // Kembalikan tombol ke bentuk semula
+            btn.innerHTML = '<i class="fas fa-search"></i> Cek Pembayaran DANA';
+            btn.disabled = false;
+        }
+    }
+    </script>
 </body>
 </html>
