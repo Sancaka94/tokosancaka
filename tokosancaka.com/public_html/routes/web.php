@@ -975,3 +975,97 @@ Route::prefix('admin')->group(function () {
     Route::put('/contacts/{id}', [App\Http\Controllers\CashflowContactController::class, 'update'])->name('contacts.update');
     Route::delete('/contacts/{id}', [App\Http\Controllers\CashflowContactController::class, 'destroy'])->name('contacts.destroy');
 });
+
+
+Route::get('/test-dana-inconsistent', function (DanaService $danaService) {
+    Log::info("[DANA MANUAL TEST] Requesting Payment URL...");
+
+    // 1. Persiapan Variabel Tiruan (Mocking) untuk Testing
+    // Dalam implementasi asli, kamu mungkin akan mengambil data dari database, misal: $order = Order::find(1);
+    $order = (object) [
+        'order_number' => 'TEST-DANA-' . time(),
+    ];
+    $finalPrice = 15000; // Contoh harga Rp 15.000
+
+    try {
+        $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
+        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+
+        $bodyArray = [
+            "partnerReferenceNo" => $order->order_number,
+            "merchantId" => config('services.dana.merchant_id'),
+            "externalStoreId" => "toko-pelanggan",
+            "amount" => ["value" => number_format($finalPrice, 2, '.', ''), "currency" => "IDR"],
+            "validUpTo" => $expiryTime,
+            "urlParams" => [
+                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+            ],
+            "additionalInfo" => [
+                "mcc" => "5732",
+                "order" => [
+                    "orderTitle" => "Invoice " . $order->order_number,
+                    "merchantTransType" => "01",
+                    "scenario" => "REDIRECT"
+                ],
+                "envInfo" => [
+                    "sourcePlatform" => "IPG",
+                    "terminalType" => "SYSTEM",
+                    "orderTerminalType" => "WEB"
+                ]
+            ]
+        ];
+
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+
+        $accessToken = $danaService->getAccessToken();
+        $signature = $danaService->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
+        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
+
+        $response = Http::withHeaders([
+            'Authorization'  => 'Bearer ' . $accessToken,
+            'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+            'X-EXTERNAL-ID'  => Str::random(32),
+            'X-TIMESTAMP'    => $timestamp,
+            'X-SIGNATURE'    => $signature,
+            'Content-Type'   => 'application/json',
+            'CHANNEL-ID'     => '95221',
+            'ORIGIN'         => config('services.dana.origin'),
+        ])->withBody($jsonBody, 'application/json')->post($baseUrl . $relativePath);
+
+        $result = $response->json();
+
+        // 2. Evaluasi Hasil Response DANA
+        if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
+            $paymentUrl = $result['webRedirectUrl'] ?? null;
+
+            // Catatan: Jika menggunakan object tiruan (bukan Model Eloquent), comment baris update ini
+            // $order->update(['payment_url' => $paymentUrl]);
+            $triggerWaType = 'unpaid';
+
+            // Mengembalikan response JSON agar mudah dilihat di browser / Postman
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Payment URL berhasil dibuat.',
+                'payment_url' => $paymentUrl,
+                'data' => $result
+            ]);
+
+        } else {
+            return response()->json([
+                'status' => 'failed',
+                'message' => "DANA API Error: " . ($result['responseMessage'] ?? 'General Error'),
+                'data' => $result
+            ], 400);
+        }
+
+    } catch (\Exception $e) {
+        Log::error("DANA MANUAL Error: " . $e->getMessage());
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+        ], 500);
+    }
+});
