@@ -58,7 +58,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 // Pastikan kamu meng-import class DanaService kamu, sesuaikan namespace-nya jika berbeda
-use App\Services\DanaService;
+use App\Services\DanaSignatureService;
 
     // Route Invoice (Publik)
     // Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('invoice.show');
@@ -631,20 +631,20 @@ Route::middleware(['auth'])->group(function () {
 });
 
 
-Route::get('/test-dana-inconsistent', function (DanaService $danaService) {
+Route::get('/test-dana-inconsistent', function (DanaSignatureService $danaSignatureService) {
     Log::info("[DANA MANUAL TEST] Requesting Payment URL...");
 
-    // 1. Persiapan Variabel Tiruan (Mocking) untuk Testing
-    // Dalam implementasi asli, kamu mungkin akan mengambil data dari database, misal: $order = Order::find(1);
+    // 1. Persiapan Variabel Tiruan (Mocking)
     $order = (object) [
         'order_number' => 'TEST-DANA-' . time(),
     ];
-    $finalPrice = 15000; // Contoh harga Rp 15.000
+    $finalPrice = 15000; // Contoh harga
 
     try {
         $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
 
+        // Payload sesuai request awalmu
         $bodyArray = [
             "partnerReferenceNo" => $order->order_number,
             "merchantId" => config('services.dana.merchant_id'),
@@ -673,10 +673,13 @@ Route::get('/test-dana-inconsistent', function (DanaService $danaService) {
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
 
-        $accessToken = $danaService->getAccessToken();
-        $signature = $danaService->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
+        // 2. Memanggil fungsi dari DanaSignatureService kamu
+        $accessToken = $danaSignatureService->getAccessToken();
+        $signature = $danaSignatureService->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
+
         $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
 
+        // 3. Mengirim Request ke DANA
         $response = Http::withHeaders([
             'Authorization'  => 'Bearer ' . $accessToken,
             'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
@@ -690,22 +693,16 @@ Route::get('/test-dana-inconsistent', function (DanaService $danaService) {
 
         $result = $response->json();
 
-        // 2. Evaluasi Hasil Response DANA
+        // 4. Evaluasi Hasil
         if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
             $paymentUrl = $result['webRedirectUrl'] ?? null;
 
-            // Catatan: Jika menggunakan object tiruan (bukan Model Eloquent), comment baris update ini
-            // $order->update(['payment_url' => $paymentUrl]);
-            $triggerWaType = 'unpaid';
-
-            // Mengembalikan response JSON agar mudah dilihat di browser / Postman
             return response()->json([
                 'status' => 'success',
                 'message' => 'Payment URL berhasil dibuat.',
                 'payment_url' => $paymentUrl,
                 'data' => $result
             ]);
-
         } else {
             return response()->json([
                 'status' => 'failed',
