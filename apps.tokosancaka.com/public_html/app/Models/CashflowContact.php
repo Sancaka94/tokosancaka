@@ -13,7 +13,7 @@ class CashflowContact extends Model
     use BelongsToTenant; // <-- Pastikan ini dipasang di dalam class
 
     protected $fillable = [
-        'name', 'store_name', 'address', 'phone', 'balance'
+        'name', 'store_name', 'address', 'phone', 'balance' ,'tenant_id' // <--- Tambahkan ini
     ];
 
     // Relasi ke transaksi

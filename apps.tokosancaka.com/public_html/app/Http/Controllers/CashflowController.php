@@ -12,28 +12,32 @@ use App\Models\Tenant;
 
 class CashflowController extends Controller
 {
-     // 1. Siapkan variabel penampung ID Tenant
+    // 1. Siapkan variabel penampung ID Tenant
     protected $tenantId;
 
     public function __construct(Request $request)
     {
-        // 2. Deteksi Tenant dari Subdomain URL (Berlaku untuk semua fungsi)
+        // 2. Deteksi Tenant dari Subdomain URL
         $host = $request->getHost();
         $subdomain = explode('.', $host)[0];
 
         // 3. Cari data Tenant-nya
-        $tenant = \App\Models\Tenant::where('subdomain', $subdomain)->first();
+        $tenant = Tenant::where('subdomain', $subdomain)->first();
 
         // 4. Simpan ID-nya. Jika tidak ketemu, default ke 1 (Pusat)
         $this->tenantId = $tenant ? $tenant->id : 1;
     }
+
     /**
      * Halaman Public untuk Input Data
      */
     public function create()
     {
-        // Ambil data kontak untuk dropdown pilihan
-        $contacts = CashflowContact::orderBy('name', 'asc')->get();
+        // PERBAIKAN: Hanya panggil kontak milik tenant ini saja
+        $contacts = CashflowContact::where('tenant_id', $this->tenantId)
+                                   ->orderBy('name', 'asc')
+                                   ->get();
+
         return view('cashflow.public-create', compact('contacts'));
     }
 
@@ -47,54 +51,54 @@ class CashflowController extends Controller
             'amount' => 'required|numeric|min:0',
             'date' => 'required|date',
             'type' => 'required|in:income,expense',
-            'category' => 'required', // general, piutang_new, dll
+            'category' => 'required',
             'contact_id' => 'nullable|exists:cashflow_contacts,id',
             'name' => 'nullable|string',
             'description' => 'nullable|string',
         ]);
 
-        // Gunakan Database Transaction agar data aman
         DB::beginTransaction();
 
         try {
-            // Tentukan Nama: Jika pilih kontak, pakai nama kontak. Jika tidak, pakai input manual.
             $finalName = $request->name;
             if ($request->contact_id) {
-                $contact = CashflowContact::find($request->contact_id);
-                $finalName = $contact->name;
+                // PERBAIKAN: Pastikan kontak yang dipilih benar milik tenant ini
+                $contact = CashflowContact::where('tenant_id', $this->tenantId)->find($request->contact_id);
+                if($contact) {
+                    $finalName = $contact->name;
+                }
             }
 
             // 2. Simpan ke Tabel Cashflows
             $cashflow = Cashflow::create([
+                'tenant_id'   => $this->tenantId, // PERBAIKAN WAJIB: Simpan ID Tenant
                 'contact_id'  => $request->contact_id,
                 'name'        => $finalName,
                 'description' => $request->description,
-                'type'        => $request->type,     // income / expense
-                'category'    => $request->category, // general / hutang / piutang
+                'type'        => $request->type,
+                'category'    => $request->category,
                 'amount'      => $request->amount,
                 'date'        => $request->date,
             ]);
 
-            // 3. Logika Update Saldo Kontak (Hutang Piutang)
-            if ($request->contact_id) {
+            // 3. Logika Update Saldo Kontak
+            if ($request->contact_id && isset($contact)) {
                 $this->updateContactBalance($contact, $request->category, $request->amount, 'create');
             }
 
-            // Commit transaksi jika semua sukses
             DB::commit();
 
-            // 4. Kirim Notifikasi WA (Jalankan di background atau queue jika memungkinkan)
+            // 4. Kirim Notifikasi WA
             try {
                 $this->sendFonnteNotification($cashflow);
             } catch (\Exception $e) {
-                // Jangan gagalkan transaksi hanya karena WA error
                 \Log::error("Fonnte Error: " . $e->getMessage());
             }
 
             return redirect()->back()->with('success', 'Transaksi berhasil disimpan & saldo diperbarui!');
 
         } catch (\Exception $e) {
-            DB::rollback(); // Batalkan semua perubahan jika ada error
+            DB::rollback();
             return redirect()->back()->with('error', 'Gagal menyimpan data: ' . $e->getMessage());
         }
     }
@@ -104,28 +108,28 @@ class CashflowController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Cashflow::orderBy('date', 'desc')->orderBy('created_at', 'desc');
+        // PERBAIKAN: Filter data HANYA untuk tenant ini
+        $query = Cashflow::where('tenant_id', $this->tenantId)
+                         ->orderBy('date', 'desc')
+                         ->orderBy('created_at', 'desc');
 
-        // Filter Tanggal
         if ($request->start_date && $request->end_date) {
             $query->whereBetween('date', [$request->start_date, $request->end_date]);
         }
 
-        // Filter Tipe
         if ($request->type) {
             $query->where('type', $request->type);
         }
 
-        // Filter Kategori (Hutang/Piutang/General)
         if ($request->category) {
             $query->where('category', $request->category);
         }
 
         $data = $query->paginate(20);
 
-        // Hitung Summary (Berdasarkan filter saat ini)
-        $totalIncome = Cashflow::where('type', 'income')->sum('amount');
-        $totalExpense = Cashflow::where('type', 'expense')->sum('amount');
+        // PERBAIKAN: Hitung Summary HANYA untuk tenant ini
+        $totalIncome = Cashflow::where('tenant_id', $this->tenantId)->where('type', 'income')->sum('amount');
+        $totalExpense = Cashflow::where('tenant_id', $this->tenantId)->where('type', 'expense')->sum('amount');
         $saldo = $totalIncome - $totalExpense;
 
         return view('cashflow.index', compact('data', 'totalIncome', 'totalExpense', 'saldo'));
@@ -133,17 +137,16 @@ class CashflowController extends Controller
 
     /**
      * Hapus Data (Soft Delete / Hard Delete)
-     * PENTING: Saldo hutang harus dikembalikan jika transaksi dihapus
      */
     public function destroy($id)
     {
         DB::beginTransaction();
         try {
-            $cashflow = Cashflow::findOrFail($id);
+            // PERBAIKAN: Pastikan tenant cuma bisa hapus datanya sendiri
+            $cashflow = Cashflow::where('tenant_id', $this->tenantId)->findOrFail($id);
 
-            // Jika transaksi ini terkait kontak (Hutang/Piutang), kembalikan saldonya
             if ($cashflow->contact_id) {
-                $contact = CashflowContact::find($cashflow->contact_id);
+                $contact = CashflowContact::where('tenant_id', $this->tenantId)->find($cashflow->contact_id);
                 if ($contact) {
                     $this->updateContactBalance($contact, $cashflow->category, $cashflow->amount, 'delete');
                 }
@@ -160,38 +163,24 @@ class CashflowController extends Controller
         }
     }
 
-    /**
-     * Logika Pusat Update Saldo
-     * @param $action 'create' (tambah transaksi) atau 'delete' (hapus transaksi)
-     */
     private function updateContactBalance($contact, $category, $amount, $action = 'create')
     {
-        // Jika action delete, kita balik logicnya (rollback)
-        // Contoh: Kalau create menambah saldo, maka delete harus mengurangi saldo.
         $multiplier = ($action === 'create') ? 1 : -1;
 
         switch ($category) {
             case 'piutang_new':
-                // Kita pinjamkan uang -> Saldo dia bertambah (+) (Dia punya utang ke kita)
                 $contact->balance += ($amount * $multiplier);
                 break;
-
             case 'piutang_pay':
-                // Dia bayar utang -> Saldo dia berkurang (-) (Utangnya lunas)
                 $contact->balance -= ($amount * $multiplier);
                 break;
-
             case 'hutang_new':
-                // Kita ngutang -> Saldo dia berkurang (-) (Kita punya utang, nilai minus)
                 $contact->balance -= ($amount * $multiplier);
                 break;
-
             case 'hutang_pay':
-                // Kita bayar utang -> Saldo dia bertambah (+) (Mendekati 0)
                 $contact->balance += ($amount * $multiplier);
                 break;
         }
-
         $contact->save();
     }
 
@@ -200,23 +189,21 @@ class CashflowController extends Controller
      */
     public function exportPdf(Request $request)
     {
-        // Ambil data sesuai filter (bisa disesuaikan logic filternya sama dengan index)
-        $data = Cashflow::orderBy('date', 'desc')->get();
+        // PERBAIKAN: Filter tenant_id
+        $data = Cashflow::where('tenant_id', $this->tenantId)->orderBy('date', 'desc')->get();
 
         $totalIncome = $data->where('type', 'income')->sum('amount');
         $totalExpense = $data->where('type', 'expense')->sum('amount');
         $saldo = $totalIncome - $totalExpense;
 
         $pdf = Pdf::loadView('cashflow.pdf', compact('data', 'totalIncome', 'totalExpense', 'saldo'));
-
-        // Setup kertas landscape agar muat tabel lebar
         $pdf->setPaper('a4', 'landscape');
 
         return $pdf->download('laporan-keuangan-' . date('Y-m-d') . '.pdf');
     }
 
     /**
-     * Export ke Excel (CSV Sederhana)
+     * Export ke Excel
      */
     public function exportExcel()
     {
@@ -224,11 +211,10 @@ class CashflowController extends Controller
 
         return response()->streamDownload(function () {
             $handle = fopen('php://output', 'w');
-
-            // Header CSV
             fputcsv($handle, ['No', 'Tanggal', 'Kategori', 'Nama', 'Keterangan', 'Tipe', 'Masuk', 'Keluar']);
 
-            $cashflows = Cashflow::orderBy('date', 'desc')->get();
+            // PERBAIKAN: Filter tenant_id
+            $cashflows = Cashflow::where('tenant_id', $this->tenantId)->orderBy('date', 'desc')->get();
             $no = 1;
 
             foreach ($cashflows as $row) {
@@ -238,7 +224,7 @@ class CashflowController extends Controller
                 fputcsv($handle, [
                     $no++,
                     $row->date,
-                    strtoupper(str_replace('_', ' ', $row->category)), // Format kategori
+                    strtoupper(str_replace('_', ' ', $row->category)),
                     $row->name,
                     $row->description,
                     ($row->type == 'income' ? 'Pemasukan' : 'Pengeluaran'),
@@ -250,9 +236,6 @@ class CashflowController extends Controller
         }, $fileName);
     }
 
-    /**
-     * Kirim Notifikasi WA via Fonnte
-     */
     private function sendFonnteNotification($data)
     {
         $jenis = $data->type == 'income' ? 'PEMASUKAN (+)' : 'PENGELUARAN (-)';
@@ -270,9 +253,9 @@ class CashflowController extends Controller
                    "Data telah tersimpan di sistem.";
 
         Http::withHeaders([
-            'Authorization' => 'TOKEN_FONNTE_ANDA_DISINI', // Ganti dengan Token Asli
+            'Authorization' => 'TOKEN_FONNTE_ANDA_DISINI',
         ])->post('https://api.fonnte.com/send', [
-            'target' => '085745808809', // Nomor Tujuan Admin
+            'target' => '085745808809',
             'message' => $message,
         ]);
     }

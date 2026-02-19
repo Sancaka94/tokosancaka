@@ -6,10 +6,9 @@ use App\Models\CashflowContact;
 use Illuminate\Http\Request;
 use App\Models\Tenant;
 
-
 class CashflowContactController extends Controller
 {
-     // 1. Siapkan variabel penampung ID Tenant
+    // 1. Siapkan variabel penampung ID Tenant
     protected $tenantId;
 
     public function __construct(Request $request)
@@ -27,7 +26,11 @@ class CashflowContactController extends Controller
 
     public function index()
     {
-        $contacts = CashflowContact::orderBy('name', 'asc')->paginate(20);
+        // PERBAIKAN: Hanya tampilkan kontak milik tenant yang sedang login
+        $contacts = CashflowContact::where('tenant_id', $this->tenantId)
+                                   ->orderBy('name', 'asc')
+                                   ->paginate(20);
+
         return view('cashflow.contacts.index', compact('contacts'));
     }
 
@@ -38,20 +41,32 @@ class CashflowContactController extends Controller
             'phone' => 'nullable|numeric'
         ]);
 
-        CashflowContact::create($request->all());
+        // PERBAIKAN: Sisipkan tenant_id saat menyimpan data baru
+        $data = $request->all();
+        $data['tenant_id'] = $this->tenantId;
+
+        CashflowContact::create($data);
+
         return redirect()->back()->with('success', 'Kontak berhasil ditambahkan');
     }
 
     public function update(Request $request, $id)
     {
-        $contact = CashflowContact::findOrFail($id);
+        // PERBAIKAN: Pastikan kontak yang mau diupdate benar-benar milik tenant ini
+        $contact = CashflowContact::where('tenant_id', $this->tenantId)->findOrFail($id);
+
         $contact->update($request->all());
+
         return redirect()->back()->with('success', 'Kontak berhasil diperbarui');
     }
 
     public function destroy($id)
     {
-        CashflowContact::findOrFail($id)->delete();
+        // PERBAIKAN: Pastikan kontak yang mau dihapus benar-benar milik tenant ini
+        $contact = CashflowContact::where('tenant_id', $this->tenantId)->findOrFail($id);
+
+        $contact->delete();
+
         return redirect()->back()->with('success', 'Kontak dihapus');
     }
 }

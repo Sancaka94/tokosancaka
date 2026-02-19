@@ -15,6 +15,7 @@ class Cashflow extends Model
     protected $table = 'cashflows';
 
     protected $fillable = [
+        'tenant_id', // <--- Tambahkan ini
         'name',
         'contact_id', // Tambahan
         'description',
