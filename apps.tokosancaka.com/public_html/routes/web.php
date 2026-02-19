@@ -728,3 +728,4 @@ Route::get('/test-dana-inconsistent', function (DanaSignatureService $danaSignat
 });
 
 Route::post('/dana/consult-pay', [DanaGatewayController::class, 'consultPay']);
+Route::get('/dana/consult-pay', [OrderController::class, 'consultPay']);
