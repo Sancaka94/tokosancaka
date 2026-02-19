@@ -1,124 +1,124 @@
 {
-    "version": "1.0.0.840",
-    "last_update": "19 Feb 2026 11:23",
+    "version": "1.0.0.842",
+    "last_update": "19 Feb 2026 14:57",
     "commits": [
         {
-            "hash": "840bdf1",
+            "hash": "8ceecd86",
+            "date": "2026-02-19 14:57:45 +0700",
+            "author": "Admin Sancaka",
+            "message": "Update System"
+        },
+        {
+            "hash": "f993114d",
+            "date": "2026-02-19 11:23:04 +0700",
+            "author": "Server Bot",
+            "message": "Auto Bump Version"
+        },
+        {
+            "hash": "840bdf1f",
             "date": "2026-02-19 11:23:03 +0700",
             "author": "Server Bot",
             "message": "Update System"
         },
         {
-            "hash": "27dffb8",
+            "hash": "27dffb86",
             "date": "2026-02-18 21:37:04 +0700",
             "author": "Admin Sancaka",
             "message": "Auto Bump Version"
         },
         {
-            "hash": "8ba1567",
+            "hash": "8ba1567e",
             "date": "2026-02-18 21:36:59 +0700",
             "author": "Admin Sancaka",
             "message": "Update System"
         },
         {
-            "hash": "2446fd1",
+            "hash": "2446fd1c",
             "date": "2026-02-18 21:35:25 +0700",
             "author": "Admin Sancaka",
             "message": "Auto Bump Version"
         },
         {
-            "hash": "8df8477",
+            "hash": "8df84773",
             "date": "2026-02-18 21:35:18 +0700",
             "author": "Admin Sancaka",
             "message": "Update System"
         },
         {
-            "hash": "be9d72a",
+            "hash": "be9d72a1",
             "date": "2026-02-18 21:33:29 +0700",
             "author": "Admin Sancaka",
             "message": "Auto Bump Version"
         },
         {
-            "hash": "38a52a2",
+            "hash": "38a52a21",
             "date": "2026-02-18 21:33:22 +0700",
             "author": "Admin Sancaka",
             "message": "Update System"
         },
         {
-            "hash": "15c69d2",
+            "hash": "15c69d21",
             "date": "2026-02-18 21:31:42 +0700",
             "author": "Admin Sancaka",
             "message": "Auto Bump Version"
         },
         {
-            "hash": "27ec5a5",
+            "hash": "27ec5a5b",
             "date": "2026-02-18 21:31:31 +0700",
             "author": "Admin Sancaka",
             "message": "Update System"
         },
         {
-            "hash": "f9ea73d",
+            "hash": "f9ea73dc",
             "date": "2026-02-18 21:18:27 +0700",
             "author": "Admin Sancaka",
             "message": "Auto Bump Version"
         },
         {
-            "hash": "bdd55c1",
+            "hash": "bdd55c13",
             "date": "2026-02-18 21:18:22 +0700",
             "author": "Admin Sancaka",
             "message": "Update System"
         },
         {
-            "hash": "b3638f8",
+            "hash": "b3638f85",
             "date": "2026-02-18 21:17:03 +0700",
             "author": "Admin Sancaka",
             "message": "Auto Bump Version"
         },
         {
-            "hash": "7e39090",
+            "hash": "7e390902",
             "date": "2026-02-18 21:16:55 +0700",
             "author": "Admin Sancaka",
             "message": "Update System"
         },
         {
-            "hash": "cd2f799",
+            "hash": "cd2f7998",
             "date": "2026-02-18 19:18:41 +0700",
             "author": "Admin Sancaka",
             "message": "Auto Bump Version"
         },
         {
-            "hash": "576eeed",
+            "hash": "576eeed3",
             "date": "2026-02-18 19:18:36 +0700",
             "author": "Admin Sancaka",
             "message": "Update System"
         },
         {
-            "hash": "51204ce",
+            "hash": "51204cec",
             "date": "2026-02-18 19:12:34 +0700",
             "author": "Admin Sancaka",
             "message": "Auto Bump Version"
         },
         {
-            "hash": "6aa5467",
+            "hash": "6aa54676",
             "date": "2026-02-18 19:12:29 +0700",
             "author": "Admin Sancaka",
             "message": "Update System"
         },
         {
-            "hash": "48939fc",
+            "hash": "48939fc2",
             "date": "2026-02-18 19:09:38 +0700",
-            "author": "Admin Sancaka",
-            "message": "Auto Bump Version"
-        },
-        {
-            "hash": "1b21482",
-            "date": "2026-02-18 19:09:33 +0700",
-            "author": "Admin Sancaka",
-            "message": "Update System"
-        },
-        {
-            "hash": "fcc42b7",
-            "date": "2026-02-18 19:06:12 +0700",
             "author": "Admin Sancaka",
             "message": "Auto Bump Version"
         }
