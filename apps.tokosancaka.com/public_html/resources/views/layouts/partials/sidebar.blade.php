@@ -172,6 +172,7 @@
 
         {{-- [BARU] MENU ANALISA HPP --}}
         {{-- HPP biasanya rahasia dapur, jadi batasi ke Admin & Super Admin saja --}}
+
         @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
             <a wire:navigate.hover href="{{ route('hpp.index', $params) }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
