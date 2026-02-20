@@ -3,6 +3,8 @@
 @section('title', 'Dashboard')
 
 @section('content')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <div class="flex justify-between items-center mb-6">
     <h1 class="text-2xl font-bold text-gray-800">
         @if(auth()->user()->isSuperadmin())
@@ -40,13 +42,42 @@
         </div>
     </div>
 
-    <div class="card bg-white shadow-md border border-green-200">
-        <div class="card-body flex items-center justify-between">
-            <div>
-                <h5 class="text-gray-500 text-sm font-semibold uppercase tracking-wider">Pendapatan (Hari Ini)</h5>
-                <p class="text-3xl font-bold mt-2 text-green-600">Rp {{ isset($data['total_pendapatan']) ? number_format($data['total_pendapatan'], 0, ',', '.') : 0 }}</p>
+    <div class="card bg-white shadow-md border border-green-200 relative overflow-hidden">
+        <div class="card-body">
+            <h5 class="text-gray-500 text-sm font-semibold uppercase tracking-wider mb-1">Pendapatan Bulan Ini</h5>
+            <p class="text-3xl font-bold text-green-600 mb-2">Rp {{ number_format($data['perbandingan']['bulan_ini'], 0, ',', '.') }}</p>
+
+            <div class="text-xs font-bold flex items-center gap-1">
+                @if($data['perbandingan']['trend'] == 'naik')
+                    <span class="text-green-600 bg-green-100 px-2 py-0.5 rounded-full">&uarr; Naik {{ $data['perbandingan']['persentase'] }}%</span>
+                @elseif($data['perbandingan']['trend'] == 'turun')
+                    <span class="text-red-600 bg-red-100 px-2 py-0.5 rounded-full">&darr; Turun {{ $data['perbandingan']['persentase'] }}%</span>
+                @else
+                    <span class="text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">Stabil</span>
+                @endif
+                <span class="text-gray-400 font-medium">dari bulan lalu</span>
             </div>
-            <div class="text-4xl">💰</div>
+            <div class="absolute right-4 top-1/2 -translate-y-1/2 text-5xl opacity-10">💰</div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-b-2 border-gray-100">
+            <span class="font-bold text-gray-800 text-sm">Grafik Pendapatan (7 Hari Terakhir)</span>
+        </div>
+        <div class="card-body">
+            <canvas id="chartHarian" height="250"></canvas>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-b-2 border-gray-100">
+            <span class="font-bold text-gray-800 text-sm">Grafik Pendapatan (6 Bulan Terakhir)</span>
+        </div>
+        <div class="card-body">
+            <canvas id="chartBulanan" height="250"></canvas>
         </div>
     </div>
 </div>
@@ -109,4 +140,68 @@
         </table>
     </div>
 </div>
+
+@if(auth()->user()->isSuperadmin() || auth()->user()->isAdmin())
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Konfigurasi Umum Chart
+        Chart.defaults.font.family = "'Inter', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
+        Chart.defaults.color = '#6b7280';
+
+        // Data dari Controller
+        const rawChartData = @json($chartData);
+
+        // Render Grafik Harian
+        const ctxHarian = document.getElementById('chartHarian').getContext('2d');
+        new Chart(ctxHarian, {
+            type: 'line',
+            data: {
+                labels: rawChartData.harian.labels,
+                datasets: [{
+                    label: 'Pendapatan (Rp)',
+                    data: rawChartData.harian.data,
+                    borderColor: '#2563eb', // blue-600
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#2563eb',
+                    fill: true,
+                    tension: 0.3 // Membuat garis sedikit melengkung
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { callback: function(value) { return 'Rp ' + value.toLocaleString('id-ID'); } } }
+                }
+            }
+        });
+
+        // Render Grafik Bulanan
+        const ctxBulanan = document.getElementById('chartBulanan').getContext('2d');
+        new Chart(ctxBulanan, {
+            type: 'bar',
+            data: {
+                labels: rawChartData.bulanan.labels,
+                datasets: [{
+                    label: 'Pendapatan (Rp)',
+                    data: rawChartData.bulanan.data,
+                    backgroundColor: '#2563eb', // blue-600
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { callback: function(value) { return 'Rp ' + value.toLocaleString('id-ID'); } } }
+                }
+            }
+        });
+    });
+</script>
+@endif
+
 @endsection
