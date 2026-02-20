@@ -21,29 +21,24 @@ class TransactionController extends Controller
 
     public function store(Request $request)
     {
-        // 1. Validasi Keamanan Hak Akses
-        // Cegah akun Super Admin utama (yang tidak memiliki tenant_id) melakukan input operasional
-        if (auth()->user()->tenant_id === null) {
-            return redirect()->back()->with('error', 'Akses Ditolak: Akun Super Admin tidak dapat melakukan input transaksi parkir. Transaksi hanya bisa dilakukan dari subdomain cabang (Tenant).');
-        }
-
-        // 2. Validasi Form
+        // Validasi Form
         $request->validate([
             'vehicle_type' => 'required|in:motor,mobil',
             'plate_number' => 'required|string|max:20',
         ]);
 
-        // 3. Simpan Data dengan tenant_id yang dipanggil secara eksplisit
+        // Simpan Data
+        // Untuk Super Admin, auth()->user()->tenant_id otomatis akan bernilai NULL
         Transaction::create([
-            'tenant_id'    => auth()->user()->tenant_id, // Solusi untuk Error 1364
+            'tenant_id'    => auth()->user()->tenant_id,
             'operator_id'  => auth()->id(),
             'vehicle_type' => $request->vehicle_type,
             'plate_number' => strtoupper($request->plate_number),
-            'entry_time'   => Carbon::now(),
+            'entry_time'   => \Carbon\Carbon::now(),
             'status'       => 'masuk',
         ]);
 
-        return redirect()->route('transactions.index')->with('success', 'Kendaraan masuk berhasil dicatat.');
+        return redirect()->route('transactions.index')->with('success', 'Kendaraan masuk berhasil dicatat oleh Super Admin!');
     }
 
     // Fungsi untuk proses kendaraan keluar (Checkout)
