@@ -113,4 +113,14 @@
         </div>
     @endif
 </div>
+
+@if(session('print_id'))
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Buka popup karcis print
+        let printWindow = window.open("{{ route('transactions.print', session('print_id')) }}", "PrintKarcis", "width=400,height=600");
+    });
+</script>
+@endif
+
 @endsection

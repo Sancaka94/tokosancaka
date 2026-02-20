@@ -19,17 +19,14 @@ class TransactionController extends Controller
         return view('transactions.index', compact('transactions'));
     }
 
-    public function store(Request $request)
+   public function store(Request $request)
     {
-        // Validasi Form
         $request->validate([
             'vehicle_type' => 'required|in:motor,mobil',
             'plate_number' => 'required|string|max:20',
         ]);
 
-        // Simpan Data
-        // Untuk Super Admin, auth()->user()->tenant_id otomatis akan bernilai NULL
-        Transaction::create([
+        $transaction = Transaction::create([
             'tenant_id'    => auth()->user()->tenant_id,
             'operator_id'  => auth()->id(),
             'vehicle_type' => $request->vehicle_type,
@@ -38,7 +35,22 @@ class TransactionController extends Controller
             'status'       => 'masuk',
         ]);
 
-        return redirect()->route('transactions.index')->with('success', 'Kendaraan masuk berhasil dicatat oleh Super Admin!');
+        // PERUBAHAN: Tambahkan 'print_id' ke dalam session agar terdeteksi oleh Blade
+        return redirect()->route('transactions.index')->with([
+            'success' => 'Kendaraan masuk berhasil dicatat.',
+            'print_id' => $transaction->id
+        ]);
+    }
+
+    // TAMBAHKAN FUNGSI INI DI BAWAH FUNGSI STORE
+    public function print($id)
+    {
+        $transaction = Transaction::with('operator')->findOrFail($id);
+
+        // Ambil data cabang/perusahaan jika ada, jika tidak pakai nama default
+        $tenant = auth()->user()->tenant;
+
+        return view('transactions.print', compact('transaction', 'tenant'));
     }
 
     // Fungsi untuk proses kendaraan keluar (Checkout)
