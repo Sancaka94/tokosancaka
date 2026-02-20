@@ -23,23 +23,23 @@
 @if(in_array(auth()->user()->role, ['superadmin', 'admin']))
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
 
-    <div class="card bg-blue-600 text-white shadow-md border-0">
+    <div class="card bg-white shadow-md border border-gray-200">
         <div class="card-body flex items-center justify-between">
             <div>
-                <h5 class="text-blue-100 text-sm font-semibold uppercase tracking-wider">Motor Masuk (Hari Ini)</h5>
-                <p class="text-3xl font-bold mt-2">{{ $data['motor_masuk'] ?? 0 }} <span class="text-sm font-normal">Unit</span></p>
+                <h5 class="text-gray-500 text-sm font-semibold uppercase tracking-wider">Motor Masuk (Hari Ini)</h5>
+                <p class="text-3xl font-bold mt-2 text-gray-800">{{ $data['motor_masuk'] ?? 0 }} <span class="text-sm font-normal text-gray-500">Unit</span></p>
             </div>
-            <div class="text-4xl opacity-50">🏍️</div>
+            <div class="text-4xl">🏍️</div>
         </div>
     </div>
 
-    <div class="card bg-blue-600 text-white shadow-md border-0">
+    <div class="card bg-white shadow-md border border-gray-200">
         <div class="card-body flex items-center justify-between">
             <div>
-                <h5 class="text-blue-100 text-sm font-semibold uppercase tracking-wider">Mobil Masuk (Hari Ini)</h5>
-                <p class="text-3xl font-bold mt-2">{{ $data['mobil_masuk'] ?? 0 }} <span class="text-sm font-normal">Unit</span></p>
+                <h5 class="text-gray-500 text-sm font-semibold uppercase tracking-wider">Mobil Masuk (Hari Ini)</h5>
+                <p class="text-3xl font-bold mt-2 text-gray-800">{{ $data['mobil_masuk'] ?? 0 }} <span class="text-sm font-normal text-gray-500">Unit</span></p>
             </div>
-            <div class="text-4xl opacity-50">🚗</div>
+            <div class="text-4xl">🚗</div>
         </div>
     </div>
 
