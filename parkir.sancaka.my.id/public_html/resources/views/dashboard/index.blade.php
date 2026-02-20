@@ -61,7 +61,7 @@
         <button class="text-sm text-blue-600 hover:underline">Lihat Semua</button>
     </div>
     <div class="card-body p-0 overflow-x-auto">
-        <table class="table-custom">
+        <table class="table-custom min-w-full">
             <thead>
                 <tr>
                     <th>Plat Nomor</th>
@@ -71,18 +71,29 @@
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td class="font-bold">AE 1234 XX</td>
-                    <td>Motor</td>
-                    <td>10:30 WIB</td>
-                    <td><span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-bold">Masuk (Parkir)</span></td>
+                {{-- Gunakan Forelse untuk me-looping data dari Controller --}}
+                @forelse($recent_transactions as $trx)
+                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td class="font-bold">{{ $trx->plate_number }}</td>
+                    <td class="capitalize">{{ $trx->vehicle_type }}</td>
+
+                    {{-- Cek entry_time agar tidak error jika kosong --}}
+                    <td>{{ $trx->entry_time ? \Carbon\Carbon::parse($trx->entry_time)->translatedFormat('H:i') . ' WIB' : '-' }}</td>
+
+                    {{-- Warna badge dinamis berdasarkan status --}}
+                    <td>
+                        @if(strtolower($trx->status) == 'masuk')
+                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-bold shadow-sm">Masuk (Parkir)</span>
+                        @else
+                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold shadow-sm">Selesai</span>
+                        @endif
+                    </td>
                 </tr>
+                @empty
                 <tr>
-                    <td class="font-bold">B 9999 AB</td>
-                    <td>Mobil</td>
-                    <td>09:15 WIB</td>
-                    <td><span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold">Selesai</span></td>
+                    <td colspan="4" class="text-center py-6 text-gray-500 italic">Belum ada aktivitas transaksi terbaru hari ini.</td>
                 </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
