@@ -1,6 +1,6 @@
 <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
     <div class="flex items-center gap-3">
-        <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Logo Perusahaan" class="h-8 w-8">
+        <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" alt="Logo Perusahaan" class="h-8 w-8">
         <span class="font-bold text-blue-600 text-xl tracking-tight">sancakaPARKIR</span>
 
         @if(auth()->user()->tenant)

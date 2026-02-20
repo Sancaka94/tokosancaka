@@ -1,6 +1,6 @@
 <aside class="w-64 bg-blue-600 text-white flex flex-col shadow-lg flex-shrink-0 transition-all duration-300" id="sidebar">
     <div class="h-16 flex items-center justify-center border-b border-blue-500 px-4 gap-2">
-        <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Logo" class="h-8 w-8 bg-white rounded-full p-1">
+        <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" alt="Logo" class="h-8 w-8 bg-white rounded-full p-1">
         <div class="flex flex-col">
             <span class="text-lg font-bold leading-tight tracking-wide">
                 @if(auth()->user()->role == 'superadmin')
