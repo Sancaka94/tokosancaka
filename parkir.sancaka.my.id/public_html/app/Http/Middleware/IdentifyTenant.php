@@ -4,31 +4,44 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Models\Tenant;
 
 class IdentifyTenant
 {
     public function handle(Request $request, Closure $next)
     {
-        $host = $request->getHost(); // misal: cabang1.parkir.sancaka.my.id
+        $host = $request->getHost(); // Menangkap parkir.sancaka.my.id, toko1.sancaka.my.id, dll
+
         $parts = explode('.', $host);
-        
-        // Asumsi base domain adalah parkir.sancaka.my.id (3 bagian)
-        if (count($parts) > 3) {
-            $subdomain = $parts[0]; // mendapatkan 'cabang1'
-            
+        $subdomain = strtolower($parts[0]); // Ambil kata paling depan dan pastikan huruf kecil
+
+        // 1. Buat daftar Subdomain Utama milik Anda di sini (Tambahkan jika ada yang baru)
+        $mainWebsites = [
+            'parkir',
+            'bisnis',
+            'panduan',
+            'percetakan',
+            'www'
+        ];
+
+        // 2. Cek apakah yang diakses adalah web utama Anda atau root domain (sancaka.my.id)
+        if (in_array($subdomain, $mainWebsites) || count($parts) <= 2) {
+
+            // Ini adalah Web Utama Anda (Akses Superadmin / Landing Page)
+            app()->instance('tenant_id', null);
+
+        } else {
+
+            // 3. Jika bukan web utama, baru cari di database sebagai Tenant (contoh: toko1)
             $tenant = Tenant::where('subdomain', $subdomain)->first();
-            
+
             if ($tenant) {
-                // Set tenant_id secara global di container atau config
+                // Tenant ditemukan, set ID-nya untuk memfilter data
                 app()->instance('tenant_id', $tenant->id);
             } else {
-                abort(404, 'Tenant tidak ditemukan.');
+                // Tenant tidak ada di database, lempar error 404
+                abort(404, 'Halaman Tenant tidak ditemukan.');
             }
-        } else {
-            // Main domain (untuk Superadmin)
-            app()->instance('tenant_id', null);
         }
 
         return $next($request);
