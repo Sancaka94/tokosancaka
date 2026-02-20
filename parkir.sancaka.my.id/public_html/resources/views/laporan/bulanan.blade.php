@@ -52,7 +52,7 @@
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td class="font-bold">{{ $trx->plate_number }}</td>
                     <td class="capitalize">{{ $trx->vehicle_type }}</td>
-                    <td>{{ $trx->exit_time->translatedFormat('d M Y (H:i)') }}</td>
+                    <td>{{ $trx->exit_time ? $trx->exit_time->translatedFormat('d M Y (H:i)') : 'Belum Keluar' }}</td>
                     <td class="text-right font-medium">Rp {{ number_format($trx->fee, 0, ',', '.') }}</td>
                 </tr>
                 @empty

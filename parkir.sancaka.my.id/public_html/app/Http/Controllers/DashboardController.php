@@ -87,11 +87,19 @@ class DashboardController extends Controller
     {
         $bulan = $request->bulan ?? date('m');
         $tahun = $request->tahun ?? date('Y');
+
         $transactions = Transaction::whereMonth('entry_time', $bulan)
                                    ->whereYear('entry_time', $tahun)
                                    ->latest()
                                    ->paginate(50);
-        return view('laporan.bulanan', compact('transactions', 'bulan', 'tahun'));
+
+        // Tambahkan baris ini untuk menghitung total pendapatan bulanan
+        $total = Transaction::whereMonth('entry_time', $bulan)
+                            ->whereYear('entry_time', $tahun)
+                            ->sum('fee');
+
+        // Pastikan $total dimasukkan ke dalam compact()
+        return view('laporan.bulanan', compact('transactions', 'bulan', 'tahun', 'total'));
     }
 
     public function triwulan()
