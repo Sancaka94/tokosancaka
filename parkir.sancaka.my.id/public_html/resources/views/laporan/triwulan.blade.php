@@ -70,7 +70,7 @@
                         <span class="text-xs text-gray-500 font-normal">TRX-{{ str_pad($trx->id, 5, '0', STR_PAD_LEFT) }}</span>
                     </td>
                     <td class="capitalize">{{ $trx->vehicle_type }}</td>
-                    <td>{{ $trx->exit_time->translatedFormat('d M Y (H:i)') }} WIB</td>
+                    <td>{{ $trx->exit_time ? $trx->exit_time->translatedFormat('d M Y (H:i)') : 'Belum Keluar' }}</td>
                     <td>{{ $trx->operator->name ?? 'Sistem' }}</td>
                     <td class="text-right font-medium">Rp {{ number_format($trx->fee, 0, ',', '.') }}</td>
                 </tr>

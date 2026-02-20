@@ -102,9 +102,30 @@ class DashboardController extends Controller
         return view('laporan.bulanan', compact('transactions', 'bulan', 'tahun', 'total'));
     }
 
-    public function triwulan()
+   public function triwulan(Request $request)
     {
-        // Logika laporan 3 bulan
-        return view('laporan.triwulan');
+        // 1. Ambil input dari user, default ke kuartal 1 & tahun saat ini
+        $kuartal = $request->kuartal ?? 1;
+        $tahun = $request->tahun ?? date('Y');
+
+        // 2. Tentukan bulan mulai dan akhir berdasarkan kuartal
+        $startMonth = ($kuartal - 1) * 3 + 1; // Contoh Q2 = (2-1)*3+1 = 4 (April)
+        $endMonth = $startMonth + 2;         // Contoh Q2 = 4+2 = 6 (Juni)
+
+        // 3. Ambil data transaksi dengan paginasi
+        $transactions = Transaction::whereMonth('entry_time', '>=', $startMonth)
+                                   ->whereMonth('entry_time', '<=', $endMonth)
+                                   ->whereYear('entry_time', $tahun)
+                                   ->latest()
+                                   ->paginate(50); // Anda bisa sesuaikan angkanya
+
+        // 4. Hitung total pendapatan untuk kuartal tersebut
+        $total = Transaction::whereMonth('entry_time', '>=', $startMonth)
+                            ->whereMonth('entry_time', '<=', $endMonth)
+                            ->whereYear('entry_time', $tahun)
+                            ->sum('fee');
+
+        // 5. Kirim data ke view
+        return view('laporan.triwulan', compact('transactions', 'kuartal', 'tahun', 'total'));
     }
 }
