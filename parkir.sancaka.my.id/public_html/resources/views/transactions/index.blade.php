@@ -27,7 +27,7 @@
             </div>
             <div class="w-full md:w-1/3">
                 <button type="submit" class="btn-primary w-full py-2.5 text-lg shadow-md font-bold flex justify-center items-center gap-2">
-                    <span>Masuk</span> &rarr;
+                    <span>Masuk & Cetak Karcis</span> &rarr;
                 </button>
             </div>
         </form>
@@ -38,14 +38,28 @@
 </div>
 
 <div class="card shadow-sm border-0">
-    <div class="card-header bg-white border-b-2 border-blue-600">
-        <span class="font-bold text-gray-800 uppercase tracking-wide text-sm">Data Kendaraan Parkir & Riwayat</span>
+    <div class="card-header bg-white border-b-2 border-blue-600 flex flex-col md:flex-row justify-between items-center gap-4">
+        <span class="font-bold text-gray-800 uppercase tracking-wide text-sm whitespace-nowrap">Data & Riwayat Parkir</span>
+
+        <form action="{{ route('transactions.index') }}" method="GET" class="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+            <input type="text" name="keyword" value="{{ request('keyword') }}" class="form-control text-sm py-1.5" placeholder="Cari Plat / No Karcis">
+            <input type="date" name="tanggal" value="{{ request('tanggal') }}" class="form-control text-sm py-1.5">
+            <button type="submit" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-1.5 rounded text-sm font-bold transition-colors shadow-sm whitespace-nowrap">
+                Cari
+            </button>
+            @if(request('keyword') || request('tanggal'))
+                <a href="{{ route('transactions.index') }}" class="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded text-sm font-bold transition-colors flex items-center justify-center">
+                    Reset
+                </a>
+            @endif
+        </form>
     </div>
+
     <div class="card-body p-0 overflow-x-auto">
         <table class="table-custom min-w-full">
             <thead class="bg-gray-100">
                 <tr>
-                    <th class="text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Plat Nomor</th>
+                    <th class="text-left text-xs font-bold text-gray-600 uppercase tracking-wider">No. Parkir / Plat</th>
                     <th class="text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Jenis</th>
                     <th class="text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Waktu Masuk</th>
                     <th class="text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Tarif / Status</th>
@@ -55,11 +69,14 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($transactions as $trx)
                     <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="font-black text-xl text-gray-800 tracking-widest">{{ $trx->plate_number }}</td>
+                        <td>
+                            <div class="text-xs text-gray-500 font-bold mb-1">TRX-{{ str_pad($trx->id, 5, '0', STR_PAD_LEFT) }}</div>
+                            <div class="font-black text-xl text-gray-800 tracking-widest">{{ $trx->plate_number }}</div>
+                        </td>
                         <td class="capitalize text-gray-600 font-medium">{{ $trx->vehicle_type }}</td>
                         <td class="text-gray-600">
                             {{ $trx->entry_time->translatedFormat('d M Y') }} <br>
-                            <span class="font-bold text-blue-600">{{ $trx->entry_time->translatedFormat('H:i WIB') }}</span>
+                            <span class="font-bold text-blue-600">{{ $trx->entry_time->translatedFormat('H:i') }} WIB</span>
                         </td>
                         <td>
                             @if($trx->status == 'masuk')
@@ -69,7 +86,7 @@
                                 </span>
                             @else
                                 <span class="font-black text-green-600 text-lg">Rp {{ number_format($trx->fee, 0, ',', '.') }}</span>
-                                <br><span class="text-xs text-gray-500 font-bold">Keluar: {{ $trx->exit_time->translatedFormat('H:i') }}</span>
+                                <br><span class="text-xs text-gray-500 font-bold">Keluar: {{ $trx->exit_time->translatedFormat('H:i') }} WIB</span>
                             @endif
                         </td>
                         <td class="text-center whitespace-nowrap">
@@ -99,7 +116,7 @@
                 @empty
                     <tr>
                         <td colspan="5" class="px-6 py-10 text-center text-gray-500 italic">
-                            Belum ada data transaksi kendaraan hari ini. Silakan input kendaraan masuk di atas.
+                            Data transaksi kendaraan tidak ditemukan.
                         </td>
                     </tr>
                 @endforelse
@@ -117,7 +134,6 @@
 @if(session('print_id'))
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // Buka popup karcis print
         let printWindow = window.open("{{ route('transactions.print', session('print_id')) }}", "PrintKarcis", "width=400,height=600");
     });
 </script>

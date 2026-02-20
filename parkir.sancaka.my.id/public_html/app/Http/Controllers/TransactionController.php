@@ -8,13 +8,27 @@ use Carbon\Carbon;
 
 class TransactionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Tampilkan semua transaksi, prioritaskan yang sedang parkir (masuk) di atas, sisanya di bawah
-        $transactions = Transaction::with('operator')
-            ->orderBy('status', 'asc')
-            ->latest()
-            ->paginate(15);
+        // Mulai query dasar
+        $query = Transaction::with('operator')->orderBy('status', 'asc')->latest();
+
+        // 1. Filter Pencarian berdasarkan Plat Nomor atau ID Transaksi (No. Parkir)
+        if ($request->filled('keyword')) {
+            $keyword = $request->keyword;
+            $query->where(function($q) use ($keyword) {
+                $q->where('plate_number', 'like', "%{$keyword}%")
+                  ->orWhere('id', $keyword); // Jika di karcis tertera TRX-00003, cukup ketik angka 3
+            });
+        }
+
+        // 2. Filter Pencarian berdasarkan Tanggal
+        if ($request->filled('tanggal')) {
+            $query->whereDate('entry_time', $request->tanggal);
+        }
+
+        // Eksekusi query dengan pagination, dan bawa parameter pencarian ke halaman selanjutnya (withQueryString)
+        $transactions = $query->paginate(15)->withQueryString();
 
         return view('transactions.index', compact('transactions'));
     }
