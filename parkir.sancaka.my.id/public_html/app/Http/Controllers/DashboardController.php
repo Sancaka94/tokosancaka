@@ -72,8 +72,15 @@ class DashboardController extends Controller
     public function harian(Request $request)
     {
         $tanggal = $request->tanggal ?? today()->toDateString();
+
+        // Menarik data transaksi dengan paginasi (sudah ada di kode Anda)
         $transactions = Transaction::whereDate('entry_time', $tanggal)->latest()->paginate(20);
-        return view('laporan.harian', compact('transactions', 'tanggal'));
+
+        // TAMBAHKAN BARIS INI: Menghitung total pendapatan keseluruhan pada tanggal tersebut
+        $total = Transaction::whereDate('entry_time', $tanggal)->sum('fee');
+
+        // PERBARUI BARIS INI: Tambahkan 'total' ke dalam compact()
+        return view('laporan.harian', compact('transactions', 'tanggal', 'total'));
     }
 
     public function bulanan(Request $request)
