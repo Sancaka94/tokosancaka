@@ -76,7 +76,7 @@ class TransactionController extends Controller
         }
 
         // Tarif dasar (Bisa dikembangkan dengan mengambil dari tabel settings nantinya)
-        $tarifMotor = 2000;
+        $tarifMotor = 3000;
         $tarifMobil = 5000;
 
         $waktuKeluar = Carbon::now();
