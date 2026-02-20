@@ -29,17 +29,6 @@
                 </a>
             </li>
 
-            @if(auth()->user()->role != 'operator')
-                <div class="px-4 py-2 mt-4 text-xs font-bold text-blue-300 uppercase tracking-wider opacity-75">
-                    Master Data
-                </div>
-
-                <a href="{{ route('employees.index') }}" class="flex items-center gap-3 px-4 py-3 text-white hover:bg-blue-700 transition-colors {{ request()->routeIs('employees.*') ? 'bg-blue-800 border-l-4 border-white font-bold' : '' }}">
-                    <span class="text-lg">👥</span>
-                    <span>Manajemen Pegawai</span>
-                </a>
-            @endif
-
             @if(in_array(auth()->user()->role, ['superadmin', 'admin']))
                 <li class="px-4 py-2 mt-4 text-xs font-semibold text-blue-200 uppercase tracking-wider">Master Data</li>
                 <li>
