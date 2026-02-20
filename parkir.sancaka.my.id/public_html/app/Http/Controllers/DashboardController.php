@@ -12,10 +12,19 @@ class DashboardController extends Controller
         $user = auth()->user();
 
         // 1. Statistik Hari Ini
+        // 1. Statistik Hari Ini
         $data = [
-            'motor_masuk' => \App\Models\Transaction::where('vehicle_type', 'motor')->where('status', 'masuk')->count(),
-            'mobil_masuk' => \App\Models\Transaction::where('vehicle_type', 'mobil')->where('status', 'masuk')->count(),
-            'total_pendapatan' => \App\Models\Transaction::whereDate('exit_time', today())->sum('fee') ?? 0,
+            // Ubah where('status', 'masuk') menjadi whereDate('entry_time', today())
+            'motor_masuk' => \App\Models\Transaction::where('vehicle_type', 'motor')
+                                                    ->whereDate('entry_time', today())
+                                                    ->count(),
+
+            'mobil_masuk' => \App\Models\Transaction::where('vehicle_type', 'mobil')
+                                                    ->whereDate('entry_time', today())
+                                                    ->count(),
+
+            'total_pendapatan' => \App\Models\Transaction::whereDate('exit_time', today())
+                                                         ->sum('fee') ?? 0,
         ];
 
         // 2. Perbandingan Pendapatan Bulan Ini vs Bulan Lalu
