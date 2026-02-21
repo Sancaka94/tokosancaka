@@ -123,6 +123,8 @@
         </div>
 
         {{-- Saldo DANA --}}
+        {{-- Saldo DANA (Dibatasi hanya untuk Super Admin di subdomain apps & admin) --}}
+        @if(Auth::check() && Auth::user()->role === 'super_admin' && in_array(explode('.', request()->getHost())[0], ['apps', 'admin']))
         <div class="bg-gradient-to-br from-blue-600 to-blue-700 rounded-[2rem] p-6 shadow-xl shadow-blue-100 relative overflow-hidden group active:scale-95 transition-all">
             <div class="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4">
                 <i class="fas fa-vault text-[100px]"></i>
@@ -147,6 +149,7 @@
                 <p class="text-[9px] font-bold text-blue-200 mt-3 italic">*Data Terkini API</p>
             </div>
         </div>
+        @endif
 
 
         {{-- Pelanggan --}}
