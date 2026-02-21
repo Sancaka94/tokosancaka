@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role'   => \App\Http\Middleware\CheckRole::class,
             'check.status' => \App\Http\Middleware\CheckTenantStatus::class,
             'check.subscription' => \App\Http\Middleware\CheckSubscription::class,
+            'license.check' => \App\Http\Middleware\CheckTenantLicense::class,
         ]);
 
         // Cara yang benar untuk menambahkan banyak middleware sekaligus
