@@ -180,6 +180,22 @@
             </a>
         @endif
 
+        {{-- ========================================== --}}
+        {{-- PASTE KODE MENU LISENSI DI SINI --}}
+        {{-- ========================================== --}}
+        {{-- MENU LISENSI (KHUSUS SUPERADMIN) --}}
+        @if(in_array(Auth::user()->role, ['super_admin']))
+            <a wire:navigate.hover href="{{ route('superadmin.license.show', $params) }}"
+               class="flex items-center rounded-xl text-sm font-medium transition-all duration-200
+               {{ request()->routeIs('superadmin.license.*')
+                 ? 'bg-purple-50 text-purple-600 border border-purple-100'
+                 : 'text-slate-600 hover:bg-slate-50 hover:text-purple-600' }}"
+               :class="isExpanded ? 'px-3 py-2.5 gap-3 justify-start' : 'p-2.5 justify-center'">
+                <i class="fas fa-key w-5 text-center flex-shrink-0 {{ request()->routeIs('superadmin.license.*') ? 'text-purple-600' : 'text-slate-400' }}"></i>
+                <span x-show="isExpanded" style="display: none;" x-transition class="whitespace-nowrap">Manajemen Lisensi</span>
+            </a>
+        @endif
+
         {{-- PRODUK --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin', 'staff', 'operator']))
             <a wire:navigate.hover href="{{ route('products.index', $params) }}"
