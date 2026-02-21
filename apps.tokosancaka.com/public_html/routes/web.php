@@ -167,7 +167,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', EnforceLicenseLimits::class])
+    ->middleware(['auth', 'license.check']) // <--- Tambahkan di sini (pastikan diletakkan setelah 'auth')
     ->name('dashboard');
 
 // Halaman Admin (Posting Produk)
