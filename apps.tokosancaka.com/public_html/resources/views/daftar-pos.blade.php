@@ -458,7 +458,19 @@
 
                 <h3 class="text-2xl font-bold text-gray-800 mb-6">Formulir Pendaftaran</h3>
 
-                <form action="{{ route('daftar.pos.store') }}" method="POST">
+                <form action="{{ route('daftar.pos.store') }}" method="POST"
+      x-data="{
+          password: '',
+          confirmPassword: '',
+          get reqLength() { return this.password.length >= 8; },
+          get reqNumber() { return /[0-9]/.test(this.password); },
+          get reqLower() { return /[a-z]/.test(this.password); },
+          get reqUpper() { return /[A-Z]/.test(this.password); },
+          get reqSymbol() { return /[^A-Za-z0-9]/.test(this.password); },
+          get isFormValid() {
+              return this.reqLength && this.reqNumber && this.reqLower && this.reqUpper && this.reqSymbol && (this.password === this.confirmPassword) && this.password.length > 0;
+          }
+      }">
                     @csrf
                     <input type="hidden" name="package" :value="selectedPlan">
 
@@ -490,13 +502,61 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-                        <div>
+                        <div x-data="{ show: false }">
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Password</label>
-                            <input type="password" id="pass_m" name="password" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                            <div class="relative flex items-center">
+                                <input x-model="password" :type="show ? 'text' : 'password'" id="pass_m" name="password" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none pr-10">
+                                <button type="button" @click="show = !show" class="absolute right-3 text-gray-400 hover:text-gray-600 focus:outline-none">
+                                    <i data-lucide="eye" x-show="!show" class="w-5 h-5"></i>
+                                    <i data-lucide="eye-off" x-show="show" class="w-5 h-5" style="display: none;"></i>
+                                </button>
+                            </div>
+
+                            <ul class="mt-3 space-y-1.5 text-xs font-semibold">
+                                <li :class="reqLength ? 'text-green-500' : 'text-red-500'" class="flex items-center gap-2 transition-colors duration-300">
+                                    <i data-lucide="check-circle" x-show="reqLength" class="w-4 h-4"></i>
+                                    <i data-lucide="x-circle" x-show="!reqLength" class="w-4 h-4"></i>
+                                    Minimal 8 Karakter
+                                </li>
+                                <li :class="reqNumber ? 'text-green-500' : 'text-red-500'" class="flex items-center gap-2 transition-colors duration-300">
+                                    <i data-lucide="check-circle" x-show="reqNumber" class="w-4 h-4"></i>
+                                    <i data-lucide="x-circle" x-show="!reqNumber" class="w-4 h-4"></i>
+                                    Terdapat Angka
+                                </li>
+                                <li :class="reqLower ? 'text-green-500' : 'text-red-500'" class="flex items-center gap-2 transition-colors duration-300">
+                                    <i data-lucide="check-circle" x-show="reqLower" class="w-4 h-4"></i>
+                                    <i data-lucide="x-circle" x-show="!reqLower" class="w-4 h-4"></i>
+                                    Terdapat Huruf Kecil
+                                </li>
+                                <li :class="reqUpper ? 'text-green-500' : 'text-red-500'" class="flex items-center gap-2 transition-colors duration-300">
+                                    <i data-lucide="check-circle" x-show="reqUpper" class="w-4 h-4"></i>
+                                    <i data-lucide="x-circle" x-show="!reqUpper" class="w-4 h-4"></i>
+                                    Terdapat Huruf Besar
+                                </li>
+                                <li :class="reqSymbol ? 'text-green-500' : 'text-red-500'" class="flex items-center gap-2 transition-colors duration-300">
+                                    <i data-lucide="check-circle" x-show="reqSymbol" class="w-4 h-4"></i>
+                                    <i data-lucide="x-circle" x-show="!reqSymbol" class="w-4 h-4"></i>
+                                    Karakter atau Simbol
+                                </li>
+                            </ul>
                         </div>
-                        <div>
+
+                        <div x-data="{ showConfirm: false }">
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Ulangi Password</label>
-                            <input type="password" id="pass_c_m" name="password_confirmation" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                            <div class="relative flex items-center">
+                                <input x-model="confirmPassword" :type="showConfirm ? 'text' : 'password'" id="pass_c_m" name="password_confirmation" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none pr-10">
+                                <button type="button" @click="showConfirm = !showConfirm" class="absolute right-3 text-gray-400 hover:text-gray-600 focus:outline-none">
+                                    <i data-lucide="eye" x-show="!showConfirm" class="w-5 h-5"></i>
+                                    <i data-lucide="eye-off" x-show="showConfirm" class="w-5 h-5" style="display: none;"></i>
+                                </button>
+                            </div>
+
+                            <p x-show="confirmPassword.length > 0 && password !== confirmPassword" class="mt-2 text-xs text-red-500 font-semibold flex items-center gap-1 transition-opacity">
+                                <i data-lucide="alert-circle" class="w-4 h-4"></i> Password tidak cocok!
+                            </p>
+                            <p x-show="confirmPassword.length > 0 && password === confirmPassword" class="mt-2 text-xs text-green-500 font-semibold flex items-center gap-1 transition-opacity">
+                                <i data-lucide="check-circle" class="w-4 h-4"></i> Password cocok
+                            </p>
                         </div>
                     </div>
 
@@ -506,7 +566,10 @@
                             <p class="text-xl font-black text-blue-400 uppercase" x-text="selectedPlan"></p>
                             <p class="text-xs text-gray-400" x-text="price"></p>
                         </div>
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg transition">
+                        <button type="submit"
+                                :disabled="!isFormValid"
+                                :class="isFormValid ? 'bg-blue-600 hover:bg-blue-500 cursor-pointer shadow-lg' : 'bg-gray-600 text-gray-400 cursor-not-allowed'"
+                                class="px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300">
                             DAFTAR SEKARANG
                         </button>
                     </div>
