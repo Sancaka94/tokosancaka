@@ -39,7 +39,6 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 text-sm">
-                    {{-- Asumsi Anda mengirim variabel $licenses dari Controller --}}
                     @forelse ($licenses ?? [] as $index => $license)
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 text-gray-500">
@@ -47,7 +46,7 @@
                             </td>
                             <td class="px-6 py-4">
                                 <span class="font-mono font-bold text-gray-800 tracking-wider bg-gray-100 px-2 py-1 rounded">
-                                    {{ $license->code }}
+                                    {{ $license->license_code }}
                                 </span>
                             </td>
                             <td class="px-6 py-4">
@@ -68,7 +67,7 @@
                                 {{ \Carbon\Carbon::parse($license->created_at)->format('d M Y, H:i') }}
                             </td>
                             <td class="px-6 py-4 text-center">
-                                <button onclick="copyToClipboard('{{ $license->code }}')" class="text-blue-500 hover:text-blue-700 text-xs font-medium focus:outline-none" title="Copy Kode">
+                                <button onclick="copyToClipboard('{{ $license->license_code }}')" class="text-blue-500 hover:text-blue-700 text-xs font-medium focus:outline-none" title="Copy Kode">
                                     <i class="far fa-copy fa-lg"></i>
                                 </button>
 
