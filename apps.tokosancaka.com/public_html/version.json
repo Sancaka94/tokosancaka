@@ -1,7 +1,19 @@
 {
-    "version": "1.0.0.1015",
-    "last_update": "22 Feb 2026 06:01",
+    "version": "1.0.0.1017",
+    "last_update": "22 Feb 2026 06:02",
     "commits": [
+        {
+            "hash": "58bd52a0",
+            "date": "2026-02-22 06:02:06 +0700",
+            "author": "Admin Sancaka",
+            "message": "Update System"
+        },
+        {
+            "hash": "34d2fe0b",
+            "date": "2026-02-22 06:01:01 +0700",
+            "author": "Admin Sancaka",
+            "message": "Auto Bump Version"
+        },
         {
             "hash": "c766fdd2",
             "date": "2026-02-22 06:00:56 +0700",
@@ -109,18 +121,6 @@
             "date": "2026-02-22 05:27:18 +0700",
             "author": "Server Bot",
             "message": "Resolve merge conflict in version.json"
-        },
-        {
-            "hash": "64fb994a",
-            "date": "2026-02-22 05:22:17 +0700",
-            "author": "Server Bot",
-            "message": "Auto Bump Version"
-        },
-        {
-            "hash": "b61f7f21",
-            "date": "2026-02-22 05:22:17 +0700",
-            "author": "Server Bot",
-            "message": "Update System"
         }
     ]
 }
