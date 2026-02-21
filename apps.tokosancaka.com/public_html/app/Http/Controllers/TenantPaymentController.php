@@ -33,31 +33,29 @@ class TenantPaymentController extends Controller
     private const CENTRAL_CALLBACK_URL = 'https://apps.tokosancaka.com/dana/callback';
 
     public function generateUrl(Request $request)
-    {
-        $request->validate([
-            'amount' => 'required|numeric|min:10000',
-            'payment_method' => 'nullable|in:DOKU,DANA'
-        ]);
+{
+    $request->validate([
+        'amount' => 'required|numeric|min:10000',
+        'payment_method' => 'nullable|in:DOKU,DANA',
+        'target_subdomain' => 'required' // Tambahkan validasi ini
+    ]);
 
-        $user = Auth::user();
+    // Cari user berdasarkan subdomain yang dikirim dari form redeem
+    $user = \App\Models\User::where('username', $request->target_subdomain)->first();
 
-        if (!$user) {
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-            }
-            return redirect()->route('login')->with('error', 'Sesi habis.');
-        }
-
-        $tenantId = $user->tenant_id ?? 1;
-        $method = $request->payment_method ?? 'DOKU';
-
-        if ($method === 'DANA') {
-            // Panggil fungsi SDK baru
-            return $this->processDanaPayment($request, $user, $tenantId);
-        } else {
-            return $this->processDokuPayment($request, $user, $tenantId);
-        }
+    if (!$user) {
+        return redirect()->back()->with('error', 'Data Toko tidak ditemukan. Silakan login kembali.');
     }
+
+    $tenantId = $user->tenant_id ?? 1;
+    $method = $request->payment_method ?? 'DOKU';
+
+    if ($method === 'DANA') {
+        return $this->processDanaPayment($request, $user, $tenantId);
+    } else {
+        return $this->processDokuPayment($request, $user, $tenantId);
+    }
+}
 
     public function startBinding(Request $request)
     {
