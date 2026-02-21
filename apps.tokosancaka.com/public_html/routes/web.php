@@ -163,12 +163,13 @@ Route::get('/dana/test-inquiry', [App\Http\Controllers\DanaDashboardController::
 
 */
 
-Route::middleware(['auth'])->group(function () {
-});
+Route::domain('{subdomain}.tokosancaka.com')
+    ->middleware(['web', 'auth', 'license.check']) // <--- Pastikan license.check ada di sini!
+    ->group(function () {
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'license.check']) // <--- Tambahkan di sini (pastikan diletakkan setelah 'auth')
     ->name('dashboard');
+});
 
 // Halaman Admin (Posting Produk)
 Route::post('/products/store', [ProductController::class, 'store'])->name('products.store');
