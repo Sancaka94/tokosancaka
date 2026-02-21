@@ -65,7 +65,7 @@
         </a>
 
         {{-- STATUS LANGGANAN --}}
-        @if(in_array(Auth::user()->role, ['super_admin']))
+        @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
             {{-- Pastikan route ini ada, jika tidak, arahkan ke dashboard --}}
             @if(Route::has('tenant.dashboard'))
             <a wire:navigate.hover href="{{ route('tenant.dashboard', $params) }}"
