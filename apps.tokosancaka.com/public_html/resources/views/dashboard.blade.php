@@ -160,7 +160,7 @@
                 @if(Auth::user()->dana_access_token)
                     <div class="flex justify-between items-start mb-4">
                         <div class="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center p-2 shadow-lg shadow-blue-100">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png" class="w-full h-full object-contain" alt="DANA">
+                            <img src="https://tokosancaka.com/storage/logo/dana.png" class="w-full h-full object-contain" alt="DANA">
                         </div>
                         <a href="{{ route('tenant.dana.sync') }}" class="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all group/sync" title="Sinkronkan Saldo">
                             <i class="fas fa-sync-alt group-hover/sync:rotate-180 transition-transform duration-700"></i>
