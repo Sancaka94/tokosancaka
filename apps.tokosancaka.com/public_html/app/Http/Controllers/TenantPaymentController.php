@@ -34,22 +34,40 @@ class TenantPaymentController extends Controller
 
     public function generateUrl(Request $request)
 {
-    Log::info('Mencoba mencari user untuk subdomain: ' . $request->target_subdomain);
-
     $request->validate([
-        'amount' => 'required|numeric|min:10000',
-        'target_subdomain' => 'required'
+        'amount' => 'required|numeric',
+        'target_subdomain' => 'required',
+        'package_type' => 'required' // bulanan, yearly, dll
     ]);
 
-    // Query ke database
-    $user = \App\Models\User::where('name', $request->target_subdomain)->first();
+    $tenant = DB::table('tenants')->where('subdomain', $request->target_subdomain)->first();
+    if (!$tenant) return back()->with('error', 'Toko tidak ditemukan.');
 
-    if (!$user) {
-        Log::error('User tidak ditemukan untuk subdomain: ' . $request->target_subdomain);
-        return redirect()->back()->with('error', 'Toko dengan nama ' . $request->target_subdomain . ' tidak ditemukan.');
-    }
+    $user = \App\Models\User::where('tenant_id', $tenant->id)->first();
+    if (!$user) return back()->with('error', 'Admin toko tidak ditemukan.');
 
-    return $this->processDokuPayment($request, $user, $user->tenant_id ?? 1);
+    // Simpan referensi paket yang dibeli ke tabel topup/transaksi
+    $referenceNo = 'LISC-' . strtoupper($request->package_type) . '-' . time();
+
+    // Simpan ke PosTopUp dengan label paket di field tertentu (misal: payment_method)
+    PosTopUp::create([
+        'tenant_id' => $tenant->id,
+        'affiliate_id' => $user->id,
+        'reference_no' => $referenceNo,
+        'amount' => $request->amount,
+        'total_amount' => $request->amount,
+        'status' => 'PENDING',
+        'payment_method' => 'DOKU_' . strtoupper($request->package_type), // Contoh: DOKU_YEARLY
+    ]);
+
+    $dokuService = new \App\Services\DokuJokulService();
+    $paymentUrl = $dokuService->createPayment($referenceNo, $request->amount, [
+        'name' => $user->name,
+        'email' => $user->email,
+        'phone' => $user->phone ?? '085745808809'
+    ]);
+
+    return redirect()->away($paymentUrl);
 }
 
     public function startBinding(Request $request)
