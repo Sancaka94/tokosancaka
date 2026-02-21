@@ -41,7 +41,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('superadmin.license.redeem') }}" method="POST">
+            <form action="{{ route('public.license.process') }}" method="POST">
                 @csrf
 
                 <div class="mb-6">
