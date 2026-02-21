@@ -22,6 +22,8 @@ class License extends Model
         'status',
         'used_at',
         'expires_at',
+        'status',
+        'used_by_tenant_id'
     ];
 
     protected $casts = [
