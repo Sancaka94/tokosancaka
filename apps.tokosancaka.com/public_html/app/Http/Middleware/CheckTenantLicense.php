@@ -40,11 +40,11 @@ class CheckTenantLicense
                                        ->exists();
 
             // Jika tenant tidak punya lisensi aktif
+            // Jika tenant tidak punya lisensi aktif
             if (!$hasActiveLicense) {
-                // Hancurkan session (opsional) atau langsung arahkan ke form redeem di admin
-                // Kita gunakan URL absolut karena kita melempar mereka lintas subdomain
-                return redirect()->to('https://admin.tokosancaka.com/superadmin/license/redeem?subdomain=' . $subdomain)
-                                 ->with('error', 'Akses Ditolak: Toko/Tenant Anda belum memiliki lisensi yang aktif. Silakan redeem kode lisensi terlebih dahulu.');
+                // Arahkan ke halaman publik di apps.tokosancaka.com
+                return redirect()->to('https://apps.tokosancaka.com/redeem-lisensi?subdomain=' . $subdomain)
+                                 ->with('error', 'Akses Ditolak: Toko/Tenant Anda belum memiliki lisensi yang aktif. Silakan masukkan kode lisensi di sini.');
             }
         }
 
