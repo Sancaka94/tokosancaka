@@ -46,7 +46,6 @@
                         </div>
 
                         {{-- Info Saldo --}}
-                        {{-- Info Saldo --}}
                         <div class="flex flex-col">
                             <div class="flex items-center justify-between gap-2">
                                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">SALDO DANA</span>

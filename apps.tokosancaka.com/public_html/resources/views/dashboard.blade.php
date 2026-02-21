@@ -151,6 +151,48 @@
         </div>
         @endif
 
+        {{-- Saldo DANA (Khusus Admin & Finance/Keuangan) --}}
+        @if(Auth::check() && in_array(Auth::user()->role, ['admin', 'finance', 'keuangan']))
+        <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-2xl hover:shadow-slate-200 transition-all duration-500">
+            <div class="relative z-10 flex flex-col h-full">
+
+                {{-- JIKA SUDAH CONNECT DANA --}}
+                @if(Auth::user()->dana_access_token)
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center p-2 shadow-lg shadow-blue-100">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png" class="w-full h-full object-contain" alt="DANA">
+                        </div>
+                        <a href="{{ route('tenant.dana.sync') }}" class="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all group/sync" title="Sinkronkan Saldo">
+                            <i class="fas fa-sync-alt group-hover/sync:rotate-180 transition-transform duration-700"></i>
+                        </a>
+                    </div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-[0.1em] mb-1">Saldo DANA</p>
+                    <h3 class="text-2xl font-black text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                        <span class="text-sm font-bold text-slate-500">Rp</span> {{ number_format(Auth::user()->dana_balance ?? 0, 0, ',', '.') }}
+                    </h3>
+                    <div class="flex items-center gap-1.5 mt-4 text-[10px] font-black text-blue-600 bg-blue-50 w-fit px-2.5 py-1 rounded-full uppercase">
+                        <i class="fas fa-check-circle"></i> Terhubung
+                    </div>
+
+                {{-- JIKA BELUM CONNECT DANA --}}
+                @else
+                    <div class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 mb-4 shadow-inner text-xl">
+                        <i class="fas fa-wallet text-slate-300"></i>
+                    </div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-[0.1em] mb-1">Saldo DANA</p>
+                    <h3 class="text-lg font-black text-slate-400 mb-4">
+                        Belum Terhubung
+                    </h3>
+                    <a href="{{ route('tenant.dana.start') }}" class="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-slate-100 hover:bg-blue-600 text-slate-500 hover:text-white text-xs font-bold rounded-xl transition-all shadow-sm mt-auto group/link">
+                        <img src="https://tokosancaka.com/storage/logo/dana.png" class="h-3 w-auto grayscale opacity-60 group-hover/link:grayscale-0 group-hover/link:opacity-100 group-hover/link:brightness-0 group-hover/link:invert transition-all">
+                        <span>Hubungkan</span>
+                    </a>
+                @endif
+
+            </div>
+        </div>
+        @endif
+
 
         {{-- Pelanggan --}}
         <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-500">
