@@ -74,14 +74,17 @@
                         <input type="hidden" name="amount" value="150000">
                         <input type="hidden" name="payment_method" value="DOKU">
 
+                        {{-- Perbaikan: Pastikan mengambil 'subdomain' dari query string URL --}}
+                        <input type="hidden" name="target_subdomain" value="{{ request()->query('subdomain') }}">
+
                         <button type="submit" class="w-full flex items-center justify-between p-4 border-2 border-slate-100 rounded-2xl hover:border-red-500 hover:bg-red-50/30 transition-all group">
                             <div class="flex items-center gap-3">
-                                <div class="w-12 h-12 bg-white border border-slate-100 rounded-xl flex items-center justify-center shadow-sm group-hover:border-red-200">
+                                <div class="w-12 h-12 bg-white border border-slate-100 rounded-xl flex items-center justify-center shadow-sm">
                                     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/DOKU_Logo.png/800px-DOKU_Logo.png" class="h-4 object-contain" alt="DOKU">
                                 </div>
                                 <div class="text-left">
-                                    <p class="text-sm font-bold text-slate-800 group-hover:text-red-600">Bayar via DOKU</p>
-                                    <p class="text-[10px] text-slate-400 tracking-tight">Virtual Account, QRIS, & Retail Store</p>
+                                    <p class="text-sm font-bold text-slate-800">Bayar via DOKU</p>
+                                    <p class="text-[10px] text-slate-400 font-medium">Virtual Account, QRIS, & Retail Store</p>
                                 </div>
                             </div>
                             <i class="fas fa-chevron-right text-slate-300 group-hover:text-red-500 transition-colors"></i>

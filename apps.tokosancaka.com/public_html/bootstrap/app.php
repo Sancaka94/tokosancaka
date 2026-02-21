@@ -71,6 +71,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'register',
             '*/login',
             '*/logout',
+            '/payment/generate', // Tambahkan ini
         ]);
 
     })

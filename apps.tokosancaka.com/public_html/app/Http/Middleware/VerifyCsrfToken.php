@@ -12,6 +12,7 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
+        '/payment/generate', // Tambahkan ini
         // Matikan CSRF untuk Login & Logout
         'login',
         'logout',
