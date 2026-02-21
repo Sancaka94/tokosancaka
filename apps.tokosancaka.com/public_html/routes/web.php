@@ -167,7 +167,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth'])
+    ->middleware(['auth', EnforceLicenseLimits::class])
     ->name('dashboard');
 
 // Halaman Admin (Posting Produk)
@@ -400,7 +400,9 @@ require __DIR__.'/auth.php';
 |
 */
 
-Route::middleware(['auth'])->prefix('customers')->name('customers.')->group(function () {
+// Route::middleware(['auth'])->prefix('customers')->name('customers.')->group(function () {
+
+Route::middleware(['auth', EnforceLicenseLimits::class])->prefix('customers')->name('customers.')->group(function () {
 
     // -----------------------------------------------------------
     // 1. ROUTE KHUSUS (AJAX / API INTERNAL)
