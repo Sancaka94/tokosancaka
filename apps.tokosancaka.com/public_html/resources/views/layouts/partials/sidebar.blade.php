@@ -1,7 +1,7 @@
 <aside
     x-cloak
     :class="[sidebarOpen ? 'translate-x-0' : '-translate-x-full', isExpanded ? 'w-64' : 'w-20']"
-    class="fixed inset-y-0 left-0 z-50 bg-blue-500 border-r border-slate-200 transition-all duration-300 transform lg:relative lg:translate-x-0 shadow-sm flex flex-col h-full">
+    class="fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200 transition-all duration-300 transform lg:relative lg:translate-x-0 shadow-sm flex flex-col h-full">
     {{-- TOMBOL TOGGLE BUKA/TUTUP --}}
     <button @click="isExpanded = !isExpanded" type="button"
         class="absolute -right-3 top-7 w-6 h-6 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-blue-600 shadow-sm z-50 transition-transform">
