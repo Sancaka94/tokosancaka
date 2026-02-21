@@ -711,14 +711,16 @@ Route::domain('admin.tokosancaka.com')->group(function () {
 
 });
 
-// Contoh untuk subdomain apps.tokosancaka.com (jika halamannya sama)
+// Pastikan blok ini ada di web.php
 Route::domain('apps.tokosancaka.com')->group(function () {
 
-    Route::get('/superadmin/license/redeem', function () {
-        return view('superadmin.license.redeem');
-    })->name('apps.license.show');
+    // Halaman Form
+    Route::get('/redeem-lisensi', [\App\Http\Controllers\LicenseController::class, 'showRedeemForm'])
+        ->name('public.license.show');
 
-    Route::post('/superadmin/license/redeem', [LicenseController::class, 'redeem'])->name('apps.license.redeem');
+    // Proses Submit Form
+    Route::post('/redeem-lisensi', [\App\Http\Controllers\LicenseController::class, 'processRedeem'])
+        ->name('public.license.process'); // <--- Nama ini harus persis sama dengan yang di Blade
 
 });
 
