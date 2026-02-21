@@ -70,4 +70,15 @@ class Tenant extends Model
         if (!$this->expired_at) return 0;
         return now()->diffInDays($this->expired_at, false);
     }
+
+    // Tambahkan di dalam class Tenant
+    public function licenses()
+    {
+        return $this->hasMany(License::class);
+    }
+
+    public function devices()
+    {
+        return $this->hasMany(TenantDevice::class);
+    }
 }

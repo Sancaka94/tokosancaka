@@ -54,13 +54,22 @@ use App\Http\Controllers\DanaGatewayController;
 use App\Http\Controllers\HppController;
 use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\CashflowContactController;
+use App\Http\Controllers\LicenseController;
+use App\Http\Middleware\EnforceLicenseLimits;
 
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
-// Pastikan kamu meng-import class DanaService kamu, sesuaikan namespace-nya jika berbeda
 use App\Services\DanaSignatureService;
+
+// -------------------------------------------------------------
+// RUTE KHUSUS LISENSI (Bisa diakses meski lisensi expired/limit device penuh)
+// -------------------------------------------------------------
+Route::middleware(['auth'])->group(function () {
+    Route::get('/lisensi/redeem', [LicenseController::class, 'showRedeemForm'])->name('license.redeem.form');
+    Route::post('/lisensi/redeem', [LicenseController::class, 'redeem'])->name('license.redeem');
+});
 
     // Route Invoice (Publik)
     // Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->name('invoice.show');

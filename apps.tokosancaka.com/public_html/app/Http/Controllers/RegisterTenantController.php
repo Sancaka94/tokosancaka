@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\License; // [TAMBAHAN: Import Model License]
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
+use Illuminate\Support\Str; // [TAMBAHAN: Import Str untuk generate kode]
 use App\Services\DokuJokulService;
 
 class RegisterTenantController extends Controller
@@ -86,6 +88,21 @@ class RegisterTenantController extends Controller
                 'permissions' => ['dashboard', 'pos', 'products', 'reports', 'settings', 'finance'],
             ]);
 
+            // [TAMBAHAN: Buat Lisensi Pertama Jika Trial]
+            if ($request->package == 'trial') {
+                License::create([
+                    'license_code'  => 'TRIAL-' . strtoupper(Str::random(8)),
+                    'tenant_id'     => $tenant->id,
+                    'package_type'  => '1_device_1_ip',
+                    'max_devices'   => 1,
+                    'max_ips'       => 1,
+                    'duration_days' => $days,
+                    'status'        => 'used',
+                    'used_at'       => $now,
+                    'expires_at'    => $expiredAt,
+                ]);
+            }
+
             DB::commit(); // Commit database dulu sebelum kirim WA/API agar ID sudah terbentuk
 
             // 6. NOTIFIKASI WA UNTUK ADMIN (SERVER)
@@ -160,7 +177,30 @@ class RegisterTenantController extends Controller
                 $tenant = Tenant::where('subdomain', $subdomain)->first();
 
                 if ($tenant && $tenant->status !== 'active') {
-                    $tenant->update(['status' => 'active']);
+                    
+                    // [TAMBAHAN: Kalkulasi expired berdasarkan paket untuk Lisensi Baru]
+                    $now = Carbon::now('Asia/Jakarta');
+                    $days = ($tenant->package == 'yearly') ? 365 : 30;
+                    $newExpiredAt = $now->copy()->addDays($days);
+                    
+                    $tenant->update([
+                        'status' => 'active',
+                        'expired_at' => $newExpiredAt // [TAMBAHAN: Update masa aktif tenant]
+                    ]);
+
+                    // [TAMBAHAN: Generate Lisensi Aktif setelah bayar lunas]
+                    // Anda bisa menyesuaikan jumlah device/ip sesuai produk DOKU nanti
+                    License::create([
+                        'license_code'  => 'PRO-' . strtoupper(Str::random(10)),
+                        'tenant_id'     => $tenant->id,
+                        'package_type'  => '1_device_1_ip', // Default
+                        'max_devices'   => 1,
+                        'max_ips'       => 1,
+                        'duration_days' => $days,
+                        'status'        => 'used',
+                        'used_at'       => $now,
+                        'expires_at'    => $newExpiredAt,
+                    ]);
 
                     $userPhone = $this->_normalizeWa($tenant->whatsapp);
 
