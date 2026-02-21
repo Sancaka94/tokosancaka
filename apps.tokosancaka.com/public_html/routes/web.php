@@ -737,3 +737,16 @@ Route::prefix('superadmin')->group(function () {
     Route::post('/license/redeem', [LicenseController::class, 'processRedeem'])->name('superadmin.license.process');
 
 });
+
+// Pastikan berada di dalam group middleware auth karena controller Anda membutuhkan Auth::user()
+Route::middleware(['auth'])->group(function () {
+
+    // Route untuk generate URL Pembayaran (DOKU/DANA)
+    Route::post('/payment/generate', [TenantPaymentController::class, 'generateUrl'])
+        ->name('tenant.payment.generate');
+
+    // Route untuk cek status pembayaran
+    Route::get('/payment/check-status', [TenantPaymentController::class, 'checkStatus'])
+        ->name('tenant.payment.check');
+
+});
