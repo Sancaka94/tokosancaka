@@ -79,6 +79,7 @@
             @endif
         @endif
 
+
         {{-- AREA TRANSAKSI --}}
         @if(in_array(Auth::user()->role, ['super_admin', 'admin', 'staff', 'operator']))
             <div class="pt-5 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
