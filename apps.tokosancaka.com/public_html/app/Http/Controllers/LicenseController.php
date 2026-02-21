@@ -3,69 +3,98 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\License;
-use App\Models\TenantDevice;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
+use illuminate\Support\Facades\DB;
+use App\Http\Middleware\EnforceLicenseLimits; // Pastikan middleware ini sudah dibuat
+use Illuminate\Support\Facades\Log; // Untuk logging
+use Illuminate\Support\Str;
+use App\Models\License; // Pastikan nanti kita buat Model ini
+use App\Models\Tenant; // Model Tenant untuk relasi jika diperlukan
+use App\Models\User; // Model User untuk relasi jika diperlukan
 
 class LicenseController extends Controller
 {
-    // Menampilkan halaman input form lisensi
-    public function showRedeemForm()
+    /**
+     * Menampilkan halaman daftar lisensi untuk superadmin
+     */
+    public function index()
     {
-        // Pastikan Anda membuat file view ini nanti: resources/views/tenant/redeem-license.blade.php
-        return view('tenant.redeem-license'); 
+        // Mengambil data lisensi dari database, urutkan dari yang terbaru
+        $licenses = License::latest()->paginate(10);
+
+        return view('superadmin.license.index', compact('licenses'));
     }
 
-    // Memproses kode lisensi yang dimasukkan user
-    public function redeem(Request $request)
+    /**
+     * Memproses generate kode lisensi baru dengan format XXXX-XXXX-XXXX-XXXX
+     */
+    public function generate()
     {
+        // Membuat string acak kapital 4 blok
+        $code = strtoupper(Str::random(4)) . '-' .
+                strtoupper(Str::random(4)) . '-' .
+                strtoupper(Str::random(4)) . '-' .
+                strtoupper(Str::random(4));
+
+        // Simpan ke database
+        License::create([
+            'code' => $code,
+            'status' => 'available',
+        ]);
+
+        return redirect()->back()->with('success', 'Kode lisensi baru berhasil di-generate!');
+    }
+
+    /**
+     * Menghapus lisensi yang tidak diperlukan
+     */
+    public function destroy($id)
+    {
+        $license = License::findOrFail($id);
+        $license->delete();
+
+        return redirect()->back()->with('success', 'Kode lisensi berhasil dihapus.');
+    }
+
+    /**
+     * Menampilkan halaman form redeem
+     */
+    public function showRedeemForm()
+    {
+        return view('superadmin.license.redeem');
+    }
+
+    /**
+     * Memproses form redeem saat disubmit
+     */
+    public function processRedeem(Request $request)
+    {
+        // 1. Validasi input form
         $request->validate([
             'license_code' => 'required|string'
         ]);
 
-        $tenant = auth()->user()->tenant;
+        // 2. Cari kode di database
+        $license = License::where('code', $request->license_code)->first();
 
-        if (!$tenant) {
-            return back()->with('error', 'Data Tenant tidak ditemukan.');
-        }
-
-        // Cari lisensi yang statusnya masih 'available'
-        $license = License::where('license_code', $request->license_code)
-                          ->where('status', 'available')
-                          ->first();
-
+        // 3. Pengecekan jika kode tidak ada
         if (!$license) {
-            return back()->with('error', 'Kode lisensi tidak valid atau sudah pernah digunakan.');
+            return redirect()->back()->with('error', 'Kode lisensi tidak valid atau tidak ditemukan.');
         }
 
-        // 1. Update status lisensi menjadi 'used'
-        $now = Carbon::now('Asia/Jakarta');
-        $expiresAt = $now->copy()->addDays($license->duration_days);
+        // 4. Pengecekan jika kode sudah dipakai
+        if ($license->status !== 'available') {
+            return redirect()->back()->with('error', 'Kode lisensi ini sudah pernah digunakan.');
+        }
 
+        // 5. Jika sukses, ubah status menjadi terpakai
+        // Nanti Anda bisa sesuaikan 'used_by_tenant_id' dengan ID tenant/user yang sedang login
         $license->update([
-            'tenant_id' => $tenant->id,
             'status' => 'used',
-            'used_at' => $now,
-            'expires_at' => $expiresAt,
+            'used_by_tenant_id' => auth()->user()->id, // <-- Hilangkan comment ini nanti jika relasi tabel sudah siap
         ]);
 
-        // 2. Update masa aktif di tabel Tenant utama
-        $tenant->update([
-            'status' => 'active',
-            'expired_at' => $expiresAt,
-            // Opsional: Anda bisa update paket tenant di sini jika ganti paket
-            'package' => $license->package_type == '3_device_3_ip' ? 'premium' : 'standard', 
-        ]);
+        return redirect()->back()->with('success', 'Lisensi berhasil di-redeem dan fitur telah diaktifkan!');
 
-        // 3. PENTING: Hapus history device/IP lama
-        // Karena user beli lisensi baru, kita "reset" device-nya agar dia bisa login
-        // menggunakan IP/Device baru sesuai kuota lisensi yang baru.
-        TenantDevice::where('tenant_id', $tenant->id)->delete();
-
-        Log::info("LOG LOG: Tenant {$tenant->name} berhasil redeem lisensi {$license->license_code}. Device direset.");
-
-        // Redirect ke dashboard POS
-        return redirect()->route('dashboard')->with('success', 'Lisensi berhasil diperbarui! Silakan gunakan aplikasi.');
+        // LOG LOG - Safe block
     }
 }
