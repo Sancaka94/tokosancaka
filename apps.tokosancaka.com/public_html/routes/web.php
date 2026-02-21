@@ -312,7 +312,7 @@ Route::get('/cara', function () {
 // --- 1. GET ROUTES (Halaman & Data Spesifik) ---
 // [PENTING] Route spesifik WAJIB diletakkan di atas route {id}
 
-
+Route::middleware(['auth', EnforceLicenseLimits::class])->group(function () {
 
 // Halaman POS (Create)
 Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
@@ -352,6 +352,8 @@ Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show'
 
 Route::resource('orders', OrderController::class);
 
+
+});
 
 
 Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
@@ -474,7 +476,9 @@ Route::post('/products/{id}/variants', [App\Http\Controllers\ProductController::
 
 // ----------------------------------- LAPORAN KEUANGAN --------------------------------------//
 
-Route::prefix('finance')->name('finance.')->middleware(['auth'])->group(function () {
+// Route::prefix('finance')->name('finance.')->middleware(['auth'])->group(function () {
+
+Route::prefix('finance')->name('finance.')->middleware(['auth', EnforceLicenseLimits::class])->group(function () {
 
     // 1. Halaman Utama (Jurnal, Filter, Export Jurnal)
     Route::get('/', [FinanceController::class, 'index'])->name('index');
@@ -513,7 +517,9 @@ Route::middleware(['web', 'auth', 'tenant'])->group(function () {
 
 // --- GRUP 2: ZONA TERKUNCI (Ada Middleware 'tenant') ---
 // Route di sini WAJIB status ACTIVE. Kalau inactive, akan ditendang ke GRUP 1.
-Route::middleware(['web', 'auth'])->group(function () {
+// Route::middleware(['web', 'auth'])->group(function () {
+
+Route::middleware(['web', 'auth', EnforceLicenseLimits::class])->group(function () {
 
     // 1. AREA UMUM (Semua user login bisa akses)
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
