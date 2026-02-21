@@ -66,9 +66,7 @@
     </style>
     @stack('styles')
 </head>
-
-{{-- PERBAIKAN 1: Tambahkan isExpanded: false di sini agar dikenali seluruh halaman --}}
-<body class="antialiased text-slate-700" x-data="{ sidebarOpen: false, isExpanded: false }">
+<body class="antialiased text-slate-700" x-data="{ sidebarOpen: false }">
 
     {{-- [LOGIC PENYELAMAT] Cek Expired --}}
     @if(Auth::check() && optional(Auth::user()->tenant)->expired_at && now()->gt(Auth::user()->tenant->expired_at))
@@ -85,9 +83,7 @@
         {{-- Sidebar Include --}}
         @include('layouts.partials.sidebar')
 
-        {{-- PERBAIKAN 2: Tambahkan transisi margin dinamis di pembungkus konten ini --}}
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative transition-all duration-300"
-             :class="sidebarOpen ? (isExpanded ? 'ml-64 lg:ml-0' : 'ml-20 lg:ml-0') : 'ml-0'">
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
 
             {{-- [LIVEWIRE LOADING INDICATOR] Bar biru di atas saat pindah halaman --}}
             <div wire:loading.delay class="fixed top-0 left-0 w-full h-1 bg-blue-500 z-[9999] shadow-[0_0_10px_#3b82f6]"></div>
@@ -123,9 +119,11 @@
 
     {{-- Bottom Navigation (Hanya untuk Mobile) --}}
     @include('layouts.partials.bottom-nav')
-
     {{-- [LIVEWIRE SCRIPTS] Wajib ada sebelum tutup Body --}}
     @livewireScripts
+
+    {{-- Alpine.js (Jika Livewire v3, Alpine sudah include otomatis. Jika v2, perlu manual) --}}
+    {{-- Karena Anda pakai Livewire v4.1 (modern), kita hapus load manual Alpine agar tidak bentrok --}}
 
     @stack('scripts')
 
