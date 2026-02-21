@@ -34,27 +34,22 @@ class TenantPaymentController extends Controller
 
     public function generateUrl(Request $request)
 {
+    Log::info('Mencoba mencari user untuk subdomain: ' . $request->target_subdomain);
+
     $request->validate([
         'amount' => 'required|numeric|min:10000',
-        'payment_method' => 'nullable|in:DOKU,DANA',
-        'target_subdomain' => 'required' // Tambahkan validasi ini
+        'target_subdomain' => 'required'
     ]);
 
-    // Cari user berdasarkan subdomain yang dikirim dari form redeem
-    $user = \App\Models\User::where('username', $request->target_subdomain)->first();
+    // Query ke database
+    $user = \App\Models\User::where('name', $request->target_subdomain)->first();
 
     if (!$user) {
-        return redirect()->back()->with('error', 'Data Toko tidak ditemukan. Silakan login kembali.');
+        Log::error('User tidak ditemukan untuk subdomain: ' . $request->target_subdomain);
+        return redirect()->back()->with('error', 'Toko dengan nama ' . $request->target_subdomain . ' tidak ditemukan.');
     }
 
-    $tenantId = $user->tenant_id ?? 1;
-    $method = $request->payment_method ?? 'DOKU';
-
-    if ($method === 'DANA') {
-        return $this->processDanaPayment($request, $user, $tenantId);
-    } else {
-        return $this->processDokuPayment($request, $user, $tenantId);
-    }
+    return $this->processDokuPayment($request, $user, $user->tenant_id ?? 1);
 }
 
     public function startBinding(Request $request)
