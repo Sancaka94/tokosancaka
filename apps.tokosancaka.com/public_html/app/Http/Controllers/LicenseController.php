@@ -37,8 +37,13 @@ class LicenseController extends Controller
 
         // Simpan ke database
         License::create([
-            'code' => $code,
-            'status' => 'available',
+             'license_code' => $code, // <--- UBAH 'code' MENJADI 'license_code'
+             'tenant_id' => null, // <--- Bisa diisi jika ingin langsung kaitkan dengan tenant tertentu
+             'package_type' => 'basic', // <--- Contoh, bisa disesuaikan dengan paket yang Anda miliki
+             'max_devices' => 5, // <--- Contoh, batas maksimal perangkat yang bisa menggunakan lisensi ini
+             'max_ips' => 10, // <--- Contoh, batas maksimal IP yang bisa menggunakan lisensi ini
+             'duration_days' => 30, // <--- Contoh, masa aktif lisensi dalam hari
+             'status' => 'available',
         ]);
 
         return redirect()->back()->with('success', 'Kode lisensi baru berhasil di-generate!');
