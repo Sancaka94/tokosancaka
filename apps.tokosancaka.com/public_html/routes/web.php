@@ -695,3 +695,28 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::delete('/contacts/{id}', [CashflowContactController::class, 'destroy'])->name('contacts.destroy');
 
 });
+
+
+// Contoh untuk subdomain admin.tokosancaka.com
+Route::domain('admin.tokosancaka.com')->group(function () {
+
+    // Route untuk menampilkan halaman form redeem
+    Route::get('/superadmin/license/redeem', function () {
+        return view('superadmin.license.redeem');
+    })->name('superadmin.license.show');
+
+    // Route untuk memproses form saat tombol ditekan (POST)
+    Route::post('/superadmin/license/redeem', [LicenseController::class, 'redeem'])->name('superadmin.license.redeem');
+
+});
+
+// Contoh untuk subdomain apps.tokosancaka.com (jika halamannya sama)
+Route::domain('apps.tokosancaka.com')->group(function () {
+
+    Route::get('/superadmin/license/redeem', function () {
+        return view('superadmin.license.redeem');
+    })->name('apps.license.show');
+
+    Route::post('/superadmin/license/redeem', [LicenseController::class, 'redeem'])->name('apps.license.redeem');
+
+});
