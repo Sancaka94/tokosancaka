@@ -738,12 +738,12 @@ Route::prefix('superadmin')->group(function () {
 
 });
 
-// Pastikan berada di dalam group middleware auth karena controller Anda membutuhkan Auth::user()
-Route::middleware(['auth'])->group(function () {
-
-    // Route untuk generate URL Pembayaran (DOKU/DANA)
+   // Route untuk generate URL Pembayaran (DOKU/DANA)
     Route::post('/payment/generate', [TenantPaymentController::class, 'generateUrl'])
         ->name('tenant.payment.generate');
+
+// Pastikan berada di dalam group middleware auth karena controller Anda membutuhkan Auth::user()
+Route::middleware(['auth'])->group(function () {
 
     // Route untuk cek status pembayaran
     Route::get('/payment/check-status', [TenantPaymentController::class, 'checkStatus'])
