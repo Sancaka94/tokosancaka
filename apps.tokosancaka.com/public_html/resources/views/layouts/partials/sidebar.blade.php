@@ -180,20 +180,35 @@
             </a>
         @endif
 
-        {{-- ========================================== --}}
-        {{-- PASTE KODE MENU LISENSI DI SINI --}}
-        {{-- ========================================== --}}
-        {{-- MENU LISENSI (KHUSUS SUPERADMIN) --}}
+        {{-- MENU LISENSI (BARU - DROPDOWN KHUSUS SUPERADMIN) --}}
         @if(in_array(Auth::user()->role, ['super_admin']))
-            <a wire:navigate.hover href="{{ route('superadmin.license.show', $params) }}"
-               class="flex items-center rounded-xl text-sm font-medium transition-all duration-200
-               {{ request()->routeIs('superadmin.license.*')
-                 ? 'bg-purple-50 text-purple-600 border border-purple-100'
-                 : 'text-slate-600 hover:bg-slate-50 hover:text-purple-600' }}"
-               :class="isExpanded ? 'px-3 py-2.5 gap-3 justify-start' : 'p-2.5 justify-center'">
-                <i class="fas fa-key w-5 text-center flex-shrink-0 {{ request()->routeIs('superadmin.license.*') ? 'text-purple-600' : 'text-slate-400' }}"></i>
-                <span x-show="isExpanded" style="display: none;" x-transition class="whitespace-nowrap">Manajemen Lisensi</span>
-            </a>
+            <div x-data="{ open: {{ request()->routeIs('superadmin.license.*') ? 'true' : 'false' }} }">
+                <button @click="if(!isExpanded) { isExpanded = true; open = true; } else { open = !open; }" type="button"
+                    class="w-full flex items-center transition-all duration-200 rounded-xl text-sm font-semibold
+                    {{ request()->routeIs('superadmin.license.*') ? 'bg-purple-50 text-purple-600' : 'text-slate-600 hover:bg-slate-50 hover:text-purple-600' }}"
+                    :class="isExpanded ? 'justify-between px-3 py-2.5 gap-3' : 'justify-center p-2.5'">
+                    <div class="flex items-center" :class="isExpanded ? 'gap-3' : ''">
+                        <div class="w-8 h-8 flex-shrink-0 rounded-lg {{ request()->routeIs('superadmin.license.*') ? 'bg-purple-600 text-white shadow-md shadow-purple-100' : 'bg-slate-100 text-slate-400' }} flex items-center justify-center transition-all">
+                            <i class="fas fa-key text-xs"></i>
+                        </div>
+                        <span x-show="isExpanded" style="display: none;" x-transition class="whitespace-nowrap">Manajemen Lisensi</span>
+                    </div>
+                    <i x-show="isExpanded" style="display: none;" class="fas fa-chevron-down text-[10px] transition-transform duration-300 flex-shrink-0" :class="open ? 'rotate-180' : ''"></i>
+                </button>
+
+                <div x-show="isExpanded && open" style="display: none;" x-collapse class="mt-1 ml-7 border-l-2 border-slate-100 space-y-1">
+                    <a wire:navigate.hover href="{{ route('superadmin.license.index', $params) }}"
+                       class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
+                       {{ request()->routeIs('superadmin.license.index') ? 'text-purple-600 bg-purple-50/50 border-l-2 border-purple-600 -ml-[2px]' : 'text-slate-500 hover:text-purple-600 hover:bg-slate-50' }}">
+                        Daftar Lisensi
+                    </a>
+                    <a wire:navigate.hover href="{{ route('superadmin.license.redeem', $params) }}"
+                       class="block pl-6 pr-3 py-2 text-xs font-medium rounded-r-xl transition-all
+                       {{ request()->routeIs('superadmin.license.redeem') ? 'text-purple-600 bg-purple-50/50 border-l-2 border-purple-600 -ml-[2px]' : 'text-slate-500 hover:text-purple-600 hover:bg-slate-50' }}">
+                        Redeem Kode
+                    </a>
+                </div>
+            </div>
         @endif
 
         {{-- PRODUK --}}

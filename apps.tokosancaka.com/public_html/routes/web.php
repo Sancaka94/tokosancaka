@@ -720,3 +720,7 @@ Route::domain('apps.tokosancaka.com')->group(function () {
     Route::post('/superadmin/license/redeem', [LicenseController::class, 'redeem'])->name('apps.license.redeem');
 
 });
+
+Route::get('/superadmin/license', [LicenseController::class, 'index'])->name('superadmin.license.show');
+Route::post('/superadmin/license/generate', [LicenseController::class, 'generate'])->name('superadmin.license.generate');
+Route::delete('/superadmin/license/{id}', [LicenseController::class, 'destroy'])->name('superadmin.license.destroy');
