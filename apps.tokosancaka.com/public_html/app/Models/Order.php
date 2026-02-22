@@ -32,7 +32,9 @@ class Order extends Model
         'customer_note', // <--- GANTI JADI INI
         'destination_address', // <--- TAMBAHKAN INI
         'courier_service',
-        'shipping_ref'
+        'shipping_ref',
+        'is_escrow',
+        'escrow_status',
     ];
 
     // --- TAMBAHKAN RELASI INI ---

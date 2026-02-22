@@ -33,3 +33,10 @@ Route::domain('{subdomain}.tokosancaka.com')
         Route::get('/api/search-location', [App\Http\Controllers\OrderController::class, 'searchLocation'])->name('storefront.api.location');
         Route::post('/api/check-ongkir', [App\Http\Controllers\OrderController::class, 'checkShippingRates'])->name('storefront.api.ongkir');
         Route::post('/api/check-coupon', [App\Http\Controllers\OrderController::class, 'checkCoupon'])->name('storefront.api.coupon');
+
+
+// Pastikan ini berada di dalam grup route khusus subdomain apps/admin dan role superadmin
+Route::middleware(['auth', 'role:superadmin'])->group(function () {
+    Route::get('/escrow/disbursement', [\App\Http\Controllers\EscrowController::class, 'index'])->name('escrow.index');
+    Route::post('/escrow/release/{order_id}', [\App\Http\Controllers\EscrowController::class, 'release'])->name('escrow.release');
+});
