@@ -27,6 +27,8 @@ Route::domain('{subdomain}.tokosancaka.com')
         // Halaman Sukses Transaksi
         Route::get('/checkout/success/{orderNumber}', [StorefrontController::class, 'success'])->name('storefront.success');
 
+        Route::get('/product/{slug}', [App\Http\Controllers\StorefrontController::class, 'productDetail'])->name('storefront.product.detail');
+
     });
 
   // [BARU] API KHUSUS ETALASE (PUBLIK)

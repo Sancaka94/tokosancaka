@@ -100,4 +100,18 @@ class StorefrontController extends Controller
 
         return view('storefront.sukses', compact('tenant', 'subdomain', 'order'));
     }
+
+        public function productDetail($subdomain, $slug)
+    {
+        $tenant = \App\Models\Tenant::where('subdomain', $subdomain)->firstOrFail();
+
+        // Cari produk berdasarkan slug atau ID
+        $product = \App\Models\Product::where('tenant_id', $tenant->id)
+            ->where(function($query) use ($slug) {
+                $query->where('slug', $slug)->orWhere('id', $slug);
+            })
+            ->firstOrFail();
+
+        return view('storefront.product-detail', compact('product', 'subdomain', 'tenant'));
+    }
 }
