@@ -130,6 +130,21 @@
                         </a>
                     </div>
 
+                @elseif($isActive)
+                    <div class="text-center py-6">
+                        <div class="w-24 h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-green-100">
+                            <i data-lucide="check-circle-2" class="w-12 h-12"></i>
+                        </div>
+                        <h2 class="text-2xl font-black text-gray-900 mb-2">Lisensi Telah Aktif!</h2>
+                        <p class="text-sm text-gray-500 mb-8 leading-relaxed">
+                            Toko <span class="text-sancaka-blue font-bold">{{ $subdomain }}.tokosancaka.com</span> sudah berhasil diperpanjang dan siap digunakan hingga <br>
+                            <strong class="text-gray-800 text-base">{{ $expiredDate }}</strong>.
+                        </p>
+                        <a href="https://{{ $subdomain }}.tokosancaka.com/login" class="flex justify-center items-center gap-2 w-full bg-sancaka-blue text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-blue-800 transition transform active:scale-[0.98]">
+                            Buka Aplikasi Toko <i data-lucide="external-link" class="w-5 h-5"></i>
+                        </a>
+                    </div>
+
                 @else
 
                     @if($errors->any())
