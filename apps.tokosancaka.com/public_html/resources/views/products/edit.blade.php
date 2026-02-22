@@ -207,8 +207,8 @@
 
                         <div x-show="!isService" class="mb-4">
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Berat Keseluruhan (Gram)</label>
-                            <input type="number" name="weight" value="{{ old('weight', $product->weight) }}" placeholder="1000"
-                                   class="w-full px-4 py-3 rounded-xl border-slate-300 focus:ring-indigo-500 transition text-sm text-slate-700">
+                            <input type="number" name="weight" value="{{ old('weight', $product->weight) }}"
+                                class="w-full px-4 py-3 rounded-xl border-slate-300 focus:ring-indigo-500 transition text-sm font-medium text-slate-700">
                         </div>
 
                         <div class="mb-4">
@@ -387,7 +387,6 @@
     </form>
 </div>
 
-{{-- SCRIPT ALPINE --}}
 <script>
     function productEditForm() {
         return {
@@ -396,7 +395,6 @@
             isService: {{ $product->type === 'service' ? 'true' : 'false' }},
             hasVariant: {{ $product->has_variant ? 'true' : 'false' }},
 
-            // Data Varian beserta Sub Varian (Load dari DB)
             variants: {!! $product->variants->map(function($v) {
                 return [
                     'id' => $v->id,
@@ -419,51 +417,34 @@
 
             handleCategoryChange(event) {
                 const option = event.target.options[event.target.selectedIndex];
-                this.isService = option.dataset.type === 'service';
+                this.isService = option.dataset.type === 'service' || option.dataset.type === 'jasa';
             },
 
             addVariantRow() {
                 this.variants.push({
-                    id: null,
-                    name: '',
-                    price: 0,
-                    stock: 0,
-                    barcode: '',
-                    sub_variants: []
+                    id: null, name: '', price: 0, stock: 0, barcode: '', sub_variants: []
                 });
             },
 
             removeVariantRow(index) {
-                this.variants.splice(index, 1);
+                if(confirm('Hapus varian ini?')) this.variants.splice(index, 1);
             },
 
             addSubVariantRow(variantIndex) {
-                if(!this.variants[variantIndex].sub_variants) {
-                    this.variants[variantIndex].sub_variants = [];
-                }
+                if(!this.variants[variantIndex].sub_variants) this.variants[variantIndex].sub_variants = [];
                 this.variants[variantIndex].sub_variants.push({
-                    id: null,
-                    name: '',
-                    price: this.variants[variantIndex].price,
-                    stock: 0,
-                    weight: 0,
-                    barcode: ''
+                    id: null, name: '', price: this.variants[variantIndex].price, stock: 0, weight: 0, barcode: ''
                 });
             },
 
-            removeSubVariantRow(variantIndex, subIndex) {
-                this.variants[variantIndex].sub_variants.splice(subIndex, 1);
+            removeSubVariantRow(vIdx, sIdx) {
+                this.variants[vIdx].sub_variants.splice(sIdx, 1);
             },
 
-            calculateTotalStock(variantIndex) {
-                let variant = this.variants[variantIndex];
-                if (variant.sub_variants && variant.sub_variants.length > 0) {
-                    let total = 0;
-                    variant.sub_variants.forEach(sub => {
-                        total += parseInt(sub.stock) || 0;
-                    });
-                    variant.stock = total;
-                }
+            calculateTotalStock(vIdx) {
+                let total = 0;
+                this.variants[vIdx].sub_variants.forEach(s => total += parseInt(s.stock) || 0);
+                this.variants[vIdx].stock = total;
             }
         }
     }
