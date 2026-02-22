@@ -573,6 +573,8 @@ class OrderController extends Controller
         KiriminAjaService $kiriminAja,
         DanaSignatureService $danaService // Inject Service DANA
     ) {
+        $shippingRef = null;
+
         Log::info('================ START ORDER STORE (FINAL FIX) ================');
         Log::info('RAW REQUEST:', $request->all());
 
