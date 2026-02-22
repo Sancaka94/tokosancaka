@@ -79,8 +79,17 @@ class LicenseController extends Controller
             'target_subdomain' => 'required|string'
         ]);
 
-        // 2. Cari kode di database (Default DB)
-        $license = License::where('license_code', $request->license_code)->first();
+        // --- SOLUSI UTAMA: Bersihkan Kode ---
+        // Menghapus semua spasi dan memastikan huruf kapital
+        $cleanLicenseCode = strtoupper(str_replace(' ', '', $request->license_code));
+
+        // TIPS DEBUGGING:
+        // Jika masih error "tidak ditemukan", hapus tanda // pada baris 'dd' di bawah ini
+        // untuk melihat teks apa sebenarnya yang ditangkap oleh Laravel.
+        // dd('Input Asli: "' . $request->license_code . '"', 'Setelah Dibersihkan: "' . $cleanLicenseCode . '"');
+
+        // 2. Cari kode di database menggunakan kode yang sudah dibersihkan
+        $license = License::where('license_code', $cleanLicenseCode)->first();
 
         // 3. Pengecekan jika kode tidak ada
         if (!$license) {
@@ -92,7 +101,7 @@ class LicenseController extends Controller
             return redirect()->back()->with('error', 'Kode lisensi ini sudah pernah digunakan.');
         }
 
-        // 5. Cari data Tenant berdasarkan subdomain (Default DB)
+        // 5. Cari data Tenant berdasarkan subdomain (Gunakan Default DB)
         $tenant = DB::table('tenants')->where('subdomain', $request->target_subdomain)->first();
 
         if (!$tenant) {
@@ -109,7 +118,7 @@ class LicenseController extends Controller
 
         $newExpiredDate = $currentExpired->addDays($durationDays)->timezone('Asia/Jakarta');
 
-        // 7. Update status & expired_at di tabel tenants (Default DB)
+        // 7. Update status & expired_at di tabel tenants
         DB::table('tenants')->where('id', $tenant->id)->update([
             'status' => 'active',
             'package' => $license->package_type ?? 'monthly',
@@ -125,7 +134,5 @@ class LicenseController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Lisensi berhasil di-redeem dan fitur telah diaktifkan!');
-
-        // LOG LOG - Safe block
     }
 }

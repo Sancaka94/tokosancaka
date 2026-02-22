@@ -28,7 +28,7 @@
     if ($subdomain) {
         try {
             // Cek status tenant langsung di database mysql_second
-            $tenant = \Illuminate\Support\Facades\DB::connection('mysql_second')
+            $tenant = \Illuminate\Support\Facades\DB::table('tenants')
                         ->table('tenants')
                         ->where('subdomain', $subdomain)
                         ->first();
