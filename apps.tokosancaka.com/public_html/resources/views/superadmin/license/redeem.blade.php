@@ -67,6 +67,16 @@
         </div>
     </nav>
 
+    @if($errors->any())
+        <div class="mt-6 p-4 bg-red-50 text-red-700 rounded-xl text-xs font-bold border-l-4 border-red-600">
+            <ul class="list-disc pl-5">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="min-h-screen pt-32 pb-20 flex items-center justify-center px-4">
         <div class="max-w-4xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-100">
 

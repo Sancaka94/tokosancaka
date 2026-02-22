@@ -74,7 +74,7 @@ class LicenseController extends Controller
         $request->validate([
             'license_code' => 'required|string',
             'target_subdomain' => 'required|string',
-            'user_id' => 'required|integer' // Pastikan user_id juga divalidasi
+            // 'user_id' => 'required|integer' // Pastikan user_id juga divalidasi
         ]);
 
         // Bersihkan kode dari spasi
