@@ -294,18 +294,18 @@ class DokuWebhookController extends Controller
                         // 1. Generate Kode Lisensi Baru (Contoh: SNCK-A1B2-C3D4-E5F6)
                         $licenseCode = 'SNCK-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4));
 
-                        // 2. Simpan Kode ke tabel database yang mengatur lisensi
-                        // Catatan: Sesuaikan nama tabel 'licenses' dengan tabel kodemu yang sebenarnya
-                        DB::table('licenses')->insert([
+                        // 2. Simpan Kode ke tabel database yang mengatur lisensi (WAJIB PAKAI mysql_second)
+                        $percetakanDB = DB::connection('mysql_second');
+
+                        $percetakanDB->table('licenses')->insert([
                             'code' => $licenseCode,
                             'package' => $newPackage,
-                            'status' => 'available', // Status belum di-redeem
+                            'status' => 'available', // Sesuaikan jika nama kolomnya beda
                             'created_at' => now()
                         ]);
                         Log::info("✅ KODE LISENSI DIBUAT: $licenseCode untuk paket $newPackage");
 
                         // 3. Ambil Nomor WA Tenant untuk kirim kode
-                        $percetakanDB = DB::connection('mysql_second');
                         $tenantSec = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
 
                         if ($tenantSec && !empty($tenantSec->whatsapp)) {
