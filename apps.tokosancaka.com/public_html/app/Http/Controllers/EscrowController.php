@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 class EscrowController extends Controller
 {
-    /**
+   /**
      * Menampilkan Halaman Tabel Pencairan Dana
      */
     public function index(Request $request)
@@ -16,27 +16,38 @@ class EscrowController extends Controller
         // Filter status (held = Tertahan, released = Sudah Cair)
         $status = $request->query('status', 'held');
 
-        // Menggunakan koneksi default (tokq3391_percetakan)
+        // Menggunakan koneksi default dan Subquery untuk menghindari error GROUP BY (Strict Mode)
         $orders = DB::table('orders')
             ->join('tenants', 'orders.tenant_id', '=', 'tenants.id')
-            ->leftJoin('users', function($join) {
-                $join->on('tenants.id', '=', 'users.tenant_id')
-                     ->whereIn('users.role', ['admin', 'owner']);
-            })
             ->where('orders.is_escrow', 1)
             ->where('orders.escrow_status', $status)
             ->select(
                 'orders.id', 'orders.order_number', 'orders.final_price', 'orders.status as order_status',
                 'orders.shipping_ref', 'orders.booking_ref', 'orders.escrow_status', 'orders.created_at',
-                'tenants.name as store_name', 'tenants.id as tenant_id',
-                'users.name as owner_name', 'users.id as owner_user_id'
+                'tenants.name as store_name', 'tenants.id as tenant_id'
             )
-            ->groupBy('orders.id')
+            // Ambil Nama Owner menggunakan Subquery (Mencegah Duplicate tanpa Group By)
+            ->addSelect(['owner_name' => DB::table('users')
+                ->select('name')
+                ->whereColumn('tenant_id', 'tenants.id')
+                ->whereIn('role', ['admin', 'owner'])
+                ->orderBy('id', 'asc')
+                ->limit(1)
+            ])
+            // Ambil ID Owner menggunakan Subquery
+            ->addSelect(['owner_user_id' => DB::table('users')
+                ->select('id')
+                ->whereColumn('tenant_id', 'tenants.id')
+                ->whereIn('role', ['admin', 'owner'])
+                ->orderBy('id', 'asc')
+                ->limit(1)
+            ])
             ->orderBy('orders.created_at', 'desc')
             ->paginate(20);
 
         $orderIds = $orders->pluck('id');
         $orderItems = [];
+
         if ($orderIds->count() > 0) {
             $items = DB::table('order_details')
                         ->whereIn('order_id', $orderIds)
