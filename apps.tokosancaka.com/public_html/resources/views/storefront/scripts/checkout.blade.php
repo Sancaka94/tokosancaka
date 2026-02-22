@@ -215,45 +215,51 @@
             },
 
             async submitOrder() {
-                // 1. Validasi Awal
-                const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
-                if(!paymentMethod) {
-                    alert("Silakan pilih Metode Pembayaran terlebih dahulu!");
-                    return;
-                }
+                // Tampilkan Loading
+                Swal.fire({
+                    title: 'Memproses Pesanan...',
+                    text: 'Mohon tunggu sebentar',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading() }
+                });
 
-                // 2. Tampilkan Loading (Opsional: tambahkan variabel isLoading di Alpine)
-                this.isReadyToPay = false; // Disable tombol biar tidak double click
-
-                // 3. Ambil semua data form
                 const formData = new FormData(document.getElementById('checkoutForm'));
 
                 try {
                     const response = await fetch("{{ route('storefront.process', $subdomain) }}", {
                         method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                         body: formData
                     });
 
                     const result = await response.json();
 
                     if (response.ok && result.status === 'success') {
-                        // JIKA BERHASIL: Hapus Keranjang & Pindah ke halaman Sukses
                         localStorage.removeItem('sancaka_cart_' + this.tenantId);
-                        window.location.href = "{{ url('/checkout/success') }}/" + result.invoice;
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: 'Pesanan Anda telah diterima. Silakan selesaikan pembayaran.',
+                            confirmButtonText: 'Bayar Sekarang'
+                        }).then(() => {
+                            // Jika ada payment_url (DANA/Tripay), arahkan ke sana
+                            if(result.payment_url) {
+                                window.location.href = result.payment_url;
+                            } else {
+                                window.location.href = "{{ url('/checkout/success') }}/" + result.invoice;
+                            }
+                        });
                     } else {
-                        // JIKA GAGAL (Seperti Error Saldo 0): Tampilkan Modal/SweetAlert
-                        // Anda bisa mengganti alert() ini dengan modal kustom Anda
-                        alert("⚠️ GAGAL PROSES PESANAN:\n" + (result.message || "Terjadi kesalahan sistem."));
-                        this.isReadyToPay = true;
+                        // Munculkan Modal Error jika saldo tidak cukup atau data tidak lengkap
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Pemesanan Gagal',
+                            text: result.message || 'Terjadi kesalahan sistem.'
+                        });
                     }
                 } catch (error) {
-                    console.error("Submit Error:", error);
-                    alert("Terjadi kesalahan jaringan atau server.");
-                    this.isReadyToPay = true;
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Koneksi ke server terputus.' });
                 }
             }
         }))
