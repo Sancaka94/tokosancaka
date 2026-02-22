@@ -69,55 +69,68 @@ class LicenseController extends Controller
     }
 
     public function processRedeem(Request $request)
-{
-    $request->validate([
-        'license_code' => 'required|string',
-        'target_subdomain' => 'required|string'
-    ]);
+    {
+        // 1. Validasi input form
+        $request->validate([
+            'license_code' => 'required|string',
+            'target_subdomain' => 'required|string',
+            'user_id' => 'required|integer' // Pastikan user_id juga divalidasi
+        ]);
 
-    // 1. Bersihkan spasi
-    $cleanLicenseCode = strtoupper(str_replace(' ', '', $request->license_code));
+        // Bersihkan kode dari spasi
+        $cleanLicenseCode = strtoupper(str_replace(' ', '', $request->license_code));
 
-    // ==== TAMBAHKAN BLOK KODE INI SEMENTARA ====
-    // Ini akan menghentikan proses dan menampilkan isi database ke layar
-    $semuaKodeDiDatabase = \App\Models\License::pluck('license_code')->toArray();
+        // 2. VALIDASI LAPIS 1: Cek Subdomain (Cari Tenant)
+        $tenant = DB::table('tenants')->where('subdomain', $request->target_subdomain)->first();
 
-    dd([
-        '1_KODE_YANG_DITANGKAP_DARI_FORM' => $cleanLicenseCode,
-        '2_APAKAH_KODE_ADA_DI_DB?' => in_array($cleanLicenseCode, $semuaKodeDiDatabase) ? 'YA, ADA!' : 'TIDAK ADA!',
-        '3_ISI_TABEL_LICENSES_MENURUT_LARAVEL' => $semuaKodeDiDatabase
-    ]);
-    // ===========================================
-
-        // 3. Pengecekan jika kode tidak ada
-        $license = License::where('license_code', $cleanLicenseCode)->first();
-        if (!$license) {
-            return redirect()->back()->with('error', 'Kode lisensi tidak valid atau tidak ditemukan.');
+        if (!$tenant) {
+            return redirect()->back()->with('error', 'Validasi Gagal: Toko dengan subdomain tersebut tidak ditemukan.');
         }
 
-        // 4. Pengecekan jika kode sudah dipakai
+        // 3. VALIDASI LAPIS 2: Cek User ID
+        // (Asumsi mengambil ID user yang sedang login. Ubah menjadi $request->user_id jika dari form hidden)
+        $userId = auth()->id();
+
+        if (!$userId) {
+            return redirect()->back()->with('error', 'Validasi Gagal: Anda harus login untuk melakukan aktivasi.');
+        }
+
+        // Opsional tapi penting: Pastikan User ini benar-benar terdaftar di Tenant (Subdomain) tersebut
+        // Sesuaikan nama kolom 'tenant_id' di tabel users Anda
+        $user = DB::table('users')->where('id', $userId)->first();
+        if ($user && $user->tenant_id !== $tenant->id) {
+            return redirect()->back()->with('error', 'Validasi Gagal: Anda tidak memiliki otoritas atas subdomain ini.');
+        }
+
+        // 4. VALIDASI LAPIS 3: Cek Lisensi (Kode + Tenant + User)
+        $licenseQuery = License::where('license_code', $cleanLicenseCode)
+                               ->where('tenant_id', $tenant->id);
+
+        // Jika Anda SUDAH menambahkan kolom 'user_id' di tabel 'licenses',
+        // hapus tanda // pada baris di bawah ini:
+        $licenseQuery->where('user_id', $userId);
+
+        $license = $licenseQuery->first();
+
+        if (!$license) {
+            return redirect()->back()->with('error', 'Validasi Gagal: Lisensi tidak ditemukan atau tidak diperuntukkan bagi Subdomain/User Anda.');
+        }
+
+        // 5. Pengecekan status (apakah sudah dipakai?)
         if ($license->status !== 'available') {
             return redirect()->back()->with('error', 'Kode lisensi ini sudah pernah digunakan.');
         }
 
-        // 5. Cari data Tenant berdasarkan subdomain (Gunakan Default DB)
-        $tenant = DB::table('tenants')->where('subdomain', $request->target_subdomain)->first();
+        // --- PROSES AKTIVASI (Jika semua validasi lolos) ---
 
-        if (!$tenant) {
-            return redirect()->back()->with('error', 'Toko dengan subdomain tersebut tidak ditemukan.');
-        }
-
-        // 6. Hitung perpanjangan masa aktif
-        $durationDays = $license->duration_days ?? 30; // Default 30 hari
-
+        $durationDays = $license->duration_days ?? 30;
         $currentExpired = $tenant->expired_at ? \Carbon\Carbon::parse($tenant->expired_at) : now();
         if ($currentExpired->isPast()) {
             $currentExpired = now();
         }
-
         $newExpiredDate = $currentExpired->addDays($durationDays)->timezone('Asia/Jakarta');
 
-        // 7. Update status & expired_at di tabel tenants
+        // Update tabel tenants
         DB::table('tenants')->where('id', $tenant->id)->update([
             'status' => 'active',
             'package' => $license->package_type ?? 'monthly',
@@ -125,14 +138,14 @@ class LicenseController extends Controller
             'updated_at' => now()
         ]);
 
-        // 8. PERBAIKAN: Ubah status lisensi menjadi terpakai & ISI SEMUA KOLOM NULL
+        // Update tabel licenses
         $license->update([
             'status' => 'used',
-            'used_by_tenant_id' => $tenant->id, // Mengganti NULL menjadi ID Toko yang memakai
-            'used_at' => now(),                 // Mengganti NULL menjadi waktu saat ini
-            'expires_at' => $newExpiredDate     // <--- TAMBAHKAN INI: Mengganti NULL menjadi tanggal expired
+            'used_by_tenant_id' => $tenant->id,
+            'used_at' => now(),
+            'expires_at' => $newExpiredDate
         ]);
 
-        return redirect()->back()->with('success', 'Lisensi berhasil di-redeem dan fitur telah diaktifkan!');
+        return redirect()->back()->with('success', 'Aktivasi Berhasil! Lisensi cocok dengan User dan Subdomain Anda.');
     }
 }

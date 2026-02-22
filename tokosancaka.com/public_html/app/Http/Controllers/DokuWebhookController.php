@@ -279,7 +279,8 @@ class DokuWebhookController extends Controller
                 // A.4 ORDER LISENSI (LISC)
                 // -------------------------------------------------------------
 
-               // =================================================================
+
+                // =================================================================
                 // >>> PASTE KODE LISC- (PEMBELIAN LISENSI) DI SINI <<<
                 // =================================================================
                 else if (Str::startsWith($orderId, 'LISC-')) {
@@ -292,29 +293,48 @@ class DokuWebhookController extends Controller
                         $subdomain = strtolower($parts[2] ?? '');
                         $newPackage = strtolower($packageType);
 
-                       // 1. Generate Kode Lisensi Baru
+                        // 1. CARI DATA TENANT DAN USER TERLEBIH DAHULU (Dipindah ke atas)
+                        Log::info("🔍 Mencari data tenant untuk subdomain '$subdomain' di DB Percetakan...");
+                        $percetakanDB = DB::connection('mysql_second');
+                        $tenantSec = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
+
+                        $tenantId = null;
+                        $userId = null;
+
+                        if ($tenantSec) {
+                            $tenantId = $tenantSec->id;
+
+                            // Cari user yang merupakan pemilik/terhubung dengan tenant ini
+                            $userSec = $percetakanDB->table('users')->where('tenant_id', $tenantId)->first();
+                            if ($userSec) {
+                                $userId = $userSec->id;
+                            } else {
+                                Log::warning("⚠️ User untuk tenant '$subdomain' tidak ditemukan, user_id mungkin null.");
+                            }
+                        } else {
+                            Log::error("❌ CRITICAL ERROR: Tenant dengan subdomain '$subdomain' tidak ditemukan. Lisensi tidak bisa dikaitkan secara spesifik.");
+                        }
+
+                        // 2. Generate Kode Lisensi Baru
                         $licenseCode = 'SNCK-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4));
 
                         $durationDays = 30; // Default Monthly
                         if ($newPackage === 'half_year') $durationDays = 180;
                         if ($newPackage === 'yearly') $durationDays = 365;
 
-                        // 2. Simpan Kode menggunakan Model Jembatan (Otomatis masuk ke database Aplikasi 2)
+                        // 3. Simpan Kode dengan Tenant ID dan User ID
                         LicenseApp2::create([
                             'license_code'  => $licenseCode,
+                            'tenant_id'     => $tenantId, // <--- MENGISI TENANT ID
+                            'user_id'       => $userId,   // <--- MENGISI USER ID
                             'package_type'  => $newPackage,
                             'duration_days' => $durationDays,
                             'status'        => 'available'
                         ]);
-                        Log::info("✅ KODE LISENSI DIBUAT: $licenseCode untuk paket $newPackage ($durationDays hari)");
 
-                        // 3. Ambil Nomor WA Tenant untuk kirim kode
-                        $percetakanDB = DB::connection('mysql_second');
-                        $tenantSec = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
+                        Log::info("✅ KODE LISENSI DIBUAT: $licenseCode untuk paket $newPackage ($durationDays hari) terikat pada Tenant ID: $tenantId, User ID: $userId");
 
-                        // LOG LOG - Tetap dipertahankan untuk memastikan proses tetap tercatat dengan baik
-                         Log::info("🔍 Mencari data tenant untuk subdomain '$subdomain' di DB Percetakan...");
-
+                        // 4. Kirim Nomor WA Tenant untuk kirim kode
                         if ($tenantSec && !empty($tenantSec->whatsapp)) {
                             // Bersihkan format nomor WA
                             $phone = preg_replace('/[^0-9]/', '', $tenantSec->whatsapp);
@@ -334,16 +354,13 @@ class DokuWebhookController extends Controller
                             $this->_sendFonnteMessage($phone, $msg);
                             Log::info("✅ Kode Lisensi $licenseCode berhasil dikirim ke WA $phone");
                         } else {
-                            Log::error("⚠️ Gagal kirim WA: Data tenant atau nomor WA tidak ditemukan untuk subdomain $subdomain.");
+                            Log::error("⚠️ Gagal kirim WA: Nomor WA tidak ditemukan untuk subdomain $subdomain.");
                         }
 
                     } catch (\Exception $e) {
                         Log::error("❌ CRITICAL ERROR LISC-: " . $e->getMessage());
                     }
                 }
-                // =================================================================
-                // >>> AKHIR KODE LISC- <<<
-                // =================================================================
 
                 // -------------------------------------------------------------
                 // A.4B DELEGASI KE CONTROLLER LAIN (TOPUP, INV, CHECKOUT)
