@@ -123,7 +123,7 @@ class ProductController extends Controller implements HasMiddleware
             'image'       => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'barcode'     => [
                 'nullable', 'min:10', 'max:13',
-                Rule::unique('products')->where('tenant_id', $this->tenantId),
+                Rule::unique('products')->ignore($product->id)->where('tenant_id', $this->tenantId),
                 Rule::unique('product_variants')->where('tenant_id', $this->tenantId),
                 Rule::unique('product_sub_variants')->where('tenant_id', $this->tenantId)
             ],

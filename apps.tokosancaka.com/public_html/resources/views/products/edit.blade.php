@@ -9,6 +9,23 @@
 
 <div class="max-w-4xl mx-auto" x-data="productEditForm()">
 
+    {{-- SELIPKAN KODE INI DI ATAS INFORMASI DASAR --}}
+    @if ($errors->any())
+        <div class="mb-4 bg-red-50 border border-red-200 p-4 rounded-xl">
+            <div class="flex gap-3">
+                <i class="fas fa-exclamation-triangle text-red-500 mt-1"></i>
+                <div>
+                    <h3 class="text-sm font-bold text-red-800">Ada kesalahan input:</h3>
+                    <ul class="mt-1 text-xs text-red-600 list-disc list-inside">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- HEADER --}}
     <div class="flex justify-between items-end mb-6">
         <div>
