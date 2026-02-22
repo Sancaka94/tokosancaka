@@ -70,26 +70,51 @@
                     const res = await fetch(`{{ route('storefront.api.location') }}?query=${this.locationSearch}`);
                     const json = await res.json();
                     if(json.status === 'success') {
-                        // Memastikan data masuk ke array
                         this.locationResults = json.data;
                     }
                 } catch (e) { console.error("Loc Search Error", e); }
                 this.isSearchingLoc = false;
             },
 
-            selectLocation(loc) {
-                // Trik menangkap berbagai versi respon KiriminAja
-                this.destinationText = loc.text || loc.name || `${loc.kecamatan || ''}, ${loc.kabupaten || ''}`;
+            // FUNGSI BARU: Pembaca Data Kebal Error
+            formatLocationName(loc) {
+                if (!loc) return '';
+                if (typeof loc === 'string') return loc; // Jika API membalas array of string
 
-                // Ambil ID Kecamatan (Bisa kecamatan_id atau id)
-                this.districtId = loc.kecamatan_id || loc.id;
-                this.subdistrictId = loc.kelurahan_id || '';
+                // Coba berbagai kemungkinan nama kolom dari KiriminAja/RajaOngkir
+                if (loc.text) return loc.text;
+                if (loc.label) return loc.label;
+                if (loc.name && typeof loc.name === 'string') return loc.name;
+
+                // Jika formatnya dipecah per wilayah
+                let parts = [];
+                if (loc.kelurahan || loc.village_name) parts.push(loc.kelurahan || loc.village_name);
+                if (loc.kecamatan || loc.district_name || loc.district) parts.push(loc.kecamatan || loc.district_name || loc.district);
+                if (loc.kabupaten || loc.kab_kota || loc.city_name || loc.city) parts.push(loc.kabupaten || loc.kab_kota || loc.city_name || loc.city);
+                if (loc.provinsi || loc.province_name || loc.province) parts.push(loc.provinsi || loc.province_name || loc.province);
+
+                if (parts.length > 0) return parts.join(', ');
+
+                // Fallback Terakhir: Tampilkan data mentah agar kita tau apa isi kolom aslinya
+                return JSON.stringify(loc).substring(0, 60) + '...';
+            },
+
+            selectLocation(loc) {
+                this.destinationText = this.formatLocationName(loc);
+
+                // Trik menangkap berbagai variasi ID Kecamatan dari API
+                this.districtId = loc.kecamatan_id || loc.district_id || loc.id || '';
+                this.subdistrictId = loc.kelurahan_id || loc.subdistrict_id || '';
 
                 this.locationSearch = '';
                 this.locationResults = [];
 
-                // Langsung tembak API Ongkir setelah lokasi diklik!
-                this.fetchOngkir();
+                // Lanjut cek ongkir jika ID ketemu
+                if(this.districtId) {
+                    this.fetchOngkir();
+                } else {
+                    alert('Data lokasi dari API tidak memiliki ID Kecamatan. Hubungi Admin.');
+                }
             },
 
             resetLocation() {
