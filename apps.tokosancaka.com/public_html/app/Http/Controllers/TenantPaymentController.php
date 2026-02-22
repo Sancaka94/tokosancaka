@@ -47,7 +47,8 @@ class TenantPaymentController extends Controller
     if (!$user) return back()->with('error', 'Admin toko tidak ditemukan.');
 
     // Simpan referensi paket yang dibeli ke tabel topup/transaksi
-    $referenceNo = 'LISC-' . strtoupper($request->package_type) . '-' . time();
+    // Tambahkan subdomain di tengah invoice
+    $referenceNo = 'LISC-' . strtoupper($request->package_type) . '-' . $tenant->subdomain . '-' . time();
 
     // Simpan ke PosTopUp dengan label paket di field tertentu (misal: payment_method)
     PosTopUp::create([

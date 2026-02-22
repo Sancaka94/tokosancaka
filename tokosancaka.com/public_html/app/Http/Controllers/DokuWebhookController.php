@@ -250,35 +250,31 @@ class DokuWebhookController extends Controller
                 }
 
                 // -------------------------------------------------------------
-                // A.4 ORDER LISENSI (LISC-) - VERSI UPDATE DUAL DB
+                // A.4 ORDER LISENSI (LISC)
                 // -------------------------------------------------------------
 
                 // =================================================================
-                // >>> PASTE KODE LISC- (LISENSI) DI SINI <<<
+                // >>> PASTE KODE LISC- (AKTIVASI LISENSI) DI SINI <<<
                 // =================================================================
                 else if (Str::startsWith($orderId, 'LISC-')) {
                     Log::info("🚀 LOG LISENSI: Webhook Masuk untuk Aktivasi Lisensi: $orderId");
 
                     try {
-                        // 1. Cari data topup berdasarkan nomor invoice
-                        $topup = \App\Models\PosTopUp::where('reference_no', $orderId)->first();
+                        // Pecah invoice: LISC - MONTHLY - operator - 1771738501
+                        $parts = explode('-', $orderId);
+                        $packageType = strtoupper($parts[1] ?? 'MONTHLY');
+                        $subdomain = strtolower($parts[2] ?? '');
 
-                        if ($topup && $topup->status !== 'SUCCESS') {
-                            // 2. Update status pembayaran
-                            $topup->update(['status' => 'SUCCESS']);
-
-                            // 3. Pecah nomor invoice (LISC-MONTHLY-1234)
-                            $parts = explode('-', $orderId);
-                            $packageType = $parts[1] ?? 'MONTHLY';
-
+                        if (empty($subdomain) || is_numeric($subdomain)) {
+                            Log::error("❌ GAGAL: Subdomain tidak valid pada invoice $orderId. Pastikan generate invoice menyertakan subdomain.");
+                        } else {
                             $monthsToAdd = 1;
                             if ($packageType === 'HALF_YEAR') $monthsToAdd = 6;
                             if ($packageType === 'YEARLY') $monthsToAdd = 12;
                             $newPackage = strtolower($packageType);
 
-                            // 4. UPDATE DB UTAMA
-                            $tenantMain = DB::table('tenants')->where('id', $topup->tenant_id)->first();
-
+                            // --- 1. UPDATE DB UTAMA ---
+                            $tenantMain = DB::table('tenants')->where('subdomain', $subdomain)->first();
                             if ($tenantMain) {
                                 $currentExpired = $tenantMain->expired_at ? \Carbon\Carbon::parse($tenantMain->expired_at) : now();
                                 if ($currentExpired->isPast()) $currentExpired = now();
@@ -290,24 +286,32 @@ class DokuWebhookController extends Controller
                                     'expired_at' => $newExpiredDate,
                                     'updated_at' => now()
                                 ]);
-                                Log::info("✅ DB UTAMA: Tenant '{$tenantMain->subdomain}' diperpanjang $monthsToAdd bulan hingga {$newExpiredDate}.");
+                                Log::info("✅ DB UTAMA: Tenant '$subdomain' diperpanjang $monthsToAdd bulan hingga {$newExpiredDate}.");
+                            }
 
-                                // 5. UPDATE DB KEDUA (mysql_second)
-                                $percetakanDB = DB::connection('mysql_second');
-                                $tenantSec = $percetakanDB->table('tenants')->where('subdomain', $tenantMain->subdomain)->first();
+                            // --- 2. UPDATE DB KEDUA (mysql_second) ---
+                            $percetakanDB = DB::connection('mysql_second');
+                            $tenantSec = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
 
-                                if ($tenantSec) {
-                                    $percetakanDB->table('tenants')->where('id', $tenantSec->id)->update([
-                                        'status' => 'active',
-                                        'package' => $newPackage,
-                                        'expired_at' => $newExpiredDate,
-                                        'updated_at' => now()
-                                    ]);
-                                    Log::info("✅ DB SECOND: Tenant '{$tenantMain->subdomain}' diperpanjang hingga {$newExpiredDate}.");
-                                }
+                            if ($tenantSec) {
+                                $currentExpiredSec = $tenantSec->expired_at ? \Carbon\Carbon::parse($tenantSec->expired_at) : now();
+                                if ($currentExpiredSec->isPast()) $currentExpiredSec = now();
+                                $newExpiredDateSec = $currentExpiredSec->copy()->addMonths($monthsToAdd)->timezone('Asia/Jakarta');
 
-                                // 6. Kirim Notifikasi WA via fungsi bawaan Anda
-                                $this->_sendFonnteNotification($tenantMain->subdomain);
+                                $percetakanDB->table('tenants')->where('id', $tenantSec->id)->update([
+                                    'status' => 'active',
+                                    'package' => $newPackage,
+                                    'expired_at' => $newExpiredDateSec,
+                                    'updated_at' => now()
+                                ]);
+                                Log::info("✅ DB SECOND: Tenant '$subdomain' diperpanjang hingga {$newExpiredDateSec}.");
+                            }
+
+                            // --- 3. KIRIM NOTIFIKASI WA ---
+                            if ($tenantMain || $tenantSec) {
+                                $this->_sendFonnteNotification($subdomain);
+                            } else {
+                                Log::error("❌ GAGAL: Tenant '$subdomain' tidak ditemukan di kedua database.");
                             }
                         }
                     } catch (\Exception $e) {
