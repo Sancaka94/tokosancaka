@@ -148,11 +148,10 @@
             currentStock: {{ $product->stock }},
 
             // State Galeri Foto
+            // State Galeri Foto
             mainImage: '{{ $product->image ? asset("storage/".$product->image) : "" }}',
             gallery: [
                 '{{ $product->image ? asset("storage/".$product->image) : "" }}',
-                // CATATAN: Jika nanti lu punya tabel foto tambahan, bisa diloop di sini
-                // Contoh: @foreach($product->images as $img) '{{ asset("storage/".$img->path) }}', @endforeach
             ].filter(Boolean), // Hapus url kosong
 
             // State Varian
