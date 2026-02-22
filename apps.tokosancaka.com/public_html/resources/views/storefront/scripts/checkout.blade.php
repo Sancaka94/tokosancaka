@@ -214,13 +214,47 @@
                 return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
             },
 
-            submitOrder(e) {
+            async submitOrder() {
+                // 1. Validasi Awal
                 const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
                 if(!paymentMethod) {
                     alert("Silakan pilih Metode Pembayaran terlebih dahulu!");
                     return;
                 }
-                e.target.submit();
+
+                // 2. Tampilkan Loading (Opsional: tambahkan variabel isLoading di Alpine)
+                this.isReadyToPay = false; // Disable tombol biar tidak double click
+
+                // 3. Ambil semua data form
+                const formData = new FormData(document.getElementById('checkoutForm'));
+
+                try {
+                    const response = await fetch("{{ route('storefront.process', $subdomain) }}", {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok && result.status === 'success') {
+                        // JIKA BERHASIL: Hapus Keranjang & Pindah ke halaman Sukses
+                        localStorage.removeItem('sancaka_cart_' + this.tenantId);
+                        window.location.href = "{{ url('/checkout/success') }}/" + result.invoice;
+                    } else {
+                        // JIKA GAGAL (Seperti Error Saldo 0): Tampilkan Modal/SweetAlert
+                        // Anda bisa mengganti alert() ini dengan modal kustom Anda
+                        alert("⚠️ GAGAL PROSES PESANAN:\n" + (result.message || "Terjadi kesalahan sistem."));
+                        this.isReadyToPay = true;
+                    }
+                } catch (error) {
+                    console.error("Submit Error:", error);
+                    alert("Terjadi kesalahan jaringan atau server.");
+                    this.isReadyToPay = true;
+                }
             }
         }))
     })

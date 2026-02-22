@@ -6,6 +6,17 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" x-data="checkoutData()" x-init="initCheckout()">
     <h2 class="text-3xl font-black text-gray-900 mb-8">Checkout Pesanan</h2>
 
+    <div x-show="errorMessage" x-cloak class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
+            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-times-circle text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-black text-gray-900 mb-2">Ops, Gagal!</h3>
+            <p class="text-gray-500 text-sm mb-6" x-text="errorMessage"></p>
+            <button @click="errorMessage = ''" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold">Tutup & Perbaiki</button>
+        </div>
+    </div>
+
     <form action="{{ route('storefront.process', $subdomain) }}" method="POST" id="checkoutForm" @submit.prevent="submitOrder">
         @csrf
         <input type="hidden" name="items" :value="JSON.stringify(cartItems)">
