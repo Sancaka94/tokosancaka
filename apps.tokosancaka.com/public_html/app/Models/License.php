@@ -23,7 +23,11 @@ class License extends Model
         'used_at',
         'expires_at',
         'status',
-        'used_by_tenant_id'
+        'used_by_tenant_id',
+        'created_at',
+        'updated_at',
+        'id', // Jangan lupa id juga, karena kita akan insert data baru dengan ID otomatis
+        'user_id' // Tambahkan user_id jika diperlukan untuk relasi dengan user/tenant yang menggunakan lisensi
     ];
 
     protected $casts = [
