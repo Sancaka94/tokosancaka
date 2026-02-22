@@ -750,3 +750,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('tenant.payment.check');
 
 });
+
+// Route untuk menangkap user yang kembali dari halaman pembayaran DOKU
+Route::get('/payment/doku-return', [\App\Http\Controllers\TenantPaymentController::class, 'dokuReturn'])
+    ->name('doku.return');

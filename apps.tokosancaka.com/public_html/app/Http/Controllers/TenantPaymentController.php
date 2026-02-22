@@ -68,6 +68,9 @@ class TenantPaymentController extends Controller
         'phone' => $user->phone ?? '085745808809'
     ]);
 
+    // Simpan subdomain ke session agar ingat saat user kembali dari DOKU
+    session(['doku_target_subdomain' => $request->target_subdomain]);
+
     return redirect()->away($paymentUrl);
 }
 
@@ -380,5 +383,18 @@ class TenantPaymentController extends Controller
         } catch (Throwable $e) {
             return response()->json(['active' => false, 'error' => $e->getMessage()], 200);
         }
+    }
+
+    public function dokuReturn(Request $request)
+    {
+        // Ambil subdomain dari session yang kita simpan tadi (default: operator jika kosong)
+        $subdomain = session('doku_target_subdomain', 'operator');
+
+        // Hapus session agar bersih
+        session()->forget('doku_target_subdomain');
+
+        // Redirect ke halaman redeem dengan membawa parameter subdomain dan pesan sukses
+        return redirect()->to("https://apps.tokosancaka.com/redeem-lisensi?subdomain={$subdomain}")
+                         ->with('success', 'Pembayaran berhasil dikonfirmasi! Akun Anda sedang diproses.');
     }
 }

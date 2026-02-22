@@ -118,7 +118,7 @@ Route::post('/doku/webhook/payment-notification', [DokuController::class, 'handl
 |
 */
 
-Route::post('/webhook/doku-jokul', [DokuWebhookController::class, 'handle'])
+Route::any('/webhook/doku-jokul', [DokuWebhookController::class, 'handle'])
      ->name('webhook.doku.jokul');
 
 // --- RUTE WEBHOOK & CALLBACK (PUBLIK) ---

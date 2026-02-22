@@ -22,6 +22,31 @@ class DokuWebhookController extends Controller
     public function handle(Request $request)
     {
         // =================================================================
+        // 0. DETEKSI BROWSER USER vs SERVER DOKU
+        // =================================================================
+        // Webhook resmi dari server DOKU selalu membawa header 'Client-Id' atau 'Signature'.
+        // Jika header ini tidak ada, berarti ini adalah MANUSIA (pelanggan) yang di-redirect dari halaman pembayaran DOKU.
+
+        if (!$request->hasHeader('Client-Id') && !$request->hasHeader('client-id')) {
+
+            // Coba ambil invoice dari URL parameter (jika DOKU menyertakannya saat redirect)
+            $invoice = $request->query('invoice_number') ?? $request->query('transaction_id') ?? '';
+            $subdomain = 'operator'; // Default fallback
+
+            // Jika invoice memiliki format LISC-MONTHLY-operator-1234, kita ambil subdomainnya
+            if (str_starts_with($invoice, 'LISC-')) {
+                $parts = explode('-', $invoice);
+                if (isset($parts[2]) && !is_numeric($parts[2])) {
+                    $subdomain = strtolower($parts[2]);
+                }
+            }
+
+            // Redirect pengguna manusia ke halaman Redeem Lisensi yang cantik
+            return redirect()->to("https://apps.tokosancaka.com/redeem-lisensi?subdomain={$subdomain}")
+                             ->with('success', 'Pembayaran sedang diproses! Sistem SancakaPOS sedang mengaktifkan lisensi toko Anda.');
+        }
+
+        // =================================================================
         // 1. LOGGING & BYPASS VALIDASI (Supaya tidak Error 400)
         // =================================================================
 
