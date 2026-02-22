@@ -253,10 +253,7 @@ class DokuWebhookController extends Controller
                     }
                 }
 
-                // -------------------------------------------------------------
-                // A.3 ORDER MARKETPLACE (SCK-) - VERSI SINKRON ADMIN
-                // -------------------------------------------------------------
-                else if (Str::startsWith($orderId, 'SCK-')) {
+               else if (Str::startsWith($orderId, 'SCK-')) {
                     Log::info("🛍️ LOG TRX (SCK-): Webhook DOKU Masuk untuk Order: $orderId");
 
                     try {
@@ -273,90 +270,76 @@ class DokuWebhookController extends Controller
 
                             if ($orderMarketplace->is_escrow == 1) {
                                 $updateData['escrow_status'] = 'held';
-                                Log::info("🔒 ESCROW AKTIF: Order $orderId. Memulai Auto-Booking...");
+                                Log::info("🔒 ESCROW AKTIF: Order $orderId. Menyiapkan Payload API...");
 
-                                // Ambil data titipan JSON
                                 $shipData = json_decode($orderMarketplace->shipping_ref, true);
 
                                 if (is_array($shipData)) {
-                                    // Ambil data Owner untuk alamat Pickup (Sesuai cara Admin)
                                     $tenantOwner = $percetakanDB->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
 
                                     if ($tenantOwner) {
-                                        try {
-                                            $kiriminAja = resolve(\App\Services\KiriminAjaService::class);
+                                        // PANGGIL SERVICE MENGGUNAKAN NAMESPACE LENGKAP
+                                        $kiriminAja = new \App\Services\KiriminAjaService();
 
-                                            // Susun Payload Lengkap (Meniru PesananController Admin)
-                                            $pickupSchedule = now()->addHour()->format('Y-m-d H:i:s');
+                                        // Sesuaikan Payload dengan Format KiriminAja v6.1 (Request Pickup)
+                                        $pickupSchedule = now()->addHour()->format('Y-m-d H:i:s');
+                                        $payload = [
+                                            'address'      => $tenantOwner->address_detail ?? 'Alamat Toko',
+                                            'phone'        => $tenantOwner->phone ?? '085745808809',
+                                            'name'         => $tenantOwner->name ?? 'Toko Sancaka',
+                                            'kecamatan_id' => (int) $tenantOwner->district_id,
+                                            'kelurahan_id' => (int) $tenantOwner->subdistrict_id,
+                                            'zipcode'      => $tenantOwner->postal_code ?? '00000',
+                                            'schedule'     => $pickupSchedule,
+                                            'platform_name'=> 'Sancaka Marketplace',
+                                            'packages'     => [[
+                                                'order_id'          => $orderId,
+                                                'item_name'         => 'Produk Percetakan',
+                                                'package_type_id'   => 1, // Umum
+                                                'destination_name'  => $orderMarketplace->customer_name,
+                                                'destination_phone' => $orderMarketplace->customer_phone,
+                                                'destination_address' => $orderMarketplace->destination_address,
+                                                'destination_kecamatan_id' => (int) $shipData['dist'],
+                                                'destination_kelurahan_id' => (int) ($shipData['sub'] ?? 0),
+                                                'destination_zipcode'      => '00000',
+                                                'weight'        => (int) ceil($shipData['weight'] ?? 1000),
+                                                'width' => 10, 'height' => 10, 'length' => 10,
+                                                'item_value'    => (int) $orderMarketplace->total_price,
+                                                'insurance_amount' => 0,
+                                                'cod'           => 0,
+                                                'service'       => $shipData['code'] ?? 'jne',
+                                                'service_type'  => $shipData['type'] ?? 'REG',
+                                                'shipping_cost' => (int) $orderMarketplace->shipping_cost
+                                            ]]
+                                        ];
 
-                                            $payload = [
-                                                'address'      => $tenantOwner->address_detail ?? 'Alamat Toko',
-                                                'phone'        => $tenantOwner->phone ?? '085745808809',
-                                                'name'         => $tenantOwner->name ?? 'Toko Sancaka',
-                                                'kecamatan_id' => (int) $tenantOwner->district_id,
-                                                'kelurahan_id' => (int) $tenantOwner->subdistrict_id,
-                                                'zipcode'      => $tenantOwner->postal_code ?? '00000',
-                                                'schedule'     => $pickupSchedule,
-                                                'platform_name'=> 'Sancaka Marketplace',
-                                                'category'     => ($shipData['type'] ?? '') === 'cargo' ? 'trucking' : 'regular',
-                                                'packages'     => [[
-                                                    'order_id'          => $orderId,
-                                                    'item_name'         => 'Pesanan ' . $orderId,
-                                                    'package_type_id'   => 1, // Umum
-                                                    'destination_name'  => $orderMarketplace->customer_name,
-                                                    'destination_phone' => $orderMarketplace->customer_phone,
-                                                    'destination_address' => $orderMarketplace->destination_address,
-                                                    'destination_kecamatan_id' => (int) $shipData['dist'],
-                                                    'destination_kelurahan_id' => (int) ($shipData['sub'] ?? 0),
-                                                    'destination_zipcode'      => '00000',
-                                                    'weight'        => (int) ceil($shipData['weight'] ?? 1000),
-                                                    'width' => 10, 'height' => 10, 'length' => 10,
-                                                    'item_value'    => (int) $orderMarketplace->total_price,
-                                                    'insurance_amount' => 0,
-                                                    'cod'           => 0,
-                                                    'service'       => $shipData['code'] ?? 'jne',
-                                                    'service_type'  => $shipData['type'] ?? 'REG',
-                                                    'shipping_cost' => (int) $orderMarketplace->shipping_cost
-                                                ]]
-                                            ];
+                                        Log::info("🚀 Menembak API KiriminAja via Service...");
+                                        $kaResponse = $kiriminAja->createExpressOrder($payload);
+                                        Log::info("📩 Respon KiriminAja:", ['data' => $kaResponse]);
 
-                                            Log::info("🚀 Payload Dikirim ke KA:", $payload);
-                                            $kaResponse = $kiriminAja->createExpressOrder($payload);
-                                            Log::info("📩 Respon KA:", $kaResponse);
-
-                                            if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
-                                                // Ambil Resi/Booking ID sesuai logika sukses Admin Anda
-                                                $bookingId = $kaResponse['pickup_number'] ?? $kaResponse['id'] ?? $kaResponse['data']['id'] ?? null;
-                                                $awbAsli = $kaResponse['awb'] ?? $kaResponse['data']['awb'] ?? null;
-
-                                                $finalResi = !empty($awbAsli) ? $awbAsli : $bookingId;
-
-                                                $updateData['shipping_ref'] = $bookingId;
-                                                $updateData['booking_ref']  = $bookingId;
-                                                $updateData['shipping_ref'] = $finalResi; // Timpa kolom resi
-
-                                                Log::info("✅ AUTO-BOOKING SUKSES: $finalResi");
-                                            } else {
-                                                Log::error("❌ KA MENOLAK: " . ($kaResponse['text'] ?? 'Data tidak valid'));
-                                            }
-                                        } catch (\Exception $eApi) {
-                                            Log::error("❌ ERROR SERVICE KA: " . $eApi->getMessage());
+                                        if ($kaResponse && isset($kaResponse['status']) && $kaResponse['status'] == true) {
+                                            $bookingId = $kaResponse['pickup_number'] ?? $kaResponse['id'] ?? $kaResponse['data']['id'] ?? null;
+                                            $updateData['shipping_ref'] = $bookingId;
+                                            Log::info("✅ AUTO-BOOKING BERHASIL: $bookingId");
+                                        } else {
+                                            Log::error("❌ API KA GAGAL:", ['msg' => $kaResponse['text'] ?? 'Unknown Error']);
                                         }
                                     }
                                 }
                             } else {
-                                // Skenario Kasir Offline (Saldo Langsung Masuk)
+                                // Skenario Kasir Offline
                                 $tenantOwner = $percetakanDB->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
                                 if ($tenantOwner) {
                                     $percetakanDB->table('users')->where('id', $tenantOwner->id)->increment('saldo', $orderMarketplace->final_price);
                                 }
                             }
 
+                            // Update Final ke Database
                             $percetakanDB->table('orders')->where('id', $orderMarketplace->id)->update($updateData);
-                            Log::info("✅ Webhook Selesai untuk $orderId");
+                            Log::info("✅ Selesai memproses Webhook untuk $orderId");
                         }
                     } catch (\Exception $e) {
-                        Log::error("❌ Gagal Global Webhook: " . $e->getMessage());
+                        Log::error("❌ CRITICAL ERROR WEBHOOK:", ['msg' => $e->getMessage()]);
                     }
                 }
 
