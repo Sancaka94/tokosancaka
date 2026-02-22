@@ -26,6 +26,7 @@ class Product extends Model
         'description',  // Deskripsi produk
         'base_price',   // Harga Modal
         'sell_price',   // Harga Jual
+        'weight',       // <-- BERAT (gram)
         'stock',        // Sisa Stok
         'sku',          // <--- WAJIB TAMBAHKAN INI (JANGAN LUPA)
         'sold',         // Jumlah Terjual
@@ -37,18 +38,27 @@ class Product extends Model
         'type',         // physical / service
         'has_variant',  // Penanda jika produk punya varian
         'barcode', // <--- TAMBAHKAN INI
+        'is_best_seller', // <-- BADGE
+        'is_terlaris',    // <-- BADGE
+        'is_new_arrival', // <-- BADGE
+        'is_flash_sale',  // <-- BADGE
     ];
 
     /**
      * Casting tipe data agar formatnya sesuai saat diambil.
      */
     protected $casts = [
-        'base_price'  => 'decimal:2',
-        'sell_price'  => 'decimal:2',
-        'stock'       => 'integer',
-        'sold'        => 'integer',
-        'is_active'   => 'boolean', // Ubah 1/0 jadi true/false
-        'has_variant' => 'boolean', // Ubah 1/0 jadi true/false
+        'base_price'     => 'decimal:2',
+        'sell_price'     => 'decimal:2',
+        'stock'          => 'integer',
+        'sold'           => 'integer',
+        'weight'         => 'integer',
+        'is_active'      => 'boolean',
+        'has_variant'    => 'boolean',
+        'is_best_seller' => 'boolean',
+        'is_terlaris'    => 'boolean',
+        'is_new_arrival' => 'boolean',
+        'is_flash_sale'  => 'boolean',
     ];
 
     // --- RELATIONSHIPS ---
