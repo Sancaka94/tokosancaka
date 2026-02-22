@@ -46,4 +46,13 @@ class ProductVariant extends Model
     {
         return $this->belongsTo(Product::class, 'product_id');
     }
+
+    /**
+     * Relasi ke Sub Varian (One-to-Many)
+     * Varian ini bisa punya banyak Sub Varian di bawahnya.
+     */
+    public function subVariants()
+    {
+        return $this->hasMany(ProductSubVariant::class, 'product_variant_id');
+    }
 }
