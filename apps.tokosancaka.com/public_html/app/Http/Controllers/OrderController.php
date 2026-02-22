@@ -763,7 +763,7 @@ class OrderController extends Controller
                 'customer_note'   => $customerNote,
                 'shipping_cost'   => $biayaOngkir,
                 'courier_service' => $request->delivery_type === 'shipping' ? $request->courier_name : null,
-                'shipping_ref'    => null,
+                'shipping_ref'    => $shippingRef,  // <--- PASTIKAN BARIS INI ADA
                 'destination_address' => $fullAddressSaved,
             ]);
 
