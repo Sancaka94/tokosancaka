@@ -1,3 +1,5 @@
+<?php
+
 namespace App\Http\Middleware;
 
 use Closure;
@@ -10,8 +12,8 @@ class EnforceLicenseLimits
     public function handle(Request $request, Closure $next)
     {
         // Asumsi: Anda mendapatkan tenant yang sedang aktif (misal dari Auth atau Subdomain)
-        $tenant = auth()->user()->tenant ?? null; 
-        
+        $tenant = auth()->user()->tenant ?? null;
+
         if (!$tenant) {
             return $next($request);
         }
