@@ -629,6 +629,16 @@ class OrderController extends Controller
             $metodeBayarFix = $inputMethod;
         }
 
+        // [BARU] LOGIKA ESCROW & MARKETPLACE
+        $isMarketplaceOrder = !Auth::check();
+        $isEscrow = $isMarketplaceOrder ? 1 : 0;
+        $escrowStatus = $isMarketplaceOrder ? 'held' : 'none';
+
+        // Paksa pesanan online (Guest) pakai metode DANA/QRIS
+        if ($isMarketplaceOrder && !in_array($metodeBayarFix, ['dana_sdk', 'tripay', 'doku'])) {
+            return response()->json(['status' => 'error', 'message' => 'Pesanan online wajib menggunakan pembayaran otomatis.'], 400);
+        }
+
         DB::beginTransaction();
         Log::info('Database Transaction Started.');
 
@@ -744,6 +754,8 @@ class OrderController extends Controller
                 'discount_amount' => $discount,
                 'final_price'     => $finalPrice,
                 'payment_method'  => $metodeBayarFix,
+                'is_escrow'       => $isEscrow,      // <--- TAMBAHKAN INI
+                'escrow_status'   => $escrowStatus,  // <--- TAMBAHKAN INI
                 'status'          => 'pending',  // WAJIB PENDING
                 'payment_status'  => 'unpaid',   // WAJIB UNPAID
                 'note'            => $catatanSistem,
@@ -804,6 +816,12 @@ class OrderController extends Controller
 
             // === SKENARIO A: PENGIRIMAN PAKET (SHIPPING) ===
             if ($request->delivery_type === 'shipping') {
+
+            if ($isMarketplaceOrder) {
+                    // JIKA GUEST (MARKETPLACE): Jangan potong saldo & jangan booking kurir dulu
+                    $catatanSistem .= "\n[ESCROW] Dana ongkir ditahan Sancaka.";
+                }
+                else {
 
                 if (!$currentUser) throw new \Exception("Sesi Admin berakhir. Silakan login ulang.");
 
@@ -929,6 +947,8 @@ class OrderController extends Controller
 
                 } else {
                     throw new \Exception("Saldo tidak cukup bayar Ongkir (Butuh: Rp " . number_format($tagihanKeAdmin) . "). Saldo: Rp " . number_format($currentUser->saldo));
+                }
+
                 }
 
             } // End of Shipping Block
