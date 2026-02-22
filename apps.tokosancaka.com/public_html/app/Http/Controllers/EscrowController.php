@@ -24,6 +24,7 @@ class EscrowController extends Controller
             ->select(
                 'orders.id', 'orders.order_number', 'orders.final_price', 'orders.status as order_status',
                 'orders.shipping_ref', 'orders.booking_ref', 'orders.escrow_status', 'orders.created_at',
+                'orders.shipping_cost', // <--- INI OBATNYA (KITA PANGGIL ONGKIRNYA)
                 'tenants.name as store_name', 'tenants.id as tenant_id'
             )
             // Ambil Nama Owner menggunakan Subquery (Mencegah Duplicate tanpa Group By)
