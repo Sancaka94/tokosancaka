@@ -96,7 +96,6 @@ class LicenseController extends Controller
             '3_ID_TOKO_OPERATOR' => $tenant->id
         ]);
         // ------------------------------------
-
         if (!$userId) {
             return redirect()->back()->with('error', 'Validasi Gagal: Anda harus login untuk melakukan aktivasi.');
         }
