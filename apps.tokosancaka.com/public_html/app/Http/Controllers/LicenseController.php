@@ -131,14 +131,20 @@ class LicenseController extends Controller
             $newExpiredDate = $currentExpired->addDays($durationDays)->timezone('Asia/Jakarta');
             Log::info("📅 Tanggal expired baru: {$newExpiredDate->format('Y-m-d H:i:s')} (+{$durationDays} hari)");
 
-            // Update tabel tenants
-            DB::table('tenants')->where('id', $tenant->id)->update([
-                'status' => 'active',
-                'package' => $license->package_type ?? 'monthly',
-                'expired_at' => $newExpiredDate,
-                'updated_at' => now()
-            ]);
-            Log::info("✅ Tabel 'tenants' berhasil diupdate.");
+            // Update tabel tenants menggunakan Model agar Cache sistem ter-refresh
+        $tenantModel = \App\Models\Tenant::find($tenant->id);
+
+        if ($tenantModel) {
+            $tenantModel->status = 'active';
+            $tenantModel->package = $license->package_type ?? 'monthly';
+            $tenantModel->expired_at = $newExpiredDate;
+            $tenantModel->save(); // Perintah save() ini akan otomatis memicu sistem menghapus memori/cache lama
+
+            Log::info("✅ Tabel 'tenants' berhasil diupdate via Eloquent Model.");
+        } else {
+            Log::error("❌ Gagal menemukan Tenant dengan ID: {$tenant->id} untuk diupdate.");
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat memproses aktivasi. Silakan hubungi admin.');
+        }
 
             // Update tabel licenses
             $license->update([
