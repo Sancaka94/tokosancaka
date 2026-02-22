@@ -739,6 +739,16 @@ class OrderController extends Controller
                 $detail = $request->customer_address_detail ?? '';
                 $district = $request->destination_text ?? '';
                 $fullAddressSaved = $detail . ' (' . $district . ')';
+
+                // ---> TAMBAHKAN KODE INI <---
+                // Simpan data logistik ke shipping_ref dalam bentuk JSON untuk dibaca oleh Webhook nanti
+                $shippingRef = json_encode([
+                    'dist'   => $request->destination_district_id,
+                    'sub'    => $request->destination_subdistrict_id ?? 0,
+                    'weight' => ceil($totalWeight),
+                    'code'   => $request->courier_code ?? 'jne',
+                    'type'   => $request->service_type ?? 'REG'
+                ]);
             }
 
             // ============================================================

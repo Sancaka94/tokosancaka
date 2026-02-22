@@ -272,8 +272,10 @@ class DokuWebhookController extends Controller
                                 $updateData['escrow_status'] = 'held';
                                 Log::info("🔒 ESCROW AKTIF: Order $orderId. Menyiapkan Payload API...");
 
+                                // 1. BACA JSON DARI DATABASE
                                 $shipData = json_decode($orderMarketplace->shipping_ref, true);
 
+                                // 2. PENJAGA PINTU: Pastikan datanya beneran Array / JSON Valid
                                 if (is_array($shipData)) {
                                     $tenantOwner = $percetakanDB->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
 
@@ -293,23 +295,27 @@ class DokuWebhookController extends Controller
                                             'schedule'     => $pickupSchedule,
                                             'platform_name'=> 'Sancaka Marketplace',
                                             'packages'     => [[
-                                                'order_id'          => $orderId,
-                                                'item_name'         => 'Produk Percetakan',
-                                                'package_type_id'   => 1, // Umum
-                                                'destination_name'  => $orderMarketplace->customer_name,
-                                                'destination_phone' => $orderMarketplace->customer_phone,
-                                                'destination_address' => $orderMarketplace->destination_address,
-                                                'destination_kecamatan_id' => (int) $shipData['dist'],
+                                                'order_id'                 => $orderId,
+                                                'item_name'                => 'Produk Percetakan',
+                                                'package_type_id'          => 1, // Umum
+                                                'destination_name'         => $orderMarketplace->customer_name,
+                                                'destination_phone'        => $orderMarketplace->customer_phone,
+                                                'destination_address'      => $orderMarketplace->destination_address,
+
+                                                // BACA DATA DARI JSON YANG DISIMPAN SAAT CHECKOUT
+                                                'destination_kecamatan_id' => (int) ($shipData['dist'] ?? 0),
                                                 'destination_kelurahan_id' => (int) ($shipData['sub'] ?? 0),
                                                 'destination_zipcode'      => '00000',
-                                                'weight'        => (int) ceil($shipData['weight'] ?? 1000),
-                                                'width' => 10, 'height' => 10, 'length' => 10,
-                                                'item_value'    => (int) $orderMarketplace->total_price,
-                                                'insurance_amount' => 0,
-                                                'cod'           => 0,
-                                                'service'       => $shipData['code'] ?? 'jne',
-                                                'service_type'  => $shipData['type'] ?? 'REG',
-                                                'shipping_cost' => (int) $orderMarketplace->shipping_cost
+                                                'weight'                   => (int) ceil($shipData['weight'] ?? 1000),
+                                                'width'                    => 10,
+                                                'height'                   => 10,
+                                                'length'                   => 10,
+                                                'item_value'               => (int) $orderMarketplace->total_price,
+                                                'insurance_amount'         => 0,
+                                                'cod'                      => 0,
+                                                'service'                  => $shipData['code'] ?? 'jne',
+                                                'service_type'             => $shipData['type'] ?? 'REG',
+                                                'shipping_cost'            => (int) $orderMarketplace->shipping_cost
                                             ]]
                                         ];
 
@@ -319,12 +325,16 @@ class DokuWebhookController extends Controller
 
                                         if ($kaResponse && isset($kaResponse['status']) && $kaResponse['status'] == true) {
                                             $bookingId = $kaResponse['pickup_number'] ?? $kaResponse['id'] ?? $kaResponse['data']['id'] ?? null;
+                                            // TIMPA JSON DENGAN NOMOR RESI/BOOKING
                                             $updateData['shipping_ref'] = $bookingId;
                                             Log::info("✅ AUTO-BOOKING BERHASIL: $bookingId");
                                         } else {
                                             Log::error("❌ API KA GAGAL:", ['msg' => $kaResponse['text'] ?? 'Unknown Error']);
                                         }
                                     }
+                                } else {
+                                    // LOG ERROR BARU BIAR GAMPANG DEBUG KALAU GAGAL LAGI
+                                    Log::error("❌ GAGAL NEMBAK KA: Kolom shipping_ref kosong atau bukan JSON. Pastikan proses Checkout sudah menyimpan JSON.", ['shipping_ref' => $orderMarketplace->shipping_ref]);
                                 }
                             } else {
                                 // Skenario Kasir Offline
