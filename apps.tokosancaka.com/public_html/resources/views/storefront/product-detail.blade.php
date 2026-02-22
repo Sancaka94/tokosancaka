@@ -148,7 +148,6 @@
             currentStock: {{ $product->stock }},
 
             // State Galeri Foto
-            // State Galeri Foto
             mainImage: '{{ $product->image ? asset("storage/".$product->image) : "" }}',
             gallery: [
                 '{{ $product->image ? asset("storage/".$product->image) : "" }}',
@@ -160,12 +159,12 @@
 
             initData() {
                 // Opsional: Jika mau auto-select varian pertama yang stoknya ada
-                /*
+
                 if(this.variants.length > 0) {
                     let firstAvail = this.variants.find(v => v.stock > 0);
                     if(firstAvail) this.selectVariant(firstAvail);
                 }
-                */
+
             },
 
             selectVariant(variant) {
