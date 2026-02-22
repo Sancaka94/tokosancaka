@@ -98,9 +98,10 @@ class LicenseController extends Controller
 
             // 3. VALIDASI UTAMA: Pastikan Kode Lisensi ada DAN memang milik ID Toko tersebut
             Log::info("🔍 Mencari lisensi '{$cleanLicenseCode}' untuk Tenant ID: {$tenant->id}");
-            $license = License::where('license_code', $cleanLicenseCode)
-                              ->where('tenant_id', $tenant->id)
-                              ->first();
+            $license = License::withoutGlobalScopes()
+                          ->where('license_code', $cleanLicenseCode)
+                          ->where('tenant_id', $tenant->id)
+                          ->first();
 
             if (!$license) {
                 Log::warning("⚠️ Validasi Gagal: Lisensi '{$cleanLicenseCode}' tidak ditemukan atau bukan milik Tenant ID {$tenant->id}.");
