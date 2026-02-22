@@ -70,71 +70,41 @@ class LicenseController extends Controller
 
     public function processRedeem(Request $request)
     {
-        // 1. Validasi input form
+        // 1. Validasi input form saja
         $request->validate([
             'license_code' => 'required|string',
-            'target_subdomain' => 'required|string',
-            // 'user_id' => 'required|integer' // Pastikan user_id juga divalidasi
+            'target_subdomain' => 'required|string'
         ]);
 
-        // Bersihkan kode dari spasi
+        // Bersihkan spasi pada kode
         $cleanLicenseCode = strtoupper(str_replace(' ', '', $request->license_code));
 
-        // 2. VALIDASI LAPIS 1: Cek Subdomain (Cari Tenant)
+        // 2. Cari target tokonya berdasarkan Subdomain
         $tenant = DB::table('tenants')->where('subdomain', $request->target_subdomain)->first();
 
         if (!$tenant) {
             return redirect()->back()->with('error', 'Validasi Gagal: Toko dengan subdomain tersebut tidak ditemukan.');
         }
 
-        // 3. VALIDASI LAPIS 2: Cek User ID
-        // (Asumsi mengambil ID user yang sedang login. Ubah menjadi $request->user_id jika dari form hidden)
-        $userId = auth()->id();
-
-        $user = DB::table('users')->where('id', $userId)->first();
-
-        // --- TAMBAHKAN BARIS INI SEMENTARA ---
-        dd([
-            '1_NAMA_USER_YANG_LOGIN' => $user->name ?? 'Tidak ada nama',
-            '2_TENANT_ID_MILIK_USER' => $user->tenant_id ?? 'KOSONG/NULL',
-            '3_ID_TOKO_OPERATOR' => $tenant->id
-        ]);
-        // ------------------------------------
-
-        if (!$userId) {
-            return redirect()->back()->with('error', 'Validasi Gagal: Anda harus login untuk melakukan aktivasi.');
-        }
-
-        // Opsional tapi penting: Pastikan User ini benar-benar terdaftar di Tenant (Subdomain) tersebut
-        // Sesuaikan nama kolom 'tenant_id' di tabel users Anda
-        $user = DB::table('users')->where('id', $userId)->first();
-        if ($user && $user->tenant_id !== $tenant->id) {
-            return redirect()->back()->with('error', 'Validasi Gagal: Anda tidak memiliki otoritas atas subdomain ini.');
-        }
-
-        // 4. VALIDASI LAPIS 3: Cek Lisensi (Kode + Tenant + User)
-        $licenseQuery = License::where('license_code', $cleanLicenseCode)
-                               ->where('tenant_id', $tenant->id);
-
-        // Jika Anda SUDAH menambahkan kolom 'user_id' di tabel 'licenses',
-        // hapus tanda // pada baris di bawah ini:
-        $licenseQuery->where('user_id', $userId);
-
-        $license = $licenseQuery->first();
+        // 3. VALIDASI UTAMA: Pastikan Kode Lisensi ada DAN memang milik ID Toko tersebut
+        $license = License::where('license_code', $cleanLicenseCode)
+                          ->where('tenant_id', $tenant->id)
+                          ->first();
 
         if (!$license) {
-            return redirect()->back()->with('error', 'Validasi Gagal: Lisensi tidak ditemukan atau tidak diperuntukkan bagi Subdomain/User Anda.');
+            return redirect()->back()->with('error', 'Validasi Gagal: Kode lisensi tidak valid atau bukan diperuntukkan bagi subdomain Anda.');
         }
 
-        // 5. Pengecekan status (apakah sudah dipakai?)
+        // 4. Pengecekan status lisensi (apakah sudah pernah dipakai?)
         if ($license->status !== 'available') {
             return redirect()->back()->with('error', 'Kode lisensi ini sudah pernah digunakan.');
         }
 
-        // --- PROSES AKTIVASI (Jika semua validasi lolos) ---
+        // --- 5. PROSES AKTIVASI ---
 
         $durationDays = $license->duration_days ?? 30;
         $currentExpired = $tenant->expired_at ? \Carbon\Carbon::parse($tenant->expired_at) : now();
+
         if ($currentExpired->isPast()) {
             $currentExpired = now();
         }
@@ -156,6 +126,6 @@ class LicenseController extends Controller
             'expires_at' => $newExpiredDate
         ]);
 
-        return redirect()->back()->with('success', 'Aktivasi Berhasil! Lisensi cocok dengan User dan Subdomain Anda.');
+        return redirect()->back()->with('success', 'Aktivasi Berhasil! Layanan SancakaPOS Anda telah diperpanjang.');
     }
 }
