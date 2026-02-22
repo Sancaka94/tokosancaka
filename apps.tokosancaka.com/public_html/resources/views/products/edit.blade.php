@@ -95,7 +95,7 @@
                                    class="w-full px-4 py-3 rounded-xl border-slate-300 focus:ring-indigo-500 font-bold text-slate-700">
                         </div>
 
-                        {{-- [BARU] Barcode Produk Utama dengan Visual Generator --}}
+                        {{-- Barcode Produk Utama dengan Visual Generator --}}
                         <div x-show="!hasVariant && !isService" x-data="{
                                 code: '{{ $product->barcode }}',
                                 init() { this.renderBarcode(); },
@@ -182,6 +182,40 @@
                             </div>
                         </div>
 
+                        <div x-show="!isService" class="mb-4">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Berat Keseluruhan (Gram)</label>
+                            <input type="number" name="weight" value="{{ old('weight', $product->weight) }}" placeholder="1000"
+                                   class="w-full px-4 py-3 rounded-xl border-slate-300 focus:ring-indigo-500 transition text-sm text-slate-700">
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Deskripsi Singkat</label>
+                            <textarea name="description" rows="3" placeholder="Tuliskan detail produk di sini..."
+                                      class="w-full px-4 py-3 rounded-xl border-slate-300 focus:ring-indigo-500 transition text-sm text-slate-700">{{ old('description', $product->description) }}</textarea>
+                        </div>
+
+                        <div class="mb-5 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-3 tracking-wider">Badge Produk (Marketplace)</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="is_best_seller" value="1" {{ $product->is_best_seller ? 'checked' : '' }} class="rounded text-indigo-600 focus:ring-indigo-500 bg-white border-slate-300">
+                                    <span class="text-xs font-semibold text-slate-700">Best Seller</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="is_terlaris" value="1" {{ $product->is_terlaris ? 'checked' : '' }} class="rounded text-indigo-600 focus:ring-indigo-500 bg-white border-slate-300">
+                                    <span class="text-xs font-semibold text-slate-700">Terlaris</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="is_new_arrival" value="1" {{ $product->is_new_arrival ? 'checked' : '' }} class="rounded text-indigo-600 focus:ring-indigo-500 bg-white border-slate-300">
+                                    <span class="text-xs font-semibold text-slate-700">Produk Baru</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="is_flash_sale" value="1" {{ $product->is_flash_sale ? 'checked' : '' }} class="rounded text-orange-500 focus:ring-orange-500 bg-white border-slate-300">
+                                    <span class="text-xs font-semibold text-slate-700">Flash Sale</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <div x-show="!isService">
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Supplier</label>
                             <input type="text" name="supplier" value="{{ old('supplier', $product->supplier) }}"
@@ -190,12 +224,12 @@
                     </div>
                 </div>
 
-                {{-- CARD VARIAN --}}
+                {{-- CARD VARIAN & SUB VARIAN --}}
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                     <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
                         <div>
-                            <h3 class="font-bold text-slate-800 text-lg">Varian & Ukuran</h3>
-                            <p class="text-xs text-slate-400">Aktifkan jika produk memiliki banyak jenis harga.</p>
+                            <h3 class="font-bold text-slate-800 text-lg">Varian & Sub Varian</h3>
+                            <p class="text-xs text-slate-400">Aktifkan jika produk memiliki banyak jenis dan ukuran.</p>
                         </div>
 
                         {{-- Toggle Switch Varian --}}
@@ -210,67 +244,103 @@
 
                         <div class="flex justify-end mb-3">
                             <button type="button" @click="addVariantRow()" class="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 hover:bg-indigo-100 transition">
-                                <i class="fas fa-plus mr-1"></i> Tambah Varian
+                                <i class="fas fa-plus mr-1"></i> Tambah Varian Utama
                             </button>
                         </div>
 
-                        <div class="space-y-3">
+                        <div class="space-y-4">
                             {{-- Header Tabel Kecil --}}
                             <div class="grid grid-cols-12 gap-3 text-[10px] font-bold text-slate-400 uppercase px-1">
                                 <div class="col-span-3">Nama Varian</div>
                                 <div class="col-span-3">Barcode</div>
-                                <div class="col-span-3">Harga</div>
-                                <div class="col-span-2">Stok</div>
+                                <div class="col-span-3">Harga Induk</div>
+                                <div class="col-span-2">Stok Total</div>
                                 <div class="col-span-1 text-center">Hapus</div>
                             </div>
 
                             {{-- Looping Input Varian --}}
                             <template x-for="(variant, index) in variants" :key="index">
-                                <div class="grid grid-cols-12 gap-3 items-center group animate-fade-in-down">
-                                    {{-- ID Varian (Hidden) --}}
-                                    <input type="hidden" :name="'variants['+index+'][id]'" x-model="variant.id">
+                                <div class="bg-white rounded-xl border border-slate-200 mb-4 overflow-hidden shadow-sm">
 
-                                    {{-- Nama --}}
-                                    <div class="col-span-3">
-                                        <input type="text" :name="'variants['+index+'][name]'" x-model="variant.name" placeholder="Cth: XL" required
-                                               class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500">
+                                    {{-- BARIS VARIAN UTAMA --}}
+                                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-slate-50 border-b border-slate-200">
+                                        <input type="hidden" :name="'variants['+index+'][id]'" x-model="variant.id">
+
+                                        <div class="col-span-3">
+                                            <input type="text" :name="'variants['+index+'][name]'" x-model="variant.name" placeholder="Cth: Merah" required
+                                                   class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm font-bold text-slate-700 bg-white transition-all">
+                                        </div>
+
+                                        <div class="col-span-3 relative">
+                                            <span class="absolute inset-y-0 left-0 pl-2 flex items-center text-slate-400"><i class="fas fa-barcode text-xs"></i></span>
+                                            <input type="text" :name="'variants['+index+'][barcode]'" x-model="variant.barcode" placeholder="Scan..." @keydown.enter.prevent
+                                                   class="w-full pl-6 pr-2 py-2 rounded-lg border-slate-300 text-xs font-mono bg-white transition-all">
+                                        </div>
+
+                                        <div class="col-span-3">
+                                            <input type="number" :name="'variants['+index+'][price]'" x-model="variant.price" placeholder="0" required
+                                                   class="w-full px-3 py-2 rounded-lg border-emerald-200 text-sm font-bold text-emerald-700 bg-white text-right transition-all">
+                                        </div>
+
+                                        <div class="col-span-2">
+                                            <input type="number" :name="'variants['+index+'][stock]'" x-model="variant.stock" placeholder="0" required
+                                                   :readonly="variant.sub_variants && variant.sub_variants.length > 0"
+                                                   :class="variant.sub_variants && variant.sub_variants.length > 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-white'"
+                                                   class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm text-center transition-all">
+                                        </div>
+
+                                        <div class="col-span-1 text-center">
+                                            <button type="button" @click="removeVariantRow(index)" class="h-8 w-8 inline-flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                                                <i class="fas fa-trash-alt text-xs"></i>
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    {{-- Barcode Varian --}}
-                                    <div class="col-span-3 relative">
-                                        <span class="absolute left-2 top-2.5 text-slate-400"><i class="fas fa-barcode text-xs"></i></span>
-                                        <input type="text" :name="'variants['+index+'][barcode]'" x-model="variant.barcode"
-                                               @keydown.enter.prevent
-                                               placeholder="Scan..."
-                                               class="w-full pl-6 pr-2 py-2 rounded-lg border-slate-300 text-xs font-mono bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all">
+                                    {{-- AREA SUB VARIAN --}}
+                                    <div class="p-3 bg-white">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <span class="text-[10px] font-bold text-orange-500 uppercase tracking-wider"><i class="fas fa-code-branch"></i> Sub Varian (Anak)</span>
+                                            <button type="button" @click="addSubVariantRow(index)" class="text-[10px] bg-orange-50 text-orange-600 px-2 py-1 rounded border border-orange-200 hover:bg-orange-100 font-bold">
+                                                + Tambah Anak
+                                            </button>
+                                        </div>
+
+                                        <div class="space-y-2 pl-4 border-l-2 border-orange-100">
+                                            <template x-for="(sub, subIndex) in variant.sub_variants" :key="subIndex">
+                                                <div class="grid grid-cols-12 gap-2 items-center">
+                                                    <input type="hidden" :name="'variants['+index+'][sub_variants]['+subIndex+'][id]'" x-model="sub.id">
+                                                    <div class="col-span-3">
+                                                        <input type="text" :name="'variants['+index+'][sub_variants]['+subIndex+'][name]'" x-model="sub.name" placeholder="Cth: Ukuran L" required class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-orange-500">
+                                                    </div>
+                                                    <div class="col-span-3">
+                                                        <input type="text" :name="'variants['+index+'][sub_variants]['+subIndex+'][barcode]'" x-model="sub.barcode" placeholder="Barcode" class="w-full px-2 py-1.5 text-xs font-mono border border-slate-300 rounded focus:ring-1 focus:ring-orange-500">
+                                                    </div>
+                                                    <div class="col-span-2">
+                                                        <input type="number" :name="'variants['+index+'][sub_variants]['+subIndex+'][price]'" x-model="sub.price" placeholder="Harga" required class="w-full px-2 py-1.5 text-xs border border-emerald-300 text-emerald-700 font-bold rounded focus:ring-1 focus:ring-emerald-500 text-right">
+                                                    </div>
+                                                    <div class="col-span-2">
+                                                        <input type="number" :name="'variants['+index+'][sub_variants]['+subIndex+'][stock]'" x-model="sub.stock" placeholder="Stok" @input="calculateTotalStock(index)" required class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 text-center">
+                                                    </div>
+                                                    <div class="col-span-1">
+                                                        <input type="number" :name="'variants['+index+'][sub_variants]['+subIndex+'][weight]'" x-model="sub.weight" placeholder="Berat" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 text-center" title="Berat dalam Gram">
+                                                    </div>
+                                                    <div class="col-span-1 text-center">
+                                                        <button type="button" @click="removeSubVariantRow(index, subIndex); calculateTotalStock(index)" class="text-slate-400 hover:text-red-500 p-1">
+                                                            <i class="fas fa-times text-xs"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                            <template x-if="!variant.sub_variants || variant.sub_variants.length === 0">
+                                                <p class="text-[9px] text-slate-400 italic">Tidak ada sub varian. Harga & stok ikut varian induk.</p>
+                                            </template>
+                                        </div>
                                     </div>
 
-                                    {{-- Harga --}}
-                                    <div class="col-span-3">
-                                        <input type="number" :name="'variants['+index+'][price]'" x-model="variant.price" placeholder="0" required
-                                               class="w-full px-3 py-2 rounded-lg border-emerald-200 text-sm font-bold text-emerald-700 text-right focus:ring-2 focus:ring-emerald-500">
-                                    </div>
-
-                                    {{-- Stok --}}
-                                    <div class="col-span-2">
-                                        <input type="number" :name="'variants['+index+'][stock]'" x-model="variant.stock" placeholder="0" required
-                                               class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm text-center focus:ring-2 focus:ring-indigo-500">
-                                    </div>
-
-                                    {{-- Hapus --}}
-                                    <div class="col-span-1 text-center">
-                                        <button type="button" @click="removeVariantRow(index)" class="text-slate-300 hover:text-red-500 transition">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </div>
                                 </div>
                             </template>
                         </div>
 
-                        {{-- Pesan Kosong --}}
-                        <div x-show="variants.length === 0" class="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-300 mt-2">
-                            <p class="text-xs text-slate-400">Belum ada varian. Klik tombol tambah di atas.</p>
-                        </div>
                     </div>
 
                     {{-- Jika Varian Mati --}}
@@ -298,20 +368,29 @@
 <script>
     function productEditForm() {
         return {
-            // Data Awal dari Backend
             imgPreview: '{{ $product->image ? asset("storage/".$product->image) : "" }}',
             selectedCategory: '{{ $product->category_id }}',
             isService: {{ $product->type === 'service' ? 'true' : 'false' }},
             hasVariant: {{ $product->has_variant ? 'true' : 'false' }},
 
-            // Data Varian (Load dari DB dengan mapping barcode yang benar)
+            // Data Varian beserta Sub Varian (Load dari DB)
             variants: {!! $product->variants->map(function($v) {
                 return [
                     'id' => $v->id,
                     'name' => $v->name,
                     'price' => $v->price,
                     'stock' => $v->stock,
-                    'barcode' => $v->barcode ?? '' // Pastikan kolom barcode terload
+                    'barcode' => $v->barcode ?? '',
+                    'sub_variants' => $v->subVariants->map(function($sub) {
+                        return [
+                            'id' => $sub->id,
+                            'name' => $sub->name,
+                            'price' => $sub->price,
+                            'stock' => $sub->stock,
+                            'weight' => $sub->weight ?? 0,
+                            'barcode' => $sub->barcode ?? ''
+                        ];
+                    })->toArray()
                 ];
             })->toJson() !!},
 
@@ -322,17 +401,46 @@
 
             addVariantRow() {
                 this.variants.push({
-                    id: null, // Baru, belum ada ID
+                    id: null,
                     name: '',
                     price: 0,
                     stock: 0,
-                    barcode: '' // Field kosong
+                    barcode: '',
+                    sub_variants: []
                 });
             },
 
             removeVariantRow(index) {
-                // Opsional: Bisa tambahkan input hidden 'delete_ids[]' jika ingin hapus di DB
                 this.variants.splice(index, 1);
+            },
+
+            addSubVariantRow(variantIndex) {
+                if(!this.variants[variantIndex].sub_variants) {
+                    this.variants[variantIndex].sub_variants = [];
+                }
+                this.variants[variantIndex].sub_variants.push({
+                    id: null,
+                    name: '',
+                    price: this.variants[variantIndex].price,
+                    stock: 0,
+                    weight: 0,
+                    barcode: ''
+                });
+            },
+
+            removeSubVariantRow(variantIndex, subIndex) {
+                this.variants[variantIndex].sub_variants.splice(subIndex, 1);
+            },
+
+            calculateTotalStock(variantIndex) {
+                let variant = this.variants[variantIndex];
+                if (variant.sub_variants && variant.sub_variants.length > 0) {
+                    let total = 0;
+                    variant.sub_variants.forEach(sub => {
+                        total += parseInt(sub.stock) || 0;
+                    });
+                    variant.stock = total;
+                }
             }
         }
     }
