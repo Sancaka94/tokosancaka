@@ -107,7 +107,7 @@
 
                             <td class="px-4 py-4 border-r border-gray-200 text-right">
                                 <div class="font-black text-lg {{ $order->escrow_status === 'held' ? 'text-amber-600' : 'text-emerald-600' }}">
-                                    {{ number_format($order->final_price, 0, ',', '.') }}
+                                    {{ number_format($order->final_price - $order->shipping_cost, 0, ',', '.') }}
                                 </div>
                                 <div class="text-[10px] text-gray-400 mt-1">Mata Uang IDR</div>
                             </td>

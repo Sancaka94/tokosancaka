@@ -281,9 +281,74 @@ class DokuWebhookController extends Controller
                                 // =========================================================
                                 if ($orderMarketplace->is_escrow == 1) {
                                     // [SKENARIO MARKETPLACE] -> DANA DITAHAN!
-                                    // JANGAN tambah saldo tenant. Uang diam di Sancaka.
                                     $updateData['escrow_status'] = 'held';
                                     Log::info("🔒 ESCROW AKTIF: Order $orderId adalah pesanan online. Dana DITAHAN oleh Sancaka.");
+
+                                    // --- [BARU] EKSEKUSI AUTO-BOOKING KIRIMINAJA ---
+                                    // Posisinya ADA DI SINI (Di dalam if is_escrow == 1)
+                                    if (!empty($orderMarketplace->shipping_ref) && str_starts_with($orderMarketplace->shipping_ref, '{')) {
+
+                                        $shipData = json_decode($orderMarketplace->shipping_ref, true);
+                                        $tenantOwner = $percetakanDB->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
+
+                                        if ($tenantOwner) {
+
+                                            // [PERBAIKAN] TIDAK ADA LAGI CEK SALDO ATAU POTONG SALDO TENANT!
+                                            // Ongkir sudah dibayar pembeli ke Sancaka.
+
+                                            $kiriminAja = app(\App\Services\KiriminAjaService::class);
+                                            $originFullAddress = implode(', ', array_filter([$tenantOwner->address_detail, $tenantOwner->village, $tenantOwner->district, $tenantOwner->regency, $tenantOwner->province, $tenantOwner->postal_code]));
+
+                                            $pickupSchedule = now()->addMinutes(60)->format('Y-m-d H:i:s');
+                                            if (now()->hour >= 14 || now()->isSunday()) {
+                                                $pickupSchedule = now()->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
+                                            }
+
+                                            // Tembak API
+                                            $kaResponse = $kiriminAja->createExpressOrder([
+                                                'address'       => $originFullAddress,
+                                                'phone'         => $tenantOwner->phone ?? '085745808809',
+                                                'name'          => $tenantOwner->name,
+                                                'kecamatan_id'  => (int) $tenantOwner->district_id,
+                                                'kelurahan_id'  => (int) $tenantOwner->subdistrict_id,
+                                                'zipcode'       => $tenantOwner->postal_code ?? '00000',
+                                                'schedule'      => $pickupSchedule,
+                                                'platform_name' => 'Sancaka Store',
+                                                'packages'      => [[
+                                                    'order_id' => $orderId,
+                                                    'destination_name' => $orderMarketplace->customer_name,
+                                                    'destination_phone' => $orderMarketplace->customer_phone,
+                                                    'destination_address' => $orderMarketplace->destination_address,
+                                                    'destination_kecamatan_id' => (int) $shipData['dist'],
+                                                    'destination_kelurahan_id' => (int) $shipData['sub'],
+                                                    'destination_zipcode' => '00000',
+                                                    'weight' => (int) $shipData['weight'],
+                                                    'width'=>10, 'length'=>10, 'height'=>10, 'qty'=>1,
+                                                    'item_value' => max(1000, (int)$orderMarketplace->total_price),
+                                                    'shipping_cost' => (int) $orderMarketplace->shipping_cost,
+                                                    'insurance_amount'=>0,
+                                                    'service' => $shipData['code'],
+                                                    'service_type' => $shipData['type'],
+                                                    'package_type_id'=>1,
+                                                    'item_name'=>'Paket Order '.$orderId,
+                                                    'cod'=>0,
+                                                    'note'=>'Pesanan Sancaka Marketplace'
+                                                ]]
+                                            ]);
+
+                                            // Ambil Resi Asli
+                                            if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
+                                                $newResi = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
+                                                $updateData['shipping_ref'] = $newResi; // TIMPA JSON DENGAN RESI ASLI
+                                                $catatanBaru .= "\n[RESI OTOMATIS] " . $newResi . " (Ongkir ditanggung Sancaka)";
+                                                Log::info("✅ AUTO-BOOKING BERHASIL! Resi: $newResi");
+                                            } else {
+                                                $updateData['shipping_ref'] = null;
+                                                $catatanBaru .= "\n[GAGAL BOOKING KURIR] " . ($kaResponse['text'] ?? 'Unknown Error');
+                                                Log::error("❌ AUTO-BOOKING GAGAL: " . json_encode($kaResponse));
+                                            }
+                                        }
+                                    }
                                 }
                                 else {
                                     // [SKENARIO KASIR OFFLINE] -> DANA LANGSUNG CAIR KE SALDO APLIKASI

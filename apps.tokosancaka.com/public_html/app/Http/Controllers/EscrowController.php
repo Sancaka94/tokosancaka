@@ -83,13 +83,16 @@ class EscrowController extends Controller
 
             if (!$tenantOwner) throw new \Exception("Pemilik toko (Tenant ID: {$order->tenant_id}) tidak ditemukan.");
 
-            // Tambah Saldo Owner
-            DB::table('users')->where('id', $tenantOwner->id)->increment('saldo', $order->final_price);
+            // [PERBAIKAN] Hitung Dana Bersih yang dicairkan (Total Pembayaran dikurangi Ongkir)
+            $danaBersih = $order->final_price - $order->shipping_cost;
 
-            // Update Status Escrow Order
+            // 3. Tambah Saldo Owner (HANYA DANA BERSIH/HARGA BARANG)
+            DB::table('users')->where('id', $tenantOwner->id)->increment('saldo', $danaBersih);
+
+            // 4. Update Status Escrow Order
             DB::table('orders')->where('id', $order->id)->update([
                 'escrow_status' => 'released',
-                'note' => $order->note . "\n[ESCROW] Dana Rp ".number_format($order->final_price)." DICAIRKAN ke ".$tenantOwner->name." pada ".now()->timezone('Asia/Jakarta'),
+                'note' => $order->note . "\n[ESCROW] Dana Bersih Produk Rp ".number_format($danaBersih)." DICAIRKAN ke ".$tenantOwner->name." pada ".now()->timezone('Asia/Jakarta'),
                 'updated_at' => now()->timezone('Asia/Jakarta')
             ]);
 
