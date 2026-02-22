@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\App; // <-- PERBAIKAN: Import 'App' facade
 use Illuminate\Support\Str;
 use App\Models\Store; // <-- PERBAIKAN: Import Model Store
 use App\Models\LicenseApp2; // <-- PERBAIKAN: Import Model LicenseApp2 untuk akses DB kedua
+use App\Services\KiriminAjaService; // <--- TAMBAHKAN INI!
 
 // Import Controller yang akan memproses pesanan
 use App\Http\Controllers\Admin\PesananController as AdminPesananController;
@@ -252,120 +253,105 @@ class DokuWebhookController extends Controller
                     }
                 }
 
-                // -------------------------------------------------------------
-                // A.3 ORDER MARKETPLACE / POS KASIR (SCK-) -> KONEKSI KEDUA
-                // -------------------------------------------------------------
                 else if (Str::startsWith($orderId, 'SCK-')) {
                     Log::info("🛍️ LOG TRX (SCK-): Webhook DOKU Masuk untuk Order: $orderId");
 
                     try {
-                        // PAKSA MENGGUNAKAN KONEKSI KEDUA (mysql_second)
                         $percetakanDB = DB::connection('mysql_second');
-
                         $orderMarketplace = $percetakanDB->table('orders')->where('order_number', $orderId)->first();
 
                         if ($orderMarketplace) {
                             if ($orderMarketplace->payment_status !== 'paid') {
 
                                 $catatanBaru = $orderMarketplace->note . "\n[DOKU] Lunas via Webhook jam " . now()->timezone('Asia/Jakarta');
-
                                 $updateData = [
                                     'payment_status' => 'paid',
                                     'status'         => 'processing',
-                                    'note'           => $catatanBaru,
                                     'updated_at'     => now()->timezone('Asia/Jakarta')
                                 ];
 
-                                // =========================================================
-                                // 3. LOGIKA INTI PENAHANAN DANA (ESCROW) VS PENCAIRAN
-                                // =========================================================
+                                // --- AUTO BOOKING LOGIC ---
                                 if ($orderMarketplace->is_escrow == 1) {
                                     $updateData['escrow_status'] = 'held';
-                                    Log::info("🔒 ESCROW AKTIF: Order $orderId. Memproses Auto-Booking KiriminAja...");
+                                    Log::info("🔒 ESCROW AKTIF: Order $orderId. Memulai Auto-Booking...");
 
-                                    // Deteksi Data Booking (JSON) di kolom shipping_ref
                                     $shipData = json_decode($orderMarketplace->shipping_ref, true);
 
                                     if (is_array($shipData) && isset($shipData['dist'])) {
-                                        // Cari data tenant owner menggunakan mysql_second
                                         $tenantOwner = $percetakanDB->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
 
                                         if ($tenantOwner) {
-                                            $kiriminAja = app(\App\Services\KiriminAjaService::class);
-                                            $originFullAddress = implode(', ', array_filter([$tenantOwner->address_detail, $tenantOwner->village, $tenantOwner->district, $tenantOwner->regency, $tenantOwner->province, $tenantOwner->postal_code]));
+                                            // GUNAKAN TRY-CATCH KHUSUS UNTUK API AGAR TIDAK SILENT CRASH
+                                            try {
+                                                $kiriminAja = new \App\Services\KiriminAjaService();
 
-                                            $pickupSchedule = now()->addMinutes(60)->format('Y-m-d H:i:s');
-                                            if (now()->hour >= 14 || now()->isSunday()) {
-                                                $pickupSchedule = now()->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
-                                            }
+                                                $originFullAddress = implode(', ', array_filter([$tenantOwner->address_detail, $tenantOwner->village, $tenantOwner->district, $tenantOwner->regency, $tenantOwner->province, $tenantOwner->postal_code]));
 
-                                            // Tembak API KiriminAja
-                                            $kaResponse = $kiriminAja->createExpressOrder([
-                                                'address'       => $originFullAddress,
-                                                'phone'         => $tenantOwner->phone ?? '085745808809',
-                                                'name'          => $tenantOwner->name,
-                                                'kecamatan_id'  => (int) $tenantOwner->district_id,
-                                                'kelurahan_id'  => (int) $tenantOwner->subdistrict_id,
-                                                'zipcode'       => $tenantOwner->postal_code ?? '00000',
-                                                'schedule'      => $pickupSchedule,
-                                                'platform_name' => 'Sancaka Store',
-                                                'packages'      => [[
-                                                    'order_id' => $orderId,
-                                                    'destination_name' => $orderMarketplace->customer_name,
-                                                    'destination_phone' => $orderMarketplace->customer_phone,
-                                                    'destination_address' => $orderMarketplace->destination_address,
-                                                    'destination_kecamatan_id' => (int) $shipData['dist'],
-                                                    'destination_kelurahan_id' => (int) $shipData['sub'],
-                                                    'destination_zipcode' => '00000',
-                                                    'weight' => (int) $shipData['weight'],
-                                                    'width'=>10, 'length'=>10, 'height'=>10, 'qty'=>1,
-                                                    'item_value' => max(1000, (int)$orderMarketplace->total_price),
-                                                    'shipping_cost' => (int) $orderMarketplace->shipping_cost,
-                                                    'insurance_amount'=>0,
-                                                    'service' => $shipData['code'],
-                                                    'service_type' => $shipData['type'],
-                                                    'package_type_id'=>1,
-                                                    'item_name'=>'Paket Order '.$orderId,
-                                                    'cod'=>0,
-                                                    'note'=>'Pesanan Sancaka Marketplace'
-                                                ]]
-                                            ]);
+                                                $pickupSchedule = now()->addMinutes(60)->format('Y-m-d H:i:s');
+                                                if (now()->hour >= 14 || now()->isSunday()) {
+                                                    $pickupSchedule = now()->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
+                                                }
 
-                                            Log::info("📩 Respon KiriminAja: " . json_encode($kaResponse));
+                                                $kaResponse = $kiriminAja->createExpressOrder([
+                                                    'address'       => $originFullAddress,
+                                                    'phone'         => $tenantOwner->phone ?? '085745808809',
+                                                    'name'          => $tenantOwner->name,
+                                                    'kecamatan_id'  => (int) $tenantOwner->district_id,
+                                                    'kelurahan_id'  => (int) $tenantOwner->subdistrict_id,
+                                                    'zipcode'       => $tenantOwner->postal_code ?? '00000',
+                                                    'schedule'      => $pickupSchedule,
+                                                    'platform_name' => 'Sancaka Store',
+                                                    'packages'      => [[
+                                                        'order_id' => $orderId,
+                                                        'destination_name' => $orderMarketplace->customer_name,
+                                                        'destination_phone' => $orderMarketplace->customer_phone,
+                                                        'destination_address' => $orderMarketplace->destination_address,
+                                                        'destination_kecamatan_id' => (int) $shipData['dist'],
+                                                        'destination_kelurahan_id' => (int) $shipData['sub'],
+                                                        'destination_zipcode' => '00000',
+                                                        'weight' => (int) $shipData['weight'],
+                                                        'width'=>10, 'length'=>10, 'height'=>10, 'qty'=>1,
+                                                        'item_value' => max(1000, (int)$orderMarketplace->total_price),
+                                                        'shipping_cost' => (int) $orderMarketplace->shipping_cost,
+                                                        'insurance_amount'=>0,
+                                                        'service' => $shipData['code'],
+                                                        'service_type' => $shipData['type'],
+                                                        'package_type_id'=>1,
+                                                        'item_name'=>'Paket Order '.$orderId,
+                                                        'cod'=>0,
+                                                        'note'=>'Pesanan Sancaka Marketplace'
+                                                    ]]
+                                                ]);
 
-                                            if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
-                                                $newResi = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
-                                                $updateData['shipping_ref'] = $newResi; // TIMPA JSON DENGAN RESI ASLI
-                                                Log::info("✅ AUTO-BOOKING BERHASIL! Resi: $newResi");
-                                            } else {
-                                                Log::error("❌ AUTO-BOOKING GAGAL: " . ($kaResponse['text'] ?? 'Unknown Error'));
+                                                Log::info("📩 Respon Mentah KA: " . json_encode($kaResponse));
+
+                                                if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
+                                                    $newResi = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
+                                                    $updateData['shipping_ref'] = $newResi;
+                                                    $catatanBaru .= "\n[RESI] $newResi";
+                                                } else {
+                                                    Log::error("❌ API KA GAGAL: " . ($kaResponse['text'] ?? 'Unknown Error'));
+                                                }
+                                            } catch (\Exception $eApi) {
+                                                Log::error("❌ CRASH SAAT PANGGIL SERVICE: " . $eApi->getMessage());
                                             }
                                         }
                                     }
-                                }
-                                else {
-                                    // [KASIR OFFLINE] -> Masuk saldo via mysql_second
+                                } else {
                                     $updateData['escrow_status'] = 'none';
                                     $tenantOwner = $percetakanDB->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
                                     if ($tenantOwner) {
                                         $percetakanDB->table('users')->where('id', $tenantOwner->id)->increment('saldo', $orderMarketplace->final_price);
-                                        Log::info("💸 POS OFFLINE: Saldo Kasir {$tenantOwner->name} bertambah.");
                                     }
                                 }
 
-                                // Eksekusi Update Tabel Orders menggunakan mysql_second
+                                $updateData['note'] = $catatanBaru;
                                 $percetakanDB->table('orders')->where('id', $orderMarketplace->id)->update($updateData);
-                                Log::info("✅ Order $orderId berhasil diupdate via mysql_second.");
-
-                                // Notifikasi WA
-                                $totalRupiah = "Rp " . number_format($orderMarketplace->final_price, 0, ',', '.');
-                                $this->_sendFonnteMessage('085745808809', "🔔 *ORDER LUNAS (SCK)*\nNota: $orderId\nTotal: $totalRupiah");
+                                Log::info("✅ Webhook Selesai untuk $orderId");
                             }
-                        } else {
-                            Log::warning("❌ Order $orderId tidak ditemukan di mysql_second.");
                         }
                     } catch (\Exception $e) {
-                        Log::error("❌ Gagal Update Order di mysql_second: " . $e->getMessage());
+                        Log::error("❌ Gagal Global: " . $e->getMessage());
                     }
                 }
 
