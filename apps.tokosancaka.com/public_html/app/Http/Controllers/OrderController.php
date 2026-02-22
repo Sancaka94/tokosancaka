@@ -630,7 +630,8 @@ class OrderController extends Controller
         }
 
         // [BARU] LOGIKA ESCROW & MARKETPLACE
-        $isMarketplaceOrder = !Auth::check();
+        // Gunakan deteksi URL Route. Apapun status loginnya, kalau dia checkout lewat depan (storefront), masukkan ke Escrow!
+        $isMarketplaceOrder = $request->routeIs('storefront.process') || $request->is('*/checkout/process');
         $isEscrow = $isMarketplaceOrder ? 1 : 0;
         $escrowStatus = $isMarketplaceOrder ? 'held' : 'none';
 
