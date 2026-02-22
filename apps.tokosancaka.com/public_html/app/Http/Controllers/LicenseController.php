@@ -79,7 +79,7 @@ class LicenseController extends Controller
         ]);
 
         // 2. Cari kode di database
-        $license = License::where('code', $request->license_code)->first();
+        $license = License::where('license_code', $request->license_code)->first();
 
         // 3. Pengecekan jika kode tidak ada
         if (!$license) {
