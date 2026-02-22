@@ -782,11 +782,19 @@
                                     </div>
                                 </div>
 
-                                {{-- AREA SUB VARIAN --}}
+                               {{-- Hapus Varian Utama --}}
+                                    <div class="col-span-1 text-center">
+                                        <button @click="removeVariantRow(index)" class="h-8 w-8 inline-flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                                            <i class="fas fa-trash-alt text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {{-- MULAI KODE BARU: UI AREA SUB VARIAN --}}
                                 <div class="p-3 bg-white">
                                     <div class="flex justify-between items-center mb-2">
                                         <span class="text-[10px] font-bold text-orange-500 uppercase tracking-wider"><i class="fas fa-code-branch"></i> Sub Varian (Anak)</span>
-                                        <button @click="addSubVariantRow(index)" class="text-[10px] bg-orange-50 text-orange-600 px-2 py-1 rounded border border-orange-200 hover:bg-orange-100 font-bold">
+                                        <button @click.prevent="addSubVariantRow(index)" class="text-[10px] bg-orange-50 text-orange-600 px-2 py-1 rounded border border-orange-200 hover:bg-orange-100 font-bold">
                                             + Tambah Anak
                                         </button>
                                     </div>
@@ -811,7 +819,7 @@
                                                     <input type="number" x-model="sub.weight" placeholder="Berat(g)" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 text-center" title="Berat dalam Gram">
                                                 </div>
                                                 <div class="col-span-1 text-center">
-                                                    <button @click="removeSubVariantRow(index, subIndex); calculateTotalStock(index)" class="text-slate-400 hover:text-red-500 p-1">
+                                                    <button @click.prevent="removeSubVariantRow(index, subIndex); calculateTotalStock(index)" class="text-slate-400 hover:text-red-500 p-1">
                                                         <i class="fas fa-times text-xs"></i>
                                                     </button>
                                                 </div>
@@ -822,6 +830,7 @@
                                         </template>
                                     </div>
                                 </div>
+                                {{-- AKHIR KODE BARU: UI AREA SUB VARIAN --}}
 
                             </div>
                         </template>
