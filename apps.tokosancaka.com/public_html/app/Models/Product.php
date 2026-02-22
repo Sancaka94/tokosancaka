@@ -71,6 +71,22 @@ class Product extends Model
     }
 
     /**
+     * Relasi ke Sub Varian (Has Many Through)
+     * Mengambil semua sub varian milik produk ini (melewati tabel varian)
+     */
+    public function subVariants()
+    {
+        return $this->hasManyThrough(
+            ProductSubVariant::class, // Model Target (Sub Varian)
+            ProductVariant::class,    // Model Perantara (Varian)
+            'product_id',             // Foreign key di tabel perantara (product_variants)
+            'product_variant_id',     // Foreign key di tabel target (product_sub_variants)
+            'id',                     // Local key di tabel ini (products)
+            'id'                      // Local key di tabel perantara (product_variants)
+        );
+    }
+
+    /**
      * Relasi ke OrderDetail (History Transaksi)
      */
     public function order_details()
