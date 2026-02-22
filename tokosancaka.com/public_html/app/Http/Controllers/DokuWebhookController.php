@@ -249,7 +249,70 @@ class DokuWebhookController extends Controller
                     }
                 }
 
+                // =================================================================
+                // >>> PASTE KODE LISC- (LISENSI) DI SINI <<<
+                // =================================================================
+                else if (Str::startsWith($orderId, 'LISC-')) {
+                    Log::info("🚀 LOG LISENSI: Webhook Masuk untuk Aktivasi Lisensi: $orderId");
 
+                    try {
+                        // 1. Cari data topup berdasarkan nomor invoice
+                        $topup = \App\Models\PosTopUp::where('reference_no', $orderId)->first();
+
+                        if ($topup && $topup->status !== 'SUCCESS') {
+                            // 2. Update status pembayaran
+                            $topup->update(['status' => 'SUCCESS']);
+
+                            // 3. Pecah nomor invoice (LISC-MONTHLY-1234)
+                            $parts = explode('-', $orderId);
+                            $packageType = $parts[1] ?? 'MONTHLY';
+
+                            $monthsToAdd = 1;
+                            if ($packageType === 'HALF_YEAR') $monthsToAdd = 6;
+                            if ($packageType === 'YEARLY') $monthsToAdd = 12;
+                            $newPackage = strtolower($packageType);
+
+                            // 4. UPDATE DB UTAMA
+                            $tenantMain = DB::table('tenants')->where('id', $topup->tenant_id)->first();
+
+                            if ($tenantMain) {
+                                $currentExpired = $tenantMain->expired_at ? \Carbon\Carbon::parse($tenantMain->expired_at) : now();
+                                if ($currentExpired->isPast()) $currentExpired = now();
+                                $newExpiredDate = $currentExpired->copy()->addMonths($monthsToAdd)->timezone('Asia/Jakarta');
+
+                                DB::table('tenants')->where('id', $tenantMain->id)->update([
+                                    'status' => 'active',
+                                    'package' => $newPackage,
+                                    'expired_at' => $newExpiredDate,
+                                    'updated_at' => now()
+                                ]);
+                                Log::info("✅ DB UTAMA: Tenant '{$tenantMain->subdomain}' diperpanjang $monthsToAdd bulan hingga {$newExpiredDate}.");
+
+                                // 5. UPDATE DB KEDUA (mysql_second)
+                                $percetakanDB = DB::connection('mysql_second');
+                                $tenantSec = $percetakanDB->table('tenants')->where('subdomain', $tenantMain->subdomain)->first();
+
+                                if ($tenantSec) {
+                                    $percetakanDB->table('tenants')->where('id', $tenantSec->id)->update([
+                                        'status' => 'active',
+                                        'package' => $newPackage,
+                                        'expired_at' => $newExpiredDate,
+                                        'updated_at' => now()
+                                    ]);
+                                    Log::info("✅ DB SECOND: Tenant '{$tenantMain->subdomain}' diperpanjang hingga {$newExpiredDate}.");
+                                }
+
+                                // 6. Kirim Notifikasi WA via fungsi bawaan Anda
+                                $this->_sendFonnteNotification($tenantMain->subdomain);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("❌ CRITICAL ERROR LISC-: " . $e->getMessage());
+                    }
+                }
+                // =================================================================
+                // >>> AKHIR KODE LISC- <<<
+                // =================================================================
 
                 // -------------------------------------------------------------
                 // A.4 DELEGASI KE CONTROLLER LAIN (TOPUP, INV, CHECKOUT)
