@@ -298,45 +298,30 @@ class DokuWebhookController extends Controller
                             if ($packageType === 'YEARLY') $monthsToAdd = 12;
                             $newPackage = strtolower($packageType);
 
-                            // --- 1. UPDATE DB UTAMA ---
-                            $tenantMain = DB::table('tenants')->where('subdomain', $subdomain)->first();
-                            if ($tenantMain) {
-                                $currentExpired = $tenantMain->expired_at ? \Carbon\Carbon::parse($tenantMain->expired_at) : now();
-                                if ($currentExpired->isPast()) $currentExpired = now();
-                                $newExpiredDate = $currentExpired->copy()->addMonths($monthsToAdd)->timezone('Asia/Jakarta');
-
-                                DB::table('tenants')->where('id', $tenantMain->id)->update([
-                                    'status' => 'active',
-                                    'package' => $newPackage,
-                                    'expired_at' => $newExpiredDate,
-                                    'updated_at' => now()
-                                ]);
-                                Log::info("✅ DB UTAMA: Tenant '$subdomain' diperpanjang $monthsToAdd bulan hingga {$newExpiredDate}.");
-                            }
-
-                            // --- 2. UPDATE DB KEDUA (mysql_second) ---
+                            // --- FOKUS HANYA KE DB KEDUA (mysql_second) ---
                             $percetakanDB = DB::connection('mysql_second');
                             $tenantSec = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
 
                             if ($tenantSec) {
+                                // Hitung perpanjangan masa aktif
                                 $currentExpiredSec = $tenantSec->expired_at ? \Carbon\Carbon::parse($tenantSec->expired_at) : now();
                                 if ($currentExpiredSec->isPast()) $currentExpiredSec = now();
                                 $newExpiredDateSec = $currentExpiredSec->copy()->addMonths($monthsToAdd)->timezone('Asia/Jakarta');
 
+                                // Update tabel tenants di mysql_second
                                 $percetakanDB->table('tenants')->where('id', $tenantSec->id)->update([
                                     'status' => 'active',
                                     'package' => $newPackage,
                                     'expired_at' => $newExpiredDateSec,
                                     'updated_at' => now()
                                 ]);
-                                Log::info("✅ DB SECOND: Tenant '$subdomain' diperpanjang hingga {$newExpiredDateSec}.");
-                            }
+                                Log::info("✅ DB PERCETAKAN: Tenant '$subdomain' berhasil diperpanjang $monthsToAdd bulan hingga {$newExpiredDateSec}.");
 
-                            // --- 3. KIRIM NOTIFIKASI WA ---
-                            if ($tenantMain || $tenantSec) {
+                                // --- KIRIM NOTIFIKASI WA ---
                                 $this->_sendFonnteNotification($subdomain);
+
                             } else {
-                                Log::error("❌ GAGAL: Tenant '$subdomain' tidak ditemukan di kedua database.");
+                                Log::error("❌ GAGAL: Tenant '$subdomain' tidak ditemukan di database mysql_second.");
                             }
                         }
                     } catch (\Exception $e) {
@@ -348,7 +333,7 @@ class DokuWebhookController extends Controller
                 // =================================================================
 
                 // -------------------------------------------------------------
-                // A.4 DELEGASI KE CONTROLLER LAIN (TOPUP, INV, CHECKOUT)
+                // A.4B DELEGASI KE CONTROLLER LAIN (TOPUP, INV, CHECKOUT)
                 // -------------------------------------------------------------
                 else {
                     if (Str::startsWith($orderId, 'TOPUP-')) {
