@@ -278,52 +278,58 @@ class DokuWebhookController extends Controller
                 // A.4 ORDER LISENSI (LISC)
                 // -------------------------------------------------------------
 
-                // =================================================================
-                // >>> PASTE KODE LISC- (AKTIVASI LISENSI) DI SINI <<<
+               // =================================================================
+                // >>> PASTE KODE LISC- (PEMBELIAN LISENSI) DI SINI <<<
                 // =================================================================
                 else if (Str::startsWith($orderId, 'LISC-')) {
-                    Log::info("🚀 LOG LISENSI: Webhook Masuk untuk Aktivasi Lisensi: $orderId");
+                    Log::info("🚀 LOG LISENSI: Webhook Masuk untuk Pembelian Lisensi: $orderId");
 
                     try {
                         // Pecah invoice: LISC - MONTHLY - operator - 1771738501
                         $parts = explode('-', $orderId);
                         $packageType = strtoupper($parts[1] ?? 'MONTHLY');
                         $subdomain = strtolower($parts[2] ?? '');
+                        $newPackage = strtolower($packageType);
 
-                        if (empty($subdomain) || is_numeric($subdomain)) {
-                            Log::error("❌ GAGAL: Subdomain tidak valid pada invoice $orderId. Pastikan generate invoice menyertakan subdomain.");
+                        // 1. Generate Kode Lisensi Baru (Contoh: SNCK-A1B2-C3D4-E5F6)
+                        $licenseCode = 'SNCK-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4));
+
+                        // 2. Simpan Kode ke tabel database yang mengatur lisensi
+                        // Catatan: Sesuaikan nama tabel 'licenses' dengan tabel kodemu yang sebenarnya
+                        DB::table('licenses')->insert([
+                            'code' => $licenseCode,
+                            'package' => $newPackage,
+                            'status' => 'available', // Status belum di-redeem
+                            'created_at' => now()
+                        ]);
+                        Log::info("✅ KODE LISENSI DIBUAT: $licenseCode untuk paket $newPackage");
+
+                        // 3. Ambil Nomor WA Tenant untuk kirim kode
+                        $percetakanDB = DB::connection('mysql_second');
+                        $tenantSec = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
+
+                        if ($tenantSec && !empty($tenantSec->whatsapp)) {
+                            // Bersihkan format nomor WA
+                            $phone = preg_replace('/[^0-9]/', '', $tenantSec->whatsapp);
+                            if (str_starts_with($phone, '62')) $phone = '0' . substr($phone, 2);
+                            elseif (str_starts_with($phone, '8')) $phone = '0' . $phone;
+
+                            // Pesan WA yang berisi KODE LISENSI
+                            $msg = "🎉 *PEMBAYARAN BERHASIL*\n\n" .
+                                   "Terima kasih telah membeli lisensi SancakaPOS!\n" .
+                                   "Paket: *" . strtoupper($newPackage) . "*\n\n" .
+                                   "🔑 *KODE LISENSI ANDA:*\n" .
+                                   "*$licenseCode*\n\n" .
+                                   "Silakan *Copy* kode di atas dan masukkan di halaman aktivasi:\n" .
+                                   "https://apps.tokosancaka.com/redeem-lisensi?subdomain={$subdomain}";
+
+                            // Kirim via Fonnte
+                            $this->_sendFonnteMessage($phone, $msg);
+                            Log::info("✅ Kode Lisensi $licenseCode berhasil dikirim ke WA $phone");
                         } else {
-                            $monthsToAdd = 1;
-                            if ($packageType === 'HALF_YEAR') $monthsToAdd = 6;
-                            if ($packageType === 'YEARLY') $monthsToAdd = 12;
-                            $newPackage = strtolower($packageType);
-
-                            // --- FOKUS HANYA KE DB KEDUA (mysql_second) ---
-                            $percetakanDB = DB::connection('mysql_second');
-                            $tenantSec = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
-
-                            if ($tenantSec) {
-                                // Hitung perpanjangan masa aktif
-                                $currentExpiredSec = $tenantSec->expired_at ? \Carbon\Carbon::parse($tenantSec->expired_at) : now();
-                                if ($currentExpiredSec->isPast()) $currentExpiredSec = now();
-                                $newExpiredDateSec = $currentExpiredSec->copy()->addMonths($monthsToAdd)->timezone('Asia/Jakarta');
-
-                                // Update tabel tenants di mysql_second
-                                $percetakanDB->table('tenants')->where('id', $tenantSec->id)->update([
-                                    'status' => 'active',
-                                    'package' => $newPackage,
-                                    'expired_at' => $newExpiredDateSec,
-                                    'updated_at' => now()
-                                ]);
-                                Log::info("✅ DB PERCETAKAN: Tenant '$subdomain' berhasil diperpanjang $monthsToAdd bulan hingga {$newExpiredDateSec}.");
-
-                                // --- KIRIM NOTIFIKASI WA ---
-                                $this->_sendFonnteNotification($subdomain);
-
-                            } else {
-                                Log::error("❌ GAGAL: Tenant '$subdomain' tidak ditemukan di database mysql_second.");
-                            }
+                            Log::error("⚠️ Gagal kirim WA: Data tenant atau nomor WA tidak ditemukan untuk subdomain $subdomain.");
                         }
+
                     } catch (\Exception $e) {
                         Log::error("❌ CRITICAL ERROR LISC-: " . $e->getMessage());
                     }
