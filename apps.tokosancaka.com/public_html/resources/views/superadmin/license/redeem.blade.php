@@ -20,28 +20,42 @@
 </head>
 
 @php
-    // LOGIKA PENGECEKAN STATUS DATABASE
+    // LOGIKA PENGECEKAN STATUS DATABASE & LISENSI
     $subdomain = request()->query('subdomain');
     $isActive = false;
     $expiredDate = null;
 
     if ($subdomain) {
         try {
-            // Cek status tenant langsung di database mysql_second
+            // 1. Cek status tenant
             $tenant = \Illuminate\Support\Facades\DB::table('tenants')
                         ->where('subdomain', $subdomain)
                         ->first();
 
-            // Pastikan status aktif dan expired_at masih di masa depan
+            // 2. Pastikan status tenant aktif
             if ($tenant && $tenant->status === 'active' && $tenant->expired_at) {
                 $expired = \Carbon\Carbon::parse($tenant->expired_at);
-                if ($expired->isFuture()) {
+
+                // 3. CEK TABEL LISENSI (Validasi Silang)
+                // Pastikan benar-benar ada dokumen lisensi fisik untuk toko ini
+                $hasValidLicense = \App\Models\License::withoutGlobalScopes()
+                                        ->where('used_by_tenant_id', $tenant->id)
+                                        ->where('status', 'used')
+                                        ->where('expires_at', '>', now())
+                                        ->exists();
+
+                // Jika masa aktif masih ada DAN lisensinya terbukti ada di database
+                if ($expired->isFuture() && $hasValidLicense) {
                     $isActive = true;
                     $expiredDate = $expired->locale('id')->translatedFormat('d F Y, H:i');
+                } else {
+                    // Jika lisensi dihapus/tidak valid, paksa status isActive tetap false
+                    // Opsional: Anda juga bisa update status tenant jadi inactive di sini jika mau
+                    $isActive = false;
                 }
             }
         } catch (\Exception $e) {
-            // Abaikan error koneksi agar halaman tetap bisa dimuat
+            // Abaikan error koneksi agar halaman tetap bisa dimuat formnya
         }
     }
 @endphp
