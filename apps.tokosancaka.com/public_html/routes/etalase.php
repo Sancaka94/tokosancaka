@@ -8,14 +8,11 @@ use App\Http\Controllers\OrderController;
 |--------------------------------------------------------------------------
 | ROUTE HALAMAN TOKO ONLINE (ETALASE PEMBELI - SAAS)
 |--------------------------------------------------------------------------
-| Rute ini bersifat PUBLIK (tanpa middleware auth).
-| Menggunakan Regex 'where' agar subdomain 'apps', 'admin', dan 'www'
-| tidak dianggap sebagai toko/etalase.
 */
 
 Route::domain('{subdomain}.tokosancaka.com')
-    ->where('subdomain', '^(?!apps|admin|www).*$') // <--- FILTER ANTI-BENTROK
-    ->middleware(['web']) // Tanpa 'auth' karena ini untuk pembeli umum
+    ->where(['subdomain' => '^(?!apps|admin|www).*$']) // <--- FIX: Bungkus menggunakan Array []
+    ->middleware(['web'])
     ->group(function () {
 
         // 1. Halaman Utama Toko (Katalog Produk)
@@ -24,10 +21,13 @@ Route::domain('{subdomain}.tokosancaka.com')
         // 2. Halaman Keranjang & Checkout
         Route::get('/checkout', [StorefrontController::class, 'checkout'])->name('storefront.checkout');
 
-        // 3. Proses Pembayaran (Tembak langsung ke fungsi store yang sudah canggih)
+        // 3. Proses Pembayaran
         Route::post('/checkout/process', [OrderController::class, 'store'])->name('storefront.process');
 
         // 4. (Opsional) Halaman Detail Produk
         Route::get('/produk/{id}', [StorefrontController::class, 'show'])->name('storefront.product');
+
+        // 5. Halaman Sukses
+        Route::get('/checkout/success/{orderNumber}', [StorefrontController::class, 'success'])->name('storefront.success');
 
     });
