@@ -126,11 +126,12 @@ class LicenseController extends Controller
             'updated_at' => now()
         ]);
 
-        // 8. Ubah status lisensi menjadi terpakai
+        // 8. PERBAIKAN: Ubah status lisensi menjadi terpakai & ISI SEMUA KOLOM NULL
         $license->update([
             'status' => 'used',
-            'used_by_tenant_id' => $tenant->id,
-            'used_at' => now()
+            'used_by_tenant_id' => $tenant->id, // Mengganti NULL menjadi ID Toko yang memakai
+            'used_at' => now(),                 // Mengganti NULL menjadi waktu saat ini
+            'expires_at' => $newExpiredDate     // <--- TAMBAHKAN INI: Mengganti NULL menjadi tanggal expired
         ]);
 
         return redirect()->back()->with('success', 'Lisensi berhasil di-redeem dan fitur telah diaktifkan!');
