@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\App; // <-- PERBAIKAN: Import 'App' facade
 use Illuminate\Support\Str;
 use App\Models\Store; // <-- PERBAIKAN: Import Model Store
+use App\Models\LicenseApp2; // <-- PERBAIKAN: Import Model LicenseApp2 untuk akses DB kedua
 
 // Import Controller yang akan memproses pesanan
 use App\Http\Controllers\Admin\PesananController as AdminPesananController;
@@ -291,29 +292,28 @@ class DokuWebhookController extends Controller
                         $subdomain = strtolower($parts[2] ?? '');
                         $newPackage = strtolower($packageType);
 
-                        // 1. Generate Kode Lisensi Baru (Contoh: SNCK-A1B2-C3D4-E5F6)
+                       // 1. Generate Kode Lisensi Baru
                         $licenseCode = 'SNCK-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4));
 
-                        // Tentukan durasi hari berdasarkan paket
                         $durationDays = 30; // Default Monthly
                         if ($newPackage === 'half_year') $durationDays = 180;
                         if ($newPackage === 'yearly') $durationDays = 365;
 
-                        // 2. Simpan Kode ke tabel database (WAJIB PAKAI mysql_second)
-                        $percetakanDB = DB::connection('mysql_second');
-
-                        $percetakanDB->table('licenses')->insert([
+                        // 2. Simpan Kode menggunakan Model Jembatan (Otomatis masuk ke database Aplikasi 2)
+                        LicenseApp2::create([
                             'license_code'  => $licenseCode,
                             'package_type'  => $newPackage,
                             'duration_days' => $durationDays,
-                            'status'        => 'available',
-                            'created_at'    => now(),
-                            'updated_at'    => now()
+                            'status'        => 'available'
                         ]);
                         Log::info("✅ KODE LISENSI DIBUAT: $licenseCode untuk paket $newPackage ($durationDays hari)");
 
                         // 3. Ambil Nomor WA Tenant untuk kirim kode
+                        $percetakanDB = DB::connection('mysql_second');
                         $tenantSec = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
+
+                        // LOG LOG - Tetap dipertahankan untuk memastikan proses tetap tercatat dengan baik
+                         Log::info("🔍 Mencari data tenant untuk subdomain '$subdomain' di DB Percetakan...");
 
                         if ($tenantSec && !empty($tenantSec->whatsapp)) {
                             // Bersihkan format nomor WA
