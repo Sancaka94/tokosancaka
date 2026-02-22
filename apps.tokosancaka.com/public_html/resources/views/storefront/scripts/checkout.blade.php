@@ -77,43 +77,53 @@
             },
 
             // FUNGSI BARU: Pembaca Data Kebal Error
+           // FUNGSI BARU: Pembaca Data "Sapu Jagat" Kebal Error
             formatLocationName(loc) {
                 if (!loc) return '';
-                if (typeof loc === 'string') return loc; // Jika API membalas array of string
+                if (typeof loc === 'string') return loc;
 
-                // Coba berbagai kemungkinan nama kolom dari KiriminAja/RajaOngkir
+                // 1. Cek format standar
                 if (loc.text) return loc.text;
                 if (loc.label) return loc.label;
-                if (loc.name && typeof loc.name === 'string') return loc.name;
 
-                // Jika formatnya dipecah per wilayah
-                let parts = [];
-                if (loc.kelurahan || loc.village_name) parts.push(loc.kelurahan || loc.village_name);
-                if (loc.kecamatan || loc.district_name || loc.district) parts.push(loc.kecamatan || loc.district_name || loc.district);
-                if (loc.kabupaten || loc.kab_kota || loc.city_name || loc.city) parts.push(loc.kabupaten || loc.kab_kota || loc.city_name || loc.city);
-                if (loc.provinsi || loc.province_name || loc.province) parts.push(loc.provinsi || loc.province_name || loc.province);
+                // 2. Ekstrak format KiriminAja V3 (Bahasa Inggris)
+                let nameParts = [];
+                if (loc.subdistrict_name) nameParts.push(loc.subdistrict_name);
+                if (loc.district_name) nameParts.push(loc.district_name);
+                if (loc.city_name) nameParts.push(loc.city_name);
+                if (loc.province_name) nameParts.push(loc.province_name);
 
-                if (parts.length > 0) return parts.join(', ');
+                if (nameParts.length > 0) {
+                    let zip = loc.zipcode || loc.kodepos || '';
+                    return nameParts.join(', ') + (zip ? ` - ${zip}` : '');
+                }
 
-                // Fallback Terakhir: Tampilkan data mentah agar kita tau apa isi kolom aslinya
-                return JSON.stringify(loc).substring(0, 60) + '...';
+                // 3. JURUS SAPU JAGAT: Jika format di atas masih gagal,
+                // Ambil SEMUA data bertipe TEKS/HURUF dari dalam JSON dan gabungkan!
+                let stringValues = Object.values(loc).filter(val => typeof val === 'string' && isNaN(val));
+                if (stringValues.length > 0) {
+                    return stringValues.join(', ');
+                }
+
+                return 'Alamat Ditemukan (Pilih ini)';
             },
 
             selectLocation(loc) {
+                // Tampilkan nama yang sudah dirapikan ke form input
                 this.destinationText = this.formatLocationName(loc);
 
-                // Trik menangkap berbagai variasi ID Kecamatan dari API
-                this.districtId = loc.kecamatan_id || loc.district_id || loc.id || '';
-                this.subdistrictId = loc.kelurahan_id || loc.subdistrict_id || '';
+                // Ambil ID Kecamatan (Bisa district_id atau kecamatan_id)
+                this.districtId = loc.district_id || loc.kecamatan_id || loc.id || '';
+                this.subdistrictId = loc.subdistrict_id || loc.kelurahan_id || '';
 
                 this.locationSearch = '';
                 this.locationResults = [];
 
-                // Lanjut cek ongkir jika ID ketemu
+                // Langsung tembak API Ongkir!
                 if(this.districtId) {
                     this.fetchOngkir();
                 } else {
-                    alert('Data lokasi dari API tidak memiliki ID Kecamatan. Hubungi Admin.');
+                    alert('Data dari API tidak memiliki ID Kecamatan (district_id).');
                 }
             },
 
