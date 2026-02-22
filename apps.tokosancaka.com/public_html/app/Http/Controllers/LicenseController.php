@@ -152,7 +152,11 @@ class LicenseController extends Controller
             Log::info("🎉 PROSES REDEEM SELESAI & BERHASIL UNTUK SUBDOMAIN: {$request->target_subdomain}");
             Log::info("========================================");
 
-            return redirect()->back()->with('success', 'Aktivasi Berhasil! Layanan SancakaPOS Anda telah diperpanjang.');
+            // TANTANGAN: Kirimkan data Nama dan Subdomain ke halaman depan
+            return redirect()->back()
+                ->with('success', 'Aktivasi Berhasil!')
+                ->with('tenant_name', $tenant->name ?? 'Toko Anda') // Sesuaikan jika nama kolomnya bukan 'name'
+                ->with('tenant_subdomain', $tenant->subdomain);
 
         } catch (\Exception $e) {
             // Jika ada error syntax atau database mati, akan tercatat di sini tanpa merusak aplikasi
