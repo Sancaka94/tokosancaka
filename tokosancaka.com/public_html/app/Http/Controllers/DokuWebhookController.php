@@ -252,50 +252,42 @@ class DokuWebhookController extends Controller
                     }
                 }
 
-                // -------------------------------------------------------------
-                // A.3 ORDER MARKETPLACE / POS KASIR (SCK-) -> DATABASE KEDUA
+               // -------------------------------------------------------------
+                // A.3 ORDER MARKETPLACE / POS KASIR (SCK-)
                 // -------------------------------------------------------------
                 else if (Str::startsWith($orderId, 'SCK-')) {
                     Log::info("🛍️ LOG TRX (SCK-): Webhook DOKU Masuk untuk Order: $orderId");
 
                     try {
-                        // 1. Konek ke Database Toko/Tenant (mysql_second)
-                        $percetakanDB = DB::connection('mysql_second');
-                        $orderMarketplace = $percetakanDB->table('orders')->where('order_number', $orderId)->first();
+                        // Gunakan koneksi database utama (karena orders Marketplace ada di sini)
+                        $db = DB::connection();
+                        $orderMarketplace = $db->table('orders')->where('order_number', $orderId)->first();
 
                         if ($orderMarketplace) {
                             if ($orderMarketplace->payment_status !== 'paid') {
 
-                                // 2. Tentukan Catatan & Data Update Dasar
                                 $catatanBaru = $orderMarketplace->note . "\n[DOKU] Lunas via Webhook jam " . now()->timezone('Asia/Jakarta');
 
                                 $updateData = [
                                     'payment_status' => 'paid',
-                                    'status'         => 'processing', // Pindahkan ke tab Diproses
+                                    'status'         => 'processing',
                                     'note'           => $catatanBaru,
                                     'updated_at'     => now()->timezone('Asia/Jakarta')
                                 ];
 
-                                // =========================================================
-                                // 3. LOGIKA INTI PENAHANAN DANA (ESCROW) VS PENCAIRAN
-                                // =========================================================
+                                // --- LOGIKA ESCROW & AUTO-BOOKING ---
                                 if ($orderMarketplace->is_escrow == 1) {
-                                    // [SKENARIO MARKETPLACE] -> DANA DITAHAN!
                                     $updateData['escrow_status'] = 'held';
-                                    Log::info("🔒 ESCROW AKTIF: Order $orderId adalah pesanan online. Dana DITAHAN oleh Sancaka.");
+                                    Log::info("🔒 ESCROW AKTIF: Order $orderId. Memproses Auto-Booking KiriminAja...");
 
-                                    // --- [BARU] EKSEKUSI AUTO-BOOKING KIRIMINAJA ---
-                                    // Posisinya ADA DI SINI (Di dalam if is_escrow == 1)
-                                    if (!empty($orderMarketplace->shipping_ref) && str_starts_with($orderMarketplace->shipping_ref, '{')) {
+                                    // Deteksi Data Booking (JSON) di kolom shipping_ref
+                                    $shipData = json_decode($orderMarketplace->shipping_ref, true);
 
-                                        $shipData = json_decode($orderMarketplace->shipping_ref, true);
-                                        $tenantOwner = $percetakanDB->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
+                                    if (is_array($shipData) && isset($shipData['dist'])) {
+                                        // Cari data tenant owner untuk alamat pickup
+                                        $tenantOwner = $db->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
 
                                         if ($tenantOwner) {
-
-                                            // [PERBAIKAN] TIDAK ADA LAGI CEK SALDO ATAU POTONG SALDO TENANT!
-                                            // Ongkir sudah dibayar pembeli ke Sancaka.
-
                                             $kiriminAja = app(\App\Services\KiriminAjaService::class);
                                             $originFullAddress = implode(', ', array_filter([$tenantOwner->address_detail, $tenantOwner->village, $tenantOwner->district, $tenantOwner->regency, $tenantOwner->province, $tenantOwner->postal_code]));
 
@@ -304,7 +296,7 @@ class DokuWebhookController extends Controller
                                                 $pickupSchedule = now()->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
                                             }
 
-                                            // Tembak API
+                                            // Tembak API KiriminAja (Tanpa potong saldo tenant)
                                             $kaResponse = $kiriminAja->createExpressOrder([
                                                 'address'       => $originFullAddress,
                                                 'phone'         => $tenantOwner->phone ?? '085745808809',
@@ -336,70 +328,29 @@ class DokuWebhookController extends Controller
                                                 ]]
                                             ]);
 
-                                            // Ambil Resi Asli
                                             if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
                                                 $newResi = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
                                                 $updateData['shipping_ref'] = $newResi; // TIMPA JSON DENGAN RESI ASLI
-                                                $catatanBaru .= "\n[RESI OTOMATIS] " . $newResi . " (Ongkir ditanggung Sancaka)";
                                                 Log::info("✅ AUTO-BOOKING BERHASIL! Resi: $newResi");
                                             } else {
-                                                $updateData['shipping_ref'] = null;
-                                                $catatanBaru .= "\n[GAGAL BOOKING KURIR] " . ($kaResponse['text'] ?? 'Unknown Error');
-                                                Log::error("❌ AUTO-BOOKING GAGAL: " . json_encode($kaResponse));
+                                                Log::error("❌ AUTO-BOOKING GAGAL: " . ($kaResponse['text'] ?? 'Unknown Error'));
                                             }
                                         }
                                     }
-                                }
-                                else {
-                                    // [SKENARIO KASIR OFFLINE] -> DANA LANGSUNG CAIR KE SALDO APLIKASI
+                                } else {
+                                    // [KASIR OFFLINE] Langsung masuk saldo tenant
                                     $updateData['escrow_status'] = 'none';
-
-                                    // Cari User Admin (Owner) dari Tenant ini untuk ditambah saldonya
-                                    $tenantOwner = $percetakanDB->table('users')
-                                                                ->where('tenant_id', $orderMarketplace->tenant_id)
-                                                                ->first();
-
+                                    $tenantOwner = $db->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
                                     if ($tenantOwner) {
-                                        $percetakanDB->table('users')
-                                                     ->where('id', $tenantOwner->id)
-                                                     ->increment('saldo', $orderMarketplace->final_price);
-
-                                        Log::info("💸 POS OFFLINE: Saldo Kasir {$tenantOwner->name} (Tenant ID: {$orderMarketplace->tenant_id}) langsung bertambah Rp " . $orderMarketplace->final_price);
+                                        $db->table('users')->where('id', $tenantOwner->id)->increment('saldo', $orderMarketplace->final_price);
+                                        Log::info("💸 POS OFFLINE: Saldo Kasir {$tenantOwner->name} bertambah.");
                                     }
                                 }
-                                // =========================================================
 
-                                // 4. Eksekusi Update Tabel Orders
-                                $percetakanDB->table('orders')->where('id', $orderMarketplace->id)->update($updateData);
-                                Log::info("✅ Order $orderId berhasil diupdate menjadi LUNAS.");
+                                // Update Tabel Orders
+                                $db->table('orders')->where('id', $orderMarketplace->id)->update($updateData);
 
-                                // 5. Kirim Notifikasi WA (Manual)
-                                $totalRupiah = "Rp " . number_format($orderMarketplace->final_price, 0, ',', '.');
-
-                                // Pesan ke Admin/Owner
-                                $msgAdmin = "🔔 *PESANAN LUNAS (DOKU)* 🔔\n\n" .
-                                            "Nota: *$orderId*\n" .
-                                            "Nama: {$orderMarketplace->customer_name}\n" .
-                                            "Total: $totalRupiah\n\n" .
-                                            ($orderMarketplace->is_escrow == 1 ? "⚠️ *Status Dana: DITAHAN (Escrow)*\n" : "✅ *Status Dana: MASUK SALDO APLIKASI*\n") .
-                                            "_Silakan cek dashboard SancakaPOS untuk memproses pesanan._";
-
-                                $this->_sendFonnteMessage('085745808809', $msgAdmin);
-
-                                // Pesan ke Customer (Jika ada)
-                                if (!empty($orderMarketplace->customer_phone)) {
-                                    $msgCustomer = "Halo Kak *{$orderMarketplace->customer_name}* 👋,\n\n" .
-                                                   "Terima kasih, pembayaran pesanan Anda (*$orderId*) sebesar *$totalRupiah* via DOKU telah kami terima dengan sukses! ✅\n\n" .
-                                                   "Pesanan Anda akan segera diproses oleh penjual. Mohon ditunggu ya! 🙏";
-
-                                    $this->_sendFonnteMessage($orderMarketplace->customer_phone, $msgCustomer);
-                                }
-
-                            } else {
-                                Log::info("⚠️ Order $orderId sudah Lunas sebelumnya.");
                             }
-                        } else {
-                            Log::warning("❌ Order $orderId tidak ditemukan di database kedua (mysql_second).");
                         }
                     } catch (\Exception $e) {
                         Log::error("❌ Gagal Update Order: " . $e->getMessage());
