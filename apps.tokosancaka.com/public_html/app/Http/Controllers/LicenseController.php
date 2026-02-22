@@ -68,8 +68,13 @@ class LicenseController extends Controller
         return view('superadmin.license.redeem');
     }
 
-    public function processRedeem(Request $request)
+   public function processRedeem(Request $request)
     {
+        Log::info("========================================");
+        Log::info("🚀 MULAI PROSES REDEEM LISENSI");
+        Log::info("Input IP: " . $request->ip());
+        Log::info("Raw Input - Subdomain: {$request->target_subdomain}, Kode: {$request->license_code}");
+
         // 1. Validasi input form saja
         $request->validate([
             'license_code' => 'required|string',
@@ -78,54 +83,84 @@ class LicenseController extends Controller
 
         // Bersihkan spasi pada kode
         $cleanLicenseCode = strtoupper(str_replace(' ', '', $request->license_code));
+        Log::info("Kode setelah dibersihkan: {$cleanLicenseCode}");
 
-        // 2. Cari target tokonya berdasarkan Subdomain
-        $tenant = DB::table('tenants')->where('subdomain', $request->target_subdomain)->first();
+        try {
+            // 2. Cari target tokonya berdasarkan Subdomain
+            Log::info("🔍 Mencari tenant dengan subdomain: {$request->target_subdomain}");
+            $tenant = DB::table('tenants')->where('subdomain', $request->target_subdomain)->first();
 
-        if (!$tenant) {
-            return redirect()->back()->with('error', 'Validasi Gagal: Toko dengan subdomain tersebut tidak ditemukan.');
+            if (!$tenant) {
+                Log::warning("⚠️ Validasi Gagal: Tenant dengan subdomain '{$request->target_subdomain}' tidak ditemukan.");
+                return redirect()->back()->with('error', 'Validasi Gagal: Toko dengan subdomain tersebut tidak ditemukan.');
+            }
+            Log::info("✅ Tenant ditemukan. ID Tenant: {$tenant->id}, Status saat ini: {$tenant->status}");
+
+            // 3. VALIDASI UTAMA: Pastikan Kode Lisensi ada DAN memang milik ID Toko tersebut
+            Log::info("🔍 Mencari lisensi '{$cleanLicenseCode}' untuk Tenant ID: {$tenant->id}");
+            $license = License::where('license_code', $cleanLicenseCode)
+                              ->where('tenant_id', $tenant->id)
+                              ->first();
+
+            if (!$license) {
+                Log::warning("⚠️ Validasi Gagal: Lisensi '{$cleanLicenseCode}' tidak ditemukan atau bukan milik Tenant ID {$tenant->id}.");
+                return redirect()->back()->with('error', 'Validasi Gagal: Kode lisensi tidak valid atau bukan diperuntukkan bagi subdomain Anda.');
+            }
+            Log::info("✅ Lisensi ditemukan. ID Lisensi: {$license->id}, Package: {$license->package_type}, Status: {$license->status}");
+
+            // 4. Pengecekan status lisensi (apakah sudah pernah dipakai?)
+            if ($license->status !== 'available') {
+                Log::warning("⚠️ Validasi Gagal: Lisensi '{$cleanLicenseCode}' sudah berstatus '{$license->status}'.");
+                return redirect()->back()->with('error', 'Kode lisensi ini sudah pernah digunakan.');
+            }
+
+            // --- 5. PROSES AKTIVASI ---
+            Log::info("⏳ Memulai proses update data (Aktivasi)...");
+
+            $durationDays = $license->duration_days ?? 30;
+            $currentExpired = $tenant->expired_at ? \Carbon\Carbon::parse($tenant->expired_at) : now();
+
+            if ($currentExpired->isPast()) {
+                Log::info("ℹ️ Masa aktif sebelumnya sudah habis. Dihitung dari hari ini.");
+                $currentExpired = now();
+            } else {
+                Log::info("ℹ️ Sisa masa aktif masih ada. Akan diakumulasi.");
+            }
+
+            $newExpiredDate = $currentExpired->addDays($durationDays)->timezone('Asia/Jakarta');
+            Log::info("📅 Tanggal expired baru: {$newExpiredDate->format('Y-m-d H:i:s')} (+{$durationDays} hari)");
+
+            // Update tabel tenants
+            DB::table('tenants')->where('id', $tenant->id)->update([
+                'status' => 'active',
+                'package' => $license->package_type ?? 'monthly',
+                'expired_at' => $newExpiredDate,
+                'updated_at' => now()
+            ]);
+            Log::info("✅ Tabel 'tenants' berhasil diupdate.");
+
+            // Update tabel licenses
+            $license->update([
+                'status' => 'used',
+                'used_by_tenant_id' => $tenant->id,
+                'used_at' => now(),
+                'expires_at' => $newExpiredDate
+            ]);
+            Log::info("✅ Tabel 'licenses' berhasil diupdate (status menjadi 'used').");
+
+            Log::info("🎉 PROSES REDEEM SELESAI & BERHASIL UNTUK SUBDOMAIN: {$request->target_subdomain}");
+            Log::info("========================================");
+
+            return redirect()->back()->with('success', 'Aktivasi Berhasil! Layanan SancakaPOS Anda telah diperpanjang.');
+
+        } catch (\Exception $e) {
+            // Jika ada error syntax atau database mati, akan tercatat di sini tanpa merusak aplikasi
+            Log::error("❌ CRITICAL ERROR PADA PROSES REDEEM LISENSI:");
+            Log::error($e->getMessage());
+            Log::error($e->getLine() . ' - ' . $e->getFile());
+            Log::info("========================================");
+
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat memproses aktivasi. Silakan hubungi admin.');
         }
-
-        // 3. VALIDASI UTAMA: Pastikan Kode Lisensi ada DAN memang milik ID Toko tersebut
-        $license = License::where('license_code', $cleanLicenseCode)
-                          ->where('tenant_id', $tenant->id)
-                          ->first();
-
-        if (!$license) {
-            return redirect()->back()->with('error', 'Validasi Gagal: Kode lisensi tidak valid atau bukan diperuntukkan bagi subdomain Anda.');
-        }
-
-        // 4. Pengecekan status lisensi (apakah sudah pernah dipakai?)
-        if ($license->status !== 'available') {
-            return redirect()->back()->with('error', 'Kode lisensi ini sudah pernah digunakan.');
-        }
-
-        // --- 5. PROSES AKTIVASI ---
-
-        $durationDays = $license->duration_days ?? 30;
-        $currentExpired = $tenant->expired_at ? \Carbon\Carbon::parse($tenant->expired_at) : now();
-
-        if ($currentExpired->isPast()) {
-            $currentExpired = now();
-        }
-        $newExpiredDate = $currentExpired->addDays($durationDays)->timezone('Asia/Jakarta');
-
-        // Update tabel tenants
-        DB::table('tenants')->where('id', $tenant->id)->update([
-            'status' => 'active',
-            'package' => $license->package_type ?? 'monthly',
-            'expired_at' => $newExpiredDate,
-            'updated_at' => now()
-        ]);
-
-        // Update tabel licenses
-        $license->update([
-            'status' => 'used',
-            'used_by_tenant_id' => $tenant->id,
-            'used_at' => now(),
-            'expires_at' => $newExpiredDate
-        ]);
-
-        return redirect()->back()->with('success', 'Aktivasi Berhasil! Layanan SancakaPOS Anda telah diperpanjang.');
     }
 }
