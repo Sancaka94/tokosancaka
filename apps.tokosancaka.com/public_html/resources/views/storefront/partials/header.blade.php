@@ -3,10 +3,20 @@
         <div class="flex justify-between items-center h-20">
 
             <a href="{{ route('storefront.index', $subdomain) }}" class="flex items-center gap-3">
-                @if(!empty($tenant->logo))
-                    <img src="{{ asset('storage/' . $tenant->logo) }}" alt="{{ $tenant->name }}" class="w-10 h-10 rounded-xl object-cover border border-gray-100 shadow-sm">
+
+                @php
+                    // AMAN DARI ERROR: Cari data admin/pemilik dari toko ini saja
+                    $tokoAdmin = \App\Models\User::where('tenant_id', $tenant->id)->first();
+                @endphp
+
+                @if($tokoAdmin && !empty($tokoAdmin->logo))
+                    <div class="w-10 h-10 flex-shrink-0">
+                        <img class="h-full w-full object-cover rounded-[12px] border border-gray-100 shadow-sm"
+                             src="{{ asset('storage/' . $tokoAdmin->logo) }}"
+                             alt="{{ $tenant->name ?? 'Toko Sancaka' }}">
+                    </div>
                 @else
-                    <div class="w-10 h-10 bg-blue-600 rounded-xl flex justify-center items-center text-white font-black text-xl shadow-inner">
+                    <div class="w-10 h-10 bg-blue-600 rounded-[12px] flex-shrink-0 flex justify-center items-center text-white font-black text-xl shadow-inner">
                         {{ strtoupper(substr($tenant->name ?? 'S', 0, 1)) }}
                     </div>
                 @endif
@@ -36,12 +46,12 @@
                 <div class="h-6 w-px bg-gray-200 hidden sm:block"></div>
 
                 @auth
-                    <a href="{{ url('/dashboard') }}" class="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-blue-700 shadow-sm transition active:scale-95">
+                    <a href="{{ url('/dashboard') }}" class="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-[12px] text-sm font-bold hover:bg-blue-700 shadow-sm transition active:scale-95">
                         <i data-lucide="layout-dashboard" class="w-4 h-4 hidden sm:block"></i>
                         <span>Dashboard</span>
                     </a>
                 @else
-                    <a href="{{ route('login') }}" class="flex items-center gap-1.5 bg-white border border-blue-600 text-blue-600 px-4 py-2 rounded-full text-sm font-bold hover:bg-blue-50 transition active:scale-95">
+                    <a href="{{ route('login') }}" class="flex items-center gap-1.5 bg-white border border-blue-600 text-blue-600 px-4 py-2 rounded-[12px] text-sm font-bold hover:bg-blue-50 transition active:scale-95">
                         <i data-lucide="log-in" class="w-4 h-4 hidden sm:block"></i>
                         <span>Login</span>
                     </a>
