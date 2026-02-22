@@ -75,10 +75,11 @@ class LicenseController extends Controller
     {
         // 1. Validasi input form
         $request->validate([
-            'license_code' => 'required|string'
+            'license_code' => 'required|string',
+            'target_subdomain' => 'required|string'
         ]);
 
-        // 2. Cari kode di database
+        // 2. Cari kode di database (Default DB)
         $license = License::where('license_code', $request->license_code)->first();
 
         // 3. Pengecekan jika kode tidak ada
@@ -91,11 +92,36 @@ class LicenseController extends Controller
             return redirect()->back()->with('error', 'Kode lisensi ini sudah pernah digunakan.');
         }
 
-        // 5. Jika sukses, ubah status menjadi terpakai
-        // Nanti Anda bisa sesuaikan 'used_by_tenant_id' dengan ID tenant/user yang sedang login
+        // 5. Cari data Tenant berdasarkan subdomain (Default DB)
+        $tenant = DB::table('tenants')->where('subdomain', $request->target_subdomain)->first();
+
+        if (!$tenant) {
+            return redirect()->back()->with('error', 'Toko dengan subdomain tersebut tidak ditemukan.');
+        }
+
+        // 6. Hitung perpanjangan masa aktif
+        $durationDays = $license->duration_days ?? 30; // Default 30 hari
+
+        $currentExpired = $tenant->expired_at ? \Carbon\Carbon::parse($tenant->expired_at) : now();
+        if ($currentExpired->isPast()) {
+            $currentExpired = now();
+        }
+
+        $newExpiredDate = $currentExpired->addDays($durationDays)->timezone('Asia/Jakarta');
+
+        // 7. Update status & expired_at di tabel tenants (Default DB)
+        DB::table('tenants')->where('id', $tenant->id)->update([
+            'status' => 'active',
+            'package' => $license->package_type ?? 'monthly',
+            'expired_at' => $newExpiredDate,
+            'updated_at' => now()
+        ]);
+
+        // 8. Ubah status lisensi menjadi terpakai
         $license->update([
             'status' => 'used',
-            'used_by_tenant_id' => auth()->user()->id, // <-- Hilangkan comment ini nanti jika relasi tabel sudah siap
+            'used_by_tenant_id' => $tenant->id,
+            'used_at' => now()
         ]);
 
         return redirect()->back()->with('success', 'Lisensi berhasil di-redeem dan fitur telah diaktifkan!');
