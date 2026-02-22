@@ -252,16 +252,17 @@ class DokuWebhookController extends Controller
                     }
                 }
 
-               // -------------------------------------------------------------
-                // A.3 ORDER MARKETPLACE / POS KASIR (SCK-)
+                // -------------------------------------------------------------
+                // A.3 ORDER MARKETPLACE / POS KASIR (SCK-) -> KONEKSI KEDUA
                 // -------------------------------------------------------------
                 else if (Str::startsWith($orderId, 'SCK-')) {
                     Log::info("🛍️ LOG TRX (SCK-): Webhook DOKU Masuk untuk Order: $orderId");
 
                     try {
-                        // Gunakan koneksi database utama (karena orders Marketplace ada di sini)
-                        $db = DB::connection();
-                        $orderMarketplace = $db->table('orders')->where('order_number', $orderId)->first();
+                        // PAKSA MENGGUNAKAN KONEKSI KEDUA (mysql_second)
+                        $percetakanDB = DB::connection('mysql_second');
+
+                        $orderMarketplace = $percetakanDB->table('orders')->where('order_number', $orderId)->first();
 
                         if ($orderMarketplace) {
                             if ($orderMarketplace->payment_status !== 'paid') {
@@ -275,7 +276,9 @@ class DokuWebhookController extends Controller
                                     'updated_at'     => now()->timezone('Asia/Jakarta')
                                 ];
 
-                                // --- LOGIKA ESCROW & AUTO-BOOKING ---
+                                // =========================================================
+                                // 3. LOGIKA INTI PENAHANAN DANA (ESCROW) VS PENCAIRAN
+                                // =========================================================
                                 if ($orderMarketplace->is_escrow == 1) {
                                     $updateData['escrow_status'] = 'held';
                                     Log::info("🔒 ESCROW AKTIF: Order $orderId. Memproses Auto-Booking KiriminAja...");
@@ -284,8 +287,8 @@ class DokuWebhookController extends Controller
                                     $shipData = json_decode($orderMarketplace->shipping_ref, true);
 
                                     if (is_array($shipData) && isset($shipData['dist'])) {
-                                        // Cari data tenant owner untuk alamat pickup
-                                        $tenantOwner = $db->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
+                                        // Cari data tenant owner menggunakan mysql_second
+                                        $tenantOwner = $percetakanDB->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
 
                                         if ($tenantOwner) {
                                             $kiriminAja = app(\App\Services\KiriminAjaService::class);
@@ -296,7 +299,7 @@ class DokuWebhookController extends Controller
                                                 $pickupSchedule = now()->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
                                             }
 
-                                            // Tembak API KiriminAja (Tanpa potong saldo tenant)
+                                            // Tembak API KiriminAja
                                             $kaResponse = $kiriminAja->createExpressOrder([
                                                 'address'       => $originFullAddress,
                                                 'phone'         => $tenantOwner->phone ?? '085745808809',
@@ -337,23 +340,30 @@ class DokuWebhookController extends Controller
                                             }
                                         }
                                     }
-                                } else {
-                                    // [KASIR OFFLINE] Langsung masuk saldo tenant
+                                }
+                                else {
+                                    // [KASIR OFFLINE] -> Masuk saldo via mysql_second
                                     $updateData['escrow_status'] = 'none';
-                                    $tenantOwner = $db->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
+                                    $tenantOwner = $percetakanDB->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
                                     if ($tenantOwner) {
-                                        $db->table('users')->where('id', $tenantOwner->id)->increment('saldo', $orderMarketplace->final_price);
+                                        $percetakanDB->table('users')->where('id', $tenantOwner->id)->increment('saldo', $orderMarketplace->final_price);
                                         Log::info("💸 POS OFFLINE: Saldo Kasir {$tenantOwner->name} bertambah.");
                                     }
                                 }
 
-                                // Update Tabel Orders
-                                $db->table('orders')->where('id', $orderMarketplace->id)->update($updateData);
+                                // Eksekusi Update Tabel Orders menggunakan mysql_second
+                                $percetakanDB->table('orders')->where('id', $orderMarketplace->id)->update($updateData);
+                                Log::info("✅ Order $orderId berhasil diupdate via mysql_second.");
 
+                                // Notifikasi WA
+                                $totalRupiah = "Rp " . number_format($orderMarketplace->final_price, 0, ',', '.');
+                                $this->_sendFonnteMessage('085745808809', "🔔 *ORDER LUNAS (SCK)*\nNota: $orderId\nTotal: $totalRupiah");
                             }
+                        } else {
+                            Log::warning("❌ Order $orderId tidak ditemukan di mysql_second.");
                         }
                     } catch (\Exception $e) {
-                        Log::error("❌ Gagal Update Order: " . $e->getMessage());
+                        Log::error("❌ Gagal Update Order di mysql_second: " . $e->getMessage());
                     }
                 }
 
