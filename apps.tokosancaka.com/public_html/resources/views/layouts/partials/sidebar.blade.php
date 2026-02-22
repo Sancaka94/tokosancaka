@@ -180,6 +180,22 @@
             </a>
         @endif
 
+
+        {{-- ========================================================== --}}
+        {{-- [BARU] MANAJEMEN ESCROW (Khusus Superadmin & Subdomain apps/admin) --}}
+        {{-- ========================================================== --}}
+        @if(in_array(Auth::user()->role, ['super_admin']) && in_array($currentSubdomain, ['apps', 'admin']))
+            <a wire:navigate.hover href="{{ route('escrow.index', $params) }}"
+               class="flex items-center rounded-xl text-sm font-medium transition-all duration-200 mt-1
+               {{ request()->routeIs('escrow.*')
+                 ? 'bg-amber-50 text-amber-600 font-bold border border-amber-100'
+                 : 'text-slate-600 hover:bg-amber-50 hover:text-amber-600' }}"
+               :class="isExpanded ? 'px-3 py-2.5 gap-3 justify-start' : 'p-2.5 justify-center'">
+                <i class="fas fa-hand-holding-usd w-5 text-center flex-shrink-0 {{ request()->routeIs('escrow.*') ? 'text-amber-600' : 'text-slate-400' }}"></i>
+                <span x-show="isExpanded" style="display: none;" x-transition class="whitespace-nowrap">Manajemen Escrow</span>
+            </a>
+        @endif
+
         {{-- MENU LISENSI (BARU - DROPDOWN KHUSUS SUPERADMIN) --}}
         @if(in_array(Auth::user()->role, ['super_admin']))
             <div x-data="{ open: {{ request()->routeIs('superadmin.license.*') ? 'true' : 'false' }} }">
