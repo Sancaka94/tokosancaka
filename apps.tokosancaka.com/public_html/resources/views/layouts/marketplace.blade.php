@@ -19,9 +19,9 @@
       x-data="marketplace()"
       x-init="initCart()">
 
-    <div x-show="toast.show" x-transition x-cloak class="fixed top-24 right-5 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-[100]">
-        <i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>
-        <span x-text="toast.message"></span>
+    <div x-show="toast.show" x-transition x-cloak class="fixed top-24 right-5 bg-emerald-500 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-[100] border-2 border-emerald-400">
+        <i data-lucide="check-circle" class="w-5 h-5 text-white"></i>
+        <span class="font-bold tracking-wide" x-text="toast.message"></span>
     </div>
 
     @include('storefront.partials.header')
