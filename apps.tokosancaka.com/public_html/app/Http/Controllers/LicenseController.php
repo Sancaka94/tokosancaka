@@ -87,9 +87,15 @@ class LicenseController extends Controller
             return redirect()->back()->with('error', 'Validasi Gagal: Toko dengan subdomain tersebut tidak ditemukan.');
         }
 
-        // 3. VALIDASI LAPIS 2: Cek User ID
-        // (Asumsi mengambil ID user yang sedang login. Ubah menjadi $request->user_id jika dari form hidden)
-        $userId = auth()->id();
+       $user = DB::table('users')->where('id', $userId)->first();
+
+        // --- TAMBAHKAN BARIS INI SEMENTARA ---
+        dd([
+            '1_NAMA_USER_YANG_LOGIN' => $user->name ?? 'Tidak ada nama',
+            '2_TENANT_ID_MILIK_USER' => $user->tenant_id ?? 'KOSONG/NULL',
+            '3_ID_TOKO_OPERATOR' => $tenant->id
+        ]);
+        // ------------------------------------
 
         if (!$userId) {
             return redirect()->back()->with('error', 'Validasi Gagal: Anda harus login untuk melakukan aktivasi.');
