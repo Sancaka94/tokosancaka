@@ -9,12 +9,9 @@ use App\Models\License;
 
 class CheckTenantLicense
 {
-    /**
-     * Handle an incoming request.
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        // 1. Ambil subdomain dari URL saat ini (contoh: toko1.tokosancaka.com -> toko1)
+        // 1. Ambil subdomain dari URL saat ini (contoh: operator.tokosancaka.com -> operator)
         $host = $request->getHost();
         $parts = explode('.', $host);
         $subdomain = $parts[0] ?? '';
@@ -27,30 +24,36 @@ class CheckTenantLicense
             return $next($request);
         }
 
-        // 3. LOGIC PENGECEKAN LISENSI UNTUK TENANT
-        // Pastikan user sudah login sebelum kita cek lisensinya
-        if (auth()->check()) {
+        // 3. LOGIC PENGECEKAN LISENSI BERDASARKAN SUBDOMAIN
+        // Cari data tenant berdasarkan subdomain yang sedang diakses
+        $tenant = \Illuminate\Support\Facades\DB::table('tenants')->where('subdomain', $subdomain)->first();
 
-            // Asumsi: Relasi lisensi disimpan berdasarkan ID User/Tenant yang login.
-            // Sesuaikan 'used_by_tenant_id' dengan struktur database SancakaPOS Anda
-            $tenantId = auth()->user()->id; // Atau auth()->user()->tenant_id jika beda tabel
-
-            $hasActiveLicense = License::where('used_by_tenant_id', $tenantId)
-                                       ->where('status', 'used')
-                                       ->exists();
-
-            // Jika tenant tidak punya lisensi aktif
-            // Jika tenant tidak punya lisensi aktif
-            if (!$hasActiveLicense) {
-                // Arahkan ke halaman publik di apps.tokosancaka.com
-                return redirect()->to('https://apps.tokosancaka.com/redeem-lisensi?subdomain=' . $subdomain)
-                                 ->with('error', 'Akses Ditolak: Toko/Tenant Anda belum memiliki lisensi yang aktif. Silakan masukkan kode lisensi di sini.');
-            }
+        // Jika tenant tidak ditemukan, atau statusnya bukan 'active'
+        if (!$tenant || $tenant->status !== 'active') {
+             return redirect()->to('https://apps.tokosancaka.com/redeem-lisensi?subdomain=' . $subdomain)
+                              ->with('error', 'Akses Ditolak: Toko Anda belum diaktifkan.');
         }
 
-        // LOG LOG - Safe block
-        // Menjaga instruksi agar LOG LOG tetap utuh jika Anda menyisipkannya di sini
+        // 4. PENGECEKAN TANGGAL KEDALUWARSA (EXPIRED_AT)
+        if ($tenant->expired_at) {
+            $expiredDate = \Carbon\Carbon::parse($tenant->expired_at);
 
+            // Jika hari ini sudah melewati tanggal expired
+            if (now()->isAfter($expiredDate)) {
+
+                // Opsional: Otomatis ubah status tenant jadi inactive di database jika sudah lewat
+                \Illuminate\Support\Facades\DB::table('tenants')->where('id', $tenant->id)->update(['status' => 'inactive']);
+
+                return redirect()->to('https://apps.tokosancaka.com/redeem-lisensi?subdomain=' . $subdomain)
+                                 ->with('error', 'Akses Ditolak: Masa aktif lisensi Toko Anda telah habis. Silakan perpanjang layanan Anda.');
+            }
+        } else {
+             // Jika expired_at NULL tapi statusnya active, kita asumsikan tidak valid (harus ada tanggal expired)
+             return redirect()->to('https://apps.tokosancaka.com/redeem-lisensi?subdomain=' . $subdomain)
+                              ->with('error', 'Akses Ditolak: Data masa aktif toko tidak valid.');
+        }
+
+        // Jika semua lolos (Tenant ada, status active, belum expired), izinkan masuk!
         return $next($request);
     }
 }
