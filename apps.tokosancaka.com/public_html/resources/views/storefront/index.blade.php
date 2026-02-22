@@ -18,6 +18,7 @@
 
 <div id="katalog" class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-8 bg-gray-50">
 
+    {{-- KATEGORI --}}
     <div class="mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
         <h3 class="text-lg font-bold mb-4 text-gray-800 uppercase tracking-wide">Kategori</h3>
         <div class="flex overflow-x-auto gap-3 pb-2 snap-x hide-scrollbar">
@@ -31,6 +32,14 @@
         </div>
     </div>
 
+    {{-- FILTER DINAMIS: PRODUK FLASH SALE --}}
+    @php
+        // Mengambil produk yang is_flash_sale == 1 dari collection
+        $flashSaleProducts = $products->where('is_flash_sale', true);
+    @endphp
+
+    {{-- Hanya tampilkan SECTION FLASH SALE jika ada produknya --}}
+    @if($flashSaleProducts->count() > 0)
     <div class="mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
         <div class="flex justify-between items-center mb-4">
             <div class="flex items-center gap-2">
@@ -41,12 +50,16 @@
         </div>
 
         <div class="flex overflow-x-auto gap-3 pb-4 snap-x hide-scrollbar">
-            @foreach($products->take(5) as $product)
+            {{-- Loop HANYA produk Flash Sale (Maksimal 8 biar gak kepanjangan horizontalnya) --}}
+            @foreach($flashSaleProducts->take(8) as $product)
                 @include('components.product-card', ['product' => $product, 'is_horizontal' => true])
             @endforeach
         </div>
     </div>
+    @endif
 
+
+    {{-- REKOMENDASI UNTUKMU (SEMUA PRODUK) --}}
     <div class="mb-6 flex items-center justify-between">
         <h3 class="text-lg font-bold text-gray-900 uppercase border-b-4 border-blue-600 inline-block pb-1">Rekomendasi Untukmu</h3>
     </div>
@@ -55,7 +68,7 @@
         @forelse($products as $product)
             @include('components.product-card', ['product' => $product, 'is_horizontal' => false])
         @empty
-            <div class="col-span-full text-center py-20 text-gray-500 bg-white rounded-xl">
+            <div class="col-span-full text-center py-20 text-gray-500 bg-white rounded-xl shadow-sm border border-gray-100">
                 <i data-lucide="package-open" class="w-16 h-16 mx-auto mb-4 opacity-50"></i>
                 <p>Belum ada produk yang dijual di toko ini.</p>
             </div>
