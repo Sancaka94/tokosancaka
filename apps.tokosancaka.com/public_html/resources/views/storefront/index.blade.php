@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="bg-gradient-to-r from-blue-700 to-blue-900 text-white">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 text-center md:text-left flex flex-col md:flex-row items-center">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 text-center md:text-left flex flex-col md:flex-row items-center">
         <div class="md:w-1/2">
             <h2 class="text-4xl md:text-5xl font-black mb-4 leading-tight">Temukan Produk Terbaik Hanya di Sini.</h2>
             <p class="text-blue-200 text-lg mb-8">Kualitas terjamin dengan pelayanan pengiriman ke seluruh Indonesia.</p>
@@ -16,60 +16,53 @@
     </div>
 </div>
 
-<div id="katalog" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+<div id="katalog" class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-8 bg-gray-50">
 
-    <div class="mb-10">
-        <h3 class="text-xl font-bold mb-4 text-gray-900">Kategori Pilihan</h3>
-        <div class="flex overflow-x-auto gap-4 pb-4 snap-x hide-scrollbar">
-            <a href="{{ route('storefront.index', $subdomain) }}" class="flex-shrink-0 snap-start bg-white border border-blue-500 text-blue-600 px-6 py-2 rounded-full text-sm font-bold shadow-sm">Semua</a>
+    <div class="mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <h3 class="text-lg font-bold mb-4 text-gray-800 uppercase tracking-wide">Kategori</h3>
+        <div class="flex overflow-x-auto gap-3 pb-2 snap-x hide-scrollbar">
+            <a href="{{ route('storefront.index', $subdomain) }}" class="flex-shrink-0 snap-start bg-blue-50 border border-blue-200 text-blue-700 px-5 py-2 rounded-lg text-sm font-bold shadow-sm">Semua</a>
             @foreach($categories as $cat)
                 <a href="{{ route('storefront.category', ['subdomain' => $subdomain, 'slug' => $cat->slug]) }}"
-                   class="flex-shrink-0 snap-start bg-white border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 px-6 py-2 rounded-full text-sm font-semibold shadow-sm transition">
+                   class="flex-shrink-0 snap-start bg-white border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 px-5 py-2 rounded-lg text-sm font-medium shadow-sm transition">
                     {{ $cat->name }}
                 </a>
             @endforeach
         </div>
     </div>
 
-    <h3 class="text-xl font-bold mb-6 text-gray-900">Produk Terbaru</h3>
-    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-        @forelse($products as $product)
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition flex flex-col h-full group">
-                <div class="aspect-square bg-gray-100 relative overflow-hidden flex items-center justify-center">
-                    @if($product->image)
-                        <img src="{{ asset('storage/'.$product->image) }}" alt="{{ $product->name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
-                    @else
-                        <i data-lucide="package" class="w-12 h-12 text-gray-300"></i>
-                    @endif
-                    @if($product->stock < 5 && $product->stock > 0)
-                        <span class="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded">Sisa {{ $product->stock }}!</span>
-                    @endif
-                </div>
-
-                <div class="p-4 flex flex-col flex-grow">
-                    <h4 class="text-sm font-semibold text-gray-800 line-clamp-2 mb-2 flex-grow">{{ $product->name }}</h4>
-                    <p class="text-blue-600 font-black mb-4">Rp {{ number_format($product->sell_price, 0, ',', '.') }}</p>
-
-                    <button @click="addToCart({{ json_encode([
-                                'id' => $product->id,
-                                'name' => $product->name,
-                                'sell_price' => $product->sell_price,
-                                'image' => $product->image ? asset('storage/'.$product->image) : ''
-                            ]) }})"
-                            class="w-full bg-blue-50 text-blue-700 border border-blue-100 py-2 rounded-xl text-sm font-bold hover:bg-blue-600 hover:text-white hover:border-blue-600 transition flex justify-center items-center gap-2 active:scale-95">
-                        <i data-lucide="plus" class="w-4 h-4"></i> Keranjang
-                    </button>
-                </div>
+    <div class="mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center gap-2">
+                <i data-lucide="zap" class="w-6 h-6 text-orange-500 fill-current"></i>
+                <h3 class="text-xl font-black text-gray-900 italic">FLASH SALE</h3>
             </div>
+            <a href="#" class="text-sm text-blue-600 font-semibold hover:underline">Lihat Semua ></a>
+        </div>
+
+        <div class="flex overflow-x-auto gap-3 pb-4 snap-x hide-scrollbar">
+            @foreach($products->take(5) as $product)
+                @include('components.product-card', ['product' => $product, 'is_horizontal' => true])
+            @endforeach
+        </div>
+    </div>
+
+    <div class="mb-6 flex items-center justify-between">
+        <h3 class="text-lg font-bold text-gray-900 uppercase border-b-4 border-blue-600 inline-block pb-1">Rekomendasi Untukmu</h3>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 md:gap-4 gap-2">
+        @forelse($products as $product)
+            @include('components.product-card', ['product' => $product, 'is_horizontal' => false])
         @empty
-            <div class="col-span-full text-center py-20 text-gray-500">
+            <div class="col-span-full text-center py-20 text-gray-500 bg-white rounded-xl">
                 <i data-lucide="package-open" class="w-16 h-16 mx-auto mb-4 opacity-50"></i>
                 <p>Belum ada produk yang dijual di toko ini.</p>
             </div>
         @endforelse
     </div>
 
-    <div class="mt-10">
+    <div class="mt-10 flex justify-center">
         {{ $products->links() }}
     </div>
 </div>
