@@ -68,30 +68,29 @@ class LicenseController extends Controller
         return view('superadmin.license.redeem');
     }
 
-    /**
-     * Memproses form redeem saat disubmit
-     */
     public function processRedeem(Request $request)
-    {
-        // 1. Validasi input form
-        $request->validate([
-            'license_code' => 'required|string',
-            'target_subdomain' => 'required|string'
-        ]);
+{
+    $request->validate([
+        'license_code' => 'required|string',
+        'target_subdomain' => 'required|string'
+    ]);
 
-        // --- SOLUSI UTAMA: Bersihkan Kode ---
-        // Menghapus semua spasi dan memastikan huruf kapital
-        $cleanLicenseCode = strtoupper(str_replace(' ', '', $request->license_code));
+    // 1. Bersihkan spasi
+    $cleanLicenseCode = strtoupper(str_replace(' ', '', $request->license_code));
 
-        // TIPS DEBUGGING:
-        // Jika masih error "tidak ditemukan", hapus tanda // pada baris 'dd' di bawah ini
-        // untuk melihat teks apa sebenarnya yang ditangkap oleh Laravel.
-        // dd('Input Asli: "' . $request->license_code . '"', 'Setelah Dibersihkan: "' . $cleanLicenseCode . '"');
+    // ==== TAMBAHKAN BLOK KODE INI SEMENTARA ====
+    // Ini akan menghentikan proses dan menampilkan isi database ke layar
+    $semuaKodeDiDatabase = \App\Models\License::pluck('license_code')->toArray();
 
-        // 2. Cari kode di database menggunakan kode yang sudah dibersihkan
-        $license = License::where('license_code', $cleanLicenseCode)->first();
+    dd([
+        '1_KODE_YANG_DITANGKAP_DARI_FORM' => $cleanLicenseCode,
+        '2_APAKAH_KODE_ADA_DI_DB?' => in_array($cleanLicenseCode, $semuaKodeDiDatabase) ? 'YA, ADA!' : 'TIDAK ADA!',
+        '3_ISI_TABEL_LICENSES_MENURUT_LARAVEL' => $semuaKodeDiDatabase
+    ]);
+    // ===========================================
 
         // 3. Pengecekan jika kode tidak ada
+        $license = License::where('license_code', $cleanLicenseCode)->first();
         if (!$license) {
             return redirect()->back()->with('error', 'Kode lisensi tidak valid atau tidak ditemukan.');
         }
