@@ -112,7 +112,7 @@
                 </div>
 
                 <div class="mt-auto flex gap-3">
-                    <button @click="handleAddToCart()"
+                    <button @click="let item = getCartPayload(); if(item) addToCart(item);"
                             :disabled="currentStock <= 0 || (variants.length > 0 && !selectedVariant)"
                             class="flex-1 px-6 py-3.5 rounded-lg font-bold text-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95"
                             :class="(currentStock > 0 && (variants.length === 0 || selectedVariant))
@@ -178,11 +178,12 @@
                 return new Intl.NumberFormat('id-ID').format(price);
             },
 
-            handleAddToCart() {
-                // Validasi jika produk punya varian tapi belum dipilih
+            // --- FUNGSI BARU PENGGANTI handleAddToCart ---
+            getCartPayload() {
+                // Validasi
                 if (this.variants.length > 0 && !this.selectedVariant) {
                     alert('Silakan pilih varian produk terlebih dahulu!');
-                    return;
+                    return null;
                 }
 
                 // Susun nama akhir (Gabungan nama induk + nama varian)
@@ -191,14 +192,14 @@
                     finalName = this.productName + ' (' + this.selectedVariant.name + ')';
                 }
 
-                // Panggil fungsi addToCart global yang ada di layouts.marketplace
-                addToCart({
+                // Kembalikan data untuk dimasukkan ke keranjang
+                return {
                     id: this.productId,
                     variant_id: this.selectedVariant ? this.selectedVariant.id : null,
                     name: finalName,
                     sell_price: this.currentPrice,
                     image: this.mainImage
-                });
+                };
             }
         }));
     });
