@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\DB; // BENAR ✅
 use App\Http\Middleware\EnforceLicenseLimits; // Pastikan middleware ini sudah dibuat
 use Illuminate\Support\Facades\Log; // Untuk logging
 use Illuminate\Support\Str;
