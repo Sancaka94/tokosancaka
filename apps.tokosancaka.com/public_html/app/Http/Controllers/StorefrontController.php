@@ -104,16 +104,15 @@ class StorefrontController extends Controller
         public function productDetail($subdomain, $slug)
     {
         $tenant = \App\Models\Tenant::where('subdomain', $subdomain)->firstOrFail();
+        $categories = \App\Models\Category::where('tenant_id', $tenant->id)->get(); // <--- WAJIB ADA JIKA DIPAKAI DI LAYOUT
 
-        // Cari produk berdasarkan slug atau ID
-        // PERBAIKI QUERY INI DI CONTROLLER LU
-        $product = \App\Models\Product::with('variants') // <--- WAJIB TAMBAHIN INI
+        $product = \App\Models\Product::with('variants')
             ->where('tenant_id', $tenant->id)
             ->where(function($query) use ($slug) {
                 $query->where('slug', $slug)->orWhere('id', $slug);
             })
             ->firstOrFail();
 
-        return view('storefront.product-detail', compact('product', 'subdomain', 'tenant'));
+        return view('storefront.product-detail', compact('product', 'subdomain', 'tenant', 'categories')); // <--- PASTIKAN MASUK SINI
     }
 }
