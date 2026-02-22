@@ -284,7 +284,16 @@ class DokuWebhookController extends Controller
                                         $kiriminAja = new \App\Services\KiriminAjaService();
 
                                         // Sesuaikan Payload dengan Format KiriminAja v6.1 (Request Pickup)
-                                        $pickupSchedule = now()->addHour()->format('Y-m-d H:i:s');
+                                        $now = now()->timezone('Asia/Jakarta');
+
+                                            // Jika lewat jam 15:00 WIB ATAU hari Minggu, otomatis jadwalin besok pagi jam 09:00
+                                            if ($now->hour >= 15 || $now->isSunday()) {
+                                                $pickupSchedule = $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
+                                            } else {
+                                                // Kalau masih pagi/siang, jadwalkan 1 jam dari sekarang
+                                                $pickupSchedule = $now->addHours(1)->format('Y-m-d H:i:s');
+                                            }
+
                                         $payload = [
                                             'address'      => $tenantOwner->address_detail ?? 'Alamat Toko',
                                             'phone'        => $tenantOwner->phone ?? '085745808809',
