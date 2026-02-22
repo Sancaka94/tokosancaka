@@ -331,6 +331,8 @@ class DokuWebhookController extends Controller
                                                 ]]
                                             ]);
 
+                                            Log::info("📩 Respon KiriminAja: " . json_encode($kaResponse));
+
                                             if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
                                                 $newResi = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
                                                 $updateData['shipping_ref'] = $newResi; // TIMPA JSON DENGAN RESI ASLI
