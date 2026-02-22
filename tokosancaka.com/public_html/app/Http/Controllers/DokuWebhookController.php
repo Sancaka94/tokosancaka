@@ -305,7 +305,7 @@ class DokuWebhookController extends Controller
                                             'platform_name'=> 'Sancaka Marketplace',
                                             'packages'     => [[
                                                 'order_id'                 => $orderId,
-                                                'item_name'                => 'Produk Percetakan',
+                                                'item_name'                => 'Produk Marketplace',
                                                 'package_type_id'          => 1, // Umum
                                                 'destination_name'         => $orderMarketplace->customer_name,
                                                 'destination_phone'        => $orderMarketplace->customer_phone,
