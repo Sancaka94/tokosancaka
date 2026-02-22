@@ -29,7 +29,7 @@ Route::domain('{subdomain}.tokosancaka.com')
 
     });
 
-    // [BARU] API KHUSUS ETALASE (PUBLIK)
-        Route::get('/api/search-location', [App\Http\Controllers\CustomerController::class, 'searchApi'])->name('storefront.api.location');
+  // [BARU] API KHUSUS ETALASE (PUBLIK)
+        Route::get('/api/search-location', [App\Http\Controllers\OrderController::class, 'searchLocation'])->name('storefront.api.location');
         Route::post('/api/check-ongkir', [App\Http\Controllers\OrderController::class, 'checkShippingRates'])->name('storefront.api.ongkir');
         Route::post('/api/check-coupon', [App\Http\Controllers\OrderController::class, 'checkCoupon'])->name('storefront.api.coupon');

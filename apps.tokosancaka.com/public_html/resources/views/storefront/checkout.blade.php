@@ -70,7 +70,7 @@
                             <ul x-show="locationResults.length > 0" class="absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto">
                                 <template x-for="loc in locationResults" :key="loc.id">
                                     <li @click="selectLocation(loc)" class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0 text-sm">
-                                        <div class="font-bold text-gray-800" x-text="loc.text"></div>
+                                        <div class="font-bold text-gray-800" x-text="loc.text || loc.name || (loc.kecamatan + ', ' + loc.kabupaten)"></div>
                                     </li>
                                 </template>
                             </ul>

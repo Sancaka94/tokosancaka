@@ -358,6 +358,13 @@ class OrderController extends Controller
             $subdomain = explode('.', $host)[0];
             $user = Auth::user();
 
+            // >>> TAMBAHKAN BLOK INI <<<
+            // JIKA GUEST (PEMBELI DARI ETALASE), AMBIL DATA ADMIN DARI TOKO INI
+            if (!$user) {
+                $user = \App\Models\User::where('tenant_id', $this->tenantId)->first();
+            }
+            // =========================
+
             // ============================================================
             // [STEP 1] LOGIKA GEOCODING (CARI KOORDINAT DULU)
             // ============================================================
@@ -587,6 +594,13 @@ class OrderController extends Controller
         ]);
 
         $currentUser = Auth::user();
+
+        // >>> TAMBAHKAN BLOK INI <<<
+        // JIKA GUEST (PEMBELI DARI ETALASE), ANGGAP ADMIN YANG MEMPROSES AGAR ONGKIR & WA BERJALAN
+        if (!$currentUser) {
+            $currentUser = \App\Models\User::where('tenant_id', $this->tenantId)->first();
+        }
+        // =========================
 
         // 2. SETUP DATA AWAL
         $cartItems = json_decode($request->items, true);

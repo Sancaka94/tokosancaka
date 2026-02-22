@@ -70,6 +70,7 @@
                     const res = await fetch(`{{ route('storefront.api.location') }}?query=${this.locationSearch}`);
                     const json = await res.json();
                     if(json.status === 'success') {
+                        // Memastikan data masuk ke array
                         this.locationResults = json.data;
                     }
                 } catch (e) { console.error("Loc Search Error", e); }
@@ -77,11 +78,17 @@
             },
 
             selectLocation(loc) {
-                this.destinationText = loc.text;
-                this.districtId = loc.kecamatan_id;
-                this.subdistrictId = loc.kelurahan_id;
+                // Trik menangkap berbagai versi respon KiriminAja
+                this.destinationText = loc.text || loc.name || `${loc.kecamatan || ''}, ${loc.kabupaten || ''}`;
+
+                // Ambil ID Kecamatan (Bisa kecamatan_id atau id)
+                this.districtId = loc.kecamatan_id || loc.id;
+                this.subdistrictId = loc.kelurahan_id || '';
+
                 this.locationSearch = '';
                 this.locationResults = [];
+
+                // Langsung tembak API Ongkir setelah lokasi diklik!
                 this.fetchOngkir();
             },
 
