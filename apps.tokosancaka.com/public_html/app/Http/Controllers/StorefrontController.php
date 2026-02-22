@@ -106,7 +106,9 @@ class StorefrontController extends Controller
         $tenant = \App\Models\Tenant::where('subdomain', $subdomain)->firstOrFail();
 
         // Cari produk berdasarkan slug atau ID
-        $product = \App\Models\Product::where('tenant_id', $tenant->id)
+        // PERBAIKI QUERY INI DI CONTROLLER LU
+        $product = \App\Models\Product::with('variants') // <--- WAJIB TAMBAHIN INI
+            ->where('tenant_id', $tenant->id)
             ->where(function($query) use ($slug) {
                 $query->where('slug', $slug)->orWhere('id', $slug);
             })
