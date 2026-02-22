@@ -253,25 +253,91 @@ class DokuWebhookController extends Controller
                 }
 
                 // -------------------------------------------------------------
-                // A.3 ORDER PERCETAKAN (SCK-PRT-)
+                // A.3 ORDER MARKETPLACE / POS KASIR (SCK-) -> DATABASE KEDUA
                 // -------------------------------------------------------------
-                else if (Str::startsWith($orderId, 'SCK-PRT-')) {
-                    try {
-                        $percetakanDB = DB::connection('mysql_second');
-                        $orderPercetakan = $percetakanDB->table('orders')->where('order_number', $orderId)->first();
+                else if (Str::startsWith($orderId, 'SCK-')) {
+                    Log::info("🛍️ LOG TRX (SCK-): Webhook DOKU Masuk untuk Order: $orderId");
 
-                        if ($orderPercetakan) {
-                            $percetakanDB->table('orders')->where('id', $orderPercetakan->id)->update([
-                                'payment_status' => 'paid',
-                                'status' => 'processing', // Langsung proses
-                                'updated_at' => now()->timezone('Asia/Jakarta')
-                            ]);
-                            Log::info("✅ Order SancakaPOS $orderId LUNAS.");
-                            // Notif manual string karena struktur tabel beda dengan tenant
-                             $this->_sendFonnteMessage('085745808809', "🖨️ Order SancakaPOS Masuk & Lunas: *$orderId*");
+                    try {
+                        // 1. Konek ke Database Toko/Tenant (mysql_second)
+                        $percetakanDB = DB::connection('mysql_second');
+                        $orderMarketplace = $percetakanDB->table('orders')->where('order_number', $orderId)->first();
+
+                        if ($orderMarketplace) {
+                            if ($orderMarketplace->payment_status !== 'paid') {
+
+                                // 2. Tentukan Catatan & Data Update Dasar
+                                $catatanBaru = $orderMarketplace->note . "\n[DOKU] Lunas via Webhook jam " . now()->timezone('Asia/Jakarta');
+
+                                $updateData = [
+                                    'payment_status' => 'paid',
+                                    'status'         => 'processing', // Pindahkan ke tab Diproses
+                                    'note'           => $catatanBaru,
+                                    'updated_at'     => now()->timezone('Asia/Jakarta')
+                                ];
+
+                                // =========================================================
+                                // 3. LOGIKA INTI PENAHANAN DANA (ESCROW) VS PENCAIRAN
+                                // =========================================================
+                                if ($orderMarketplace->is_escrow == 1) {
+                                    // [SKENARIO MARKETPLACE] -> DANA DITAHAN!
+                                    // JANGAN tambah saldo tenant. Uang diam di Sancaka.
+                                    $updateData['escrow_status'] = 'held';
+                                    Log::info("🔒 ESCROW AKTIF: Order $orderId adalah pesanan online. Dana DITAHAN oleh Sancaka.");
+                                }
+                                else {
+                                    // [SKENARIO KASIR OFFLINE] -> DANA LANGSUNG CAIR KE SALDO APLIKASI
+                                    $updateData['escrow_status'] = 'none';
+
+                                    // Cari User Admin (Owner) dari Tenant ini untuk ditambah saldonya
+                                    $tenantOwner = $percetakanDB->table('users')
+                                                                ->where('tenant_id', $orderMarketplace->tenant_id)
+                                                                ->first();
+
+                                    if ($tenantOwner) {
+                                        $percetakanDB->table('users')
+                                                     ->where('id', $tenantOwner->id)
+                                                     ->increment('saldo', $orderMarketplace->final_price);
+
+                                        Log::info("💸 POS OFFLINE: Saldo Kasir {$tenantOwner->name} (Tenant ID: {$orderMarketplace->tenant_id}) langsung bertambah Rp " . $orderMarketplace->final_price);
+                                    }
+                                }
+                                // =========================================================
+
+                                // 4. Eksekusi Update Tabel Orders
+                                $percetakanDB->table('orders')->where('id', $orderMarketplace->id)->update($updateData);
+                                Log::info("✅ Order $orderId berhasil diupdate menjadi LUNAS.");
+
+                                // 5. Kirim Notifikasi WA (Manual)
+                                $totalRupiah = "Rp " . number_format($orderMarketplace->final_price, 0, ',', '.');
+
+                                // Pesan ke Admin/Owner
+                                $msgAdmin = "🔔 *PESANAN LUNAS (DOKU)* 🔔\n\n" .
+                                            "Nota: *$orderId*\n" .
+                                            "Nama: {$orderMarketplace->customer_name}\n" .
+                                            "Total: $totalRupiah\n\n" .
+                                            ($orderMarketplace->is_escrow == 1 ? "⚠️ *Status Dana: DITAHAN (Escrow)*\n" : "✅ *Status Dana: MASUK SALDO APLIKASI*\n") .
+                                            "_Silakan cek dashboard SancakaPOS untuk memproses pesanan._";
+
+                                $this->_sendFonnteMessage('085745808809', $msgAdmin);
+
+                                // Pesan ke Customer (Jika ada)
+                                if (!empty($orderMarketplace->customer_phone)) {
+                                    $msgCustomer = "Halo Kak *{$orderMarketplace->customer_name}* 👋,\n\n" .
+                                                   "Terima kasih, pembayaran pesanan Anda (*$orderId*) sebesar *$totalRupiah* via DOKU telah kami terima dengan sukses! ✅\n\n" .
+                                                   "Pesanan Anda akan segera diproses oleh penjual. Mohon ditunggu ya! 🙏";
+
+                                    $this->_sendFonnteMessage($orderMarketplace->customer_phone, $msgCustomer);
+                                }
+
+                            } else {
+                                Log::info("⚠️ Order $orderId sudah Lunas sebelumnya.");
+                            }
+                        } else {
+                            Log::warning("❌ Order $orderId tidak ditemukan di database kedua (mysql_second).");
                         }
                     } catch (\Exception $e) {
-                        Log::error("❌ Gagal Update Order SancakaPOS: " . $e->getMessage());
+                        Log::error("❌ Gagal Update Order: " . $e->getMessage());
                     }
                 }
 
