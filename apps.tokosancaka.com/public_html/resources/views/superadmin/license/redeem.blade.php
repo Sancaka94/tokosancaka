@@ -29,7 +29,6 @@
         try {
             // Cek status tenant langsung di database mysql_second
             $tenant = \Illuminate\Support\Facades\DB::table('tenants')
-                        ->table('tenants')
                         ->where('subdomain', $subdomain)
                         ->first();
 
@@ -184,7 +183,37 @@
                     </div>
 
                     <div x-show="tab === 'payment'" x-transition x-cloak class="space-y-4">
-                        </div>
+                        @php
+                            $packages = [
+                                ['name' => 'Monthly Plan', 'price' => 50000, 'val' => 'monthly', 'icon' => 'zap'],
+                                ['name' => 'Half Year Plan', 'price' => 600000, 'val' => 'half_year', 'icon' => 'award'],
+                                ['name' => 'Yearly Plan', 'price' => 1000000, 'val' => 'yearly', 'icon' => 'crown']
+                            ];
+                        @endphp
+
+                        @foreach($packages as $pkg)
+                        <form action="{{ route('tenant.payment.generate') }}" method="POST">
+                            @csrf
+                            <input type="hidden" name="amount" value="{{ $pkg['price'] }}">
+                            <input type="hidden" name="target_subdomain" :value="subdomain">
+                            <input type="hidden" name="package_type" value="{{ $pkg['val'] }}">
+                            <input type="hidden" name="payment_method" value="DOKU">
+
+                            <button type="submit" class="w-full p-4 border border-gray-200 bg-gray-50 rounded-2xl flex items-center justify-between hover:border-blue-300 hover:bg-blue-50 transition group">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-white p-3 rounded-xl shadow-sm text-sancaka-blue">
+                                        <i data-lucide="{{ $pkg['icon'] }}" class="w-5 h-5"></i>
+                                    </div>
+                                    <div class="text-left text-sm">
+                                        <h4 class="font-bold text-gray-800">{{ $pkg['name'] }}</h4>
+                                        <p class="text-gray-500 font-semibold">Rp {{ number_format($pkg['price'], 0, ',', '.') }}</p>
+                                    </div>
+                                </div>
+                                <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300 group-hover:text-sancaka-blue transition"></i>
+                            </button>
+                        </form>
+                        @endforeach
+                    </div>
                 @endif
             </div>
         </div>
