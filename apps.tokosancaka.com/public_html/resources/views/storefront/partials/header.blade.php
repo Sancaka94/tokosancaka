@@ -3,9 +3,14 @@
         <div class="flex justify-between items-center h-20">
 
             <a href="{{ route('storefront.index', $subdomain) }}" class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-blue-600 rounded-xl flex justify-center items-center text-white font-black text-xl shadow-inner">
-                    {{ strtoupper(substr($tenant->name ?? 'S', 0, 1)) }}
-                </div>
+                @if(!empty($tenant->logo))
+                    <img src="{{ asset('storage/' . $tenant->logo) }}" alt="{{ $tenant->name }}" class="w-10 h-10 rounded-xl object-cover border border-gray-100 shadow-sm">
+                @else
+                    <div class="w-10 h-10 bg-blue-600 rounded-xl flex justify-center items-center text-white font-black text-xl shadow-inner">
+                        {{ strtoupper(substr($tenant->name ?? 'S', 0, 1)) }}
+                    </div>
+                @endif
+
                 <div>
                     <h1 class="font-bold text-gray-900 text-lg leading-tight">{{ $tenant->name ?? 'Toko Anda' }}</h1>
                     <p class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Official Store</p>
@@ -22,11 +27,25 @@
                 </form>
             </div>
 
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3 md:gap-4">
                 <a href="{{ route('storefront.cart', $subdomain) }}" class="relative p-2 text-gray-600 hover:text-blue-600 transition group">
                     <i data-lucide="shopping-bag" class="w-6 h-6 group-hover:scale-110 transition transform"></i>
                     <span x-cloak x-show="cartCount > 0" x-text="cartCount" class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white transform translate-x-1/4 -translate-y-1/4"></span>
                 </a>
+
+                <div class="h-6 w-px bg-gray-200 hidden sm:block"></div>
+
+                @auth
+                    <a href="{{ url('/dashboard') }}" class="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-blue-700 shadow-sm transition active:scale-95">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4 hidden sm:block"></i>
+                        <span>Dashboard</span>
+                    </a>
+                @else
+                    <a href="{{ route('login') }}" class="flex items-center gap-1.5 bg-white border border-blue-600 text-blue-600 px-4 py-2 rounded-full text-sm font-bold hover:bg-blue-50 transition active:scale-95">
+                        <i data-lucide="log-in" class="w-4 h-4 hidden sm:block"></i>
+                        <span>Login</span>
+                    </a>
+                @endauth
             </div>
 
         </div>
