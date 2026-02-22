@@ -7,6 +7,12 @@
 {{-- 1. LOAD LIBRARY VISUAL BARCODE --}}
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
+<div class="bg-black text-white p-5">
+    Status Login: {{ Auth::check() ? 'Login' : 'Logout' }} <br>
+    ID Produk: {{ $product->id }} <br>
+    Errors: {{ $errors }}
+</div>
+
 <div class="max-w-4xl mx-auto" x-data="productEditForm()">
 
     {{-- SELIPKAN KODE INI DI ATAS INFORMASI DASAR --}}
