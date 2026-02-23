@@ -21,7 +21,7 @@
         <div class="flex flex-col lg:flex-row gap-8">
 
             <div class="lg:w-2/3 space-y-4">
-                <template x-for="item in cart" :key="item.id">
+                <template x-for="item in cart" :key="item.unique_id">
                     <div class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 md:gap-6 items-start md:items-center hover:shadow-md transition">
 
                         <div class="w-24 h-24 bg-gray-100 rounded-2xl overflow-hidden flex-shrink-0 relative border border-gray-100">
@@ -42,17 +42,17 @@
 
                         <div class="flex items-center gap-2 md:gap-3 bg-gray-50 p-2 rounded-2xl w-full md:w-auto justify-between md:justify-center border border-gray-100">
 
-                            <button @click="updateQty(item.id, -1)" class="w-10 h-10 rounded-xl bg-white text-gray-600 hover:text-blue-600 hover:shadow shadow-sm flex items-center justify-center transition border border-gray-200 active:scale-95">
+                            <button @click="updateQty(item.unique_id, -1)" class="w-10 h-10 rounded-xl bg-white text-gray-600 hover:text-blue-600 hover:shadow shadow-sm flex items-center justify-center transition border border-gray-200 active:scale-95">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
                             </button>
 
                             <span class="font-black text-lg w-8 text-center text-gray-800" x-text="item.qty"></span>
 
-                            <button @click="updateQty(item.id, 1)" class="w-10 h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700 hover:shadow shadow-sm flex items-center justify-center transition border border-blue-600 active:scale-95">
+                            <button @click="updateQty(item.unique_id, 1)" class="w-10 h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700 hover:shadow shadow-sm flex items-center justify-center transition border border-blue-600 active:scale-95">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
                             </button>
 
-                            <button @click="updateQty(item.id, -item.qty)" class="ml-2 w-10 h-10 rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition border border-red-100 active:scale-95" title="Hapus Produk">
+                            <button @click="updateQty(item.unique_id, -item.qty)" class="ml-2 w-10 h-10 rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition border border-red-100 active:scale-95" title="Hapus Produk">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                             </button>
 
