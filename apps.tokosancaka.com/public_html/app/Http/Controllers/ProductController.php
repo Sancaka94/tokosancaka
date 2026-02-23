@@ -233,15 +233,24 @@ class ProductController extends Controller implements HasMiddleware
     {
         $product = Product::where('tenant_id', $this->tenantId)->findOrFail($id);
 
+        // 1. PERBAIKAN VALIDASI: base_price dan sell_price kita buat nullable
+        // agar tidak error ketika dikosongkan (karena mengandalkan harga varian)
         $validator = Validator::make($request->all(), [
             'name'        => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
-            'base_price'  => 'required|numeric|min:0',
+            'base_price'  => 'nullable|numeric|min:0',
             'sell_price'  => 'nullable|numeric|min:0',
             'unit'        => 'required|string',
         ]);
 
-        if ($validator->fails()) return back()->withErrors($validator)->withInput();
+        // 2. PERBAIKAN RESPONSE ERROR
+        if ($validator->fails()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                // Jika request dari AJAX (Bypass), kirim error JSON
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+            return back()->withErrors($validator)->withInput();
+        }
 
         DB::beginTransaction();
 
@@ -256,7 +265,7 @@ class ProductController extends Controller implements HasMiddleware
                 'weight'         => $request->weight ?? 0,
                 'sku'            => $currentSku,
                 'category_id'    => $request->category_id,
-                'base_price'     => $request->base_price,
+                'base_price'     => $request->base_price ?? 0,
                 'sell_price'     => $request->sell_price ?? 0,
                 'unit'           => $request->unit,
                 'supplier'       => $request->supplier,
@@ -287,13 +296,12 @@ class ProductController extends Controller implements HasMiddleware
 
             if ($hasVariant) {
                 $totalProductStock = 0;
-                $keepVariantIds = []; // Simpan ID Varian yang masih aktif
+                $keepVariantIds = [];
 
                 if ($request->filled('variants')) {
                     foreach ($request->variants as $varData) {
                         $variantId = $varData['id'] ?? null;
 
-                        // PERBAIKAN: Gunakan updateOrCreate untuk mempertahankan ID lama
                         $variant = ProductVariant::updateOrCreate(
                             ['id' => $variantId, 'tenant_id' => $this->tenantId, 'product_id' => $product->id],
                             [
@@ -313,7 +321,6 @@ class ProductController extends Controller implements HasMiddleware
                             foreach ($varData['sub_variants'] as $subData) {
                                 $subVariantId = $subData['id'] ?? null;
 
-                                // PERBAIKAN: Gunakan updateOrCreate untuk Sub Varian
                                 $subVariant = ProductSubVariant::updateOrCreate(
                                     ['id' => $subVariantId, 'tenant_id' => $this->tenantId, 'product_variant_id' => $variant->id],
                                     [
@@ -330,14 +337,12 @@ class ProductController extends Controller implements HasMiddleware
                                 $variantStock += ($subData['stock'] ?? 0);
                             }
 
-                            // Hapus sub-varian yang dihapus user di form (tidak ada di request)
                             ProductSubVariant::where('product_variant_id', $variant->id)
                                 ->whereNotIn('id', $keepSubVariantIds)
                                 ->delete();
 
                             $variant->update(['stock' => $variantStock]);
                         } else {
-                            // Hapus semua sub-varian jika user menghapus semua anak varian di form
                             ProductSubVariant::where('product_variant_id', $variant->id)->delete();
                             $variantStock = $varData['stock'] ?? 0;
                         }
@@ -346,7 +351,6 @@ class ProductController extends Controller implements HasMiddleware
                     }
                 }
 
-                // Hapus varian utama yang dihapus user di form (tidak ada di list keepVariantIds)
                 $variantsToDelete = ProductVariant::where('product_id', $product->id)
                     ->whereNotIn('id', $keepVariantIds)
                     ->get();
@@ -362,18 +366,27 @@ class ProductController extends Controller implements HasMiddleware
                 ]);
 
             } else {
-                // PERBAIKAN: Hapus bersih jika user mematikan toggle "has_variant" ke mode Single
                 $existingVariantIds = ProductVariant::where('product_id', $product->id)->pluck('id');
                 ProductSubVariant::whereIn('product_variant_id', $existingVariantIds)->delete();
                 ProductVariant::where('product_id', $product->id)->where('tenant_id', $this->tenantId)->delete();
             }
 
             DB::commit();
+
+            // 3. PERBAIKAN RESPONSE SUKSES
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => true, 'message' => 'Produk berhasil diperbarui!']);
+            }
             return redirect()->route('products.index', $subdomain)->with('success', 'Produk berhasil diperbarui!');
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('[UPDATE ERROR] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+
+            // 4. PERBAIKAN RESPONSE SERVER ERROR
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['errors' => ['server' => [$e->getMessage()]]], 500);
+            }
             return back()->with('error', 'Gagal update: ' . $e->getMessage());
         }
     }
