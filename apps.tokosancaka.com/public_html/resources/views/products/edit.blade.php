@@ -7,11 +7,6 @@
 {{-- 1. LOAD LIBRARY VISUAL BARCODE --}}
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
-<div class="bg-black text-white p-5">
-    Status Login: {{ Auth::check() ? 'Login' : 'Logout' }} <br>
-    ID Produk: {{ $product->id }} <br>
-    Errors: {{ $errors }}
-</div>
 
 <div class="max-w-4xl mx-auto" x-data="productEditForm()">
 
@@ -47,8 +42,8 @@
         </div>
     </div>
 
-    <form action="{{ route('products.update', $product->id) }}" method="POST" enctype="multipart/form-data" class="space-y-6" novalidate>
-        @csrf
+    <form id="formEdit" action="{{ route('products.update', $product->id) }}" method="POST" enctype="multipart/form-data" class="space-y-6" novalidate>
+    @csrf
         @method('PUT')
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
@@ -389,8 +384,10 @@
 
                 {{-- TOMBOL AKSI --}}
                 <div class="flex gap-4 pt-4">
-                    <button type="submit" class="flex-1 py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold shadow-lg shadow-slate-200 transition-all flex justify-center items-center gap-2 transform active:scale-[0.98]">
-                        <i class="fas fa-save"></i> Simpan Perubahan
+                    <button type="button"
+                            onclick="alert('Tombol ditekan! Memaksa form untuk submit...'); document.getElementById('formEdit').submit();"
+                            class="flex-1 py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold shadow-lg shadow-slate-200 transition-all flex justify-center items-center gap-2 transform active:scale-[0.98]">
+                        <i class="fas fa-save"></i> Uji Coba Submit Paksa
                     </button>
                     <a href="{{ route('products.index') }}" class="px-8 py-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-bold transition">
                         Batal
