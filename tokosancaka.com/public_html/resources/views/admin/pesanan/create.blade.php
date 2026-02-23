@@ -505,7 +505,16 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const formData = new FormData(document.getElementById('orderForm'));
             const params = new URLSearchParams(formData).toString();
-            const response = await fetch(`{{ route('kirimaja.cekongkir') }}?${params}`);
+            // const response = await fetch(`{{ route('kirimaja.cekongkir') }}?${params}`);
+
+            const response = await fetch(`{{ route('kirimaja.cekongkir') }}?${params}`, {
+                method: 'GET', // Pastikan route ini memang menggunakan metode GET
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Gagal mengambil data ongkir');
