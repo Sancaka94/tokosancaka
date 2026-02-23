@@ -47,7 +47,7 @@
         </div>
     </div>
 
-    <form action="{{ route('products.update', $product->id) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+    <form action="{{ route('products.update', $product->id) }}" method="POST" enctype="multipart/form-data" class="space-y-6" novalidate>
         @csrf
         @method('PUT')
 
