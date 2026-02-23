@@ -290,7 +290,8 @@
                                         <input type="hidden" :name="'variants['+index+'][id]'" x-model="variant.id">
 
                                         <div class="col-span-3">
-                                            <input type="text" :name="'variants['+index+'][name]'" x-model="variant.name" placeholder="Cth: Merah" required
+                                            <input type="text" :name="'variants['+index+'][name]'" x-model="variant.name" placeholder="Cth: Merah"
+                                                   :required="hasVariant"
                                                    class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm font-bold text-slate-700 bg-white transition-all">
                                         </div>
 
@@ -301,12 +302,14 @@
                                         </div>
 
                                         <div class="col-span-3">
-                                            <input type="number" :name="'variants['+index+'][price]'" x-model="variant.price" placeholder="0" required
+                                            <input type="number" :name="'variants['+index+'][price]'" x-model="variant.price" placeholder="0"
+                                                   :required="hasVariant"
                                                    class="w-full px-3 py-2 rounded-lg border-emerald-200 text-sm font-bold text-emerald-700 bg-white text-right transition-all">
                                         </div>
 
                                         <div class="col-span-2">
-                                            <input type="number" :name="'variants['+index+'][stock]'" x-model="variant.stock" placeholder="0" required
+                                            <input type="number" :name="'variants['+index+'][stock]'" x-model="variant.stock" placeholder="0"
+                                                   :required="hasVariant"
                                                    :readonly="variant.sub_variants && variant.sub_variants.length > 0"
                                                    :class="variant.sub_variants && variant.sub_variants.length > 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-white'"
                                                    class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm text-center transition-all">
@@ -332,21 +335,33 @@
                                             <template x-for="(sub, subIndex) in variant.sub_variants" :key="subIndex">
                                                 <div class="grid grid-cols-12 gap-2 items-center">
                                                     <input type="hidden" :name="'variants['+index+'][sub_variants]['+subIndex+'][id]'" x-model="sub.id">
+
                                                     <div class="col-span-3">
-                                                        <input type="text" :name="'variants['+index+'][sub_variants]['+subIndex+'][name]'" x-model="sub.name" placeholder="Cth: Ukuran L" required class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-orange-500">
+                                                        <input type="text" :name="'variants['+index+'][sub_variants]['+subIndex+'][name]'" x-model="sub.name" placeholder="Cth: Ukuran L"
+                                                               :required="hasVariant"
+                                                               class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-orange-500">
                                                     </div>
+
                                                     <div class="col-span-3">
                                                         <input type="text" :name="'variants['+index+'][sub_variants]['+subIndex+'][barcode]'" x-model="sub.barcode" placeholder="Barcode" class="w-full px-2 py-1.5 text-xs font-mono border border-slate-300 rounded focus:ring-1 focus:ring-orange-500">
                                                     </div>
+
                                                     <div class="col-span-2">
-                                                        <input type="number" :name="'variants['+index+'][sub_variants]['+subIndex+'][price]'" x-model="sub.price" placeholder="Harga" required class="w-full px-2 py-1.5 text-xs border border-emerald-300 text-emerald-700 font-bold rounded focus:ring-1 focus:ring-emerald-500 text-right">
+                                                        <input type="number" :name="'variants['+index+'][sub_variants]['+subIndex+'][price]'" x-model="sub.price" placeholder="Harga"
+                                                               :required="hasVariant"
+                                                               class="w-full px-2 py-1.5 text-xs border border-emerald-300 text-emerald-700 font-bold rounded focus:ring-1 focus:ring-emerald-500 text-right">
                                                     </div>
+
                                                     <div class="col-span-2">
-                                                        <input type="number" :name="'variants['+index+'][sub_variants]['+subIndex+'][stock]'" x-model="sub.stock" placeholder="Stok" @input="calculateTotalStock(index)" required class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 text-center">
+                                                        <input type="number" :name="'variants['+index+'][sub_variants]['+subIndex+'][stock]'" x-model="sub.stock" placeholder="Stok" @input="calculateTotalStock(index)"
+                                                               :required="hasVariant"
+                                                               class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 text-center">
                                                     </div>
+
                                                     <div class="col-span-1">
                                                         <input type="number" :name="'variants['+index+'][sub_variants]['+subIndex+'][weight]'" x-model="sub.weight" placeholder="Berat" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 text-center" title="Berat dalam Gram">
                                                     </div>
+
                                                     <div class="col-span-1 text-center">
                                                         <button type="button" @click="removeSubVariantRow(index, subIndex); calculateTotalStock(index)" class="text-slate-400 hover:text-red-500 p-1">
                                                             <i class="fas fa-times text-xs"></i>
@@ -387,6 +402,7 @@
     </form>
 </div>
 
+{{-- SCRIPT ALPINE --}}
 <script>
     function productEditForm() {
         return {
@@ -395,6 +411,7 @@
             isService: {{ $product->type === 'service' ? 'true' : 'false' }},
             hasVariant: {{ $product->has_variant ? 'true' : 'false' }},
 
+            // Data Varian beserta Sub Varian (Load dari DB)
             variants: {!! $product->variants->map(function($v) {
                 return [
                     'id' => $v->id,
@@ -417,34 +434,51 @@
 
             handleCategoryChange(event) {
                 const option = event.target.options[event.target.selectedIndex];
-                this.isService = option.dataset.type === 'service' || option.dataset.type === 'jasa';
+                this.isService = option.dataset.type === 'service';
             },
 
             addVariantRow() {
                 this.variants.push({
-                    id: null, name: '', price: 0, stock: 0, barcode: '', sub_variants: []
+                    id: null,
+                    name: '',
+                    price: 0,
+                    stock: 0,
+                    barcode: '',
+                    sub_variants: []
                 });
             },
 
             removeVariantRow(index) {
-                if(confirm('Hapus varian ini?')) this.variants.splice(index, 1);
+                this.variants.splice(index, 1);
             },
 
             addSubVariantRow(variantIndex) {
-                if(!this.variants[variantIndex].sub_variants) this.variants[variantIndex].sub_variants = [];
+                if(!this.variants[variantIndex].sub_variants) {
+                    this.variants[variantIndex].sub_variants = [];
+                }
                 this.variants[variantIndex].sub_variants.push({
-                    id: null, name: '', price: this.variants[variantIndex].price, stock: 0, weight: 0, barcode: ''
+                    id: null,
+                    name: '',
+                    price: this.variants[variantIndex].price,
+                    stock: 0,
+                    weight: 0,
+                    barcode: ''
                 });
             },
 
-            removeSubVariantRow(vIdx, sIdx) {
-                this.variants[vIdx].sub_variants.splice(sIdx, 1);
+            removeSubVariantRow(variantIndex, subIndex) {
+                this.variants[variantIndex].sub_variants.splice(subIndex, 1);
             },
 
-            calculateTotalStock(vIdx) {
-                let total = 0;
-                this.variants[vIdx].sub_variants.forEach(s => total += parseInt(s.stock) || 0);
-                this.variants[vIdx].stock = total;
+            calculateTotalStock(variantIndex) {
+                let variant = this.variants[variantIndex];
+                if (variant.sub_variants && variant.sub_variants.length > 0) {
+                    let total = 0;
+                    variant.sub_variants.forEach(sub => {
+                        total += parseInt(sub.stock) || 0;
+                    });
+                    variant.stock = total;
+                }
             }
         }
     }

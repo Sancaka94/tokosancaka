@@ -112,7 +112,7 @@ class ProductController extends Controller implements HasMiddleware
         return view('products.create', compact('categories'));
     }
 
-    public function store(Request $request, $subdomain = null)
+   public function store(Request $request, $subdomain = null)
     {
         $userId = Auth::id();
 
@@ -123,7 +123,8 @@ class ProductController extends Controller implements HasMiddleware
             'image'       => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'barcode'     => [
                 'nullable', 'min:10', 'max:13',
-                Rule::unique('products')->ignore($product->id)->where('tenant_id', $this->tenantId),
+                // PERBAIKAN: Hilangkan ->ignore() karena ini insert baru
+                Rule::unique('products')->where('tenant_id', $this->tenantId),
                 Rule::unique('product_variants')->where('tenant_id', $this->tenantId),
                 Rule::unique('product_sub_variants')->where('tenant_id', $this->tenantId)
             ],
@@ -278,55 +279,92 @@ class ProductController extends Controller implements HasMiddleware
                     Storage::disk('public')->delete($product->image);
                 }
                 $file = $request->file('image');
-                $filename = time() . '_' . $file->getClientOriginalName();
+                $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
                 $data['image'] = $file->storeAs("products/tenant_{$this->tenantId}", $filename, 'public');
             }
 
             $product->update($data);
 
             if ($hasVariant) {
-                ProductVariant::where('product_id', $product->id)->where('tenant_id', $this->tenantId)->delete();
-
                 $totalProductStock = 0;
+                $keepVariantIds = []; // Simpan ID Varian yang masih aktif
+
                 if ($request->filled('variants')) {
                     foreach ($request->variants as $varData) {
-                        $variant = ProductVariant::create([
-                            'tenant_id'  => $this->tenantId,
-                            'product_id' => $product->id,
-                            'name'       => $varData['name'],
-                            'price'      => $varData['price'],
-                            'stock'      => $varData['stock'] ?? 0,
-                            'sku'        => $varData['sku'] ?? $this->generateSku($request->name, $varData['name']),
-                            'barcode'    => $varData['barcode'] ?? $this->generateNumericBarcode($request->category_id),
-                        ]);
+                        $variantId = $varData['id'] ?? null;
 
+                        // PERBAIKAN: Gunakan updateOrCreate untuk mempertahankan ID lama
+                        $variant = ProductVariant::updateOrCreate(
+                            ['id' => $variantId, 'tenant_id' => $this->tenantId, 'product_id' => $product->id],
+                            [
+                                'name'    => $varData['name'],
+                                'price'   => $varData['price'],
+                                'stock'   => $varData['stock'] ?? 0,
+                                'sku'     => $varData['sku'] ?? $this->generateSku($request->name, $varData['name']),
+                                'barcode' => $varData['barcode'] ?? $this->generateNumericBarcode($request->category_id),
+                            ]
+                        );
+
+                        $keepVariantIds[] = $variant->id;
                         $variantStock = 0;
+                        $keepSubVariantIds = [];
+
                         if (isset($varData['sub_variants']) && is_array($varData['sub_variants'])) {
                             foreach ($varData['sub_variants'] as $subData) {
-                                ProductSubVariant::create([
-                                    'tenant_id'          => $this->tenantId,
-                                    'product_variant_id' => $variant->id,
-                                    'name'               => $subData['name'],
-                                    'price'              => $subData['price'],
-                                    'stock'              => $subData['stock'] ?? 0,
-                                    'sku'                => $subData['sku'] ?? $this->generateSku($variant->name, $subData['name']),
-                                    'barcode'            => $subData['barcode'] ?? $this->generateNumericBarcode($request->category_id),
-                                    'weight'             => $subData['weight'] ?? 0,
-                                ]);
+                                $subVariantId = $subData['id'] ?? null;
+
+                                // PERBAIKAN: Gunakan updateOrCreate untuk Sub Varian
+                                $subVariant = ProductSubVariant::updateOrCreate(
+                                    ['id' => $subVariantId, 'tenant_id' => $this->tenantId, 'product_variant_id' => $variant->id],
+                                    [
+                                        'name'    => $subData['name'],
+                                        'price'   => $subData['price'],
+                                        'stock'   => $subData['stock'] ?? 0,
+                                        'sku'     => $subData['sku'] ?? $this->generateSku($variant->name, $subData['name']),
+                                        'barcode' => $subData['barcode'] ?? $this->generateNumericBarcode($request->category_id),
+                                        'weight'  => $subData['weight'] ?? 0,
+                                    ]
+                                );
+
+                                $keepSubVariantIds[] = $subVariant->id;
                                 $variantStock += ($subData['stock'] ?? 0);
                             }
+
+                            // Hapus sub-varian yang dihapus user di form (tidak ada di request)
+                            ProductSubVariant::where('product_variant_id', $variant->id)
+                                ->whereNotIn('id', $keepSubVariantIds)
+                                ->delete();
+
                             $variant->update(['stock' => $variantStock]);
                         } else {
+                            // Hapus semua sub-varian jika user menghapus semua anak varian di form
+                            ProductSubVariant::where('product_variant_id', $variant->id)->delete();
                             $variantStock = $varData['stock'] ?? 0;
                         }
+
                         $totalProductStock += $variantStock;
                     }
                 }
+
+                // Hapus varian utama yang dihapus user di form (tidak ada di list keepVariantIds)
+                $variantsToDelete = ProductVariant::where('product_id', $product->id)
+                    ->whereNotIn('id', $keepVariantIds)
+                    ->get();
+
+                foreach ($variantsToDelete as $vdel) {
+                    ProductSubVariant::where('product_variant_id', $vdel->id)->delete();
+                    $vdel->delete();
+                }
+
                 $product->update([
                     'stock' => $totalProductStock,
                     'stock_status' => $totalProductStock > 0 ? 'available' : 'out_of_stock'
                 ]);
+
             } else {
+                // PERBAIKAN: Hapus bersih jika user mematikan toggle "has_variant" ke mode Single
+                $existingVariantIds = ProductVariant::where('product_id', $product->id)->pluck('id');
+                ProductSubVariant::whereIn('product_variant_id', $existingVariantIds)->delete();
                 ProductVariant::where('product_id', $product->id)->where('tenant_id', $this->tenantId)->delete();
             }
 
@@ -335,7 +373,7 @@ class ProductController extends Controller implements HasMiddleware
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('[UPDATE ERROR] ' . $e->getMessage());
+            Log::error('[UPDATE ERROR] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
             return back()->with('error', 'Gagal update: ' . $e->getMessage());
         }
     }
