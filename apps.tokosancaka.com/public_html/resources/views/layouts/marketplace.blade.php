@@ -47,6 +47,11 @@
                 initCart() {
                     let saved = localStorage.getItem('sancaka_cart_' + this.tenantId);
                     if (saved) { this.cart = JSON.parse(saved); }
+
+                    // KUNCI UTAMA: Ekspos fungsi addToCart ke Window Global agar bisa dipanggil dari detail produk
+                    window.addToCart = (productData) => {
+                        this.addToCart(productData);
+                    };
                 },
 
                 get cartCount() {
@@ -58,29 +63,39 @@
                 },
 
                 addToCart(product) {
-                    let existing = this.cart.find(i => i.id === product.id);
+                    // Buat ID unik untuk setiap kombinasi produk + varian
+                    let uniqueId = product.id;
+                    if (product.variant_id) uniqueId += '_' + product.variant_id;
+                    if (product.sub_variant_id) uniqueId += '_' + product.sub_variant_id;
+
+                    let existing = this.cart.find(i => i.unique_id === uniqueId);
+
                     if (existing) {
                         existing.qty += 1;
                     } else {
-                        // Format menyesuaikan kebutuhan OrderController Backend Anda
                         this.cart.push({
+                            unique_id: uniqueId,
                             id: product.id,
+                            variant_id: product.variant_id || null,
+                            sub_variant_id: product.sub_variant_id || null,
                             name: product.name,
                             price: product.sell_price,
                             qty: 1,
-                            image: product.image
+                            image: product.image,
+                            weight: product.weight || 0
                         });
                     }
+
                     this.saveCart();
                     this.showToast(product.name + ' masuk keranjang!');
                 },
 
-                updateQty(id, amount) {
-                    let existing = this.cart.find(i => i.id === id);
+                updateQty(uniqueId, amount) {
+                    let existing = this.cart.find(i => i.unique_id === uniqueId);
                     if (existing) {
                         existing.qty += amount;
                         if (existing.qty <= 0) {
-                            this.cart = this.cart.filter(i => i.id !== id);
+                            this.cart = this.cart.filter(i => i.unique_id !== uniqueId);
                         }
                         this.saveCart();
                     }
