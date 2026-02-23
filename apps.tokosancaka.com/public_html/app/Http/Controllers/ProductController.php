@@ -231,10 +231,13 @@ class ProductController extends Controller implements HasMiddleware
 
     public function update(Request $request, $subdomain, $id)
     {
-        $product = Product::where('tenant_id', $this->tenantId)->findOrFail($id);
+        Log::info("=== [UPDATE PRODUCT START] ===");
+        Log::info("ID Produk: {$id} | Tenant ID: {$this->tenantId}");
+        Log::info("Data Request:", $request->all());
 
-        // 1. PERBAIKAN VALIDASI: base_price dan sell_price kita buat nullable
-        // agar tidak error ketika dikosongkan (karena mengandalkan harga varian)
+        $product = Product::where('tenant_id', $this->tenantId)->findOrFail($id);
+        Log::info("Produk Ditemukan: {$product->name}");
+
         $validator = Validator::make($request->all(), [
             'name'        => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
@@ -243,21 +246,23 @@ class ProductController extends Controller implements HasMiddleware
             'unit'        => 'required|string',
         ]);
 
-        // 2. PERBAIKAN RESPONSE ERROR
         if ($validator->fails()) {
+            Log::warning("Validasi Gagal:", $validator->errors()->toArray());
             if ($request->wantsJson() || $request->ajax()) {
-                // Jika request dari AJAX (Bypass), kirim error JSON
                 return response()->json(['errors' => $validator->errors()], 422);
             }
             return back()->withErrors($validator)->withInput();
         }
 
+        Log::info("Validasi Sukses. Memulai DB Transaction...");
         DB::beginTransaction();
 
         try {
             $hasVariant = $request->has('has_variant') ? 1 : 0;
             $currentSku = $product->sku ?: $this->generateSku($request->name);
             $barcodeToSave = $request->barcode ?: ($product->barcode ?: $this->generateNumericBarcode($request->category_id));
+
+            Log::info("Menyiapkan Data Dasar. Mode Variant: " . ($hasVariant ? 'AKTIF' : 'NON-AKTIF'));
 
             $data = [
                 'name'           => $request->name,
@@ -281,9 +286,11 @@ class ProductController extends Controller implements HasMiddleware
             if (!$hasVariant) {
                 $data['stock'] = $request->stock ?? 0;
                 $data['stock_status'] = ($data['stock'] > 0) ? 'available' : 'out_of_stock';
+                Log::info("Set Stok Tunggal: {$data['stock']}");
             }
 
             if ($request->hasFile('image')) {
+                Log::info("Memproses Gambar Baru...");
                 if ($product->image && Storage::disk('public')->exists($product->image)) {
                     Storage::disk('public')->delete($product->image);
                 }
@@ -292,57 +299,112 @@ class ProductController extends Controller implements HasMiddleware
                 $data['image'] = $file->storeAs("products/tenant_{$this->tenantId}", $filename, 'public');
             }
 
+            Log::info("Menyimpan Update ke Tabel Products...");
             $product->update($data);
 
             if ($hasVariant) {
+                Log::info("Memulai Proses Looping Varian...");
                 $totalProductStock = 0;
                 $keepVariantIds = [];
 
                 if ($request->filled('variants')) {
-                    foreach ($request->variants as $varData) {
-                        $variantId = $varData['id'] ?? null;
+                    foreach ($request->variants as $index => $varData) {
+                        Log::info(">> Memproses Varian Index {$index} | Nama: {$varData['name']}");
 
-                        $variant = ProductVariant::updateOrCreate(
-                            ['id' => $variantId, 'tenant_id' => $this->tenantId, 'product_id' => $product->id],
-                            [
-                                'name'    => $varData['name'],
-                                'price'   => $varData['price'],
-                                'stock'   => $varData['stock'] ?? 0,
-                                'sku'     => $varData['sku'] ?? $this->generateSku($request->name, $varData['name']),
-                                'barcode' => $varData['barcode'] ?? $this->generateNumericBarcode($request->category_id),
-                            ]
-                        );
+                        $variantId = !empty($varData['id']) ? $varData['id'] : null;
+                        $variant = null;
+
+                        if ($variantId) {
+                            Log::info("Mencari Varian Lama dengan ID: {$variantId}");
+                            $variant = ProductVariant::where('id', $variantId)
+                                        ->where('tenant_id', $this->tenantId)
+                                        ->where('product_id', $product->id)
+                                        ->first();
+
+                            if ($variant) {
+                                Log::info("Varian Ditemukan. Melakukan Update...");
+                                $variant->update([
+                                    'name'    => $varData['name'],
+                                    'price'   => $varData['price'],
+                                    'stock'   => $varData['stock'] ?? 0,
+                                    'sku'     => $varData['sku'] ?? $this->generateSku($request->name, $varData['name']),
+                                    'barcode' => $varData['barcode'] ?? $this->generateNumericBarcode($request->category_id),
+                                ]);
+                            }
+                        }
+
+                        if (!$variant) {
+                            Log::info("Varian Baru. Melakukan Insert...");
+                            $variant = ProductVariant::create([
+                                'tenant_id'  => $this->tenantId,
+                                'product_id' => $product->id,
+                                'name'       => $varData['name'],
+                                'price'      => $varData['price'],
+                                'stock'      => $varData['stock'] ?? 0,
+                                'sku'        => $varData['sku'] ?? $this->generateSku($request->name, $varData['name']),
+                                'barcode'    => $varData['barcode'] ?? $this->generateNumericBarcode($request->category_id),
+                            ]);
+                        }
 
                         $keepVariantIds[] = $variant->id;
                         $variantStock = 0;
                         $keepSubVariantIds = [];
 
                         if (isset($varData['sub_variants']) && is_array($varData['sub_variants'])) {
-                            foreach ($varData['sub_variants'] as $subData) {
-                                $subVariantId = $subData['id'] ?? null;
+                            Log::info("--> Memproses Sub Varian untuk Varian ID: {$variant->id}");
 
-                                $subVariant = ProductSubVariant::updateOrCreate(
-                                    ['id' => $subVariantId, 'tenant_id' => $this->tenantId, 'product_variant_id' => $variant->id],
-                                    [
-                                        'name'    => $subData['name'],
-                                        'price'   => $subData['price'],
-                                        'stock'   => $subData['stock'] ?? 0,
-                                        'sku'     => $subData['sku'] ?? $this->generateSku($variant->name, $subData['name']),
-                                        'barcode' => $subData['barcode'] ?? $this->generateNumericBarcode($request->category_id),
-                                        'weight'  => $subData['weight'] ?? 0,
-                                    ]
-                                );
+                            foreach ($varData['sub_variants'] as $subIndex => $subData) {
+                                Log::info("----> Index Sub {$subIndex} | Nama: {$subData['name']}");
+
+                                $subVariantId = !empty($subData['id']) ? $subData['id'] : null;
+                                $subVariant = null;
+
+                                if ($subVariantId) {
+                                    $subVariant = ProductSubVariant::where('id', $subVariantId)
+                                                    ->where('tenant_id', $this->tenantId)
+                                                    ->where('product_variant_id', $variant->id)
+                                                    ->first();
+
+                                    if ($subVariant) {
+                                        Log::info("----> Update Sub Varian ID: {$subVariantId}");
+                                        $subVariant->update([
+                                            'name'    => $subData['name'],
+                                            'price'   => $subData['price'],
+                                            'stock'   => $subData['stock'] ?? 0,
+                                            'sku'     => $subData['sku'] ?? $this->generateSku($variant->name, $subData['name']),
+                                            'barcode' => $subData['barcode'] ?? $this->generateNumericBarcode($request->category_id),
+                                            'weight'  => $subData['weight'] ?? 0,
+                                        ]);
+                                    }
+                                }
+
+                                if (!$subVariant) {
+                                    Log::info("----> Insert Sub Varian Baru: {$subData['name']}");
+                                    $subVariant = ProductSubVariant::create([
+                                        'tenant_id'          => $this->tenantId,
+                                        'product_variant_id' => $variant->id,
+                                        'name'               => $subData['name'],
+                                        'price'              => $subData['price'],
+                                        'stock'              => $subData['stock'] ?? 0,
+                                        'sku'                => $subData['sku'] ?? $this->generateSku($variant->name, $subData['name']),
+                                        'barcode'            => $subData['barcode'] ?? $this->generateNumericBarcode($request->category_id),
+                                        'weight'             => $subData['weight'] ?? 0,
+                                    ]);
+                                }
 
                                 $keepSubVariantIds[] = $subVariant->id;
                                 $variantStock += ($subData['stock'] ?? 0);
                             }
 
+                            Log::info("--> Menghapus Sub Varian Yatim Piatu (jika ada)...");
                             ProductSubVariant::where('product_variant_id', $variant->id)
                                 ->whereNotIn('id', $keepSubVariantIds)
                                 ->delete();
 
+                            Log::info("--> Update total stok Varian menjadi: {$variantStock}");
                             $variant->update(['stock' => $variantStock]);
                         } else {
+                            Log::info("--> Tidak ada Sub Varian. Menghapus semua Sub Varian lama milik Varian ID: {$variant->id}");
                             ProductSubVariant::where('product_variant_id', $variant->id)->delete();
                             $variantStock = $varData['stock'] ?? 0;
                         }
@@ -351,6 +413,7 @@ class ProductController extends Controller implements HasMiddleware
                     }
                 }
 
+                Log::info("Menghapus Varian Utama Yatim Piatu (jika ada)...");
                 $variantsToDelete = ProductVariant::where('product_id', $product->id)
                     ->whereNotIn('id', $keepVariantIds)
                     ->get();
@@ -360,20 +423,22 @@ class ProductController extends Controller implements HasMiddleware
                     $vdel->delete();
                 }
 
+                Log::info("Update Stok Total Produk Gabungan Varian: {$totalProductStock}");
                 $product->update([
                     'stock' => $totalProductStock,
                     'stock_status' => $totalProductStock > 0 ? 'available' : 'out_of_stock'
                 ]);
 
             } else {
+                Log::info("Mode Single Diaktifkan. Menghapus semua relasi Varian & Sub Varian...");
                 $existingVariantIds = ProductVariant::where('product_id', $product->id)->pluck('id');
                 ProductSubVariant::whereIn('product_variant_id', $existingVariantIds)->delete();
                 ProductVariant::where('product_id', $product->id)->where('tenant_id', $this->tenantId)->delete();
             }
 
+            Log::info("DB Commit Berhasil. Menyelesaikan Request.");
             DB::commit();
 
-            // 3. PERBAIKAN RESPONSE SUKSES
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json(['success' => true, 'message' => 'Produk berhasil diperbarui!']);
             }
@@ -381,11 +446,18 @@ class ProductController extends Controller implements HasMiddleware
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('[UPDATE ERROR] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+            Log::error("!!! [CRITICAL ERROR SAAT UPDATE PRODUCT] !!!");
+            Log::error("Pesan: " . $e->getMessage());
+            Log::error("File: " . $e->getFile() . " | Baris: " . $e->getLine());
 
-            // 4. PERBAIKAN RESPONSE SERVER ERROR
+            // Mengirim detail error ke tab Console F12 secara langsung
             if ($request->wantsJson() || $request->ajax()) {
-                return response()->json(['errors' => ['server' => [$e->getMessage()]]], 500);
+                return response()->json([
+                    'errors' => ['server' => ["Terjadi Kesalahan Server"]],
+                    'debug_message' => $e->getMessage(),
+                    'debug_file' => $e->getFile(),
+                    'debug_line' => $e->getLine()
+                ], 500);
             }
             return back()->with('error', 'Gagal update: ' . $e->getMessage());
         }
