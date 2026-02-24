@@ -5,6 +5,9 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\TenantRegistrationController;
+use App\Http\Controllers\FinancialReportController;
+
+
 use App\Http\Middleware\IdentifyTenant;
 use Illuminate\Support\Facades\Route;
 
@@ -37,6 +40,11 @@ Route::middleware([IdentifyTenant::class])->group(function () {
     Route::get('/transactions/manual', [TransactionController::class, 'createManual'])->name('transactions.createManual');
 
     Route::get('/laporan/harian', [App\Http\Controllers\ReportController::class, 'harian'])->name('laporan.harian');
+
+    Route::get('/laporan-keuangan-manual', [App\Http\Controllers\FinancialReportController::class, 'index'])->name('financial.index');
+Route::post('/laporan-keuangan-manual', [App\Http\Controllers\FinancialReportController::class, 'store'])->name('financial.store');
+Route::delete('/laporan-keuangan-manual/{financial}', [App\Http\Controllers\FinancialReportController::class, 'destroy'])->name('financial.destroy');
+
     // ==========================================
     // AREA MEMBER (Harus Login)
     // ==========================================

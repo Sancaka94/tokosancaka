@@ -139,7 +139,7 @@
                                 </span>
                             @else
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
-                                    Keluar (Rp {{ number_format($trx->fee ?? 0, 0, ',', '.') }})
+                                    Keluar (Rp {{ number_format(($trx->fee ?? 0) + ($trx->toilet_fee ?? 0), 0, ',', '.') }})
                                 </span>
                             @endif
                         </td>
