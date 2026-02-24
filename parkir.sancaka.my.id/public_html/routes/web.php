@@ -6,10 +6,13 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\TenantRegistrationController;
 use App\Http\Controllers\FinancialReportController;
+use App\Http\Controllers\PublicDashboardController;
 
 
 use App\Http\Middleware\IdentifyTenant;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/portal', [App\Http\Controllers\PublicDashboardController::class, 'index'])->name('public.dashboard');
 
 /*
 |--------------------------------------------------------------------------
