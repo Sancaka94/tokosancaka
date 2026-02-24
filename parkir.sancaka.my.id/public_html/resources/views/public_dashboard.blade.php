@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Parkir Publik</title>
+    <title>Portal Info Parkir</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -17,12 +17,12 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-3">
-                    <div class="text-3xl">🅿️</div>
+                    <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" alt="Logo" class="h-8 w-8 bg-white rounded-full p-1">
                     <span class="font-bold text-xl tracking-wide">Portal Info Parkir</span>
                 </div>
                 <div>
                     <a href="{{ route('login') }}" class="text-sm font-semibold bg-white text-blue-600 hover:bg-gray-100 px-4 py-2 rounded-full transition-colors shadow-sm">
-                        Login &rarr;
+                        Login Petugas &rarr;
                     </a>
                 </div>
             </div>
@@ -75,7 +75,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="bg-gray-50 border-b border-gray-100 px-6 py-4">
-                    <h3 class="font-bold text-gray-700 text-sm">Grafik Pendapatan (7 Hari Terakhir)</h3>
+                    <h3 class="font-bold text-gray-700 text-sm">Grafik Pendapatan Bersih (7 Hari Terakhir)</h3>
                 </div>
                 <div class="p-4">
                     <canvas id="chartHarianPublic" height="250"></canvas>
@@ -84,7 +84,7 @@
 
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="bg-gray-50 border-b border-gray-100 px-6 py-4">
-                    <h3 class="font-bold text-gray-700 text-sm">Grafik Pendapatan (6 Bulan Terakhir)</h3>
+                    <h3 class="font-bold text-gray-700 text-sm">Grafik Pendapatan Bersih (6 Bulan Terakhir)</h3>
                 </div>
                 <div class="p-4">
                     <canvas id="chartBulananPublic" height="250"></canvas>
@@ -215,6 +215,7 @@
                 </table>
             </div>
         </div>
+
     </main>
 
     <footer class="mt-4 py-6 text-center text-gray-400 text-sm">
@@ -280,5 +281,4 @@
         });
     </script>
 </body>
-
 </html>
