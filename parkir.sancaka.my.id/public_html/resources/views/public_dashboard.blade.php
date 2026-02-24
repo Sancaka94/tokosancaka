@@ -84,7 +84,7 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
                 <h3 class="font-bold text-gray-700 text-sm">Aktivitas Kendaraan Terbaru</h3>
                 <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-semibold">Data disamarkan</span>
@@ -136,9 +136,81 @@
             </div>
         </div>
 
+        <div class="mb-6 mt-12 text-center md:text-left">
+            <h2 class="text-2xl font-bold text-gray-800">Transparansi Kas Manual</h2>
+            <p class="text-gray-500 text-sm mt-1">Laporan pemasukan dan pengeluaran operasional.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
+                <div>
+                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Total Pemasukan Kas</h5>
+                    <p class="text-2xl font-black text-green-600 mt-2">Rp {{ number_format($totalPemasukanKas ?? 0, 0, ',', '.') }}</p>
+                </div>
+                <div class="text-4xl opacity-50">📥</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
+                <div>
+                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Total Pengeluaran Kas</h5>
+                    <p class="text-2xl font-black text-red-600 mt-2">Rp {{ number_format($totalPengeluaranKas ?? 0, 0, ',', '.') }}</p>
+                </div>
+                <div class="text-4xl opacity-50">📤</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
+                <div>
+                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Saldo Kas Akhir</h5>
+                    <p class="text-2xl font-black text-blue-600 mt-2">Rp {{ number_format($saldoKas ?? 0, 0, ',', '.') }}</p>
+                </div>
+                <div class="text-4xl opacity-50">💰</div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+            <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-gray-700 text-sm">Aktivitas Kas Terbaru</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr class="bg-white">
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kategori / Keterangan</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Nominal</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        @forelse($recent_financials ?? [] as $kas)
+                            <tr class="hover:bg-gray-50 transition duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">
+                                    {{ \Carbon\Carbon::parse($kas->tanggal)->format('d M Y') }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-600">
+                                    <span class="font-semibold">{{ $kas->kategori }}</span>
+                                    @if($kas->keterangan)
+                                        <span class="text-gray-400 ml-1">- {{ $kas->keterangan }}</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right font-bold text-sm">
+                                    @if($kas->jenis == 'pemasukan')
+                                        <span class="text-green-600">+ Rp {{ number_format($kas->nominal, 0, ',', '.') }}</span>
+                                    @else
+                                        <span class="text-red-600">- Rp {{ number_format($kas->nominal, 0, ',', '.') }}</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="3" class="px-6 py-8 text-center text-gray-400 italic">Belum ada catatan kas masuk atau keluar.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </main>
 
-    <footer class="mt-12 py-6 text-center text-gray-400 text-sm">
+    <footer class="mt-4 py-6 text-center text-gray-400 text-sm">
         &copy; {{ date('Y') }} Sistem Informasi Parkir. Hak Cipta Dilindungi.
     </footer>
 
