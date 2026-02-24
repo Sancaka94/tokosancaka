@@ -34,6 +34,7 @@ Route::middleware([IdentifyTenant::class])->group(function () {
     })->name('affiliate.create');
 
     Route::post('/transactions/manual', [TransactionController::class, 'storeManual'])->name('transactions.storeManual');
+    Route::get('/transactions/manual', [TransactionController::class, 'createManual'])->name('transactions.createManual');
 
     // ==========================================
     // AREA MEMBER (Harus Login)

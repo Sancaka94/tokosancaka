@@ -56,6 +56,12 @@ class TransactionController extends Controller
         ]);
     }
 
+    // Menampilkan form halaman catat manual
+    public function createManual()
+    {
+        return view('transactions.manual');
+    }
+
     // ====================================================================
     // FITUR BARU: CATAT PEMASUKAN MANUAL (LANGSUNG SELESAI/KELUAR)
     // ====================================================================
