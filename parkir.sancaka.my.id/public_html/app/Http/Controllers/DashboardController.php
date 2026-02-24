@@ -12,28 +12,43 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        // 1. Statistik Hari Ini
+        // =========================================================
+        // 1. STATISTIK HARI INI (Parkir + Toilet + Kas)
+        // =========================================================
+        $parkirToiletHariIni = \App\Models\Transaction::whereDate('exit_time', today())
+                                     ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
+        $kasMasukHariIni = \App\Models\FinancialReport::whereDate('tanggal', today())
+                                   ->where('jenis', 'pemasukan')->sum('nominal');
+        $kasKeluarHariIni = \App\Models\FinancialReport::whereDate('tanggal', today())
+                                    ->where('jenis', 'pengeluaran')->sum('nominal');
+
         $data = [
-            'motor_masuk' => \App\Models\Transaction::where('vehicle_type', 'motor')
-                                        ->whereDate('entry_time', today())
-                                        ->count(),
-
-            'mobil_masuk' => \App\Models\Transaction::where('vehicle_type', 'mobil')
-                                        ->whereDate('entry_time', today())
-                                        ->count(),
-
-            'total_pendapatan' => \App\Models\Transaction::whereDate('exit_time', today())
-                                             ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)')) ?? 0,
+            'motor_masuk' => \App\Models\Transaction::where('vehicle_type', 'motor')->whereDate('entry_time', today())->count(),
+            'mobil_masuk' => \App\Models\Transaction::where('vehicle_type', 'mobil')->whereDate('entry_time', today())->count(),
+            'total_pendapatan' => $parkirToiletHariIni + $kasMasukHariIni - $kasKeluarHariIni,
         ];
 
-        // 2. Perbandingan Pendapatan Bulan Ini vs Bulan Lalu
-        $pendapatanBulanIni = \App\Models\Transaction::whereMonth('exit_time', date('m'))
+        // =========================================================
+        // 2. PENDAPATAN BULAN INI VS BULAN LALU
+        // =========================================================
+        $parkirBulanIni = \App\Models\Transaction::whereMonth('exit_time', date('m'))
                                 ->whereYear('exit_time', date('Y'))
                                 ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
+        $kasMasukBulanIni = \App\Models\FinancialReport::whereMonth('tanggal', date('m'))
+                                ->whereYear('tanggal', date('Y'))->where('jenis', 'pemasukan')->sum('nominal');
+        $kasKeluarBulanIni = \App\Models\FinancialReport::whereMonth('tanggal', date('m'))
+                                ->whereYear('tanggal', date('Y'))->where('jenis', 'pengeluaran')->sum('nominal');
+        $pendapatanBulanIni = $parkirBulanIni + $kasMasukBulanIni - $kasKeluarBulanIni;
 
-        $pendapatanBulanLalu = \App\Models\Transaction::whereMonth('exit_time', \Carbon\Carbon::now()->subMonth()->month)
-                                ->whereYear('exit_time', \Carbon\Carbon::now()->subMonth()->year)
+        $bulanLalu = \Carbon\Carbon::now()->subMonth();
+        $parkirBulanLalu = \App\Models\Transaction::whereMonth('exit_time', $bulanLalu->month)
+                                ->whereYear('exit_time', $bulanLalu->year)
                                 ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
+        $kasMasukBulanLalu = \App\Models\FinancialReport::whereMonth('tanggal', $bulanLalu->month)
+                                ->whereYear('tanggal', $bulanLalu->year)->where('jenis', 'pemasukan')->sum('nominal');
+        $kasKeluarBulanLalu = \App\Models\FinancialReport::whereMonth('tanggal', $bulanLalu->month)
+                                ->whereYear('tanggal', $bulanLalu->year)->where('jenis', 'pengeluaran')->sum('nominal');
+        $pendapatanBulanLalu = $parkirBulanLalu + $kasMasukBulanLalu - $kasKeluarBulanLalu;
 
         $persentase = 0;
         $trend = 'tetap';
@@ -50,69 +65,58 @@ class DashboardController extends Controller
             'bulan_ini' => $pendapatanBulanIni
         ];
 
-        // 3. Data Grafik Harian (7 Hari Terakhir)
+        // =========================================================
+        // 3. GRAFIK HARIAN (7 HARI TERAKHIR)
+        // =========================================================
         $labelHarian = [];
         $dataHarian = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = \Carbon\Carbon::now()->subDays($i);
             $labelHarian[] = $date->translatedFormat('d M');
 
-            // Ambil dari sistem parkir (Parkir + Toilet)
             $parkirToilet = \App\Models\Transaction::whereDate('exit_time', $date)
                                        ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
-
-            // Ambil pemasukan manual
             $kasMasuk = \App\Models\FinancialReport::whereDate('tanggal', $date)
-                                       ->where('jenis', 'pemasukan')
-                                       ->sum('nominal');
-
-            // Ambil pengeluaran manual
+                                       ->where('jenis', 'pemasukan')->sum('nominal');
             $kasKeluar = \App\Models\FinancialReport::whereDate('tanggal', $date)
-                                       ->where('jenis', 'pengeluaran')
-                                       ->sum('nominal');
+                                       ->where('jenis', 'pengeluaran')->sum('nominal');
 
-            // Total pendapatan bersih harian
             $dataHarian[] = $parkirToilet + $kasMasuk - $kasKeluar;
         }
 
-        // 4. Data Grafik Bulanan (6 Bulan Terakhir)
+        // =========================================================
+        // 4. GRAFIK BULANAN (6 BULAN TERAKHIR)
+        // =========================================================
         $labelBulanan = [];
         $dataBulanan = [];
         for ($i = 5; $i >= 0; $i--) {
             $date = \Carbon\Carbon::now()->subMonths($i);
             $labelBulanan[] = $date->translatedFormat('M Y');
 
-            // Ambil dari sistem parkir (Parkir + Toilet) per bulan
             $parkirToilet = \App\Models\Transaction::whereMonth('exit_time', $date->month)
                                 ->whereYear('exit_time', $date->year)
                                 ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
-
-            // Ambil pemasukan manual per bulan
             $kasMasuk = \App\Models\FinancialReport::whereMonth('tanggal', $date->month)
-                                ->whereYear('tanggal', $date->year)
-                                ->where('jenis', 'pemasukan')
-                                ->sum('nominal');
-
-            // Ambil pengeluaran manual per bulan
+                                ->whereYear('tanggal', $date->year)->where('jenis', 'pemasukan')->sum('nominal');
             $kasKeluar = \App\Models\FinancialReport::whereMonth('tanggal', $date->month)
-                                ->whereYear('tanggal', $date->year)
-                                ->where('jenis', 'pengeluaran')
-                                ->sum('nominal');
+                                ->whereYear('tanggal', $date->year)->where('jenis', 'pengeluaran')->sum('nominal');
 
-            // Total pendapatan bersih bulanan
             $dataBulanan[] = $parkirToilet + $kasMasuk - $kasKeluar;
         }
 
-        // VARIABEL INI YANG SEBELUMNYA HILANG
         $chartData = [
             'harian' => ['labels' => $labelHarian, 'data' => $dataHarian],
             'bulanan' => ['labels' => $labelBulanan, 'data' => $dataBulanan],
         ];
 
-        // 5. Tabel Aktivitas Terbaru
+        // =========================================================
+        // 5. DATA AKTIVITAS TERBARU
+        // =========================================================
         $recent_transactions = \App\Models\Transaction::with('operator')->latest()->take(5)->get();
 
-        // 6. Data Kas Manual untuk Dashboard
+        // =========================================================
+        // 6. RINGKASAN BUKU KAS
+        // =========================================================
         $totalPemasukanKas = \App\Models\FinancialReport::where('jenis', 'pemasukan')->sum('nominal');
         $totalPengeluaranKas = \App\Models\FinancialReport::where('jenis', 'pengeluaran')->sum('nominal');
         $saldoKas = $totalPemasukanKas - $totalPengeluaranKas;
