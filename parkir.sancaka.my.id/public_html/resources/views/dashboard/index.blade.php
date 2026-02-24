@@ -156,6 +156,79 @@
     </div>
 </div>
 
+@if(in_array(auth()->user()->role, ['superadmin', 'admin']))
+<div class="mt-8 mb-4 flex justify-between items-center">
+    <h2 class="text-xl font-bold text-gray-800">Ringkasan Buku Kas (Manual)</h2>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 flex items-center justify-between">
+        <div>
+            <h5 class="text-gray-500 text-sm font-semibold uppercase tracking-wider">Total Pemasukan Kas</h5>
+            <p class="text-2xl font-bold text-green-600 mt-2">Rp {{ number_format($totalPemasukanKas ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="text-3xl opacity-50">📥</div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 flex items-center justify-between">
+        <div>
+            <h5 class="text-gray-500 text-sm font-semibold uppercase tracking-wider">Total Pengeluaran Kas</h5>
+            <p class="text-2xl font-bold text-red-600 mt-2">Rp {{ number_format($totalPengeluaranKas ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="text-3xl opacity-50">📤</div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 flex items-center justify-between">
+        <div>
+            <h5 class="text-gray-500 text-sm font-semibold uppercase tracking-wider">Saldo Akhir</h5>
+            <p class="text-2xl font-bold text-blue-600 mt-2">Rp {{ number_format($saldoKas ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="text-3xl opacity-50">💰</div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-8">
+    <div class="card-header flex justify-between items-center bg-white border-b-2 border-green-500">
+        <span class="font-bold text-gray-800 uppercase tracking-wide text-sm">Catatan Kas Terbaru</span>
+        <a href="{{ route('financial.index') }}" class="text-sm text-green-600 hover:text-green-800 hover:underline font-semibold">Kelola Buku Kas &rarr;</a>
+    </div>
+    <div class="card-body p-0 overflow-x-auto">
+        <table class="table-custom min-w-full">
+            <thead>
+                <tr class="bg-gray-50">
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Nominal</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                @forelse($recent_financials ?? [] as $kas)
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">
+                            {{ \Carbon\Carbon::parse($kas->tanggal)->format('d/m/Y') }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $kas->kategori }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500 truncate max-w-xs">{{ $kas->keterangan ?? '-' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right font-bold text-sm">
+                            @if($kas->jenis == 'pemasukan')
+                                <span class="text-green-600">+ Rp {{ number_format($kas->nominal, 0, ',', '.') }}</span>
+                            @else
+                                <span class="text-red-600">- Rp {{ number_format($kas->nominal, 0, ',', '.') }}</span>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="4" class="px-6 py-8 text-center text-gray-500 italic">
+                            Belum ada catatan kas masuk atau keluar.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
 @if(in_array(auth()->user()->role, ['superadmin', 'admin']) && isset($chartData))
 <script>
     document.addEventListener("DOMContentLoaded", function() {
