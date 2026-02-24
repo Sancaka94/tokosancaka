@@ -62,32 +62,33 @@ class TransactionController extends Controller
         return view('transactions.manual');
     }
 
-    // ====================================================================
-    // FITUR BARU: CATAT PEMASUKAN MANUAL (LANGSUNG SELESAI/KELUAR)
-    // ====================================================================
     public function storeManual(Request $request)
     {
         $request->validate([
             'vehicle_type' => 'required|in:motor,mobil',
             'plate_number' => 'required|string|max:20',
-            'fee'          => 'required|numeric|min:0', // Mengharuskan input nominal uang
+            'fee'          => 'required|numeric|min:0',
+            'toilet_fee'   => 'nullable|numeric|min:0', // Tambahan validasi untuk toilet
         ]);
 
         $now = Carbon::now();
+
+        // Menjumlahkan tarif parkir dan tarif toilet
+        $totalFee = $request->fee + ($request->toilet_fee ?? 0);
 
         Transaction::create([
             'tenant_id'    => auth()->user()->tenant_id,
             'operator_id'  => auth()->id(),
             'vehicle_type' => $request->vehicle_type,
             'plate_number' => strtoupper($request->plate_number),
-            'entry_time'   => $now, // Anggap waktu masuk dan keluar sama untuk pencatatan manual
+            'entry_time'   => $now,
             'exit_time'    => $now,
-            'fee'          => $request->fee, // Mengambil nominal tarif dari input form
-            'status'       => 'keluar',      // Langsung diset ke status keluar
+            'fee'          => $totalFee, // Simpan total dari parkir + toilet
+            'status'       => 'keluar',
         ]);
 
         return redirect()->route('transactions.index')->with(
-            'success', 'Pemasukan manual sebesar Rp ' . number_format($request->fee, 0, ',', '.') . ' berhasil dicatat.'
+            'success', 'Pemasukan manual sebesar Rp ' . number_format($totalFee, 0, ',', '.') . ' berhasil dicatat.'
         );
     }
 
