@@ -36,6 +36,7 @@ Route::middleware([IdentifyTenant::class])->group(function () {
     Route::post('/transactions/manual', [TransactionController::class, 'storeManual'])->name('transactions.storeManual');
     Route::get('/transactions/manual', [TransactionController::class, 'createManual'])->name('transactions.createManual');
 
+    Route::get('/laporan/harian', [App\Http\Controllers\ReportController::class, 'harian'])->name('laporan.harian');
     // ==========================================
     // AREA MEMBER (Harus Login)
     // ==========================================
