@@ -147,6 +147,9 @@
                     </tbody>
                 </table>
             </div>
+            <div class="px-6 py-4 bg-white border-t border-gray-100">
+                {{ $recent_transactions->links() }}
+            </div>
         </div>
 
         <div class="mb-6 mt-12 text-center md:text-left">
@@ -218,6 +221,9 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+            <div class="px-6 py-4 bg-white border-t border-gray-100">
+                {{ $recent_financials->links() }}
             </div>
         </div>
 

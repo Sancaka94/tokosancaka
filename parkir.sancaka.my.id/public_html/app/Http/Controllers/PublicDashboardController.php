@@ -33,10 +33,11 @@ class PublicDashboardController extends Controller
 
         $data = [
             'motor_masuk' => Transaction::where('vehicle_type', 'motor')->whereDate('entry_time', today())->count(),
-            // mobil_masuk bisa dihapus jika sudah tidak dipakai di view
+            'mobil_masuk' => Transaction::where('vehicle_type', 'mobil')->whereDate('entry_time', today())->count(),
             'total_pendapatan' => $parkirToiletHariIni + $kasMasukHariIni - $kasKeluarHariIni,
             'pendapatan_kemarin' => $parkirKemarin + $kasMasukKemarin - $kasKeluarKemarin,
         ];
+
         // =========================================================
         // 2. PENDAPATAN BULAN INI
         // =========================================================
@@ -95,15 +96,19 @@ class PublicDashboardController extends Controller
         ];
 
         // =========================================================
-        // 5. DATA AKTIVITAS TERBARU & KAS
+        // 5. DATA AKTIVITAS TERBARU & KAS (DENGAN PAGINATION)
         // =========================================================
-        $recent_transactions = Transaction::latest()->take(5)->get();
 
+        // Paginasi untuk tabel parkir (5 baris per halaman, parameter URL: ?parkir_page=...)
+        $recent_transactions = Transaction::latest()->paginate(5, ['*'], 'parkir_page');
+
+        // Ringkasan Kas Manual
         $totalPemasukanKas = FinancialReport::where('jenis', 'pemasukan')->sum('nominal');
         $totalPengeluaranKas = FinancialReport::where('jenis', 'pengeluaran')->sum('nominal');
         $saldoKas = $totalPemasukanKas - $totalPengeluaranKas;
 
-        $recent_financials = FinancialReport::latest('tanggal')->take(5)->get();
+        // Paginasi untuk tabel kas manual (5 baris per halaman, parameter URL: ?kas_page=...)
+        $recent_financials = FinancialReport::latest('tanggal')->paginate(5, ['*'], 'kas_page');
 
         return view('public_dashboard', compact(
             'data', 'chartData', 'recent_transactions',
