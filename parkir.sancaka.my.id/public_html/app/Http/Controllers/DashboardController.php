@@ -50,7 +50,7 @@ class DashboardController extends Controller
             'bulan_ini' => $pendapatanBulanIni
         ];
 
-       // 3. Data Grafik Harian (7 Hari Terakhir)
+        // 3. Data Grafik Harian (7 Hari Terakhir)
         $labelHarian = [];
         $dataHarian = [];
         for ($i = 6; $i >= 0; $i--) {
@@ -103,12 +103,16 @@ class DashboardController extends Controller
             $dataBulanan[] = $parkirToilet + $kasMasuk - $kasKeluar;
         }
 
+        // VARIABEL INI YANG SEBELUMNYA HILANG
+        $chartData = [
+            'harian' => ['labels' => $labelHarian, 'data' => $dataHarian],
+            'bulanan' => ['labels' => $labelBulanan, 'data' => $dataBulanan],
+        ];
+
         // 5. Tabel Aktivitas Terbaru
         $recent_transactions = \App\Models\Transaction::with('operator')->latest()->take(5)->get();
 
-        // =========================================================
-        // 6. TAMBAHAN: DATA BUKU KAS MANUAL UNTUK DASHBOARD
-        // =========================================================
+        // 6. Data Kas Manual untuk Dashboard
         $totalPemasukanKas = \App\Models\FinancialReport::where('jenis', 'pemasukan')->sum('nominal');
         $totalPengeluaranKas = \App\Models\FinancialReport::where('jenis', 'pengeluaran')->sum('nominal');
         $saldoKas = $totalPemasukanKas - $totalPengeluaranKas;
