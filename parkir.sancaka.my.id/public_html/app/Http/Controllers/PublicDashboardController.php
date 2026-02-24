@@ -75,9 +75,22 @@ class PublicDashboardController extends Controller
             'bulanan' => ['labels' => $labelBulanan, 'data' => $dataBulanan],
         ];
 
-        // 4. Tabel Aktivitas Terbaru (Dibatasi 5 saja untuk publik)
+        // 4. Tabel Aktivitas Parkir Terbaru
         $recent_transactions = Transaction::latest()->take(5)->get();
 
-        return view('public_dashboard', compact('data', 'chartData', 'recent_transactions'));
+        // =========================================================
+        // 5. TAMBAHAN: DATA BUKU KAS MANUAL UNTUK PUBLIK
+        // =========================================================
+        $totalPemasukanKas = FinancialReport::where('jenis', 'pemasukan')->sum('nominal');
+        $totalPengeluaranKas = FinancialReport::where('jenis', 'pengeluaran')->sum('nominal');
+        $saldoKas = $totalPemasukanKas - $totalPengeluaranKas;
+
+        $recent_financials = FinancialReport::latest('tanggal')->take(5)->get();
+
+        // Pastikan variabel kas dikirim via compact()
+        return view('public_dashboard', compact(
+            'data', 'chartData', 'recent_transactions',
+            'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas', 'recent_financials'
+        ));
     }
 }
