@@ -62,6 +62,16 @@
                 <div class="text-4xl opacity-90">💵</div>
             </div>
 
+            <div class="bg-blue-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105" style="border-radius: 8px;">
+                <div>
+                    <h5 class="text-blue-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Bulan Ini</h5>
+                    <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($data['pendapatan_bulan_ini'] ?? 0, 0, ',', '.') }}</p>
+                </div>
+                <div class="text-4xl opacity-90">
+                    📊
+                </div>
+            </div>
+
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
                 <div>
                     <h5 class="text-blue-100 text-sm font-bold uppercase tracking-wider">Pendapatan Bulan Ini</h5>
