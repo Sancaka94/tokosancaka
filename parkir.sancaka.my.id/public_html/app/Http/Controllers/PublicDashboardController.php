@@ -13,8 +13,9 @@ class PublicDashboardController extends Controller
     public function index()
     {
         // =========================================================
-        // 1. STATISTIK HARI INI (Parkir + Toilet + Kas)
+        // 1. STATISTIK HARI INI & KEMARIN (Parkir + Toilet + Kas)
         // =========================================================
+        // Hari Ini
         $parkirToiletHariIni = Transaction::whereDate('exit_time', today())
                                      ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
         $kasMasukHariIni = FinancialReport::whereDate('tanggal', today())
@@ -22,12 +23,20 @@ class PublicDashboardController extends Controller
         $kasKeluarHariIni = FinancialReport::whereDate('tanggal', today())
                                     ->where('jenis', 'pengeluaran')->sum('nominal');
 
+        // Kemarin
+        $parkirKemarin = Transaction::whereDate('exit_time', Carbon::yesterday())
+                                     ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+        $kasMasukKemarin = FinancialReport::whereDate('tanggal', Carbon::yesterday())
+                                   ->where('jenis', 'pemasukan')->sum('nominal');
+        $kasKeluarKemarin = FinancialReport::whereDate('tanggal', Carbon::yesterday())
+                                    ->where('jenis', 'pengeluaran')->sum('nominal');
+
         $data = [
             'motor_masuk' => Transaction::where('vehicle_type', 'motor')->whereDate('entry_time', today())->count(),
-            'mobil_masuk' => Transaction::where('vehicle_type', 'mobil')->whereDate('entry_time', today())->count(),
+            // mobil_masuk bisa dihapus jika sudah tidak dipakai di view
             'total_pendapatan' => $parkirToiletHariIni + $kasMasukHariIni - $kasKeluarHariIni,
+            'pendapatan_kemarin' => $parkirKemarin + $kasMasukKemarin - $kasKeluarKemarin,
         ];
-
         // =========================================================
         // 2. PENDAPATAN BULAN INI
         // =========================================================

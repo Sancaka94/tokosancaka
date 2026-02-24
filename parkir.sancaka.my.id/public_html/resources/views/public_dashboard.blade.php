@@ -46,30 +46,28 @@
                 <div class="text-4xl opacity-80">🏍️</div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transform transition duration-300 hover:scale-105">
+            <div class="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105" style="border-radius: 8px;">
                 <div>
-                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Mobil (Hari Ini)</h5>
-                    <p class="text-3xl font-black text-gray-800 mt-2">{{ $data['mobil_masuk'] ?? 0 }} <span class="text-sm font-medium text-gray-500">Unit</span></p>
+                    <h5 class="text-orange-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Kemarin</h5>
+                    <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($data['pendapatan_kemarin'] ?? 0, 0, ',', '.') }}</p>
                 </div>
-                <div class="text-4xl opacity-80">🚗</div>
+                <div class="text-4xl opacity-90">⏳</div>
             </div>
 
-            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
+            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105" style="border-radius: 8px;">
                 <div>
-                    <h5 class="text-green-100 text-sm font-bold uppercase tracking-wider">Pendapatan Hari Ini</h5>
-                    <p class="text-2xl font-black mt-2">Rp {{ number_format($data['total_pendapatan'] ?? 0, 0, ',', '.') }}</p>
+                    <h5 class="text-green-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Hari Ini</h5>
+                    <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($data['total_pendapatan'] ?? 0, 0, ',', '.') }}</p>
                 </div>
                 <div class="text-4xl opacity-90">💵</div>
             </div>
 
-            <div class="bg-blue-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105" style="border-radius: 8px;">
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105" style="border-radius: 8px;">
                 <div>
                     <h5 class="text-blue-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Bulan Ini</h5>
                     <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($data['pendapatan_bulan_ini'] ?? 0, 0, ',', '.') }}</p>
                 </div>
-                <div class="text-4xl opacity-90">
-                    📊
-                </div>
+                <div class="text-4xl opacity-90">📈</div>
             </div>
 
         </div>
