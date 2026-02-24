@@ -62,19 +62,18 @@ class TransactionController extends Controller
         return view('transactions.manual');
     }
 
-    public function storeManual(Request $request)
+   public function storeManual(Request $request)
     {
         $request->validate([
             'vehicle_type' => 'required|in:motor,mobil',
             'plate_number' => 'required|string|max:20',
             'fee'          => 'required|numeric|min:0',
-            'toilet_fee'   => 'nullable|numeric|min:0', // Tambahan validasi untuk toilet
+            'toilet_fee'   => 'nullable|numeric|min:0',
         ]);
 
-        $now = Carbon::now();
-
-        // Menjumlahkan tarif parkir dan tarif toilet
-        $totalFee = $request->fee + ($request->toilet_fee ?? 0);
+        $now = \Carbon\Carbon::now();
+        $toiletFee = $request->toilet_fee ?? 0;
+        $totalPendapatan = $request->fee + $toiletFee;
 
         Transaction::create([
             'tenant_id'    => auth()->user()->tenant_id,
@@ -83,12 +82,13 @@ class TransactionController extends Controller
             'plate_number' => strtoupper($request->plate_number),
             'entry_time'   => $now,
             'exit_time'    => $now,
-            'fee'          => $totalFee, // Simpan total dari parkir + toilet
+            'fee'          => $request->fee,
+            'toilet_fee'   => $toiletFee, // Data masuk ke kolom yang baru ditambahkan via SQL
             'status'       => 'keluar',
         ]);
 
         return redirect()->route('transactions.index')->with(
-            'success', 'Pemasukan manual sebesar Rp ' . number_format($totalFee, 0, ',', '.') . ' berhasil dicatat.'
+            'success', 'Pemasukan manual sebesar Rp ' . number_format($totalPendapatan, 0, ',', '.') . ' berhasil dicatat.'
         );
     }
 
