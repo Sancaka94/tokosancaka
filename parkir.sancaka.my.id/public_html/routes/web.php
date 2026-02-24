@@ -33,6 +33,7 @@ Route::middleware([IdentifyTenant::class])->group(function () {
         return "Halaman Affiliate Belum Tersedia";
     })->name('affiliate.create');
 
+    Route::post('/transactions/manual', [TransactionController::class, 'storeManual'])->name('transactions.storeManual');
 
     // ==========================================
     // AREA MEMBER (Harus Login)

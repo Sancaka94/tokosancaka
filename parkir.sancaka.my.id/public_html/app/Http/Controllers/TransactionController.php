@@ -56,6 +56,35 @@ class TransactionController extends Controller
         ]);
     }
 
+    // ====================================================================
+    // FITUR BARU: CATAT PEMASUKAN MANUAL (LANGSUNG SELESAI/KELUAR)
+    // ====================================================================
+    public function storeManual(Request $request)
+    {
+        $request->validate([
+            'vehicle_type' => 'required|in:motor,mobil',
+            'plate_number' => 'required|string|max:20',
+            'fee'          => 'required|numeric|min:0', // Mengharuskan input nominal uang
+        ]);
+
+        $now = Carbon::now();
+
+        Transaction::create([
+            'tenant_id'    => auth()->user()->tenant_id,
+            'operator_id'  => auth()->id(),
+            'vehicle_type' => $request->vehicle_type,
+            'plate_number' => strtoupper($request->plate_number),
+            'entry_time'   => $now, // Anggap waktu masuk dan keluar sama untuk pencatatan manual
+            'exit_time'    => $now,
+            'fee'          => $request->fee, // Mengambil nominal tarif dari input form
+            'status'       => 'keluar',      // Langsung diset ke status keluar
+        ]);
+
+        return redirect()->route('transactions.index')->with(
+            'success', 'Pemasukan manual sebesar Rp ' . number_format($request->fee, 0, ',', '.') . ' berhasil dicatat.'
+        );
+    }
+
     // TAMBAHKAN FUNGSI INI DI BAWAH FUNGSI STORE
     public function print($id)
     {
