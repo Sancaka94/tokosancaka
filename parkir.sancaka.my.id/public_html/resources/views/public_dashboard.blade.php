@@ -22,7 +22,7 @@
                 </div>
                 <div>
                     <a href="{{ route('login') }}" class="text-sm font-semibold bg-white text-blue-600 hover:bg-gray-100 px-4 py-2 rounded-full transition-colors shadow-sm">
-                        Login Petugas &rarr;
+                        Login &rarr;
                     </a>
                 </div>
             </div>
