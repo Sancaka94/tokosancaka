@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal Info Parkir</title>
+
+    <link rel="icon" type="image/jpeg" href="https://tokosancaka.com/storage/uploads/logo.jpeg">
+    <link rel="apple-touch-icon" href="https://tokosancaka.com/storage/uploads/logo.jpeg">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -22,7 +26,7 @@
                 </div>
                 <div>
                     <a href="{{ route('login') }}" class="text-sm font-semibold bg-white text-blue-600 hover:bg-gray-100 px-4 py-2 rounded-full transition-colors shadow-sm">
-                        Login Petugas &rarr;
+                        Login &rarr;
                     </a>
                 </div>
             </div>

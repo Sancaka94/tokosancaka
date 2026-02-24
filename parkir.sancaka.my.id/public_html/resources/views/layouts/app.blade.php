@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Parkir - @yield('title', 'Dashboard')</title>
 
+    <link rel="icon" type="image/jpeg" href="https://tokosancaka.com/storage/uploads/logo.jpeg">
+    <link rel="apple-touch-icon" href="https://tokosancaka.com/storage/uploads/logo.jpeg">
+
     <script src="https://cdn.tailwindcss.com"></script>
 
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
