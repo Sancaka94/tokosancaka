@@ -207,7 +207,6 @@
                 </table>
             </div>
         </div>
-
     </main>
 
     <footer class="mt-4 py-6 text-center text-gray-400 text-sm">
