@@ -36,30 +36,38 @@
             <p class="text-gray-500 text-sm mt-1">Live Update: {{ \Carbon\Carbon::now()->translatedFormat('l, d F Y - H:i') }} WIB</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transform transition duration-300 hover:scale-105">
                 <div>
-                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Motor Masuk Hari Ini</h5>
-                    <p class="text-4xl font-black text-gray-800 mt-2">{{ $data['motor_masuk'] ?? 0 }} <span class="text-base font-medium text-gray-500">Unit</span></p>
+                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Motor (Hari Ini)</h5>
+                    <p class="text-3xl font-black text-gray-800 mt-2">{{ $data['motor_masuk'] ?? 0 }} <span class="text-sm font-medium text-gray-500">Unit</span></p>
                 </div>
-                <div class="text-5xl opacity-80">🏍️</div>
+                <div class="text-4xl opacity-80">🏍️</div>
             </div>
 
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transform transition duration-300 hover:scale-105">
                 <div>
-                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Mobil Masuk Hari Ini</h5>
-                    <p class="text-4xl font-black text-gray-800 mt-2">{{ $data['mobil_masuk'] ?? 0 }} <span class="text-base font-medium text-gray-500">Unit</span></p>
+                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Mobil (Hari Ini)</h5>
+                    <p class="text-3xl font-black text-gray-800 mt-2">{{ $data['mobil_masuk'] ?? 0 }} <span class="text-sm font-medium text-gray-500">Unit</span></p>
                 </div>
-                <div class="text-5xl opacity-80">🚗</div>
+                <div class="text-4xl opacity-80">🚗</div>
             </div>
 
             <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
                 <div>
-                    <h5 class="text-green-100 text-sm font-bold uppercase tracking-wider">Pendapatan Bersih Hari Ini</h5>
-                    <p class="text-3xl font-black mt-2">Rp {{ number_format($data['total_pendapatan'] ?? 0, 0, ',', '.') }}</p>
+                    <h5 class="text-green-100 text-sm font-bold uppercase tracking-wider">Pendapatan Hari Ini</h5>
+                    <p class="text-2xl font-black mt-2">Rp {{ number_format($data['total_pendapatan'] ?? 0, 0, ',', '.') }}</p>
                 </div>
-                <div class="text-5xl opacity-90">💵</div>
+                <div class="text-4xl opacity-90">💵</div>
+            </div>
+
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
+                <div>
+                    <h5 class="text-blue-100 text-sm font-bold uppercase tracking-wider">Pendapatan Bulan Ini</h5>
+                    <p class="text-2xl font-black mt-2">Rp {{ number_format($data['pendapatan_bulan_ini'] ?? 0, 0, ',', '.') }}</p>
+                </div>
+                <div class="text-4xl opacity-90">📈</div>
             </div>
 
         </div>
