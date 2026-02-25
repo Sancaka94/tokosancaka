@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Employee;
-use App\Models\User; // Tambahkan Model User untuk pembuatan akun login
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash; // Tambahkan Hash untuk enkripsi kata sandi
+use Illuminate\Support\Facades\Hash;
 
 class EmployeeController extends Controller
 {
     public function index()
     {
-        // Jika kamu menampilkan data dari tabel users, ubah Employee menjadi User
         $employees = User::whereIn('role', ['admin', 'operator'])->latest()->paginate(10);
         return view('employees.index', compact('employees'));
     }
@@ -23,49 +21,53 @@ class EmployeeController extends Controller
 
     public function store(Request $request)
     {
-        // 1. Sesuaikan validasi dengan inputan form (name, email, password, role)
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|string|email|max:255|unique:users,email',
-            'password' => 'required|string|min:8',
-            'role'     => 'required|in:operator,admin',
+            'name'          => 'required|string|max:255',
+            'email'         => 'required|string|email|max:255|unique:users,email',
+            'password'      => 'required|string|min:8',
+            'role'          => 'required|in:operator,admin',
+            'salary_type'   => 'required|in:nominal,percentage',
+            'salary_amount' => 'required|numeric|min:0',
         ], [
             'email.unique' => 'Email ini sudah terdaftar. Silakan gunakan email lain.'
         ]);
 
-        // 2. Simpan sebagai akun login (menggunakan model User)
         User::create([
-            'name'      => $request->name,
-            'email'     => $request->email,
-            'password'  => Hash::make($request->password), // Wajib dienkripsi agar bisa login
-            'role'      => $request->role,
-            'tenant_id' => auth()->user()->tenant_id, // Opsional: mengikat pegawai ke cabang yang sama
+            'name'          => $request->name,
+            'email'         => $request->email,
+            'password'      => Hash::make($request->password),
+            'role'          => $request->role,
+            'salary_type'   => $request->salary_type,
+            'salary_amount' => $request->salary_amount,
+            'tenant_id'     => auth()->user()->tenant_id,
         ]);
 
         return redirect()->route('employees.index')->with('success', 'Akun pegawai berhasil ditambahkan.');
     }
 
-    public function edit(User $employee) // Sesuaikan parameter dengan User jika pakai tabel users
+    public function edit(User $employee)
     {
         return view('employees.edit', compact('employee'));
     }
 
-    public function update(Request $request, User $employee) // Sesuaikan parameter dengan User
+    public function update(Request $request, User $employee)
     {
         $request->validate([
-            'name'  => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $employee->id,
-            'role'  => 'required|in:operator,admin',
+            'name'          => 'required|string|max:255',
+            'email'         => 'required|string|email|max:255|unique:users,email,' . $employee->id,
+            'role'          => 'required|in:operator,admin',
+            'salary_type'   => 'required|in:nominal,percentage',
+            'salary_amount' => 'required|numeric|min:0',
         ]);
 
-        // Siapkan data yang akan diupdate
         $data = [
-            'name'  => $request->name,
-            'email' => $request->email,
-            'role'  => $request->role,
+            'name'          => $request->name,
+            'email'         => $request->email,
+            'role'          => $request->role,
+            'salary_type'   => $request->salary_type,
+            'salary_amount' => $request->salary_amount,
         ];
 
-        // Jika form edit mengirimkan password baru, maka enkripsi dan update
         if ($request->filled('password')) {
             $request->validate(['password' => 'string|min:8']);
             $data['password'] = Hash::make($request->password);
@@ -76,9 +78,8 @@ class EmployeeController extends Controller
         return redirect()->route('employees.index')->with('success', 'Data pegawai diperbarui.');
     }
 
-    public function destroy(User $employee) // Sesuaikan parameter dengan User
+    public function destroy(User $employee)
     {
-        // Mencegah akun menghapus dirinya sendiri
         if (auth()->id() === $employee->id) {
             return redirect()->route('employees.index')->with('error', 'Kamu tidak bisa menghapus akunmu sendiri.');
         }

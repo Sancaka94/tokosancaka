@@ -23,7 +23,9 @@ class User extends Authenticatable
         'email',
         'password',
         'role',           // superadmin, admin, atau operator
-        'profile_photo',  // Untuk fitur upload logo/foto profil nanti
+        'profile_photo',
+        'salary_type',    // <--- TAMBAHKAN INI
+        'salary_amount',  // <--- TAMBAHKAN INI  // Untuk fitur upload logo/foto profil nanti
     ];
 
     /**
