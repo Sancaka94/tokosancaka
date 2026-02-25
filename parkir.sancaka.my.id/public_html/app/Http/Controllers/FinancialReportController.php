@@ -91,20 +91,45 @@ class FinancialReportController extends Controller
     ]);
 }
 
-    public function update(Request $request, FinancialReport $financial)
-    {
-        $request->validate([
-            'tanggal' => 'required|date',
-            'jenis' => 'required|in:pemasukan,pengeluaran',
-            'kategori' => 'required|string|max:255',
-            'nominal' => 'required|numeric|min:1',
-            'keterangan' => 'nullable|string',
-        ]);
+   public function update(Request $request, FinancialReport $financial)
+{
+    $request->validate([
+        'tanggal' => 'required|date',
+        'jenis' => 'required|in:pemasukan,pengeluaran',
+        'kategori' => 'required|string|max:255',
+        'nominal' => 'required|numeric|min:1',
+    ]);
 
-        $financial->update($request->all());
+    // 1. Update data transaksi utama (misal: Setoran Parkir)
+    $financial->update([
+        'tanggal' => $request->tanggal,
+        'jenis' => $request->jenis,
+        'kategori' => $request->kategori,
+        'nominal' => $request->nominal,
+        'keterangan' => $request->keterangan,
+    ]);
 
-        return redirect()->route('financial.index')->with('success', 'Catatan keuangan berhasil diperbarui.');
+    // 2. Proses Koreksi Gaji Pegawai (jika diisi)
+    if ($request->has('salaries')) {
+        foreach ($request->salaries as $employeeId => $amount) {
+            // Hanya simpan jika nominal lebih dari 0
+            if ($amount > 0) {
+                $employee = \App\Models\User::find($employeeId);
+
+                // Mencatat gaji sebagai pengeluaran baru
+                \App\Models\FinancialReport::create([
+                    'tanggal' => $request->tanggal,
+                    'jenis' => 'pengeluaran',
+                    'kategori' => 'Gaji Pegawai',
+                    'nominal' => $amount,
+                    'keterangan' => 'Koreksi gaji: ' . ($employee->name ?? 'Pegawai'),
+                ]);
+            }
+        }
     }
+
+    return redirect()->route('financial.index')->with('success', 'Catatan keuangan berhasil diperbarui.');
+}
 
     // ==========================================
 
