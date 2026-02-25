@@ -109,7 +109,7 @@ class PublicDashboardController extends Controller
         $saldoKas = $totalPemasukanKas - $totalPengeluaranKas;
 
         // Paginasi untuk tabel kas manual (5 baris per halaman, parameter URL: ?kas_page=...)
-        $recent_financials = FinancialReport::latest('tanggal')->paginate(5, ['*'], 'kas_page');
+        $recent_financials = FinancialReport::latest('tanggal')->paginate(6, ['*'], 'kas_page');
 
 
         // =========================================================
