@@ -9,7 +9,6 @@
     <link rel="apple-touch-icon" href="https://tokosancaka.com/storage/uploads/logo.jpeg">
 
     <script src="https://cdn.tailwindcss.com"></script>
-
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style type="text/tailwindcss">
@@ -26,33 +25,36 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 flex h-screen overflow-hidden font-sans text-gray-900">
 
-    @include('partials.sidebar')
+<body class="bg-gray-100 font-sans text-gray-900" x-data="{ sidebarOpen: window.innerWidth >= 768 }" @resize.window="sidebarOpen = window.innerWidth >= 768">
 
-    {{-- Tambahkan w-full agar konten membentang penuh saat sidebar ditutup --}}
-    <div class="flex-1 flex flex-col overflow-hidden w-full relative">
+    <div class="flex h-screen overflow-hidden">
 
-        @include('partials.header')
+        <div x-show="sidebarOpen" @click="sidebarOpen = false" x-transition.opacity class="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden" style="display: none;"></div>
 
-        {{-- Ubah padding menjadi dinamis: p-4 untuk HP, md:p-6 untuk PC/Tablet --}}
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 md:p-6">
+        @include('partials.sidebar')
 
-            @if(session('success'))
-                <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded shadow-sm" role="alert">
-                    <span class="font-bold">Berhasil!</span> {{ session('success') }}
-                </div>
-            @endif
+        <div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-gray-100 transition-all duration-300">
 
-            @if(session('error'))
-                <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm" role="alert">
-                    <span class="font-bold">Gagal!</span> {{ session('error') }}
-                </div>
-            @endif
+            @include('partials.header')
 
-            @yield('content')
+            <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
+                @if(session('success'))
+                    <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded shadow-sm" role="alert">
+                        <span class="font-bold">Berhasil!</span> {{ session('success') }}
+                    </div>
+                @endif
 
-        </main>
+                @if(session('error'))
+                    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm" role="alert">
+                        <span class="font-bold">Gagal!</span> {{ session('error') }}
+                    </div>
+                @endif
+
+                @yield('content')
+            </main>
+        </div>
+
     </div>
 
 </body>
