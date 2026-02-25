@@ -137,4 +137,13 @@ class TransactionController extends Controller
         $transaction->delete();
         return redirect()->route('transactions.index')->with('success', 'Histori transaksi berhasil dihapus.');
     }
+
+    // ==========================================
+    // TAMBAHAN: FUNGSI EDIT (MENAMPILKAN FORM)
+    // ==========================================
+    public function edit(Transaction $transaction)
+    {
+        // Menggunakan view yang sama dengan createManual, tapi mengirimkan data $transaction
+        return view('transactions.manual', compact('transaction'));
+    }
 }
