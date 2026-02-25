@@ -17,30 +17,38 @@
                 <div class="p-4 md:p-6 space-y-4 md:space-y-6">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Tanggal</label>
-                        <input type="date" name="tanggal" value="{{ \Carbon\Carbon::parse($kas->tanggal)->format('Y-m-d') }}" required class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        <input type="date" name="tanggal" value="{{ old('tanggal', \Carbon\Carbon::parse($kas->tanggal)->format('Y-m-d')) }}" required class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        @error('tanggal') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Jenis Transaksi</label>
                         <select name="jenis" required class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                            <option value="pemasukan" {{ $kas->jenis == 'pemasukan' ? 'selected' : '' }}>Pemasukan (+)</option>
-                            <option value="pengeluaran" {{ $kas->jenis == 'pengeluaran' ? 'selected' : '' }}>Pengeluaran (-)</option>
+                            <option value="pemasukan" {{ old('jenis', $kas->jenis) == 'pemasukan' ? 'selected' : '' }}>Setoran Parkir (Pemasukan)</option>
+                            <option value="pengeluaran" {{ old('jenis', $kas->jenis) == 'pengeluaran' ? 'selected' : '' }}>Biaya / Gaji (Pengeluaran)</option>
                         </select>
+                        @error('jenis') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Kategori</label>
-                        <input type="text" name="kategori" value="{{ $kas->kategori }}" required placeholder="Contoh: Operasional, Gaji, Listrik" class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        <input type="text" name="kategori" value="{{ old('kategori', $kas->kategori) }}" required placeholder="Contoh: Operasional, Gaji, Listrik" class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        @error('kategori') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Nominal (Rp)</label>
-                        <input type="number" name="nominal" value="{{ $kas->nominal }}" required min="1" class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 font-bold text-gray-400 sm:text-sm">Rp</span>
+                            <input type="number" name="nominal" value="{{ old('nominal', $kas->nominal) }}" required min="1" class="block w-full border border-gray-300 rounded-md shadow-sm py-2 pl-10 pr-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        @error('nominal') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Keterangan (Opsional)</label>
-                        <textarea name="keterangan" rows="3" class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">{{ $kas->keterangan }}</textarea>
+                        <textarea name="keterangan" rows="3" class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Tambahkan catatan jika perlu...">{{ old('keterangan', $kas->keterangan) }}</textarea>
+                        @error('keterangan') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
                 </div>
 
