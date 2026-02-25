@@ -45,6 +45,34 @@ class FinancialReportController extends Controller
         return redirect()->route('financial.index')->with('success', 'Catatan keuangan berhasil ditambahkan.');
     }
 
+    // ==========================================
+    // TAMBAHAN: FUNGSI EDIT & UPDATE
+    // ==========================================
+
+    public function edit(FinancialReport $financial)
+    {
+        // Pastikan file edit.blade.php berada di dalam folder resources/views/financial_reports/
+        // Kita passing data $financial dengan nama variabel 'kas' agar sesuai dengan form di Blade
+        return view('financial_reports.edit', ['kas' => $financial]);
+    }
+
+    public function update(Request $request, FinancialReport $financial)
+    {
+        $request->validate([
+            'tanggal' => 'required|date',
+            'jenis' => 'required|in:pemasukan,pengeluaran',
+            'kategori' => 'required|string|max:255',
+            'nominal' => 'required|numeric|min:1',
+            'keterangan' => 'nullable|string',
+        ]);
+
+        $financial->update($request->all());
+
+        return redirect()->route('financial.index')->with('success', 'Catatan keuangan berhasil diperbarui.');
+    }
+
+    // ==========================================
+
     public function destroy(FinancialReport $financial)
     {
         $financial->delete();

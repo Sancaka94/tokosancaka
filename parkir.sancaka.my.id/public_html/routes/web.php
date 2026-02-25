@@ -45,8 +45,18 @@ Route::middleware([IdentifyTenant::class])->group(function () {
     Route::get('/laporan/harian', [App\Http\Controllers\ReportController::class, 'harian'])->name('laporan.harian');
 
     Route::get('/laporan-keuangan-manual', [App\Http\Controllers\FinancialReportController::class, 'index'])->name('financial.index');
-Route::post('/laporan-keuangan-manual', [App\Http\Controllers\FinancialReportController::class, 'store'])->name('financial.store');
-Route::delete('/laporan-keuangan-manual/{financial}', [App\Http\Controllers\FinancialReportController::class, 'destroy'])->name('financial.destroy');
+    Route::post('/laporan-keuangan-manual', [App\Http\Controllers\FinancialReportController::class, 'store'])->name('financial.store');
+    Route::delete('/laporan-keuangan-manual/{financial}', [App\Http\Controllers\FinancialReportController::class, 'destroy'])->name('financial.destroy');
+
+    Route::get('/financial', [FinancialReportController::class, 'index'])->name('financial.index');
+    Route::post('/financial', [FinancialReportController::class, 'store'])->name('financial.store');
+
+    // Rute Edit & Update (Parameter wajib {financial})
+    Route::get('/financial/{financial}/edit', [FinancialReportController::class, 'edit'])->name('financial.edit');
+    Route::put('/financial/{financial}', [FinancialReportController::class, 'update'])->name('financial.update');
+
+    // Rute Hapus
+    Route::delete('/financial/{financial}', [FinancialReportController::class, 'destroy'])->name('financial.destroy');
 
     // ==========================================
     // AREA MEMBER (Harus Login)
@@ -77,6 +87,8 @@ Route::delete('/laporan-keuangan-manual/{financial}', [App\Http\Controllers\Fina
 
         Route::get('transactions/{transaction}/print', [TransactionController::class, 'print'])->name('transactions.print');
     });
+
+    // Tambahkan 2 baris ini di bawah rute financial.index / financial.store
 
 });
 
