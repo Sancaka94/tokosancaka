@@ -122,7 +122,7 @@ class DashboardController extends Controller
         $totalPengeluaranKas = \App\Models\FinancialReport::where('jenis', 'pengeluaran')->sum('nominal');
         $saldoKas = $totalPemasukanKas - $totalPengeluaranKas;
 
-        $recent_financials = \App\Models\FinancialReport::latest('tanggal')->take(5)->get();
+        $recent_financials = \App\Models\FinancialReport::latest('tanggal')->take(6)->get();
 
         // =========================================================
         // 7. ESTIMASI GAJI PEGAWAI (HARI INI) <-- INI KODE BARUNYA
