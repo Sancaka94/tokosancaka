@@ -115,22 +115,40 @@ class PublicDashboardController extends Controller
         // =========================================================
         // 6. ESTIMASI GAJI PEGAWAI (HARI INI) <-- 2. KODE BARUNYA DI SINI
         // =========================================================
+        // =========================================================
+        // 6. LOGIKA GAJI: CEK MANUAL VS OTOMATIS
+        // =========================================================
         $totalPendapatanHariIni = $data['total_pendapatan'];
         $operators = User::where('role', 'operator')->get();
 
         $employeeSalaries = $operators->map(function ($operator) use ($totalPendapatanHariIni) {
-            $earned = 0;
-            if ($operator->salary_type == 'percentage') {
-                $earned = ($operator->salary_amount / 100) * $totalPendapatanHariIni;
+            // A. Cek apakah sudah ada input gaji manual di Buku Kas hari ini untuk pegawai ini
+            $gajiManual = \App\Models\FinancialReport::whereDate('tanggal', today())
+                ->where('kategori', 'Gaji Pegawai')
+                ->where('keterangan', 'like', '%' . $operator->name . '%')
+                ->sum('nominal');
+
+            if ($gajiManual > 0) {
+                // Jika ditemukan input manual, gunakan angka tersebut
+                $earned = $gajiManual;
+                $statusGaji = 'Sudah Dibayar (Manual)';
             } else {
-                $earned = $operator->salary_amount;
+                // B. Jika belum ada, hitung estimasi otomatis sesuai setting pegawai
+                if ($operator->salary_type == 'percentage') {
+                    $earned = ($operator->salary_amount / 100) * $totalPendapatanHariIni;
+                    $statusGaji = 'Estimasi (' . (float)$operator->salary_amount . '%)';
+                } else {
+                    $earned = $operator->salary_amount;
+                    $statusGaji = 'Estimasi (Flat)';
+                }
             }
 
             return (object)[
                 'name'   => $operator->name,
                 'type'   => $operator->salary_type,
                 'amount' => $operator->salary_amount,
-                'earned' => $earned
+                'earned' => $earned,
+                'status' => $statusGaji // Kita tambahkan status untuk di tampilan
             ];
         });
 
