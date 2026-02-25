@@ -92,49 +92,79 @@
     </div>
 </div>
 
-<div id="modalTambahKas" class="fixed inset-0 z-[60] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+<div id="modalTambahKas" class="fixed inset-0 z-[60] hidden overflow-y-auto" role="dialog">
     <div class="flex items-end justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm" aria-hidden="true" onclick="document.getElementById('modalTambahKas').classList.add('hidden')"></div>
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm" onclick="document.getElementById('modalTambahKas').classList.add('hidden')"></div>
 
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
 
-        <div class="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-xl shadow-2xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-100">
+        <div class="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-xl shadow-2xl sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-gray-100">
             <form action="{{ route('financial.store') }}" method="POST">
                 @csrf
-                <div class="px-4 pt-5 pb-4 bg-white sm:p-6 sm:pb-4">
-                    <h3 class="text-lg font-bold leading-6 text-gray-900 mb-4 border-b pb-2" id="modal-title">Tambah Catatan Keuangan</h3>
+                <div class="px-4 pt-5 pb-4 bg-white sm:p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Catat Pemasukan / Pengeluaran & Gaji</h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700">Tanggal</label>
+                            <input type="date" name="tanggal" value="{{ date('Y-m-d') }}" required class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700">Jenis Transaksi Utama</label>
+                            <select name="jenis" required class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
+                                <option value="pemasukan">Setoran Parkir (Pemasukan)</option>
+                                <option value="pengeluaran">Biaya Operasional (Pengeluaran)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                        <h4 class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
+                            <span>💰</span> Input Gaji Pegawai (Otomatis Masuk Pengeluaran)
+                        </h4>
+
+                        <div class="space-y-3">
+                            @foreach($employees as $emp)
+                            <div class="flex items-center justify-between bg-white p-3 rounded-md shadow-sm border border-blue-100">
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-bold text-gray-800">{{ $emp->name }}</span>
+                                    <span class="text-[10px] text-blue-600 uppercase font-bold">
+                                        {{ $emp->salary_type == 'percentage' ? $emp->salary_amount . '%' : 'Rp ' . number_format($emp->salary_amount, 0, ',', '.') }}
+                                    </span>
+                                </div>
+                                <div class="w-32 md:w-48">
+                                    <div class="relative">
+                                        <span class="absolute inset-y-0 left-0 flex items-center pl-2 text-xs font-bold text-gray-400">Rp</span>
+                                        <input type="number"
+                                               name="salaries[{{ $emp->id }}]"
+                                               placeholder="Besaran Gaji"
+                                               class="w-full pl-7 pr-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500"
+                                               {{-- Jika salary_type nominal, kita bisa isi otomatis sebagai saran --}}
+                                               value="{{ $emp->salary_type == 'nominal' ? $emp->salary_amount : '' }}">
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
 
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700">Tanggal</label>
-                            <input type="date" name="tanggal" value="{{ date('Y-m-d') }}" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <label class="block text-sm font-semibold text-gray-700">Kategori Utama</label>
+                            <input type="text" name="kategori" required placeholder="Contoh: Setoran Parkir Hari Ini" class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
                         </div>
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700">Jenis Transaksi</label>
-                            <select name="jenis" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                <option value="pemasukan">Pemasukan (+)</option>
-                                <option value="pengeluaran">Pengeluaran (-)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700">Kategori</label>
-                            <input type="text" name="kategori" required placeholder="Contoh: Operasional, Gaji, Listrik, Beli ATK" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700">Nominal (Rp)</label>
-                            <input type="number" name="nominal" required min="1" placeholder="Contoh: 150000" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700">Keterangan (Opsional)</label>
-                            <textarea name="keterangan" rows="2" placeholder="Catatan tambahan..." class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
+                            <label class="block text-sm font-semibold text-gray-700">Nominal Transaksi Utama (Rp)</label>
+                            <input type="number" name="nominal" required min="1" placeholder="Contoh: 500000" class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
                         </div>
                     </div>
                 </div>
-                <div class="px-4 py-3 bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-100">
-                    <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-bold text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm transition-colors">
-                        Simpan Data
+
+                <div class="px-4 py-3 bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse border-t">
+                    <button type="submit" class="w-full inline-flex justify-center rounded-md bg-blue-600 px-4 py-2 text-base font-bold text-white hover:bg-blue-700 sm:ml-3 sm:w-auto sm:text-sm">
+                        Simpan Semua Data
                     </button>
-                    <button type="button" onclick="document.getElementById('modalTambahKas').classList.add('hidden')" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-bold text-gray-700 hover:bg-gray-100 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
+                    <button type="button" onclick="document.getElementById('modalTambahKas').classList.add('hidden')" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-bold text-gray-700 hover:bg-gray-100 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                         Batal
                     </button>
                 </div>
