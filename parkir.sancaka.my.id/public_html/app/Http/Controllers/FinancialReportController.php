@@ -80,12 +80,16 @@ class FinancialReportController extends Controller
     // TAMBAHAN: FUNGSI EDIT & UPDATE
     // ==========================================
 
-    public function edit(FinancialReport $financial)
-    {
-        // Pastikan file edit.blade.php berada di dalam folder resources/views/financial_reports/
-        // Kita passing data $financial dengan nama variabel 'kas' agar sesuai dengan form di Blade
-        return view('financial_reports.edit', ['kas' => $financial]);
-    }
+   public function edit(FinancialReport $financial)
+{
+    // Mengambil semua operator agar muncul di form edit gaji
+    $employees = \App\Models\User::whereIn('role', ['operator', 'admin'])->get();
+
+    return view('financial_reports.edit', [
+        'kas' => $financial,
+        'employees' => $employees
+    ]);
+}
 
     public function update(Request $request, FinancialReport $financial)
     {
