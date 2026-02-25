@@ -7,28 +7,37 @@ use Illuminate\Http\Request;
 
 class FinancialReportController extends Controller
 {
-    public function index(Request $request)
-    {
-        $query = FinancialReport::orderBy('tanggal', 'desc')->latest();
+   public function index(Request $request)
+{
+    $query = \App\Models\FinancialReport::orderBy('tanggal', 'desc')->latest();
 
-        // Filter berdasarkan bulan jika ada
-        if ($request->filled('bulan')) {
-            $query->whereMonth('tanggal', $request->bulan);
-        }
-
-        if ($request->filled('tahun')) {
-            $query->whereYear('tanggal', $request->tahun);
-        }
-
-        $reports = $query->paginate(20)->withQueryString();
-
-        // Hitung total untuk summary di atas tabel
-        $totalPemasukan = FinancialReport::where('jenis', 'pemasukan')->sum('nominal');
-        $totalPengeluaran = FinancialReport::where('jenis', 'pengeluaran')->sum('nominal');
-        $saldo = $totalPemasukan - $totalPengeluaran;
-
-        return view('financial_reports.index', compact('reports', 'totalPemasukan', 'totalPengeluaran', 'saldo'));
+    // Filter berdasarkan bulan/tahun tetap dipertahankan
+    if ($request->filled('bulan')) {
+        $query->whereMonth('tanggal', $request->bulan);
     }
+    if ($request->filled('tahun')) {
+        $query->whereYear('tanggal', $request->tahun);
+    }
+
+    $reports = $query->paginate(20)->withQueryString();
+
+    // Perhitungan summary
+    $totalPemasukan = \App\Models\FinancialReport::where('jenis', 'pemasukan')->sum('nominal');
+    $totalPengeluaran = \App\Models\FinancialReport::where('jenis', 'pengeluaran')->sum('nominal');
+    $saldo = $totalPemasukan - $totalPengeluaran;
+
+    // AMBIL DATA PEGAWAI UNTUK MODAL GAJI
+    $employees = \App\Models\User::whereIn('role', ['operator', 'admin'])->get();
+
+    // Kirim $employees ke view
+    return view('financial_reports.index', compact(
+        'reports',
+        'totalPemasukan',
+        'totalPengeluaran',
+        'saldo',
+        'employees'
+    ));
+}
 
     public function store(Request $request)
 {
