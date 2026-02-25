@@ -101,7 +101,7 @@ class PublicDashboardController extends Controller
         // =========================================================
 
         // Paginasi untuk tabel parkir (5 baris per halaman, parameter URL: ?parkir_page=...)
-        $recent_transactions = Transaction::latest()->paginate(5, ['*'], 'parkir_page');
+        $recent_transactions = Transaction::latest()->paginate(6, ['*'], 'parkir_page');
 
         // Ringkasan Kas Manual
         $totalPemasukanKas = FinancialReport::where('jenis', 'pemasukan')->sum('nominal');
