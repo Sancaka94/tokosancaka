@@ -30,11 +30,13 @@
 
     @include('partials.sidebar')
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    {{-- Tambahkan w-full agar konten membentang penuh saat sidebar ditutup --}}
+    <div class="flex-1 flex flex-col overflow-hidden w-full relative">
 
         @include('partials.header')
 
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+        {{-- Ubah padding menjadi dinamis: p-4 untuk HP, md:p-6 untuk PC/Tablet --}}
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 md:p-6">
 
             @if(session('success'))
                 <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded shadow-sm" role="alert">
