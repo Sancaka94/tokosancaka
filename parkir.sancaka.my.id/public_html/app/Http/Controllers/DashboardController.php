@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Transaction;
-use Illuminate\Support\Facades\DB; // Tambahkan ini untuk menggunakan DB::raw
+use App\Models\User; // <-- TAMBAHKAN INI UNTUK MENGAMBIL DATA PEGAWAI
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -18,7 +19,7 @@ class DashboardController extends Controller
         $parkirToiletHariIni = \App\Models\Transaction::whereDate('exit_time', today())
                                      ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
         $kasMasukHariIni = \App\Models\FinancialReport::whereDate('tanggal', today())
-                                   ->where('jenis', 'pemasukan')->sum('nominal');
+                                    ->where('jenis', 'pemasukan')->sum('nominal');
         $kasKeluarHariIni = \App\Models\FinancialReport::whereDate('tanggal', today())
                                     ->where('jenis', 'pengeluaran')->sum('nominal');
 
@@ -123,9 +124,32 @@ class DashboardController extends Controller
 
         $recent_financials = \App\Models\FinancialReport::latest('tanggal')->take(5)->get();
 
+        // =========================================================
+        // 7. ESTIMASI GAJI PEGAWAI (HARI INI) <-- INI KODE BARUNYA
+        // =========================================================
+        $totalPendapatanHariIni = $data['total_pendapatan'];
+        $operators = User::where('role', 'operator')->get();
+
+        $employeeSalaries = $operators->map(function ($operator) use ($totalPendapatanHariIni) {
+            $earned = 0;
+            if ($operator->salary_type == 'percentage') {
+                $earned = ($operator->salary_amount / 100) * $totalPendapatanHariIni;
+            } else {
+                $earned = $operator->salary_amount;
+            }
+
+            return (object)[
+                'name'   => $operator->name,
+                'type'   => $operator->salary_type,
+                'amount' => $operator->salary_amount,
+                'earned' => $earned
+            ];
+        });
+
+        // Pastikan 'employeeSalaries' dimasukkan ke dalam compact()
         return view('dashboard.index', compact(
             'data', 'user', 'recent_transactions', 'chartData',
-            'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas', 'recent_financials'
+            'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas', 'recent_financials', 'employeeSalaries'
         ));
     }
 
@@ -135,7 +159,6 @@ class DashboardController extends Controller
 
         $transactions = Transaction::whereDate('entry_time', $tanggal)->latest()->paginate(20);
 
-        // PERBARUI BARIS INI: Mengambil rekap khusus total kendaraan dan pendapatan parkir/toilet
         $rekap = Transaction::select(
             DB::raw('SUM(CASE WHEN vehicle_type = "motor" THEN 1 ELSE 0 END) as total_motor'),
             DB::raw('SUM(CASE WHEN vehicle_type = "mobil" THEN 1 ELSE 0 END) as total_mobil'),
@@ -144,7 +167,6 @@ class DashboardController extends Controller
             DB::raw('SUM(fee + IFNULL(toilet_fee, 0)) as total_semua')
         )->whereDate('entry_time', $tanggal)->first();
 
-        // Pass 'rekap' ke view
         return view('laporan.harian', compact('transactions', 'tanggal', 'rekap'));
     }
 
@@ -158,7 +180,6 @@ class DashboardController extends Controller
                                    ->latest()
                                    ->paginate(50);
 
-        // PERBARUI BARIS INI: Menghitung rekap bulanan (kendaraan & uang)
         $rekap = Transaction::select(
             DB::raw('SUM(CASE WHEN vehicle_type = "motor" THEN 1 ELSE 0 END) as total_motor'),
             DB::raw('SUM(CASE WHEN vehicle_type = "mobil" THEN 1 ELSE 0 END) as total_mobil'),
@@ -185,7 +206,6 @@ class DashboardController extends Controller
                                    ->latest()
                                    ->paginate(50);
 
-        // PERBARUI BARIS INI: Menghitung rekap triwulan (kendaraan & uang)
         $rekap = Transaction::select(
             DB::raw('SUM(CASE WHEN vehicle_type = "motor" THEN 1 ELSE 0 END) as total_motor'),
             DB::raw('SUM(CASE WHEN vehicle_type = "mobil" THEN 1 ELSE 0 END) as total_mobil'),

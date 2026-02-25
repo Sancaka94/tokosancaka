@@ -245,6 +245,52 @@
 </div>
 @endif
 
+@if(in_array(auth()->user()->role, ['superadmin', 'admin']))
+<div class="card shadow-sm border-0 mb-8">
+    <div class="card-header flex flex-wrap justify-between items-center bg-white border-b-2 border-purple-500 gap-2">
+        <span class="font-bold text-gray-800 uppercase tracking-wide text-xs md:text-sm">Estimasi Gaji Pegawai (Hari Ini)</span>
+        <span class="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-1 rounded">Dihitung Otomatis</span>
+    </div>
+
+    <div class="card-body p-0 w-full block overflow-x-auto">
+        <table class="table-custom min-w-full">
+            <thead>
+                <tr class="bg-gray-50">
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Pegawai</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Sistem Gaji</th>
+                    <th class="px-4 md:px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Estimasi Didapat (Rp)</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                @forelse($employeeSalaries ?? [] as $salary)
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap font-bold text-gray-800 text-sm md:text-base">
+                            {{ $salary->name }}
+                        </td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
+                            @if($salary->type == 'percentage')
+                                <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">Persentase ({{ (float)$salary->amount }}%)</span>
+                            @else
+                                <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">Nominal Harian (Rp {{ number_format($salary->amount, 0, ',', '.') }})</span>
+                            @endif
+                        </td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-right font-black text-purple-600 text-base md:text-lg">
+                            Rp {{ number_format($salary->earned, 0, ',', '.') }}
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="3" class="px-4 md:px-6 py-8 text-center text-sm text-gray-500 italic">
+                            Belum ada data pegawai atau data gaji belum diatur.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
 @if(in_array(auth()->user()->role, ['superadmin', 'admin']) && isset($chartData))
 <script>
     document.addEventListener("DOMContentLoaded", function() {
