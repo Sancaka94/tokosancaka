@@ -142,6 +142,7 @@
             </div>
         </div>
 
+
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
                 <h3 class="font-bold text-gray-700 text-sm">Aktivitas Kendaraan Terbaru</h3>
