@@ -31,19 +31,41 @@ class FinancialReportController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $request->validate([
-            'tanggal' => 'required|date',
-            'jenis' => 'required|in:pemasukan,pengeluaran',
-            'kategori' => 'required|string|max:255',
-            'nominal' => 'required|numeric|min:1',
-            'keterangan' => 'nullable|string',
-        ]);
+{
+    $request->validate([
+        'tanggal' => 'required|date',
+        'jenis' => 'required|in:pemasukan,pengeluaran',
+        'kategori' => 'required|string|max:255',
+        'nominal' => 'required|numeric|min:1',
+    ]);
 
-        FinancialReport::create($request->all());
+    // 1. Simpan Transaksi Utama (Misal: Setoran Parkir)
+    \App\Models\FinancialReport::create([
+        'tanggal' => $request->tanggal,
+        'jenis' => $request->jenis,
+        'kategori' => $request->kategori,
+        'nominal' => $request->nominal,
+        'keterangan' => $request->keterangan,
+    ]);
 
-        return redirect()->route('financial.index')->with('success', 'Catatan keuangan berhasil ditambahkan.');
+    // 2. Simpan Gaji Pegawai (Jika diisi)
+    if ($request->has('salaries')) {
+        foreach ($request->salaries as $employeeId => $amount) {
+            if ($amount > 0) {
+                $employee = \App\Models\User::find($employeeId);
+                \App\Models\FinancialReport::create([
+                    'tanggal' => $request->tanggal,
+                    'jenis' => 'pengeluaran',
+                    'kategori' => 'Gaji Pegawai',
+                    'nominal' => $amount,
+                    'keterangan' => 'Pembayaran gaji harian: ' . $employee->name,
+                ]);
+            }
+        }
     }
+
+    return redirect()->route('financial.index')->with('success', 'Data transaksi dan gaji berhasil dicatat.');
+}
 
     // ==========================================
     // TAMBAHAN: FUNGSI EDIT & UPDATE
