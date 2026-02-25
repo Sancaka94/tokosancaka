@@ -23,6 +23,7 @@
                     <th class="px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Email (Username)</th>
                     <th class="px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Peran (Role)</th>
                     <th class="px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Tanggal Bergabung</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Sistem Gaji</th>
                     <th class="px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Aksi</th>
                 </tr>
             </thead>
@@ -39,6 +40,15 @@
                             @endif
                         </td>
                         <td class="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-gray-500 text-xs md:text-sm">{{ $emp->created_at->translatedFormat('d F Y') }}</td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">
+                            @if($emp->salary_type == 'percentage')
+                                <span class="font-bold text-blue-700">{{ (float) $emp->salary_amount }}%</span>
+                                <span class="text-xs text-gray-500">dari Pemasukan</span>
+                            @else
+                                <span class="font-bold text-green-700">Rp {{ number_format($emp->salary_amount, 0, ',', '.') }}</span>
+                                <span class="text-xs text-gray-500">/Hari</span>
+                            @endif
+                        </td>
                         <td class="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-center align-middle">
                             <div class="flex items-center justify-center gap-2">
                                 <a href="{{ route('employees.edit', $emp->id) }}" class="text-blue-600 hover:text-blue-800 font-semibold text-xs md:text-sm transition-colors bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded">
