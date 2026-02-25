@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Transaction;
 use App\Models\FinancialReport;
+use App\Models\User; // <-- 1. TAMBAHKAN INI UNTUK MEMANGGIL DATA PEGAWAI
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -110,9 +111,33 @@ class PublicDashboardController extends Controller
         // Paginasi untuk tabel kas manual (5 baris per halaman, parameter URL: ?kas_page=...)
         $recent_financials = FinancialReport::latest('tanggal')->paginate(5, ['*'], 'kas_page');
 
+
+        // =========================================================
+        // 6. ESTIMASI GAJI PEGAWAI (HARI INI) <-- 2. KODE BARUNYA DI SINI
+        // =========================================================
+        $totalPendapatanHariIni = $data['total_pendapatan'];
+        $operators = User::where('role', 'operator')->get();
+
+        $employeeSalaries = $operators->map(function ($operator) use ($totalPendapatanHariIni) {
+            $earned = 0;
+            if ($operator->salary_type == 'percentage') {
+                $earned = ($operator->salary_amount / 100) * $totalPendapatanHariIni;
+            } else {
+                $earned = $operator->salary_amount;
+            }
+
+            return (object)[
+                'name'   => $operator->name,
+                'type'   => $operator->salary_type,
+                'amount' => $operator->salary_amount,
+                'earned' => $earned
+            ];
+        });
+
+        // 3. PASTIKAN 'employeeSalaries' DITAMBAHKAN KE COMPACT
         return view('public_dashboard', compact(
             'data', 'chartData', 'recent_transactions',
-            'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas', 'recent_financials'
+            'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas', 'recent_financials', 'employeeSalaries'
         ));
     }
 }
