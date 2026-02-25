@@ -113,7 +113,7 @@ class DashboardController extends Controller
         // =========================================================
         // 5. DATA AKTIVITAS TERBARU
         // =========================================================
-        $recent_transactions = \App\Models\Transaction::with('operator')->latest()->take(5)->get();
+        $recent_transactions = \App\Models\Transaction::with('operator')->latest()->take(6)->get();
 
         // =========================================================
         // 6. RINGKASAN BUKU KAS
