@@ -235,4 +235,32 @@ class InvoiceController extends Controller
         // Langsung download file PDF-nya
         return $pdf->download($invoice->invoice_no . '.pdf');
     }
+
+    /**
+     * Memproses Update Status & Keterangan dari Modal di Halaman Index
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        $invoice = Invoice::findOrFail($id);
+
+        // Set otomatis nilai progress (%) berdasarkan status yang dipilih dropdown
+        $progress = 0;
+        switch($request->status) {
+            case 'Invoice Diterbitkan': $progress = 10; break;
+            case 'Pembayaran Terverifikasi': $progress = 25; break;
+            case 'Proses Pengerjaan': $progress = 50; break;
+            case 'Finishing & Siap Kirim': $progress = 75; break;
+            case 'Selesai & Lunas': $progress = 100; break;
+            default: $progress = 10;
+        }
+
+        // Update database
+        $invoice->update([
+            'status' => $request->status,
+            'progress_percent' => $progress,
+            'tracking_note' => $request->tracking_note
+        ]);
+
+        return redirect()->route('invoice.index')->with('success', 'Status & Keterangan tracking berhasil diperbarui!');
+    }
 }

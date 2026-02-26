@@ -1003,6 +1003,8 @@ Route::prefix('admin/invoice')->name('invoice.')->group(function () {
 
 });
 
+Route::patch('/{id}/status', [InvoiceController::class, 'updateStatus'])->name('update_status');
+
 // Rute Publik untuk Cek Invoice
 Route::get('/cek-invoice', [App\Http\Controllers\InvoiceController::class, 'track'])->name('public.invoice.track');
 
