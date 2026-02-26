@@ -3,14 +3,55 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\FinancialReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Carbon\Carbon;
 
 class EmployeeController extends Controller
 {
     public function index()
     {
-        $employees = User::whereIn('role', ['admin', 'operator'])->latest()->paginate(10);
+        $user = auth()->user();
+        $query = User::query();
+
+        // ==========================================
+        // 1. FILTER DATA BERDASARKAN ROLE (AUTH)
+        // ==========================================
+        if ($user->role === 'superadmin') {
+            // Superadmin melihat semua data (Admin & Operator)
+            $query->whereIn('role', ['admin', 'operator']);
+        } elseif ($user->role === 'admin') {
+            // Admin hanya melihat pegawai di bawah tenant/cabangnya
+            $query->where('tenant_id', $user->tenant_id)
+                  ->whereIn('role', ['admin', 'operator']);
+        } else {
+            // Operator HANYA bisa melihat data dirinya sendiri
+            $query->where('id', $user->id);
+        }
+
+        $employees = $query->latest()->paginate(10);
+
+        // ==========================================
+        // 2. HITUNG REKAPAN PENDAPATAN PEGAWAI
+        // ==========================================
+        $currentMonth = Carbon::now()->month;
+        $currentYear = Carbon::now()->year;
+
+        foreach ($employees as $emp) {
+            // Hitung total gaji yang sudah DIBAYARKAN di bulan ini
+            $emp->pendapatan_bulan_ini = FinancialReport::where('kategori', 'Gaji Pegawai')
+                ->where('keterangan', 'like', '%' . $emp->name . '%')
+                ->whereMonth('tanggal', $currentMonth)
+                ->whereYear('tanggal', $currentYear)
+                ->sum('nominal');
+
+            // Hitung total keseluruhan gaji dari awal sampai sekarang
+            $emp->total_pendapatan = FinancialReport::where('kategori', 'Gaji Pegawai')
+                ->where('keterangan', 'like', '%' . $emp->name . '%')
+                ->sum('nominal');
+        }
+
         return view('employees.index', compact('employees'));
     }
 
