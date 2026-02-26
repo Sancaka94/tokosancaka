@@ -4,50 +4,58 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Transaction;
-use App\Models\User; // <-- TAMBAHKAN INI UNTUK MENGAMBIL DATA PEGAWAI
+use App\Models\User;
+use App\Models\FinancialReport; // Tambahkan ini
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon; // Tambahkan ini
 
 class DashboardController extends Controller
 {
     public function index()
     {
         $user = auth()->user();
+        $today = Carbon::today();
+        $now = Carbon::now();
 
         // =========================================================
         // 1. STATISTIK HARI INI (Parkir + Toilet + Kas)
         // =========================================================
-        $parkirToiletHariIni = \App\Models\Transaction::whereDate('exit_time', today())
-                                     ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
-        $kasMasukHariIni = \App\Models\FinancialReport::whereDate('tanggal', today())
+        $parkirToiletHariIni = Transaction::whereDate('exit_time', $today)
+                                     ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+        $kasMasukHariIni = FinancialReport::whereDate('tanggal', $today)
                                     ->where('jenis', 'pemasukan')->sum('nominal');
-        $kasKeluarHariIni = \App\Models\FinancialReport::whereDate('tanggal', today())
+        $kasKeluarHariIni = FinancialReport::whereDate('tanggal', $today)
                                     ->where('jenis', 'pengeluaran')->sum('nominal');
 
+        // Pisahkan kotor dan bersih agar perhitungan gaji tepat
+        $pendapatanKotorHariIni = $parkirToiletHariIni + $kasMasukHariIni;
+        $pendapatanBersihHariIni = $pendapatanKotorHariIni - $kasKeluarHariIni;
+
         $data = [
-            'motor_masuk' => \App\Models\Transaction::where('vehicle_type', 'motor')->whereDate('entry_time', today())->count(),
-            'mobil_masuk' => \App\Models\Transaction::where('vehicle_type', 'mobil')->whereDate('entry_time', today())->count(),
-            'total_pendapatan' => $parkirToiletHariIni + $kasMasukHariIni - $kasKeluarHariIni,
+            'motor_masuk' => Transaction::where('vehicle_type', 'motor')->whereDate('entry_time', $today)->count(),
+            'mobil_masuk' => Transaction::where('vehicle_type', 'mobil')->whereDate('entry_time', $today)->count(),
+            'total_pendapatan' => $pendapatanBersihHariIni,
         ];
 
         // =========================================================
         // 2. PENDAPATAN BULAN INI VS BULAN LALU
         // =========================================================
-        $parkirBulanIni = \App\Models\Transaction::whereMonth('exit_time', date('m'))
-                                ->whereYear('exit_time', date('Y'))
-                                ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
-        $kasMasukBulanIni = \App\Models\FinancialReport::whereMonth('tanggal', date('m'))
-                                ->whereYear('tanggal', date('Y'))->where('jenis', 'pemasukan')->sum('nominal');
-        $kasKeluarBulanIni = \App\Models\FinancialReport::whereMonth('tanggal', date('m'))
-                                ->whereYear('tanggal', date('Y'))->where('jenis', 'pengeluaran')->sum('nominal');
+        $parkirBulanIni = Transaction::whereMonth('exit_time', $now->month)
+                                ->whereYear('exit_time', $now->year)
+                                ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+        $kasMasukBulanIni = FinancialReport::whereMonth('tanggal', $now->month)
+                                ->whereYear('tanggal', $now->year)->where('jenis', 'pemasukan')->sum('nominal');
+        $kasKeluarBulanIni = FinancialReport::whereMonth('tanggal', $now->month)
+                                ->whereYear('tanggal', $now->year)->where('jenis', 'pengeluaran')->sum('nominal');
         $pendapatanBulanIni = $parkirBulanIni + $kasMasukBulanIni - $kasKeluarBulanIni;
 
-        $bulanLalu = \Carbon\Carbon::now()->subMonth();
-        $parkirBulanLalu = \App\Models\Transaction::whereMonth('exit_time', $bulanLalu->month)
+        $bulanLalu = $now->copy()->subMonth();
+        $parkirBulanLalu = Transaction::whereMonth('exit_time', $bulanLalu->month)
                                 ->whereYear('exit_time', $bulanLalu->year)
-                                ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
-        $kasMasukBulanLalu = \App\Models\FinancialReport::whereMonth('tanggal', $bulanLalu->month)
+                                ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+        $kasMasukBulanLalu = FinancialReport::whereMonth('tanggal', $bulanLalu->month)
                                 ->whereYear('tanggal', $bulanLalu->year)->where('jenis', 'pemasukan')->sum('nominal');
-        $kasKeluarBulanLalu = \App\Models\FinancialReport::whereMonth('tanggal', $bulanLalu->month)
+        $kasKeluarBulanLalu = FinancialReport::whereMonth('tanggal', $bulanLalu->month)
                                 ->whereYear('tanggal', $bulanLalu->year)->where('jenis', 'pengeluaran')->sum('nominal');
         $pendapatanBulanLalu = $parkirBulanLalu + $kasMasukBulanLalu - $kasKeluarBulanLalu;
 
@@ -72,14 +80,14 @@ class DashboardController extends Controller
         $labelHarian = [];
         $dataHarian = [];
         for ($i = 6; $i >= 0; $i--) {
-            $date = \Carbon\Carbon::now()->subDays($i);
+            $date = Carbon::now()->subDays($i);
             $labelHarian[] = $date->translatedFormat('d M');
 
-            $parkirToilet = \App\Models\Transaction::whereDate('exit_time', $date)
-                                       ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
-            $kasMasuk = \App\Models\FinancialReport::whereDate('tanggal', $date)
+            $parkirToilet = Transaction::whereDate('exit_time', $date)
+                                       ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+            $kasMasuk = FinancialReport::whereDate('tanggal', $date)
                                        ->where('jenis', 'pemasukan')->sum('nominal');
-            $kasKeluar = \App\Models\FinancialReport::whereDate('tanggal', $date)
+            $kasKeluar = FinancialReport::whereDate('tanggal', $date)
                                        ->where('jenis', 'pengeluaran')->sum('nominal');
 
             $dataHarian[] = $parkirToilet + $kasMasuk - $kasKeluar;
@@ -91,15 +99,15 @@ class DashboardController extends Controller
         $labelBulanan = [];
         $dataBulanan = [];
         for ($i = 5; $i >= 0; $i--) {
-            $date = \Carbon\Carbon::now()->subMonths($i);
+            $date = Carbon::now()->subMonths($i);
             $labelBulanan[] = $date->translatedFormat('M Y');
 
-            $parkirToilet = \App\Models\Transaction::whereMonth('exit_time', $date->month)
+            $parkirToilet = Transaction::whereMonth('exit_time', $date->month)
                                 ->whereYear('exit_time', $date->year)
-                                ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
-            $kasMasuk = \App\Models\FinancialReport::whereMonth('tanggal', $date->month)
+                                ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+            $kasMasuk = FinancialReport::whereMonth('tanggal', $date->month)
                                 ->whereYear('tanggal', $date->year)->where('jenis', 'pemasukan')->sum('nominal');
-            $kasKeluar = \App\Models\FinancialReport::whereMonth('tanggal', $date->month)
+            $kasKeluar = FinancialReport::whereMonth('tanggal', $date->month)
                                 ->whereYear('tanggal', $date->year)->where('jenis', 'pengeluaran')->sum('nominal');
 
             $dataBulanan[] = $parkirToilet + $kasMasuk - $kasKeluar;
@@ -113,40 +121,56 @@ class DashboardController extends Controller
         // =========================================================
         // 5. DATA AKTIVITAS TERBARU
         // =========================================================
-        $recent_transactions = \App\Models\Transaction::with('operator')->latest()->take(6)->get();
+        $recent_transactions = Transaction::with('operator')->latest()->take(6)->get();
 
         // =========================================================
         // 6. RINGKASAN BUKU KAS
         // =========================================================
-        $totalPemasukanKas = \App\Models\FinancialReport::where('jenis', 'pemasukan')->sum('nominal');
-        $totalPengeluaranKas = \App\Models\FinancialReport::where('jenis', 'pengeluaran')->sum('nominal');
+        $totalPemasukanKas = FinancialReport::where('jenis', 'pemasukan')->sum('nominal');
+        $totalPengeluaranKas = FinancialReport::where('jenis', 'pengeluaran')->sum('nominal');
         $saldoKas = $totalPemasukanKas - $totalPengeluaranKas;
 
-        $recent_financials = \App\Models\FinancialReport::latest('tanggal')->take(6)->get();
+        $recent_financials = FinancialReport::latest('tanggal')->take(6)->get();
 
         // =========================================================
-        // 7. ESTIMASI GAJI PEGAWAI (HARI INI) <-- INI KODE BARUNYA
+        // 7. ESTIMASI GAJI PEGAWAI (HARI INI)
         // =========================================================
-        $totalPendapatanHariIni = $data['total_pendapatan'];
         $operators = User::where('role', 'operator')->get();
 
-        $employeeSalaries = $operators->map(function ($operator) use ($totalPendapatanHariIni) {
-            $earned = 0;
-            if ($operator->salary_type == 'percentage') {
-                $earned = ($operator->salary_amount / 100) * $totalPendapatanHariIni;
+        // Ambil data gaji hari ini agar tidak berulang kali query di dalam loop
+        $laporanGajiHariIni = FinancialReport::whereDate('tanggal', $today)
+                                ->where('kategori', 'Gaji Pegawai')->get();
+
+        $employeeSalaries = $operators->map(function ($operator) use ($pendapatanKotorHariIni, $laporanGajiHariIni) {
+
+            // Cek apakah sudah dibayar manual hari ini
+            $gajiManual = $laporanGajiHariIni->filter(function ($report) use ($operator) {
+                return stripos($report->keterangan, $operator->name) !== false;
+            })->sum('nominal');
+
+            if ($gajiManual > 0) {
+                $earned = $gajiManual;
+                $statusGaji = 'Sudah Dibayar (Manual)';
             } else {
-                $earned = $operator->salary_amount;
+                // Jika belum, hitung dari PENDAPATAN KOTOR
+                if ($operator->salary_type == 'percentage') {
+                    $earned = ($operator->salary_amount / 100) * $pendapatanKotorHariIni;
+                    $statusGaji = 'Estimasi (' . (float)$operator->salary_amount . '%)';
+                } else {
+                    $earned = $operator->salary_amount;
+                    $statusGaji = 'Estimasi (Flat)';
+                }
             }
 
             return (object)[
                 'name'   => $operator->name,
                 'type'   => $operator->salary_type,
                 'amount' => $operator->salary_amount,
-                'earned' => $earned
+                'earned' => $earned,
+                'status' => $statusGaji // Jika ingin ditampilkan statusnya
             ];
         });
 
-        // Pastikan 'employeeSalaries' dimasukkan ke dalam compact()
         return view('dashboard.index', compact(
             'data', 'user', 'recent_transactions', 'chartData',
             'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas', 'recent_financials', 'employeeSalaries'
@@ -157,7 +181,8 @@ class DashboardController extends Controller
     {
         $tanggal = $request->tanggal ?? today()->toDateString();
 
-        $transactions = Transaction::whereDate('entry_time', $tanggal)->latest()->paginate(20);
+        // Perbaikan: Ubah entry_time ke exit_time, dan tambahkan 'with operator'
+        $transactions = Transaction::with('operator')->whereDate('exit_time', $tanggal)->latest()->paginate(20);
 
         $rekap = Transaction::select(
             DB::raw('SUM(CASE WHEN vehicle_type = "motor" THEN 1 ELSE 0 END) as total_motor'),
@@ -165,9 +190,12 @@ class DashboardController extends Controller
             DB::raw('SUM(fee) as total_parkir'),
             DB::raw('SUM(IFNULL(toilet_fee, 0)) as total_toilet'),
             DB::raw('SUM(fee + IFNULL(toilet_fee, 0)) as total_semua')
-        )->whereDate('entry_time', $tanggal)->first();
+        )->whereDate('exit_time', $tanggal)->first();
 
-        return view('laporan.harian', compact('transactions', 'tanggal', 'rekap'));
+        // Perbaikan: Mendefinisikan $total agar bisa dipanggil di View
+        $total = $rekap->total_semua ?? 0;
+
+        return view('laporan.harian', compact('transactions', 'tanggal', 'rekap', 'total'));
     }
 
     public function bulanan(Request $request)
@@ -175,9 +203,10 @@ class DashboardController extends Controller
         $bulan = $request->bulan ?? date('m');
         $tahun = $request->tahun ?? date('Y');
 
-        $transactions = Transaction::whereMonth('entry_time', $bulan)
-                                   ->whereYear('entry_time', $tahun)
-                                   ->latest()
+        $transactions = Transaction::with('operator')
+                                   ->whereMonth('exit_time', $bulan)
+                                   ->whereYear('exit_time', $tahun)
+                                   ->latest('exit_time')
                                    ->paginate(50);
 
         $rekap = Transaction::select(
@@ -186,10 +215,13 @@ class DashboardController extends Controller
             DB::raw('SUM(fee) as total_parkir'),
             DB::raw('SUM(IFNULL(toilet_fee, 0)) as total_toilet'),
             DB::raw('SUM(fee + IFNULL(toilet_fee, 0)) as total_semua')
-        )->whereMonth('entry_time', $bulan)
-         ->whereYear('entry_time', $tahun)->first();
+        )->whereMonth('exit_time', $bulan)
+         ->whereYear('exit_time', $tahun)->first();
 
-        return view('laporan.bulanan', compact('transactions', 'bulan', 'tahun', 'rekap'));
+        // Perbaikan: Mendefinisikan $total
+        $total = $rekap->total_semua ?? 0;
+
+        return view('laporan.bulanan', compact('transactions', 'bulan', 'tahun', 'rekap', 'total'));
     }
 
    public function triwulan(Request $request)
@@ -200,10 +232,11 @@ class DashboardController extends Controller
         $startMonth = ($kuartal - 1) * 3 + 1;
         $endMonth = $startMonth + 2;
 
-        $transactions = Transaction::whereMonth('entry_time', '>=', $startMonth)
-                                   ->whereMonth('entry_time', '<=', $endMonth)
-                                   ->whereYear('entry_time', $tahun)
-                                   ->latest()
+        $transactions = Transaction::with('operator')
+                                   ->whereMonth('exit_time', '>=', $startMonth)
+                                   ->whereMonth('exit_time', '<=', $endMonth)
+                                   ->whereYear('exit_time', $tahun)
+                                   ->latest('exit_time')
                                    ->paginate(50);
 
         $rekap = Transaction::select(
@@ -212,10 +245,13 @@ class DashboardController extends Controller
             DB::raw('SUM(fee) as total_parkir'),
             DB::raw('SUM(IFNULL(toilet_fee, 0)) as total_toilet'),
             DB::raw('SUM(fee + IFNULL(toilet_fee, 0)) as total_semua')
-        )->whereMonth('entry_time', '>=', $startMonth)
-         ->whereMonth('entry_time', '<=', $endMonth)
-         ->whereYear('entry_time', $tahun)->first();
+        )->whereMonth('exit_time', '>=', $startMonth)
+         ->whereMonth('exit_time', '<=', $endMonth)
+         ->whereYear('exit_time', $tahun)->first();
 
-        return view('laporan.triwulan', compact('transactions', 'kuartal', 'tahun', 'rekap'));
+        // Perbaikan: Mendefinisikan $total
+        $total = $rekap->total_semua ?? 0;
+
+        return view('laporan.triwulan', compact('transactions', 'kuartal', 'tahun', 'rekap', 'total'));
     }
 }
