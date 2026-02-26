@@ -104,60 +104,73 @@
                 <div class="px-4 pt-5 pb-4 bg-white sm:p-6">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Catat Pemasukan / Pengeluaran & Gaji</h3>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700">Tanggal</label>
-                            <input type="date" name="tanggal" value="{{ date('Y-m-d') }}" required class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700">Jenis Transaksi Utama</label>
-                            <select name="jenis" required class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
-                                <option value="pemasukan">Setoran Parkir (Pemasukan)</option>
-                                <option value="pengeluaran">Biaya Operasional (Pengeluaran)</option>
-                            </select>
-                        </div>
-                    </div>
+                    <div id="transactions-wrapper">
 
-                    <div class="bg-blue-50 p-4 rounded-lg mb-4">
-                        <h4 class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
-                            <span>💰</span> Input Gaji Pegawai (Otomatis Masuk Pengeluaran)
-                        </h4>
+                        <div class="transaction-block bg-white border border-gray-200 p-4 rounded-lg mb-4 relative">
+                            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                                <h4 class="text-md font-bold text-blue-700 block-title">Transaksi #1</h4>
+                                <button type="button" class="text-red-500 hover:text-red-700 font-bold text-sm hidden btn-remove" onclick="this.closest('.transaction-block').remove()">Hapus Form Ini</button>
+                            </div>
 
-                        <div class="space-y-3">
-                            @foreach($employees as $emp)
-                            <div class="flex items-center justify-between bg-white p-3 rounded-md shadow-sm border border-blue-100">
-                                <div class="flex flex-col">
-                                    <span class="text-sm font-bold text-gray-800">{{ $emp->name }}</span>
-                                    <span class="text-[10px] text-blue-600 uppercase font-bold">
-                                        {{ $emp->salary_type == 'percentage' ? $emp->salary_amount . '%' : 'Rp ' . number_format($emp->salary_amount, 0, ',', '.') }}
-                                    </span>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700">Tanggal</label>
+                                    <input type="date" name="transactions[0][tanggal]" value="{{ date('Y-m-d') }}" required class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
                                 </div>
-                                <div class="w-32 md:w-48">
-                                    <div class="relative">
-                                        <span class="absolute inset-y-0 left-0 flex items-center pl-2 text-xs font-bold text-gray-400">Rp</span>
-                                        <input type="number"
-                                               name="salaries[{{ $emp->id }}]"
-                                               placeholder="Besaran Gaji"
-                                               class="w-full pl-7 pr-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500"
-                                               {{-- Jika salary_type nominal, kita bisa isi otomatis sebagai saran --}}
-                                               value="{{ $emp->salary_type == 'nominal' ? $emp->salary_amount : '' }}">
-                                    </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700">Jenis Transaksi Utama</label>
+                                    <select name="transactions[0][jenis]" required class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
+                                        <option value="pemasukan">Setoran Parkir (Pemasukan)</option>
+                                        <option value="pengeluaran">Biaya Operasional (Pengeluaran)</option>
+                                    </select>
                                 </div>
                             </div>
-                            @endforeach
-                        </div>
-                    </div>
 
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700">Kategori Utama</label>
-                            <input type="text" name="kategori" required placeholder="Contoh: Setoran Parkir Hari Ini" class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
+                            <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                                <h4 class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
+                                    <span>💰</span> Input Gaji Pegawai
+                                </h4>
+                                <div class="space-y-3">
+                                    @foreach($employees as $emp)
+                                    <div class="flex items-center justify-between bg-white p-3 rounded-md shadow-sm border border-blue-100">
+                                        <div class="flex flex-col">
+                                            <span class="text-sm font-bold text-gray-800">{{ $emp->name }}</span>
+                                            <span class="text-[10px] text-blue-600 uppercase font-bold">
+                                                {{ $emp->salary_type == 'percentage' ? $emp->salary_amount . '%' : 'Rp ' . number_format($emp->salary_amount, 0, ',', '.') }}
+                                            </span>
+                                        </div>
+                                        <div class="w-32 md:w-48">
+                                            <div class="relative">
+                                                <span class="absolute inset-y-0 left-0 flex items-center pl-2 text-xs font-bold text-gray-400">Rp</span>
+                                                <input type="number"
+                                                       name="transactions[0][salaries][{{ $emp->id }}]"
+                                                       placeholder="Besaran Gaji"
+                                                       class="w-full pl-7 pr-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500"
+                                                       value="{{ $emp->salary_type == 'nominal' ? $emp->salary_amount : '' }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700">Kategori Utama</label>
+                                    <input type="text" name="transactions[0][kategori]" required placeholder="Contoh: Setoran Parkir Hari Ini" class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700">Nominal Transaksi Utama (Rp)</label>
+                                    <input type="number" name="transactions[0][nominal]" required min="1" placeholder="Contoh: 500000" class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700">Nominal Transaksi Utama (Rp)</label>
-                            <input type="number" name="nominal" required min="1" placeholder="Contoh: 500000" class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
                         </div>
-                    </div>
+
+                    <button type="button" onclick="tambahFormTransaksi()" class="w-full bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 font-bold py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center justify-center gap-2 mb-2">
+                        <span>+</span> Tambah Hari / Transaksi Lain
+                    </button>
+
                 </div>
 
                 <div class="px-4 py-3 bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse border-t">
@@ -172,4 +185,47 @@
         </div>
     </div>
 </div>
+
+<script>
+    let trxIndex = 1;
+
+    function tambahFormTransaksi() {
+        const wrapper = document.getElementById('transactions-wrapper');
+        const firstBlock = wrapper.querySelector('.transaction-block');
+        
+        // Clone elemen HTML
+        const newBlock = firstBlock.cloneNode(true);
+
+        // Update Judul Transaksi
+        newBlock.querySelector('.block-title').innerText = 'Transaksi #' + (trxIndex + 1);
+
+        // Tampilkan tombol "Hapus Form Ini" untuk form tambahan
+        newBlock.querySelector('.btn-remove').classList.remove('hidden');
+
+        // Update atribut name agar index array bertambah (transactions[0] -> transactions[1])
+        const inputs = newBlock.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            if (input.name) {
+                // Regex untuk mencari transactions[0] dan menggantinya dengan index baru
+                input.name = input.name.replace(/transactions\[0\]/g, `transactions[${trxIndex}]`);
+            }
+            
+            // Kosongkan value tertentu di form baru agar tidak bawa data dari form 1
+            if (input.type !== 'hidden' && input.name.includes('kategori')) {
+                input.value = '';
+            }
+            if (input.type !== 'hidden' && input.name.includes('nominal')) {
+                input.value = '';
+            }
+            // Note: input tanggal dan gaji sengaja dibiarkan ter-copy sebagai default 
+            // agar mempercepat user menginput jika besaran gajinya sama tiap hari.
+        });
+
+        // Masukkan form baru ke dalam wrapper
+        wrapper.appendChild(newBlock);
+        
+        trxIndex++;
+    }
+</script>
+
 @endsection
