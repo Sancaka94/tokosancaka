@@ -978,4 +978,11 @@ Route::prefix('admin')->group(function () {
     Route::delete('/contacts/{id}', [App\Http\Controllers\CashflowContactController::class, 'destroy'])->name('contacts.destroy');
 });
 
-Route::get('/admin/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
+Route::prefix('admin/invoice')->name('invoice.')->group(function () {
+    Route::get('/', [InvoiceController::class, 'index'])->name('index');
+    Route::get('/create', [InvoiceController::class, 'create'])->name('create');
+    Route::post('/store', [InvoiceController::class, 'store'])->name('store');
+    Route::get('/{id}/pdf', [InvoiceController::class, 'streamPDF'])->name('pdf');
+    Route::get('/{id}/edit', [InvoiceController::class, 'edit'])->name('edit'); // Jika nanti buat fitur edit
+    Route::delete('/{id}', [InvoiceController::class, 'destroy'])->name('destroy');
+});
