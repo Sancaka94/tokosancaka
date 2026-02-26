@@ -201,11 +201,12 @@ class DashboardController extends Controller
         ));
     }
 
-    public function bulanan(Request $request)
+   public function bulanan(Request $request)
     {
         $bulan = $request->bulan ?? date('m');
         $tahun = $request->tahun ?? date('Y');
 
+        // 1. AMBIL DATA TRANSAKSI PARKIR (SISTEM TIKET)
         $transactions = Transaction::with('operator')
                                    ->whereMonth('exit_time', $bulan)
                                    ->whereYear('exit_time', $tahun)
@@ -213,21 +214,27 @@ class DashboardController extends Controller
                                    ->paginate(50);
 
         $rekap = Transaction::select(
-            DB::raw('SUM(CASE WHEN vehicle_type = "motor" THEN 1 ELSE 0 END) as total_motor'),
-            DB::raw('SUM(CASE WHEN vehicle_type = "mobil" THEN 1 ELSE 0 END) as total_mobil'),
-            DB::raw('SUM(fee) as total_parkir'),
-            DB::raw('SUM(IFNULL(toilet_fee, 0)) as total_toilet'),
             DB::raw('SUM(fee + IFNULL(toilet_fee, 0)) as total_semua')
         )->whereMonth('exit_time', $bulan)
          ->whereYear('exit_time', $tahun)->first();
 
-        // Perbaikan: Mendefinisikan $total
         $total = $rekap->total_semua ?? 0;
 
-        return view('laporan.bulanan', compact('transactions', 'bulan', 'tahun', 'rekap', 'total'));
+        // 2. AMBIL DATA KAS MANUAL (INPUTAN GELONDONGAN)
+        $kasManual = \App\Models\FinancialReport::whereMonth('tanggal', $bulan)
+                                                ->whereYear('tanggal', $tahun)
+                                                ->orderBy('tanggal', 'desc')
+                                                ->get();
+        $totalPemasukanManual = $kasManual->where('jenis', 'pemasukan')->sum('nominal');
+        $totalPengeluaranManual = $kasManual->where('jenis', 'pengeluaran')->sum('nominal');
+
+        return view('laporan.bulanan', compact(
+            'transactions', 'bulan', 'tahun', 'total',
+            'kasManual', 'totalPemasukanManual', 'totalPengeluaranManual'
+        ));
     }
 
-   public function triwulan(Request $request)
+    public function triwulan(Request $request)
     {
         $kuartal = $request->kuartal ?? 1;
         $tahun = $request->tahun ?? date('Y');
@@ -235,6 +242,7 @@ class DashboardController extends Controller
         $startMonth = ($kuartal - 1) * 3 + 1;
         $endMonth = $startMonth + 2;
 
+        // 1. AMBIL DATA TRANSAKSI PARKIR (SISTEM TIKET)
         $transactions = Transaction::with('operator')
                                    ->whereMonth('exit_time', '>=', $startMonth)
                                    ->whereMonth('exit_time', '<=', $endMonth)
@@ -243,18 +251,25 @@ class DashboardController extends Controller
                                    ->paginate(50);
 
         $rekap = Transaction::select(
-            DB::raw('SUM(CASE WHEN vehicle_type = "motor" THEN 1 ELSE 0 END) as total_motor'),
-            DB::raw('SUM(CASE WHEN vehicle_type = "mobil" THEN 1 ELSE 0 END) as total_mobil'),
-            DB::raw('SUM(fee) as total_parkir'),
-            DB::raw('SUM(IFNULL(toilet_fee, 0)) as total_toilet'),
             DB::raw('SUM(fee + IFNULL(toilet_fee, 0)) as total_semua')
         )->whereMonth('exit_time', '>=', $startMonth)
          ->whereMonth('exit_time', '<=', $endMonth)
          ->whereYear('exit_time', $tahun)->first();
 
-        // Perbaikan: Mendefinisikan $total
         $total = $rekap->total_semua ?? 0;
 
-        return view('laporan.triwulan', compact('transactions', 'kuartal', 'tahun', 'rekap', 'total'));
+        // 2. AMBIL DATA KAS MANUAL (INPUTAN GELONDONGAN)
+        $kasManual = \App\Models\FinancialReport::whereMonth('tanggal', '>=', $startMonth)
+                                                ->whereMonth('tanggal', '<=', $endMonth)
+                                                ->whereYear('tanggal', $tahun)
+                                                ->orderBy('tanggal', 'desc')
+                                                ->get();
+        $totalPemasukanManual = $kasManual->where('jenis', 'pemasukan')->sum('nominal');
+        $totalPengeluaranManual = $kasManual->where('jenis', 'pengeluaran')->sum('nominal');
+
+        return view('laporan.triwulan', compact(
+            'transactions', 'kuartal', 'tahun', 'total',
+            'kasManual', 'totalPemasukanManual', 'totalPengeluaranManual'
+        ));
     }
 }
