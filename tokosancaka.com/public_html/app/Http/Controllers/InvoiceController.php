@@ -205,4 +205,34 @@ class InvoiceController extends Controller
         // Catatan: Jika ingin langsung download, gunakan:
         // return $pdf->download($invoice->invoice_no . '.pdf');
     }
+
+    /**
+     * Halaman Publik: Cek Tracking Invoice
+     */
+    public function track(Request $request)
+    {
+        $invoice = null;
+        $searched = false;
+
+        if ($request->has('invoice_no')) {
+            $searched = true;
+            // Cari invoice berdasarkan nomor yang diinputkan
+            $invoice = Invoice::with('items')->where('invoice_no', $request->invoice_no)->first();
+        }
+
+        return view('invoice.track', compact('invoice', 'searched'));
+    }
+
+    /**
+     * Halaman Publik: Download PDF
+     */
+    public function publicDownloadPDF($invoice_no)
+    {
+        $invoice = Invoice::with('items')->where('invoice_no', $invoice_no)->firstOrFail();
+
+        $pdf = PDF::loadView('invoice.pdf_template', compact('invoice'));
+
+        // Langsung download file PDF-nya
+        return $pdf->download($invoice->invoice_no . '.pdf');
+    }
 }

@@ -1002,3 +1002,9 @@ Route::prefix('admin/invoice')->name('invoice.')->group(function () {
     Route::get('/{id}/pdf', [InvoiceController::class, 'streamPDF'])->name('pdf');
 
 });
+
+// Rute Publik untuk Cek Invoice
+Route::get('/cek-invoice', [App\Http\Controllers\InvoiceController::class, 'track'])->name('public.invoice.track');
+
+// Rute Publik untuk Download PDF (Tanpa login Admin)
+Route::get('/invoice/{invoice_no}/download', [App\Http\Controllers\InvoiceController::class, 'publicDownloadPDF'])->name('public.invoice.download');
