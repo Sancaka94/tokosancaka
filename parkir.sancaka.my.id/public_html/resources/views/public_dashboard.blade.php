@@ -51,28 +51,64 @@
                 <div class="text-4xl opacity-80">🏍️</div>
             </div>
 
-            <div class="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105" style="border-radius: 8px;">
-                <div>
-                    <h5 class="text-orange-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Kemarin</h5>
-                    <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($data['pendapatan_kemarin'] ?? 0, 0, ',', '.') }}</p>
+            <div class="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden" style="border-radius: 8px;">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <h5 class="text-orange-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Kemarin</h5>
+                        <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($data['pendapatan_kemarin'] ?? 0, 0, ',', '.') }}</p>
+                    </div>
+                    <div class="text-4xl opacity-90">⏳</div>
                 </div>
-                <div class="text-4xl opacity-90">⏳</div>
             </div>
 
-            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105" style="border-radius: 8px;">
-                <div>
-                    <h5 class="text-green-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Hari Ini</h5>
-                    <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($data['total_pendapatan'] ?? 0, 0, ',', '.') }}</p>
+            @php
+                $pendapatanHariIni = $data['total_pendapatan'] ?? 0;
+                $pendapatanKemarin = $data['pendapatan_kemarin'] ?? 0;
+                $selisihHariIni = $pendapatanHariIni - $pendapatanKemarin;
+                $persenHariIni = $pendapatanKemarin > 0 ? ($selisihHariIni / $pendapatanKemarin) * 100 : ($pendapatanHariIni > 0 ? 100 : 0);
+            @endphp
+            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden" style="border-radius: 8px;">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <h5 class="text-green-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Hari Ini</h5>
+                        <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($pendapatanHariIni, 0, ',', '.') }}</p>
+                    </div>
+                    <div class="text-4xl opacity-90">💵</div>
                 </div>
-                <div class="text-4xl opacity-90">💵</div>
+                <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
+                    @if($selisihHariIni >= 0)
+                        <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                        <span>Naik {{ number_format(abs($persenHariIni), 1, ',', '.') }}% (+Rp {{ number_format(abs($selisihHariIni), 0, ',', '.') }})</span>
+                    @else
+                        <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                        <span class="text-red-100">Turun {{ number_format(abs($persenHariIni), 1, ',', '.') }}% (-Rp {{ number_format(abs($selisihHariIni), 0, ',', '.') }})</span>
+                    @endif
+                </div>
             </div>
 
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105" style="border-radius: 8px;">
-                <div>
-                    <h5 class="text-blue-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Bulan Ini</h5>
-                    <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($data['pendapatan_bulan_ini'] ?? 0, 0, ',', '.') }}</p>
+            @php
+                $pendapatanBulanIni = $data['pendapatan_bulan_ini'] ?? 0;
+                $pendapatanBulanKemarin = $data['pendapatan_bulan_kemarin'] ?? 0; // Pastikan data ini dikirim dari controller
+                $selisihBulanIni = $pendapatanBulanIni - $pendapatanBulanKemarin;
+                $persenBulanIni = $pendapatanBulanKemarin > 0 ? ($selisihBulanIni / $pendapatanBulanKemarin) * 100 : ($pendapatanBulanIni > 0 ? 100 : 0);
+            @endphp
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden" style="border-radius: 8px;">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <h5 class="text-blue-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Bulan Ini</h5>
+                        <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($pendapatanBulanIni, 0, ',', '.') }}</p>
+                    </div>
+                    <div class="text-4xl opacity-90">📈</div>
                 </div>
-                <div class="text-4xl opacity-90">📈</div>
+                <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
+                    @if($selisihBulanIni >= 0)
+                        <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                        <span>Naik {{ number_format(abs($persenBulanIni), 1, ',', '.') }}% (+Rp {{ number_format(abs($selisihBulanIni), 0, ',', '.') }})</span>
+                    @else
+                        <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                        <span class="text-red-100">Turun {{ number_format(abs($persenBulanIni), 1, ',', '.') }}% (-Rp {{ number_format(abs($selisihBulanIni), 0, ',', '.') }})</span>
+                    @endif
+                </div>
             </div>
 
         </div>
