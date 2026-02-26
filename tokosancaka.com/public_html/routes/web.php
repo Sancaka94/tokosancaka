@@ -104,6 +104,8 @@ use App\Http\Controllers\SellerRegisterController;
 use App\Http\Controllers\SellerReviewController;
 use App\Http\Controllers\Admin\PerizinanController;
 
+use App\Http\Controllers\InvoiceController;
+
 use App\Http\Controllers\CashflowController;
 
 // Website fontend WA Integration
@@ -976,3 +978,4 @@ Route::prefix('admin')->group(function () {
     Route::delete('/contacts/{id}', [App\Http\Controllers\CashflowContactController::class, 'destroy'])->name('contacts.destroy');
 });
 
+Route::get('/admin/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');

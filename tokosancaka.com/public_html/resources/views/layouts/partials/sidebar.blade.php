@@ -385,6 +385,14 @@
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Data Kontak & Hutang</span>
             </a>
 
+            {{-- 3. Menu Buat Invoice (BARU) --}}
+            <a href="{{ route('invoice.create') }}" wire:navigate
+               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+               class="group flex items-center px-3 py-2 mt-0.5 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('invoice.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                <i class="fa-solid fa-file-invoice-dollar fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('invoice.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Buat Invoice Otomatis</span>
+            </a>
+
             {{-- Laporan Keuangan --}}
             <div x-data="{ open: {{ request()->routeIs('admin.saldo.requests.*') || request()->routeIs('admin.keuangan.*') || request()->routeIs('admin.akuntansi.*') || request()->routeIs('admin.laporan.*') || request()->is('admin/wallet*') || request()->routeIs('admin.coa.*') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
