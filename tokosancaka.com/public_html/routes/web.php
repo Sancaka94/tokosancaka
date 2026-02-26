@@ -1006,8 +1006,15 @@ Route::prefix('admin/invoice')->name('invoice.')->group(function () {
 
 });
 
-// Rute Publik untuk Cek Invoice (Di luar grup admin)
+// ========================================================
+// RUTE PUBLIK INVOICE & TRACKING (Akses Customer)
+// ========================================================
+
+// 1. Halaman Pencarian & Lacak Progress Invoice
 Route::get('/cek-invoice', [App\Http\Controllers\InvoiceController::class, 'track'])->name('public.invoice.track');
 
-// Rute Publik untuk Download PDF (Di luar grup admin)
+// 2. Download PDF Invoice (Tanpa harus login admin)
 Route::get('/invoice/{invoice_no}/download', [App\Http\Controllers\InvoiceController::class, 'publicDownloadPDF'])->name('public.invoice.download');
+
+// 3. Proses Pembayaran via DOKU dari halaman tracking
+Route::post('/invoice/{id}/pay', [App\Http\Controllers\InvoiceController::class, 'payWithDoku'])->name('public.invoice.pay');
