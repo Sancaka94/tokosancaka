@@ -31,7 +31,13 @@
                 <td>
                     <strong>Bill To:</strong><br>
                     {{ $invoice->customer_name }}<br>
-                    {{ $invoice->company_name }}<br>
+                    @if($invoice->company_name)
+                        {{ $invoice->company_name }}<br>
+                    @endif
+                    @if($invoice->alamat)
+                        {{ $invoice->alamat }}<br>
+                    @endif
+                    <br>
                     Date: {{ date('d F Y', strtotime($invoice->date)) }}
                 </td>
                 <td style="text-align: right;">
@@ -63,6 +69,13 @@
                 @endforeach
             </tbody>
         </table>
+
+        @if($invoice->keterangan)
+        <div style="margin-top: 20px; width: 60%;">
+            <strong>Note:</strong><br>
+            <p style="margin-top: 5px; font-size: 14px; color: #555;">{{ nl2br($invoice->keterangan) }}</p>
+        </div>
+        @endif
 
         <div style="margin-top: 20px; text-align: right; background: #003399; color: white; padding: 10px;">
             <strong>Grand Total: Rp {{ number_format($invoice->grand_total, 0, ',', '.') }}</strong>

@@ -30,7 +30,14 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">Nama Perusahaan</label>
                     <input type="text" name="company_name" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
+
             </div>
+
+            {{-- Baris 3: Alamat --}}
+                <div class="mb-8">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Alamat Lengkap</label>
+                    <textarea name="alamat" rows="2" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Masukkan alamat lengkap penerima..."></textarea>
+                </div>
 
             {{-- Tabel Produk / Jasa --}}
             <div class="overflow-x-auto mb-4">
