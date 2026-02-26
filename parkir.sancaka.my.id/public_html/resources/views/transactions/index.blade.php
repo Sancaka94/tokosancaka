@@ -11,28 +11,43 @@
     <div class="card-header bg-white border-b-2 border-gray-100">
         <span class="font-bold text-gray-800 text-lg">Catat Kendaraan Masuk</span>
     </div>
-    <div class="card-body bg-gray-50 rounded-b-lg">
-        <form action="{{ route('transactions.store') }}" method="POST" class="flex flex-col md:flex-row gap-4 items-end">
+    <div class="card-body bg-gray-50 rounded-b-lg p-4 md:p-6">
+        <form action="{{ route('transactions.store') }}" method="POST" class="flex flex-col md:flex-row gap-4 md:gap-6 items-end">
             @csrf
-            <div class="w-full md:w-1/3">
-                <label class="block text-sm font-bold text-gray-700 mb-1">Jenis Kendaraan</label>
-                <select name="vehicle_type" class="form-control bg-white shadow-sm" required tabindex="2">
-                    <option value="motor">Motor</option>
-                    <option value="mobil">Mobil</option>
+
+            <div class="w-full md:w-1/4">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Jenis</label>
+                <select name="vehicle_type" class="form-control bg-white shadow-sm text-lg py-3" required tabindex="2">
+                    <option value="motor">🏍️ Motor</option>
+                    <option value="mobil">🚗 Mobil</option>
                 </select>
             </div>
-            <div class="w-full md:w-1/3">
-                <label class="block text-sm font-bold text-gray-700 mb-1">Nomor Plat (Tanpa Spasi / Dengan Spasi)</label>
-                <input type="text" name="plate_number" id="plate_number" class="form-control shadow-sm uppercase font-bold text-lg tracking-widest" placeholder="Contoh: AE 1234 XX" required autocomplete="off" autofocus tabindex="1">
+
+            <div class="w-full md:w-2/4">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Nomor Tiket / Plat</label>
+                <input type="text"
+                       name="plate_number"
+                       id="plate_number"
+                       class="form-control shadow-sm uppercase font-black text-2xl tracking-widest py-3 text-center md:text-left"
+                       placeholder="ANGKA..."
+                       required
+                       autocomplete="off"
+                       autofocus
+                       tabindex="1"
+                       inputmode="numeric"
+                       pattern="[A-Za-z0-9\s]*"
+                       oninput="this.value = this.value.toUpperCase()">
             </div>
-            <div class="w-full md:w-1/3">
-                <button type="submit" class="btn-primary w-full py-2.5 text-lg shadow-md font-bold flex justify-center items-center gap-2" tabindex="3">
-                    <span>Masuk & Cetak Karcis</span> &rarr;
+
+            <div class="w-full md:w-1/4 mt-2 md:mt-0">
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-5 md:py-3 px-4 rounded-xl shadow-lg flex justify-center items-center gap-3 transition-transform active:scale-95" tabindex="3">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    <span class="font-black text-2xl md:text-xl uppercase tracking-wider">CETAK</span>
                 </button>
             </div>
         </form>
         @error('plate_number')
-            <p class="text-red-500 text-xs mt-2 font-bold">{{ $message }}</p>
+            <p class="text-red-500 text-sm mt-3 font-bold text-center md:text-left">{{ $message }}</p>
         @enderror
     </div>
 </div>
@@ -135,21 +150,22 @@
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         // Fokuskan ulang ke input plat nomor agar pegawai siap mengetik lagi
-        document.getElementById('plate_number').focus();
+        const plateInput = document.getElementById('plate_number');
+        if(plateInput) plateInput.focus();
 
-        // Buka jendela print rahasia/kecil
-        let printWindow = window.open("{{ route('transactions.print', session('print_id')) }}", "PrintKarcis", "width=400,height=600");
+        // Menggunakan Iframe tersembunyi agar tidak buka tab baru di HP/Tablet
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = "{{ route('transactions.print', session('print_id')) }}";
 
-        // Memaksa browser untuk langsung mengeksekusi print di window tersebut
-        if (printWindow) {
-            printWindow.onload = function() {
-                printWindow.print();
-                // Opsional: Langsung tutup jendela setelah dialog print selesai/ditutup
-                printWindow.onafterprint = function () {
-                    printWindow.close();
-                }
-            };
-        }
+        // Memasukkan iframe ke dalam dokumen
+        document.body.appendChild(iframe);
+
+        // Langsung trigger print otomatis ketika struk selesai dimuat di background
+        iframe.onload = function() {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        };
     });
 </script>
 @endif
