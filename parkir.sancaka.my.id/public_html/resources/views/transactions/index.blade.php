@@ -246,6 +246,22 @@
         // Jika tidak menemukan barcode di frame, abaikan saja sampai ketemu.
         // Console log dimatikan agar browser tidak berat.
     }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const plateInput = document.getElementById('plate_number');
+
+        if(plateInput) {
+            // Trik 1: Beri sedikit delay agar browser selesai memuat seluruh elemen
+            setTimeout(function() {
+                // Trik 2: Paksa fokus dan simulasikan klik pada elemen
+                plateInput.focus();
+                plateInput.click();
+
+                // Trik 3 (Khusus beberapa versi Android): scroll sedikit ke inputan
+                plateInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 500); // Delay 0.5 detik
+        }
+    });
 </script>
 
 @endsection
