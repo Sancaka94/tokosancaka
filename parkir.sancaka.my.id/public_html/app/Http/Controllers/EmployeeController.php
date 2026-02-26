@@ -10,49 +10,77 @@ use Carbon\Carbon;
 
 class EmployeeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
-        $query = User::query();
 
         // ==========================================
-        // 1. FILTER DATA BERDASARKAN ROLE (AUTH)
+        // 1. DATA TABEL ATAS (REKAP PEGAWAI)
         // ==========================================
+        $query = User::query();
+
         if ($user->role === 'superadmin') {
-            // Superadmin melihat semua data (Admin & Operator)
             $query->whereIn('role', ['admin', 'operator']);
         } elseif ($user->role === 'admin') {
-            // Admin hanya melihat pegawai di bawah tenant/cabangnya
             $query->where('tenant_id', $user->tenant_id)
                   ->whereIn('role', ['admin', 'operator']);
         } else {
-            // Operator HANYA bisa melihat data dirinya sendiri
             $query->where('id', $user->id);
         }
 
-        $employees = $query->latest()->paginate(10);
+        $employees = $query->latest()->paginate(10, ['*'], 'emp_page');
 
-        // ==========================================
-        // 2. HITUNG REKAPAN PENDAPATAN PEGAWAI
-        // ==========================================
         $currentMonth = Carbon::now()->month;
         $currentYear = Carbon::now()->year;
 
         foreach ($employees as $emp) {
-            // Hitung total gaji yang sudah DIBAYARKAN di bulan ini
             $emp->pendapatan_bulan_ini = FinancialReport::where('kategori', 'Gaji Pegawai')
                 ->where('keterangan', 'like', '%' . $emp->name . '%')
                 ->whereMonth('tanggal', $currentMonth)
                 ->whereYear('tanggal', $currentYear)
                 ->sum('nominal');
 
-            // Hitung total keseluruhan gaji dari awal sampai sekarang
             $emp->total_pendapatan = FinancialReport::where('kategori', 'Gaji Pegawai')
                 ->where('keterangan', 'like', '%' . $emp->name . '%')
                 ->sum('nominal');
         }
 
-        return view('employees.index', compact('employees'));
+        // ==========================================
+        // 2. DATA TABEL BAWAH (RIWAYAT HARIAN GAJI)
+        // ==========================================
+        $historyQuery = FinancialReport::where('kategori', 'Gaji Pegawai');
+
+        // Filter Hak Akses Riwayat
+        if ($user->role === 'admin') {
+            // Ambil daftar nama pegawai di bawah admin ini
+            $tenantEmployeeNames = User::where('tenant_id', $user->tenant_id)->pluck('name')->toArray();
+            if (!empty($tenantEmployeeNames)) {
+                $historyQuery->where(function($q) use ($tenantEmployeeNames) {
+                    foreach ($tenantEmployeeNames as $name) {
+                        $q->orWhere('keterangan', 'like', '%' . $name . '%');
+                    }
+                });
+            } else {
+                $historyQuery->whereRaw('1 = 0'); // Kosongkan jika tidak ada pegawai
+            }
+        } elseif ($user->role === 'operator') {
+            $historyQuery->where('keterangan', 'like', '%' . $user->name . '%');
+        }
+
+        // Filter Pencarian Tanggal
+        if ($request->filled('tanggal')) {
+            $historyQuery->whereDate('tanggal', $request->tanggal);
+        }
+
+        // Filter Pencarian Nama / Keterangan
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $historyQuery->where('keterangan', 'like', '%' . $search . '%');
+        }
+
+        $salaryHistory = $historyQuery->orderBy('tanggal', 'desc')->paginate(15, ['*'], 'hist_page')->withQueryString();
+
+        return view('employees.index', compact('employees', 'salaryHistory'));
     }
 
     public function create()
