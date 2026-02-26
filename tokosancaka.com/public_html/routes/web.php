@@ -979,10 +979,26 @@ Route::prefix('admin')->group(function () {
 });
 
 Route::prefix('admin/invoice')->name('invoice.')->group(function () {
+
+    // Menampilkan halaman riwayat invoice (Tabel) -> route('invoice.index')
     Route::get('/', [InvoiceController::class, 'index'])->name('index');
+
+    // Menampilkan form buat invoice baru -> route('invoice.create')
     Route::get('/create', [InvoiceController::class, 'create'])->name('create');
+
+    // Proses simpan data ke database -> route('invoice.store')
     Route::post('/store', [InvoiceController::class, 'store'])->name('store');
-    Route::get('/{id}/pdf', [InvoiceController::class, 'streamPDF'])->name('pdf');
-    Route::get('/{id}/edit', [InvoiceController::class, 'edit'])->name('edit'); // Jika nanti buat fitur edit
+
+    // Menampilkan halaman edit invoice -> route('invoice.edit')
+    Route::get('/{id}/edit', [InvoiceController::class, 'edit'])->name('edit');
+
+    // Proses update data invoice -> route('invoice.update')
+    Route::put('/{id}', [InvoiceController::class, 'update'])->name('update');
+
+    // Proses hapus invoice -> route('invoice.destroy')
     Route::delete('/{id}', [InvoiceController::class, 'destroy'])->name('destroy');
+
+    // Menampilkan dan mencetak PDF -> route('invoice.pdf')
+    Route::get('/{id}/pdf', [InvoiceController::class, 'streamPDF'])->name('pdf');
+
 });
