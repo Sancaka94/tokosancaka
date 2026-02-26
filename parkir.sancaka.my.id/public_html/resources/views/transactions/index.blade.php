@@ -246,7 +246,9 @@
         // Jika tidak menemukan barcode di frame, abaikan saja sampai ketemu.
         // Console log dimatikan agar browser tidak berat.
     }
+</script>
 
+<script>
     document.addEventListener("DOMContentLoaded", function() {
         const plateInput = document.getElementById('plate_number');
 
