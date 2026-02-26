@@ -27,6 +27,8 @@ class InvoiceController extends Controller {
             'invoice_no' => $request->invoice_no,
             'customer_name' => $request->customer_name,
             'company_name' => $request->company_name,
+            'alamat' => $request->alamat,             // Tambahan baru
+            'keterangan' => $request->keterangan,     // Tambahan baru
             'date' => $request->date,
             'subtotal' => $request->subtotal,
             'grand_total' => $request->subtotal,
@@ -37,8 +39,15 @@ class InvoiceController extends Controller {
             $invoice->update(['signature_path' => $path]);
         }
 
+        // Simpan data array items
         foreach ($request->items as $item) {
-            $invoice->items()->create($item);
+            $invoice->items()->create([
+                'description' => $item['description'],
+                'qty' => $item['qty'],
+                'price' => $item['price'],
+                // Mengambil dari total_raw yang berupa angka murni bukan text rupiah
+                'total' => $item['total_raw']
+            ]);
         }
 
         return redirect()->route('invoice.pdf', $invoice->id);
