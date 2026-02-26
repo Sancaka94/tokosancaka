@@ -8,6 +8,14 @@ use App\Models\InvoiceItem;
 use PDF;
 
 class InvoiceController extends Controller {
+
+// Tampilkan tabel riwayat invoice
+    public function index() {
+        // Mengambil data terbaru dengan pagination
+        $invoices = Invoice::orderBy('created_at', 'desc')->paginate(10);
+        return view('invoice.index', compact('invoices'));
+    }
+
     public function create() {
         // Generate nomor invoice otomatis: INV-YYYYMMDD-RAND
         $invoiceNo = 'INV-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(2)));
