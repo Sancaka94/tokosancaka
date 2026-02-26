@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use Illuminate\Support\Facades\Storage;
+use App\Services\DokuJokulService;
+use Illuminate\Support\Facades\Log;
 use PDF; // Pastikan alias PDF sudah terdaftar di config/app.php atau gunakan Barryvdh\DomPDF\Facade\Pdf;
 
 class InvoiceController extends Controller
@@ -262,5 +264,66 @@ class InvoiceController extends Controller
         ]);
 
         return redirect()->route('invoice.index')->with('success', 'Status & Keterangan tracking berhasil diperbarui!');
+    }
+
+    /**
+     * Proses Pembayaran via DOKU dari Halaman Publik (Auto-Detect Logic)
+     */
+    public function payWithDoku(Request $request, $id)
+    {
+        $invoice = Invoice::findOrFail($id);
+
+        if ($invoice->sisa_tagihan <= 0) {
+            return redirect()->back()->with('error', 'Tagihan ini sudah lunas.');
+        }
+
+        $amount = 0;
+        $paymentType = '';
+        $status = $invoice->status ?? 'Invoice Diterbitkan';
+
+        // LOGIKA PENENTUAN NOMINAL TAGIHAN
+        if ($status == 'Invoice Diterbitkan') {
+            if ($invoice->dp > 0) {
+                $amount = $invoice->dp;
+                $paymentType = 'DP';
+            } else {
+                $amount = $invoice->grand_total;
+                $paymentType = 'LUNAS_LANGSUNG';
+            }
+        } elseif ($status == 'Finishing & Siap Kirim') {
+            // Jika sudah tahap akhir, bayar sisa kekurangannya
+            $amount = $invoice->sisa_tagihan;
+            $paymentType = 'PELUNASAN';
+        } else {
+            return redirect()->back()->with('error', 'Saat ini tidak ada tagihan yang harus dibayar, atau pembayaran Anda sedang diverifikasi.');
+        }
+
+        try {
+            $dokuService = new \App\Services\DokuJokulService();
+
+            // Reference Number: INV-NOMOR-JENISBAYAR-TIMESTAMP
+            $referenceNo = $invoice->invoice_no . '-' . $paymentType . '-' . time();
+
+            $customerData = [
+                'name' => $invoice->customer_name,
+                'email' => 'customer@sancakaexpress.com',
+                'phone' => '085745808809'
+            ];
+
+            // Panggil API DOKU
+            $paymentUrl = $dokuService->createPayment($referenceNo, $amount, $customerData);
+
+            Log::info("DOKU Checkout Request", [
+                'invoice' => $invoice->invoice_no,
+                'jenis' => $paymentType,
+                'nominal' => $amount
+            ]);
+
+            return redirect()->away($paymentUrl);
+
+        } catch (\Exception $e) {
+            Log::error("DOKU Checkout Error: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Maaf, terjadi kesalahan saat menghubungkan ke DOKU. Silakan coba lagi.');
+        }
     }
 }
