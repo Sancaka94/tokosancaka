@@ -88,5 +88,59 @@
             </tfoot>
         </table>
     </div>
+
+    <div class="card shadow-sm border-0 mt-8">
+    <div class="card-header bg-white border-b-2 border-green-500 text-center py-4">
+        <h2 class="text-xl font-bold text-gray-800 uppercase tracking-wider">Rekap Kas Manual (Luar Sistem)</h2>
+    </div>
+
+    <div class="card-body p-0 overflow-x-auto">
+        <table class="table-custom min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase">No</th>
+                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Kategori Utama</th>
+                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Keterangan</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase">Nominal</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-100">
+                @forelse($kasManual as $index => $kas)
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-center text-sm text-gray-700 align-top">{{ $index + 1 }}</td>
+                    <td class="px-4 py-3 text-sm font-bold text-gray-800 align-top">{{ $kas->kategori }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600 align-top">{{ $kas->keterangan ?? '-' }}</td>
+                    <td class="px-4 py-3 text-right text-sm font-bold align-top whitespace-nowrap">
+                        @if($kas->jenis == 'pemasukan')
+                            <span class="text-green-600">+ Rp {{ number_format($kas->nominal, 0, ',', '.') }}</span>
+                        @else
+                            <span class="text-red-600">- Rp {{ number_format($kas->nominal, 0, ',', '.') }}</span>
+                        @endif
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="4" class="px-4 py-8 text-center text-gray-500 italic">Tidak ada catatan kas manual pada tanggal ini.</td>
+                </tr>
+                @endforelse
+            </tbody>
+            <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                <tr>
+                    <td colspan="3" class="px-4 py-3 text-right font-bold text-gray-700 uppercase">Total Pemasukan Manual :</td>
+                    <td class="px-4 py-3 text-right font-black text-lg text-green-600 whitespace-nowrap">+ Rp {{ number_format($totalPemasukanManual, 0, ',', '.') }}</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="px-4 py-3 text-right font-bold text-gray-700 uppercase">Total Pengeluaran Manual :</td>
+                    <td class="px-4 py-3 text-right font-black text-lg text-red-600 whitespace-nowrap">- Rp {{ number_format($totalPengeluaranManual, 0, ',', '.') }}</td>
+                </tr>
+                <tr class="bg-blue-100 border-t border-blue-200">
+                    <td colspan="3" class="px-4 py-4 text-right font-black text-blue-900 uppercase tracking-wider text-lg">TOTAL PENDAPATAN BERSIH HARI INI :<br><span class="text-xs font-normal tracking-normal text-blue-700">(Parkir Otomatis + Pemasukan Manual - Pengeluaran)</span></td>
+                    <td class="px-4 py-4 text-right font-black text-2xl text-blue-700 whitespace-nowrap">Rp {{ number_format($total + $totalPemasukanManual - $totalPengeluaranManual, 0, ',', '.') }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
 </div>
 @endsection

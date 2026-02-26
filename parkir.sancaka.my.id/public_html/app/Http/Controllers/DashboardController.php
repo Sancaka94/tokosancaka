@@ -177,25 +177,28 @@ class DashboardController extends Controller
         ));
     }
 
-    public function harian(Request $request)
+   public function harian(Request $request)
     {
         $tanggal = $request->tanggal ?? today()->toDateString();
 
-        // Perbaikan: Ubah entry_time ke exit_time, dan tambahkan 'with operator'
+        // 1. AMBIL DATA TRANSAKSI PARKIR (SISTEM TIKET)
         $transactions = Transaction::with('operator')->whereDate('exit_time', $tanggal)->latest()->paginate(20);
 
         $rekap = Transaction::select(
-            DB::raw('SUM(CASE WHEN vehicle_type = "motor" THEN 1 ELSE 0 END) as total_motor'),
-            DB::raw('SUM(CASE WHEN vehicle_type = "mobil" THEN 1 ELSE 0 END) as total_mobil'),
-            DB::raw('SUM(fee) as total_parkir'),
-            DB::raw('SUM(IFNULL(toilet_fee, 0)) as total_toilet'),
             DB::raw('SUM(fee + IFNULL(toilet_fee, 0)) as total_semua')
         )->whereDate('exit_time', $tanggal)->first();
 
-        // Perbaikan: Mendefinisikan $total agar bisa dipanggil di View
         $total = $rekap->total_semua ?? 0;
 
-        return view('laporan.harian', compact('transactions', 'tanggal', 'rekap', 'total'));
+        // 2. AMBIL DATA KAS MANUAL (INPUTAN GELONDONGAN)
+        $kasManual = \App\Models\FinancialReport::whereDate('tanggal', $tanggal)->latest()->get();
+        $totalPemasukanManual = $kasManual->where('jenis', 'pemasukan')->sum('nominal');
+        $totalPengeluaranManual = $kasManual->where('jenis', 'pengeluaran')->sum('nominal');
+
+        return view('laporan.harian', compact(
+            'transactions', 'tanggal', 'total',
+            'kasManual', 'totalPemasukanManual', 'totalPengeluaranManual'
+        ));
     }
 
     public function bulanan(Request $request)
