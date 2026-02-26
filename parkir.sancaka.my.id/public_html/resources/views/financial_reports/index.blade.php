@@ -50,20 +50,34 @@
                 <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
                     <p class="text-xs text-gray-500 font-semibold uppercase">1. Hari Ini</p>
                     <h4 class="text-xl font-bold text-green-600 mt-1">Rp {{ number_format($pemasukanHariIni, 0, ',', '.') }}</h4>
+                    <div class="mt-2 flex items-center text-xs">
+                        @if($selisihMasukHari['rp'] >= 0)
+                            <svg class="w-3 h-3 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            <span class="text-green-600 font-bold">Naik {{ number_format(abs($selisihMasukHari['persen']), 1, ',', '.') }}%</span>
+                            <span class="text-green-600 ml-1">(+Rp {{ number_format(abs($selisihMasukHari['rp']), 0, ',', '.') }})</span>
+                        @else
+                            <svg class="w-3 h-3 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                            <span class="text-red-600 font-bold">Turun {{ number_format(abs($selisihMasukHari['persen']), 1, ',', '.') }}%</span>
+                            <span class="text-red-600 ml-1">(-Rp {{ number_format(abs($selisihMasukHari['rp']), 0, ',', '.') }})</span>
+                        @endif
+                        <span class="text-gray-400 ml-1">vs Kemarin</span>
+                    </div>
                 </div>
 
                 <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
                     <p class="text-xs text-gray-500 font-semibold uppercase">2. Bulan Ini</p>
                     <h4 class="text-xl font-bold text-green-600 mt-1">Rp {{ number_format($pemasukanBulanIni, 0, ',', '.') }}</h4>
-                    <div class="mt-2 flex items-center text-xs">
-                        @if($pemasukanBulanIni >= $pemasukanBulanLalu)
-                            <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                            <span class="text-green-600 font-medium">Naik</span>
+                    <div class="mt-2 flex items-center text-xs flex-wrap">
+                        @if($selisihMasukBulan['rp'] >= 0)
+                            <svg class="w-3 h-3 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            <span class="text-green-600 font-bold">Naik {{ number_format(abs($selisihMasukBulan['persen']), 1, ',', '.') }}%</span>
+                            <span class="text-green-600 ml-1">(+Rp {{ number_format(abs($selisihMasukBulan['rp']), 0, ',', '.') }})</span>
                         @else
-                            <svg class="w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                            <span class="text-red-600 font-medium">Turun</span>
+                            <svg class="w-3 h-3 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                            <span class="text-red-600 font-bold">Turun {{ number_format(abs($selisihMasukBulan['persen']), 1, ',', '.') }}%</span>
+                            <span class="text-red-600 ml-1">(-Rp {{ number_format(abs($selisihMasukBulan['rp']), 0, ',', '.') }})</span>
                         @endif
-                        <span class="text-gray-400 ml-1">dari bln lalu (Rp {{ number_format($pemasukanBulanLalu, 0, ',', '.') }})</span>
+                        <span class="text-gray-400 ml-1">vs Bln Lalu</span>
                     </div>
                 </div>
 
@@ -76,12 +90,15 @@
                     <p class="text-xs text-gray-500 font-semibold uppercase">4. Rata-Rata Bulan Ini</p>
                     <h4 class="text-xl font-bold text-gray-700 mt-1">Rp {{ number_format($rataPemasukanBulanIni, 0, ',', '.') }} <span class="text-xs font-normal">/ hari</span></h4>
                     <div class="mt-2 flex items-center text-xs">
-                        @if($rataPemasukanBulanIni >= $rataPemasukanBulanLalu)
-                            <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                        @if($selisihMasukRata['rp'] >= 0)
+                            <svg class="w-3 h-3 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            <span class="text-green-600 font-bold">+ {{ number_format(abs($selisihMasukRata['persen']), 1, ',', '.') }}%</span>
+                            <span class="text-green-600 ml-1">(+Rp {{ number_format(abs($selisihMasukRata['rp']), 0, ',', '.') }})</span>
                         @else
-                            <svg class="w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                            <svg class="w-3 h-3 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                            <span class="text-red-600 font-bold">- {{ number_format(abs($selisihMasukRata['persen']), 1, ',', '.') }}%</span>
+                            <span class="text-red-600 ml-1">(-Rp {{ number_format(abs($selisihMasukRata['rp']), 0, ',', '.') }})</span>
                         @endif
-                        <span class="text-gray-400">vs Rp {{ number_format($rataPemasukanBulanLalu, 0, ',', '.') }}</span>
                     </div>
                 </div>
 
@@ -106,21 +123,37 @@
                 <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
                     <p class="text-xs text-gray-500 font-semibold uppercase">1. Hari Ini</p>
                     <h4 class="text-xl font-bold text-red-600 mt-1">Rp {{ number_format($pengeluaranHariIni, 0, ',', '.') }}</h4>
+                    <div class="mt-2 flex items-center text-xs">
+                        {{-- Logika Pengeluaran Dibalik: Naik = Merah (Buruk), Turun = Hijau (Baik) --}}
+                        @if($selisihKeluarHari['rp'] > 0)
+                            <svg class="w-3 h-3 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            <span class="text-red-600 font-bold">Naik {{ number_format(abs($selisihKeluarHari['persen']), 1, ',', '.') }}%</span>
+                            <span class="text-red-600 ml-1">(+Rp {{ number_format(abs($selisihKeluarHari['rp']), 0, ',', '.') }})</span>
+                        @elseif($selisihKeluarHari['rp'] < 0)
+                            <svg class="w-3 h-3 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                            <span class="text-green-600 font-bold">Turun {{ number_format(abs($selisihKeluarHari['persen']), 1, ',', '.') }}%</span>
+                            <span class="text-green-600 ml-1">(-Rp {{ number_format(abs($selisihKeluarHari['rp']), 0, ',', '.') }})</span>
+                        @else
+                            <span class="text-gray-500 font-bold">Sama dengan kemarin</span>
+                        @endif
+                    </div>
                 </div>
 
                 <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
                     <p class="text-xs text-gray-500 font-semibold uppercase">2. Bulan Ini</p>
                     <h4 class="text-xl font-bold text-red-600 mt-1">Rp {{ number_format($pengeluaranBulanIni, 0, ',', '.') }}</h4>
-                    <div class="mt-2 flex items-center text-xs">
-                        {{-- Logika pengeluaran: Jika naik = Merah (karena boros), Jika turun = Hijau (hemat) --}}
-                        @if($pengeluaranBulanIni > $pengeluaranBulanLalu)
-                            <svg class="w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                            <span class="text-red-600 font-medium">Naik</span>
+                    <div class="mt-2 flex items-center text-xs flex-wrap">
+                        @if($selisihKeluarBulan['rp'] > 0)
+                            <svg class="w-3 h-3 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            <span class="text-red-600 font-bold">Naik {{ number_format(abs($selisihKeluarBulan['persen']), 1, ',', '.') }}%</span>
+                            <span class="text-red-600 ml-1">(+Rp {{ number_format(abs($selisihKeluarBulan['rp']), 0, ',', '.') }})</span>
+                        @elseif($selisihKeluarBulan['rp'] < 0)
+                            <svg class="w-3 h-3 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                            <span class="text-green-600 font-bold">Turun {{ number_format(abs($selisihKeluarBulan['persen']), 1, ',', '.') }}%</span>
+                            <span class="text-green-600 ml-1">(-Rp {{ number_format(abs($selisihKeluarBulan['rp']), 0, ',', '.') }})</span>
                         @else
-                            <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                            <span class="text-green-600 font-medium">Turun</span>
+                            <span class="text-gray-500 font-bold">Sama dengan bln lalu</span>
                         @endif
-                        <span class="text-gray-400 ml-1">dari bln lalu (Rp {{ number_format($pengeluaranBulanLalu, 0, ',', '.') }})</span>
                     </div>
                 </div>
 
@@ -132,6 +165,17 @@
                 <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
                     <p class="text-xs text-gray-500 font-semibold uppercase">4. Rata-Rata Bulan Ini</p>
                     <h4 class="text-xl font-bold text-gray-700 mt-1">Rp {{ number_format($rataPengeluaranBulanIni, 0, ',', '.') }} <span class="text-xs font-normal">/ hari</span></h4>
+                    <div class="mt-2 flex items-center text-xs">
+                        @if($selisihKeluarRata['rp'] > 0)
+                            <svg class="w-3 h-3 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            <span class="text-red-600 font-bold">+ {{ number_format(abs($selisihKeluarRata['persen']), 1, ',', '.') }}%</span>
+                            <span class="text-red-600 ml-1">(+Rp {{ number_format(abs($selisihKeluarRata['rp']), 0, ',', '.') }})</span>
+                        @elseif($selisihKeluarRata['rp'] < 0)
+                            <svg class="w-3 h-3 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                            <span class="text-green-600 font-bold">- {{ number_format(abs($selisihKeluarRata['persen']), 1, ',', '.') }}%</span>
+                            <span class="text-green-600 ml-1">(-Rp {{ number_format(abs($selisihKeluarRata['rp']), 0, ',', '.') }})</span>
+                        @endif
+                    </div>
                 </div>
 
                 <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">

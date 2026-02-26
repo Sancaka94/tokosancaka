@@ -17,7 +17,6 @@ class FinancialReportController extends Controller
     {
         $query = FinancialReport::orderBy('tanggal', 'desc')->latest();
 
-        // Filter berdasarkan bulan/tahun tetap dipertahankan
         if ($request->filled('bulan')) {
             $query->whereMonth('tanggal', $request->bulan);
         }
@@ -27,22 +26,26 @@ class FinancialReportController extends Controller
 
         $reports = $query->paginate(20)->withQueryString();
 
-        // ---------------------------------------------------------
-        // 1. SUMMARY KAS KESELURUHAN (Total Semua Data)
-        // ---------------------------------------------------------
+        // 1. SUMMARY KAS KESELURUHAN
         $totalPemasukan = FinancialReport::where('jenis', 'pemasukan')->sum('nominal');
         $totalPengeluaran = FinancialReport::where('jenis', 'pengeluaran')->sum('nominal');
         $saldo = $totalPemasukan - $totalPengeluaran;
 
-        // ---------------------------------------------------------
-        // 2. STATISTIK WAKTU KHUSUS (Hari Ini, Bulan Ini, dll)
-        // ---------------------------------------------------------
+        // 2. STATISTIK WAKTU KHUSUS
         $now = \Carbon\Carbon::now();
         $today = \Carbon\Carbon::today();
+        $yesterday = \Carbon\Carbon::yesterday();
         $lastMonthDate = $now->copy()->subMonth();
+
+        // Helper untuk menghitung persentase
+        $hitungPersen = function($baru, $lama) {
+            if ($lama == 0) return $baru > 0 ? 100 : 0;
+            return (($baru - $lama) / $lama) * 100;
+        };
 
         // -- A. PEMASUKAN --
         $pemasukanHariIni = FinancialReport::where('jenis', 'pemasukan')->whereDate('tanggal', $today)->sum('nominal');
+        $pemasukanKemarin = FinancialReport::where('jenis', 'pemasukan')->whereDate('tanggal', $yesterday)->sum('nominal');
         $pemasukanBulanIni = FinancialReport::where('jenis', 'pemasukan')->whereMonth('tanggal', $now->month)->whereYear('tanggal', $now->year)->sum('nominal');
         $pemasukanBulanLalu = FinancialReport::where('jenis', 'pemasukan')->whereMonth('tanggal', $lastMonthDate->month)->whereYear('tanggal', $lastMonthDate->year)->sum('nominal');
         $pemasukanTahunIni = FinancialReport::where('jenis', 'pemasukan')->whereYear('tanggal', $now->year)->sum('nominal');
@@ -50,24 +53,35 @@ class FinancialReportController extends Controller
         $rataPemasukanBulanIni = $now->daysInMonth > 0 ? $pemasukanBulanIni / $now->daysInMonth : 0;
         $rataPemasukanBulanLalu = $lastMonthDate->daysInMonth > 0 ? $pemasukanBulanLalu / $lastMonthDate->daysInMonth : 0;
 
+        // Selisih Pemasukan
+        $selisihMasukHari = ['rp' => $pemasukanHariIni - $pemasukanKemarin, 'persen' => $hitungPersen($pemasukanHariIni, $pemasukanKemarin)];
+        $selisihMasukBulan = ['rp' => $pemasukanBulanIni - $pemasukanBulanLalu, 'persen' => $hitungPersen($pemasukanBulanIni, $pemasukanBulanLalu)];
+        $selisihMasukRata = ['rp' => $rataPemasukanBulanIni - $rataPemasukanBulanLalu, 'persen' => $hitungPersen($rataPemasukanBulanIni, $rataPemasukanBulanLalu)];
+
         // -- B. PENGELUARAN --
         $pengeluaranHariIni = FinancialReport::where('jenis', 'pengeluaran')->whereDate('tanggal', $today)->sum('nominal');
+        $pengeluaranKemarin = FinancialReport::where('jenis', 'pengeluaran')->whereDate('tanggal', $yesterday)->sum('nominal');
         $pengeluaranBulanIni = FinancialReport::where('jenis', 'pengeluaran')->whereMonth('tanggal', $now->month)->whereYear('tanggal', $now->year)->sum('nominal');
         $pengeluaranBulanLalu = FinancialReport::where('jenis', 'pengeluaran')->whereMonth('tanggal', $lastMonthDate->month)->whereYear('tanggal', $lastMonthDate->year)->sum('nominal');
 
         $rataPengeluaranBulanIni = $now->daysInMonth > 0 ? $pengeluaranBulanIni / $now->daysInMonth : 0;
         $rataPengeluaranBulanLalu = $lastMonthDate->daysInMonth > 0 ? $pengeluaranBulanLalu / $lastMonthDate->daysInMonth : 0;
 
-        // AMBIL DATA PEGAWAI UNTUK MODAL GAJI
+        // Selisih Pengeluaran
+        $selisihKeluarHari = ['rp' => $pengeluaranHariIni - $pengeluaranKemarin, 'persen' => $hitungPersen($pengeluaranHariIni, $pengeluaranKemarin)];
+        $selisihKeluarBulan = ['rp' => $pengeluaranBulanIni - $pengeluaranBulanLalu, 'persen' => $hitungPersen($pengeluaranBulanIni, $pengeluaranBulanLalu)];
+        $selisihKeluarRata = ['rp' => $rataPengeluaranBulanIni - $rataPengeluaranBulanLalu, 'persen' => $hitungPersen($rataPengeluaranBulanIni, $rataPengeluaranBulanLalu)];
+
         $employees = User::whereIn('role', ['operator', 'admin'])->get();
 
-        // Kirim semua data ke view
         return view('financial_reports.index', compact(
             'reports', 'totalPemasukan', 'totalPengeluaran', 'saldo', 'employees',
-            'pemasukanHariIni', 'pemasukanBulanIni', 'pemasukanBulanLalu', 'pemasukanTahunIni',
+            'pemasukanHariIni', 'pemasukanKemarin', 'pemasukanBulanIni', 'pemasukanBulanLalu', 'pemasukanTahunIni',
             'rataPemasukanBulanIni', 'rataPemasukanBulanLalu',
-            'pengeluaranHariIni', 'pengeluaranBulanIni', 'pengeluaranBulanLalu',
-            'rataPengeluaranBulanIni', 'rataPengeluaranBulanLalu'
+            'pengeluaranHariIni', 'pengeluaranKemarin', 'pengeluaranBulanIni', 'pengeluaranBulanLalu',
+            'rataPengeluaranBulanIni', 'rataPengeluaranBulanLalu',
+            'selisihMasukHari', 'selisihMasukBulan', 'selisihMasukRata',
+            'selisihKeluarHari', 'selisihKeluarBulan', 'selisihKeluarRata'
         ));
     }
 
