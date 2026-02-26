@@ -26,91 +26,118 @@
         </div>
 
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-
-            <h3 class="text-lg font-bold text-gray-800 mb-3">Statistik Pemasukan (Bulan Ini vs Kemarin)</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-
-                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100 relative overflow-hidden">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Pemasukan Bulan Ini</p>
-                                <h4 class="text-xl font-bold text-gray-800">Rp {{ number_format($pemasukanBulanIni, 0, ',', '.') }}</h4>
-                            </div>
-                            <div class="p-2 bg-blue-50 rounded-lg">
-                                <span class="text-xl">💰</span>
-                            </div>
-                        </div>
-                        <div class="mt-4 flex items-center text-sm">
-                            @if($pemasukanBulanIni >= $pemasukanBulanLalu)
-                                <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                                <span class="text-green-600 font-medium">Naik</span>
-                            @else
-                                <svg class="w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                                <span class="text-red-600 font-medium">Turun</span>
-                            @endif
-                            <span class="text-gray-500 ml-2">dari Rp {{ number_format($pemasukanBulanLalu, 0, ',', '.') }} (Bulan Lalu)</span>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Rata-rata Harian</p>
-                                <h4 class="text-xl font-bold text-gray-800">Rp {{ number_format($rataBulanIni, 0, ',', '.') }} <span class="text-sm font-normal text-gray-500">/ hari</span></h4>
-                            </div>
-                            <div class="p-2 bg-indigo-50 rounded-lg">
-                                <span class="text-xl">📈</span>
-                            </div>
-                        </div>
-                        <div class="mt-4 flex items-center text-sm">
-                            @if($rataBulanIni >= $rataBulanLalu)
-                                <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                            @else
-                                <svg class="w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                            @endif
-                            <span class="text-gray-500">Bulan lalu: Rp {{ number_format($rataBulanLalu, 0, ',', '.') }} / hari</span>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Pertumbuhan Nominal</p>
-                                <h4 class="text-xl font-bold {{ $selisihNominal >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ $selisihNominal >= 0 ? '+' : '' }}Rp {{ number_format($selisihNominal, 0, ',', '.') }}
-                                </h4>
-                            </div>
-                            <div class="p-2 {{ $selisihPersentase >= 0 ? 'bg-green-50' : 'bg-red-50' }} rounded-lg">
-                                <span class="font-bold {{ $selisihPersentase >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ $selisihPersentase > 0 ? '+' : '' }}{{ number_format($selisihPersentase, 1, ',', '.') }}%
-                                </span>
-                            </div>
-                        </div>
-                        <div class="mt-4 flex items-center text-sm">
-                            @if($selisihNominal >= 0)
-                                <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                                <span class="text-green-600 font-medium">Tren Positif</span>
-                            @else
-                                <svg class="w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6"></path></svg>
-                                <span class="text-red-600 font-medium">Tren Negatif</span>
-                            @endif
-                            <span class="text-gray-500 ml-1">dibandingkan bulan lalu</span>
-                        </div>
-                    </div>
-
-                </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             <div class="bg-white rounded-lg shadow-sm p-4 md:p-5 border-l-4 border-green-500 flex flex-col justify-center">
-                <p class="text-xs md:text-sm text-gray-500 font-semibold uppercase tracking-wider">Total Pemasukan</p>
+                <p class="text-xs md:text-sm text-gray-500 font-semibold uppercase tracking-wider">Total Semua Pemasukan</p>
                 <p class="text-xl md:text-2xl font-bold text-green-600 mt-1">Rp {{ number_format($totalPemasukan, 0, ',', '.') }}</p>
             </div>
             <div class="bg-white rounded-lg shadow-sm p-4 md:p-5 border-l-4 border-red-500 flex flex-col justify-center">
-                <p class="text-xs md:text-sm text-gray-500 font-semibold uppercase tracking-wider">Total Pengeluaran</p>
+                <p class="text-xs md:text-sm text-gray-500 font-semibold uppercase tracking-wider">Total Semua Pengeluaran</p>
                 <p class="text-xl md:text-2xl font-bold text-red-600 mt-1">Rp {{ number_format($totalPengeluaran, 0, ',', '.') }}</p>
             </div>
             <div class="bg-white rounded-lg shadow-sm p-4 md:p-5 border-l-4 border-blue-500 flex flex-col justify-center">
-                <p class="text-xs md:text-sm text-gray-500 font-semibold uppercase tracking-wider">Saldo Akhir</p>
+                <p class="text-xs md:text-sm text-gray-500 font-semibold uppercase tracking-wider">Saldo Kas Akhir</p>
                 <p class="text-xl md:text-2xl font-bold text-blue-600 mt-1">Rp {{ number_format($saldo, 0, ',', '.') }}</p>
+            </div>
+        </div>
+
+        <div class="mb-8">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
+                <span class="text-green-500">📈</span> Statistik Pemasukan
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                    <p class="text-xs text-gray-500 font-semibold uppercase">1. Hari Ini</p>
+                    <h4 class="text-xl font-bold text-green-600 mt-1">Rp {{ number_format($pemasukanHariIni, 0, ',', '.') }}</h4>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                    <p class="text-xs text-gray-500 font-semibold uppercase">2. Bulan Ini</p>
+                    <h4 class="text-xl font-bold text-green-600 mt-1">Rp {{ number_format($pemasukanBulanIni, 0, ',', '.') }}</h4>
+                    <div class="mt-2 flex items-center text-xs">
+                        @if($pemasukanBulanIni >= $pemasukanBulanLalu)
+                            <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            <span class="text-green-600 font-medium">Naik</span>
+                        @else
+                            <svg class="w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                            <span class="text-red-600 font-medium">Turun</span>
+                        @endif
+                        <span class="text-gray-400 ml-1">dari bln lalu (Rp {{ number_format($pemasukanBulanLalu, 0, ',', '.') }})</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                    <p class="text-xs text-gray-500 font-semibold uppercase">3. Bulan Kemarin</p>
+                    <h4 class="text-xl font-bold text-gray-700 mt-1">Rp {{ number_format($pemasukanBulanLalu, 0, ',', '.') }}</h4>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                    <p class="text-xs text-gray-500 font-semibold uppercase">4. Rata-Rata Bulan Ini</p>
+                    <h4 class="text-xl font-bold text-gray-700 mt-1">Rp {{ number_format($rataPemasukanBulanIni, 0, ',', '.') }} <span class="text-xs font-normal">/ hari</span></h4>
+                    <div class="mt-2 flex items-center text-xs">
+                        @if($rataPemasukanBulanIni >= $rataPemasukanBulanLalu)
+                            <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                        @else
+                            <svg class="w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                        @endif
+                        <span class="text-gray-400">vs Rp {{ number_format($rataPemasukanBulanLalu, 0, ',', '.') }}</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                    <p class="text-xs text-gray-500 font-semibold uppercase">5. Rata-Rata Bulan Kemarin</p>
+                    <h4 class="text-xl font-bold text-gray-700 mt-1">Rp {{ number_format($rataPemasukanBulanLalu, 0, ',', '.') }} <span class="text-xs font-normal">/ hari</span></h4>
+                </div>
+
+                <div class="bg-green-50 rounded-lg shadow-sm p-4 border border-green-200">
+                    <p class="text-xs text-green-700 font-bold uppercase tracking-wider">6. Total 1 Tahun (Jan-Des)</p>
+                    <h4 class="text-xl font-bold text-green-700 mt-1">Rp {{ number_format($pemasukanTahunIni, 0, ',', '.') }}</h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-8">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
+                <span class="text-red-500">📉</span> Statistik Pengeluaran
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                    <p class="text-xs text-gray-500 font-semibold uppercase">1. Hari Ini</p>
+                    <h4 class="text-xl font-bold text-red-600 mt-1">Rp {{ number_format($pengeluaranHariIni, 0, ',', '.') }}</h4>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                    <p class="text-xs text-gray-500 font-semibold uppercase">2. Bulan Ini</p>
+                    <h4 class="text-xl font-bold text-red-600 mt-1">Rp {{ number_format($pengeluaranBulanIni, 0, ',', '.') }}</h4>
+                    <div class="mt-2 flex items-center text-xs">
+                        {{-- Logika pengeluaran: Jika naik = Merah (karena boros), Jika turun = Hijau (hemat) --}}
+                        @if($pengeluaranBulanIni > $pengeluaranBulanLalu)
+                            <svg class="w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            <span class="text-red-600 font-medium">Naik</span>
+                        @else
+                            <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                            <span class="text-green-600 font-medium">Turun</span>
+                        @endif
+                        <span class="text-gray-400 ml-1">dari bln lalu (Rp {{ number_format($pengeluaranBulanLalu, 0, ',', '.') }})</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                    <p class="text-xs text-gray-500 font-semibold uppercase">3. Bulan Kemarin</p>
+                    <h4 class="text-xl font-bold text-gray-700 mt-1">Rp {{ number_format($pengeluaranBulanLalu, 0, ',', '.') }}</h4>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                    <p class="text-xs text-gray-500 font-semibold uppercase">4. Rata-Rata Bulan Ini</p>
+                    <h4 class="text-xl font-bold text-gray-700 mt-1">Rp {{ number_format($rataPengeluaranBulanIni, 0, ',', '.') }} <span class="text-xs font-normal">/ hari</span></h4>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                    <p class="text-xs text-gray-500 font-semibold uppercase">5. Rata-Rata Bulan Kemarin</p>
+                    <h4 class="text-xl font-bold text-gray-700 mt-1">Rp {{ number_format($rataPengeluaranBulanLalu, 0, ',', '.') }} <span class="text-xs font-normal">/ hari</span></h4>
+                </div>
             </div>
         </div>
 
