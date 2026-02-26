@@ -25,16 +25,6 @@
             </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div>
-                <h2 class="text-xl md:text-2xl font-bold leading-tight text-gray-800">Buku Kas (Laporan Manual)</h2>
-                <p class="mt-1 text-xs md:text-sm text-gray-600">Pencatatan pemasukan dan pengeluaran di luar sistem tiket otomatis.</p>
-            </div>
-            <button type="button" onclick="document.getElementById('modalTambahKas').classList.remove('hidden')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 md:py-2.5 px-4 rounded-lg shadow-md transition-colors w-full sm:w-auto text-sm md:text-base flex items-center justify-center gap-2">
-                <span>+</span> Tambah Catatan Kas
-            </button>
-        </div>
-
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div class="bg-white rounded-lg shadow-sm p-4 md:p-5 border-l-4 border-green-500 flex flex-col justify-center">
                 <p class="text-xs md:text-sm text-gray-500 font-semibold uppercase tracking-wider">Total Pemasukan</p>
@@ -147,7 +137,7 @@
                                 </div>
                             </div>
 
-                            <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                            <div class="bg-blue-50 p-4 rounded-lg mb-6">
                                 <h4 class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
                                     <span>💰</span> Input Gaji Pegawai
                                 </h4>
@@ -176,17 +166,29 @@
                             </div>
 
                             <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-semibold text-gray-700">Kategori Utama</label>
-                                    <input type="text" name="transactions[0][kategori]" required placeholder="Contoh: Setoran Parkir Hari Ini" class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700">Kategori Utama</label>
+                                        <select name="transactions[0][kategori]" required class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
+                                            <option value="" disabled selected>-- Pilih Kategori --</option>
+                                            <option value="Parkiran">Parkiran</option>
+                                            <option value="Toilet">Toilet</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700">Nominal Transaksi (Rp)</label>
+                                        <input type="number" name="transactions[0][nominal]" required min="1" placeholder="Contoh: 500000" class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
+                                    </div>
                                 </div>
+
                                 <div>
-                                    <label class="block text-sm font-semibold text-gray-700">Nominal Transaksi Utama (Rp)</label>
-                                    <input type="number" name="transactions[0][nominal]" required min="1" placeholder="Contoh: 500000" class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
+                                    <label class="block text-sm font-semibold text-gray-700">Keterangan (Opsional)</label>
+                                    <textarea name="transactions[0][keterangan]" rows="2" placeholder="Catatan tambahan..." class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm"></textarea>
                                 </div>
                             </div>
                         </div>
-                        </div>
+
+                    </div>
 
                     <button type="button" onclick="tambahFormTransaksi()" class="w-full bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 font-bold py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center justify-center gap-2 mb-2">
                         <span>+</span> Tambah Hari / Transaksi Lain
@@ -224,22 +226,28 @@
         newBlock.querySelector('.btn-remove').classList.remove('hidden');
 
         // Update atribut name agar index array bertambah (transactions[0] -> transactions[1])
-        const inputs = newBlock.querySelectorAll('input, select');
+        // UBAHAN DI SINI: Tambahkan `textarea` dalam query selector
+        const inputs = newBlock.querySelectorAll('input, select, textarea');
+
         inputs.forEach(input => {
             if (input.name) {
                 // Regex untuk mencari transactions[0] dan menggantinya dengan index baru
                 input.name = input.name.replace(/transactions\[0\]/g, `transactions[${trxIndex}]`);
             }
 
-            // Kosongkan value tertentu di form baru agar tidak bawa data dari form 1
-            if (input.type !== 'hidden' && input.name.includes('kategori')) {
+            // Kosongkan dropdown Kategori kembali ke opsi default
+            if (input.name && input.name.includes('kategori')) {
                 input.value = '';
             }
-            if (input.type !== 'hidden' && input.name.includes('nominal')) {
+            // Kosongkan nominal
+            if (input.name && input.name.includes('nominal')) {
+                input.value = '';
+            }
+            // Kosongkan keterangan
+            if (input.name && input.name.includes('keterangan')) {
                 input.value = '';
             }
             // Note: input tanggal dan gaji sengaja dibiarkan ter-copy sebagai default
-            // agar mempercepat user menginput jika besaran gajinya sama tiap hari.
         });
 
         // Masukkan form baru ke dalam wrapper
