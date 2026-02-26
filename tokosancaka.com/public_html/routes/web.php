@@ -980,33 +980,34 @@ Route::prefix('admin')->group(function () {
 
 Route::prefix('admin/invoice')->name('invoice.')->group(function () {
 
-    // Menampilkan halaman riwayat invoice (Tabel) -> route('invoice.index')
+    // Menampilkan halaman riwayat invoice (Tabel)
     Route::get('/', [InvoiceController::class, 'index'])->name('index');
 
-    // Menampilkan form buat invoice baru -> route('invoice.create')
+    // Menampilkan form buat invoice baru
     Route::get('/create', [InvoiceController::class, 'create'])->name('create');
 
-    // Proses simpan data ke database -> route('invoice.store')
+    // Proses simpan data ke database
     Route::post('/store', [InvoiceController::class, 'store'])->name('store');
 
-    // Menampilkan halaman edit invoice -> route('invoice.edit')
+    // Menampilkan halaman edit invoice
     Route::get('/{id}/edit', [InvoiceController::class, 'edit'])->name('edit');
 
-    // Proses update data invoice -> route('invoice.update')
+    // Proses update data invoice
     Route::put('/{id}', [InvoiceController::class, 'update'])->name('update');
 
-    // Proses hapus invoice -> route('invoice.destroy')
+    // Proses hapus invoice
     Route::delete('/{id}', [InvoiceController::class, 'destroy'])->name('destroy');
 
-    // Menampilkan dan mencetak PDF -> route('invoice.pdf')
+    // Menampilkan dan mencetak PDF
     Route::get('/{id}/pdf', [InvoiceController::class, 'streamPDF'])->name('pdf');
+
+    // UPDATE STATUS TRACKING VIA MODAL (Pindahkan ke sini, di dalam grup!)
+    Route::patch('/{id}/status', [InvoiceController::class, 'updateStatus'])->name('update_status');
 
 });
 
-Route::patch('/{id}/status', [InvoiceController::class, 'updateStatus'])->name('update_status');
-
-// Rute Publik untuk Cek Invoice
+// Rute Publik untuk Cek Invoice (Di luar grup admin)
 Route::get('/cek-invoice', [App\Http\Controllers\InvoiceController::class, 'track'])->name('public.invoice.track');
 
-// Rute Publik untuk Download PDF (Tanpa login Admin)
+// Rute Publik untuk Download PDF (Di luar grup admin)
 Route::get('/invoice/{invoice_no}/download', [App\Http\Controllers\InvoiceController::class, 'publicDownloadPDF'])->name('public.invoice.download');
