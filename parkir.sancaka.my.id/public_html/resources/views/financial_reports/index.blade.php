@@ -9,6 +9,27 @@
                 <h2 class="text-xl md:text-2xl font-bold leading-tight text-gray-800">Buku Kas (Laporan Manual)</h2>
                 <p class="mt-1 text-xs md:text-sm text-gray-600">Pencatatan pemasukan dan pengeluaran di luar sistem tiket otomatis.</p>
             </div>
+
+            <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <a href="{{ route('financial.export.pdf', request()->all()) }}" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center justify-center gap-2">
+                    📄 PDF
+                </a>
+
+                <a href="{{ route('financial.export.excel', request()->all()) }}" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center justify-center gap-2">
+                    📊 Excel
+                </a>
+
+                <button type="button" onclick="document.getElementById('modalTambahKas').classList.remove('hidden')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2">
+                    <span>+</span> Tambah Kas
+                </button>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div>
+                <h2 class="text-xl md:text-2xl font-bold leading-tight text-gray-800">Buku Kas (Laporan Manual)</h2>
+                <p class="mt-1 text-xs md:text-sm text-gray-600">Pencatatan pemasukan dan pengeluaran di luar sistem tiket otomatis.</p>
+            </div>
             <button type="button" onclick="document.getElementById('modalTambahKas').classList.remove('hidden')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 md:py-2.5 px-4 rounded-lg shadow-md transition-colors w-full sm:w-auto text-sm md:text-base flex items-center justify-center gap-2">
                 <span>+</span> Tambah Catatan Kas
             </button>
@@ -192,7 +213,7 @@
     function tambahFormTransaksi() {
         const wrapper = document.getElementById('transactions-wrapper');
         const firstBlock = wrapper.querySelector('.transaction-block');
-        
+
         // Clone elemen HTML
         const newBlock = firstBlock.cloneNode(true);
 
@@ -209,7 +230,7 @@
                 // Regex untuk mencari transactions[0] dan menggantinya dengan index baru
                 input.name = input.name.replace(/transactions\[0\]/g, `transactions[${trxIndex}]`);
             }
-            
+
             // Kosongkan value tertentu di form baru agar tidak bawa data dari form 1
             if (input.type !== 'hidden' && input.name.includes('kategori')) {
                 input.value = '';
@@ -217,13 +238,13 @@
             if (input.type !== 'hidden' && input.name.includes('nominal')) {
                 input.value = '';
             }
-            // Note: input tanggal dan gaji sengaja dibiarkan ter-copy sebagai default 
+            // Note: input tanggal dan gaji sengaja dibiarkan ter-copy sebagai default
             // agar mempercepat user menginput jika besaran gajinya sama tiap hari.
         });
 
         // Masukkan form baru ke dalam wrapper
         wrapper.appendChild(newBlock);
-        
+
         trxIndex++;
     }
 </script>

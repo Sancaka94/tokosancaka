@@ -58,6 +58,10 @@ Route::middleware([IdentifyTenant::class])->group(function () {
     // Rute Hapus
     Route::delete('/financial/{financial}', [FinancialReportController::class, 'destroy'])->name('financial.destroy');
 
+    // Tambahkan di kelompok route financial kamu
+Route::get('/financial/export/excel', [App\Http\Controllers\FinancialReportController::class, 'exportExcel'])->name('financial.export.excel');
+Route::get('/financial/export/pdf', [App\Http\Controllers\FinancialReportController::class, 'exportPdf'])->name('financial.export.pdf');
+
     // ==========================================
     // AREA MEMBER (Harus Login)
     // ==========================================

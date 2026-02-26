@@ -6,6 +6,10 @@ use App\Models\FinancialReport;
 use App\Models\User;
 use Illuminate\Http\Request;
 
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\FinancialExport; // Kita akan buat file ini di langkah 4
+
 class FinancialReportController extends Controller
 {
     public function index(Request $request)
@@ -148,5 +152,36 @@ class FinancialReportController extends Controller
     {
         $financial->delete();
         return redirect()->route('financial.index')->with('success', 'Catatan keuangan berhasil dihapus.');
+    }
+
+    // Tambahkan 2 fungsi ini di dalam class FinancialReportController
+
+    public function exportPdf(Request $request)
+    {
+        $query = FinancialReport::orderBy('tanggal', 'desc');
+
+        if ($request->filled('bulan')) {
+            $query->whereMonth('tanggal', $request->bulan);
+        }
+        if ($request->filled('tahun')) {
+            $query->whereYear('tanggal', $request->tahun);
+        }
+
+        $reports = $query->get();
+        $totalPemasukan = $reports->where('jenis', 'pemasukan')->sum('nominal');
+        $totalPengeluaran = $reports->where('jenis', 'pengeluaran')->sum('nominal');
+        $saldo = $totalPemasukan - $totalPengeluaran;
+
+        $pdf = Pdf::loadView('financial_reports.pdf', compact('reports', 'totalPemasukan', 'totalPengeluaran', 'saldo'));
+
+        // Atur ukuran kertas ke A4 (Landscape)
+        $pdf->setPaper('A4', 'landscape');
+
+        return $pdf->download('Laporan_Keuangan_' . date('Y-m-d_H-i-s') . '.pdf');
+    }
+
+    public function exportExcel(Request $request)
+    {
+        return Excel::download(new FinancialExport($request->bulan, $request->tahun), 'Laporan_Keuangan_' . date('Y-m-d_H-i-s') . '.xlsx');
     }
 }
