@@ -177,6 +177,13 @@
                                         </div>
                                     </div>
 
+                                    @if($invoice->tracking_note)
+                                        <div class="alert alert-info border-0 shadow-sm mt-3 mb-4 rounded-3 text-sm p-3">
+                                            <strong class="d-block mb-1 text-dark"><i class="fa-solid fa-bullhorn me-1"></i> Info / Catatan Terkini:</strong>
+                                            <span class="text-dark">{{ $invoice->tracking_note }}</span>
+                                        </div>
+                                    @endif
+
                                     {{-- Timeline --}}
                                     <ul class="tracking-timeline">
                                         @foreach($steps as $index => $step)
