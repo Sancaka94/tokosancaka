@@ -31,7 +31,7 @@
                        name="plate_number"
                        id="plate_number"
                        class="form-control shadow-sm uppercase font-black text-2xl tracking-widest py-3 text-center md:text-left"
-                       placeholder="Masukan Plat Nomor (Angka Saja)"
+                       placeholder="Masukan Plat Nomor"
                        required
                        autocomplete="off"
                        autofocus
