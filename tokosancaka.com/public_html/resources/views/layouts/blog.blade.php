@@ -309,7 +309,7 @@ ini_set('display_errors', 1);
 
                 <ul class="navbar-nav ms-auto align-items-lg-center">
 
-                    <li class="nav-item"><a class="nav-link" href="https://tokosancaka.biz.id/blog">Beranda</a></li>
+                    <li class="nav-item"><a class="nav-link" href="https://tokosancaka.com/blog">Beranda</a></li>
 
 
 
@@ -425,7 +425,7 @@ ini_set('display_errors', 1);
 
                     <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
 
-                        <a class="btn btn-primary btn-sm" href="{{ url('/blog') }}">Kunjungi Web Utama</a>
+                        <a class="btn btn-primary btn-sm" href="https://tokosancaka.com">Kunjungi Web Utama</a>
 
                     </li>
 
