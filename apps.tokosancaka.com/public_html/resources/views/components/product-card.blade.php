@@ -124,7 +124,7 @@
                     'sell_price' => $finalPrice,
                     'image' => $product->image ? asset('storage/'.$product->image) : ''
                 ]) }})"
-                class="w-full bg-blue-600 text-white py-1.5 md:py-2 rounded border border-blue-600 text-[11px] md:text-sm font-semibold hover:bg-blue-700 hover:shadow-md transition flex justify-center items-center gap-1 active:scale-95 group-hover:visible">
+                class="w-full bg-red-600 text-white py-1.5 md:py-2 rounded border border-red-600 text-[11px] md:text-sm font-semibold hover:bg-red-700 hover:shadow-md transition flex justify-center items-center gap-1 active:scale-95 group-hover:visible">
             <i data-lucide="shopping-cart" class="w-3 h-3 md:w-4 md:h-4"></i> Beli
         </button>
     </div>
