@@ -174,6 +174,8 @@ class ProductController extends Controller implements HasMiddleware
                 'is_terlaris'    => $request->has('is_terlaris') ? 1 : 0,
                 'is_new_arrival' => $request->has('is_new_arrival') ? 1 : 0,
                 'is_flash_sale'  => $request->has('is_flash_sale') ? 1 : 0,
+                'is_free_ongkir' => $request->has('is_free_ongkir') ? 1 : 0,
+                'is_cashback_extra' => $request->has('is_cashback_extra') ? 1 : 0,
             ]);
 
             if ($hasVariant && $request->filled('variants')) {
@@ -293,6 +295,8 @@ class ProductController extends Controller implements HasMiddleware
                 'is_terlaris'    => $request->has('is_terlaris') ? 1 : 0,
                 'is_new_arrival' => $request->has('is_new_arrival') ? 1 : 0,
                 'is_flash_sale'  => $request->has('is_flash_sale') ? 1 : 0,
+                'is_free_ongkir' => $request->has('is_free_ongkir') ? 1 : 0,
+                'is_cashback_extra' => $request->has('is_cashback_extra') ? 1 : 0,
             ];
 
             if (!$hasVariant) {
@@ -773,7 +777,9 @@ class ProductController extends Controller implements HasMiddleware
                                 'is_new_arrival' => $product->is_new_arrival,
                                 'is_flash_sale'  => $product->is_flash_sale,
                                 // HANYA PANGGIL SEKALI DI SINI
-                                'variants_data'  => $product->variants
+                                'variants_data'  => $product->variants,
+                                'is_free_ongkir' => $product->is_free_ongkir,
+                                'is_cashback_extra' => $product->is_cashback_extra,
                             ];
                         });
 

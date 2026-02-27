@@ -189,6 +189,10 @@
                                     <span class="text-xs font-semibold text-slate-700">Best Seller</span>
                                 </label>
                                 <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" x-model="productData.is_free_ongkir" class="rounded text-teal-600 focus:ring-teal-500 bg-white border-slate-300">
+                                    <span class="text-xs font-semibold text-slate-700">Gratis Ongkir</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
                                     <input type="checkbox" x-model="productData.is_terlaris" class="rounded text-indigo-600 focus:ring-indigo-500 bg-white border-slate-300">
                                     <span class="text-xs font-semibold text-slate-700">Terlaris</span>
                                 </label>
@@ -339,7 +343,8 @@
                 is_best_seller: {{ $product->is_best_seller ? 'true' : 'false' }},
                 is_terlaris: {{ $product->is_terlaris ? 'true' : 'false' }},
                 is_new_arrival: {{ $product->is_new_arrival ? 'true' : 'false' }},
-                is_flash_sale: {{ $product->is_flash_sale ? 'true' : 'false' }}
+                is_flash_sale: {{ $product->is_flash_sale ? 'true' : 'false' }},
+                is_free_ongkir: {{ $product->is_free_ongkir ? 'true' : 'false' }}
             },
 
             variants: {!! $product->variants->map(function($v) {

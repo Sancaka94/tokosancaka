@@ -68,7 +68,19 @@
             </h4>
 
             <div class="flex flex-wrap gap-1 mb-1">
-                <span class="text-[9px] md:text-[10px] text-red-500 border border-red-500 px-1 rounded-sm">Cashback XTRA</span>
+                {{-- BADGE CASHBACK EXTRA DINAMIS --}}
+                @if($product->is_cashback_extra)
+                <span class="text-[9px] md:text-[10px] text-red-500 border border-red-500 px-1 rounded-sm bg-white font-medium">
+                    Cashback XTRA
+                </span>
+                @endif
+
+                {{-- BADGE GRATIS ONGKIR DINAMIS --}}
+                @if($product->is_free_ongkir)
+                <span class="text-[9px] md:text-[10px] text-teal-600 border border-teal-500 bg-teal-50 px-1 rounded-sm flex items-center gap-0.5 font-bold">
+                    <i data-lucide="truck" class="w-2.5 h-2.5"></i> Gratis Ongkir
+                </span>
+                @endif
             </div>
 
             <div class="mt-auto">

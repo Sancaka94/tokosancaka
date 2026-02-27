@@ -44,6 +44,8 @@ class Product extends Model
         'is_flash_sale',  // <-- BADGE
         'discount_type',
         'discount_value',
+        'is_free_ongkir',
+        'is_cashback_extra', // <--- TAMBAHKAN INI
     ];
 
     /**
@@ -61,6 +63,10 @@ class Product extends Model
         'is_terlaris'    => 'boolean',
         'is_new_arrival' => 'boolean',
         'is_flash_sale'  => 'boolean',
+        'is_free_ongkir' => 'boolean',
+        'is_cashback_extra' => 'boolean',
+        'discount_value' => 'decimal:2',
+
     ];
 
     // --- RELATIONSHIPS ---
