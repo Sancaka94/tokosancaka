@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use App\Traits\BelongsToTenant; // <-- Pastikan ini di-import
 
-
 class Category extends Model
 {
     use HasFactory;
@@ -35,10 +34,13 @@ class Category extends Model
         'product_presets' => 'array',
     ];
 
-    // Relasi: Satu Kategori punya banyak Produk
+    /**
+     * Relasi: Satu Kategori punya banyak Produk
+     * Fungsi ini sekarang hanya satu (tidak duplikat)
+     */
     public function products()
     {
-        return $this->hasMany(Product::class);
+        return $this->hasMany(Product::class, 'category_id');
     }
 
     /**
