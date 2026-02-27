@@ -407,6 +407,15 @@
                                 <input type="checkbox" name="is_flash_sale" value="1" class="rounded text-orange-500 focus:ring-orange-500 bg-white border-slate-300">
                                 <span class="text-xs font-semibold text-slate-700">Flash Sale</span>
                             </label>
+                            {{-- KODE BARU: Checkbox Gratis Ongkir & Cashback Extra --}}
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="is_free_ongkir" value="1" class="rounded text-teal-600 focus:ring-teal-500 bg-white border-slate-300">
+                                <span class="text-xs font-semibold text-slate-700">Gratis Ongkir</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="is_cashback_extra" value="1" class="rounded text-red-600 focus:ring-red-500 bg-white border-slate-300">
+                                <span class="text-xs font-semibold text-slate-700">Cashback Extra</span>
+                            </label>
                         </div>
                     </div>
 
@@ -460,13 +469,16 @@
                         </div>
                     </div>
 
+
+
                     {{-- Input Diskon --}}
+                    {{-- Input Diskon (Desain Menyerupai Gambar) --}}
                     <div class="mt-4 mb-4">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Diskon (Opsional)</label>
-                        <div class="flex gap-3">
-                            {{-- Dropdown Jenis Diskon --}}
-                            <div class="relative w-1/3">
-                                <select name="discount_type" class="w-full pl-4 pr-8 py-2.5 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition text-sm appearance-none font-bold text-slate-700">
+                        <div class="flex gap-2">
+                            {{-- Dropdown Jenis Diskon (Kiri) --}}
+                            <div class="relative w-[120px] shrink-0">
+                                <select name="discount_type" class="w-full pl-4 pr-8 py-2.5 rounded-xl border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition text-sm appearance-none font-bold text-slate-600 cursor-pointer">
                                     <option value="percent">Persen (%)</option>
                                     <option value="nominal">Nominal (Rp)</option>
                                 </select>
@@ -475,10 +487,10 @@
                                 </div>
                             </div>
 
-                            {{-- Input Nilai Diskon --}}
-                            <div class="relative w-2/3">
+                            {{-- Input Nilai Diskon (Kanan) --}}
+                            <div class="relative flex-1">
                                 <input type="number" name="discount_value" placeholder="0" min="0" step="any"
-                                       class="w-full px-4 py-2.5 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition text-sm font-bold text-slate-700 placeholder-slate-300">
+                                       class="w-full px-4 py-2.5 rounded-xl border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition text-sm font-bold text-slate-400 placeholder-slate-300">
                             </div>
                         </div>
                     </div>
