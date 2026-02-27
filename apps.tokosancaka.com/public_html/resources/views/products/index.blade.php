@@ -460,6 +460,29 @@
                         </div>
                     </div>
 
+                    {{-- Input Diskon --}}
+                    <div class="mt-4 mb-4">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Diskon (Opsional)</label>
+                        <div class="flex gap-3">
+                            {{-- Dropdown Jenis Diskon --}}
+                            <div class="relative w-1/3">
+                                <select name="discount_type" class="w-full pl-4 pr-8 py-2.5 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition text-sm appearance-none font-bold text-slate-700">
+                                    <option value="percent">Persen (%)</option>
+                                    <option value="nominal">Nominal (Rp)</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
+                                    <i class="fas fa-chevron-down text-xs"></i>
+                                </div>
+                            </div>
+
+                            {{-- Input Nilai Diskon --}}
+                            <div class="relative w-2/3">
+                                <input type="number" name="discount_value" placeholder="0" min="0" step="any"
+                                       class="w-full px-4 py-2.5 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition text-sm font-bold text-slate-700 placeholder-slate-300">
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- Grid Stok & Satuan --}}
                     <div class="grid grid-cols-2 gap-4">
                         <div x-show="!isService">
