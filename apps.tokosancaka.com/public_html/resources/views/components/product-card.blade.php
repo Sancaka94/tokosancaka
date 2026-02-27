@@ -1,3 +1,30 @@
+@php
+    // LOGIKA PERHITUNGAN DISKON
+    $originalPrice = $product->sell_price ?? 0;
+    $finalPrice = $originalPrice;
+    $discountAmount = 0;
+    $hasDiscount = false;
+    $discountBadge = '';
+
+    if (isset($product->discount_value) && $product->discount_value > 0) {
+        $hasDiscount = true;
+
+        if ($product->discount_type === 'percent') {
+            // Hitung potongan dari persentase
+            $discountAmount = $originalPrice * ($product->discount_value / 100);
+            $discountBadge = '-' . round($product->discount_value) . '%';
+        } else {
+            // Potongan harga nominal langsung
+            $discountAmount = $product->discount_value;
+            // Format badge untuk nominal (misal: -Rp5rb agar muat di label kecil)
+            $discountBadge = '-Rp' . number_format($discountAmount / 1000, 0, '', '') . 'k';
+        }
+
+        // Pastikan harga tidak minus
+        $finalPrice = max(0, $originalPrice - $discountAmount);
+    }
+@endphp
+
 <div class="{{ $is_horizontal ? 'w-36 md:w-48 flex-shrink-0 snap-start' : '' }} bg-white rounded-md shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex flex-col h-full group relative">
 
     <a href="{{ route('storefront.product.detail', ['subdomain' => $subdomain ?? '', 'slug' => $product->slug ?? $product->id]) }}" class="flex flex-col h-full">
@@ -9,12 +36,10 @@
                 <i data-lucide="image" class="w-10 h-10 text-gray-300"></i>
             @endif
 
-            @if(isset($product->base_price) && $product->base_price > $product->sell_price)
-                @php
-                    $discount = round((($product->base_price - $product->sell_price) / $product->base_price) * 100);
-                @endphp
+            {{-- BADGE DISKON BARU --}}
+            @if($hasDiscount)
                 <div class="absolute top-0 right-0 bg-yellow-300 text-red-600 text-[10px] md:text-xs font-black px-1.5 py-1 rounded-bl-lg shadow-sm z-10">
-                    -{{ $discount }}%
+                    {{ $discountBadge }}
                 </div>
             @endif
 
@@ -41,14 +66,24 @@
             </div>
 
             <div class="mt-auto">
-                @if(isset($product->base_price) && $product->base_price > $product->sell_price)
-                    <div class="text-[10px] md:text-xs text-gray-400 line-through truncate">
-                        Rp {{ number_format($product->base_price, 0, ',', '.') }}
+                {{-- TAMPILAN HARGA DENGAN ATAU TANPA DISKON --}}
+                @if($hasDiscount)
+                    <div class="flex items-center gap-1.5">
+                        <div class="text-[10px] md:text-xs text-gray-400 line-through truncate">
+                            Rp {{ number_format($originalPrice, 0, ',', '.') }}
+                        </div>
+                    </div>
+                    <div class="text-blue-700 font-black text-sm md:text-base truncate">
+                        Rp {{ number_format($finalPrice, 0, ',', '.') }}
+                    </div>
+                    <div class="text-[9px] md:text-[10px] text-emerald-600 font-bold mt-0.5 bg-emerald-50 w-max px-1.5 py-0.5 rounded">
+                        Anda Lebih Hemat Rp {{ number_format($discountAmount, 0, ',', '.') }}
+                    </div>
+                @else
+                    <div class="text-blue-700 font-bold text-sm md:text-base truncate">
+                        Rp {{ number_format($finalPrice, 0, ',', '.') }}
                     </div>
                 @endif
-                <div class="text-blue-700 font-bold text-sm md:text-base truncate">
-                    Rp {{ number_format($product->sell_price, 0, ',', '.') }}
-                </div>
             </div>
 
             <div class="flex justify-between items-center mt-1.5 pt-1.5 border-t border-gray-100 text-[9px] md:text-[11px] text-gray-500">
@@ -65,7 +100,7 @@
         <button @click.prevent="addToCart({{ json_encode([
                     'id' => $product->id,
                     'name' => $product->name,
-                    'sell_price' => $product->sell_price,
+                    'sell_price' => $finalPrice, // Pastikan yang masuk keranjang adalah harga sesudah diskon
                     'image' => $product->image ? asset('storage/'.$product->image) : ''
                 ]) }})"
                 class="w-full bg-blue-600 text-white py-1.5 md:py-2 rounded border border-blue-600 text-[11px] md:text-sm font-semibold hover:bg-blue-700 hover:shadow-md transition flex justify-center items-center gap-1 active:scale-95 group-hover:visible">
