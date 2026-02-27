@@ -280,22 +280,32 @@
             handleAddToCart() {
                 if(!this.isReadyToBuy) return;
 
+                // 1. Gabungkan Nama (Produk + Varian + Sub) agar muncul detail di checkout
                 let fullName = this.productName;
                 if(this.selectedVariant) fullName += ' - ' + this.selectedVariant.name;
                 if(this.selectedSubVariant) fullName += ' (' + this.selectedSubVariant.name + ')';
 
+                // 2. Susun Payload Data (PENTING: is_free_ongkir harus masuk ke sini)
                 const payload = {
                     id: this.productId,
                     variant_id: this.selectedVariant ? this.selectedVariant.id : null,
                     sub_variant_id: this.selectedSubVariant ? this.selectedSubVariant.id : null,
                     name: fullName,
-                    sell_price: this.currentPrice,
+                    price: this.currentPrice, // Harga setelah diskon (finalPrice)
                     weight: this.currentWeight,
-                    image: this.mainImage
+                    image: this.mainImage,
+                    // KODE KRITIS: Memastikan label gratis ongkir terbaca di halaman checkout
+                    is_free_ongkir: {{ $product->is_free_ongkir ? 1 : 0 }}
                 };
 
+                // 3. Panggil fungsi addToCart global
                 if (typeof addToCart === 'function') {
                     addToCart(payload);
+
+                    // Opsional: Redirect ke halaman checkout setelah klik beli
+                    // window.location.href = "{{ route('storefront.checkout', $subdomain) }}";
+                } else {
+                    console.error("Fungsi addToCart tidak ditemukan di layout induk.");
                 }
             }
         }));

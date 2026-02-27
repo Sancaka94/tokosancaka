@@ -25,6 +25,38 @@
             couponInput: '',
             appliedCoupon: '',
             discountAmount: 0,
+
+            // --- KODE BARU: LOGIKA GRATIS ONGKIR ---
+
+            // 1. Cek apakah ada minimal satu produk di keranjang yang berlabel Free Ongkir
+            get hasFreeOngkirProduct() {
+                return this.cartItems.some(item => item.is_free_ongkir == 1 || item.is_free_ongkir == true);
+            },
+
+            // 2. Hitung berapa subsidi ongkirnya
+            get shippingDiscount() {
+                if (this.deliveryType === 'shipping' && this.hasFreeOngkirProduct) {
+                    // Opsi A: Gratis Ongkir Tanpa Batas (100% dipotong)
+                    return this.shippingCost;
+
+                    // Opsi B: Jika ingin dibatasi subsidi max 20rb (Hapus tanda komentar di bawah jika ingin pakai)
+                    // return Math.min(this.shippingCost, 20000);
+                }
+                return 0;
+            },
+
+            // 3. Update Final Total agar memotong subsidi ongkir
+            get finalTotal() {
+                let total = this.subtotal - this.discountAmount;
+                if(total < 0) total = 0;
+
+                if(this.deliveryType === 'shipping') {
+                    // Total Tagihan = (Subtotal - Kupon) + (Ongkir Asli - Subsidi Ongkir)
+                    total += (parseInt(this.shippingCost || 0) - this.shippingDiscount);
+                }
+                return total;
+            },
+
             couponMessage: '',
             couponStatus: '',
 
@@ -138,41 +170,65 @@
             },
 
             // CEK ONGKIR
+            // --- PERBAIKAN LENGKAP PADA fetchOngkir ---
             async fetchOngkir() {
-                if(!this.districtId) return;
+                if (!this.districtId) return;
+
                 this.isLoadingRates = true;
                 this.shippingRates = [];
-                this.shippingCost = 0;
+                // shippingCost tidak direset ke 0 di sini agar total tagihan tidak melonjak mendadak saat loading (anti-kedap-kedip)
 
+                // Lengkapi Payload sesuai kebutuhan API
                 const payload = {
-                    weight: this.totalWeight,
+                    origin_district_id: '{{ $tenant->district_id ?? "" }}', // Diambil dari data toko
                     destination_district_id: this.districtId,
                     destination_subdistrict_id: this.subdistrictId,
+                    weight: this.totalWeight,
                     _token: '{{ csrf_token() }}'
                 };
 
                 try {
                     const res = await fetch(`{{ route('storefront.api.ongkir') }}`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
                         body: JSON.stringify(payload)
                     });
-                    const json = await res.json();
-                    if(json.status === 'success') {
-                        this.shippingRates = json.data;
-                    } else {
-                        alert(json.message || "Gagal mengambil tarif pengiriman.");
-                    }
-                } catch (e) { alert("Terjadi kesalahan jaringan."); }
 
-                this.isLoadingRates = false;
+                    if (!res.ok) throw new Error('Network response was not ok');
+
+                    const json = await res.json();
+
+                    if (json.status === 'success') {
+                        this.shippingRates = json.data;
+
+                        // Auto-select rate pertama jika hanya ada satu pilihan (opsional)
+                        // if(this.shippingRates.length === 1) this.applyShippingRate(this.shippingRates[0]);
+
+                    } else {
+                        console.error("API Error:", json.message);
+                        alert(json.message || "Gagal memuat tarif pengiriman.");
+                    }
+                } catch (e) {
+                    console.error("Fetch Error:", e);
+                    alert("Terjadi kesalahan saat menghubungi server pengiriman.");
+                } finally {
+                    this.isLoadingRates = false;
+                }
             },
 
             applyShippingRate(rate) {
-                this.shippingCost = rate.cost;
+                this.selectedRate = rate; // Menyimpan index/objek terpilih untuk UI
+                this.shippingCost = parseInt(rate.cost || 0);
                 this.courierName = rate.name;
                 this.courierCode = rate.courier_code;
                 this.serviceType = rate.service_type;
+
+                // Karena shippingDiscount dan finalTotal menggunakan 'get',
+                // perubahan pada this.shippingCost otomatis akan mengupdate tampilan total tagihan.
             },
 
             // CEK KUPON
