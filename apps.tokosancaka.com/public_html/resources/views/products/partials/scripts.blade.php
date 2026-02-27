@@ -25,14 +25,18 @@
                     let data = await response.json();
 
                     this.activeProductName = data.product_name;
-                    // Map data dari DB ke struktur JS (termasuk barcode)
-                   this.variants = data.variants.map(v => ({
+                    // Map data dari DB ke struktur JS (termasuk barcode & diskon)
+                    this.variants = data.variants.map(v => ({
                         id: v.id,
                         name: v.name,
                         price: v.price,
                         stock: v.stock,
                         sku: v.sku,
                         barcode: v.barcode || '',
+                        // 👇 TAMBAHKAN DISKON VARIAN DARI DB 👇
+                        discount_type: v.discount_type || 'percent',
+                        discount_value: v.discount_value || 0,
+
                         // Mapping Sub Varian dari Response Controller
                         sub_variants: v.sub_variants ? v.sub_variants.map(sub => ({
                             id: sub.id,
@@ -41,7 +45,10 @@
                             stock: sub.stock,
                             weight: sub.weight || 0,
                             sku: sub.sku,
-                            barcode: sub.barcode || ''
+                            barcode: sub.barcode || '',
+                            // 👇 TAMBAHKAN DISKON SUB VARIAN DARI DB 👇
+                            discount_type: sub.discount_type || 'percent',
+                            discount_value: sub.discount_value || 0
                         })) : []
                     }));
 
@@ -62,7 +69,10 @@
                     stock: 0,
                     sku: '',
                     barcode: '',
-                    sub_variants: [] // TAMBAHAN: Array kosong buat nampung sub varian
+                    // 👇 DEFAULT DISKON VARIAN BARU 👇
+                    discount_type: 'percent',
+                    discount_value: 0,
+                    sub_variants: [] // Array kosong buat nampung sub varian
                 });
                 this.scrollToBottom();
             },
@@ -78,13 +88,25 @@
                     stock: 0,
                     weight: 0,
                     sku: '',
-                    barcode: ''
+                    barcode: '',
+                    // 👇 DEFAULT DISKON SUB VARIAN BARU 👇
+                    discount_type: 'percent',
+                    discount_value: 0
                 });
             },
 
             // TAMBAHAN: Hapus Sub Varian
             removeSubVariantRow(variantIndex, subIndex) {
                 this.variants[variantIndex].sub_variants.splice(subIndex, 1);
+            },
+
+            calculateTotalStock(vIndex) {
+                let variant = this.variants[vIndex];
+                if (variant.sub_variants && variant.sub_variants.length > 0) {
+                    let total = 0;
+                    variant.sub_variants.forEach(sub => total += parseInt(sub.stock) || 0);
+                    variant.stock = total;
+                }
             },
 
             scrollToBottom() {
@@ -139,12 +161,11 @@
 
                     // JIKA ERROR (Bukan 200 OK)
                     if (!response.ok) {
-                        // Kita ambil text aslinya (biasanya halaman error Laravel warna abu-abu/merah)
                         let errorText = await response.text();
 
                         console.error("❌ LOG 5 [SERVER ERROR MESSAGE]:");
                         console.error("---------------------------------------------------");
-                        console.error(errorText); // <--- INI ISI PESAN ERRORNYA BOS!
+                        console.error(errorText);
                         console.error("---------------------------------------------------");
 
                         throw new Error(`Server Error: ${response.status}`);
