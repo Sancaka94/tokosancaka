@@ -29,7 +29,7 @@
         </div>
     </div>
 
-    {{-- MENGGUNAKAN DIV UNTUK BYPASS ERROR NESTED FORM DI LAYOUT --}}
+    {{-- KONTANER FORM --}}
     <div x-ref="formContainer" class="space-y-6">
         @csrf
         <input type="hidden" name="_method" value="PUT">
@@ -53,7 +53,7 @@
                             </div>
                         </template>
 
-                        <input type="file" name="image" accept="image/*"
+                        <input type="file" name="image" accept="image/*" x-ref="fileInput"
                                @change="imgPreview = URL.createObjectURL($event.target.files[0])"
                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
 
@@ -89,7 +89,7 @@
                     <div class="space-y-4">
                         <div>
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nama Produk <span class="text-red-500">*</span></label>
-                            <input type="text" name="name" value="{{ $product->name }}" class="w-full px-4 py-3 rounded-xl border-slate-300 focus:ring-indigo-500 font-bold text-slate-700">
+                            <input type="text" x-model="productData.name" class="w-full px-4 py-3 rounded-xl border-slate-300 focus:ring-indigo-500 font-bold text-slate-700">
                         </div>
 
                         <div x-show="!hasVariant && !isService" x-data="{
@@ -110,7 +110,7 @@
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Barcode / SKU</label>
                             <div class="relative">
                                 <span class="absolute left-3 top-3 text-slate-400"><i class="fas fa-barcode"></i></span>
-                                <input type="text" name="barcode" x-model="code" @input.debounce.300ms="renderBarcode()" @keydown.enter.prevent
+                                <input type="text" x-model="productData.barcode" @input.debounce.300ms="code = productData.barcode; renderBarcode()" @keydown.enter.prevent
                                        placeholder="Scan Barcode..." class="w-full pl-9 pr-4 py-3 rounded-xl border-slate-300 font-mono tracking-wide focus:ring-indigo-500 transition text-sm">
                             </div>
                             <div class="mt-2 flex items-center justify-center p-2 bg-slate-50 border border-slate-200 rounded-lg" x-show="code && code.length > 0">
@@ -123,7 +123,7 @@
                                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Modal (Rp)</label>
                                 <div class="relative">
                                     <span class="absolute left-3 top-3 text-xs text-slate-400 font-bold">Rp</span>
-                                    <input type="number" name="base_price" value="{{ $product->base_price }}" class="w-full pl-9 pr-4 py-3 rounded-xl border-slate-300 bg-slate-50 focus:bg-white transition text-sm font-medium">
+                                    <input type="number" x-model="productData.base_price" class="w-full pl-9 pr-4 py-3 rounded-xl border-slate-300 bg-slate-50 focus:bg-white transition text-sm font-medium">
                                 </div>
                             </div>
 
@@ -131,26 +131,41 @@
                                 <label class="block text-[10px] font-bold text-emerald-600 uppercase mb-1">Harga Jual <span class="text-red-500">*</span></label>
                                 <div class="relative">
                                     <span class="absolute left-3 top-3 text-xs text-emerald-600 font-bold">Rp</span>
-                                    <input type="number" name="sell_price" value="{{ $product->sell_price }}" :readonly="hasVariant"
+                                    <input type="number" x-model="productData.sell_price" :readonly="hasVariant"
                                            :class="hasVariant ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-emerald-50 text-emerald-700'"
                                            class="w-full pl-9 pr-4 py-3 rounded-xl border-emerald-200 font-bold focus:ring-emerald-500 transition text-sm">
                                 </div>
                             </div>
                         </div>
 
+                        {{-- Diskon Produk Utama --}}
+                        <div class="mb-4 mt-4">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Diskon (Opsional)</label>
+                            <div class="flex gap-3">
+                                <div class="relative w-1/3">
+                                    <select x-model="productData.discount_type" class="w-full pl-4 pr-8 py-3 rounded-xl border-slate-300 bg-white focus:ring-indigo-500 transition text-sm appearance-none font-bold text-slate-700">
+                                        <option value="percent">Persen (%)</option>
+                                        <option value="nominal">Nominal (Rp)</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400"><i class="fas fa-chevron-down text-xs"></i></div>
+                                </div>
+                                <input type="number" x-model="productData.discount_value" placeholder="0" min="0" step="any" class="w-2/3 px-4 py-3 rounded-xl border-slate-300 bg-white focus:ring-indigo-500 transition text-sm font-bold text-slate-700">
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-4">
                             <div x-show="!isService">
                                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Stok Total</label>
-                                <input type="number" name="stock" value="{{ $product->stock }}" :readonly="hasVariant"
+                                <input type="number" x-model="productData.stock" :readonly="hasVariant"
                                        :class="hasVariant ? 'bg-slate-100 text-slate-400' : 'bg-white text-slate-700'"
                                        class="w-full px-4 py-3 rounded-xl border-slate-300 font-bold text-sm">
                             </div>
 
                             <div :class="isService ? 'col-span-2' : ''">
                                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Satuan</label>
-                                <select name="unit" class="w-full px-4 py-3 rounded-xl border-slate-300 bg-white text-sm font-medium">
+                                <select x-model="productData.unit" class="w-full px-4 py-3 rounded-xl border-slate-300 bg-white text-sm font-medium">
                                     @foreach(['pcs','kg','box','lembar','paket','meter'] as $u)
-                                        <option value="{{ $u }}" {{ $product->unit == $u ? 'selected' : '' }}>{{ ucfirst($u) }}</option>
+                                        <option value="{{ $u }}">{{ ucfirst($u) }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -158,31 +173,31 @@
 
                         <div x-show="!isService" class="mb-4">
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Berat Keseluruhan (Gram)</label>
-                            <input type="number" name="weight" value="{{ $product->weight }}" class="w-full px-4 py-3 rounded-xl border-slate-300 focus:ring-indigo-500 transition text-sm font-medium text-slate-700">
+                            <input type="number" x-model="productData.weight" class="w-full px-4 py-3 rounded-xl border-slate-300 focus:ring-indigo-500 transition text-sm font-medium text-slate-700">
                         </div>
 
                         <div class="mb-4">
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Deskripsi Singkat</label>
-                            <textarea name="description" rows="3" class="w-full px-4 py-3 rounded-xl border-slate-300 focus:ring-indigo-500 transition text-sm text-slate-700">{{ $product->description }}</textarea>
+                            <textarea x-model="productData.description" rows="3" class="w-full px-4 py-3 rounded-xl border-slate-300 focus:ring-indigo-500 transition text-sm text-slate-700"></textarea>
                         </div>
 
                         <div class="mb-5 bg-slate-50 p-4 rounded-xl border border-slate-100">
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-3 tracking-wider">Badge Produk (Marketplace)</label>
                             <div class="grid grid-cols-2 gap-3">
                                 <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="is_best_seller" value="1" {{ $product->is_best_seller ? 'checked' : '' }} class="rounded text-indigo-600 focus:ring-indigo-500 bg-white border-slate-300">
+                                    <input type="checkbox" x-model="productData.is_best_seller" class="rounded text-indigo-600 focus:ring-indigo-500 bg-white border-slate-300">
                                     <span class="text-xs font-semibold text-slate-700">Best Seller</span>
                                 </label>
                                 <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="is_terlaris" value="1" {{ $product->is_terlaris ? 'checked' : '' }} class="rounded text-indigo-600 focus:ring-indigo-500 bg-white border-slate-300">
+                                    <input type="checkbox" x-model="productData.is_terlaris" class="rounded text-indigo-600 focus:ring-indigo-500 bg-white border-slate-300">
                                     <span class="text-xs font-semibold text-slate-700">Terlaris</span>
                                 </label>
                                 <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="is_new_arrival" value="1" {{ $product->is_new_arrival ? 'checked' : '' }} class="rounded text-indigo-600 focus:ring-indigo-500 bg-white border-slate-300">
+                                    <input type="checkbox" x-model="productData.is_new_arrival" class="rounded text-indigo-600 focus:ring-indigo-500 bg-white border-slate-300">
                                     <span class="text-xs font-semibold text-slate-700">Produk Baru</span>
                                 </label>
                                 <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="is_flash_sale" value="1" {{ $product->is_flash_sale ? 'checked' : '' }} class="rounded text-orange-500 focus:ring-orange-500 bg-white border-slate-300">
+                                    <input type="checkbox" x-model="productData.is_flash_sale" class="rounded text-orange-500 focus:ring-orange-500 bg-white border-slate-300">
                                     <span class="text-xs font-semibold text-slate-700">Flash Sale</span>
                                 </label>
                             </div>
@@ -197,7 +212,7 @@
                             <h3 class="font-bold text-slate-800 text-lg">Varian & Sub Varian</h3>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="has_variant" value="1" x-model="hasVariant" class="sr-only peer">
+                            <input type="checkbox" x-model="hasVariant" class="sr-only peer">
                             <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                         </label>
                     </div>
@@ -210,50 +225,72 @@
                         </div>
 
                         <div class="space-y-4">
-                            <div class="grid grid-cols-12 gap-3 text-[10px] font-bold text-slate-400 uppercase px-1">
-                                <div class="col-span-3">Nama Varian</div><div class="col-span-3">Barcode</div>
-                                <div class="col-span-3">Harga Induk</div><div class="col-span-2">Stok</div>
-                                <div class="col-span-1 text-center">Del</div>
+                            <div class="grid grid-cols-12 gap-2 text-[9px] font-bold text-slate-400 uppercase px-1 tracking-wider">
+                                <div class="col-span-2">Nama Varian</div><div class="col-span-2">Barcode</div>
+                                <div class="col-span-2">Harga Induk</div><div class="col-span-3 text-center">Diskon</div>
+                                <div class="col-span-2">Stok</div><div class="col-span-1 text-center">Del</div>
                             </div>
 
                             <template x-for="(variant, index) in variants" :key="index">
                                 <div class="bg-white rounded-xl border border-slate-200 mb-4 overflow-hidden shadow-sm">
-                                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-slate-50 border-b border-slate-200">
-                                        <input type="hidden" :name="'variants['+index+'][id]'" x-model="variant.id">
-
-                                        <div class="col-span-3">
-                                            <input type="text" :name="'variants['+index+'][name]'" x-model="variant.name" placeholder="Nama" class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm font-bold text-slate-700 bg-white">
+                                    {{-- BARIS VARIAN UTAMA --}}
+                                    <div class="grid grid-cols-12 gap-2 items-center p-3 bg-slate-50 border-b border-slate-200">
+                                        <div class="col-span-2">
+                                            <input type="text" x-model="variant.name" placeholder="Nama" class="w-full px-2 py-2 rounded-lg border-slate-300 text-xs font-bold text-slate-700 bg-white">
                                         </div>
-                                        <div class="col-span-3 relative">
-                                            <input type="text" :name="'variants['+index+'][barcode]'" x-model="variant.barcode" placeholder="Barcode" class="w-full px-3 py-2 rounded-lg border-slate-300 text-xs font-mono bg-white">
-                                        </div>
-                                        <div class="col-span-3">
-                                            <input type="number" :name="'variants['+index+'][price]'" x-model="variant.price" placeholder="0" class="w-full px-3 py-2 rounded-lg border-emerald-200 text-sm font-bold text-emerald-700 bg-white text-right">
+                                        <div class="col-span-2 relative">
+                                            <input type="text" x-model="variant.barcode" placeholder="Barcode" class="w-full px-2 py-2 rounded-lg border-slate-300 text-xs font-mono bg-white">
                                         </div>
                                         <div class="col-span-2">
-                                            <input type="number" :name="'variants['+index+'][stock]'" x-model="variant.stock" placeholder="0" :readonly="variant.sub_variants && variant.sub_variants.length > 0" class="w-full px-3 py-2 rounded-lg border-slate-300 text-sm text-center">
+                                            <input type="number" x-model="variant.price" placeholder="0" class="w-full px-2 py-2 rounded-lg border-emerald-200 text-xs font-bold text-emerald-700 bg-white text-right">
+                                        </div>
+
+                                        {{-- Input Diskon Varian --}}
+                                        <div class="col-span-3 flex gap-1">
+                                            <select x-model="variant.discount_type" class="w-1/2 px-1 py-2 rounded-lg border-slate-300 text-xs bg-white text-center font-bold text-slate-600 appearance-none">
+                                                <option value="percent">%</option>
+                                                <option value="nominal">Rp</option>
+                                            </select>
+                                            <input type="number" x-model="variant.discount_value" placeholder="Diskon" class="w-1/2 px-2 py-2 rounded-lg border-slate-300 text-xs bg-white text-center">
+                                        </div>
+
+                                        <div class="col-span-2">
+                                            <input type="number" x-model="variant.stock" placeholder="0" :readonly="variant.sub_variants && variant.sub_variants.length > 0" class="w-full px-2 py-2 rounded-lg border-slate-300 text-xs text-center">
                                         </div>
                                         <div class="col-span-1 text-center">
-                                            <button type="button" @click="removeVariantRow(index)" class="h-8 w-8 text-slate-400 hover:text-red-500"><i class="fas fa-trash-alt"></i></button>
+                                            <button type="button" @click="removeVariantRow(index)" class="h-8 w-8 text-slate-400 hover:text-red-500 bg-white rounded-md shadow-sm border border-slate-200"><i class="fas fa-trash-alt text-xs"></i></button>
                                         </div>
                                     </div>
 
+                                    {{-- AREA SUB VARIAN --}}
                                     <div class="p-3 bg-white">
                                         <div class="flex justify-between items-center mb-2">
                                             <span class="text-[10px] font-bold text-orange-500 uppercase"><i class="fas fa-code-branch"></i> Sub Varian</span>
-                                            <button type="button" @click="addSubVariantRow(index)" class="text-[10px] bg-orange-50 text-orange-600 px-2 py-1 rounded border border-orange-200 font-bold">+ Anak</button>
+                                            <button type="button" @click="addSubVariantRow(index)" class="text-[10px] bg-orange-50 text-orange-600 px-2 py-1 rounded border border-orange-200 font-bold hover:bg-orange-100">+ Anak</button>
                                         </div>
                                         <div class="space-y-2 pl-4 border-l-2 border-orange-100">
                                             <template x-for="(sub, subIndex) in variant.sub_variants" :key="subIndex">
                                                 <div class="grid grid-cols-12 gap-2 items-center">
-                                                    <input type="hidden" :name="'variants['+index+'][sub_variants]['+subIndex+'][id]'" x-model="sub.id">
-                                                    <div class="col-span-3"><input type="text" :name="'variants['+index+'][sub_variants]['+subIndex+'][name]'" x-model="sub.name" placeholder="Ukuran" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded"></div>
-                                                    <div class="col-span-3"><input type="text" :name="'variants['+index+'][sub_variants]['+subIndex+'][barcode]'" x-model="sub.barcode" placeholder="Barcode" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded"></div>
-                                                    <div class="col-span-2"><input type="number" :name="'variants['+index+'][sub_variants]['+subIndex+'][price]'" x-model="sub.price" placeholder="Harga" class="w-full px-2 py-1.5 text-xs border border-emerald-300 text-emerald-700 text-right rounded"></div>
-                                                    <div class="col-span-2"><input type="number" :name="'variants['+index+'][sub_variants]['+subIndex+'][stock]'" x-model="sub.stock" @input="calculateTotalStock(index)" placeholder="Stok" class="w-full px-2 py-1.5 text-xs border border-slate-300 text-center rounded"></div>
-                                                    <div class="col-span-1"><input type="number" :name="'variants['+index+'][sub_variants]['+subIndex+'][weight]'" x-model="sub.weight" placeholder="Gram" class="w-full px-2 py-1.5 text-xs border border-slate-300 text-center rounded"></div>
-                                                    <div class="col-span-1 text-center"><button type="button" @click="removeSubVariantRow(index, subIndex); calculateTotalStock(index)" class="text-slate-400 hover:text-red-500"><i class="fas fa-times"></i></button></div>
+                                                    <div class="col-span-2"><input type="text" x-model="sub.name" placeholder="Nama" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded"></div>
+                                                    <div class="col-span-2"><input type="text" x-model="sub.barcode" placeholder="Barcode" class="w-full px-2 py-1.5 text-xs font-mono border border-slate-300 rounded"></div>
+                                                    <div class="col-span-2"><input type="number" x-model="sub.price" placeholder="Harga" class="w-full px-2 py-1.5 text-xs border border-emerald-300 text-emerald-700 font-bold text-right rounded"></div>
+
+                                                    {{-- Input Diskon Sub Varian --}}
+                                                    <div class="col-span-3 flex gap-1">
+                                                        <select x-model="sub.discount_type" class="w-1/2 px-1 py-1.5 border border-slate-300 rounded text-xs text-center font-bold text-slate-600 appearance-none">
+                                                            <option value="percent">%</option>
+                                                            <option value="nominal">Rp</option>
+                                                        </select>
+                                                        <input type="number" x-model="sub.discount_value" placeholder="Diskon" class="w-1/2 px-2 py-1.5 border border-slate-300 rounded text-xs text-center">
+                                                    </div>
+
+                                                    <div class="col-span-1"><input type="number" x-model="sub.stock" @input="calculateTotalStock(index)" placeholder="Stok" class="w-full px-2 py-1.5 text-xs border border-slate-300 text-center rounded"></div>
+                                                    <div class="col-span-1"><input type="number" x-model="sub.weight" placeholder="Gram" class="w-full px-2 py-1.5 text-xs border border-slate-300 text-center rounded"></div>
+                                                    <div class="col-span-1 text-center"><button type="button" @click="removeSubVariantRow(index, subIndex); calculateTotalStock(index)" class="text-slate-400 hover:text-red-500"><i class="fas fa-times text-xs"></i></button></div>
                                                 </div>
+                                            </template>
+                                            <template x-if="!variant.sub_variants || variant.sub_variants.length === 0">
+                                                <p class="text-[9px] text-slate-400 italic">Tidak ada sub varian. Harga & stok mengikuti varian utama di atas.</p>
                                             </template>
                                         </div>
                                     </div>
@@ -287,12 +324,32 @@
             hasVariant: {{ $product->has_variant ? 'true' : 'false' }},
             isSubmitting: false,
 
+            // DATA BINDING UNTUK PRODUK UTAMA
+            productData: {
+                name: '{{ addslashes($product->name) }}',
+                barcode: '{{ $product->barcode }}',
+                base_price: {{ $product->base_price ?? 0 }},
+                sell_price: {{ $product->sell_price ?? 0 }},
+                discount_type: '{{ $product->discount_type ?? "percent" }}',
+                discount_value: {{ $product->discount_value ?? 0 }},
+                stock: {{ $product->stock ?? 0 }},
+                unit: '{{ $product->unit ?? "pcs" }}',
+                weight: {{ $product->weight ?? 0 }},
+                description: '{{ addslashes($product->description) }}',
+                is_best_seller: {{ $product->is_best_seller ? 'true' : 'false' }},
+                is_terlaris: {{ $product->is_terlaris ? 'true' : 'false' }},
+                is_new_arrival: {{ $product->is_new_arrival ? 'true' : 'false' }},
+                is_flash_sale: {{ $product->is_flash_sale ? 'true' : 'false' }}
+            },
+
             variants: {!! $product->variants->map(function($v) {
                 return [
                     'id' => $v->id, 'name' => $v->name, 'price' => $v->price, 'stock' => $v->stock, 'barcode' => $v->barcode ?? '',
+                    'discount_type' => $v->discount_type ?? 'percent', 'discount_value' => $v->discount_value ?? 0,
                     'sub_variants' => $v->subVariants->map(function($sub) {
                         return [
-                            'id' => $sub->id, 'name' => $sub->name, 'price' => $sub->price, 'stock' => $sub->stock, 'weight' => $sub->weight ?? 0, 'barcode' => $sub->barcode ?? ''
+                            'id' => $sub->id, 'name' => $sub->name, 'price' => $sub->price, 'stock' => $sub->stock, 'weight' => $sub->weight ?? 0, 'barcode' => $sub->barcode ?? '',
+                            'discount_type' => $sub->discount_type ?? 'percent', 'discount_value' => $sub->discount_value ?? 0
                         ];
                     })->toArray()
                 ];
@@ -302,13 +359,14 @@
                 const option = event.target.options[event.target.selectedIndex];
                 this.isService = option.dataset.type === 'service';
             },
+
             addVariantRow() {
-                this.variants.push({ id: null, name: '', price: 0, stock: 0, barcode: '', sub_variants: [] });
+                this.variants.push({ id: null, name: '', price: 0, stock: 0, barcode: '', discount_type: 'percent', discount_value: 0, sub_variants: [] });
             },
             removeVariantRow(index) { this.variants.splice(index, 1); },
             addSubVariantRow(variantIndex) {
                 if(!this.variants[variantIndex].sub_variants) this.variants[variantIndex].sub_variants = [];
-                this.variants[variantIndex].sub_variants.push({ id: null, name: '', price: this.variants[variantIndex].price, stock: 0, weight: 0, barcode: '' });
+                this.variants[variantIndex].sub_variants.push({ id: null, name: '', price: this.variants[variantIndex].price, stock: 0, weight: 0, barcode: '', discount_type: 'percent', discount_value: 0 });
             },
             removeSubVariantRow(vIndex, sIndex) { this.variants[vIndex].sub_variants.splice(sIndex, 1); },
             calculateTotalStock(vIndex) {
@@ -320,29 +378,65 @@
                 }
             },
 
-            // JURUS BYPASS NESTED FORM
             async submitTembusTembok() {
                 this.isSubmitting = true;
 
-                let container = this.$refs.formContainer;
                 let formData = new FormData();
-                let inputs = container.querySelectorAll('input, select, textarea');
 
-                inputs.forEach(input => {
-                    if (input.name) {
-                        if (input.type === 'file') {
-                            if (input.files.length > 0) formData.append(input.name, input.files[0]);
-                        } else if (input.type === 'checkbox' || input.type === 'radio') {
-                            if (input.checked) formData.append(input.name, input.value);
-                        } else {
-                            formData.append(input.name, input.value);
-                        }
+                // Tambahkan token dan method
+                formData.append('_token', '{{ csrf_token() }}');
+                formData.append('_method', 'PUT');
+
+                // Tambahkan File Image jika ada perubahan
+                let fileInput = this.$refs.fileInput;
+                if (fileInput && fileInput.files.length > 0) {
+                    formData.append('image', fileInput.files[0]);
+                }
+
+                // Tambahkan Status Mode
+                formData.append('category_id', this.selectedCategory);
+                formData.append('type', this.isService ? 'service' : 'physical');
+                if (this.hasVariant) formData.append('has_variant', 1);
+
+                // Tambahkan Data Produk Utama secara manual ke FormData
+                for (let key in this.productData) {
+                    let value = this.productData[key];
+                    if(typeof value === 'boolean') {
+                        if(value) formData.append(key, 1);
+                    } else {
+                        formData.append(key, value);
                     }
-                });
+                }
+
+                // Tambahkan Data Varian & Sub Varian secara terstruktur (Nested Array)
+                if (this.hasVariant && this.variants.length > 0) {
+                    this.variants.forEach((v, vIdx) => {
+                        formData.append(`variants[${vIdx}][id]`, v.id || '');
+                        formData.append(`variants[${vIdx}][name]`, v.name);
+                        formData.append(`variants[${vIdx}][barcode]`, v.barcode);
+                        formData.append(`variants[${vIdx}][price]`, v.price);
+                        formData.append(`variants[${vIdx}][stock]`, v.stock);
+                        formData.append(`variants[${vIdx}][discount_type]`, v.discount_type);
+                        formData.append(`variants[${vIdx}][discount_value]`, v.discount_value);
+
+                        if(v.sub_variants && v.sub_variants.length > 0) {
+                            v.sub_variants.forEach((sub, sIdx) => {
+                                formData.append(`variants[${vIdx}][sub_variants][${sIdx}][id]`, sub.id || '');
+                                formData.append(`variants[${vIdx}][sub_variants][${sIdx}][name]`, sub.name);
+                                formData.append(`variants[${vIdx}][sub_variants][${sIdx}][barcode]`, sub.barcode);
+                                formData.append(`variants[${vIdx}][sub_variants][${sIdx}][price]`, sub.price);
+                                formData.append(`variants[${vIdx}][sub_variants][${sIdx}][stock]`, sub.stock);
+                                formData.append(`variants[${vIdx}][sub_variants][${sIdx}][weight]`, sub.weight);
+                                formData.append(`variants[${vIdx}][sub_variants][${sIdx}][discount_type]`, sub.discount_type);
+                                formData.append(`variants[${vIdx}][sub_variants][${sIdx}][discount_value]`, sub.discount_value);
+                            });
+                        }
+                    });
+                }
 
                 try {
                     let response = await fetch("{{ route('products.update', $product->id) }}", {
-                        method: 'POST',
+                        method: 'POST', // Walau update, tetap POST karena kita pakai _method PUT di atas
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
                             'Accept': 'application/json'
