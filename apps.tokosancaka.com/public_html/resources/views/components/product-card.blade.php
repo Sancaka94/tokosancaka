@@ -1,27 +1,33 @@
 @php
-    // LOGIKA PERHITUNGAN DISKON
+    // LOGIKA PERHITUNGAN DISKON DINAMIS DARI DATABASE
     $originalPrice = $product->sell_price ?? 0;
     $finalPrice = $originalPrice;
     $discountAmount = 0;
     $hasDiscount = false;
     $discountBadge = '';
+    $coretPrice = 0;
 
+    // Cek apakah produk ini memiliki input diskon baru
     if (isset($product->discount_value) && $product->discount_value > 0) {
         $hasDiscount = true;
+        $coretPrice = $originalPrice;
 
         if ($product->discount_type === 'percent') {
-            // Hitung potongan dari persentase
             $discountAmount = $originalPrice * ($product->discount_value / 100);
             $discountBadge = '-' . round($product->discount_value) . '%';
         } else {
-            // Potongan harga nominal langsung
             $discountAmount = $product->discount_value;
-            // Format badge untuk nominal (misal: -Rp5rb agar muat di label kecil)
             $discountBadge = '-Rp' . number_format($discountAmount / 1000, 0, '', '') . 'k';
         }
-
-        // Pastikan harga tidak minus
         $finalPrice = max(0, $originalPrice - $discountAmount);
+    }
+    // Fallback: Jika tidak pakai input diskon baru, tapi ada selisih base_price dan sell_price lama
+    elseif (isset($product->base_price) && $product->base_price > $product->sell_price) {
+        $hasDiscount = true;
+        $coretPrice = $product->base_price;
+        $finalPrice = $product->sell_price;
+        $discountAmount = $coretPrice - $finalPrice;
+        $discountBadge = '-' . round(($discountAmount / $coretPrice) * 100) . '%';
     }
 @endphp
 
@@ -36,9 +42,9 @@
                 <i data-lucide="image" class="w-10 h-10 text-gray-300"></i>
             @endif
 
-            {{-- BADGE DISKON BARU --}}
+            {{-- BADGE DISKON MERAH --}}
             @if($hasDiscount)
-                <div class="absolute top-0 right-0 bg-yellow-300 text-red-600 text-[10px] md:text-xs font-black px-1.5 py-1 rounded-bl-lg shadow-sm z-10">
+                <div class="absolute top-0 right-0 bg-red-600 text-white text-[10px] md:text-xs font-black px-1.5 py-1 rounded-bl-lg shadow-sm z-10">
                     {{ $discountBadge }}
                 </div>
             @endif
@@ -66,15 +72,16 @@
             </div>
 
             <div class="mt-auto">
-                {{-- TAMPILAN HARGA DENGAN ATAU TANPA DISKON --}}
+                {{-- TAMPILAN HARGA --}}
                 @if($hasDiscount)
-                    <div class="flex items-center gap-1.5">
+                    {{-- HARGA CORET DI KIRI, HARGA FINAL DI KANAN --}}
+                    <div class="flex items-baseline gap-1.5 mb-0.5">
                         <div class="text-[10px] md:text-xs text-gray-400 line-through truncate">
-                            Rp {{ number_format($originalPrice, 0, ',', '.') }}
+                            Rp {{ number_format($coretPrice, 0, ',', '.') }}
                         </div>
-                    </div>
-                    <div class="text-blue-700 font-black text-sm md:text-base truncate">
-                        Rp {{ number_format($finalPrice, 0, ',', '.') }}
+                        <div class="text-blue-700 font-black text-sm md:text-base truncate">
+                            Rp {{ number_format($finalPrice, 0, ',', '.') }}
+                        </div>
                     </div>
                     <div class="text-[9px] md:text-[10px] text-emerald-600 font-bold mt-0.5 bg-emerald-50 w-max px-1.5 py-0.5 rounded">
                         Anda Lebih Hemat Rp {{ number_format($discountAmount, 0, ',', '.') }}
@@ -100,7 +107,7 @@
         <button @click.prevent="addToCart({{ json_encode([
                     'id' => $product->id,
                     'name' => $product->name,
-                    'sell_price' => $finalPrice, // Pastikan yang masuk keranjang adalah harga sesudah diskon
+                    'sell_price' => $finalPrice,
                     'image' => $product->image ? asset('storage/'.$product->image) : ''
                 ]) }})"
                 class="w-full bg-blue-600 text-white py-1.5 md:py-2 rounded border border-blue-600 text-[11px] md:text-sm font-semibold hover:bg-blue-700 hover:shadow-md transition flex justify-center items-center gap-1 active:scale-95 group-hover:visible">
