@@ -67,23 +67,30 @@
                         </div>
 
                         {{-- Grid Kategori --}}
-                        <div class="grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto pr-1">
+                        <div class="grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto pr-1 mt-2">
                             @php
-                                // Ambil Kategori Aktif untuk Tenant ini
+                                // AMBIL KATEGORI BESERTA JUMLAH PRODUKNYA
                                 $navCategories = \App\Models\Category::where('tenant_id', $tenant->id)
                                                     ->where('is_active', true)
+                                                    ->withCount('products') // <--- Kode penentu untuk menghitung jumlah produk
                                                     ->orderBy('name', 'asc')
                                                     ->get();
                             @endphp
 
                             @forelse($navCategories as $cat)
                                 <a href="{{ route('storefront.index', ['subdomain' => $subdomain, 'category' => $cat->id]) }}"
-                                   class="flex items-center gap-2 p-2 hover:bg-blue-50 rounded-lg transition group">
-                                    <div class="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition">
-                                        <i data-lucide="folder" class="w-4 h-4"></i>
+                                   class="flex items-center justify-between p-2 hover:bg-blue-50 rounded-lg transition group">
+                                    <div class="flex items-center gap-2 overflow-hidden">
+                                        <div class="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-blue-200 group-hover:text-blue-700 transition shrink-0">
+                                            <i data-lucide="folder" class="w-4 h-4"></i>
+                                        </div>
+                                        <span class="text-xs font-medium text-gray-700 group-hover:text-blue-800 truncate">
+                                            {{ $cat->name }}
+                                        </span>
                                     </div>
-                                    <span class="text-xs font-medium text-gray-600 group-hover:text-blue-700 truncate">
-                                        {{ $cat->name }}
+                                    {{-- JUMLAH ITEM PRODUK --}}
+                                    <span class="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full group-hover:bg-blue-100 group-hover:text-blue-700 transition shrink-0 font-bold">
+                                        {{ $cat->products_count ?? 0 }}
                                     </span>
                                 </a>
                             @empty
