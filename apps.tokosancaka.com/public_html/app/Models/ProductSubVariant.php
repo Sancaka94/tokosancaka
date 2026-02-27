@@ -27,16 +27,19 @@ class ProductSubVariant extends Model
         'weight',
         'image',
         'is_active',
+        'discount_type',  // <--- TAMBAHAN UNTUK DISKON (percent / nominal)
+        'discount_value', // <--- TAMBAHAN UNTUK DISKON (Nominal/Persentase)
     ];
 
     /**
      * Casting tipe data agar formatnya sesuai saat dipanggil di API/View.
      */
     protected $casts = [
-        'price'     => 'decimal:2',
-        'stock'     => 'integer',
-        'weight'    => 'integer',
-        'is_active' => 'boolean', // Ubah 1/0 di database jadi true/false
+        'price'          => 'decimal:2',
+        'stock'          => 'integer',
+        'weight'         => 'integer',
+        'is_active'      => 'boolean', // Ubah 1/0 di database jadi true/false
+        'discount_value' => 'decimal:2', // Pastikan diskon terbaca sebagai angka desimal
     ];
 
     // --- RELATIONSHIPS ---

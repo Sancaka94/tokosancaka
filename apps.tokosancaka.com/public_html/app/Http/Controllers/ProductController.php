@@ -121,6 +121,8 @@ class ProductController extends Controller implements HasMiddleware
             'category_id' => 'required|exists:categories,id',
             'type'        => 'nullable|in:physical,service',
             'image'       => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'discount_type'  => 'nullable|in:percent,nominal',
+            'discount_value' => 'nullable|numeric|min:0',
             'barcode'     => [
                 'nullable', 'min:10', 'max:13',
                 // PERBAIKAN: Hilangkan ->ignore() karena ini insert baru
@@ -159,6 +161,8 @@ class ProductController extends Controller implements HasMiddleware
                 'category_id'    => $request->category_id,
                 'base_price'     => $request->base_price,
                 'sell_price'     => $request->sell_price ?? 0,
+                'discount_type'  => $request->discount_type ?? 'percent',
+                'discount_value' => $request->discount_value ?? 0,
                 'stock'          => $hasVariant ? 0 : ($request->stock ?? 0),
                 'stock_status'   => 'available',
                 'has_variant'    => $hasVariant,
@@ -186,7 +190,9 @@ class ProductController extends Controller implements HasMiddleware
                         'price'      => $varData['price'],
                         'stock'      => $varData['stock'] ?? 0,
                         'sku'        => $varSku,
-                        'barcode'    => $varBarcode
+                        'barcode'    => $varBarcode,
+                        'discount_type'  => $varData['discount_type'] ?? 'percent',
+                        'discount_value' => $varData['discount_value'] ?? 0,
                     ]);
 
                     $variantStock = 0;
@@ -204,7 +210,9 @@ class ProductController extends Controller implements HasMiddleware
                                 'stock'              => $subData['stock'] ?? 0,
                                 'weight'             => $subData['weight'] ?? 0,
                                 'sku'                => $subSku,
-                                'barcode'            => $subBarcode
+                                'barcode'            => $subBarcode,
+                                'discount_type'      => $subData['discount_type'] ?? 'percent',
+                                'discount_value'     => $subData['discount_value'] ?? 0,
                             ]);
 
                             $variantStock += ($subData['stock'] ?? 0);
@@ -244,6 +252,8 @@ class ProductController extends Controller implements HasMiddleware
             'base_price'  => 'nullable|numeric|min:0',
             'sell_price'  => 'nullable|numeric|min:0',
             'unit'        => 'required|string',
+            'discount_type'  => 'nullable|in:percent,nominal',
+            'discount_value' => 'nullable|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -272,6 +282,8 @@ class ProductController extends Controller implements HasMiddleware
                 'category_id'    => $request->category_id,
                 'base_price'     => $request->base_price ?? 0,
                 'sell_price'     => $request->sell_price ?? 0,
+                'discount_type'  => $request->discount_type ?? 'percent',
+                'discount_value' => $request->discount_value ?? 0,
                 'unit'           => $request->unit,
                 'supplier'       => $request->supplier,
                 'has_variant'    => $hasVariant,
@@ -370,6 +382,8 @@ class ProductController extends Controller implements HasMiddleware
                                         $subVariant->update([
                                             'name'    => $subData['name'],
                                             'price'   => $subData['price'],
+                                            'discount_type'  => $subData['discount_type'] ?? 'percent',
+                                            'discount_value' => $subData['discount_value'] ?? 0,
                                             'stock'   => $subData['stock'] ?? 0,
                                             'sku'     => $subData['sku'] ?? $this->generateSku($variant->name, $subData['name']),
                                             'barcode' => $subData['barcode'] ?? $this->generateNumericBarcode($request->category_id),
@@ -385,6 +399,8 @@ class ProductController extends Controller implements HasMiddleware
                                         'product_variant_id' => $variant->id,
                                         'name'               => $subData['name'],
                                         'price'              => $subData['price'],
+                                        'discount_type'      => $subData['discount_type'] ?? 'percent',
+                                        'discount_value'     => $subData['discount_value'] ?? 0,
                                         'stock'              => $subData['stock'] ?? 0,
                                         'sku'                => $subData['sku'] ?? $this->generateSku($variant->name, $subData['name']),
                                         'barcode'            => $subData['barcode'] ?? $this->generateNumericBarcode($request->category_id),
@@ -536,6 +552,8 @@ class ProductController extends Controller implements HasMiddleware
                         'product_id' => $product->id,
                         'name'       => $varData['name'],
                         'price'      => $varData['price'],
+                        'discount_type'  => $varData['discount_type'] ?? 'percent',
+                        'discount_value' => $varData['discount_value'] ?? 0,
                         'stock'      => $varData['stock'] ?? 0,
                         'sku'        => $varData['sku'] ?? $this->generateSku($product->name, $varData['name']),
                         'barcode'    => $varData['barcode'] ?? $this->generateSmartBarcode($parentType),
@@ -740,6 +758,8 @@ class ProductController extends Controller implements HasMiddleware
                                 'price'          => $product->sell_price,
                                 'sell_price'     => $product->sell_price,
                                 'base_price'     => $product->base_price,
+                                'discount_type'  => $product->discount_type,
+                                'discount_value' => $product->discount_value,
                                 'stock'          => $product->stock,
                                 'unit'           => $product->unit,
                                 'weight'         => $product->weight,

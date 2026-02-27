@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\BelongsToTenant; // <-- Pastikan ini di-import
 
-
 class ProductVariant extends Model
 {
     use HasFactory;
@@ -27,15 +26,18 @@ class ProductVariant extends Model
         'price',      // Harga khusus varian
         'stock',      // Stok khusus varian
         'sku',        // Kode unik varian (Opsional)
-        'barcode', // <--- TAMBAHKAN INI
+        'barcode',    // Barcode kasir
+        'discount_type',  // <--- TAMBAHAN UNTUK DISKON (percent / nominal)
+        'discount_value', // <--- TAMBAHAN UNTUK DISKON (Nominal/Persentase)
     ];
 
     /**
      * Casting tipe data agar outputnya sesuai saat dipanggil.
      */
     protected $casts = [
-        'price' => 'integer', // Atau 'decimal:2' jika butuh sen
-        'stock' => 'integer',
+        'price'          => 'integer', // Atau 'decimal:2' jika butuh sen
+        'stock'          => 'integer',
+        'discount_value' => 'decimal:2', // Pastikan diskon terbaca sebagai angka desimal
     ];
 
     /**

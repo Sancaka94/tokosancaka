@@ -42,6 +42,8 @@ class Product extends Model
         'is_terlaris',    // <-- BADGE
         'is_new_arrival', // <-- BADGE
         'is_flash_sale',  // <-- BADGE
+        'discount_type',
+        'discount_value',
     ];
 
     /**
