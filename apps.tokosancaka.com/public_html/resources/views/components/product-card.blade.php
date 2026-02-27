@@ -101,7 +101,7 @@
                         Anda Lebih Hemat Rp {{ number_format($discountAmount, 0, ',', '.') }}
                     </div>
                 @else
-                    <div class="text-red-700 font-bold text-sm md:text-base truncate">
+                    <div class="text-blue-700 font-bold text-sm md:text-base truncate">
                         Rp {{ number_format($finalPrice, 0, ',', '.') }}
                     </div>
                 @endif
