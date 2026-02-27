@@ -76,12 +76,14 @@
                 @if($hasDiscount)
                     {{-- HARGA CORET DI KIRI, HARGA FINAL DI KANAN --}}
                     <div class="flex items-baseline gap-1.5 mb-0.5">
-                        <div class="text-[10px] md:text-xs text-gray-400 line-through truncate">
-                            Rp {{ number_format($coretPrice, 0, ',', '.') }}
-                        </div>
                         <div class="text-blue-700 font-black text-sm md:text-base truncate">
                             Rp {{ number_format($finalPrice, 0, ',', '.') }}
                         </div>
+
+                        <div class="text-[10px] md:text-xs text-red-400 line-through truncate">
+                            Rp {{ number_format($coretPrice, 0, ',', '.') }}
+                        </div>
+
                     </div>
                     <div class="text-[9px] md:text-[10px] text-emerald-600 font-bold mt-0.5 bg-emerald-50 w-max px-1.5 py-0.5 rounded">
                         Anda Lebih Hemat Rp {{ number_format($discountAmount, 0, ',', '.') }}
