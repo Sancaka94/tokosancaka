@@ -104,10 +104,13 @@
 
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                                 <div class="flex items-center gap-2">
-                                    <span id="resi-{{ $scan->id }}">{{ $scan->resi_number }}</span>
-                                    <button type="button" onclick="copyResi('{{ $scan->resi_number }}', 'icon-copy-{{ $scan->id }}')" class="text-gray-400 hover:text-indigo-600 focus:outline-none transition-colors" title="Salin Nomor Resi">
+
+                                    <button type="button" onclick="copyResi('{{ $scan->resi_number }}', 'icon-copy-{{ $scan->id }}')" class="text-red-400 hover:text-red-600 focus:outline-none transition-colors" title="Salin Nomor Resi">
                                         <i id="icon-copy-{{ $scan->id }}" class="fas fa-copy"></i>
                                     </button>
+
+                                    <span id="resi-{{ $scan->id }}">{{ $scan->resi_number }}</span>
+
                                 </div>
                             </td>
 
