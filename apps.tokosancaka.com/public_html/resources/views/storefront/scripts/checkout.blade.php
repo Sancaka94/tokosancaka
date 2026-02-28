@@ -147,30 +147,38 @@
             // 5. FUNGSI AMBIL DATA API TRIPAY
             // ==========================================
 
+            // ==========================================
+            // 5. FUNGSI AMBIL DATA API TRIPAY
+            // ==========================================
             async fetchPaymentChannels() {
                 if (this.tripayChannels.length > 0) return;
 
                 this.isLoadingChannels = true;
                 try {
-                    // SILAKAN UBAH URL INI SESUAI DENGAN ENDPOINT API ANDA YANG ASLI
-                    const res = await fetch(`/api/tripay/channels`);
+                    // MENGGUNAKAN ROUTE LARAVEL LANGSUNG
+                    const res = await fetch(`{{ route('storefront.api.tripay') }}`, {
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
 
-                    // PERBAIKAN: Cek apakah responnya sukses (bukan error 404/500)
                     if (!res.ok) {
                         throw new Error(`Server membalas dengan status: ${res.status}`);
                     }
 
                     const json = await res.json();
 
-                    if(json.status === 'success' || json.success) {
-                        this.tripayChannels = json.data;
+                    // Sesuaikan dengan format return dari getPaymentChannels() OrderController Anda
+                    if(json.status === 'success') {
+                        // Memfilter hanya channel yang aktif (opsional, jika Tripay mengembalikan status aktif)
+                        this.tripayChannels = json.data.filter(channel => channel.active);
                     } else {
                         console.error("Gagal mengambil data:", json);
-                        this.errorMessage = "Gagal memuat metode pembayaran.";
+                        this.errorMessage = "Gagal memuat metode pembayaran QRIS/VA.";
                     }
                 } catch (e) {
-                    console.error("Error mengambil API Tripay (Route belum ada/salah URL):", e);
-                    // Tidak menampilkan alert agar tidak mengganggu user, cukup di console
+                    console.error("Error mengambil API Tripay:", e);
+                    this.errorMessage = "Koneksi ke server pembayaran bermasalah.";
                 } finally {
                     this.isLoadingChannels = false;
                 }

@@ -42,3 +42,6 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
     Route::get('/escrow/disbursement', [\App\Http\Controllers\EscrowController::class, 'index'])->name('escrow.index');
     Route::post('/escrow/release/{order_id}', [\App\Http\Controllers\EscrowController::class, 'release'])->name('escrow.release');
 });
+
+
+Route::get('/api/tripay/channels', [OrderController::class, 'getPaymentChannels'])->name('storefront.api.tripay');
