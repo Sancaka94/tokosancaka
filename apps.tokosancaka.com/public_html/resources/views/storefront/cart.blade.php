@@ -119,21 +119,31 @@
             init() {
                 const savedCart = localStorage.getItem(this.storageKey);
                 if (savedCart) {
-                    let rawData = JSON.parse(savedCart);
+                    try {
+                        let rawData = JSON.parse(savedCart);
 
-                    // VALIDASI DATA: Paksa menjadi angka untuk mencegah RpNaN
-                    this.cart = rawData.map(item => {
-                        return {
-                            ...item,
-                            price: parseFloat(item.price) || 0, // Jika NaN ganti ke 0
-                            qty: parseInt(item.qty) || 1,       // Jika NaN ganti ke 1
-                            weight: parseInt(item.weight) || 0,
-                            // Pastikan badge terbaca sebagai angka (1 atau 0)
-                            is_free_ongkir: item.is_free_ongkir ? 1 : 0,
-                            is_cashback_extra: item.is_cashback_extra ? 1 : 0
-                        };
-                    });
+                        // VALIDASI DATA: Bersihkan format harga
+                        this.cart = rawData.map(item => {
+                            // Hapus semua karakter selain angka (misal: "Rp 50.000" -> "50000")
+                            let rawPrice = item.price ? String(item.price).replace(/[^0-9]/g, '') : '0';
+
+                            return {
+                                ...item,
+                                price: parseInt(rawPrice, 10) || 0, // Gunakan parseInt yang sudah bersih
+                                qty: parseInt(item.qty, 10) || 1,
+                                weight: parseInt(item.weight, 10) || 0,
+                                is_free_ongkir: item.is_free_ongkir ? 1 : 0,
+                                is_cashback_extra: item.is_cashback_extra ? 1 : 0
+                            };
+                        });
+                    } catch (e) {
+                        console.error('Gagal memproses data keranjang:', e);
+                        this.cart = [];
+                    }
                 }
+
+                // Render icon Lucide setelah Alpine merender DOM
+                this.renderIcons();
             },
 
             // Hitung Total Item
@@ -141,7 +151,7 @@
                 return this.cart.reduce((sum, item) => sum + item.qty, 0);
             },
 
-            // Hitung Total Harga (Aman dari NaN)
+            // Hitung Total Harga
             get cartTotal() {
                 return this.cart.reduce((sum, item) => {
                     return sum + (item.price * item.qty);
@@ -172,12 +182,22 @@
             },
 
             formatRupiah(number) {
-                if (isNaN(number)) return 'Rp 0';
+                if (isNaN(number) || number === 0) return 'Rp 0';
                 return new Intl.NumberFormat('id-ID', {
                     style: 'currency',
                     currency: 'IDR',
                     minimumFractionDigits: 0
                 }).format(number);
+            },
+
+            // Fungsi bantuan untuk me-render ulang icon
+            renderIcons() {
+                // $nextTick memastikan fungsi dijalankan *setelah* Alpine memperbarui HTML
+                this.$nextTick(() => {
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+                });
             }
         }
     }
