@@ -194,15 +194,29 @@
                     <div class="bg-white p-6 md:p-8 rounded-3xl shadow-xl shadow-blue-900/5 border border-gray-100">
                         <h3 class="font-black text-gray-900 mb-4 border-b border-gray-100 pb-4">Ringkasan Pesanan</h3>
 
-                        <div class="space-y-3 mb-6 max-h-40 overflow-y-auto pr-2">
+                        {{-- 1. LIST PRODUK BESERTA BADGE PROMO --}}
+                        <div class="space-y-4 mb-6 max-h-48 overflow-y-auto pr-2">
                             <template x-for="item in cartItems" :key="item.id">
-                                <div class="flex justify-between text-xs items-center">
-                                    <span class="text-gray-600 truncate pr-2"><span class="font-bold text-gray-800" x-text="item.qty+'x'"></span> <span x-text="item.name"></span></span>
-                                    <span class="font-semibold text-gray-900" x-text="formatRupiah(item.price * item.qty)"></span>
+                                <div class="flex flex-col border-b border-gray-50 pb-3 last:border-0 last:pb-0">
+                                    <div class="flex justify-between text-xs items-center">
+                                        <span class="text-gray-600 truncate pr-2"><span class="font-bold text-gray-800" x-text="item.qty+'x'"></span> <span x-text="item.name"></span></span>
+                                        <span class="font-semibold text-gray-900" x-text="formatRupiah(item.price * item.qty)"></span>
+                                    </div>
+
+                                    {{-- Badge Muncul di bawah nama produk --}}
+                                    <div class="flex gap-1 mt-1.5">
+                                        <template x-if="item.is_free_ongkir == 1">
+                                            <span class="text-[8px] font-bold text-teal-600 border border-teal-500 px-1 py-0.5 rounded-sm bg-teal-50 uppercase">Gratis Ongkir</span>
+                                        </template>
+                                        <template x-if="item.is_cashback_extra == 1">
+                                            <span class="text-[8px] font-bold text-red-500 border border-red-500 px-1 py-0.5 rounded-sm bg-red-50 uppercase">Cashback Xtra</span>
+                                        </template>
+                                    </div>
                                 </div>
                             </template>
                         </div>
 
+                        {{-- 2. RINCIAN BIAYA & NOMINAL --}}
                         <div class="space-y-3 border-t border-gray-100 pt-4 text-sm text-gray-600">
                             <div class="flex justify-between">
                                 <span>Total Harga Barang</span>
@@ -217,6 +231,21 @@
                             <div class="flex justify-between text-blue-600" x-show="deliveryType === 'shipping'">
                                 <span>Ongkos Kirim <span x-show="courierName" class="text-[10px] text-gray-400" x-text="'('+courierName+')'"></span></span>
                                 <span class="font-bold" x-text="shippingCost > 0 ? '+ ' + formatRupiah(shippingCost) : 'Rp 0'"></span>
+                            </div>
+
+                            {{-- BARIS BARU: INFO POTONGAN GRATIS ONGKIR --}}
+                            <div class="flex justify-between text-teal-600 bg-teal-50 p-2.5 rounded-xl border border-teal-100" x-show="cartItems.some(i => i.is_free_ongkir == 1) && deliveryType === 'shipping'">
+                                <span>Potongan Ongkir <span class="text-[10px] bg-teal-600 text-white px-1.5 py-0.5 rounded ml-1">PROMO</span></span>
+                                <span class="font-bold text-xs flex items-center">
+                                    Dihitung Otomatis
+                                </span>
+                            </div>
+
+                            {{-- BARIS BARU: ESTIMASI NOMINAL CASHBACK --}}
+                            <div class="flex justify-between text-orange-600 bg-orange-50 p-2.5 rounded-xl border border-orange-100" x-show="cartItems.some(i => i.is_cashback_extra == 1)">
+                                <span>Potensi Cashback <span class="text-[10px] bg-orange-500 text-white px-1.5 py-0.5 rounded ml-1">XTRA</span></span>
+                                {{-- Rumus Sementara: Dibuat 5% (0.05) dari total produk yang berlogo cashback --}}
+                                <span class="font-bold" x-text="'+ ' + formatRupiah(cartItems.filter(i => i.is_cashback_extra == 1).reduce((sum, item) => sum + (item.price * item.qty * 0.05), 0))"></span>
                             </div>
                         </div>
 
