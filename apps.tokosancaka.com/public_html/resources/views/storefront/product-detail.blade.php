@@ -305,6 +305,8 @@
                     is_cashback_extra: {{ $product->is_cashback_extra ? 1 : 0 }} // PERBAIKAN PENTING: Tambahkan data ini
                 };
 
+                console.log("DATA YANG DIKIRIM KE KERANJANG:", payload);
+
                 if (typeof addToCart === 'function') {
                     addToCart(payload);
                     // Opsional: Redirect ke halaman checkout / keranjang
