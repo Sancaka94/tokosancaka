@@ -199,35 +199,37 @@
             productName: '{{ $product->name }}',
             productId: {{ $product->id }},
 
-            // Inisialisasi Harga Asli Produk (sebelum diskon apapun)
-            baseSellPrice: {{ $product->sell_price }},
+            // Gunakan fallback ?? 0 untuk mencegah error jika data kosong
+            baseSellPrice: {{ $product->sell_price ?? 0 }},
             baseWeight: {{ $product->weight ?? 0 }},
 
-            // State Harga & Diskon Realtime
             currentPrice: 0,
             originalPrice: 0,
             discountBadge: '',
-            currentStock: {{ $product->stock }},
+            currentStock: {{ $product->stock ?? 0 }},
             currentWeight: {{ $product->weight ?? 0 }},
 
             mainImage: '{{ $product->image ? asset("storage/".$product->image) : "" }}',
             gallery: ['{{ $product->image ? asset("storage/".$product->image) : "" }}'].filter(Boolean),
 
-            variants: @json($product->variants->load('subVariants')),
+            // Pastikan tidak error jika relasi variants kosong
+            variants: @json($product->variants ? $product->variants->load('subVariants') : []),
             selectedVariant: null,
             selectedSubVariant: null,
 
             initData() {
-                // Jalankan kalkulasi pertama kali untuk produk utama
                 this.calculatePrice(
-                    {{ $product->sell_price }},
-                    '{{ $product->discount_type }}',
+                    this.baseSellPrice,
+                    '{{ $product->discount_type ?? "" }}',
                     {{ $product->discount_value ?? 0 }}
                 );
             },
 
-            // Fungsi Kalkulator Diskon Universal
-            calculatePrice(price, discType, discValue) {
+            // Fungsi Kalkulator Diskon Universal (Diperbarui agar kebal terhadap error NaN)
+            calculatePrice(rawPrice, discType, rawDiscValue) {
+                let price = parseFloat(rawPrice) || 0;
+                let discValue = parseFloat(rawDiscValue) || 0;
+
                 this.originalPrice = price;
                 let final = price;
 
@@ -243,67 +245,70 @@
                     this.discountBadge = '';
                 }
 
-                this.currentPrice = Math.max(0, final);
+                // Math.round agar tidak ada angka desimal berlebih
+                this.currentPrice = Math.max(0, Math.round(final));
             },
 
             selectVariant(variant) {
                 this.selectedVariant = variant;
                 this.selectedSubVariant = null;
 
-                // Jika varian punya anak, biarkan harga anak yang menentukan nantinya
-                // Jika tidak, hitung diskon varian induk
-                this.calculatePrice(variant.price, variant.discount_type, variant.discount_value);
-                this.currentStock = variant.stock;
+                // PERBAIKAN: Antisipasi jika nama kolom di database adalah sell_price alih-alih price
+                let variantPrice = variant.sell_price !== undefined ? variant.sell_price : variant.price;
+                this.calculatePrice(variantPrice, variant.discount_type, variant.discount_value);
+                this.currentStock = variant.stock || 0;
             },
 
             selectSubVariant(sub) {
                 if(sub.stock <= 0) return;
                 this.selectedSubVariant = sub;
 
-                // Hitung diskon khusus sub varian
-                this.calculatePrice(sub.price, sub.discount_type, sub.discount_value);
-                this.currentStock = sub.stock;
+                // PERBAIKAN: Antisipasi jika nama kolom di database adalah sell_price
+                let subPrice = sub.sell_price !== undefined ? sub.sell_price : sub.price;
+                this.calculatePrice(subPrice, sub.discount_type, sub.discount_value);
+                this.currentStock = sub.stock || 0;
                 this.currentWeight = sub.weight || this.baseWeight;
             },
 
             formatPrice(price) {
-                return new Intl.NumberFormat('id-ID').format(price);
+                return new Intl.NumberFormat('id-ID').format(price || 0);
             },
 
             get isReadyToBuy() {
                 if (this.currentStock <= 0) return false;
-                if (this.variants.length > 0 && !this.selectedVariant) return false;
-                if (this.selectedVariant && this.selectedVariant.sub_variants.length > 0 && !this.selectedSubVariant) return false;
+                if (this.variants && this.variants.length > 0 && !this.selectedVariant) return false;
+                if (this.selectedVariant && this.selectedVariant.sub_variants && this.selectedVariant.sub_variants.length > 0 && !this.selectedSubVariant) return false;
                 return true;
             },
 
             handleAddToCart() {
                 if(!this.isReadyToBuy) return;
 
-                // 1. Gabungkan Nama (Produk + Varian + Sub) agar muncul detail di checkout
                 let fullName = this.productName;
                 if(this.selectedVariant) fullName += ' - ' + this.selectedVariant.name;
                 if(this.selectedSubVariant) fullName += ' (' + this.selectedSubVariant.name + ')';
 
-                // 2. Susun Payload Data (PENTING: is_free_ongkir harus masuk ke sini)
+                // Bikin unique ID agar varian yang berbeda dari produk yang sama tidak tertumpuk di keranjang
+                let uniqueId = this.productId + '-' + (this.selectedVariant?.id || '0') + '-' + (this.selectedSubVariant?.id || '0');
+
                 const payload = {
                     id: this.productId,
+                    unique_id: uniqueId,
                     variant_id: this.selectedVariant ? this.selectedVariant.id : null,
                     sub_variant_id: this.selectedSubVariant ? this.selectedSubVariant.id : null,
                     name: fullName,
-                    price: this.currentPrice, // Harga setelah diskon (finalPrice)
+                    price: this.currentPrice,
+                    qty: 1, // PERBAIKAN PENTING: Set default quantity
                     weight: this.currentWeight,
                     image: this.mainImage,
-                    // KODE KRITIS: Memastikan label gratis ongkir terbaca di halaman checkout
-                    is_free_ongkir: {{ $product->is_free_ongkir ? 1 : 0 }}
+                    is_free_ongkir: {{ $product->is_free_ongkir ? 1 : 0 }},
+                    is_cashback_extra: {{ $product->is_cashback_extra ? 1 : 0 }} // PERBAIKAN PENTING: Tambahkan data ini
                 };
 
-                // 3. Panggil fungsi addToCart global
                 if (typeof addToCart === 'function') {
                     addToCart(payload);
-
-                    // Opsional: Redirect ke halaman checkout setelah klik beli
-                    // window.location.href = "{{ route('storefront.checkout', $subdomain) }}";
+                    // Opsional: Redirect ke halaman checkout / keranjang
+                    // window.location.href = "/cart";
                 } else {
                     console.error("Fungsi addToCart tidak ditemukan di layout induk.");
                 }
