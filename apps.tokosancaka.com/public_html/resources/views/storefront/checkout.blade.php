@@ -134,45 +134,57 @@
                     {{-- GRID METODE UTAMA --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
 
+                        {{-- 1. DANA Otomatis --}}
                         <label class="cursor-pointer">
                             <input type="radio" name="payment_method" value="dana_sdk" x-model="paymentMethod" required class="peer sr-only">
-                            <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 flex items-center gap-3 transition">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg" class="h-6">
+                            <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 flex items-center gap-4 transition">
+                                <div class="w-12 flex justify-center">
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg" alt="DANA" class="h-6 object-contain">
+                                </div>
                                 <div>
-                                    <span class="font-bold text-sm block">DANA Otomatis</span>
-                                    <span class="text-[10px] text-gray-500">Potong Saldo DANA</span>
+                                    <span class="font-bold text-sm block">DANA</span>
+                                    <span class="text-[10px] text-gray-500">Potong Saldo DANA Anda</span>
                                 </div>
                             </div>
                         </label>
 
+                        {{-- 2. QRIS / Virtual Account (Tripay) --}}
                         <label class="cursor-pointer">
                             <input type="radio" name="payment_method" value="tripay" x-model="paymentMethod" class="peer sr-only">
-                            <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 flex items-center gap-3 transition">
-                                <i class="fas fa-qrcode text-xl text-gray-700 peer-checked:text-blue-600"></i>
+                            <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 flex items-center gap-4 transition">
+                                <div class="w-12 flex justify-center">
+                                    <img src="https://tokosancaka.com/public/assets/qris2.png" alt="QRIS" class="h-6 object-contain">
+                                </div>
                                 <div>
                                     <span class="font-bold text-sm block peer-checked:text-blue-700">QRIS / Virtual Account</span>
-                                    <span class="text-[10px] text-gray-500">BCA, BNI, Mandiri, BRI, dll</span>
+                                    <span class="text-[10px] text-gray-500">VA BCA, BNI, Mandiri, BRI, BTPN Dll</span>
                                 </div>
                             </div>
                         </label>
 
+                        {{-- 3. DOKU Payment --}}
                         <label class="cursor-pointer">
                             <input type="radio" name="payment_method" value="doku" x-model="paymentMethod" class="peer sr-only">
-                            <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 flex items-center gap-3 transition">
-                                <i class="fas fa-credit-card text-xl text-gray-700 peer-checked:text-blue-600"></i>
+                            <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 flex items-center gap-4 transition">
+                                <div class="w-12 flex justify-center">
+                                    <img src="https://tokosancaka.com/public/assets/doku.png" alt="DOKU" class="h-5 object-contain">
+                                </div>
                                 <div>
-                                    <span class="font-bold text-sm block">DOKU Payment</span>
-                                    <span class="text-[10px] text-gray-500">Credit Card & e-Wallet Lainnya</span>
+                                    <span class="font-bold text-sm block peer-checked:text-blue-700">Rekomendasi Sancaka</span>
+                                    <span class="text-[10px] text-gray-500">Debit Card, VA Bank, QRIS & e-Wallet Lainnya</span>
                                 </div>
                             </div>
                         </label>
 
+                        {{-- 4. COD / Bayar Nanti --}}
                         <label class="cursor-pointer">
                             <input type="radio" name="payment_method" value="pay_later" x-model="paymentMethod" class="peer sr-only">
-                            <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 flex items-center gap-3 transition">
-                                <i class="fas fa-hand-holding-usd text-xl text-gray-700 peer-checked:text-blue-600"></i>
+                            <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 flex items-center gap-4 transition">
+                                <div class="w-12 flex justify-center">
+                                    <img src="https://tokosancaka.com/public/assets/cod.png" alt="COD" class="h-7 object-contain">
+                                </div>
                                 <div>
-                                    <span class="font-bold text-sm block">COD (Bayar di Tempat)</span>
+                                    <span class="font-bold text-sm block peer-checked:text-blue-700">COD (Bayar di Tempat)</span>
                                     <span class="text-[10px] text-gray-500">Bayar Barang + Ongkir saat kurir tiba</span>
                                 </div>
                             </div>
