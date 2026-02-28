@@ -130,47 +130,82 @@
                     <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2 text-lg">
                         <i data-lucide="wallet" class="text-blue-600"></i> Metode Pembayaran
                     </h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                    {{-- GRID METODE UTAMA --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+
                         <label class="cursor-pointer">
-                            <input type="radio" name="payment_method" value="dana_sdk" required class="peer sr-only">
+                            <input type="radio" name="payment_method" value="dana_sdk" x-model="paymentMethod" required class="peer sr-only">
                             <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 flex items-center gap-3 transition">
                                 <img src="https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg" class="h-6">
                                 <div>
                                     <span class="font-bold text-sm block">DANA Otomatis</span>
-                                    <span class="text-[10px] text-gray-500">Saldo / Kartu Bank</span>
+                                    <span class="text-[10px] text-gray-500">Potong Saldo DANA</span>
                                 </div>
                             </div>
                         </label>
+
                         <label class="cursor-pointer">
-                            <input type="radio" name="payment_method" value="tripay" class="peer sr-only">
+                            <input type="radio" name="payment_method" value="tripay" x-model="paymentMethod" class="peer sr-only">
                             <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 flex items-center gap-3 transition">
-                                <i class="fas fa-qrcode text-xl text-gray-700"></i>
+                                <i class="fas fa-qrcode text-xl text-gray-700 peer-checked:text-blue-600"></i>
                                 <div>
-                                    <span class="font-bold text-sm block">QRIS / Virtual Account</span>
-                                    <span class="text-[10px] text-gray-500">BCA, BNI, Mandiri, dll</span>
+                                    <span class="font-bold text-sm block peer-checked:text-blue-700">QRIS / Virtual Account</span>
+                                    <span class="text-[10px] text-gray-500">BCA, BNI, Mandiri, BRI, dll</span>
                                 </div>
                             </div>
                         </label>
+
                         <label class="cursor-pointer">
-                            <input type="radio" name="payment_method" value="doku" class="peer sr-only">
+                            <input type="radio" name="payment_method" value="doku" x-model="paymentMethod" class="peer sr-only">
                             <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 flex items-center gap-3 transition">
-                                <i class="fas fa-credit-card text-xl text-gray-700"></i>
+                                <i class="fas fa-credit-card text-xl text-gray-700 peer-checked:text-blue-600"></i>
                                 <div>
                                     <span class="font-bold text-sm block">DOKU Payment</span>
-                                    <span class="text-[10px] text-gray-500">Credit Card & e-Wallet</span>
+                                    <span class="text-[10px] text-gray-500">Credit Card & e-Wallet Lainnya</span>
                                 </div>
                             </div>
                         </label>
+
                         <label class="cursor-pointer">
-                            <input type="radio" name="payment_method" value="pay_later" class="peer sr-only">
+                            <input type="radio" name="payment_method" value="pay_later" x-model="paymentMethod" class="peer sr-only">
                             <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 flex items-center gap-3 transition">
-                                <i class="fas fa-hand-holding-usd text-xl text-gray-700"></i>
+                                <i class="fas fa-hand-holding-usd text-xl text-gray-700 peer-checked:text-blue-600"></i>
                                 <div>
-                                    <span class="font-bold text-sm block">Bayar Nanti / COD</span>
-                                    <span class="text-[10px] text-gray-500">Bayar saat terima barang</span>
+                                    <span class="font-bold text-sm block">COD (Bayar di Tempat)</span>
+                                    <span class="text-[10px] text-gray-500">Bayar Barang + Ongkir saat kurir tiba</span>
                                 </div>
                             </div>
                         </label>
+                    </div>
+
+                    {{-- GRID KHUSUS TRIPAY (MUNCUL SAAT TRIPAY DIKLIK) --}}
+                    <div x-show="paymentMethod === 'tripay'" x-cloak x-transition.opacity.duration.300ms class="mt-6 pt-6 border-t border-dashed border-gray-200">
+                        <h4 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-4">Pilih Bank / Channel Pembayaran</h4>
+                        <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                            <template x-for="channel in tripayChannels" :key="channel.code">
+                                <label class="cursor-pointer relative h-full">
+                                    <input type="radio" name="tripay_channel" :value="channel.code" x-model="selectedTripayChannel" class="peer sr-only">
+                                    <div class="p-3 border-2 border-gray-200 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 text-center transition flex flex-col items-center justify-between h-full bg-white hover:border-blue-300 shadow-sm relative overflow-hidden">
+
+                                        <div x-show="selectedTripayChannel === channel.code" class="absolute top-2 right-2 text-blue-600">
+                                            <i class="fas fa-check-circle"></i>
+                                        </div>
+
+                                        <div class="h-10 flex items-center justify-center mb-3 mt-1 w-full p-1 bg-white rounded">
+                                            <img :src="channel.logo" :alt="channel.name" class="max-h-full max-w-full object-contain">
+                                        </div>
+
+                                        <div class="w-full">
+                                            <span class="font-bold text-xs text-gray-800 block mb-1 truncate" x-text="channel.name"></span>
+                                            <div class="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded w-full border border-gray-200">
+                                                Admin: <span class="text-blue-600" x-text="formatRupiah(calculateTripayFee(channel))"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </label>
+                            </template>
+                        </div>
                     </div>
                 </div>
 

@@ -1,12 +1,16 @@
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('checkoutData', () => ({
-            // State Keranjang & Customer
+            // ==========================================
+            // 1. STATE & VARIABEL
+            // ==========================================
+
+            // Data Pesanan
             cartItems: [],
             customerName: '',
             customerPhone: '',
 
-            // State Pengiriman
+            // Data Pengiriman
             deliveryType: 'shipping',
             locationSearch: '',
             locationResults: [],
@@ -14,7 +18,7 @@
             districtId: '',
             subdistrictId: '',
 
-            // State Kurir & Biaya
+            // Data Kurir
             shippingRates: [],
             selectedRate: null,
             courierName: '',
@@ -22,44 +26,74 @@
             serviceType: '',
             shippingCost: 0,
 
-            // State Kupon
+            // Data Kupon
             couponInput: '',
             appliedCoupon: '',
             discountAmount: 0,
             couponMessage: '',
             couponStatus: '',
 
-            // State Loading
+            // Data Pembayaran & Tripay
+            paymentMethod: '',
+            selectedTripayChannel: '',
+            tripayChannels: [
+                { code: 'QRIS', name: 'QRIS (Semua E-Wallet)', logo: 'https://tripay.co.id/images/payment-channel/qris2.png', fee_flat: 750, fee_percent: 0.7 },
+                { code: 'BRIVA', name: 'BRI Virtual Account', logo: 'https://tripay.co.id/images/payment-channel/briva.png', fee_flat: 4000, fee_percent: 0 },
+                { code: 'BCAVA', name: 'BCA Virtual Account', logo: 'https://tripay.co.id/images/payment-channel/bcava.png', fee_flat: 4000, fee_percent: 0 },
+                { code: 'MANDIRIVA', name: 'Mandiri Virtual Account', logo: 'https://tripay.co.id/images/payment-channel/mandiriva.png', fee_flat: 4000, fee_percent: 0 },
+                { code: 'BNIVA', name: 'BNI Virtual Account', logo: 'https://tripay.co.id/images/payment-channel/bniva.png', fee_flat: 4000, fee_percent: 0 },
+                { code: 'ALFAMART', name: 'Alfamart / Alfamidi', logo: 'https://tripay.co.id/images/payment-channel/alfamart.png', fee_flat: 3500, fee_percent: 0 }
+            ],
+
+            // Status Loading Sistem
             isSearchingLoc: false,
             isLoadingRates: false,
             isCheckingCoupon: false,
 
             // ==========================================
-            // LOGIKA PROMO (GRATIS ONGKIR & CASHBACK)
+            // 2. LOGIKA PROMO & KALKULASI
             // ==========================================
 
-            // Cek apakah ada produk berlabel Free Ongkir
+            // Cek Gratis Ongkir
             get hasFreeOngkirProduct() {
                 return this.cartItems.some(item => item.is_free_ongkir == 1 || item.is_free_ongkir === true);
             },
 
-            // Cek apakah ada produk berlabel Cashback Xtra
-            get hasCashbackProduct() {
-                return this.cartItems.some(item => item.is_cashback_extra == 1 || item.is_cashback_extra === true);
-            },
-
-            // Hitung nilai subsidi ongkir
+            // Hitung Subsidi Ongkir
             get shippingDiscount() {
                 if (this.deliveryType === 'shipping' && this.hasFreeOngkirProduct) {
-                    // Memotong 100% biaya ongkir.
-                    // Jika ingin dibatasi maksimal Rp20.000, ganti dengan: return Math.min(parseInt(this.shippingCost || 0), 20000);
-                    return parseInt(this.shippingCost || 0);
+                    return parseInt(this.shippingCost || 0); // Diskon 100% Ongkir
+                }
+                return 0;
+            },
+
+            // Hitung Biaya Admin Tripay (Dinamis per Channel)
+            calculateTripayFee(channel) {
+                // Harga Dasar = Subtotal Barang - Diskon Kupon
+                let baseTotal = this.subtotal - this.discountAmount;
+                if(baseTotal < 0) baseTotal = 0;
+
+                // Tambah sisa ongkir (jika ada) ke Harga Dasar
+                if(this.deliveryType === 'shipping') {
+                    baseTotal += Math.max(0, parseInt(this.shippingCost || 0) - this.shippingDiscount);
+                }
+
+                // Rumus Tripay: Fee Flat + (Harga Dasar * Persentase)
+                let percentageFee = baseTotal * ((channel.fee_percent || 0) / 100);
+                return (channel.fee_flat || 0) + percentageFee;
+            },
+
+            // Get Biaya Admin Terpilih
+            get paymentAdminFee() {
+                if (this.paymentMethod === 'tripay' && this.selectedTripayChannel) {
+                    let channel = this.tripayChannels.find(c => c.code === this.selectedTripayChannel);
+                    if (channel) return this.calculateTripayFee(channel);
                 }
                 return 0;
             },
 
             // ==========================================
-            // KALKULASI UTAMA
+            // 3. KALKULASI TOTAL AKHIR
             // ==========================================
 
             get subtotal() {
@@ -71,43 +105,54 @@
             },
 
             get finalTotal() {
-                // 1. Total Harga Barang dikurangi Diskon Kupon
                 let total = this.subtotal - this.discountAmount;
-                if(total < 0) total = 0; // Cegah minus
+                if(total < 0) total = 0;
 
-                // 2. Tambahkan sisa ongkir (jika dikirim via kurir)
+                // Tambah Ongkos Kirim (Dikurangi Diskon Ongkir)
                 if(this.deliveryType === 'shipping') {
                     let finalShippingCost = parseInt(this.shippingCost || 0) - this.shippingDiscount;
-                    total += Math.max(0, finalShippingCost); // Cegah ongkir minus
+                    total += Math.max(0, finalShippingCost);
                 }
 
-                return total;
+                // Tambah Biaya Admin Tripay (Jika ada)
+                total += this.paymentAdminFee;
+
+                return Math.round(total);
             },
 
+            // Validasi Tombol Bayar
             get isReadyToPay() {
                 if(this.cartItems.length === 0) return false;
                 if(!this.customerName || !this.customerPhone) return false;
                 if(this.deliveryType === 'shipping' && (!this.districtId || !this.courierName)) return false;
+                if(this.paymentMethod === 'tripay' && !this.selectedTripayChannel) return false; // Wajib pilih bank
                 return true;
             },
 
             // ==========================================
-            // INISIALISASI
+            // 4. INISIALISASI & FUNGSI UTILITAS
             // ==========================================
 
             initCheckout() {
                 const saved = localStorage.getItem('sancaka_cart_{{ $tenant->id ?? 1 }}');
-                if (saved) {
-                    this.cartItems = JSON.parse(saved);
-                }
-                // Jika keranjang kosong, tendang balik ke beranda
+                if (saved) Object.assign(this, { cartItems: JSON.parse(saved) });
+
                 if(this.cartItems.length === 0) {
                     window.location.href = "{{ route('storefront.index', $subdomain) }}";
                 }
+
+                // Reset pilihan bank jika user pindah ke metode lain (misal dari Tripay ke DANA)
+                this.$watch('paymentMethod', value => {
+                    if (value !== 'tripay') this.selectedTripayChannel = '';
+                });
+            },
+
+            formatRupiah(angka) {
+                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
             },
 
             // ==========================================
-            // FUNGSI LOKASI & ONGKIR
+            // 5. FUNGSI LOKASI & API ONGKIR
             // ==========================================
 
             async searchLocation() {
@@ -116,9 +161,7 @@
                 try {
                     const res = await fetch(`{{ route('storefront.api.location') }}?query=${this.locationSearch}`);
                     const json = await res.json();
-                    if(json.status === 'success') {
-                        this.locationResults = json.data;
-                    }
+                    if(json.status === 'success') this.locationResults = json.data;
                 } catch (e) { console.error("Loc Search Error", e); }
                 this.isSearchingLoc = false;
             },
@@ -142,23 +185,17 @@
 
                 let stringValues = Object.values(loc).filter(val => typeof val === 'string' && isNaN(val));
                 if (stringValues.length > 0) return stringValues.join(', ');
-
-                return 'Alamat Ditemukan (Pilih ini)';
+                return 'Alamat Ditemukan';
             },
 
             selectLocation(loc) {
                 this.destinationText = this.formatLocationName(loc);
                 this.districtId = loc.district_id || loc.kecamatan_id || loc.id || '';
                 this.subdistrictId = loc.subdistrict_id || loc.kelurahan_id || '';
-
                 this.locationSearch = '';
                 this.locationResults = [];
 
-                if(this.districtId) {
-                    this.fetchOngkir();
-                } else {
-                    alert('Data dari API tidak memiliki ID Kecamatan (district_id).');
-                }
+                if(this.districtId) this.fetchOngkir();
             },
 
             resetLocation() {
@@ -173,7 +210,6 @@
 
             async fetchOngkir() {
                 if (!this.districtId) return;
-
                 this.isLoadingRates = true;
                 this.shippingRates = [];
 
@@ -188,25 +224,16 @@
                 try {
                     const res = await fetch(`{{ route('storefront.api.ongkir') }}`, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                         body: JSON.stringify(payload)
                     });
-
-                    if (!res.ok) throw new Error('Network response was not ok');
                     const json = await res.json();
-
                     if (json.status === 'success') {
                         this.shippingRates = json.data;
                     } else {
-                        console.error("API Error:", json.message);
                         alert(json.message || "Gagal memuat tarif pengiriman.");
                     }
                 } catch (e) {
-                    console.error("Fetch Error:", e);
                     alert("Terjadi kesalahan saat menghubungi server pengiriman.");
                 } finally {
                     this.isLoadingRates = false;
@@ -222,13 +249,12 @@
             },
 
             // ==========================================
-            // FUNGSI KUPON & FORMATTER
+            // 6. FUNGSI API KUPON
             // ==========================================
 
             async checkCoupon() {
                 this.isCheckingCoupon = true;
                 this.couponMessage = '';
-
                 try {
                     const res = await fetch(`{{ route('storefront.api.coupon') }}`, {
                         method: 'POST',
@@ -240,7 +266,6 @@
                         })
                     });
                     const json = await res.json();
-
                     if(json.status === 'success') {
                         this.discountAmount = json.data.discount_amount;
                         this.appliedCoupon = json.data.code;
@@ -259,36 +284,33 @@
                 this.isCheckingCoupon = false;
             },
 
-            formatRupiah(angka) {
-                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
-            },
-
             // ==========================================
-            // PROSES SUBMIT PEMESANAN
+            // 7. PROSES SUBMIT PEMESANAN
             // ==========================================
 
             async submitOrder() {
-                const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
-                if(!paymentMethod) {
+                if(!document.querySelector('input[name="payment_method"]:checked')) {
                     alert("Silakan pilih Metode Pembayaran terlebih dahulu!");
                     return;
                 }
 
                 this.isReadyToPay = false;
-
                 const formData = new FormData(document.getElementById('checkoutForm'));
 
-                // Inject data penting hasil kalkulasi ke dalam FormData agar terbaca oleh Backend Controller
+                // Inject data rahasia hasil kalkulasi Frontend ke dalam payload untuk dikirim ke Backend Controller
                 formData.append('final_total', this.finalTotal);
                 formData.append('shipping_discount', this.shippingDiscount);
+                formData.append('admin_fee', this.paymentAdminFee);
+
+                // Jika Tripay, kirim kode channel bank-nya (misal: 'QRIS', 'BCAVA')
+                if(this.paymentMethod === 'tripay') {
+                    formData.append('payment_channel', this.selectedTripayChannel);
+                }
 
                 try {
                     const response = await fetch("{{ route('storefront.process', $subdomain) }}", {
                         method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest' // Penting untuk deteksi AJAX di Laravel
-                        },
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                         body: formData
                     });
 
@@ -298,21 +320,20 @@
                         // Bersihkan keranjang
                         localStorage.removeItem('sancaka_cart_{{ $tenant->id ?? 1 }}');
 
-                        // Redirect ke Payment Gateway (jika ada) atau langsung ke Invoice
+                        // Redirect ke halaman gateway (DANA/Tripay/Doku) atau ke halaman Invoice sukses
                         if (result.payment_url && result.payment_url !== null) {
                             window.location.href = result.payment_url;
                         } else {
                             window.location.href = "/invoice/" + result.invoice;
                         }
-
                     } else {
                         alert("⚠️ GAGAL PROSES PESANAN:\n" + (result.message || "Terjadi kesalahan sistem."));
-                        this.isReadyToPay = true; // Nyalakan tombol lagi
+                        this.isReadyToPay = true;
                     }
                 } catch (error) {
                     console.error("Submit Error:", error);
                     alert("Terjadi kesalahan jaringan atau server.");
-                    this.isReadyToPay = true; // Nyalakan tombol lagi
+                    this.isReadyToPay = true;
                 }
             }
         }));
