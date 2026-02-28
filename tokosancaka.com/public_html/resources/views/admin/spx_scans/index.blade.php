@@ -102,7 +102,14 @@
 
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $scan->id }}</td>
 
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{{ $scan->resi_number }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                <div class="flex items-center gap-2">
+                                    <span id="resi-{{ $scan->id }}">{{ $scan->resi_number }}</span>
+                                    <button type="button" onclick="copyResi('{{ $scan->resi_number }}', 'icon-copy-{{ $scan->id }}')" class="text-gray-400 hover:text-indigo-600 focus:outline-none transition-colors" title="Salin Nomor Resi">
+                                        <i id="icon-copy-{{ $scan->id }}" class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </td>
 
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
 
@@ -227,6 +234,25 @@
     </div>
 
 </div>
+
+<script>
+    function copyResi(text, iconId) {
+        // Eksekusi copy ke clipboard
+        navigator.clipboard.writeText(text).then(function() {
+            // Ubah icon jadi centang hijau sebagai tanda berhasil
+            let iconElement = document.getElementById(iconId);
+            iconElement.className = 'fas fa-check text-green-500';
+
+            // Kembalikan ke icon copy semula setelah 2 detik
+            setTimeout(() => {
+                iconElement.className = 'fas fa-copy';
+            }, 2000);
+        }).catch(function(err) {
+            console.error('Gagal menyalin text: ', err);
+            alert('Gagal menyalin nomor resi.');
+        });
+    }
+</script>
 
 @endsection
 
