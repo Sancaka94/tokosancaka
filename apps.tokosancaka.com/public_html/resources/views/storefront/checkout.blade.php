@@ -199,7 +199,7 @@
                                         </div>
 
                                         <div class="h-10 flex items-center justify-center mb-3 mt-1 w-full p-1 bg-white rounded">
-                                            <img :src="channel.logo || channel.icon_url" :alt="channel.name" class="max-h-full max-w-full object-contain" @error="$el.src='https://via.placeholder.com/100x40?text=Logo+Gagal'">
+                                            <img :src="channel.logo || channel.icon_url" :alt="channel.name" class="max-h-full max-w-full object-contain" @@error="$el.src='https://via.placeholder.com/100x40?text=Logo+Gagal'">
                                         </div>
 
                                         <div class="w-full">
