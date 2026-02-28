@@ -181,7 +181,13 @@
 
                     {{-- GRID KHUSUS TRIPAY (MUNCUL SAAT TRIPAY DIKLIK) --}}
                     <div x-show="paymentMethod === 'tripay'" x-cloak x-transition.opacity.duration.300ms class="mt-6 pt-6 border-t border-dashed border-gray-200">
-                        <h4 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-4">Pilih Bank / Channel Pembayaran</h4>
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pilih Bank / Channel Pembayaran</h4>
+                            <span x-show="isLoadingChannels" class="text-xs font-bold text-blue-500 animate-pulse">
+                                <i class="fas fa-spinner fa-spin mr-1"></i> Memuat...
+                            </span>
+                        </div>
+
                         <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
                             <template x-for="channel in tripayChannels" :key="channel.code">
                                 <label class="cursor-pointer relative h-full">
@@ -193,7 +199,7 @@
                                         </div>
 
                                         <div class="h-10 flex items-center justify-center mb-3 mt-1 w-full p-1 bg-white rounded">
-                                            <img :src="channel.logo" :alt="channel.name" class="max-h-full max-w-full object-contain">
+                                            <img :src="channel.logo || channel.icon_url" :alt="channel.name" class="max-h-full max-w-full object-contain" @error="$el.src='https://via.placeholder.com/100x40?text=Logo+Gagal'">
                                         </div>
 
                                         <div class="w-full">
