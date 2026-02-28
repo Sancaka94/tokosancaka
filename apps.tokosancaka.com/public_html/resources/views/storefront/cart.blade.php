@@ -19,10 +19,10 @@
     {{-- KONDISI 2: JIKA ADA ISINYA --}}
     <div x-show="cart.length > 0" x-cloak class="flex flex-col lg:flex-row gap-8">
 
-        {{-- LIST PRODUK --}}
+        {{-- LIST PRODUK DALAM KERANJANG --}}
         <div class="lg:w-2/3 space-y-4">
             <template x-for="item in cart" :key="item.unique_id">
-                <div class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 md:gap-6 items-start md:items-center hover:shadow-md transition">
+                <div class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 md:gap-6 items-start md:items-center hover:shadow-md transition relative">
 
                     {{-- Foto Produk --}}
                     <div class="w-24 h-24 bg-gray-100 rounded-2xl overflow-hidden flex-shrink-0 relative border border-gray-100">
@@ -36,14 +36,13 @@
                         </template>
                     </div>
 
-                    {{-- Detail Produk & Badge Dinamis --}}
+                    {{-- Detail Informasi --}}
                     <div class="flex-grow w-full">
+                        {{-- BADGE DINAMIS --}}
                         <div class="flex flex-wrap gap-1 mb-2">
-                            {{-- Badge Cashback Extra Dinamis --}}
                             <template x-if="item.is_cashback_extra == 1">
                                 <span class="text-[8px] font-bold text-red-500 border border-red-500 px-1.5 py-0.5 rounded-sm bg-white uppercase">Cashback Xtra</span>
                             </template>
-                            {{-- Badge Gratis Ongkir Dinamis --}}
                             <template x-if="item.is_free_ongkir == 1">
                                 <span class="text-[8px] font-bold text-teal-600 border border-teal-500 px-1.5 py-0.5 rounded-sm bg-teal-50 uppercase flex items-center gap-0.5">
                                     <i data-lucide="truck" class="w-2 h-2"></i> Gratis Ongkir
@@ -52,13 +51,18 @@
                         </div>
 
                         <h4 class="font-bold text-gray-900 text-lg line-clamp-2" x-text="item.name"></h4>
-                        {{-- Harga Realtime --}}
-                        <p class="text-blue-600 font-black mt-1" x-text="formatRupiah(item.price)"></p>
-                        <p class="text-[10px] text-gray-400" x-text="(item.weight || 0) + ' gram'"></p>
+
+                        {{-- Harga & Berat --}}
+                        <div class="flex items-center gap-3 mt-1">
+                            <p class="text-blue-600 font-black text-lg" x-text="formatRupiah(item.price)"></p>
+                            <span class="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
+                                <span x-text="item.weight || 0"></span> gram
+                            </span>
+                        </div>
                     </div>
 
-                    {{-- Kontrol Quantity --}}
-                    <div class="flex items-center gap-2 md:gap-3 bg-gray-50 p-2 rounded-2xl w-full md:w-auto justify-between md:justify-center border border-gray-100">
+                    {{-- Kontrol Jumlah (Quantity) --}}
+                    <div class="flex items-center gap-2 md:gap-3 bg-gray-50 p-2 rounded-2xl w-full md:w-auto justify-between md:justify-center border border-gray-100 shadow-inner">
                         <button @click="updateQty(item.unique_id, -1)" class="w-10 h-10 rounded-xl bg-white text-gray-600 hover:text-blue-600 shadow-sm flex items-center justify-center transition border border-gray-200 active:scale-95">
                             <i data-lucide="minus" class="w-4 h-4"></i>
                         </button>
@@ -115,21 +119,33 @@
             init() {
                 const savedCart = localStorage.getItem(this.storageKey);
                 if (savedCart) {
-                    this.cart = JSON.parse(savedCart).map(item => ({
-                        ...item,
-                        // Fix NaN: Pastikan price dan qty selalu angka
-                        price: parseFloat(item.price) || 0,
-                        qty: parseInt(item.qty) || 1
-                    }));
+                    let rawData = JSON.parse(savedCart);
+
+                    // VALIDASI DATA: Paksa menjadi angka untuk mencegah RpNaN
+                    this.cart = rawData.map(item => {
+                        return {
+                            ...item,
+                            price: parseFloat(item.price) || 0, // Jika NaN ganti ke 0
+                            qty: parseInt(item.qty) || 1,       // Jika NaN ganti ke 1
+                            weight: parseInt(item.weight) || 0,
+                            // Pastikan badge terbaca sebagai angka (1 atau 0)
+                            is_free_ongkir: item.is_free_ongkir ? 1 : 0,
+                            is_cashback_extra: item.is_cashback_extra ? 1 : 0
+                        };
+                    });
                 }
             },
 
+            // Hitung Total Item
             get totalItems() {
                 return this.cart.reduce((sum, item) => sum + item.qty, 0);
             },
 
+            // Hitung Total Harga (Aman dari NaN)
             get cartTotal() {
-                return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+                return this.cart.reduce((sum, item) => {
+                    return sum + (item.price * item.qty);
+                }, 0);
             },
 
             updateQty(uniqueId, amount) {
@@ -147,7 +163,7 @@
             removeItem(uniqueId) {
                 this.cart = this.cart.filter(i => i.unique_id !== uniqueId);
                 this.saveCart();
-                // Update counter header jika ada fungsi dispatch
+                // Trigger event jika header butuh update counter
                 window.dispatchEvent(new CustomEvent('cart-updated'));
             },
 
@@ -156,6 +172,7 @@
             },
 
             formatRupiah(number) {
+                if (isNaN(number)) return 'Rp 0';
                 return new Intl.NumberFormat('id-ID', {
                     style: 'currency',
                     currency: 'IDR',
