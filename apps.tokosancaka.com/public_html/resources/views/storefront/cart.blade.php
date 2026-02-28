@@ -36,15 +36,15 @@
                         </template>
                     </div>
 
-                    {{-- Detail Produk --}}
+                    {{-- Detail Produk & Badge Dinamis --}}
                     <div class="flex-grow w-full">
                         <div class="flex flex-wrap gap-1 mb-2">
-                            {{-- BADGE DINAMIS: CASHBACK EXTRA --}}
-                            <template x-if="item.is_cashback_extra">
+                            {{-- Badge Cashback Extra Dinamis --}}
+                            <template x-if="item.is_cashback_extra == 1">
                                 <span class="text-[8px] font-bold text-red-500 border border-red-500 px-1.5 py-0.5 rounded-sm bg-white uppercase">Cashback Xtra</span>
                             </template>
-                            {{-- BADGE DINAMIS: GRATIS ONGKIR --}}
-                            <template x-if="item.is_free_ongkir">
+                            {{-- Badge Gratis Ongkir Dinamis --}}
+                            <template x-if="item.is_free_ongkir == 1">
                                 <span class="text-[8px] font-bold text-teal-600 border border-teal-500 px-1.5 py-0.5 rounded-sm bg-teal-50 uppercase flex items-center gap-0.5">
                                     <i data-lucide="truck" class="w-2 h-2"></i> Gratis Ongkir
                                 </span>
@@ -52,19 +52,20 @@
                         </div>
 
                         <h4 class="font-bold text-gray-900 text-lg line-clamp-2" x-text="item.name"></h4>
+                        {{-- Harga Realtime --}}
                         <p class="text-blue-600 font-black mt-1" x-text="formatRupiah(item.price)"></p>
-                        <p class="text-[10px] text-gray-400" x-text="(item.weight || 1000) + ' gram'"></p>
+                        <p class="text-[10px] text-gray-400" x-text="(item.weight || 0) + ' gram'"></p>
                     </div>
 
                     {{-- Kontrol Quantity --}}
                     <div class="flex items-center gap-2 md:gap-3 bg-gray-50 p-2 rounded-2xl w-full md:w-auto justify-between md:justify-center border border-gray-100">
-                        <button @click="updateQty(item.unique_id, -1)" class="w-10 h-10 rounded-xl bg-white text-gray-600 hover:text-blue-600 hover:shadow shadow-sm flex items-center justify-center transition border border-gray-200 active:scale-95">
+                        <button @click="updateQty(item.unique_id, -1)" class="w-10 h-10 rounded-xl bg-white text-gray-600 hover:text-blue-600 shadow-sm flex items-center justify-center transition border border-gray-200 active:scale-95">
                             <i data-lucide="minus" class="w-4 h-4"></i>
                         </button>
 
                         <span class="font-black text-lg w-8 text-center text-gray-800" x-text="item.qty"></span>
 
-                        <button @click="updateQty(item.unique_id, 1)" class="w-10 h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700 hover:shadow shadow-sm flex items-center justify-center transition border border-blue-600 active:scale-95">
+                        <button @click="updateQty(item.unique_id, 1)" class="w-10 h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-sm flex items-center justify-center transition border border-blue-600 active:scale-95">
                             <i data-lucide="plus" class="w-4 h-4"></i>
                         </button>
 
