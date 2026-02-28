@@ -274,19 +274,22 @@
                                 <span class="font-bold" x-text="shippingCost > 0 ? '+ ' + formatRupiah(shippingCost) : 'Rp 0'"></span>
                             </div>
 
-                            {{-- BARIS BARU: INFO POTONGAN GRATIS ONGKIR --}}
+                            {{-- INFO POTONGAN GRATIS ONGKIR --}}
                             <div class="flex justify-between text-teal-600 bg-teal-50 p-2.5 rounded-xl border border-teal-100" x-show="cartItems.some(i => i.is_free_ongkir == 1) && deliveryType === 'shipping' && shippingCost > 0">
                                 <span>Potongan Ongkir <span class="text-[10px] bg-teal-600 text-white px-1.5 py-0.5 rounded ml-1">PROMO</span></span>
-
-                                {{-- Nominal akan muncul senilai dengan shippingCost --}}
                                 <span class="font-bold" x-text="'- ' + formatRupiah(shippingCost)"></span>
                             </div>
 
-                            {{-- BARIS BARU: ESTIMASI NOMINAL CASHBACK --}}
+                            {{-- ESTIMASI NOMINAL CASHBACK --}}
                             <div class="flex justify-between text-orange-600 bg-orange-50 p-2.5 rounded-xl border border-orange-100" x-show="cartItems.some(i => i.is_cashback_extra == 1)">
                                 <span>Potensi Cashback <span class="text-[10px] bg-orange-500 text-white px-1.5 py-0.5 rounded ml-1">XTRA</span></span>
-                                {{-- Rumus Sementara: Dibuat 5% (0.05) dari total produk yang berlogo cashback --}}
                                 <span class="font-bold" x-text="'+ ' + formatRupiah(cartItems.filter(i => i.is_cashback_extra == 1).reduce((sum, item) => sum + (item.price * item.qty * 0.05), 0))"></span>
+                            </div>
+
+                            {{-- BARIS BARU YANG TERTINGGAL: BIAYA ADMIN TRIPAY --}}
+                            <div class="flex justify-between text-gray-600" x-show="paymentMethod === 'tripay' && paymentAdminFee > 0">
+                                <span>Biaya Admin <span class="text-[10px] text-gray-400">(Tripay)</span></span>
+                                <span class="font-bold" x-text="'+ ' + formatRupiah(paymentAdminFee)"></span>
                             </div>
                         </div>
 
