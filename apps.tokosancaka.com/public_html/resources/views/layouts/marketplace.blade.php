@@ -63,15 +63,18 @@
                 },
 
                 addToCart(product) {
-                    // Buat ID unik untuk setiap kombinasi produk + varian
-                    let uniqueId = product.id;
-                    if (product.variant_id) uniqueId += '_' + product.variant_id;
-                    if (product.sub_variant_id) uniqueId += '_' + product.sub_variant_id;
+                    // Gunakan unique_id bawaan dari produk jika ada, jika tidak buat baru
+                    let uniqueId = product.unique_id || product.id;
+                    if (!product.unique_id) {
+                        if (product.variant_id) uniqueId += '_' + product.variant_id;
+                        if (product.sub_variant_id) uniqueId += '_' + product.sub_variant_id;
+                    }
 
                     let existing = this.cart.find(i => i.unique_id === uniqueId);
 
                     if (existing) {
-                        existing.qty += 1;
+                        // Tambahkan qty berdasarkan qty yang dikirim (default 1)
+                        existing.qty += (product.qty || 1);
                     } else {
                         this.cart.push({
                             unique_id: uniqueId,
@@ -79,10 +82,17 @@
                             variant_id: product.variant_id || null,
                             sub_variant_id: product.sub_variant_id || null,
                             name: product.name,
-                            price: product.sell_price,
-                            qty: 1,
+
+                            // PERBAIKAN UTAMA: Cek 'price' dulu, baru 'sell_price' sebagai cadangan
+                            price: product.price !== undefined ? product.price : (product.sell_price || 0),
+
+                            qty: product.qty || 1,
                             image: product.image,
-                            weight: product.weight || 0
+                            weight: product.weight || 0,
+
+                            // PERBAIKAN: Jangan lupakan data tambahan ini agar fitur keranjang berjalan mulus!
+                            is_free_ongkir: product.is_free_ongkir || 0,
+                            is_cashback_extra: product.is_cashback_extra || 0
                         });
                     }
 
