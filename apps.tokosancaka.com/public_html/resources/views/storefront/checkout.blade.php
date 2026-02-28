@@ -234,11 +234,11 @@
                             </div>
 
                             {{-- BARIS BARU: INFO POTONGAN GRATIS ONGKIR --}}
-                            <div class="flex justify-between text-teal-600 bg-teal-50 p-2.5 rounded-xl border border-teal-100" x-show="cartItems.some(i => i.is_free_ongkir == 1) && deliveryType === 'shipping'">
+                            <div class="flex justify-between text-teal-600 bg-teal-50 p-2.5 rounded-xl border border-teal-100" x-show="cartItems.some(i => i.is_free_ongkir == 1) && deliveryType === 'shipping' && shippingCost > 0">
                                 <span>Potongan Ongkir <span class="text-[10px] bg-teal-600 text-white px-1.5 py-0.5 rounded ml-1">PROMO</span></span>
-                                <span class="font-bold text-xs flex items-center">
-                                    Dihitung Otomatis
-                                </span>
+
+                                {{-- Nominal akan muncul senilai dengan shippingCost --}}
+                                <span class="font-bold" x-text="'- ' + formatRupiah(shippingCost)"></span>
                             </div>
 
                             {{-- BARIS BARU: ESTIMASI NOMINAL CASHBACK --}}
