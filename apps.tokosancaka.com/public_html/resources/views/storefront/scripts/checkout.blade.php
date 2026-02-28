@@ -33,11 +33,11 @@
             couponMessage: '',
             couponStatus: '',
 
-            // Data Pembayaran & Tripay
+            // Data Pembayaran & Tripay (DIBUAT DINAMIS MENGGUNAKAN API)
             paymentMethod: '',
             selectedTripayChannel: '',
-            tripayChannels: [], // Dikosongkan agar murni diisi oleh API Backend
-            isLoadingChannels: false, // Indikator saat API sedang dipanggil
+            tripayChannels: [], // Kosong, akan diisi oleh API
+            isLoadingChannels: false, // Animasi loading saat mengambil data bank
 
             // Status Loading Sistem
             isSearchingLoc: false,
@@ -67,9 +67,9 @@
                     baseTotal += Math.max(0, parseInt(this.shippingCost || 0) - this.shippingDiscount);
                 }
 
-                // Mengakomodasi berbagai kemungkinan key JSON dari API backend Anda
-                let feeFlat = parseFloat(channel.fee_flat || channel.flat_fee || channel.fee_customer?.flat || 0);
-                let feePercent = parseFloat(channel.fee_percent || channel.percent_fee || channel.fee_customer?.percent || 0);
+                // Mengakomodasi berbagai format response key dari API Tripay
+                let feeFlat = parseFloat(channel.fee_flat || channel.flat_fee || channel.fee_customer?.flat || channel.total_fee?.flat || 0);
+                let feePercent = parseFloat(channel.fee_percent || channel.percent_fee || channel.fee_customer?.percent || channel.total_fee?.percent || 0);
 
                 let percentageFee = baseTotal * (feePercent / 100);
                 return feeFlat + percentageFee;
@@ -129,7 +129,7 @@
                     window.location.href = "{{ route('storefront.index', $subdomain) }}";
                 }
 
-                // Watcher untuk mereset pilihan bank dan trigger API Tripay
+                // Pantau perubahan metode pembayaran untuk memicu API Tripay
                 this.$watch('paymentMethod', value => {
                     if (value === 'tripay') {
                         this.fetchPaymentChannels();
@@ -140,26 +140,28 @@
             },
 
             formatRupiah(angka) {
+                if (isNaN(angka) || angka === null) return 'Rp 0';
                 return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
             },
 
             // ==========================================
-            // 5. FUNGSI GET API CHANNEL PEMBAYARAN (TRIPAY)
+            // 5. FUNGSI AMBIL DATA API TRIPAY
             // ==========================================
 
             async fetchPaymentChannels() {
-                // Jangan panggil API lagi jika data channel sudah terisi
-                if (this.tripayChannels.length > 0) return;
+                if (this.tripayChannels.length > 0) return; // Jangan panggil lagi jika data sudah ada
 
                 this.isLoadingChannels = true;
                 try {
-                    const res = await fetch(`{{ route('storefront.api.payment-channels', $subdomain ?? '') }}`);
+                    // SILAKAN UBAH '/api/tripay/channels' DI BAWAH INI SESUAI DENGAN ENDPOINT ANDA
+                    // Menggunakan URL string biasa agar Blade tidak crash meskipun route belum dibuat
+                    const res = await fetch(`/api/tripay/channels`);
                     const json = await res.json();
 
                     if(json.status === 'success' || json.success) {
                         this.tripayChannels = json.data;
                     } else {
-                        console.error("Gagal memuat channel:", json.message);
+                        console.error("Gagal mengambil data:", json);
                     }
                 } catch (e) {
                     console.error("Fetch Payment Channels Error:", e);
