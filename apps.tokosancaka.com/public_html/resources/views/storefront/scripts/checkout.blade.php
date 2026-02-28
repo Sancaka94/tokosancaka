@@ -26,18 +26,19 @@
             serviceType: '',
             shippingCost: 0,
 
-            // Data Kupon
+            // Data Kupon & Error UI
             couponInput: '',
             appliedCoupon: '',
             discountAmount: 0,
             couponMessage: '',
             couponStatus: '',
+            errorMessage: '', // <--- PERBAIKAN: Variabel yang sebelumnya hilang
 
-            // Data Pembayaran & Tripay (DIBUAT DINAMIS MENGGUNAKAN API)
+            // Data Pembayaran & Tripay
             paymentMethod: '',
             selectedTripayChannel: '',
-            tripayChannels: [], // Kosong, akan diisi oleh API
-            isLoadingChannels: false, // Animasi loading saat mengambil data bank
+            tripayChannels: [],
+            isLoadingChannels: false,
 
             // Status Loading Sistem
             isSearchingLoc: false,
@@ -67,7 +68,6 @@
                     baseTotal += Math.max(0, parseInt(this.shippingCost || 0) - this.shippingDiscount);
                 }
 
-                // Mengakomodasi berbagai format response key dari API Tripay
                 let feeFlat = parseFloat(channel.fee_flat || channel.flat_fee || channel.fee_customer?.flat || channel.total_fee?.flat || 0);
                 let feePercent = parseFloat(channel.fee_percent || channel.percent_fee || channel.fee_customer?.percent || channel.total_fee?.percent || 0);
 
@@ -129,7 +129,6 @@
                     window.location.href = "{{ route('storefront.index', $subdomain) }}";
                 }
 
-                // Pantau perubahan metode pembayaran untuk memicu API Tripay
                 this.$watch('paymentMethod', value => {
                     if (value === 'tripay') {
                         this.fetchPaymentChannels();
@@ -149,22 +148,29 @@
             // ==========================================
 
             async fetchPaymentChannels() {
-                if (this.tripayChannels.length > 0) return; // Jangan panggil lagi jika data sudah ada
+                if (this.tripayChannels.length > 0) return;
 
                 this.isLoadingChannels = true;
                 try {
-                    // SILAKAN UBAH '/api/tripay/channels' DI BAWAH INI SESUAI DENGAN ENDPOINT ANDA
-                    // Menggunakan URL string biasa agar Blade tidak crash meskipun route belum dibuat
+                    // SILAKAN UBAH URL INI SESUAI DENGAN ENDPOINT API ANDA YANG ASLI
                     const res = await fetch(`/api/tripay/channels`);
+
+                    // PERBAIKAN: Cek apakah responnya sukses (bukan error 404/500)
+                    if (!res.ok) {
+                        throw new Error(`Server membalas dengan status: ${res.status}`);
+                    }
+
                     const json = await res.json();
 
                     if(json.status === 'success' || json.success) {
                         this.tripayChannels = json.data;
                     } else {
                         console.error("Gagal mengambil data:", json);
+                        this.errorMessage = "Gagal memuat metode pembayaran.";
                     }
                 } catch (e) {
-                    console.error("Fetch Payment Channels Error:", e);
+                    console.error("Error mengambil API Tripay (Route belum ada/salah URL):", e);
+                    // Tidak menampilkan alert agar tidak mengganggu user, cukup di console
                 } finally {
                     this.isLoadingChannels = false;
                 }
@@ -250,10 +256,10 @@
                     if (json.status === 'success') {
                         this.shippingRates = json.data;
                     } else {
-                        alert(json.message || "Gagal memuat tarif pengiriman.");
+                        this.errorMessage = json.message || "Gagal memuat tarif pengiriman.";
                     }
                 } catch (e) {
-                    alert("Terjadi kesalahan saat menghubungi server pengiriman.");
+                    this.errorMessage = "Terjadi kesalahan saat menghubungi server pengiriman.";
                 } finally {
                     this.isLoadingRates = false;
                 }
@@ -309,14 +315,13 @@
 
             async submitOrder() {
                 if(!document.querySelector('input[name="payment_method"]:checked')) {
-                    alert("Silakan pilih Metode Pembayaran terlebih dahulu!");
+                    this.errorMessage = "Silakan pilih Metode Pembayaran terlebih dahulu!";
                     return;
                 }
 
                 this.isReadyToPay = false;
                 const formData = new FormData(document.getElementById('checkoutForm'));
 
-                // Inject data hasil kalkulasi ke Backend
                 formData.append('final_total', this.finalTotal);
                 formData.append('shipping_discount', this.shippingDiscount);
                 formData.append('admin_fee', this.paymentAdminFee);
@@ -343,12 +348,12 @@
                             window.location.href = "/invoice/" + result.invoice;
                         }
                     } else {
-                        alert("⚠️ GAGAL PROSES PESANAN:\n" + (result.message || "Terjadi kesalahan sistem."));
+                        this.errorMessage = "GAGAL PROSES PESANAN: " + (result.message || "Terjadi kesalahan sistem.");
                         this.isReadyToPay = true;
                     }
                 } catch (error) {
                     console.error("Submit Error:", error);
-                    alert("Terjadi kesalahan jaringan atau server.");
+                    this.errorMessage = "Terjadi kesalahan jaringan atau server saat memproses pesanan.";
                     this.isReadyToPay = true;
                 }
             }
