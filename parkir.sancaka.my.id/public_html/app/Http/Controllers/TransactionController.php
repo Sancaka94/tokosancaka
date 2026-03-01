@@ -9,7 +9,8 @@ use Carbon\Carbon;
 // --- TAMBAHAN LIBRARY MIKE42 ---
 use Mike42\Escpos\Printer;
 use Mike42\Escpos\PrintConnectors\WindowsPrintConnector; // Gunakan ini jika server/komputer kasir pakai Windows
-// use Mike42\Escpos\PrintConnectors\NetworkPrintConnector; // Gunakan ini jika printer pakai kabel LAN/IP Address
+use Mike42\Escpos\PrintConnectors\NetworkPrintConnector; // Gunakan ini jika printer pakai kabel LAN/IP Address
+use Mike42\Escpos\PrintConnectors\DummyPrintConnector;
 
 class TransactionController extends Controller
 {
