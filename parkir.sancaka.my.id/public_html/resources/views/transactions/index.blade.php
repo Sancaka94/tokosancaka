@@ -19,7 +19,7 @@
 
             <div class="w-full md:w-1/4">
                 <label class="block text-sm font-bold text-gray-700 mb-2">Jenis Kendaraan</label>
-                <select name="vehicle_type" class="form-control bg-white shadow-sm text-lg py-3" required tabindex="2">
+                <select name="vehicle_type" class="form-control bg-white shadow-sm text-lg py-3 rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" required tabindex="2">
                     <option value="motor">🏍️ Motor</option>
                     <option value="mobil">🚗 Mobil</option>
                 </select>
@@ -30,7 +30,7 @@
                 <input type="text"
                        name="plate_number"
                        id="plate_number"
-                       class="form-control shadow-sm uppercase font-black text-2xl tracking-widest py-3 text-center md:text-left"
+                       class="form-control shadow-sm uppercase font-black text-2xl tracking-widest py-3 text-center md:text-left rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                        placeholder="Masukan Plat Nomor"
                        required
                        autocomplete="off"
@@ -54,8 +54,8 @@
     </div>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-white border-b-2 border-blue-600 flex flex-col md:flex-row justify-between items-center gap-4 py-4">
+<div class="card shadow-sm border-0 rounded-xl overflow-hidden">
+    <div class="card-header bg-white border-b-2 border-blue-600 flex flex-col md:flex-row justify-between items-center gap-4 py-4 px-5">
         <span class="font-bold text-gray-800 uppercase tracking-wide text-sm whitespace-nowrap">Data & Riwayat Parkir</span>
 
         <button type="button" onclick="openScanModal()" class="bg-gray-800 hover:bg-gray-900 text-white px-6 py-3 md:py-2.5 rounded-xl text-sm font-bold shadow-md flex items-center justify-center gap-2 w-full md:w-auto transition-transform active:scale-95">
@@ -65,7 +65,7 @@
     </div>
 
     @if(request('keyword') || request('tanggal'))
-        <div class="px-4 py-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+        <div class="px-5 py-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
             <span class="text-sm text-blue-800 font-medium">Menampilkan hasil: <span class="font-bold">{{ request('keyword') }} {{ request('tanggal') }}</span></span>
             <a href="{{ route('transactions.index') }}" class="text-red-600 font-bold text-xs bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors">Reset Filter</a>
         </div>
@@ -73,56 +73,58 @@
 
     <div class="card-body p-0 block w-full overflow-x-auto">
         <table class="table-custom min-w-full">
-            <thead class="bg-gray-100">
+            <thead class="bg-gray-100 border-b border-gray-200">
                 <tr>
-                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">No. Parkir / Plat</th>
-                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Jenis</th>
-                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Waktu Masuk</th>
-                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Tarif / Status</th>
-                    <th class="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Aksi</th>
+                    <th class="px-5 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">No. Parkir / Plat</th>
+                    <th class="px-5 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Jenis</th>
+                    <th class="px-5 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Waktu Masuk</th>
+                    <th class="px-5 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Tarif / Status</th>
+                    <th class="px-5 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Aksi</th>
                 </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody class="bg-white divide-y divide-gray-100">
                 @forelse($transactions as $trx)
                     <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-4 py-3 whitespace-nowrap">
+                        <td class="px-5 py-4 whitespace-nowrap">
                             <div class="text-xs text-gray-500 font-bold mb-1">TRX-{{ str_pad($trx->id, 5, '0', STR_PAD_LEFT) }}</div>
                             <div class="font-black text-lg md:text-xl text-gray-800 tracking-widest">{{ $trx->plate_number }}</div>
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap capitalize text-sm md:text-base text-gray-600 font-medium">{{ $trx->vehicle_type }}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm md:text-base text-gray-600">
-                            {{ $trx->entry_time->translatedFormat('d M Y') }} <br>
-                            <span class="font-bold text-blue-600">{{ $trx->entry_time->translatedFormat('H:i') }} WIB</span>
+                        <td class="px-5 py-4 whitespace-nowrap capitalize text-sm md:text-base text-gray-600 font-medium">
+                            {{ $trx->vehicle_type }}
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm md:text-base">
+                        <td class="px-5 py-4 whitespace-nowrap text-sm md:text-base text-gray-600">
+                            {{ \Carbon\Carbon::parse($trx->entry_time)->translatedFormat('d M Y') }} <br>
+                            <span class="font-bold text-blue-600">{{ \Carbon\Carbon::parse($trx->entry_time)->translatedFormat('H:i') }} WIB</span>
+                        </td>
+                        <td class="px-5 py-4 whitespace-nowrap text-sm md:text-base">
                             @if($trx->status == 'masuk')
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-200">
                                     <span class="w-2 h-2 mr-1.5 bg-yellow-500 rounded-full animate-pulse"></span>
                                     Sedang Parkir
                                 </span>
                             @else
                                 <span class="font-black text-green-600 text-base md:text-lg">Rp {{ number_format($trx->fee, 0, ',', '.') }}</span>
-                                <br><span class="text-[10px] md:text-xs text-gray-500 font-bold">Keluar: {{ $trx->exit_time->translatedFormat('H:i') }} WIB</span>
+                                <br><span class="text-[10px] md:text-xs text-gray-500 font-bold">Keluar: {{ \Carbon\Carbon::parse($trx->exit_time)->translatedFormat('H:i') }} WIB</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                        <td class="px-5 py-4 whitespace-nowrap text-center">
                             @if($trx->status == 'masuk')
                                 <form action="{{ route('transactions.update', $trx->id) }}" method="POST" class="inline-block">
                                     @csrf
                                     @method('PUT')
-                                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-3 md:px-4 py-1.5 md:py-2 rounded text-xs md:text-sm font-bold shadow-md transition-colors">
+                                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-bold shadow-md transition-colors">
                                         Keluar &rarr;
                                     </button>
                                 </form>
                             @else
-                                <span class="text-gray-400 text-xs md:text-sm italic font-medium">Selesai</span>
+                                <span class="text-gray-400 text-xs md:text-sm italic font-medium px-3 py-2 bg-gray-100 rounded-lg">Selesai</span>
                             @endif
 
                             @if(auth()->user()->role != 'operator')
                                 <form action="{{ route('transactions.destroy', $trx->id) }}" method="POST" class="inline-block ml-2 md:ml-3" onsubmit="return confirm('Yakin ingin menghapus riwayat ini? Data yang terhapus akan memengaruhi laporan keuangan.');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="bg-red-100 hover:bg-red-200 text-red-700 px-2 md:px-3 py-1.5 rounded text-xs font-bold transition-colors">
+                                    <button type="submit" class="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 px-3 py-2 rounded-lg text-xs font-bold transition-all">
                                         Hapus
                                     </button>
                                 </form>
@@ -131,8 +133,11 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-10 text-center text-gray-500 italic text-sm">
-                            Data transaksi kendaraan tidak ditemukan.
+                        <td colspan="5" class="px-5 py-10 text-center text-gray-500 italic text-sm">
+                            <div class="flex flex-col items-center justify-center space-y-3">
+                                <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                                <span>Data transaksi kendaraan tidak ditemukan.</span>
+                            </div>
                         </td>
                     </tr>
                 @endforelse
@@ -141,12 +146,11 @@
     </div>
 
     @if($transactions->hasPages())
-        <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+        <div class="px-5 py-4 border-t border-gray-200 bg-gray-50">
             {{ $transactions->links() }}
         </div>
     @endif
 </div>
-
 
 <div id="scanModal" class="fixed inset-0 z-[100] hidden bg-gray-900 bg-opacity-80 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity">
     <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col">
@@ -159,8 +163,7 @@
 
         <div class="p-5 overflow-y-auto max-h-[80vh]">
             <div id="reader" class="w-full bg-black rounded-xl overflow-hidden shadow-inner min-h-[250px] flex items-center justify-center text-white text-sm font-medium">
-                Kamera sedang disiapkan...
-            </div>
+                </div>
 
             <div class="my-5 flex items-center text-center text-sm text-gray-400 font-bold before:flex-1 before:border-t before:border-gray-200 before:mr-3 after:flex-1 after:border-t after:border-gray-200 after:ml-3">
                 ATAU KETIK MANUAL
@@ -169,11 +172,11 @@
             <form action="{{ route('transactions.index') }}" method="GET" class="flex flex-col gap-4">
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Nomor TRX / Plat Nomor</label>
-                    <input type="text" name="keyword" class="form-control text-xl py-3 uppercase font-black text-center tracking-widest border-2 focus:border-blue-500" placeholder="Cth: TRX-00012 / AE123">
+                    <input type="text" name="keyword" class="form-control rounded-lg text-xl py-3 uppercase font-black text-center tracking-widest border-2 focus:border-blue-500" placeholder="Cth: TRX-00012 / AE123">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Filter Tanggal Masuk (Opsional)</label>
-                    <input type="date" name="tanggal" class="form-control py-2 text-center font-bold text-gray-600">
+                    <input type="date" name="tanggal" class="form-control rounded-lg py-2 text-center font-bold text-gray-600 border-2 focus:border-blue-500">
                 </div>
                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-black text-lg py-4 rounded-xl shadow-lg w-full mt-2 transition-transform active:scale-95">
                     TAMPILKAN DATA
@@ -183,43 +186,48 @@
     </div>
 </div>
 
-
 <script>
-    // Logika Auto-Print TANPA DIALOG via Teks RawBT Asli
-    @if(session('print_id'))
     document.addEventListener("DOMContentLoaded", function() {
+        // --- 1. Logika Fokus Input Otomatis ---
         const plateInput = document.getElementById('plate_number');
-        if(plateInput) plateInput.focus();
+        if(plateInput) {
+            setTimeout(function() {
+                plateInput.focus();
+                plateInput.click();
+            }, 500);
+        }
 
-        let printUrl = "{{ route('transactions.print', session('print_id')) }}";
+        // --- 2. Logika Auto-Print RawBT (Aplikasi Android) ---
+        @if(session('print_id'))
+            let printUrl = "{{ route('transactions.print', session('print_id')) }}";
 
-        fetch(printUrl)
-            .then(response => response.text())
-            .then(textData => {
-                // Bungkus teks murni tersebut dan tembak langsung ke RawBT
-                let encodedText = encodeURIComponent(textData);
-                let intentUrl = "intent:" + encodedText + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
-
-                // Eksekusi print!
-                window.location.href = intentUrl;
-            })
-            .catch(error => console.error('Gagal mengambil data struk:', error));
+            fetch(printUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error('Gagal memuat struk');
+                    return response.text();
+                })
+                .then(textData => {
+                    // Encode teks dan arahkan ke URL Intent RawBT
+                    let encodedText = encodeURIComponent(textData);
+                    let intentUrl = "intent:" + encodedText + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
+                    window.location.href = intentUrl;
+                })
+                .catch(error => console.error('Gagal memicu RawBT:', error));
+        @endif
     });
-    @endif
 
-    // 2. Logika Scanner Barcode (HTML5-QRCode)
+    // --- 3. Logika Scanner Barcode (HTML5-QRCode) ---
     let html5QrcodeScanner = null;
 
     function openScanModal() {
         document.getElementById('scanModal').classList.remove('hidden');
 
-        // Render scanner jika belum berjalan
         if (!html5QrcodeScanner) {
             html5QrcodeScanner = new Html5QrcodeScanner(
                 "reader",
                 { fps: 10, qrbox: {width: 250, height: 250}, aspectRatio: 1.0 },
-                /* verbose= */ false);
-
+                false
+            );
             html5QrcodeScanner.render(onScanSuccess, onScanFailure);
         }
     }
@@ -227,7 +235,6 @@
     function closeScanModal() {
         document.getElementById('scanModal').classList.add('hidden');
 
-        // Matikan kamera saat modal ditutup untuk menghemat baterai HP
         if (html5QrcodeScanner) {
             html5QrcodeScanner.clear().then(() => {
                 html5QrcodeScanner = null;
@@ -238,35 +245,13 @@
     }
 
     function onScanSuccess(decodedText, decodedResult) {
-        // Jika berhasil scan barcode
         closeScanModal(); // Tutup modal & matikan kamera
-
-        // Arahkan browser ke URL pencarian dengan hasil scan (TRX)
+        // Redirect ke pencarian
         window.location.href = "{{ route('transactions.index') }}?keyword=" + encodeURIComponent(decodedText);
     }
 
     function onScanFailure(error) {
-        // Jika tidak menemukan barcode di frame, abaikan saja sampai ketemu.
-        // Console log dimatikan agar browser tidak berat.
+        // Abaikan agar console tidak penuh
     }
 </script>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const plateInput = document.getElementById('plate_number');
-
-        if(plateInput) {
-            // Trik 1: Beri sedikit delay agar browser selesai memuat seluruh elemen
-            setTimeout(function() {
-                // Trik 2: Paksa fokus dan simulasikan klik pada elemen
-                plateInput.focus();
-                plateInput.click();
-
-                // Trik 3 (Khusus beberapa versi Android): scroll sedikit ke inputan
-                plateInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 500); // Delay 0.5 detik
-        }
-    });
-</script>
-
 @endsection
