@@ -202,39 +202,17 @@
             document.addEventListener("DOMContentLoaded", function() {
                 let printUrl = "{{ route('transactions.print', session('print_id')) }}";
 
-                console.log("1. Meminta data cetak ke URL: " + printUrl);
-
                 fetch(printUrl)
-                    .then(response => {
-                        console.log("2. Status Response Server: " + response.status);
-                        if (!response.ok) {
-                            throw new Error('Server merespon dengan status: ' + response.status);
-                        }
-                        return response.text();
-                    })
+                    .then(response => response.text())
                     .then(base64Data => {
-                        console.log("3. Data diterima dari server. Panjang string: " + base64Data.length);
-
-                        // Deteksi jika server malah mengirim pesan error HTML
-                        if(base64Data.includes('<html') || base64Data.includes('Error Cetak')) {
-                            console.error("Isi data salah (kemungkinan error PHP): ", base64Data);
-                            alert("Gagal mencetak: Terjadi error di program PHP. Cek log server!");
-                            return; // Hentikan proses
-                        }
-
-                        // Paksa hilangkan spasi/enter yang mungkin tidak sengaja ikut terbawa
-                        let cleanBase64 = base64Data.trim().replace(/\s/g, '');
-
-                        let intentUrl = "intent:base64," + cleanBase64 + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
-                        console.log("4. Intent siap ditembak: " + intentUrl.substring(0, 100) + "...");
+                        // PENTING: Perhatikan format intent sekarang menggunakan "intent:base64,"
+                        // Ini akan memaksa RawBT membaca data langsung sebagai gambar/perintah printer
+                        let intentUrl = "intent:base64," + base64Data.trim() + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
 
                         // Eksekusi print!
                         window.location.href = intentUrl;
                     })
-                    .catch(error => {
-                        console.error('5. Fetch gagal:', error);
-                        alert("Koneksi cetak gagal: " + error.message);
-                    });
+                    .catch(error => console.error('Gagal mengambil data struk biner:', error));
             });
         @endif
     });
