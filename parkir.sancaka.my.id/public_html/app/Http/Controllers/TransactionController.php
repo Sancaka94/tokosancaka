@@ -122,9 +122,10 @@ class TransactionController extends Controller
 
             // --- HEADER ---
             $printer->setJustification(Printer::JUSTIFY_CENTER);
-            $namaToko = $tenant->name ?? "SANCAKA PARKIR";
+            $namaToko = $tenant->name ?? "AZKEN PARKIR";
             $printer->text("$namaToko\n");
             $printer->text("Jl. Dr. Wahidin No. 18A, Ngawi\n");
+            $printer->text("Nomor WA 085 745 808 809\n");
             $printer->text("--------------------------------\n");
 
             // --- DETAIL KENDARAAN ---
