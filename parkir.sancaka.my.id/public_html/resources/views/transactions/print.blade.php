@@ -12,7 +12,7 @@ $text .= "Masuk    : " . \Carbon\Carbon::parse($transaction->entry_time)->format
 $text .= "--------------------------------\n";
 
 // Tag QR dipisah dan ditaruh sendirian agar terbaca sistem RawBT
-$text .= "[QR]" . $transaction->id . "\n";
+$text .= "Nomor-Id-" . $transaction->id . "\n";
 
 $text .= "TRX-" . str_pad($transaction->id, 5, '0', STR_PAD_LEFT) . "\n";
 $text .= "--------------------------------\n";
@@ -21,7 +21,7 @@ $text .= "bukti parkir yang sah.\n";
 $text .= "Terima Kasih.\n";
 
 // Spasi kosong untuk jarak potong kertas
-$text .= "\n";
+//$text .= "\n";
 
 echo $text;
 ?>
