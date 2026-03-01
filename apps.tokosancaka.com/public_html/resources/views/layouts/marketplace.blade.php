@@ -5,7 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Toko Online') - {{ $tenant->name ?? 'SancakaPOS' }}</title>
 
-    <link rel="icon" type="image/png" href="{{ $tenant->favicon ?? asset('favicon.png') }}">
+    {{-- KODE FAVICON DI SINI --}}
+    @if($tokoAdmin && !empty($tokoAdmin->logo))
+        {{-- Jika toko memiliki logo --}}
+        <link rel="icon" type="image/png" href="{{ asset('storage/' . $tokoAdmin->logo) }}">
+    @else
+        {{-- Fallback: Gunakan favicon default jika toko tidak memiliki logo --}}
+        <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    @endif
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
