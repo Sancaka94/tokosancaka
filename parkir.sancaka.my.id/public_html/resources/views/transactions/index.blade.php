@@ -185,26 +185,22 @@
 
 
 <script>
-    // Logika Auto-Print TANPA DIALOG (Murni Background Print via RawBT)
+    // Logika Auto-Print TANPA DIALOG via Teks RawBT Asli
     @if(session('print_id'))
     document.addEventListener("DOMContentLoaded", function() {
         const plateInput = document.getElementById('plate_number');
         if(plateInput) plateInput.focus();
 
-        // 1. Ambil URL cetak struk
         let printUrl = "{{ route('transactions.print', session('print_id')) }}";
 
-        // 2. Gunakan AJAX (Fetch) untuk mengambil isi desain HTML struk secara diam-diam dari Chrome
         fetch(printUrl)
             .then(response => response.text())
-            .then(html => {
-                // 3. Ubah seluruh desain HTML menjadi Base64 agar bisa dibaca RawBT tanpa halangan Login
-                let base64Html = btoa(unescape(encodeURIComponent(html)));
+            .then(textData => {
+                // Bungkus teks murni tersebut dan tembak langsung ke RawBT
+                let encodedText = encodeURIComponent(textData);
+                let intentUrl = "intent:" + encodedText + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
 
-                // 4. Buat perintah tembak langsung ke RawBT
-                let intentUrl = "intent:base64," + base64Html + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
-
-                // 5. Eksekusi! Kertas akan langsung keluar dari printer detik itu juga.
+                // Eksekusi print!
                 window.location.href = intentUrl;
             })
             .catch(error => console.error('Gagal mengambil data struk:', error));
