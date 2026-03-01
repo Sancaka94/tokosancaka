@@ -7,30 +7,36 @@
     <style>
         /* Pengaturan ukuran kertas Thermal 58mm */
         @page { margin: 0; size: 58mm auto; }
+
         body {
+            box-sizing: border-box; /* KUNCI: Mencegah lebar melar melebihi 58mm akibat padding */
             font-family: 'Courier New', Courier, monospace; /* Font standar mesin kasir */
             width: 58mm;
-            margin: 0;
+            margin: 0 auto;
             padding: 2mm;
             font-size: 11px;
             color: #000;
             line-height: 1.2;
+            background-color: #fff;
         }
+
         .text-center { text-align: center; }
         .font-bold { font-weight: bold; }
         .text-xl { font-size: 16px; margin: 2px 0; }
         .divider { border-top: 1px dashed #000; margin: 4px 0; }
-        .qr-code { width: 35mm; height: 35mm; margin: 5px auto; display: block; }
+        .qr-code { width: 35mm; height: 35mm; margin: 5px auto; display: block; max-width: 100%; }
         .mb-1 { margin-bottom: 5px; }
+        .mt-1 { margin-top: 5px; }
     </style>
 </head>
-<body onload="window.print(); window.onafterprint = function(){ window.close(); }">
+
+<body onload="setTimeout(function() { window.print(); }, 500);">
 
     <div class="text-center font-bold text-xl mb-1">
-        {{ $tenant ? $tenant->name : 'SANCAKA PARKIR' }}
+        {{ $tenant->name ?? 'SANCAKA PARKIR' }}
     </div>
     <div class="text-center" style="font-size: 9px;">
-        {{ $tenant ? $tenant->company_address : 'Jl. Dr. Wahidin No.18A, Ngawi' }}
+        {{ $tenant->company_address ?? 'Jl. Dr. Wahidin No. 18A, Ngawi' }}
     </div>
 
     <div class="divider"></div>
