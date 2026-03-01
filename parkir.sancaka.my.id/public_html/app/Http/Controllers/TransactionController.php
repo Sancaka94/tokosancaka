@@ -12,6 +12,8 @@ use Mike42\Escpos\PrintConnectors\WindowsPrintConnector; // Gunakan ini jika ser
 use Mike42\Escpos\PrintConnectors\NetworkPrintConnector; // Gunakan ini jika printer pakai kabel LAN/IP Address
 use Mike42\Escpos\PrintConnectors\DummyPrintConnector;
 
+use Illuminate\Support\Facades\Log;
+
 class TransactionController extends Controller
 {
     public function index(Request $request)
@@ -100,50 +102,57 @@ class TransactionController extends Controller
 
     public function print($id)
     {
-        $transaction = \App\Models\Transaction::findOrFail($id);
+        \Log::info("=== MULAI PROSES CETAK BASE64 TRX ID: {$id} ===");
 
-        // Gunakan DummyPrintConnector untuk menampung data cetak di memori server
-        $connector = new \Mike42\Escpos\PrintConnectors\DummyPrintConnector();
-        $printer = new \Mike42\Escpos\Printer($connector);
+        try {
+            $transaction = \App\Models\Transaction::findOrFail($id);
 
-        // --- CETAK HEADER ---
-        $printer->setJustification(\Mike42\Escpos\Printer::JUSTIFY_CENTER);
-        $printer->text("AZKEN PARKIR\n");
-        $printer->text("Jl. Dr. Wahidin No. 18A, Ngawi\n");
-        $printer->text("Nomor WA 085 745 808 809\n");
-        $printer->text("--------------------------------\n");
+            $connector = new \Mike42\Escpos\PrintConnectors\DummyPrintConnector();
+            $printer = new \Mike42\Escpos\Printer($connector);
 
-        // --- CETAK DETAIL ---
-        $printer->setJustification(\Mike42\Escpos\Printer::JUSTIFY_LEFT);
-        $printer->text("No. Plat : " . $transaction->plate_number . "\n");
-        $printer->text("Jenis    : " . ucfirst($transaction->vehicle_type) . "\n");
-        $printer->text("Masuk    : " . \Carbon\Carbon::parse($transaction->entry_time)->format('d/m/Y H:i') . "\n");
-        $printer->text("--------------------------------\n");
+            // --- CETAK HEADER ---
+            $printer->setJustification(\Mike42\Escpos\Printer::JUSTIFY_CENTER);
+            $printer->text("SANCAKA PARKIR\n");
+            $printer->text("Jl. Dr. Wahidin No. 18A, Ngawi\n");
+            $printer->text("WA: 085 745 808 809\n");
+            $printer->text("--------------------------------\n");
 
-        // --- CETAK QR CODE ASLI ---
-        $printer->setJustification(\Mike42\Escpos\Printer::JUSTIFY_CENTER);
+            // --- CETAK DETAIL ---
+            $printer->setJustification(\Mike42\Escpos\Printer::JUSTIFY_LEFT);
+            $printer->text("No. Plat : " . $transaction->plate_number . "\n");
+            $printer->text("Jenis    : " . ucfirst($transaction->vehicle_type) . "\n");
+            $printer->text("Masuk    : " . \Carbon\Carbon::parse($transaction->entry_time)->format('d/m/Y H:i') . "\n");
+            $printer->text("--------------------------------\n");
 
-        // FUNGSI SAKTI: Ini yang akan memunculkan gambar matriks QR Code!
-        $printer->qrCode((string)$transaction->id, \Mike42\Escpos\Printer::QR_ECLEVEL_L, 6);
+            // --- CETAK QR CODE ---
+            $printer->setJustification(\Mike42\Escpos\Printer::JUSTIFY_CENTER);
+            $printer->qrCode((string)$transaction->id, \Mike42\Escpos\Printer::QR_ECLEVEL_L, 6);
 
-        $printer->text("TRX-" . str_pad($transaction->id, 5, '0', STR_PAD_LEFT) . "\n");
-        $printer->text("--------------------------------\n");
+            $printer->text("TRX-" . str_pad($transaction->id, 5, '0', STR_PAD_LEFT) . "\n");
+            $printer->text("--------------------------------\n");
 
-        // --- CETAK FOOTER ---
-        $printer->text("Simpan karcis ini sebagai\n");
-        $printer->text("bukti parkir yang sah.\n");
-        $printer->text("Terima Kasih.\n");
+            // --- CETAK FOOTER ---
+            $printer->text("Simpan karcis ini sebagai\n");
+            $printer->text("bukti parkir yang sah.\n");
+            $printer->text("Terima Kasih.\n");
 
-        // Jarak potong dan tutup koneksi
-        $printer->feed(3);
-        $printer->cut();
+            $printer->feed(3);
+            $printer->cut();
 
-        // Ambil data biner (ESC/POS) dan konversi ke Base64
-        $data = $connector->getData();
-        $printer->close();
+            $data = $connector->getData();
+            $printer->close();
 
-        // Kirimkan sebagai string Base64 murni ke Javascript
-        return response(base64_encode($data))->header('Content-Type', 'text/plain');
+            $base64Data = base64_encode($data);
+
+            \Log::info("Berhasil generate ESC/POS. Panjang Base64: " . strlen($base64Data));
+
+            return response($base64Data)->header('Content-Type', 'text/plain');
+
+        } catch (\Exception $e) {
+            // CATAT ERROR KE FILE LOG LARAVEL
+            \Log::error("ERROR CETAK BASE64: " . $e->getMessage());
+            return response('Error Cetak: ' . $e->getMessage(), 500);
+        }
     }
 
     // ==========================================
