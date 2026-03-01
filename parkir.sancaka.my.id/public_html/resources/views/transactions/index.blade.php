@@ -186,21 +186,20 @@
 
 <script>
     // 1. Logika Auto-Print (Menggunakan Iframe tersembunyi)
+    // 1. Logika Auto-Print (TANPA DIALOG via RawBT)
     @if(session('print_id'))
     document.addEventListener("DOMContentLoaded", function() {
         const plateInput = document.getElementById('plate_number');
         if(plateInput) plateInput.focus();
 
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = "{{ route('transactions.print', session('print_id')) }}";
+        // Ambil URL halaman struk Anda
+        let printUrl = "{{ route('transactions.print', session('print_id')) }}";
 
-        document.body.appendChild(iframe);
+        // Buat URL Intent untuk melempar perintah langsung ke aplikasi RawBT
+        let intentUrl = "intent:" + printUrl + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
 
-        iframe.onload = function() {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-        };
+        // Eksekusi (HP akan otomatis memerintahkan RawBT mencetak struk di background)
+        window.location.href = intentUrl;
     });
     @endif
 
