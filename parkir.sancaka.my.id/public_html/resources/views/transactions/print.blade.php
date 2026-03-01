@@ -21,7 +21,7 @@ $text .= "bukti parkir yang sah.\n";
 $text .= "Terima Kasih.\n";
 
 // Spasi kosong untuk jarak potong kertas
-$text .= "\n\n\n";
+$text .= "\n";
 
 echo $text;
 ?>
