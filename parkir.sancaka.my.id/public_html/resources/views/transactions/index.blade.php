@@ -197,22 +197,23 @@
             }, 500);
         }
 
-        // --- 2. Logika Auto-Print RawBT (Aplikasi Android) ---
+        // Logika Auto-Print via Biner Base64 ESC/POS
         @if(session('print_id'))
-            let printUrl = "{{ route('transactions.print', session('print_id')) }}";
+            document.addEventListener("DOMContentLoaded", function() {
+                let printUrl = "{{ route('transactions.print', session('print_id')) }}";
 
-            fetch(printUrl)
-                .then(response => {
-                    if (!response.ok) throw new Error('Gagal memuat struk');
-                    return response.text();
-                })
-                .then(textData => {
-                    // Encode teks dan arahkan ke URL Intent RawBT
-                    let encodedText = encodeURIComponent(textData);
-                    let intentUrl = "intent:" + encodedText + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
-                    window.location.href = intentUrl;
-                })
-                .catch(error => console.error('Gagal memicu RawBT:', error));
+                fetch(printUrl)
+                    .then(response => response.text())
+                    .then(base64Data => {
+                        // PENTING: Perhatikan format intent sekarang menggunakan "intent:base64,"
+                        // Ini akan memaksa RawBT membaca data langsung sebagai gambar/perintah printer
+                        let intentUrl = "intent:base64," + base64Data.trim() + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
+
+                        // Eksekusi print!
+                        window.location.href = intentUrl;
+                    })
+                    .catch(error => console.error('Gagal mengambil data struk biner:', error));
+            });
         @endif
     });
 

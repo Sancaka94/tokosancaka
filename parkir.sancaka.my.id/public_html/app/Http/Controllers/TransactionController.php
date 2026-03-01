@@ -97,13 +97,52 @@ class TransactionController extends Controller
         );
     }
 
-    // FUNGSI LAMA: Mengembalikan view HTML (Biasanya dipakai untuk browser print / RawBT Android)
     public function print($id)
     {
-        $transaction = Transaction::with('operator')->findOrFail($id);
-        $tenant = auth()->user()->tenant;
+        $transaction = \App\Models\Transaction::findOrFail($id);
 
-        return view('transactions.print', compact('transaction', 'tenant'));
+        // Gunakan DummyPrintConnector untuk menampung data cetak di memori server
+        $connector = new \Mike42\Escpos\PrintConnectors\DummyPrintConnector();
+        $printer = new \Mike42\Escpos\Printer($connector);
+
+        // --- CETAK HEADER ---
+        $printer->setJustification(\Mike42\Escpos\Printer::JUSTIFY_CENTER);
+        $printer->text("AZKEN PARKIR\n");
+        $printer->text("Jl. Dr. Wahidin No. 18A, Ngawi\n");
+        $printer->text("Nomor WA 085 745 808 809\n");
+        $printer->text("--------------------------------\n");
+
+        // --- CETAK DETAIL ---
+        $printer->setJustification(\Mike42\Escpos\Printer::JUSTIFY_LEFT);
+        $printer->text("No. Plat : " . $transaction->plate_number . "\n");
+        $printer->text("Jenis    : " . ucfirst($transaction->vehicle_type) . "\n");
+        $printer->text("Masuk    : " . \Carbon\Carbon::parse($transaction->entry_time)->format('d/m/Y H:i') . "\n");
+        $printer->text("--------------------------------\n");
+
+        // --- CETAK QR CODE ASLI ---
+        $printer->setJustification(\Mike42\Escpos\Printer::JUSTIFY_CENTER);
+
+        // FUNGSI SAKTI: Ini yang akan memunculkan gambar matriks QR Code!
+        $printer->qrCode((string)$transaction->id, \Mike42\Escpos\Printer::QR_ECLEVEL_L, 6);
+
+        $printer->text("TRX-" . str_pad($transaction->id, 5, '0', STR_PAD_LEFT) . "\n");
+        $printer->text("--------------------------------\n");
+
+        // --- CETAK FOOTER ---
+        $printer->text("Simpan karcis ini sebagai\n");
+        $printer->text("bukti parkir yang sah.\n");
+        $printer->text("Terima Kasih.\n");
+
+        // Jarak potong dan tutup koneksi
+        $printer->feed(3);
+        $printer->cut();
+
+        // Ambil data biner (ESC/POS) dan konversi ke Base64
+        $data = $connector->getData();
+        $printer->close();
+
+        // Kirimkan sebagai string Base64 murni ke Javascript
+        return response(base64_encode($data))->header('Content-Type', 'text/plain');
     }
 
     // ==========================================
