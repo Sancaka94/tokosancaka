@@ -197,22 +197,26 @@
             }, 500);
         }
 
-        // --- 2. Logika Auto-Print RawBT (Aplikasi Android) ---
+        // Logika Auto-Print TANPA DIALOG via Teks RawBT Asli
         @if(session('print_id'))
+        document.addEventListener("DOMContentLoaded", function() {
+            const plateInput = document.getElementById('plate_number');
+            if(plateInput) plateInput.focus();
+
             let printUrl = "{{ route('transactions.print', session('print_id')) }}";
 
             fetch(printUrl)
-                .then(response => {
-                    if (!response.ok) throw new Error('Gagal memuat struk');
-                    return response.text();
-                })
+                .then(response => response.text())
                 .then(textData => {
-                    // Encode teks dan arahkan ke URL Intent RawBT
+                    // Bungkus teks murni tersebut dan tembak langsung ke RawBT
                     let encodedText = encodeURIComponent(textData);
                     let intentUrl = "intent:" + encodedText + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
+
+                    // Eksekusi print!
                     window.location.href = intentUrl;
                 })
-                .catch(error => console.error('Gagal memicu RawBT:', error));
+                .catch(error => console.error('Gagal mengambil data struk:', error));
+        });
         @endif
     });
 
