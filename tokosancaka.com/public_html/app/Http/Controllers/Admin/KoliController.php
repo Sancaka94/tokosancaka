@@ -24,7 +24,7 @@ class KoliController extends Controller
         // Ubah path view ke folder admin
         return view('admin.pesanan.create_multi');
     }
-    
+
     protected function generateInvoiceNumber()
     {
         return 'SCK-' . now()->format('Ymd') . '-' . Str::upper(Str::random(5));
@@ -37,24 +37,24 @@ class KoliController extends Controller
                 // Ubah User-Agent menjadi Admin
                 ->withHeaders(['User-Agent' => 'SancakaAdmin/1.0 (support@tokosancaka.com)'])
                 ->get("https://nominatim.openstreetmap.org/search", [
-                    'q' => $address, 
-                    'format' => 'json', 
-                    'limit' => 1, 
+                    'q' => $address,
+                    'format' => 'json',
+                    'limit' => 1,
                     'countrycodes' => 'id'
                 ]);
-            
+
             if (!$response->successful() || empty($response[0]) || !isset($response[0]['lat']) || !isset($response[0]['lon'])) {
                 Log::warning("Geocoding failed for address: " . $address);
                 return null;
             }
 
             return [
-                'lat' => (float) $response[0]['lat'], 
+                'lat' => (float) $response[0]['lat'],
                 'lng' => (float) $response[0]['lon']
             ];
 
         } catch (\Exception $e) {
-            Log::error("Geocoding error: " . $e->getMessage()); 
+            Log::error("Geocoding error: " . $e->getMessage());
             return null;
         }
     }
@@ -76,7 +76,7 @@ class KoliController extends Controller
                 $request->input("{$type}_district"),
                 $request->input("{$type}_regency")
             ]);
-            
+
             $simpleAddressQuery = implode(', ', $parts);
 
             if(!empty($simpleAddressQuery)) {
@@ -107,17 +107,17 @@ class KoliController extends Controller
             ]);
 
             $itemPrice = (int) str_replace(['Rp', '.', ',', ' '], '', $request->item_price);
-            
+
             $useInsurance = ($request->ansuransi == 'iya' || $request->ansuransi == 1 || $request->ansuransi == 'true') ? 1 : 0;
 
             $options = $kirimaja->getExpressPricing(
                 $request->sender_district_id, $request->sender_subdistrict_id,
                 $request->receiver_district_id, $request->receiver_subdistrict_id,
-                (int) $request->weight, 
-                (int) $request->volume, 1, 1, 
-                $itemPrice, 
-                null, 
-                'regular', 
+                (int) $request->weight,
+                (int) $request->volume, 1, 1,
+                $itemPrice,
+                null,
+                'regular',
                 $useInsurance
             );
 
@@ -139,8 +139,8 @@ class KoliController extends Controller
             return redirect()->route('admin.pesanan.index')
                 ->with('warning', 'Pesanan Massal ini sudah diproses sebelumnya (Mencegah Dobel Input).');
         }
-        
-        DB::beginTransaction(); 
+
+        DB::beginTransaction();
         try {
             $rawItemPrice = str_replace(['Rp', '.', ' ', ','], '', $request->input('item_price'));
             $request->merge(['item_price' => $rawItemPrice]);
@@ -150,7 +150,7 @@ class KoliController extends Controller
                 'receiver_name' => 'required', 'receiver_phone' => 'required',
                 'sender_district_id' => 'required', 'receiver_district_id' => 'required',
                 'payment_method' => 'required',
-                'item_price' => 'required|numeric|min:100', 
+                'item_price' => 'required|numeric|min:100',
                 'packages' => 'required|array|min:1',
             ]);
 
@@ -159,7 +159,7 @@ class KoliController extends Controller
 
             $packages = $request->input('packages');
             $totalPaket = count($packages);
-            
+
             $hargaBarangPerPaket = floor($request->input('item_price') / $totalPaket);
             if ($hargaBarangPerPaket < 100) $hargaBarangPerPaket = 100;
 
@@ -167,38 +167,38 @@ class KoliController extends Controller
             $receiverAddressData = $this->_getAddressData($request, 'receiver');
 
             $createdOrders = [];
-            $tempDataPerOrder = []; 
-            $grandTotalTagihan = 0; 
+            $tempDataPerOrder = [];
+            $grandTotalTagihan = 0;
             $totalOngkirAll = 0;
 
             foreach ($packages as $index => $pkg) {
-                do { 
-                    $baseInvoice = 'SCK-' . date('Ymd') . '-'. strtoupper(Str::random(5)); 
+                do {
+                    $baseInvoice = 'SCK-' . date('Ymd') . '-'. strtoupper(Str::random(5));
                     $nomorInvoice = $baseInvoice . '-' . ($index + 1);
                 } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
 
-                $beratFisik = (int) $pkg['weight']; 
+                $beratFisik = (int) $pkg['weight'];
                 $p = (int) ($pkg['length'] ?? 10);
                 $l = (int) ($pkg['width'] ?? 10);
                 $t = (int) ($pkg['height'] ?? 10);
-                
+
                 $targetCourier = $pkg['courier_code'];
                 $targetService = $pkg['service_code'];
 
                 $divisor = (strpos(strtolower($targetService), 'cargo') !== false || strpos(strtolower($targetService), 'trucking') !== false) ? 4000 : 6000;
-                $volumeWeight = ($p * $l * $t) / $divisor * 1000; 
+                $volumeWeight = ($p * $l * $t) / $divisor * 1000;
                 $chargeableWeight = max($beratFisik, $volumeWeight);
-                
-                $finalBookingWeight = (int) ceil($chargeableWeight); 
+
+                $finalBookingWeight = (int) ceil($chargeableWeight);
 
                 $realCostData = $this->_getRealShippingCost(
-                    $kirimaja, 
-                    $senderAddressData['kirimaja_data'], 
+                    $kirimaja,
+                    $senderAddressData['kirimaja_data'],
                     $receiverAddressData['kirimaja_data'],
                     $beratFisik,
-                    $p, $l, $t, 
-                    $targetCourier, $targetService, 
-                    $hargaBarangPerPaket, 
+                    $p, $l, $t,
+                    $targetCourier, $targetService,
+                    $hargaBarangPerPaket,
                     $request->ansuransi
                 );
 
@@ -206,7 +206,7 @@ class KoliController extends Controller
                 $asuransiFix = ($request->ansuransi == 'iya') ? (int) $realCostData['insurance'] : 0;
 
                 $codFeeFix = 0;
-                $finalPriceDB = 0; $finalCodValueAPI = 0;  
+                $finalPriceDB = 0; $finalCodValueAPI = 0;
                 $paymentMethod = $request->payment_method;
 
                 if ($paymentMethod === 'COD' || $paymentMethod === 'CODBARANG') {
@@ -220,10 +220,10 @@ class KoliController extends Controller
 
                     $finalCodValueAPI = (int) (ceil($grandTotalMentah / 500) * 500);
                     $finalPriceDB = $finalCodValueAPI;
-                    $codFeeFix = $codFeeBeforePPN + $ppnFee; 
+                    $codFeeFix = $codFeeBeforePPN + $ppnFee;
                 } else {
                     $finalPriceDB = $ongkirFix + $asuransiFix;
-                    $finalCodValueAPI = 0; 
+                    $finalCodValueAPI = 0;
                 }
 
                 $pesanan = new Pesanan();
@@ -231,7 +231,7 @@ class KoliController extends Controller
                 // Untuk Admin, Auth::id() akan mengambil ID Admin yang sedang login
                 $pesanan->customer_id = Auth::id();
                 $pesanan->id_pengguna_pembeli = Auth::id();
-                
+
                 $pesanan->sender_name = $request->sender_name;
                 $pesanan->sender_phone = $this->_sanitizePhone($request->sender_phone);
                 $pesanan->sender_address = $request->sender_address;
@@ -241,8 +241,8 @@ class KoliController extends Controller
                 $pesanan->sender_regency = $request->sender_regency;
                 $pesanan->sender_district = $request->sender_district;
                 $pesanan->sender_village = $request->sender_village;
-                $pesanan->sender_postal_code = $request->sender_postal_code; 
-                
+                $pesanan->sender_postal_code = $request->sender_postal_code;
+
                 $pesanan->receiver_name = $request->receiver_name;
                 $pesanan->receiver_phone = $this->_sanitizePhone($request->receiver_phone);
                 $pesanan->receiver_address = $request->receiver_address;
@@ -252,22 +252,22 @@ class KoliController extends Controller
                 $pesanan->receiver_regency = $request->receiver_regency;
                 $pesanan->receiver_district = $request->receiver_district;
                 $pesanan->receiver_village = $request->receiver_village;
-                $pesanan->receiver_postal_code = $request->receiver_postal_code; 
-                
+                $pesanan->receiver_postal_code = $request->receiver_postal_code;
+
                 $pesanan->item_description = $request->item_description . " (Paket " . ($index+1) . ")";
-                $pesanan->weight = $beratFisik; 
-                $pesanan->length = $p; 
-                $pesanan->width = $l; 
+                $pesanan->weight = $beratFisik;
+                $pesanan->length = $p;
+                $pesanan->width = $l;
                 $pesanan->height = $t;
                 $pesanan->item_type = $request->item_type;
-                $pesanan->item_price = $hargaBarangPerPaket; 
+                $pesanan->item_price = $hargaBarangPerPaket;
 
                 $expStringDB = sprintf('%s-%s-%s-%d-%d-%d', 'mix', strtolower($targetCourier), strtoupper($targetService), $ongkirFix, $asuransiFix, $codFeeFix);
                 $pesanan->expedition = $expStringDB;
-                $pesanan->service_type = 'Multi'; 
+                $pesanan->service_type = 'Multi';
                 $pesanan->payment_method = $request->payment_method;
                 $pesanan->ansuransi = $request->ansuransi;
-                
+
                 $pesanan->shipping_cost = $ongkirFix;
                 $pesanan->insurance_cost = $asuransiFix;
                 $pesanan->cod_fee = $codFeeFix;
@@ -285,26 +285,26 @@ class KoliController extends Controller
 
                 $pesanan->save();
 
-            
+
                 $createdOrders[] = $pesanan;
 
                 $tempDataPerOrder[$pesanan->id] = [
                     'cod_value_api' => $finalCodValueAPI,
                     'shipping_cost' => $ongkirFix,
                     'insurance_cost' => $asuransiFix,
-                    'item_value_api' => $hargaBarangPerPaket, 
-                    'courier_code' => $targetCourier, 
+                    'item_value_api' => $hargaBarangPerPaket,
+                    'courier_code' => $targetCourier,
                     'service_code' => $targetService,
-                    'booking_weight' => $finalBookingWeight 
+                    'booking_weight' => $finalBookingWeight
                 ];
 
                 if (!in_array($request->payment_method, ['COD', 'CODBARANG'])) {
-                    $grandTotalTagihan += $finalPriceDB; 
+                    $grandTotalTagihan += $finalPriceDB;
                 }
                 $totalOngkirAll += $ongkirFix;
             }
 
-            $masterOrder = $createdOrders[0]; 
+            $masterOrder = $createdOrders[0];
             $paymentUrl = null;
 
             if ($request->payment_method === 'Potong Saldo') {
@@ -315,7 +315,7 @@ class KoliController extends Controller
             } elseif (in_array($request->payment_method, ['COD', 'CODBARANG'])) {
                  foreach ($createdOrders as $o) { $o->status = 'Menunggu Pickup'; $o->status_pesanan = 'Menunggu Pickup'; $o->save(); }
             } else {
-                $paymentGateway = 'tripay'; 
+                $paymentGateway = 'tripay';
                 if (strtoupper($request->payment_method) === 'DOKU_JOKUL') {
                     $paymentGateway = 'doku';
                 }
@@ -342,29 +342,29 @@ class KoliController extends Controller
                 }
             }
 
-            DB::commit(); 
+            DB::commit();
 
             if (in_array($request->payment_method, ['COD', 'CODBARANG', 'Potong Saldo'])) {
                 foreach ($createdOrders as $order) {
                     $temp = $tempDataPerOrder[$order->id];
-                    
+
                     $apiPayload = [
                         'item_description' => $order->item_description,
                         'item_price' => $temp['item_value_api'],
-                        'weight' => $temp['booking_weight'], 
-                        'length' => (int) $order->length, 
-                        'width' => (int) $order->width, 
+                        'weight' => $temp['booking_weight'],
+                        'length' => (int) $order->length,
+                        'width' => (int) $order->width,
                         'height' => (int) $order->height,
-                        'courier_code' => $temp['courier_code'], 
+                        'courier_code' => $temp['courier_code'],
                         'service_code' => $temp['service_code'],
                         'ansuransi' => $request->ansuransi
                     ];
 
                     $kiriminResponse = $this->_createKiriminAjaOrderLocal(
-                        $apiPayload, $order, $kirimaja, 
+                        $apiPayload, $order, $kirimaja,
                         $senderAddressData, $receiverAddressData,
-                        $temp['cod_value_api'], 
-                        $temp['shipping_cost'], 
+                        $temp['cod_value_api'],
+                        $temp['shipping_cost'],
                         $temp['insurance_cost']
                     );
 
@@ -406,12 +406,12 @@ class KoliController extends Controller
         }
     }
 
-    private function _getRealShippingCost($kirimaja, $senderData, $receiverData, $weight, $length, $width, $height, $courier, $service, $itemValue, $ansuransi) 
+    private function _getRealShippingCost($kirimaja, $senderData, $receiverData, $weight, $length, $width, $height, $courier, $service, $itemValue, $ansuransi)
     {
         if($weight < 1) $weight = 1;
-        
+
         $useInsurance = ($ansuransi == 'iya') ? 1 : 0;
-        
+
         $category = 'regular';
         if (strpos(strtolower($service), 'trucking') !== false || strpos(strtolower($service), 'cargo') !== false) {
             $category = 'trucking';
@@ -420,19 +420,19 @@ class KoliController extends Controller
         $options = $kirimaja->getExpressPricing(
             $senderData['district_id'], $senderData['subdistrict_id'],
             $receiverData['district_id'], $receiverData['subdistrict_id'],
-            $weight, 
-            $length, $width, $height, 
-            $itemValue, null, $category, 
-            $useInsurance 
+            $weight,
+            $length, $width, $height,
+            $itemValue, null, $category,
+            $useInsurance
         );
 
         $foundCost = 0; $foundInsurance = 0;
-        
+
         if (isset($options['results'])) {
             foreach ($options['results'] as $res) {
                 $apiCourier = strtolower($res['service'] ?? '');
                 $apiService = strtolower($res['service_type'] ?? '');
-                
+
                 if ($apiCourier == strtolower($courier) && strpos($apiService, strtolower($service)) !== false) {
                     $foundCost = (int) ($res['cost'] ?? 0);
                     $foundInsurance = (int) ($res['insurance'] ?? 0);
@@ -440,7 +440,7 @@ class KoliController extends Controller
                 }
             }
         }
-        
+
         if ($foundCost == 0 && isset($options['results'])) {
              foreach ($options['results'] as $res) {
                 if (strtolower($res['service']) == strtolower($courier)) {
@@ -450,7 +450,7 @@ class KoliController extends Controller
                 }
              }
         }
-        
+
         if ($foundCost == 0) throw new Exception("Ongkir berubah/tidak ditemukan utk kurir {$courier}.");
         return ['cost' => $foundCost, 'insurance' => $foundInsurance];
     }
@@ -458,34 +458,34 @@ class KoliController extends Controller
     private function _createKiriminAjaOrderLocal($data, $order, $kirimaja, $senderData, $receiverData, $cod_value, $shipping_cost, $insurance_cost) {
         $serviceGroup = 'regular';
         if (strpos(strtolower($data['service_code']), 'cargo') !== false) $serviceGroup = 'trucking';
-        
+
         $schedules = $kirimaja->getSchedules();
-        $pickupSchedule = $schedules['clock'] ?? 'now'; 
+        $pickupSchedule = $schedules['clock'] ?? 'now';
 
         $useInsuranceFlag = ($data['ansuransi'] == 'iya') ? 1 : 0;
 
         $payload = [
             'address' => $order->sender_address, 'phone' => $order->sender_phone, 'name' => $order->sender_name,
             'kecamatan_id' => $senderData['kirimaja_data']['district_id'], 'kelurahan_id' => $senderData['kirimaja_data']['subdistrict_id'],
-            'zipcode' => $senderData['kirimaja_data']['postal_code'], 
+            'zipcode' => $senderData['kirimaja_data']['postal_code'],
             'platform_name' => 'tokosancaka.com', 'category' => $serviceGroup,
             'schedule' => $pickupSchedule,
             'packages' => [[
-                'order_id' => $order->nomor_invoice, 
+                'order_id' => $order->nomor_invoice,
                 'item_name' => $data['item_description'],
                 'package_type_id' => (int)request('item_type'),
                 'destination_name' => $order->receiver_name, 'destination_phone' => $order->receiver_phone,
                 'destination_address' => $order->receiver_address,
-                'destination_kecamatan_id' => $receiverData['kirimaja_data']['district_id'], 
+                'destination_kecamatan_id' => $receiverData['kirimaja_data']['district_id'],
                 'destination_kelurahan_id' => $receiverData['kirimaja_data']['subdistrict_id'],
                 'destination_zipcode' => $receiverData['kirimaja_data']['postal_code'],
-                'weight' => (int)$data['weight'], 
+                'weight' => (int)$data['weight'],
                 'width' => (int)$data['width'], 'height' => (int)$data['height'], 'length' => (int)$data['length'],
-                'item_value' => (int)$data['item_price'], 
-                
-                'insurance' => $useInsuranceFlag, 
-                'insurance_amount' => ($useInsuranceFlag === 1) ? (int)$insurance_cost : 0, 
-                
+                'item_value' => (int)$data['item_price'],
+
+                'insurance' => $useInsuranceFlag,
+                'insurance_amount' => ($useInsuranceFlag === 1) ? (int)$insurance_cost : 0,
+
                 'cod' => (int)$cod_value,
                 'service' => $data['courier_code'], 'service_type' => $data['service_code'],
                 'shipping_cost' => (int)$shipping_cost
@@ -500,8 +500,8 @@ class KoliController extends Controller
         if (!Str::startsWith($phone, '0') && Str::startsWith($phone, '8')) return '0'.$phone;
         return $phone;
     }
-    
-    private function _saveKontak($request, $prefix, $tipe) { 
+
+    private function _saveKontak($request, $prefix, $tipe) {
         if ($request->has("save_{$prefix}")) {
             Kontak::updateOrCreate(
                 ['no_hp' => $this->_sanitizePhone($request->input("{$prefix}_phone"))],
@@ -518,12 +518,6 @@ class KoliController extends Controller
             );
         }
     }
-    
-    // Placeholder Notifikasi WA
-    private function _sendWhatsappNotification($masterOrder, $data, $ongkir, $ins, $fee, $total, $req, $count) {
-        // Implementasi notifikasi WA admin
-        return true; 
-    }
 
     private function _createTripayTransactionInternal(array $data, Pesanan $order, int $total, array $orderItems): array
     {
@@ -532,23 +526,23 @@ class KoliController extends Controller
 
         $customerEmail = Auth::user()->email ?? null;
         if (empty($customerEmail) || !filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
-            $customerEmail = 'admin+' . Str::random(5) . '@tokosancaka.com'; 
+            $customerEmail = 'admin+' . Str::random(5) . '@tokosancaka.com';
         }
 
         $payload = [
             'method' => $data['payment_method'], 'merchant_ref' => $order->nomor_invoice, 'amount' => $total,
-            'customer_name' => $data['receiver_name'], 
+            'customer_name' => $data['receiver_name'],
             'customer_email' => $customerEmail,
-            'customer_phone' => $data['receiver_phone'], 
+            'customer_phone' => $data['receiver_phone'],
             'order_items' => $orderItems,
             // Return URL ke Admin
-            'return_url' => route('admin.pesanan.index'), 
-            'expired_time' => time() + (1 * 60 * 60), 
+            'return_url' => route('admin.pesanan.index'),
+            'expired_time' => time() + (1 * 60 * 60),
             'signature' => hash_hmac('sha256', $merchantCode . $order->nomor_invoice . $total, $privateKey),
         ];
-        
+
         $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
-        
+
         try {
             $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
                 ->timeout(60)->withoutVerifying()->post($baseUrl, $payload);
@@ -581,13 +575,13 @@ class KoliController extends Controller
         DB::beginTransaction();
         try {
             $itemPrice = (int) str_replace(['Rp', '.', ',', ' '], '', $request->item_price);
-            
+
             $request->validate([
                 'sender_name' => 'required', 'sender_phone' => 'required',
                 'receiver_name' => 'required', 'receiver_phone' => 'required',
                 'sender_district_id' => 'required', 'receiver_district_id' => 'required',
                 'courier_code' => 'required', 'service_code' => 'required',
-                'weight' => 'required|numeric', 
+                'weight' => 'required|numeric',
                 'payment_method' => 'required',
                 'item_description' => 'required'
             ]);
@@ -596,13 +590,13 @@ class KoliController extends Controller
             $receiverAddressData = $this->_getAddressData($request, 'receiver');
 
             $realCostData = $this->_getRealShippingCost(
-                $kirimaja, 
-                $senderAddressData['kirimaja_data'], 
+                $kirimaja,
+                $senderAddressData['kirimaja_data'],
                 $receiverAddressData['kirimaja_data'],
                 (int)$request->weight,
-                (int)$request->length, (int)$request->width, (int)$request->height, 
-                $request->courier_code, $request->service_code, 
-                $itemPrice, 
+                (int)$request->length, (int)$request->width, (int)$request->height,
+                $request->courier_code, $request->service_code,
+                $itemPrice,
                 $request->ansuransi
             );
 
@@ -621,15 +615,15 @@ class KoliController extends Controller
 
                 $rawFee = $baseTotal * 0.03;
                 $codFeeBeforePPN = max(2500, $rawFee);
-                
+
                 $ppnFee = $codFeeBeforePPN * 0.11;
-                
+
                 $grandTotalMentah = $baseTotal + $codFeeBeforePPN + $ppnFee;
 
                 $codValueApi = (int) (ceil($grandTotalMentah / 500) * 500);
-                
+
                 $totalPrice = $codValueApi;
-                $codFee = $codFeeBeforePPN + $ppnFee; 
+                $codFee = $codFeeBeforePPN + $ppnFee;
             } else {
                 $totalPrice = $shippingCost + $insuranceCost;
                 $codValueApi = 0;
@@ -652,7 +646,7 @@ class KoliController extends Controller
             $pesanan->sender_postal_code = $request->sender_postal_code;
             $pesanan->sender_lat = $senderAddressData['lat'] ?? 0;
             $pesanan->sender_lng = $senderAddressData['lng'] ?? 0;
-            
+
             $pesanan->receiver_name = $request->receiver_name;
             $pesanan->receiver_phone = $this->_sanitizePhone($request->receiver_phone);
             $pesanan->receiver_address = $request->receiver_address;
@@ -672,32 +666,32 @@ class KoliController extends Controller
             $pesanan->width = $request->width;
             $pesanan->height = $request->height;
             $pesanan->item_price = $itemPrice;
-            
+
             $pesanan->payment_method = $request->payment_method;
             $pesanan->ansuransi = $request->ansuransi;
-            
+
             $pesanan->shipping_cost = $shippingCost;
             $pesanan->insurance_cost = $insuranceCost;
             $pesanan->cod_fee = $codFee;
             $pesanan->price = $totalPrice;
 
-            $expString = sprintf('mix-%s-%s-%d-%d-%d', 
-                strtolower($request->courier_code), 
-                strtoupper($request->service_code), 
-                $shippingCost, 
-                $insuranceCost, 
+            $expString = sprintf('mix-%s-%s-%d-%d-%d',
+                strtolower($request->courier_code),
+                strtoupper($request->service_code),
+                $shippingCost,
+                $insuranceCost,
                 $codFee
             );
             $pesanan->expedition = $expString;
-            $pesanan->service_type = 'Single-Multi'; 
-            $pesanan->status = 'Menunggu Pembayaran'; 
+            $pesanan->service_type = 'Single-Multi';
+            $pesanan->status = 'Menunggu Pembayaran';
             $pesanan->status_pesanan = 'Menunggu Pembayaran';
             $pesanan->tanggal_pesanan = now();
 
             // 🔥 Simpan Kunci Pengaman
             $pesanan->idempotency_key = $key;
 
-            $pesanan->save(); 
+            $pesanan->save();
 
             $paymentUrl = null;
 
@@ -708,12 +702,12 @@ class KoliController extends Controller
                 $pesanan->status = 'Menunggu Pickup';
                 $pesanan->status_pesanan = 'Menunggu Pickup';
                 $pesanan->save();
-            } 
+            }
             elseif (in_array($request->payment_method, ['COD', 'CODBARANG'])) {
                 $pesanan->status = 'Menunggu Pickup';
                 $pesanan->status_pesanan = 'Menunggu Pickup';
                 $pesanan->save();
-            } 
+            }
             else {
                 $paymentGateway = 'tripay';
                 if (strtoupper($request->payment_method) === 'DOKU_JOKUL') {
@@ -745,7 +739,7 @@ class KoliController extends Controller
 
             $resi = "DIPROSES";
             if (in_array($request->payment_method, ['COD', 'CODBARANG', 'Potong Saldo'])) {
-                
+
                 $apiPayload = [
                     'item_description' => $pesanan->item_description,
                     'item_price' => $itemPrice,
@@ -759,24 +753,24 @@ class KoliController extends Controller
                 ];
 
                 $kiriminResponse = $this->_createKiriminAjaOrderLocal(
-                    $apiPayload, 
-                    $pesanan, 
-                    $kirimaja, 
-                    $senderAddressData, 
+                    $apiPayload,
+                    $pesanan,
+                    $kirimaja,
+                    $senderAddressData,
                     $receiverAddressData,
                     $codValueApi,
-                    $shippingCost, 
-                    $insuranceCost 
+                    $shippingCost,
+                    $insuranceCost
                 );
 
                 if (($kiriminResponse['status'] ?? false) === true) {
                     $resi = $kiriminResponse['details']['awb'] ?? $kiriminResponse['awb'] ?? null;
                     if($resi) {
                         $pesanan->resi = $resi;
-                        $pesanan->status = 'Dikemas'; 
+                        $pesanan->status = 'Dikemas';
                         $pesanan->status_pesanan = 'Dikemas';
                     } else {
-                        $pesanan->status = 'Menunggu Resi'; 
+                        $pesanan->status = 'Menunggu Resi';
                         $pesanan->status_pesanan = 'Menunggu Resi';
                     }
                     $pesanan->save();
@@ -786,14 +780,26 @@ class KoliController extends Controller
                 }
             }
 
-            DB::commit(); 
+            // --- TAMBAHKAN KODE INI ---
+            try {
+                $this->_sendWhatsappNotification(
+                    $pesanan,
+                    ['payment_method' => $request->payment_method, 'item_price' => $itemPrice],
+                    $shippingCost, $insuranceCost, $codFee, $totalPrice, $request, 1
+                );
+            } catch (Exception $e) {
+                Log::error('Notif WA Single Error: ' . $e->getMessage());
+            }
+            // --- BATAS TAMBAHAN KODE ---
+
+            DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Paket berhasil disimpan.',
                 'resi' => $resi,
                 'invoice' => $pesanan->nomor_invoice,
-                'payment_url' => $paymentUrl 
+                'payment_url' => $paymentUrl
             ]);
 
         } catch (Exception $e) {
@@ -803,6 +809,64 @@ class KoliController extends Controller
                 'success' => false,
                 'message' => 'Gagal: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    private function _sendWhatsappNotification($masterOrder, $data, $ongkir, $ins, $fee, $total, $req, $count) {
+        $adminPhone = '085745808809';
+
+        $formattedTotal = 'Rp ' . number_format($total, 0, ',', '.');
+        $resiText = $masterOrder->resi ? $masterOrder->resi : 'Sedang diproses';
+
+        // 1. Pesan untuk Pengirim
+        $msgSender = "Halo *{$masterOrder->sender_name}*,\n\n"
+                   . "Pesanan Anda melalui *Sancaka Express* berhasil kami proses.\n\n"
+                   . "🧾 Invoice: *{$masterOrder->nomor_invoice}*\n"
+                   . "👤 Penerima: *{$masterOrder->receiver_name}*\n"
+                   . "📦 Jumlah Koli: *{$count} Paket*\n"
+                   . "🏷️ Total Tagihan: *{$formattedTotal}*\n"
+                   . "📍 Status: *{$masterOrder->status_pesanan}*\n\n"
+                   . "Terima kasih telah mempercayakan pengiriman Anda kepada kami.";
+
+        // 2. Pesan untuk Penerima
+        $msgReceiver = "Halo *{$masterOrder->receiver_name}*,\n\n"
+                     . "Ada paket kiriman untuk Anda dari *{$masterOrder->sender_name}* melalui *Sancaka Express*.\n\n"
+                     . "🧾 Invoice: *{$masterOrder->nomor_invoice}*\n"
+                     . "🏷️ Nomor Resi: *{$resiText}*\n\n"
+                     . "Mohon tunggu kedatangan kurir kami di lokasi Anda. Terima kasih.";
+
+        // 3. Pesan untuk Admin
+        $msgAdmin = "⚠️ *ORDER BARU SANCAKA EXPRESS* ⚠️\n\n"
+                  . "🧾 Invoice: *{$masterOrder->nomor_invoice}*\n"
+                  . "📤 Pengirim: *{$masterOrder->sender_name}* ({$masterOrder->sender_phone})\n"
+                  . "📥 Penerima: *{$masterOrder->receiver_name}* ({$masterOrder->receiver_phone})\n"
+                  . "📦 Jumlah Koli: *{$count} Paket*\n"
+                  . "💳 Metode Bayar: *{$data['payment_method']}*\n"
+                  . "💰 Total Tagihan: *{$formattedTotal}*";
+
+        // Eksekusi Kirim Pesan via Fonnte
+        // Pastikan phone formatnya benar (dimulai dengan 0 atau 62, API fonnte otomatis detect)
+        $this->_kirimFonnte($masterOrder->sender_phone, $msgSender);
+        $this->_kirimFonnte($masterOrder->receiver_phone, $msgReceiver);
+        $this->_kirimFonnte($adminPhone, $msgAdmin);
+
+        return true;
+    }
+
+    private function _kirimFonnte($target, $message) {
+        // Ambil token dari file .env (Contoh: FONNTE_TOKEN=blablabla)
+        $token = env('FONNTE_TOKEN', 'TOKEN_FONNTE_ANDA');
+
+        try {
+            \Illuminate\Support\Facades\Http::withHeaders([
+                'Authorization' => $token
+            ])->post('https://api.fonnte.com/send', [
+                'target' => $target,
+                'message' => $message,
+                'countryCode' => '62' // Pastikan default kode negara ID
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Fonnte API Error: ' . $e->getMessage());
         }
     }
 }
