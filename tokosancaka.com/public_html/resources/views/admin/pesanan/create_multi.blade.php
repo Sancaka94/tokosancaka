@@ -1,4 +1,4 @@
-{{-- 
+{{--
     File: resources/views/admin/pesanan/create_multi.blade.php
     Deskripsi: Halaman Multi-Koli Admin dengan Sortir Ongkir, Pencarian Global, dan UI Feedback
 --}}
@@ -28,13 +28,13 @@
     .step-item.active .step-label { color: #ef4444; }
     .step-item.completed .step-circle { border-color: #10b981; background-color: #10b981; color: #fff; }
     .step-item.completed .step-label { color: #10b981; }
-    
+
     /* Search Results */
     .search-group { position: relative; }
     .search-results { position: absolute; top: 100%; left: 0; right: 0; z-index: 9999 !important; background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15); max-height: 250px; overflow-y: auto; margin-top: 4px; }
     .result-item { padding: 10px 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; font-size: 13px; color: #334155; transition: background 0.2s; }
     .result-item:hover { background-color: #eff6ff; color: #ef4444; }
-    
+
     /* Animations & Utilities */
     .step-content { display: none; animation: slideUp 0.4s ease-out; }
     .step-content.active { display: block; }
@@ -197,7 +197,7 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 {{-- KIRI: DETAIL UMUM (Berlaku untuk semua Koli) --}}
-                
+
                 <div class="col-span-1 lg:col-span-1 space-y-6">
                     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
                         {{-- Header Card --}}
@@ -207,7 +207,7 @@
                                 Detail & Pembayaran
                             </h3>
                         </div>
-                        
+
                         {{-- Isi Paket --}}
                         <div class="mb-5">
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 required-label">
@@ -217,10 +217,10 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <i class="fas fa-box-open text-gray-400"></i>
                                 </div>
-                                <input type="text" name="item_description" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm font-medium placeholder-gray-400" 
-                                    required 
-                                    placeholder="Contoh: Pakaian, Kosmetik, Makanan" 
+                                <input type="text" name="item_description"
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm font-medium placeholder-gray-400"
+                                    required
+                                    placeholder="Contoh: Pakaian, Kosmetik, Makanan"
                                     value="{{ old('item_description') }}">
                             </div>
                         </div>
@@ -234,10 +234,10 @@
                                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                                     <span class="text-gray-500 font-bold sm:text-sm">Rp</span>
                                 </div>
-                                <input type="text" name="item_price" 
-                                    class="block w-full rounded-lg border-gray-300 pl-10 py-3 pr-12 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:text-sm font-bold text-gray-900 placeholder-gray-300" 
-                                    required 
-                                    placeholder="0" 
+                                <input type="text" name="item_price"
+                                    class="block w-full rounded-lg border-gray-300 pl-10 py-3 pr-12 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:text-sm font-bold text-gray-900 placeholder-gray-300"
+                                    required
+                                    placeholder="0"
                                     value="{{ old('item_price') }}">
                                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                                     <span class="text-gray-400 sm:text-xs">IDR</span>
@@ -245,14 +245,14 @@
                             </div>
                             <p class="mt-1 text-[10px] text-gray-400 italic">*Wajib diisi untuk klaim asuransi jika hilang.</p>
                         </div>
-                        
+
                         {{-- Pilihan Asuransi --}}
                         <div class="mb-5">
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
                                 Asuransi Pengiriman
                             </label>
                             <div class="relative">
-                                <select name="ansuransi" id="ansuransi" 
+                                <select name="ansuransi" id="ansuransi"
                                     class="appearance-none w-full bg-gray-50 border border-gray-300 text-gray-700 py-3 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors cursor-pointer font-medium text-sm">
                                     <option value="tidak" {{ old('ansuransi') == 'tidak' ? 'selected' : '' }}>🛡️ Tidak Perlu Asuransi</option>
                                     <option value="iya" {{ old('ansuransi') == 'iya' ? 'selected' : '' }}>✅ Gunakan Asuransi (Disarankan)</option>
@@ -268,13 +268,13 @@
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 required-label">
                                 Metode Pembayaran (Admin)
                             </label>
-                            
+
                             <div class="relative" id="customPaymentDropdown">
                                 {{-- Hidden Input --}}
                                 <input type="hidden" name="payment_method" id="selectedPaymentMethod" value="{{ old('payment_method') }}">
 
                                 {{-- Trigger Button --}}
-                                <button type="button" onclick="togglePaymentDropdown()" 
+                                <button type="button" onclick="togglePaymentDropdown()"
                                     class="w-full bg-white border border-gray-300 rounded-lg py-3 px-4 flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-left">
                                     <span class="flex items-center gap-3" id="paymentTriggerContent">
                                         {{-- Default Tampilan Jika Belum Ada Pilihan --}}
@@ -287,13 +287,13 @@
                                 <div id="paymentOptionsListContainer" class="absolute z-50 mt-2 w-full bg-white rounded-xl shadow-xl border border-gray-100 hidden max-h-80 overflow-y-auto">
                                     <ul class="p-2 space-y-1">
                                         {{-- Saldo --}}
-                                        <li class="payment-option cursor-pointer flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0" 
+                                        <li class="payment-option cursor-pointer flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0"
                                             onclick="selectPayment('Potong Saldo', '{{ asset('public/assets/saldo.png') }}', 'Potong Saldo Admin')">
                                             <img src="{{ asset('public/assets/saldo.png') }}" class="h-8 w-8 object-contain mr-3 bg-gray-50 rounded p-1" onerror="this.style.display='none'">
                                             <div>
                                                 <span class="block text-sm font-bold text-gray-800">Potong Saldo Admin</span>
                                                 <span class="block text-xs text-gray-500">
-                                                    Saldo Admin: 
+                                                    Saldo Admin:
                                                     <span class="font-bold text-green-600">Rp{{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</span>
                                                 </span>
                                             </div>
@@ -308,7 +308,7 @@
                                             </div>
                                         </li>
                                         {{-- COD --}}
-                                        <li class="payment-option cursor-pointer flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0" 
+                                        <li class="payment-option cursor-pointer flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0"
                                             onclick="selectPayment('COD', '{{ asset('public/assets/cod.png') }}', 'COD (Ongkir Saja)')">
                                             <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-3 bg-gray-50 rounded p-1" onerror="this.style.display='none'">
                                             <div>
@@ -316,7 +316,7 @@
                                                 <span class="block text-xs text-gray-500">Bayar ongkir di tempat</span>
                                             </div>
                                         </li>
-                                        <li class="payment-option cursor-pointer flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0" 
+                                        <li class="payment-option cursor-pointer flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0"
                                             onclick="selectPayment('CODBARANG', '{{ asset('public/assets/cod.png') }}', 'COD (Barang + Ongkir)')">
                                             <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-3 bg-gray-50 rounded p-1" onerror="this.style.display='none'">
                                             <div>
@@ -342,13 +342,13 @@
                                             ];
                                         @endphp
                                         @foreach($vaMethods as $val => $data)
-                                        <li class="payment-option cursor-pointer flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0" 
+                                        <li class="payment-option cursor-pointer flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0"
                                             onclick="selectPayment('{{ $val }}', '{{ asset('public/assets/'.$data['img']) }}', '{{ $data['label'] }}')">
                                             <img src="{{ asset('public/assets/'.$data['img']) }}" class="h-6 w-10 object-contain mr-3" onerror="this.style.display='none'">
                                             <span class="text-sm font-medium text-gray-700">{{ $data['label'] }}</span>
                                         </li>
                                         @endforeach
-                                        
+
                                         <div class="px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50 mt-2 rounded">Retail & E-Wallet</div>
                                         @php
                                             $retailMethods = [
@@ -362,7 +362,7 @@
                                             ];
                                         @endphp
                                         @foreach($retailMethods as $val => $data)
-                                        <li class="payment-option cursor-pointer flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0" 
+                                        <li class="payment-option cursor-pointer flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0"
                                             onclick="selectPayment('{{ $val }}', '{{ asset('public/assets/'.$data['img']) }}', '{{ $data['label'] }}')">
                                             <img src="{{ asset('public/assets/'.$data['img']) }}" class="h-6 w-10 object-contain mr-3" onerror="this.style.display='none'">
                                             <span class="text-sm font-medium text-gray-700">{{ $data['label'] }}</span>
@@ -400,26 +400,26 @@
         <input type="hidden" name="sender_district_id" id="sender_district_id" value="{{ old('sender_district_id') }}">
         <input type="hidden" name="sender_subdistrict_id" id="sender_subdistrict_id" value="{{ old('sender_subdistrict_id') }}">
         <input type="hidden" name="sender_postal_code" id="sender_postal_code" value="{{ old('sender_postal_code') }}">
-        
+
         <input type="hidden" name="receiver_district_id" id="receiver_district_id" value="{{ old('receiver_district_id') }}">
         <input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" value="{{ old('receiver_subdistrict_id') }}">
         <input type="hidden" name="receiver_postal_code" id="receiver_postal_code" value="{{ old('receiver_postal_code') }}">
-        
+
         <input type="hidden" name="sender_province" id="sender_province" value="{{ old('sender_province') }}">
         <input type="hidden" name="sender_regency" id="sender_regency" value="{{ old('sender_regency') }}">
         <input type="hidden" name="sender_district" id="sender_district" value="{{ old('sender_district') }}">
         <input type="hidden" name="sender_village" id="sender_village" value="{{ old('sender_village') }}">
-        
+
         <input type="hidden" name="receiver_province" id="receiver_province" value="{{ old('receiver_province') }}">
         <input type="hidden" name="receiver_regency" id="receiver_regency" value="{{ old('receiver_regency') }}">
         <input type="hidden" name="receiver_district" id="receiver_district" value="{{ old('receiver_district') }}">
         <input type="hidden" name="receiver_village" id="receiver_village" value="{{ old('receiver_village') }}">
-        
+
         <input type="hidden" name="sender_lat" id="sender_lat" value="{{ old('sender_lat') }}">
         <input type="hidden" name="sender_lng" id="sender_lng" value="{{ old('sender_lng') }}">
         <input type="hidden" name="receiver_lat" id="receiver_lat" value="{{ old('receiver_lat') }}">
         <input type="hidden" name="receiver_lng" id="receiver_lng" value="{{ old('receiver_lng') }}">
-        
+
         <input type="hidden" name="grand_total" id="grand_total_input" value="0">
         <input type="hidden" name="item_type" value="1">
         {{-- 🔥 SISIPKAN INI DI SINI 🔥 --}}
@@ -434,9 +434,9 @@
     // --- KONFIGURASI & VARIABEL GLOBAL (ADMIN MODE) ---
     let step = 1;
     let koliCount = 0;
-    
-    const ASSET_BASE_URL = '{{ asset('public/storage/logo-ekspedisi') }}'; 
-    
+
+    const ASSET_BASE_URL = '{{ asset('public/storage/logo-ekspedisi') }}';
+
     // Ubah routes ke Admin jika diperlukan, atau pastikan API support Global Search
     const ROUTES = {
         addr: "{{ route('api.address.search') }}",
@@ -448,7 +448,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         const priceInput = document.querySelector('input[name="item_price"]');
         const btnAddKoli = document.getElementById('btnAddKoli');
-        
+
         // 1. Setup Awal
         renderKoliCard(koliCount);
         koliCount++;
@@ -490,17 +490,28 @@
                     </button>
                 </div>
             </div>
-            <fieldset id="fieldset-koli-${index}" class="grid grid-cols-4 gap-3 mb-3 border-0 p-0 m-0">
+            <fieldset id="fieldset-koli-${index}" class="grid grid-cols-4 gap-3 mb-2 border-0 p-0 m-0">
                 <div class="col-span-4 sm:col-span-1">
                     <label class="text-[10px] text-gray-500 block uppercase font-bold required-label">Berat (Gram)</label>
-                    <input type="number" name="packages[${index}][weight]" class="w-full border-gray-300 rounded text-sm p-2 font-bold focus:ring-blue-500" placeholder="1000" value="1000" min="1" onchange="resetKoli(${index})">
+                    <input type="number" name="packages[${index}][weight]" class="w-full border-gray-300 rounded text-sm p-2 font-bold focus:ring-blue-500" placeholder="1000" value="1000" min="1" oninput="handleKoliChange(${index})">
                 </div>
                 <div class="col-span-4 sm:col-span-3 grid grid-cols-3 gap-2">
-                    <div><label class="text-[10px] text-gray-500 block required-label">P (cm)</label><input type="number" name="packages[${index}][length]" class="w-full border-gray-300 rounded text-xs p-2" value="10" min="1" onchange="resetKoli(${index})"></div>
-                    <div><label class="text-[10px] text-gray-500 block required-label">L (cm)</label><input type="number" name="packages[${index}][width]" class="w-full border-gray-300 rounded text-xs p-2" value="10" min="1" onchange="resetKoli(${index})"></div>
-                    <div><label class="text-[10px] text-gray-500 block required-label">T (cm)</label><input type="number" name="packages[${index}][height]" class="w-full border-gray-300 rounded text-xs p-2" value="10" min="1" onchange="resetKoli(${index})"></div>
+                    <div><label class="text-[10px] text-gray-500 block required-label">P (cm)</label><input type="number" name="packages[${index}][length]" class="w-full border-gray-300 rounded text-xs p-2" value="10" min="1" oninput="handleKoliChange(${index})"></div>
+                    <div><label class="text-[10px] text-gray-500 block required-label">L (cm)</label><input type="number" name="packages[${index}][width]" class="w-full border-gray-300 rounded text-xs p-2" value="10" min="1" oninput="handleKoliChange(${index})"></div>
+                    <div><label class="text-[10px] text-gray-500 block required-label">T (cm)</label><input type="number" name="packages[${index}][height]" class="w-full border-gray-300 rounded text-xs p-2" value="10" min="1" oninput="handleKoliChange(${index})"></div>
                 </div>
             </fieldset>
+
+            <div class="flex justify-between items-center bg-blue-50 border border-blue-100 rounded-lg p-2.5 mb-3">
+                <div class="text-[10px] text-gray-500">
+                    Volumetrik <span class="text-gray-400">(/6000)</span>: <br>
+                    <span id="volumetric-display-${index}" class="font-bold text-gray-700 text-xs">0.17 Kg</span>
+                </div>
+                <div class="text-[10px] text-gray-500 text-right">
+                    Berat Ditagih: <br>
+                    <span id="chargeable-display-${index}" class="font-bold text-red-600 text-sm">1.00 Kg</span>
+                </div>
+            </div>
             <button type="button" id="btn-cek-ongkir-${index}" onclick="checkOngkirSingle(${index})" class="w-full py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-bold text-sm hover:bg-blue-100 transition mb-3">
                 <i class="fas fa-search mr-1"></i> Cek Ongkir Paket #${index+1}
             </button>
@@ -533,9 +544,9 @@
         document.getElementById(`input-cost-${index}`).value = 0;
         document.getElementById(`input-courier-${index}`).value = '';
         document.getElementById(`selected-courier-display-${index}`).innerHTML = '<span class="text-xs text-red-500 font-bold"><i class="fas fa-exclamation-circle"></i> Pilih Lagi</span>';
-        
+
         const card = document.getElementById(`koli-card-${index}`);
-        if(card.classList.contains('bg-green-50')) return; 
+        if(card.classList.contains('bg-green-50')) return;
 
         card.classList.remove('border-blue-400', 'bg-blue-50');
         document.getElementById(`action-area-${index}`).classList.add('hidden');
@@ -548,10 +559,10 @@
         const rDist = document.getElementById('receiver_district_id').value;
         const sSub = document.getElementById('sender_subdistrict_id').value;
         const rSub = document.getElementById('receiver_subdistrict_id').value;
-          
-        if(!sDist || !rDist) { 
-            Swal.fire({icon: 'error', title: 'Data Wilayah Kosong', text: 'Mohon lengkapi alamat pengirim & penerima di Step 1 & 2.'}); 
-            return; 
+
+        if(!sDist || !rDist) {
+            Swal.fire({icon: 'error', title: 'Data Wilayah Kosong', text: 'Mohon lengkapi alamat pengirim & penerima di Step 1 & 2.'});
+            return;
         }
 
         const card = document.getElementById(`koli-card-${index}`);
@@ -560,7 +571,7 @@
         const w = card.querySelector(`input[name="packages[${index}][width]"]`).value;
         const h = card.querySelector(`input[name="packages[${index}][height]"]`).value;
         const vol = parseInt(l) * parseInt(w) * parseInt(h);
-        
+
         let itemPriceRaw = document.querySelector('input[name="item_price"]').value.replace(/\D/g, '');
         const itemPrice = itemPriceRaw || 1000;
 
@@ -576,7 +587,7 @@
         fd.append('weight', weight);
         fd.append('volume', vol);
         fd.append('item_price', itemPrice);
-        fd.append('service_type', 'mix'); 
+        fd.append('service_type', 'mix');
         fd.append('ansuransi', document.querySelector('select[name="ansuransi"]').value);
         fd.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
 
@@ -584,9 +595,9 @@
         .then(r => r.json())
         .then(d => {
             resultDiv.innerHTML = '';
-            if(!d.status || !d.results || d.results.length === 0) { 
-                resultDiv.innerHTML = '<div class="p-2 text-center text-red-500 text-xs">Kurir tidak ditemukan untuk rute/berat ini.</div>'; 
-                return; 
+            if(!d.status || !d.results || d.results.length === 0) {
+                resultDiv.innerHTML = '<div class="p-2 text-center text-red-500 text-xs">Kurir tidak ditemukan untuk rute/berat ini.</div>';
+                return;
             }
 
             // 4. SORTING: Termurah -> Termahal
@@ -595,10 +606,10 @@
             d.results.forEach(res => {
                 let cost = parseInt(res.cost);
                 let logo = `${ASSET_BASE_URL}/${res.service.toLowerCase()}.png`;
-                
+
                 let item = document.createElement('div');
                 item.className = 'p-3 border-b bg-white hover:bg-blue-50 cursor-pointer flex justify-between items-center transition';
-                
+
                 item.innerHTML = `
                     <div class="flex items-center gap-3">
                         <img src="${logo}" class="w-8 h-8 object-contain" onerror="this.style.display='none'">
@@ -616,9 +627,9 @@
                 resultDiv.appendChild(item);
             });
         })
-        .catch(e => { 
+        .catch(e => {
             console.error(e);
-            resultDiv.innerHTML = '<div class="p-2 text-center text-red-500 text-xs">Gagal memuat data (API Error).</div>'; 
+            resultDiv.innerHTML = '<div class="p-2 text-center text-red-500 text-xs">Gagal memuat data (API Error).</div>';
         });
     }
 
@@ -626,25 +637,25 @@
         document.getElementById(`input-courier-${index}`).value = courierCode;
         document.getElementById(`input-service-${index}`).value = serviceCode;
         document.getElementById(`input-cost-${index}`).value = cost;
-        
+
         document.getElementById(`selected-courier-display-${index}`).innerHTML = `
             <div class="flex flex-col items-end animate-pulse">
                 <span class="text-[10px] text-gray-500">${serviceName}</span>
                 <span class="text-sm font-bold text-green-600">Rp ${new Intl.NumberFormat('id-ID').format(cost)}</span>
             </div>`;
-        
+
         document.getElementById(`result-list-${index}`).classList.add('hidden');
-        
+
         const card = document.getElementById(`koli-card-${index}`);
         card.classList.remove('border-gray-200');
         card.classList.add('border-blue-400', 'bg-blue-50');
 
         const actionArea = document.getElementById(`action-area-${index}`);
         actionArea.classList.remove('hidden');
-        
+
         updateGrandTotal();
     }
-    
+
     function uploadSingleKoli(index) {
         const sName = document.getElementById('sender_name').value;
         const rName = document.getElementById('receiver_name').value;
@@ -660,7 +671,7 @@
                 title: 'Data Wilayah Pengirim Belum Dipilih',
                 text: 'Mohon KLIK salah satu pilihan alamat Pengirim yang muncul di bawah kolom pencarian (warna biru).',
             });
-            return; 
+            return;
         }
         if (document.getElementById('receiver_district_id').value && !rProv) {
              Swal.fire({
@@ -668,7 +679,7 @@
                 title: 'Data Wilayah Penerima Belum Dipilih',
                 text: 'Mohon KLIK salah satu pilihan alamat Penerima yang muncul di bawah kolom pencarian (warna biru).',
             });
-            return; 
+            return;
         }
 
         if(!sName || !rName) { Swal.fire('Data Tidak Lengkap', 'Pastikan nama pengirim dan penerima terisi.', 'warning'); return; }
@@ -676,9 +687,9 @@
 
         const card = document.getElementById(`koli-card-${index}`);
         let formData = new FormData();
-        
+
         formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
-        
+
         formData.append('sender_name', sName);
         formData.append('sender_phone', document.getElementById('sender_phone').value);
         formData.append('sender_address', document.getElementById('sender_address').value);
@@ -691,7 +702,7 @@
         formData.append('sender_postal_code', document.getElementById('sender_postal_code').value);
         formData.append('sender_lat', document.getElementById('sender_lat').value);
         formData.append('sender_lng', document.getElementById('sender_lng').value);
-        
+
         formData.append('receiver_name', rName);
         formData.append('receiver_phone', document.getElementById('receiver_phone').value);
         formData.append('receiver_address', document.getElementById('receiver_address').value);
@@ -714,11 +725,11 @@
         formData.append('length', card.querySelector(`input[name="packages[${index}][length]"]`).value);
         formData.append('width', card.querySelector(`input[name="packages[${index}][width]"]`).value);
         formData.append('height', card.querySelector(`input[name="packages[${index}][height]"]`).value);
-        
+
         formData.append('courier_code', document.getElementById(`input-courier-${index}`).value);
         formData.append('service_code', document.getElementById(`input-service-${index}`).value);
         formData.append('shipping_cost', document.getElementById(`input-cost-${index}`).value);
-        
+
         formData.append('return_url', '{{ request()->url() }}');
 
         Swal.fire({
@@ -735,7 +746,7 @@
                 // 1. & 3. Logic Payment URL (Open New Tab)
                 if(data.payment_url) {
                     window.open(data.payment_url, '_blank');
-                    
+
                     Swal.fire({
                         icon: 'info',
                         title: 'Pembayaran',
@@ -745,14 +756,14 @@
                     });
                 } else {
                      Swal.fire({
-                        icon: 'success', 
-                        title: 'Berhasil!', 
+                        icon: 'success',
+                        title: 'Berhasil!',
                         text: 'Paket berhasil disimpan. Resi: ' + (data.resi || 'DIPROSES'),
                         timer: 2000,
                         showConfirmButton: false
                     });
                 }
-                
+
                 // 2. Status Sukses (Hijau)
                 lockKoliCard(index);
             } else {
@@ -777,17 +788,17 @@
         // UI Changes for Success State
         card.classList.remove('border-blue-400', 'bg-blue-50');
         card.classList.add('border-green-500', 'bg-green-50'); // Green border/bg
-        
+
         fieldset.disabled = true;
         btnCek.classList.add('hidden');
-        actionArea.classList.add('hidden'); 
-        if(btnDel) btnDel.classList.add('hidden'); 
+        actionArea.classList.add('hidden');
+        if(btnDel) btnDel.classList.add('hidden');
 
         successMsg.classList.remove('hidden');
         badge.classList.remove('bg-gray-800');
         badge.classList.add('bg-green-600');
         badge.innerHTML = '<i class="fas fa-check"></i> SUKSES';
-        
+
         updateGrandTotal();
         checkAllCompleted();
     }
@@ -796,14 +807,14 @@
         let total = 0;
         let koliElements = document.querySelectorAll('.koli-card');
         let count = koliElements.length;
-        
+
         koliElements.forEach(card => {
             const index = parseInt(card.id.split('-')[2]);
             const costInput = document.getElementById(`input-cost-${index}`);
             const val = parseInt(costInput ? costInput.value : 0) || 0;
             total += val;
         });
-        
+
         document.getElementById('grand_total_display').innerText = 'Rp ' + new Intl.NumberFormat('id-ID').format(total);
         document.getElementById('grand_total_input').value = total;
 
@@ -821,7 +832,7 @@
             btnFinish.innerHTML = 'Selesai & Buat Baru'; // Clearer text
             btnFinish.classList.remove('hidden');
             btnFinish.disabled = false;
-            btnFinish.type = 'button'; 
+            btnFinish.type = 'button';
             // 5. Reload current page (Step 3 fresh state/New Order)
             btnFinish.onclick = function() { window.location.reload(); };
         }
@@ -831,18 +842,18 @@
         if(dir === 1 && !validate()) return;
         document.getElementById(`ind-${step}`).classList.remove('active');
         document.getElementById(`step-${step}`).classList.remove('active');
-        if(dir===1) document.getElementById(`ind-${step}`).classList.add('completed'); 
+        if(dir===1) document.getElementById(`ind-${step}`).classList.add('completed');
         else document.getElementById(`ind-${step}`).classList.remove('completed');
-        
+
         step += dir;
-        
+
         document.getElementById(`ind-${step}`).classList.add('active');
         document.getElementById(`step-${step}`).classList.add('active');
         document.getElementById('progressBar').style.width = ((step - 1) * 50) + '%';
-        
+
         document.getElementById('btnPrev').classList.toggle('hidden', step === 1);
         document.getElementById('btnNext').classList.toggle('hidden', step === 3);
-        
+
         const btnSubmit = document.getElementById('btnSubmit');
         if(step === 3) {
             btnSubmit.classList.remove('hidden');
@@ -876,22 +887,22 @@
     function pilihAlamatAPI(prefix, i, aInput, aRes, check) {
         // 1. TAMPILKAN DI INPUT
         aInput.value = i.full_address;
-        
+
         // 2. ISI ID (Jika Ada)
-        document.getElementById(prefix+'_district_id').value = i.district_id; 
+        document.getElementById(prefix+'_district_id').value = i.district_id;
         document.getElementById(prefix+'_subdistrict_id').value = i.subdistrict_id;
-        
+
         // 3. PARSING TEKS (Pecah string koma)
         // Format: "Desa, Kecamatan, Kota, Provinsi, KodePos"
         let parts = i.full_address.split(',').map(s => s.trim());
         let vVillage="", vDistrict="", vRegency="", vProv="", vPostal="";
 
         if (parts.length >= 4) {
-            vVillage  = parts[0]; 
-            vDistrict = parts[1]; 
-            vRegency  = parts[2]; 
-            vProv     = parts[3]; 
-            vPostal   = parts[4] || ""; 
+            vVillage  = parts[0];
+            vDistrict = parts[1];
+            vRegency  = parts[2];
+            vProv     = parts[3];
+            vPostal   = parts[4] || "";
         } else {
             // Fallback
             vDistrict = i.full_address;
@@ -907,7 +918,7 @@
         // 5. UI UPDATE
         check.classList.remove('hidden');
         aRes.classList.add('hidden');
-        
+
         // Debug
         console.log(`ALAMAT DIPILIH (${prefix}):`, {vProv, vRegency, vDistrict});
     }
@@ -925,22 +936,22 @@
         cInput.addEventListener('input', function() {
             clearTimeout(timer);
             if(this.value.length < 2) { cRes.classList.add('hidden'); return; }
-            
+
             timer = setTimeout(() => {
                 // Menambahkan &scope=global atau parameter lain agar backend tahu ini Admin
                 fetch(`${ROUTES.contact}?search=${encodeURIComponent(this.value)}&tipe=${prefix==='sender'?'Pengirim':'Penerima'}&scope=global`)
                 .then(r=>r.json()).then(d => {
                     cRes.innerHTML = ''; cRes.classList.remove('hidden');
                     if (d.length === 0) { cRes.innerHTML = '<div class="result-item">Tidak ada kontak ditemukan.</div>'; return; }
-                    
+
                     d.forEach(i => {
                         let div = document.createElement('div');
                         div.className = 'result-item';
                         div.innerHTML = `<strong>${i.nama}</strong><br><span class="text-xs text-gray-500">${i.no_hp}</span>`;
-                        
+
                         div.onclick = (e) => {
                             e.stopPropagation(); // STOP PROPAGASI agar tidak menutup dropdown lain
-                            
+
                             // A. ISI DATA UMUM
                             document.getElementById(prefix+'_name').value = i.nama;
                             document.getElementById(prefix+'_phone').value = i.no_hp;
@@ -951,11 +962,11 @@
                             if (i.village && i.district) { keyword = `${i.village}, ${i.district}`; }
                             else if (i.district && i.regency) { keyword = `${i.district}, ${i.regency}`; }
                             else if (i.regency) { keyword = i.regency; }
-                            
+
                             aInput.value = keyword;
-                            
+
                             // KOSONGKAN ID AGAR USER MEMILIH ULANG
-                            document.getElementById(prefix+'_district_id').value = ''; 
+                            document.getElementById(prefix+'_district_id').value = '';
                             check.classList.add('hidden');
 
                             // C. AUTO SEARCH API
@@ -979,12 +990,12 @@
                                                 item.onclick = () => pilihAlamatAPI(prefix, addr, aInput, aRes, check);
                                                 aRes.appendChild(item);
                                             });
-                                            
+
                                             const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 4000 });
                                             Toast.fire({ icon: 'info', title: 'Silakan KLIK wilayah yang sesuai di bawah.' });
                                     }
                                     // PASTIKAN DROPDOWN TETAP MUNCUL
-                                    aRes.classList.remove('hidden'); 
+                                    aRes.classList.remove('hidden');
                                 });
                             }
 
@@ -1000,25 +1011,25 @@
         aInput.addEventListener('input', function() {
             clearTimeout(timer);
             check.classList.add('hidden');
-            document.getElementById(prefix+'_district_id').value = ''; 
-            
+            document.getElementById(prefix+'_district_id').value = '';
+
             if(this.value.length < 3) { aRes.classList.add('hidden'); return; }
-            
+
             timer = setTimeout(() => {
                 fetch(`${ROUTES.addr}?search=${encodeURIComponent(this.value)}`)
                 .then(r=>r.json()).then(resp => {
                     aRes.innerHTML = ''; aRes.classList.remove('hidden');
                     let results = Array.isArray(resp) ? resp : (resp.data || []);
 
-                    if (results.length === 0) { 
-                        aRes.innerHTML = '<div class="result-item">Tidak ada wilayah ditemukan.</div>'; 
-                        return; 
+                    if (results.length === 0) {
+                        aRes.innerHTML = '<div class="result-item">Tidak ada wilayah ditemukan.</div>';
+                        return;
                     }
-                    
+
                     results.forEach(i => {
                         let div = document.createElement('div');
                         div.className = 'result-item';
-                        div.innerText = i.full_address; 
+                        div.innerText = i.full_address;
                         div.onclick = (e) => pilihAlamatAPI(prefix, i, aInput, aRes, check);
                         aRes.appendChild(div);
                     });
@@ -1027,16 +1038,16 @@
         });
 
         // Close Dropdown
-        document.addEventListener('click', e => { 
-            if(!cInput.contains(e.target)) cRes.classList.add('hidden'); 
-            if(!aInput.contains(e.target)) aRes.classList.add('hidden'); 
+        document.addEventListener('click', e => {
+            if(!cInput.contains(e.target)) cRes.classList.add('hidden');
+            if(!aInput.contains(e.target)) aRes.classList.add('hidden');
         });
     }
-    
+
      function togglePaymentDropdown() {
         const dropdown = document.getElementById('paymentOptionsListContainer');
         const arrow = document.getElementById('dropdownArrow');
-        
+
         if (dropdown.classList.contains('hidden')) {
             dropdown.classList.remove('hidden');
             arrow.classList.add('rotate-180');
@@ -1049,14 +1060,14 @@
     function selectPayment(value, imgSrc, label) {
         // Update Hidden Input
         document.getElementById('selectedPaymentMethod').value = value;
-        
+
         // Update Trigger Display
         const triggerContent = document.getElementById('paymentTriggerContent');
         triggerContent.innerHTML = `
             <img src="${imgSrc}" class="h-6 w-auto object-contain" onerror="this.style.display='none'">
             <span class="text-sm font-bold text-gray-800">${label}</span>
         `;
-        
+
         // Close Dropdown
         togglePaymentDropdown();
     }
@@ -1065,7 +1076,7 @@
     document.addEventListener('click', function(event) {
         const dropdown = document.getElementById('paymentOptionsListContainer');
         const trigger = document.getElementById('customPaymentDropdown');
-        
+
         if (!trigger.contains(event.target) && !dropdown.classList.contains('hidden')) {
             togglePaymentDropdown();
         }
@@ -1090,5 +1101,36 @@
             });
         }
     });
+
+    function handleKoliChange(index) {
+        const card = document.getElementById(`koli-card-${index}`);
+        if(card) {
+            // Ambil nilai input, default ke 0 jika kosong
+            let weightGram = parseFloat(card.querySelector(`input[name="packages[${index}][weight]"]`).value) || 0;
+            let l = parseFloat(card.querySelector(`input[name="packages[${index}][length]"]`).value) || 0;
+            let w = parseFloat(card.querySelector(`input[name="packages[${index}][width]"]`).value) || 0;
+            let h = parseFloat(card.querySelector(`input[name="packages[${index}][height]"]`).value) || 0;
+
+            // Hitung Berat Volumetrik Reguler (P x L x T / 6000 * 1000 untuk konversi ke Gram)
+            let volGram = (l * w * h) / 6000 * 1000;
+
+            // Berat yang ditagih adalah nilai tertinggi antara fisik vs dimensi
+            let chargeableGram = Math.max(weightGram, volGram);
+
+            // Konversi ke format Kg dengan 2 desimal agar rapi
+            let volKg = (volGram / 1000).toFixed(2);
+            let chargeKg = (chargeableGram / 1000).toFixed(2);
+
+            // Update UI
+            let volEl = document.getElementById(`volumetric-display-${index}`);
+            let chargeEl = document.getElementById(`chargeable-display-${index}`);
+
+            if(volEl) volEl.innerText = volKg + ' Kg';
+            if(chargeEl) chargeEl.innerText = chargeKg + ' Kg';
+        }
+
+        // Panggil resetKoli untuk mereset kurir yang sudah dipilih jika dimensi/berat berubah
+        resetKoli(index);
+    }
 </script>
 @endpush

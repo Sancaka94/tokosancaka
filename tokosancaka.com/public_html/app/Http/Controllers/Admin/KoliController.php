@@ -25,9 +25,11 @@ class KoliController extends Controller
         return view('admin.pesanan.create_multi');
     }
 
+    // Ubah di function generateInvoiceNumber()
     protected function generateInvoiceNumber()
     {
-        return 'SCK-' . now()->format('Ymd') . '-' . Str::upper(Str::random(5));
+        // Hasil: SCK-260302-XYZ (14 Karakter)
+        return 'SCK-' . now()->format('ymd') . '-' . Str::upper(Str::random(3));
     }
 
     public function geocode(string $address): ?array
@@ -146,11 +148,14 @@ class KoliController extends Controller
             $request->merge(['item_price' => $rawItemPrice]);
 
             $request->validate([
-                'sender_name' => 'required', 'sender_phone' => 'required',
-                'receiver_name' => 'required', 'receiver_phone' => 'required',
+                'sender_name' => 'required',
+                'sender_phone' => 'required|min:9|max:13',
+                'receiver_name' => 'required', 'receiver_phone' => 'required|min:9|max:13',
                 'sender_district_id' => 'required', 'receiver_district_id' => 'required',
+                'receiver_address' => 'required|string|min:10|max:255',
+                'sender_address' => 'required|string|min:10|max:255',
                 'payment_method' => 'required',
-                'item_price' => 'required|numeric|min:100',
+                'item_price' => 'required|numeric|min:1000',
                 'packages' => 'required|array|min:1',
             ]);
 
@@ -161,7 +166,7 @@ class KoliController extends Controller
             $totalPaket = count($packages);
 
             $hargaBarangPerPaket = floor($request->input('item_price') / $totalPaket);
-            if ($hargaBarangPerPaket < 100) $hargaBarangPerPaket = 100;
+            if ($hargaBarangPerPaket < 1000) $hargaBarangPerPaket = 1000;
 
             $senderAddressData = $this->_getAddressData($request, 'sender');
             $receiverAddressData = $this->_getAddressData($request, 'receiver');
@@ -173,7 +178,8 @@ class KoliController extends Controller
 
             foreach ($packages as $index => $pkg) {
                 do {
-                    $baseInvoice = 'SCK-' . date('Ymd') . '-'. strtoupper(Str::random(5));
+                    // Hasil: SCK-260302-XYZ-1 (Maksimal 17-18 karakter, sangat aman di bawah 20)
+                    $baseInvoice = 'SCK-' . date('ymd') . '-'. strtoupper(Str::random(3));
                     $nomorInvoice = $baseInvoice . '-' . ($index + 1);
                 } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
 
@@ -473,7 +479,7 @@ class KoliController extends Controller
             'packages' => [[
                 'order_id' => $order->nomor_invoice,
                 'item_name' => $data['item_description'],
-                'package_type_id' => (int)request('item_type'),
+                'package_type_id' => (int)request('item_type') ?? 1,
                 'destination_name' => $order->receiver_name, 'destination_phone' => $order->receiver_phone,
                 'destination_address' => $order->receiver_address,
                 'destination_kecamatan_id' => $receiverData['kirimaja_data']['district_id'],
@@ -577,13 +583,19 @@ class KoliController extends Controller
             $itemPrice = (int) str_replace(['Rp', '.', ',', ' '], '', $request->item_price);
 
             $request->validate([
-                'sender_name' => 'required', 'sender_phone' => 'required',
-                'receiver_name' => 'required', 'receiver_phone' => 'required',
-                'sender_district_id' => 'required', 'receiver_district_id' => 'required',
-                'courier_code' => 'required', 'service_code' => 'required',
-                'weight' => 'required|numeric',
-                'payment_method' => 'required',
-                'item_description' => 'required'
+                'sender_name'           => 'required',
+                'sender_phone'          => 'required',
+                'receiver_name'         => 'required',
+                'receiver_phone'        => 'required|min:9|max:13',
+                'sender_district_id'    => 'required',
+                'receiver_district_id'  => 'required',
+                'receiver_address'      => 'required|string|min:10|max:255',
+                'sender_address'        => 'required|string|min:10|max:255',
+                'courier_code'          => 'required',
+                'service_code'          => 'required',
+                'weight'                => 'required|numeric',
+                'payment_method'        => 'required',
+                'item_description'      => 'required'
             ]);
 
             $senderAddressData = $this->_getAddressData($request, 'sender');
