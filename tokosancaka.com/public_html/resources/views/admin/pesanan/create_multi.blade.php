@@ -208,6 +208,33 @@
                             </h3>
                         </div>
 
+                        {{-- Kategori Barang (Item Type) --}}
+                        <div class="mb-5">
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 required-label">
+                                Kategori Barang
+                            </label>
+                            <div class="relative">
+                                <select name="item_type" id="item_type"
+                                    class="appearance-none w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors cursor-pointer font-medium text-sm" required>
+                                    <option value="" disabled>Pilih...</option>
+                                    <option value="1">Peralatan Elektronik & Gadget</option>
+                                    <option value="2">Pakaian / Baju / Kain</option>
+                                    <option value="3">Pecah Belah</option>
+                                    <option value="4">Dokumen / Berkas / Buku</option>
+                                    <option value="5">Peralatan Rumah Tangga</option>
+                                    <option value="6">Aksesoris</option>
+                                    <option value="7" selected>Lain-Lain</option>
+                                    <option value="8">Dokumen Berharga</option>
+                                    <option value="9">Peralatan Kesehatan / Kecantikan / Kosmetik</option>
+                                    <option value="10">Peralatan Olahraga & Hiburan</option>
+                                    <option value="11">Perlengkapan Mobil & Motor</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- Isi Paket --}}
                         <div class="mb-5">
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 required-label">
@@ -421,7 +448,7 @@
         <input type="hidden" name="receiver_lng" id="receiver_lng" value="{{ old('receiver_lng') }}">
 
         <input type="hidden" name="grand_total" id="grand_total_input" value="0">
-        <input type="hidden" name="item_type" value="1">
+        {{--  <input type="hidden" name="item_type" value="1"> --}}
         {{-- 🔥 SISIPKAN INI DI SINI 🔥 --}}
         <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
     </form>
