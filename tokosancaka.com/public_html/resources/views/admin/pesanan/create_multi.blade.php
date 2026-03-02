@@ -688,6 +688,7 @@
         const rName = document.getElementById('receiver_name').value;
         const itemDesc = document.querySelector('input[name="item_description"]').value;
         const itemPrice = document.querySelector('input[name="item_price"]').value.replace(/\D/g, '');
+        const itemType = document.getElementById('item_type').value;
 
         const sProv = document.getElementById('sender_province').value;
         const rProv = document.getElementById('receiver_province').value;
@@ -745,6 +746,9 @@
 
         formData.append('item_description', itemDesc);
         formData.append('item_price', itemPrice);
+
+        formData.append('item_type', itemType);
+
         formData.append('payment_method', document.querySelector('input[name="payment_method"]').value);
         formData.append('ansuransi', document.querySelector('select[name="ansuransi"]').value);
 
