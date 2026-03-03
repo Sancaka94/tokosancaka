@@ -58,10 +58,20 @@
     <div class="card-header bg-white border-b-2 border-blue-600 flex flex-col md:flex-row justify-between items-center gap-4 py-4 px-5">
         <span class="font-bold text-gray-800 uppercase tracking-wide text-sm whitespace-nowrap">Data & Riwayat Parkir</span>
 
-        <button type="button" onclick="openScanModal()" class="bg-gray-800 hover:bg-gray-900 text-white px-6 py-3 md:py-2.5 rounded-xl text-sm font-bold shadow-md flex items-center justify-center gap-2 w-full md:w-auto transition-transform active:scale-95">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H5v3a1 1 0 01-2 0V4zm14-1a1 1 0 011 1v3a1 1 0 01-2 0V5h-3a1 1 0 010-2h4zM3 20a1 1 0 001 1h4a1 1 0 000-2H5v-3a1 1 0 00-2 0v4zm14 1a1 1 0 001-1v-3a1 1 0 00-2 0v3h-3a1 1 0 000 2h4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 10h4v4h-4v-4z"></path></svg>
-            SCAN KARCIS / CARI
-        </button>
+        <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+            <form action="{{ route('transactions.checkoutAll') }}" method="POST" class="w-full md:w-auto" onsubmit="return confirm('YAKIN INGIN MENYELESAIKAN SEMUA PARKIR? Semua kendaraan yang masih parkir akan diselesaikan dan uangnya akan masuk ke sistem.');">
+                @csrf
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-3 md:py-2.5 rounded-xl text-sm font-bold shadow-md flex items-center justify-center gap-2 w-full md:w-auto transition-transform active:scale-95">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    KELUARKAN SEMUA
+                </button>
+            </form>
+
+            <button type="button" onclick="openScanModal()" class="bg-gray-800 hover:bg-gray-900 text-white px-6 py-3 md:py-2.5 rounded-xl text-sm font-bold shadow-md flex items-center justify-center gap-2 w-full md:w-auto transition-transform active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H5v3a1 1 0 01-2 0V4zm14-1a1 1 0 011 1v3a1 1 0 01-2 0V5h-3a1 1 0 010-2h4zM3 20a1 1 0 001 1h4a1 1 0 000-2H5v-3a1 1 0 00-2 0v4zm14 1a1 1 0 001-1v-3a1 1 0 00-2 0v3h-3a1 1 0 000 2h4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 10h4v4h-4v-4z"></path></svg>
+                SCAN KARCIS / CARI
+            </button>
+        </div>
     </div>
 
     @if(request('keyword') || request('tanggal'))
