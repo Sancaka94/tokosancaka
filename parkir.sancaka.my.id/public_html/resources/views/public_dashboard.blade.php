@@ -43,6 +43,23 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 
+            @php
+                // 1. Membagi semua data pendapatan dengan 2
+                $pendapatanHariIni = ($data['total_pendapatan'] ?? 0) / 2;
+                $pendapatanKemarin = ($data['pendapatan_kemarin'] ?? 0) / 2;
+                $pendapatanBulanIni = ($data['pendapatan_bulan_ini'] ?? 0) / 2;
+                $pendapatanBulanKemarin = ($data['pendapatan_bulan_kemarin'] ?? 0) / 2;
+                $pendapatanTahunIni = ($data['pendapatan_tahun_ini'] ?? 0) / 2; // Disiapkan untuk tahun ini
+
+                // 2. Perhitungan selisih & persentase Harian
+                $selisihHariIni = $pendapatanHariIni - $pendapatanKemarin;
+                $persenHariIni = $pendapatanKemarin > 0 ? ($selisihHariIni / $pendapatanKemarin) * 100 : ($pendapatanHariIni > 0 ? 100 : 0);
+
+                // 3. Perhitungan selisih & persentase Bulanan
+                $selisihBulanIni = $pendapatanBulanIni - $pendapatanBulanKemarin;
+                $persenBulanIni = $pendapatanBulanKemarin > 0 ? ($selisihBulanIni / $pendapatanBulanKemarin) * 100 : ($pendapatanBulanIni > 0 ? 100 : 0);
+            @endphp
+
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transform transition duration-300 hover:scale-105">
                 <div>
                     <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Motor (Hari Ini)</h5>
@@ -55,18 +72,12 @@
                 <div class="flex items-center justify-between z-10">
                     <div>
                         <h5 class="text-orange-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Kemarin</h5>
-                        <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($data['pendapatan_kemarin'] ?? 0, 0, ',', '.') }}</p>
+                        <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($pendapatanKemarin, 0, ',', '.') }}</p>
                     </div>
                     <div class="text-4xl opacity-90">⏳</div>
                 </div>
             </div>
 
-            @php
-                $pendapatanHariIni = $data['total_pendapatan'] ?? 0;
-                $pendapatanKemarin = $data['pendapatan_kemarin'] ?? 0;
-                $selisihHariIni = $pendapatanHariIni - $pendapatanKemarin;
-                $persenHariIni = $pendapatanKemarin > 0 ? ($selisihHariIni / $pendapatanKemarin) * 100 : ($pendapatanHariIni > 0 ? 100 : 0);
-            @endphp
             <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden" style="border-radius: 8px;">
                 <div class="flex items-center justify-between z-10">
                     <div>
@@ -86,12 +97,6 @@
                 </div>
             </div>
 
-            @php
-                $pendapatanBulanIni = $data['pendapatan_bulan_ini'] ?? 0;
-                $pendapatanBulanKemarin = $data['pendapatan_bulan_kemarin'] ?? 0; // Pastikan data ini dikirim dari controller
-                $selisihBulanIni = $pendapatanBulanIni - $pendapatanBulanKemarin;
-                $persenBulanIni = $pendapatanBulanKemarin > 0 ? ($selisihBulanIni / $pendapatanBulanKemarin) * 100 : ($pendapatanBulanIni > 0 ? 100 : 0);
-            @endphp
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden" style="border-radius: 8px;">
                 <div class="flex items-center justify-between z-10">
                     <div>
