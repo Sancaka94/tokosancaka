@@ -96,5 +96,7 @@ Route::get('/financial/export/pdf', [App\Http\Controllers\FinancialReportControl
 
 });
 
+Route::post('/transactions/checkout-all', [TransactionController::class, 'checkoutAll'])->name('transactions.checkoutAll');
+
 // Memuat rute otentikasi bawaan Breeze (Login, Register, Logout)
 require __DIR__.'/auth.php';

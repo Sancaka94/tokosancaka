@@ -198,4 +198,43 @@ class TransactionController extends Controller
     {
         return view('transactions.manual', compact('transaction'));
     }
+
+    // ==========================================
+    // FUNGSI BARU: Keluarkan Semua Kendaraan
+    // ==========================================
+    public function checkoutAll()
+    {
+        // 1. Cari semua kendaraan yang statusnya masih 'masuk'
+        $kendaraanMasuk = Transaction::where('status', 'masuk')->get();
+
+        // 2. Jika kosong, kembalikan pesan error
+        if ($kendaraanMasuk->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada kendaraan yang sedang parkir saat ini.');
+        }
+
+        // 3. Siapkan variabel tarif dan waktu
+        $waktuKeluar = Carbon::now();
+        $tarifMotor = 3000;
+        $tarifMobil = 5000;
+
+        $totalPendapatan = 0;
+        $jumlahKendaraan = 0;
+
+        // 4. Proses update masing-masing kendaraan
+        foreach ($kendaraanMasuk as $trx) {
+            $fee = ($trx->vehicle_type === 'motor') ? $tarifMotor : $tarifMobil;
+
+            $trx->update([
+                'exit_time' => $waktuKeluar,
+                'fee'       => $fee,
+                'status'    => 'keluar'
+            ]);
+
+            $totalPendapatan += $fee;
+            $jumlahKendaraan++;
+        }
+
+        // 5. Kembali dengan pesan sukses beserta ringkasan
+        return redirect()->route('transactions.index')->with('success', "Berhasil mengeluarkan $jumlahKendaraan kendaraan secara massal. Pendapatan bertambah: Rp " . number_format($totalPendapatan, 0, ',', '.'));
+    }
 }
