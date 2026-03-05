@@ -209,20 +209,42 @@ class PublicDashboardController extends Controller
         });
 
         // =========================================================
-        // DATA TAMBAHAN: PENDAPATAN KENDARAAN MURNI
+        // DATA TAMBAHAN: PENDAPATAN MOTOR & KENDARAAN MURNI
         // =========================================================
+        // Kita definisikan ulang waktunya di sini agar tidak error "Undefined variable"
+        $hariIni = \Carbon\Carbon::today();
+        $kemarin = \Carbon\Carbon::yesterday();
+        $tujuhHariLalu = \Carbon\Carbon::today()->subDays(6);
+        $awalBulan = \Carbon\Carbon::now()->startOfMonth();
 
-        // Memasukkan variabel parkir murni yang sudah dihitung di atas ke dalam array $data
-        $data['parkir_hari_ini'] = $parkirHariIni;
-        $data['parkir_kemarin'] = $parkirKemarin;
-        $data['parkir_bulan_ini'] = $parkirBulanIni;
+        // 1. MONITOR PENDAPATAN MOTOR
+        $data['motor_revenue_today'] = Transaction::where('vehicle_type', 'motor')
+            ->where('status', 'keluar')
+            ->whereDate('exit_time', $hariIni)
+            ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
 
-        // Menghitung khusus 7 hari terakhir
-        $data['parkir_7_hari'] = Transaction::where('status', 'keluar')
-            ->whereDate('exit_time', '>=', Carbon::today()->subDays(6))
-            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+        $data['motor_revenue_yesterday'] = Transaction::where('vehicle_type', 'motor')
+            ->where('status', 'keluar')
+            ->whereDate('exit_time', $kemarin)
+            ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
 
-        // Query khusus untuk mengisi tabel Riwayat Pendapatan (Hanya yang sudah KELUAR)
+        $data['motor_revenue_7_days'] = Transaction::where('vehicle_type', 'motor')
+            ->where('status', 'keluar')
+            ->whereDate('exit_time', '>=', $tujuhHariLalu)
+            ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
+
+        $data['motor_revenue_this_month'] = Transaction::where('vehicle_type', 'motor')
+            ->where('status', 'keluar')
+            ->whereDate('exit_time', '>=', $awalBulan)
+            ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
+
+        // 2. DATA PENDAPATAN PARKIR UMUM (Untuk Public Dashboard)
+        $data['parkir_hari_ini'] = $data['motor_revenue_today']; // Ditambah mobil jika ada
+        $data['parkir_kemarin'] = $data['motor_revenue_yesterday'];
+        $data['parkir_7_hari'] = $data['motor_revenue_7_days'];
+        $data['parkir_bulan_ini'] = $data['motor_revenue_this_month'];
+
+        // Query tabel riwayat
         $revenue_transactions = Transaction::where('status', 'keluar')
             ->latest('exit_time')
             ->paginate(10, ['*'], 'revenue_page');
