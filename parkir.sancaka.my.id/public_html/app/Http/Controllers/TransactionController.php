@@ -280,14 +280,14 @@ class TransactionController extends Controller
             $plateNumber = strtoupper($request->plate_number);
         }
 
-        // --- PERBAIKAN TENANT ID ---
-        // Ambil ID tenant pertama yang tersedia secara otomatis dari database
-        $tenant = \Illuminate\Support\Facades\DB::table('tenants')->first();
-        $validTenantId = $tenant ? $tenant->id : 1;
+        // --- PERBAIKAN TENANT ID (AMBIL DARI USER ADMIN/OPERATOR) ---
+        // Mencari user pertama di database yang punya tenant_id, lalu kita pinjam ID-nya
+        $user = \App\Models\User::whereNotNull('tenant_id')->first();
+        $validTenantId = $user ? $user->tenant_id : null;
 
         // Simpan transaksi
         $transaction = Transaction::create([
-            'tenant_id'    => $validTenantId, // Menggunakan ID yang valid dari database
+            'tenant_id'    => $validTenantId, // Dijamin valid sesuai database Anda
             'operator_id'  => null,
             'vehicle_type' => 'motor',
             'plate_number' => $plateNumber,
