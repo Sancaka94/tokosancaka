@@ -190,7 +190,6 @@ class PublicDashboardController extends Controller
             ->whereDate('exit_time', '>=', $awalBulan)
             ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
 
-        // Query khusus untuk tabel Riwayat Pendapatan Kendaraan
         // Query khusus untuk tabel Riwayat Pendapatan (Dikelompokkan per Hari)
         $revenue_transactions = Transaction::select(
                 DB::raw('DATE(exit_time) as tanggal'),
