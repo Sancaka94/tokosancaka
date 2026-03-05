@@ -273,18 +273,23 @@ class TransactionController extends Controller
 
         // Logika penentuan nomor plat otomatis atau manual
         if ($request->kategori === 'sepeda_listrik') {
-            $plateNumber = 'SPL-' . rand(1000, 9999); // Cth: SPL-4829
+            $plateNumber = 'SPL-' . rand(1000, 9999);
         } elseif ($request->kategori === 'pegawai_rsud') {
-            $plateNumber = 'RSUD-' . rand(1000, 9999); // Cth: RSUD-9182
+            $plateNumber = 'RSUD-' . rand(1000, 9999);
         } else {
-            $plateNumber = strtoupper($request->plate_number); // Cth: AE 1234 XY
+            $plateNumber = strtoupper($request->plate_number);
         }
+
+        // --- PERBAIKAN TENANT ID ---
+        // Ambil ID tenant pertama yang tersedia secara otomatis dari database
+        $tenant = \Illuminate\Support\Facades\DB::table('tenants')->first();
+        $validTenantId = $tenant ? $tenant->id : 1;
 
         // Simpan transaksi
         $transaction = Transaction::create([
-            'tenant_id'    => 1, // Sesuaikan dengan ID Tenant utama Anda
-            'operator_id'  => null, // Null karena sistem/mesin mandiri
-            'vehicle_type' => 'motor', // Default motor
+            'tenant_id'    => $validTenantId, // Menggunakan ID yang valid dari database
+            'operator_id'  => null,
+            'vehicle_type' => 'motor',
             'plate_number' => $plateNumber,
             'entry_time'   => Carbon::now(),
             'status'       => 'masuk',
