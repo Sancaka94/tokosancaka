@@ -199,17 +199,26 @@ class TransactionController extends Controller
         return view('transactions.manual', compact('transaction'));
     }
 
+   // ==========================================
+    // FUNGSI BARU: Keluarkan Semua Kendaraan (Berdasarkan Tanggal)
     // ==========================================
-    // FUNGSI BARU: Keluarkan Semua Kendaraan
-    // ==========================================
-    public function checkoutAll()
+    public function checkoutAll(Request $request)
     {
-        // 1. Cari semua kendaraan yang statusnya masih 'masuk'
-        $kendaraanMasuk = Transaction::where('status', 'masuk')->get();
+        // Validasi input tanggal dari form yang dikirim
+        $request->validate([
+            'checkout_date' => 'required|date'
+        ]);
+
+        $tanggal = $request->checkout_date;
+
+        // 1. Cari semua kendaraan yang statusnya masih 'masuk' DAN sesuai tanggal yang dipilih
+        $kendaraanMasuk = Transaction::where('status', 'masuk')
+                            ->whereDate('entry_time', $tanggal)
+                            ->get();
 
         // 2. Jika kosong, kembalikan pesan error
         if ($kendaraanMasuk->isEmpty()) {
-            return redirect()->back()->with('error', 'Tidak ada kendaraan yang sedang parkir saat ini.');
+            return redirect()->back()->with('error', 'Tidak ada kendaraan yang sedang parkir pada tanggal ' . $tanggal);
         }
 
         // 3. Siapkan variabel tarif dan waktu
@@ -235,6 +244,6 @@ class TransactionController extends Controller
         }
 
         // 5. Kembali dengan pesan sukses beserta ringkasan
-        return redirect()->route('transactions.index')->with('success', "Berhasil mengeluarkan $jumlahKendaraan kendaraan secara massal. Pendapatan bertambah: Rp " . number_format($totalPendapatan, 0, ',', '.'));
+        return redirect()->route('transactions.index')->with('success', "Berhasil mengeluarkan $jumlahKendaraan kendaraan secara massal pada tanggal $tanggal. Pendapatan bertambah: Rp " . number_format($totalPendapatan, 0, ',', '.'));
     }
 }
