@@ -200,11 +200,11 @@ class TransactionController extends Controller
     }
 
    // ==========================================
-    // FUNGSI BARU: Keluarkan Semua Kendaraan (Berdasarkan Tanggal)
+    // FUNGSI BARU: Keluarkan Semua Kendaraan
     // ==========================================
     public function checkoutAll(Request $request)
     {
-        // Validasi input tanggal dari form yang dikirim
+        // Validasi input tanggal dari form
         $request->validate([
             'checkout_date' => 'required|date'
         ]);
@@ -221,8 +221,13 @@ class TransactionController extends Controller
             return redirect()->back()->with('error', 'Tidak ada kendaraan yang sedang parkir pada tanggal ' . $tanggal);
         }
 
-        // 3. Siapkan variabel tarif dan waktu
-        $waktuKeluar = Carbon::now();
+        // 3. Siapkan variabel tarif dan penyesuaian waktu keluar
+        // Jika tanggal dipilih = hari ini, pakai waktu sekarang.
+        // Jika tanggal lampau, pakai jam 23:59:59 di tanggal tersebut.
+        $waktuKeluar = ($tanggal == \Carbon\Carbon::today()->toDateString())
+            ? \Carbon\Carbon::now()
+            : \Carbon\Carbon::parse($tanggal)->endOfDay();
+
         $tarifMotor = 3000;
         $tarifMobil = 5000;
 

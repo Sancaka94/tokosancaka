@@ -61,12 +61,12 @@
         <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto">
             <form action="{{ route('transactions.checkoutAll') }}" method="POST" class="w-full md:w-auto flex flex-col md:flex-row gap-2 items-center" onsubmit="return confirm('YAKIN INGIN MENYELESAIKAN SEMUA PARKIR PADA TANGGAL INI?');">
             @csrf
-            
-            <input type="date" 
-                name="checkout_date" 
-                class="form-control rounded-xl py-2 px-3 text-sm font-bold text-gray-700 border-2 border-red-200 focus:border-red-500 focus:ring-red-500 shadow-sm w-full md:w-auto" 
-                value="{{ request('tanggal') ?? date('Y-m-d') }}" 
-                required 
+
+            <input type="date"
+                name="checkout_date"
+                class="form-control rounded-xl py-2 px-3 text-sm font-bold text-gray-700 border-2 border-red-200 focus:border-red-500 focus:ring-red-500 shadow-sm w-full md:w-auto"
+                value="{{ request('tanggal') ?? date('Y-m-d') }}"
+                required
                 title="Pilih tanggal parkir yang ingin dikeluarkan">
 
             <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-3 md:py-2.5 rounded-xl text-sm font-bold shadow-md flex items-center justify-center gap-2 w-full md:w-auto transition-transform active:scale-95">
@@ -122,7 +122,11 @@
                                 </span>
                             @else
                                 <span class="font-black text-green-600 text-base md:text-lg">Rp {{ number_format($trx->fee, 0, ',', '.') }}</span>
-                                <br><span class="text-[10px] md:text-xs text-gray-500 font-bold">Keluar: {{ \Carbon\Carbon::parse($trx->exit_time)->translatedFormat('H:i') }} WIB</span>
+                                <br>
+                                <span class="text-[10px] md:text-xs text-gray-500 font-bold">
+                                    Keluar: {{ \Carbon\Carbon::parse($trx->exit_time)->translatedFormat('d M Y') }} -
+                                    <span class="text-red-500">{{ \Carbon\Carbon::parse($trx->exit_time)->translatedFormat('H:i') }} WIB</span>
+                                </span>
                             @endif
                         </td>
                         <td class="px-5 py-4 whitespace-nowrap text-center">
