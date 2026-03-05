@@ -163,6 +163,42 @@ class PublicDashboardController extends Controller
                 }
             }
 
+            // =========================================================
+        // TAMBAHAN: MONITOR PENDAPATAN KHUSUS MOTOR
+        // =========================================================
+        $sevenDaysAgo = Carbon::today()->subDays(6);
+        $startOfMonth = Carbon::now()->startOfMonth();
+
+        $data['motor_revenue_today'] = Transaction::where('vehicle_type', 'motor')
+            ->where('status', 'keluar')
+            ->whereDate('exit_time', $today)
+            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+
+        $data['motor_revenue_yesterday'] = Transaction::where('vehicle_type', 'motor')
+            ->where('status', 'keluar')
+            ->whereDate('exit_time', $yesterday)
+            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+
+        $data['motor_revenue_7_days'] = Transaction::where('vehicle_type', 'motor')
+            ->where('status', 'keluar')
+            ->whereDate('exit_time', '>=', $sevenDaysAgo)
+            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+
+        $data['motor_revenue_this_month'] = Transaction::where('vehicle_type', 'motor')
+            ->where('status', 'keluar')
+            ->whereDate('exit_time', '>=', $startOfMonth)
+            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+
+        // =========================================================
+        // TAMBAHAN: RIWAYAT TOTAL PENDAPATAN KENDARAAN (ALL TIME)
+        // =========================================================
+        // Jika Anda butuh total keseluruhan (All Time) pendapatan dari seluruh sistem
+        $data['total_revenue_all_time'] = Transaction::where('status', 'keluar')
+            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+
+        // Jika Anda butuh total unit kendaraan (All Time)
+        $data['total_vehicles_all_time'] = Transaction::count();
+
             return (object)[
                 'name'   => $operator->name,
                 'type'   => $operator->salary_type,

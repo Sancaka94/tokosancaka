@@ -118,6 +118,44 @@
 
         </div>
 
+        <div class="mb-6 mt-12 text-center md:text-left">
+            <h2 class="text-2xl font-bold text-gray-800">Pendapatan Kendaraan (Parkir Saja)</h2>
+            <p class="text-gray-500 text-sm mt-1">Total uang masuk murni dari tiket parkir tanpa tambahan kas operasional.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transition hover:scale-105">
+                <div>
+                    <h5 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Parkir (Hari Ini)</h5>
+                    <p class="text-2xl font-black text-indigo-600 mt-2">Rp {{ number_format($data['parkir_hari_ini'] ?? 0, 0, ',', '.') }}</p>
+                </div>
+                <div class="text-4xl opacity-50">🎟️</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transition hover:scale-105">
+                <div>
+                    <h5 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Parkir (Kemarin)</h5>
+                    <p class="text-2xl font-black text-gray-700 mt-2">Rp {{ number_format($data['parkir_kemarin'] ?? 0, 0, ',', '.') }}</p>
+                </div>
+                <div class="text-4xl opacity-30">📅</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transition hover:scale-105">
+                <div>
+                    <h5 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Parkir (7 Hari)</h5>
+                    <p class="text-2xl font-black text-blue-600 mt-2">Rp {{ number_format($data['parkir_7_hari'] ?? 0, 0, ',', '.') }}</p>
+                </div>
+                <div class="text-4xl opacity-50">📊</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transition hover:scale-105">
+                <div>
+                    <h5 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Parkir (Bulan Ini)</h5>
+                    <p class="text-2xl font-black text-purple-600 mt-2">Rp {{ number_format($data['parkir_bulan_ini'] ?? 0, 0, ',', '.') }}</p>
+                </div>
+                <div class="text-4xl opacity-50">💰</div>
+            </div>
+        </div>
+
+
+
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="bg-gray-50 border-b border-gray-100 px-6 py-4">
@@ -266,6 +304,54 @@
                 </div>
                 <div class="text-4xl opacity-50">💰</div>
             </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-12">
+            <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-gray-700 text-sm">Riwayat Pendapatan Kendaraan</h3>
+                <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full font-semibold">Murni Parkir</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr class="bg-white">
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Waktu Keluar</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Plat Nomor</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Jenis Kendaraan</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Pendapatan (Rp)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        @forelse($revenue_transactions ?? [] as $trx)
+                            <tr class="hover:bg-gray-50 transition duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
+                                    {{ \Carbon\Carbon::parse($trx->exit_time)->translatedFormat('d M Y - H:i') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="font-bold text-gray-800 tracking-wider bg-gray-100 px-3 py-1 rounded border border-gray-200">
+                                        {{ Str::mask($trx->plate_number, '*', 4, 3) }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap capitalize text-sm text-gray-600">
+                                    {{ $trx->vehicle_type }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right font-black text-indigo-600 text-base">
+                                    Rp {{ number_format(($trx->fee ?? 0) + ($trx->toilet_fee ?? 0), 0, ',', '.') }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="px-6 py-8 text-center text-gray-400 italic">Belum ada pendapatan parkir terekam.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            @if(isset($revenue_transactions) && $revenue_transactions->hasPages())
+                <div class="px-6 py-4 bg-white border-t border-gray-100">
+                    {{ $revenue_transactions->links() }}
+                </div>
+            @endif
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
