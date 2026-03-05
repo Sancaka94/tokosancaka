@@ -162,28 +162,6 @@ class TransactionController extends Controller
         }
     }
 
-    // Fungsi untuk proses kendaraan keluar (Checkout)
-    public function update(Request $request, Transaction $transaction)
-    {
-        if ($transaction->status === 'keluar') {
-            return redirect()->back()->with('error', 'Kendaraan ini sudah diselesaikan/keluar sebelumnya.');
-        }
-
-        $tarifMotor = 3000;
-        $tarifMobil = 5000;
-
-        $waktuKeluar = Carbon::now();
-        $fee = ($transaction->vehicle_type === 'motor') ? $tarifMotor : $tarifMobil;
-
-        $transaction->update([
-            'exit_time' => $waktuKeluar,
-            'fee'       => $fee,
-            'status'    => 'keluar'
-        ]);
-
-        return redirect()->route('transactions.index')->with('success', 'Kendaraan keluar. Tarif: Rp ' . number_format($fee, 0, ',', '.'));
-    }
-
     public function destroy(Transaction $transaction)
     {
         if (auth()->user()->isOperator()) {
@@ -199,44 +177,121 @@ class TransactionController extends Controller
         return view('transactions.manual', compact('transaction'));
     }
 
-   // ==========================================
-    // FUNGSI BARU: Keluarkan Semua Kendaraan
+    // ==========================================
+    // FUNGSI BARU: INPUT PUBLIK (TANPA LOGIN - 3 OPSI)
+    // ==========================================
+    public function createPublic()
+    {
+        // Menampilkan halaman Kiosk Parkir Mandiri
+        return view('transactions.public_input');
+    }
+
+    // ==========================================
+    // FUNGSI 1: INPUT PUBLIK (Mesin Mandiri)
+    // ==========================================
+    public function storePublic(Request $request)
+    {
+        // Tambahkan validasi kategori 'sepeda'
+        $request->validate([
+            'kategori'     => 'required|in:sepeda,sepeda_listrik,pegawai_rsud,umum',
+            'plate_number' => 'required_if:kategori,umum|string|max:20|nullable',
+        ]);
+
+        $plateNumber = '';
+        $fee = null;
+
+        // Logika penentuan nomor plat & Tarif Awal
+        if ($request->kategori === 'sepeda') {
+            $plateNumber = 'SPD-' . rand(1000, 9999);
+            $fee = 2000; // Simpan tarif 2000 di awal agar Dasbor langsung baca
+        } elseif ($request->kategori === 'sepeda_listrik') {
+            $plateNumber = 'SPL-' . rand(1000, 9999);
+        } elseif ($request->kategori === 'pegawai_rsud') {
+            $plateNumber = 'RSUD-' . rand(1000, 9999);
+        } else {
+            $plateNumber = strtoupper($request->plate_number);
+        }
+
+        $user = \App\Models\User::whereNotNull('tenant_id')->first();
+        $validTenantId = $user ? $user->tenant_id : null;
+
+        $transaction = Transaction::create([
+            'tenant_id'    => $validTenantId,
+            'operator_id'  => null,
+            'vehicle_type' => 'motor',
+            'plate_number' => $plateNumber,
+            'entry_time'   => Carbon::now(),
+            'status'       => 'masuk',
+            'fee'          => $fee, // Masukkan fee ke database
+        ]);
+
+        return redirect()->back()->with([
+            'success'  => 'Tiket parkir untuk ' . $plateNumber . ' berhasil dicetak!',
+            'print_id' => $transaction->id
+        ]);
+    }
+
+    // ==========================================
+    // FUNGSI 2: KENDARAAN KELUAR (Satu per satu)
+    // ==========================================
+    public function update(Request $request, Transaction $transaction)
+    {
+        if ($transaction->status === 'keluar') {
+            return redirect()->back()->with('error', 'Kendaraan ini sudah diselesaikan/keluar sebelumnya.');
+        }
+
+        $tarifMotor = 3000;
+        $tarifMobil = 5000;
+
+        // CEK PLAT: Jika diawali SPD-, tarifnya Rp 2000
+        if (str_starts_with($transaction->plate_number, 'SPD-')) {
+            $fee = 2000;
+        } else {
+            $fee = ($transaction->vehicle_type === 'motor') ? $tarifMotor : $tarifMobil;
+        }
+
+        $transaction->update([
+            'exit_time' => Carbon::now(),
+            'fee'       => $fee,
+            'status'    => 'keluar'
+        ]);
+
+        return redirect()->route('transactions.index')->with('success', 'Kendaraan keluar. Tarif: Rp ' . number_format($fee, 0, ',', '.'));
+    }
+
+    // ==========================================
+    // FUNGSI 3: KELUARKAN SEMUA KENDARAAN (Massal)
     // ==========================================
     public function checkoutAll(Request $request)
     {
-        // Validasi input tanggal dari form
-        $request->validate([
-            'checkout_date' => 'required|date'
-        ]);
-
+        $request->validate(['checkout_date' => 'required|date']);
         $tanggal = $request->checkout_date;
 
-        // 1. Cari semua kendaraan yang statusnya masih 'masuk' DAN sesuai tanggal yang dipilih
         $kendaraanMasuk = Transaction::where('status', 'masuk')
                             ->whereDate('entry_time', $tanggal)
                             ->get();
 
-        // 2. Jika kosong, kembalikan pesan error
         if ($kendaraanMasuk->isEmpty()) {
             return redirect()->back()->with('error', 'Tidak ada kendaraan yang sedang parkir pada tanggal ' . $tanggal);
         }
 
-        // 3. Siapkan variabel tarif dan penyesuaian waktu keluar
-        // Jika tanggal dipilih = hari ini, pakai waktu sekarang.
-        // Jika tanggal lampau, pakai jam 23:59:59 di tanggal tersebut.
         $waktuKeluar = ($tanggal == \Carbon\Carbon::today()->toDateString())
             ? \Carbon\Carbon::now()
             : \Carbon\Carbon::parse($tanggal)->endOfDay();
 
         $tarifMotor = 3000;
         $tarifMobil = 5000;
-
         $totalPendapatan = 0;
         $jumlahKendaraan = 0;
 
-        // 4. Proses update masing-masing kendaraan
         foreach ($kendaraanMasuk as $trx) {
-            $fee = ($trx->vehicle_type === 'motor') ? $tarifMotor : $tarifMobil;
+
+            // CEK PLAT MASSAL: Jika diawali SPD-, tarifnya Rp 2000
+            if (str_starts_with($trx->plate_number, 'SPD-')) {
+                $fee = 2000;
+            } else {
+                $fee = ($trx->vehicle_type === 'motor') ? $tarifMotor : $tarifMobil;
+            }
 
             $trx->update([
                 'exit_time' => $waktuKeluar,
@@ -248,58 +303,7 @@ class TransactionController extends Controller
             $jumlahKendaraan++;
         }
 
-        // 5. Kembali dengan pesan sukses beserta ringkasan
-        return redirect()->route('transactions.index')->with('success', "Berhasil mengeluarkan $jumlahKendaraan kendaraan secara massal pada tanggal $tanggal. Pendapatan bertambah: Rp " . number_format($totalPendapatan, 0, ',', '.'));
-    }
-
-    // ==========================================
-    // FUNGSI BARU: INPUT PUBLIK (TANPA LOGIN - 3 OPSI)
-    // ==========================================
-    public function createPublic()
-    {
-        // Menampilkan halaman Kiosk Parkir Mandiri
-        return view('transactions.public_input');
-    }
-
-    public function storePublic(Request $request)
-    {
-        // Validasi: Kategori wajib ada. Plat nomor hanya wajib jika kategori 'umum'
-        $request->validate([
-            'kategori'     => 'required|in:sepeda_listrik,pegawai_rsud,umum',
-            'plate_number' => 'required_if:kategori,umum|string|max:20|nullable',
-        ]);
-
-        $plateNumber = '';
-
-        // Logika penentuan nomor plat otomatis atau manual
-        if ($request->kategori === 'sepeda_listrik') {
-            $plateNumber = 'SPL-' . rand(1000, 9999);
-        } elseif ($request->kategori === 'pegawai_rsud') {
-            $plateNumber = 'RSUD-' . rand(1000, 9999);
-        } else {
-            $plateNumber = strtoupper($request->plate_number);
-        }
-
-        // --- PERBAIKAN TENANT ID (AMBIL DARI USER ADMIN/OPERATOR) ---
-        // Mencari user pertama di database yang punya tenant_id, lalu kita pinjam ID-nya
-        $user = \App\Models\User::whereNotNull('tenant_id')->first();
-        $validTenantId = $user ? $user->tenant_id : null;
-
-        // Simpan transaksi
-        $transaction = Transaction::create([
-            'tenant_id'    => $validTenantId, // Dijamin valid sesuai database Anda
-            'operator_id'  => null,
-            'vehicle_type' => 'motor',
-            'plate_number' => $plateNumber,
-            'entry_time'   => Carbon::now(),
-            'status'       => 'masuk',
-        ]);
-
-        // Kembali dengan pesan sukses & memicu print struk
-        return redirect()->back()->with([
-            'success'  => 'Tiket parkir untuk ' . $plateNumber . ' berhasil dicetak!',
-            'print_id' => $transaction->id
-        ]);
+        return redirect()->route('transactions.index')->with('success', "Berhasil mengeluarkan $jumlahKendaraan kendaraan. Pendapatan bertambah: Rp " . number_format($totalPendapatan, 0, ',', '.'));
     }
 
 }
