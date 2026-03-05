@@ -38,6 +38,33 @@ class DashboardController extends Controller
         ];
 
         // =========================================================
+        // TAMBAHAN: PENDAPATAN KHUSUS MOTOR
+        // =========================================================
+        $yesterday = Carbon::yesterday();
+        $sevenDaysAgo = Carbon::today()->subDays(6);
+        $startOfMonth = Carbon::now()->startOfMonth();
+
+        $data['motor_revenue_today'] = Transaction::where('vehicle_type', 'motor')
+            ->where('status', 'keluar')
+            ->whereDate('exit_time', $today)
+            ->sum('fee');
+
+        $data['motor_revenue_yesterday'] = Transaction::where('vehicle_type', 'motor')
+            ->where('status', 'keluar')
+            ->whereDate('exit_time', $yesterday)
+            ->sum('fee');
+
+        $data['motor_revenue_7_days'] = Transaction::where('vehicle_type', 'motor')
+            ->where('status', 'keluar')
+            ->whereDate('exit_time', '>=', $sevenDaysAgo)
+            ->sum('fee');
+
+        $data['motor_revenue_this_month'] = Transaction::where('vehicle_type', 'motor')
+            ->where('status', 'keluar')
+            ->whereDate('exit_time', '>=', $startOfMonth)
+            ->sum('fee');
+
+        // =========================================================
         // 2. PENDAPATAN BULAN INI VS BULAN LALU
         // =========================================================
         $parkirBulanIni = Transaction::whereMonth('exit_time', $now->month)
