@@ -68,6 +68,46 @@
     </div>
 </div>
 
+<div class="mt-8 mb-4">
+    <h2 class="text-lg md:text-xl font-bold text-gray-800">Monitor Pendapatan Motor</h2>
+    <p class="text-gray-500 text-sm mt-1">Rincian nominal pendapatan parkir khusus kendaraan motor.</p>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mb-8">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between transition-transform hover:scale-[1.02]">
+        <div>
+            <h5 class="text-gray-500 text-xs md:text-sm font-semibold uppercase tracking-wider">Motor (Hari Ini)</h5>
+            <p class="text-xl md:text-2xl font-black mt-2 text-blue-600">Rp {{ number_format($data['motor_revenue_today'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="text-4xl opacity-80">🏍️</div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between transition-transform hover:scale-[1.02]">
+        <div>
+            <h5 class="text-gray-500 text-xs md:text-sm font-semibold uppercase tracking-wider">Motor (Kemarin)</h5>
+            <p class="text-xl md:text-2xl font-black mt-2 text-gray-700">Rp {{ number_format($data['motor_revenue_yesterday'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="text-4xl opacity-50">📅</div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between transition-transform hover:scale-[1.02]">
+        <div>
+            <h5 class="text-gray-500 text-xs md:text-sm font-semibold uppercase tracking-wider">Motor (7 Hari Terakhir)</h5>
+            <p class="text-xl md:text-2xl font-black mt-2 text-indigo-600">Rp {{ number_format($data['motor_revenue_7_days'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="text-4xl opacity-60">📊</div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between transition-transform hover:scale-[1.02] relative overflow-hidden">
+        <div class="z-10">
+            <h5 class="text-gray-500 text-xs md:text-sm font-semibold uppercase tracking-wider">Motor (Bulan Ini)</h5>
+            <p class="text-xl md:text-2xl font-black mt-2 text-purple-600">Rp {{ number_format($data['motor_revenue_this_month'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="text-4xl opacity-60 z-10">💰</div>
+        <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-purple-50 rounded-full blur-2xl opacity-60"></div>
+    </div>
+</div>
+
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8">
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="bg-gray-50 border-b border-gray-100 px-6 py-4">
