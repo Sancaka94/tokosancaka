@@ -163,42 +163,6 @@ class PublicDashboardController extends Controller
                 }
             }
 
-            // =========================================================
-        // TAMBAHAN: MONITOR PENDAPATAN KHUSUS MOTOR
-        // =========================================================
-        $sevenDaysAgo = Carbon::today()->subDays(6);
-        $startOfMonth = Carbon::now()->startOfMonth();
-
-        $data['motor_revenue_today'] = Transaction::where('vehicle_type', 'motor')
-            ->where('status', 'keluar')
-            ->whereDate('exit_time', $today)
-            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
-
-        $data['motor_revenue_yesterday'] = Transaction::where('vehicle_type', 'motor')
-            ->where('status', 'keluar')
-            ->whereDate('exit_time', $yesterday)
-            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
-
-        $data['motor_revenue_7_days'] = Transaction::where('vehicle_type', 'motor')
-            ->where('status', 'keluar')
-            ->whereDate('exit_time', '>=', $sevenDaysAgo)
-            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
-
-        $data['motor_revenue_this_month'] = Transaction::where('vehicle_type', 'motor')
-            ->where('status', 'keluar')
-            ->whereDate('exit_time', '>=', $startOfMonth)
-            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
-
-        // =========================================================
-        // TAMBAHAN: RIWAYAT TOTAL PENDAPATAN KENDARAAN (ALL TIME)
-        // =========================================================
-        // Jika Anda butuh total keseluruhan (All Time) pendapatan dari seluruh sistem
-        $data['total_revenue_all_time'] = Transaction::where('status', 'keluar')
-            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
-
-        // Jika Anda butuh total unit kendaraan (All Time)
-        $data['total_vehicles_all_time'] = Transaction::count();
-
             return (object)[
                 'name'   => $operator->name,
                 'type'   => $operator->salary_type,
@@ -209,48 +173,34 @@ class PublicDashboardController extends Controller
         });
 
         // =========================================================
-        // DATA TAMBAHAN: PENDAPATAN MOTOR & KENDARAAN MURNI
+        // 7. DATA TAMBAHAN: PENDAPATAN PARKIR & KENDARAAN MURNI
         // =========================================================
-        // Kita definisikan ulang waktunya di sini agar tidak error "Undefined variable"
-        $hariIni = \Carbon\Carbon::today();
-        $kemarin = \Carbon\Carbon::yesterday();
-        $tujuhHariLalu = \Carbon\Carbon::today()->subDays(6);
-        $awalBulan = \Carbon\Carbon::now()->startOfMonth();
+        $tujuhHariLalu = Carbon::today()->subDays(6);
+        $awalBulan = Carbon::now()->startOfMonth();
 
-        // 1. MONITOR PENDAPATAN MOTOR
-        $data['motor_revenue_today'] = Transaction::where('vehicle_type', 'motor')
-            ->where('status', 'keluar')
-            ->whereDate('exit_time', $hariIni)
-            ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
+        // Menyimpan data khusus parkir kendaraan (TIDAK dicampur dengan Buku Kas)
+        $data['parkir_hari_ini'] = $parkirHariIni;
+        $data['parkir_kemarin'] = $parkirKemarin;
 
-        $data['motor_revenue_yesterday'] = Transaction::where('vehicle_type', 'motor')
-            ->where('status', 'keluar')
-            ->whereDate('exit_time', $kemarin)
-            ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
-
-        $data['motor_revenue_7_days'] = Transaction::where('vehicle_type', 'motor')
-            ->where('status', 'keluar')
+        $data['parkir_7_hari'] = Transaction::where('status', 'keluar')
             ->whereDate('exit_time', '>=', $tujuhHariLalu)
-            ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
+            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
 
-        $data['motor_revenue_this_month'] = Transaction::where('vehicle_type', 'motor')
-            ->where('status', 'keluar')
+        $data['parkir_bulan_ini'] = Transaction::where('status', 'keluar')
             ->whereDate('exit_time', '>=', $awalBulan)
-            ->sum(\Illuminate\Support\Facades\DB::raw('fee + IFNULL(toilet_fee, 0)'));
+            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
 
-        // 2. DATA PENDAPATAN PARKIR UMUM (Untuk Public Dashboard)
-        $data['parkir_hari_ini'] = $data['motor_revenue_today']; // Ditambah mobil jika ada
-        $data['parkir_kemarin'] = $data['motor_revenue_yesterday'];
-        $data['parkir_7_hari'] = $data['motor_revenue_7_days'];
-        $data['parkir_bulan_ini'] = $data['motor_revenue_this_month'];
-
-        // Query tabel riwayat
+        // Query khusus untuk tabel Riwayat Pendapatan Kendaraan
         $revenue_transactions = Transaction::where('status', 'keluar')
             ->latest('exit_time')
             ->paginate(10, ['*'], 'revenue_page');
 
+
+        // =========================================================
+        // 8. RETURN VIEW
+        // =========================================================
         return view('public_dashboard', compact(
-            'data', 'chartData', 'recent_transactions',
+            'data', 'chartData', 'recent_transactions', 'revenue_transactions',
             'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas', 'recent_financials', 'employeeSalaries'
         ));
     }
