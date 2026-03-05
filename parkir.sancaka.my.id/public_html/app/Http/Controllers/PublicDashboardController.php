@@ -208,6 +208,25 @@ class PublicDashboardController extends Controller
             ];
         });
 
+        // =========================================================
+        // DATA TAMBAHAN: PENDAPATAN KENDARAAN MURNI
+        // =========================================================
+
+        // Memasukkan variabel parkir murni yang sudah dihitung di atas ke dalam array $data
+        $data['parkir_hari_ini'] = $parkirHariIni;
+        $data['parkir_kemarin'] = $parkirKemarin;
+        $data['parkir_bulan_ini'] = $parkirBulanIni;
+
+        // Menghitung khusus 7 hari terakhir
+        $data['parkir_7_hari'] = Transaction::where('status', 'keluar')
+            ->whereDate('exit_time', '>=', Carbon::today()->subDays(6))
+            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+
+        // Query khusus untuk mengisi tabel Riwayat Pendapatan (Hanya yang sudah KELUAR)
+        $revenue_transactions = Transaction::where('status', 'keluar')
+            ->latest('exit_time')
+            ->paginate(10, ['*'], 'revenue_page');
+
         return view('public_dashboard', compact(
             'data', 'chartData', 'recent_transactions',
             'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas', 'recent_financials', 'employeeSalaries'
