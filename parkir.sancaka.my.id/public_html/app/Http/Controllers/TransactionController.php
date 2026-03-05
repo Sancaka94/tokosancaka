@@ -251,4 +251,50 @@ class TransactionController extends Controller
         // 5. Kembali dengan pesan sukses beserta ringkasan
         return redirect()->route('transactions.index')->with('success', "Berhasil mengeluarkan $jumlahKendaraan kendaraan secara massal pada tanggal $tanggal. Pendapatan bertambah: Rp " . number_format($totalPendapatan, 0, ',', '.'));
     }
+
+    // ==========================================
+    // FUNGSI BARU: INPUT PUBLIK (TANPA LOGIN - 3 OPSI)
+    // ==========================================
+    public function createPublic()
+    {
+        // Menampilkan halaman Kiosk Parkir Mandiri
+        return view('transactions.public_input');
+    }
+
+    public function storePublic(Request $request)
+    {
+        // Validasi: Kategori wajib ada. Plat nomor hanya wajib jika kategori 'umum'
+        $request->validate([
+            'kategori'     => 'required|in:sepeda_listrik,pegawai_rsud,umum',
+            'plate_number' => 'required_if:kategori,umum|string|max:20|nullable',
+        ]);
+
+        $plateNumber = '';
+
+        // Logika penentuan nomor plat otomatis atau manual
+        if ($request->kategori === 'sepeda_listrik') {
+            $plateNumber = 'SPL-' . rand(1000, 9999); // Cth: SPL-4829
+        } elseif ($request->kategori === 'pegawai_rsud') {
+            $plateNumber = 'RSUD-' . rand(1000, 9999); // Cth: RSUD-9182
+        } else {
+            $plateNumber = strtoupper($request->plate_number); // Cth: AE 1234 XY
+        }
+
+        // Simpan transaksi
+        $transaction = Transaction::create([
+            'tenant_id'    => 1, // Sesuaikan dengan ID Tenant utama Anda
+            'operator_id'  => null, // Null karena sistem/mesin mandiri
+            'vehicle_type' => 'motor', // Default motor
+            'plate_number' => $plateNumber,
+            'entry_time'   => Carbon::now(),
+            'status'       => 'masuk',
+        ]);
+
+        // Kembali dengan pesan sukses & memicu print struk
+        return redirect()->back()->with([
+            'success'  => 'Tiket parkir untuk ' . $plateNumber . ' berhasil dicetak!',
+            'print_id' => $transaction->id
+        ]);
+    }
+
 }

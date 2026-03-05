@@ -98,5 +98,9 @@ Route::get('/financial/export/pdf', [App\Http\Controllers\FinancialReportControl
 
 Route::post('/transactions/checkout-all', [TransactionController::class, 'checkoutAll'])->name('transactions.checkoutAll');
 
+// Route Kiosk Mandiri
+Route::get('/parkir-mandiri', [TransactionController::class, 'createPublic'])->name('transactions.public.create');
+Route::post('/parkir-mandiri', [TransactionController::class, 'storePublic'])->name('transactions.public.store');
+
 // Memuat rute otentikasi bawaan Breeze (Login, Register, Logout)
 require __DIR__.'/auth.php';
