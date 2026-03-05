@@ -315,33 +315,29 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead>
                         <tr class="bg-white">
-                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Waktu Keluar</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Plat Nomor</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Jenis Kendaraan</th>
-                            <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Pendapatan (Rp)</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal</th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Total Kendaraan Keluar</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Total Omzet (Rp)</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-100">
                         @forelse($revenue_transactions ?? [] as $trx)
                             <tr class="hover:bg-gray-50 transition duration-150">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
-                                    {{ \Carbon\Carbon::parse($trx->exit_time)->translatedFormat('d M Y - H:i') }}
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-bold">
+                                    {{ \Carbon\Carbon::parse($trx->tanggal)->translatedFormat('d F Y') }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="font-bold text-gray-800 tracking-wider bg-gray-100 px-3 py-1 rounded border border-gray-200">
-                                        {{ Str::mask($trx->plate_number, '*', 4, 3) }}
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 font-medium">
+                                    <span class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded border border-blue-100">
+                                        {{ $trx->total_kendaraan }} Unit
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap capitalize text-sm text-gray-600">
-                                    {{ $trx->vehicle_type }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right font-black text-indigo-600 text-base">
-                                    Rp {{ number_format(($trx->fee ?? 0) + ($trx->toilet_fee ?? 0), 0, ',', '.') }}
+                                <td class="px-6 py-4 whitespace-nowrap text-right font-black text-indigo-600 text-base md:text-lg">
+                                    Rp {{ number_format($trx->total_omzet, 0, ',', '.') }}
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="px-6 py-8 text-center text-gray-400 italic">Belum ada pendapatan parkir terekam.</td>
+                                <td colspan="3" class="px-6 py-8 text-center text-gray-400 italic">Belum ada pendapatan parkir terekam.</td>
                             </tr>
                         @endforelse
                     </tbody>

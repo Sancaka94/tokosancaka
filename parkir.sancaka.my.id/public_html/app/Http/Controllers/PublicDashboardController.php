@@ -191,8 +191,15 @@ class PublicDashboardController extends Controller
             ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
 
         // Query khusus untuk tabel Riwayat Pendapatan Kendaraan
-        $revenue_transactions = Transaction::where('status', 'keluar')
-            ->latest('exit_time')
+        // Query khusus untuk tabel Riwayat Pendapatan (Dikelompokkan per Hari)
+        $revenue_transactions = Transaction::select(
+                DB::raw('DATE(exit_time) as tanggal'),
+                DB::raw('COUNT(id) as total_kendaraan'),
+                DB::raw('SUM(fee + IFNULL(toilet_fee, 0)) as total_omzet')
+            )
+            ->where('status', 'keluar')
+            ->groupBy(DB::raw('DATE(exit_time)'))
+            ->orderBy(DB::raw('DATE(exit_time)'), 'desc')
             ->paginate(10, ['*'], 'revenue_page');
 
 
