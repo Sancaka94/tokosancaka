@@ -71,6 +71,9 @@ Route::get('/financial/export/pdf', [App\Http\Controllers\FinancialReportControl
         // 1. Dashboard Utama (Menggunakan Controller, bukan Closure bawaan)
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+        // Route Input Manual via Total Uang (Rapel Uang) - FITUR BARU
+        Route::post('/transactions/rapel', [TransactionController::class, 'storeRapel'])->name('transactions.storeRapel');
+
         // 2. Operasional Transaksi Parkir
         Route::resource('transactions', TransactionController::class);
 
