@@ -33,7 +33,6 @@
         </div>
     </nav>
 
-
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <div class="mb-6 text-center md:text-left">
@@ -41,201 +40,192 @@
             <p class="text-gray-500 text-sm mt-1">Live Update: {{ \Carbon\Carbon::now()->translatedFormat('l, d F Y - H:i') }} WIB</p>
         </div>
 
+        @php
+            // =========================================================================
+            // ENGINE PERHITUNGAN OTOMATIS (Ditulis di Blade agar tidak perlu ubah Controller)
+            // =========================================================================
+            use App\Models\Transaction;
+            use App\Models\FinancialReport;
+            use App\Models\User;
+            use Illuminate\Support\Facades\DB;
+            use Carbon\Carbon;
+
+            $today = Carbon::today();
+            $yesterday = Carbon::yesterday();
+            $h2 = Carbon::today()->subDays(2);
+            $lastMonth = Carbon::now()->subMonth();
+
+            $rumusTarif = DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) + IFNULL(toilet_fee, 0)');
+
+            // --- 1. DATA KENDARAAN (HARI INI VS KEMARIN) ---
+            $motorHariIni = $data['motor_masuk'] ?? 0;
+            $motorKemarin = Transaction::where('vehicle_type', 'motor')->whereDate('entry_time', $yesterday)->count();
+
+            $sepedaHariIni = $sepedaBiasaHariIni ?? 0;
+            $sepedaKemarin = Transaction::whereDate('entry_time', $yesterday)->where('plate_number', 'LIKE', 'SPD-%')->count();
+
+            $sepedaListrikHariIni = $sepedaListrikHariIni ?? 0;
+            $sepedaListrikKemarin = Transaction::whereDate('entry_time', $yesterday)->where('plate_number', 'LIKE', 'SPL-%')->count();
+
+            $pegawaiRsudHariIni = $pegawaiRsudHariIni ?? 0;
+            $pegawaiRsudKemarin = Transaction::whereDate('entry_time', $yesterday)->where('plate_number', 'LIKE', 'RSUD-%')->count();
+
+            // --- 2. DATA PENDAPATAN & OMZET ---
+            $pendapatanHariIni = ($data['total_pendapatan'] ?? 0) / 2;
+            $pendapatanKemarin = ($data['pendapatan_kemarin'] ?? 0) / 2;
+
+            $omzetHariIni = $data['total_pendapatan'] ?? 0;
+            $omzetKemarin = $data['pendapatan_kemarin'] ?? 0;
+
+            $pendapatanBulanIni = ($data['pendapatan_bulan_ini'] ?? 0) / 2;
+            $pendapatanBulanKemarin = ($data['pendapatan_bulan_kemarin'] ?? 0) / 2;
+
+            // --- 3. DATA GAJI PEGAWAI (BARU) ---
+            $gajiHariIni = collect($employeeSalaries ?? [])->sum('earned');
+
+            // Kalkulasi Gaji Kemarin secara cerdas
+            $operators = User::where('role', 'operator')->get();
+            $lapGajiKemarin = FinancialReport::whereDate('tanggal', $yesterday)->where('kategori', 'Gaji Pegawai')->get();
+            $pendKotorKemarin = Transaction::whereDate('entry_time', $yesterday)->sum($rumusTarif) + FinancialReport::whereDate('tanggal', $yesterday)->where('jenis', 'pemasukan')->sum('nominal');
+
+            $gajiKemarin = $operators->map(function($op) use ($lapGajiKemarin, $pendKotorKemarin) {
+                $manual = $lapGajiKemarin->filter(fn($r) => stripos($r->keterangan, $op->name) !== false)->sum('nominal');
+                if ($manual > 0) return $manual;
+                if ($op->salary_type == 'percentage') return ($op->salary_amount / 100) * $pendKotorKemarin;
+                return $op->salary_amount;
+            })->sum();
+
+            // --- 4. DATA PARKIR MURNI ---
+            $parkirHariIni = $data['parkir_hari_ini'] ?? 0;
+            $parkirKemarin = $data['parkir_kemarin'] ?? 0;
+            $parkirH2 = Transaction::whereDate('entry_time', $h2)->sum($rumusTarif);
+
+            $parkir7Hari = $data['parkir_7_hari'] ?? 0;
+            $parkir7HariLalu = Transaction::whereDate('entry_time', '>=', Carbon::today()->subDays(13))
+                                          ->whereDate('entry_time', '<=', Carbon::today()->subDays(7))
+                                          ->sum($rumusTarif);
+
+            $parkirBulanIni = $data['parkir_bulan_ini'] ?? 0;
+            $parkirBulanLalu = Transaction::whereMonth('entry_time', $lastMonth->month)->whereYear('entry_time', $lastMonth->year)->sum($rumusTarif);
+
+            // --- HELPER UNTUK MENGHITUNG PERSENTASE (DRY CODE) ---
+            if (!function_exists('hitungPersen')) {
+                function hitungPersen($sekarang, $kemarin) {
+                    $selisih = $sekarang - $kemarin;
+                    $persen = $kemarin > 0 ? ($selisih / $kemarin) * 100 : ($sekarang > 0 ? 100 : 0);
+                    return ['selisih' => $selisih, 'persen' => $persen, 'is_naik' => $selisih >= 0];
+                }
+            }
+
+            $cmpMotor = hitungPersen($motorHariIni, $motorKemarin);
+            $cmpSepeda = hitungPersen($sepedaHariIni, $sepedaKemarin);
+            $cmpListrik = hitungPersen($sepedaListrikHariIni, $sepedaListrikKemarin);
+            $cmpRsud = hitungPersen($pegawaiRsudHariIni, $pegawaiRsudKemarin);
+
+            $cmpPendapatan = hitungPersen($pendapatanHariIni, $pendapatanKemarin);
+            $cmpOmzet = hitungPersen($omzetHariIni, $omzetKemarin);
+            $cmpBulan = hitungPersen($pendapatanBulanIni, $pendapatanBulanKemarin);
+            $cmpGaji = hitungPersen($gajiHariIni, $gajiKemarin);
+
+            $cmpParkirHari = hitungPersen($parkirHariIni, $parkirKemarin);
+            $cmpParkirKemarin = hitungPersen($parkirKemarin, $parkirH2);
+            $cmpParkir7 = hitungPersen($parkir7Hari, $parkir7HariLalu);
+            $cmpParkirBulan = hitungPersen($parkirBulanIni, $parkirBulanLalu);
+        @endphp
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 
-            @php
-                // 1. Membagi semua data pendapatan dengan 2
-                $pendapatanHariIni = ($data['total_pendapatan'] ?? 0) / 2;
-                $pendapatanKemarin = ($data['pendapatan_kemarin'] ?? 0) / 2;
-                $pendapatanBulanIni = ($data['pendapatan_bulan_ini'] ?? 0) / 2;
-                $pendapatanBulanKemarin = ($data['pendapatan_bulan_kemarin'] ?? 0) / 2;
-                $pendapatanTahunIni = ($data['pendapatan_tahun_ini'] ?? 0) / 2; // Disiapkan untuk tahun ini
-
-                // 2. Perhitungan selisih & persentase Harian
-                $selisihHariIni = $pendapatanHariIni - $pendapatanKemarin;
-                $persenHariIni = $pendapatanKemarin > 0 ? ($selisihHariIni / $pendapatanKemarin) * 100 : ($pendapatanHariIni > 0 ? 100 : 0);
-
-                // 3. Perhitungan selisih & persentase Bulanan
-                $selisihBulanIni = $pendapatanBulanIni - $pendapatanBulanKemarin;
-                $persenBulanIni = $pendapatanBulanKemarin > 0 ? ($selisihBulanIni / $pendapatanBulanKemarin) * 100 : ($pendapatanBulanIni > 0 ? 100 : 0);
-            @endphp
-
-            <div class="bg-gradient-to-br from-sky-400 to-sky-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
-                <div>
-                    <h5 class="text-sky-100 text-xs md:text-sm font-bold uppercase tracking-wider">Motor (Hari Ini)</h5>
-                    <p class="text-3xl font-black mt-2">{{ $data['motor_masuk'] ?? 0 }} <span class="text-sm font-medium text-sky-200">Unit</span></p>
-                </div>
-                <div class="text-4xl opacity-90">🏍️</div>
-            </div>
-
-            <div class="bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
-                <div>
-                    <h5 class="text-teal-50 text-xs md:text-sm font-bold uppercase tracking-wider">Sepeda (Hari Ini)</h5>
-                    <p class="text-3xl font-black mt-2">{{ $sepedaBiasaHariIni ?? 0 }} <span class="text-sm font-medium text-teal-100">Unit</span></p>
-                </div>
-                <div class="text-4xl opacity-90">🚲</div>
-            </div>
-
-            <div class="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
-                <div>
-                    <h5 class="text-purple-100 text-xs md:text-sm font-bold uppercase tracking-wider">Sepeda Listrik (Hari Ini)</h5>
-                    <p class="text-3xl font-black mt-2">{{ $sepedaListrikHariIni ?? 0 }} <span class="text-sm font-medium text-purple-200">Unit</span></p>
-                </div>
-                <div class="text-4xl opacity-90">⚡</div>
-            </div>
-
-            <div class="bg-gradient-to-br from-rose-400 to-rose-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
-                <div>
-                    <h5 class="text-rose-100 text-xs md:text-sm font-bold uppercase tracking-wider">Pegawai RSUD (Hari Ini)</h5>
-                    <p class="text-3xl font-black mt-2">{{ $pegawaiRsudHariIni ?? 0 }} <span class="text-sm font-medium text-rose-200">Unit</span></p>
-                </div>
-                <div class="text-4xl opacity-90">🏥</div>
-            </div>
-
-            <div class="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden" style="border-radius: 8px;">
+            <div class="bg-gradient-to-br from-sky-400 to-sky-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
-                        <h5 class="text-orange-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Kemarin</h5>
-                        <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($pendapatanKemarin, 0, ',', '.') }}</p>
+                        <h5 class="text-sky-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Motor (Hari Ini)</h5>
+                        <p class="text-2xl md:text-3xl font-black">{{ $motorHariIni }} <span class="text-sm font-medium text-sky-200">Unit</span></p>
                     </div>
-                    <div class="text-4xl opacity-90">⏳</div>
-                </div>
-            </div>
-
-            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden" style="border-radius: 8px;">
-                <div class="flex items-center justify-between z-10">
-                    <div>
-                        <h5 class="text-green-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Hari Ini</h5>
-                        <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($pendapatanHariIni, 0, ',', '.') }}</p>
-                    </div>
-                    <div class="text-4xl opacity-90">💵</div>
+                    <div class="text-4xl opacity-90">🏍️</div>
                 </div>
                 <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
-                    @if($selisihHariIni >= 0)
+                    @if($cmpMotor['is_naik'])
                         <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                        <span>Naik {{ number_format(abs($persenHariIni), 1, ',', '.') }}% (+Rp {{ number_format(abs($selisihHariIni), 0, ',', '.') }})</span>
+                        <span>Naik {{ number_format(abs($cmpMotor['persen']), 1, ',', '.') }}% (+{{ number_format(abs($cmpMotor['selisih']), 0, ',', '.') }} Unit)</span>
                     @else
                         <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                        <span class="text-red-100">Turun {{ number_format(abs($persenHariIni), 1, ',', '.') }}% (-Rp {{ number_format(abs($selisihHariIni), 0, ',', '.') }})</span>
+                        <span class="text-red-100">Turun {{ number_format(abs($cmpMotor['persen']), 1, ',', '.') }}% (-{{ number_format(abs($cmpMotor['selisih']), 0, ',', '.') }} Unit)</span>
                     @endif
                 </div>
             </div>
 
-            <div class="bg-gradient-to-br from-red-500 to-red-700 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
-                <div>
-                    <h5 class="text-indigo-100 text-xs md:text-sm font-bold uppercase tracking-wider">Total Omzet Real (Hari Ini)</h5>
-                    <p class="text-2xl md:text-3xl font-black mt-2">Rp {{ number_format($data['total_pendapatan'] ?? 0, 0, ',', '.') }}</p>
-                </div>
-                <div class="text-4xl opacity-90">💰</div>
-            </div>
-
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden" style="border-radius: 8px;">
+            <div class="bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
-                        <h5 class="text-blue-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Bulan Ini</h5>
-                        <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($pendapatanBulanIni, 0, ',', '.') }}</p>
+                        <h5 class="text-teal-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Sepeda (Hari Ini)</h5>
+                        <p class="text-2xl md:text-3xl font-black">{{ $sepedaHariIni }} <span class="text-sm font-medium text-teal-200">Unit</span></p>
                     </div>
-                    <div class="text-4xl opacity-90">📈</div>
+                    <div class="text-4xl opacity-90">🚲</div>
                 </div>
                 <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
-                    @if($selisihBulanIni >= 0)
+                    @if($cmpSepeda['is_naik'])
                         <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                        <span>Naik {{ number_format(abs($persenBulanIni), 1, ',', '.') }}% (+Rp {{ number_format(abs($selisihBulanIni), 0, ',', '.') }})</span>
+                        <span>Naik {{ number_format(abs($cmpSepeda['persen']), 1, ',', '.') }}% (+{{ number_format(abs($cmpSepeda['selisih']), 0, ',', '.') }} Unit)</span>
                     @else
                         <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                        <span class="text-red-100">Turun {{ number_format(abs($persenBulanIni), 1, ',', '.') }}% (-Rp {{ number_format(abs($selisihBulanIni), 0, ',', '.') }})</span>
+                        <span class="text-red-100">Turun {{ number_format(abs($cmpSepeda['persen']), 1, ',', '.') }}% (-{{ number_format(abs($cmpSepeda['selisih']), 0, ',', '.') }} Unit)</span>
                     @endif
                 </div>
             </div>
 
-        </div>
-
-        <div class="mb-6 mt-12 text-center md:text-left">
-            <h2 class="text-2xl font-bold text-gray-800">Pendapatan Kendaraan (Parkir Saja)</h2>
-            <p class="text-gray-500 text-sm mt-1">Total uang masuk murni dari tiket parkir tanpa tambahan kas operasional.</p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-
-            @php
-                // 1. Membagi data pendapatan 50% (Sistem Bagi Hasil)
-                $pendapatanHariIni = ($data['total_pendapatan'] ?? 0) / 2;
-                $pendapatanKemarin = ($data['pendapatan_kemarin'] ?? 0) / 2;
-                $pendapatanBulanIni = ($data['pendapatan_bulan_ini'] ?? 0) / 2;
-                $pendapatanBulanKemarin = ($data['pendapatan_bulan_kemarin'] ?? 0) / 2;
-
-                // 2. Perhitungan selisih & persentase Harian (Bagi Hasil)
-                $selisihHariIni = $pendapatanHariIni - $pendapatanKemarin;
-                $persenHariIni = $pendapatanKemarin > 0 ? ($selisihHariIni / $pendapatanKemarin) * 100 : ($pendapatanHariIni > 0 ? 100 : 0);
-
-                // 3. Perhitungan selisih & persentase Bulanan (Bagi Hasil)
-                $selisihBulanIni = $pendapatanBulanIni - $pendapatanBulanKemarin;
-                $persenBulanIni = $pendapatanBulanKemarin > 0 ? ($selisihBulanIni / $pendapatanBulanKemarin) * 100 : ($pendapatanBulanIni > 0 ? 100 : 0);
-
-                // 4. Perhitungan Omzet Real (Tanpa dibagi 2)
-                $omzetHariIni = $data['total_pendapatan'] ?? 0;
-                $omzetKemarin = $data['pendapatan_kemarin'] ?? 0;
-                $selisihOmzet = $omzetHariIni - $omzetKemarin;
-                $persenOmzet = $omzetKemarin > 0 ? ($selisihOmzet / $omzetKemarin) * 100 : ($omzetHariIni > 0 ? 100 : 0);
-            @endphp
-
-            <div class="bg-gradient-to-br from-sky-400 to-sky-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
-                <div>
-                    <h5 class="text-sky-100 text-xs md:text-sm font-bold uppercase tracking-wider">Motor (Hari Ini)</h5>
-                    <p class="text-3xl font-black mt-2">{{ $data['motor_masuk'] ?? 0 }} <span class="text-sm font-medium text-sky-200">Unit</span></p>
-                </div>
-                <div class="text-4xl opacity-90">🏍️</div>
-            </div>
-
-            <div class="bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
-                <div>
-                    <h5 class="text-teal-50 text-xs md:text-sm font-bold uppercase tracking-wider">Sepeda (Hari Ini)</h5>
-                    <p class="text-3xl font-black mt-2">{{ $sepedaBiasaHariIni ?? 0 }} <span class="text-sm font-medium text-teal-100">Unit</span></p>
-                </div>
-                <div class="text-4xl opacity-90">🚲</div>
-            </div>
-
-            <div class="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
-                <div>
-                    <h5 class="text-purple-100 text-xs md:text-sm font-bold uppercase tracking-wider">Sepeda Listrik (Hari Ini)</h5>
-                    <p class="text-3xl font-black mt-2">{{ $sepedaListrikHariIni ?? 0 }} <span class="text-sm font-medium text-purple-200">Unit</span></p>
-                </div>
-                <div class="text-4xl opacity-90">⚡</div>
-            </div>
-
-            <div class="bg-gradient-to-br from-rose-400 to-rose-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
-                <div>
-                    <h5 class="text-rose-100 text-xs md:text-sm font-bold uppercase tracking-wider">Pegawai RSUD (Hari Ini)</h5>
-                    <p class="text-3xl font-black mt-2">{{ $pegawaiRsudHariIni ?? 0 }} <span class="text-sm font-medium text-rose-200">Unit</span></p>
-                </div>
-                <div class="text-4xl opacity-90">🏥</div>
-            </div>
-
-            <div class="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
+            <div class="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
-                        <h5 class="text-orange-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Kemarin</h5>
-                        <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($pendapatanKemarin, 0, ',', '.') }}</p>
+                        <h5 class="text-purple-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Sepeda Listrik</h5>
+                        <p class="text-2xl md:text-3xl font-black">{{ $sepedaListrikHariIni }} <span class="text-sm font-medium text-purple-200">Unit</span></p>
                     </div>
-                    <div class="text-4xl opacity-90">⏳</div>
+                    <div class="text-4xl opacity-90">⚡</div>
+                </div>
+                <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
+                    @if($cmpListrik['is_naik'])
+                        <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                        <span>Naik {{ number_format(abs($cmpListrik['persen']), 1, ',', '.') }}% (+{{ number_format(abs($cmpListrik['selisih']), 0, ',', '.') }} Unit)</span>
+                    @else
+                        <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                        <span class="text-red-100">Turun {{ number_format(abs($cmpListrik['persen']), 1, ',', '.') }}% (-{{ number_format(abs($cmpListrik['selisih']), 0, ',', '.') }} Unit)</span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-rose-400 to-rose-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <h5 class="text-rose-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pegawai RSUD</h5>
+                        <p class="text-2xl md:text-3xl font-black">{{ $pegawaiRsudHariIni }} <span class="text-sm font-medium text-rose-200">Unit</span></p>
+                    </div>
+                    <div class="text-4xl opacity-90">🏥</div>
+                </div>
+                <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
+                    @if($cmpRsud['is_naik'])
+                        <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                        <span>Naik {{ number_format(abs($cmpRsud['persen']), 1, ',', '.') }}% (+{{ number_format(abs($cmpRsud['selisih']), 0, ',', '.') }} Unit)</span>
+                    @else
+                        <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                        <span class="text-red-100">Turun {{ number_format(abs($cmpRsud['persen']), 1, ',', '.') }}% (-{{ number_format(abs($cmpRsud['selisih']), 0, ',', '.') }} Unit)</span>
+                    @endif
                 </div>
             </div>
 
             <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
-                        <h5 class="text-green-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Hari Ini</h5>
+                        <h5 class="text-green-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Bersih</h5>
                         <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($pendapatanHariIni, 0, ',', '.') }}</p>
                     </div>
                     <div class="text-4xl opacity-90">💵</div>
                 </div>
                 <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
-                    @if($selisihHariIni >= 0)
+                    @if($cmpPendapatan['is_naik'])
                         <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                        <span>Naik {{ number_format(abs($persenHariIni), 1, ',', '.') }}% (+Rp {{ number_format(abs($selisihHariIni), 0, ',', '.') }})</span>
+                        <span>Naik {{ number_format(abs($cmpPendapatan['persen']), 1, ',', '.') }}% (+Rp {{ number_format(abs($cmpPendapatan['selisih']), 0, ',', '.') }})</span>
                     @else
                         <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                        <span class="text-red-100">Turun {{ number_format(abs($persenHariIni), 1, ',', '.') }}% (-Rp {{ number_format(abs($selisihHariIni), 0, ',', '.') }})</span>
+                        <span class="text-red-100">Turun {{ number_format(abs($cmpPendapatan['persen']), 1, ',', '.') }}% (-Rp {{ number_format(abs($cmpPendapatan['selisih']), 0, ',', '.') }})</span>
                     @endif
                 </div>
             </div>
@@ -249,12 +239,12 @@
                     <div class="text-4xl opacity-90">💰</div>
                 </div>
                 <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
-                    @if($selisihOmzet >= 0)
+                    @if($cmpOmzet['is_naik'])
                         <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                        <span>Naik {{ number_format(abs($persenOmzet), 1, ',', '.') }}% (+Rp {{ number_format(abs($selisihOmzet), 0, ',', '.') }})</span>
+                        <span>Naik {{ number_format(abs($cmpOmzet['persen']), 1, ',', '.') }}% (+Rp {{ number_format(abs($cmpOmzet['selisih']), 0, ',', '.') }})</span>
                     @else
                         <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                        <span class="text-red-100">Turun {{ number_format(abs($persenOmzet), 1, ',', '.') }}% (-Rp {{ number_format(abs($selisihOmzet), 0, ',', '.') }})</span>
+                        <span class="text-red-100">Turun {{ number_format(abs($cmpOmzet['persen']), 1, ',', '.') }}% (-Rp {{ number_format(abs($cmpOmzet['selisih']), 0, ',', '.') }})</span>
                     @endif
                 </div>
             </div>
@@ -262,25 +252,126 @@
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
-                        <h5 class="text-blue-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Bulan Ini</h5>
+                        <h5 class="text-blue-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Pendapatan Bulanan</h5>
                         <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($pendapatanBulanIni, 0, ',', '.') }}</p>
                     </div>
                     <div class="text-4xl opacity-90">📈</div>
                 </div>
                 <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
-                    @if($selisihBulanIni >= 0)
+                    @if($cmpBulan['is_naik'])
                         <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                        <span>Naik {{ number_format(abs($persenBulanIni), 1, ',', '.') }}% (+Rp {{ number_format(abs($selisihBulanIni), 0, ',', '.') }})</span>
+                        <span>Naik {{ number_format(abs($cmpBulan['persen']), 1, ',', '.') }}% (+Rp {{ number_format(abs($cmpBulan['selisih']), 0, ',', '.') }})</span>
                     @else
                         <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                        <span class="text-red-100">Turun {{ number_format(abs($persenBulanIni), 1, ',', '.') }}% (-Rp {{ number_format(abs($selisihBulanIni), 0, ',', '.') }})</span>
+                        <span class="text-red-100">Turun {{ number_format(abs($cmpBulan['persen']), 1, ',', '.') }}% (-Rp {{ number_format(abs($cmpBulan['selisih']), 0, ',', '.') }})</span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <h5 class="text-amber-100 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">Total Gaji Pegawai</h5>
+                        <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($gajiHariIni, 0, ',', '.') }}</p>
+                    </div>
+                    <div class="text-4xl opacity-90">👷</div>
+                </div>
+                <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
+                    @if($cmpGaji['is_naik'])
+                        <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                        <span>Naik {{ number_format(abs($cmpGaji['persen']), 1, ',', '.') }}% (+Rp {{ number_format(abs($cmpGaji['selisih']), 0, ',', '.') }})</span>
+                    @else
+                        <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                        <span class="text-red-100">Turun {{ number_format(abs($cmpGaji['persen']), 1, ',', '.') }}% (-Rp {{ number_format(abs($cmpGaji['selisih']), 0, ',', '.') }})</span>
                     @endif
                 </div>
             </div>
 
         </div>
 
+        <div class="mb-6 mt-12 text-center md:text-left">
+            <h2 class="text-2xl font-bold text-gray-800">Pendapatan Kendaraan (Murni Parkir)</h2>
+            <p class="text-gray-500 text-sm mt-1">Total uang masuk murni dari tiket parkir tanpa tambahan kas operasional.</p>
+        </div>
 
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
+            <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <h5 class="text-indigo-200 text-xs font-bold uppercase tracking-wider mb-1">Parkir (Hari Ini)</h5>
+                        <p class="text-2xl font-black">Rp {{ number_format($parkirHariIni, 0, ',', '.') }}</p>
+                    </div>
+                    <div class="text-4xl opacity-80">🎟️</div>
+                </div>
+                <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
+                    @if($cmpParkirHari['is_naik'])
+                        <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                        <span>Naik {{ number_format(abs($cmpParkirHari['persen']), 1, ',', '.') }}% (+Rp {{ number_format(abs($cmpParkirHari['selisih']), 0, ',', '.') }})</span>
+                    @else
+                        <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                        <span class="text-red-100">Turun {{ number_format(abs($cmpParkirHari['persen']), 1, ',', '.') }}% (-Rp {{ number_format(abs($cmpParkirHari['selisih']), 0, ',', '.') }})</span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <h5 class="text-slate-300 text-xs font-bold uppercase tracking-wider mb-1">Parkir (Kemarin)</h5>
+                        <p class="text-2xl font-black">Rp {{ number_format($parkirKemarin, 0, ',', '.') }}</p>
+                    </div>
+                    <div class="text-4xl opacity-80">📅</div>
+                </div>
+                <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
+                    @if($cmpParkirKemarin['is_naik'])
+                        <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                        <span>Naik {{ number_format(abs($cmpParkirKemarin['persen']), 1, ',', '.') }}% (+Rp {{ number_format(abs($cmpParkirKemarin['selisih']), 0, ',', '.') }})</span>
+                    @else
+                        <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                        <span class="text-red-100">Turun {{ number_format(abs($cmpParkirKemarin['persen']), 1, ',', '.') }}% (-Rp {{ number_format(abs($cmpParkirKemarin['selisih']), 0, ',', '.') }})</span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <h5 class="text-cyan-100 text-xs font-bold uppercase tracking-wider mb-1">Parkir (7 Hari)</h5>
+                        <p class="text-2xl font-black">Rp {{ number_format($parkir7Hari, 0, ',', '.') }}</p>
+                    </div>
+                    <div class="text-4xl opacity-80">📊</div>
+                </div>
+                <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
+                    @if($cmpParkir7['is_naik'])
+                        <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                        <span>Naik {{ number_format(abs($cmpParkir7['persen']), 1, ',', '.') }}% (+Rp {{ number_format(abs($cmpParkir7['selisih']), 0, ',', '.') }})</span>
+                    @else
+                        <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                        <span class="text-red-100">Turun {{ number_format(abs($cmpParkir7['persen']), 1, ',', '.') }}% (-Rp {{ number_format(abs($cmpParkir7['selisih']), 0, ',', '.') }})</span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-fuchsia-500 to-fuchsia-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <h5 class="text-fuchsia-200 text-xs font-bold uppercase tracking-wider mb-1">Parkir (Bulan Ini)</h5>
+                        <p class="text-2xl font-black">Rp {{ number_format($parkirBulanIni, 0, ',', '.') }}</p>
+                    </div>
+                    <div class="text-4xl opacity-80">📅</div>
+                </div>
+                <div class="mt-3 flex items-center text-xs font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
+                    @if($cmpParkirBulan['is_naik'])
+                        <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                        <span>Naik {{ number_format(abs($cmpParkirBulan['persen']), 1, ',', '.') }}% (+Rp {{ number_format(abs($cmpParkirBulan['selisih']), 0, ',', '.') }})</span>
+                    @else
+                        <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                        <span class="text-red-100">Turun {{ number_format(abs($cmpParkirBulan['persen']), 1, ',', '.') }}% (-Rp {{ number_format(abs($cmpParkirBulan['selisih']), 0, ',', '.') }})</span>
+                    @endif
+                </div>
+            </div>
+        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -346,7 +437,6 @@
                 </table>
             </div>
         </div>
-
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
