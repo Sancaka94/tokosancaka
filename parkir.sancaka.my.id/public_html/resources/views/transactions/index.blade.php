@@ -315,26 +315,26 @@
         document.getElementById('label_kendaraan').innerText = jenis;
 
         if (uang > 0 && uang >= tarif) {
-            let unit = uang / tarif;
+            // BULATKAN KE BAWAH agar tidak strict
+            let unit = Math.floor(uang / tarif);
+            let sisaUang = uang - (unit * tarif);
 
-            // Cek apakah angkanya bulat (misal 9000 / 3000 = 3. Pas!)
-            if (Number.isInteger(unit)) {
-                hasilUnitElement.innerText = unit;
-                inputJumlah.value = unit;
-                errorHitung.classList.add('hidden');
-                btnSubmit.disabled = false;
+            hasilUnitElement.innerText = unit;
+            inputJumlah.value = unit;
+            btnSubmit.disabled = false; // Tombol langsung aktif
+
+            // Jika ada sisa uang (tidak pas kelipatan), munculkan sekadar info (bukan error)
+            if (sisaUang > 0) {
+                errorHitung.innerText = "💡 Catatan: Ada sisa/kembalian Rp " + sisaUang.toLocaleString('id-ID');
+                errorHitung.className = "text-amber-600 text-xs font-bold mt-2"; // Ubah warna jadi peringatan kuning/oranye
             } else {
-                // Jika koma (misal 10000 / 3000 = 3.333), munculkan error
-                hasilUnitElement.innerText = "0";
-                inputJumlah.value = 0;
-                errorHitung.classList.remove('hidden');
-                btnSubmit.disabled = true;
+                errorHitung.classList.add('hidden');
             }
         } else {
             hasilUnitElement.innerText = "0";
             inputJumlah.value = 0;
             errorHitung.classList.add('hidden');
-            btnSubmit.disabled = true;
+            btnSubmit.disabled = true; // Kunci tombol jika uang kurang dari 1 tarif
         }
     }
 
