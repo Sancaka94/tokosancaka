@@ -60,36 +60,36 @@
                 $persenBulanIni = $pendapatanBulanKemarin > 0 ? ($selisihBulanIni / $pendapatanBulanKemarin) * 100 : ($pendapatanBulanIni > 0 ? 100 : 0);
             @endphp
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transform transition duration-300 hover:scale-105">
+            <div class="bg-gradient-to-br from-sky-400 to-sky-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
                 <div>
-                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Motor (Hari Ini)</h5>
-                    <p class="text-3xl font-black text-gray-800 mt-2">{{ $data['motor_masuk'] ?? 0 }} <span class="text-sm font-medium text-gray-500">Unit</span></p>
+                    <h5 class="text-sky-100 text-xs md:text-sm font-bold uppercase tracking-wider">Motor (Hari Ini)</h5>
+                    <p class="text-3xl font-black mt-2">{{ $data['motor_masuk'] ?? 0 }} <span class="text-sm font-medium text-sky-200">Unit</span></p>
                 </div>
-                <div class="text-4xl opacity-80">🏍️</div>
+                <div class="text-4xl opacity-90">🏍️</div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transform transition duration-300 hover:scale-105">
+            <div class="bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
                 <div>
-                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Sepeda (Hari Ini)</h5>
-                    <p class="text-3xl font-black text-gray-800 mt-2">{{ $sepedaBiasaHariIni ?? 0 }} <span class="text-sm font-medium text-gray-500">Unit</span></p>
+                    <h5 class="text-teal-50 text-xs md:text-sm font-bold uppercase tracking-wider">Sepeda (Hari Ini)</h5>
+                    <p class="text-3xl font-black mt-2">{{ $sepedaBiasaHariIni ?? 0 }} <span class="text-sm font-medium text-teal-100">Unit</span></p>
                 </div>
-                <div class="text-4xl opacity-80">🚲</div>
+                <div class="text-4xl opacity-90">🚲</div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transform transition duration-300 hover:scale-105">
+            <div class="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
                 <div>
-                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Sepeda Listrik (Hari Ini)</h5>
-                    <p class="text-3xl font-black text-gray-800 mt-2">{{ $sepedaListrikHariIni ?? 0 }} <span class="text-sm font-medium text-gray-500">Unit</span></p>
+                    <h5 class="text-purple-100 text-xs md:text-sm font-bold uppercase tracking-wider">Sepeda Listrik (Hari Ini)</h5>
+                    <p class="text-3xl font-black mt-2">{{ $sepedaListrikHariIni ?? 0 }} <span class="text-sm font-medium text-purple-200">Unit</span></p>
                 </div>
-                <div class="text-4xl opacity-80">⚡</div>
+                <div class="text-4xl opacity-90">⚡</div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transform transition duration-300 hover:scale-105">
+            <div class="bg-gradient-to-br from-rose-400 to-rose-600 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
                 <div>
-                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Pegawai RSUD (Hari Ini)</h5>
-                    <p class="text-3xl font-black text-gray-800 mt-2">{{ $pegawaiRsudHariIni ?? 0 }} <span class="text-sm font-medium text-gray-500">Unit</span></p>
+                    <h5 class="text-rose-100 text-xs md:text-sm font-bold uppercase tracking-wider">Pegawai RSUD (Hari Ini)</h5>
+                    <p class="text-3xl font-black mt-2">{{ $pegawaiRsudHariIni ?? 0 }} <span class="text-sm font-medium text-rose-200">Unit</span></p>
                 </div>
-                <div class="text-4xl opacity-80">🏥</div>
+                <div class="text-4xl opacity-90">🏥</div>
             </div>
 
             <div class="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden" style="border-radius: 8px;">
@@ -121,14 +121,12 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transform transition duration-300 hover:scale-105">
+            <div class="bg-gradient-to-br from-red-500 to-red-700 rounded-xl shadow-md p-6 flex items-center justify-between text-white transform transition duration-300 hover:scale-105">
                 <div>
-                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Total Omzet Real (Hari Ini)</h5>
-                    <p class="text-2xl md:text-3xl font-black text-indigo-600 mt-2">
-                        Rp {{ number_format($data['total_pendapatan'] ?? 0, 0, ',', '.') }}
-                    </p>
+                    <h5 class="text-indigo-100 text-xs md:text-sm font-bold uppercase tracking-wider">Total Omzet Real (Hari Ini)</h5>
+                    <p class="text-2xl md:text-3xl font-black mt-2">Rp {{ number_format($data['total_pendapatan'] ?? 0, 0, ',', '.') }}</p>
                 </div>
-                <div class="text-4xl opacity-80">💰</div>
+                <div class="text-4xl opacity-90">💰</div>
             </div>
 
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden" style="border-radius: 8px;">
