@@ -306,4 +306,40 @@ class TransactionController extends Controller
         return redirect()->route('transactions.index')->with('success', "Berhasil mengeluarkan $jumlahKendaraan kendaraan. Pendapatan bertambah: Rp " . number_format($totalPendapatan, 0, ',', '.'));
     }
 
+    // ==========================================
+    // FUNGSI BARU: Simpan Rapel via Total Uang
+    // ==========================================
+    public function storeRapel(Request $request)
+    {
+        $request->validate([
+            'vehicle_type'     => 'required|in:motor,mobil',
+            'total_uang'       => 'required|numeric|min:3000',
+            'jumlah_kendaraan' => 'required|numeric|min:1',
+        ]);
+
+        $jumlah = $request->jumlah_kendaraan;
+        $tarif = ($request->vehicle_type == 'motor') ? 3000 : 5000;
+
+        $now = \Carbon\Carbon::now();
+        $tenantId = auth()->user()->tenant_id;
+        $operatorId = auth()->id();
+
+        // Lakukan looping sebanyak unit kendaraan
+        for ($i = 0; $i < $jumlah; $i++) {
+            Transaction::create([
+                'tenant_id'    => $tenantId,
+                'operator_id'  => $operatorId,
+                'vehicle_type' => $request->vehicle_type,
+                'plate_number' => 'RPL-' . rand(10000, 99999), // Plat Random Khusus Rapel
+                'entry_time'   => $now,
+                'exit_time'    => $now, // Langsung dianggap keluar
+                'fee'          => $tarif, // Tarif sesuai standar
+                'status'       => 'keluar',
+            ]);
+        }
+
+        return redirect()->route('transactions.index')->with(
+            'success', "Berhasil mencatat $jumlah unit " . ucfirst($request->vehicle_type) . " (Total Rp " . number_format($request->total_uang, 0, ',', '.') . ")."
+        );
+    }
 }

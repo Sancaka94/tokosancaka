@@ -41,10 +41,15 @@
                        oninput="this.value = this.value.toUpperCase()">
             </div>
 
-            <div class="w-full md:w-1/4 mt-2 md:mt-0">
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-5 md:py-3 px-4 rounded-xl shadow-lg flex justify-center items-center gap-3 transition-transform active:scale-95" tabindex="3">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                    <span class="font-black text-2xl md:text-xl uppercase tracking-wider">CETAK</span>
+            <div class="w-full md:w-1/4 mt-2 md:mt-0 flex flex-col gap-2">
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-4 md:py-3 px-4 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-transform active:scale-95" tabindex="3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    <span class="font-black text-xl uppercase tracking-wider">CETAK</span>
+                </button>
+
+                <button type="button" onclick="openRapelModal()" class="w-full bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white py-2 px-4 rounded-lg shadow flex justify-center items-center gap-2 transition-transform active:scale-95">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span class="font-bold text-sm">Input Dana</span>
                 </button>
             </div>
         </form>
@@ -275,5 +280,96 @@
     function onScanFailure(error) {
         // Abaikan agar console tidak penuh
     }
+
+    // --- Logika Modal Rapel Uang ---
+    function openRapelModal() {
+        document.getElementById('rapelModal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('rapel_total_uang').focus(), 100);
+    }
+
+    function closeRapelModal() {
+        document.getElementById('rapelModal').classList.add('hidden');
+    }
+
+    function hitungOtomatis() {
+        let select = document.getElementById('rapel_vehicle_type');
+        let tarif = parseInt(select.options[select.selectedIndex].getAttribute('data-tarif'));
+        let jenis = select.options[select.selectedIndex].text.split(' ')[1]; // Ambil kata Motor/Mobil
+        let uangInput = document.getElementById('rapel_total_uang').value;
+        let uang = uangInput ? parseInt(uangInput) : 0;
+
+        let hasilUnitElement = document.getElementById('hasil_unit');
+        let errorHitung = document.getElementById('error_hitung');
+        let btnSubmit = document.getElementById('btnSubmitRapel');
+        let inputJumlah = document.getElementById('rapel_jumlah_kendaraan');
+
+        document.getElementById('label_kendaraan').innerText = jenis;
+
+        if (uang > 0 && uang >= tarif) {
+            let unit = uang / tarif;
+
+            // Cek apakah angkanya bulat (misal 9000 / 3000 = 3. Pas!)
+            if (Number.isInteger(unit)) {
+                hasilUnitElement.innerText = unit;
+                inputJumlah.value = unit;
+                errorHitung.classList.add('hidden');
+                btnSubmit.disabled = false;
+            } else {
+                // Jika koma (misal 10000 / 3000 = 3.333), munculkan error
+                hasilUnitElement.innerText = "0";
+                inputJumlah.value = 0;
+                errorHitung.classList.remove('hidden');
+                btnSubmit.disabled = true;
+            }
+        } else {
+            hasilUnitElement.innerText = "0";
+            inputJumlah.value = 0;
+            errorHitung.classList.add('hidden');
+            btnSubmit.disabled = true;
+        }
+    }
+
 </script>
+
+<div id="rapelModal" class="fixed inset-0 z-[100] hidden bg-gray-900 bg-opacity-80 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+            <h3 class="font-black text-lg text-gray-800 flex items-center gap-2">
+                <span>💰</span> Input Kendaraan via Total Uang
+            </h3>
+            <button type="button" onclick="closeRapelModal()" class="text-red-500 hover:bg-red-100 p-2 rounded-lg font-bold text-xl transition-colors leading-none">&times;</button>
+        </div>
+
+        <form action="{{ route('transactions.storeRapel') }}" method="POST" class="p-5">
+            @csrf
+            <div class="mb-4">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Jenis Kendaraan & Tarif</label>
+                <select name="vehicle_type" id="rapel_vehicle_type" onchange="hitungOtomatis()" class="form-control w-full bg-white shadow-sm py-3 rounded-lg border-gray-300 focus:border-emerald-500 font-bold" required>
+                    <option value="motor" data-tarif="3000">🏍️ Motor (Rp 3.000 / unit)</option>
+                    <option value="mobil" data-tarif="5000">🚗 Mobil (Rp 5.000 / unit)</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Total Uang Diterima (Rp)</label>
+                <input type="number" name="total_uang" id="rapel_total_uang" oninput="hitungOtomatis()" class="form-control w-full text-2xl font-black text-center py-3 rounded-lg border-2 border-emerald-300 focus:border-emerald-500 focus:ring-emerald-500" placeholder="Misal: 9000" required>
+            </div>
+
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-5 text-center">
+                <p class="text-emerald-800 text-sm font-bold mb-1">Sistem akan memasukkan otomatis:</p>
+                <div class="text-4xl font-black text-emerald-600">
+                    <span id="hasil_unit">0</span> <span class="text-lg text-emerald-700 font-bold">Unit <span id="label_kendaraan">Motor</span></span>
+                </div>
+                <p id="error_hitung" class="text-red-500 text-xs font-bold mt-2 hidden">⚠️ Jumlah uang tidak pas dengan kelipatan tarif!</p>
+            </div>
+
+            <input type="hidden" name="jumlah_kendaraan" id="rapel_jumlah_kendaraan" value="0">
+
+            <button type="submit" id="btnSubmitRapel" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-black text-lg shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                SIMPAN DATA RAPEL
+            </button>
+        </form>
+    </div>
+</div>
+
 @endsection
