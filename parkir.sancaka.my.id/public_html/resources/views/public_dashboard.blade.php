@@ -239,7 +239,7 @@
             <div class="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
-                        <h5 class="text-orange-100 text-xs font-bold uppercase tracking-wider mb-1">Pendapatan Kemarin</h5>
+                        <h5 class="text-orange-100 text-xs font-bold uppercase tracking-wider mb-1">Profit Kemarin</h5>
                         <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($pendapatanKemarin, 0, ',', '.') }}</p>
                     </div>
                     <div class="text-4xl opacity-90">⏳</div>
@@ -260,7 +260,7 @@
             <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
-                        <h5 class="text-green-100 text-xs font-bold uppercase tracking-wider mb-1">Pendapatan Hari Ini</h5>
+                        <h5 class="text-green-100 text-xs font-bold uppercase tracking-wider mb-1">Profit Hari Ini</h5>
                         <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($pendapatanHariIni, 0, ',', '.') }}</p>
                     </div>
                     <div class="text-4xl opacity-90">💵</div>
@@ -281,7 +281,7 @@
             <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
-                        <h5 class="text-red-100 text-xs font-bold uppercase tracking-wider mb-1">Total Omzet Real</h5>
+                        <h5 class="text-red-100 text-xs font-bold uppercase tracking-wider mb-1">Omzet Hari Ini</h5>
                         <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($omzetHariIni, 0, ',', '.') }}</p>
                     </div>
                     <div class="text-4xl opacity-90">💰</div>
@@ -302,7 +302,7 @@
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
-                        <h5 class="text-blue-100 text-xs font-bold uppercase tracking-wider mb-1">Pendapatan Bulan Ini</h5>
+                        <h5 class="text-blue-100 text-xs font-bold uppercase tracking-wider mb-1">Profit Bulan Ini</h5>
                         <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($pendapatanBulanIni, 0, ',', '.') }}</p>
                     </div>
                     <div class="text-4xl opacity-90">📈</div>
@@ -323,7 +323,7 @@
         </div>
 
         <div class="mb-6 mt-12 text-center md:text-left">
-            <h2 class="text-2xl font-bold text-gray-800">Pendapatan Kendaraan (Murni Parkir)</h2>
+            <h2 class="text-2xl font-bold text-gray-800">Profit Kendaraan (Murni Parkir)</h2>
             <p class="text-gray-500 text-sm mt-1">Total uang masuk murni dari tiket parkir tanpa tambahan kas operasional.</p>
         </div>
 
