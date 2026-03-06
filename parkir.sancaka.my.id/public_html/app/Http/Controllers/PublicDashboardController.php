@@ -202,6 +202,65 @@ class PublicDashboardController extends Controller
             ->orderBy(DB::raw('DATE(entry_time)'), 'desc')
             ->paginate(10, ['*'], 'revenue_page');
 
+        // =========================================================
+        // TAMBAHAN: REKAPITULASI GAJI HARIAN PER PEGAWAI
+        // =========================================================
+
+        // Ambil data pendapatan kotor per hari (Parkir + Kas Masuk)
+        $daily_revenues = Transaction::select(
+                DB::raw('DATE(entry_time) as tanggal'),
+                DB::raw('SUM((CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) + IFNULL(toilet_fee, 0)) as total_parkir')
+            )
+            ->groupBy(DB::raw('DATE(entry_time)'))
+            ->orderBy(DB::raw('DATE(entry_time)'), 'desc')
+            ->limit(10) // Tampilkan 10 hari terakhir
+            ->get();
+
+        $riwayat_gaji = [];
+
+        foreach ($daily_revenues as $rev) {
+            $tgl = $rev->tanggal;
+
+            // Tambahkan Kas Masuk manual di hari itu (jika ada)
+            $kasMasukHarian = FinancialReport::whereDate('tanggal', $tgl)
+                                ->where('jenis', 'pemasukan')
+                                ->sum('nominal');
+
+            $pendapatanKotorHarian = $rev->total_parkir + $kasMasukHarian;
+
+            $gaji_per_pegawai = [];
+            foreach ($operators as $op) {
+                // Cek apakah hari itu sudah diinput manual di Kas?
+                $gajiManual = FinancialReport::whereDate('tanggal', $tgl)
+                    ->where('kategori', 'Gaji Pegawai')
+                    ->where('keterangan', 'like', '%' . $op->name . '%')
+                    ->sum('nominal');
+
+                if ($gajiManual > 0) {
+                    $earned = $gajiManual;
+                    $status = 'Manual';
+                } else {
+                    if ($op->salary_type == 'percentage') {
+                        $earned = ($op->salary_amount / 100) * $pendapatanKotorHarian;
+                        $status = 'Otomatis';
+                    } else {
+                        $earned = $op->salary_amount;
+                        $status = 'Otomatis';
+                    }
+                }
+
+                $gaji_per_pegawai[$op->name] = [
+                    'earned' => $earned,
+                    'status' => $status
+                ];
+            }
+
+            $riwayat_gaji[] = (object)[
+                'tanggal' => $tgl,
+                'pendapatan_kotor' => $pendapatanKotorHarian,
+                'gaji_pegawai' => $gaji_per_pegawai
+            ];
+        }
 
         // =========================================================
         // 8. RETURN VIEW
@@ -209,7 +268,7 @@ class PublicDashboardController extends Controller
         return view('public_dashboard', compact(
             'data', 'chartData', 'recent_transactions', 'revenue_transactions',
             'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas', 'recent_financials', 'employeeSalaries',
-            'sepedaBiasaHariIni', 'sepedaListrikHariIni', 'pegawaiRsudHariIni' // <-- Variabel baru ditambahkan di sini
+            'sepedaBiasaHariIni', 'sepedaListrikHariIni', 'pegawaiRsudHariIni', 'riwayat_gaji' // <-- Variabel baru ditambahkan di sini
         ));
     }
 }
