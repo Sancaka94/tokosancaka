@@ -31,7 +31,7 @@ class PublicDashboardController extends Controller
         // Hari Ini
         $parkirHariIni = Transaction::whereDate('entry_time', $today)->sum($rumusTarif);
         $kasMasukHariIni = FinancialReport::whereDate('tanggal', $today)
-                                   ->where('jenis', 'pemasukan')->sum('nominal');
+                                    ->where('jenis', 'pemasukan')->sum('nominal');
         $kasKeluarHariIni = FinancialReport::whereDate('tanggal', $today)
                                     ->where('jenis', 'pengeluaran')->sum('nominal');
 
@@ -41,7 +41,7 @@ class PublicDashboardController extends Controller
         // Kemarin
         $parkirKemarin = Transaction::whereDate('entry_time', $yesterday)->sum($rumusTarif);
         $kasMasukKemarin = FinancialReport::whereDate('tanggal', $yesterday)
-                                   ->where('jenis', 'pemasukan')->sum('nominal');
+                                    ->where('jenis', 'pemasukan')->sum('nominal');
         $kasKeluarKemarin = FinancialReport::whereDate('tanggal', $yesterday)
                                     ->where('jenis', 'pengeluaran')->sum('nominal');
 
@@ -53,6 +53,21 @@ class PublicDashboardController extends Controller
             'total_pendapatan' => $pendapatanBersihHariIni,
             'pendapatan_kemarin' => $pendapatanBersihKemarin,
         ];
+
+        // =========================================================
+        // TAMBAHAN: HITUNG SEPEDA & PEGAWAI RSUD HARI INI
+        // =========================================================
+        $sepedaBiasaHariIni = Transaction::whereDate('entry_time', $today)
+                                ->where('plate_number', 'LIKE', 'SPD-%')
+                                ->count();
+
+        $sepedaListrikHariIni = Transaction::whereDate('entry_time', $today)
+                                ->where('plate_number', 'LIKE', 'SPL-%')
+                                ->count();
+
+        $pegawaiRsudHariIni = Transaction::whereDate('entry_time', $today)
+                                ->where('plate_number', 'LIKE', 'RSUD-%')
+                                ->count();
 
         // =========================================================
         // 2. PENDAPATAN BULAN INI & BULAN KEMARIN
@@ -193,7 +208,8 @@ class PublicDashboardController extends Controller
         // =========================================================
         return view('public_dashboard', compact(
             'data', 'chartData', 'recent_transactions', 'revenue_transactions',
-            'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas', 'recent_financials', 'employeeSalaries'
+            'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas', 'recent_financials', 'employeeSalaries',
+            'sepedaBiasaHariIni', 'sepedaListrikHariIni', 'pegawaiRsudHariIni' // <-- Variabel baru ditambahkan di sini
         ));
     }
 }
