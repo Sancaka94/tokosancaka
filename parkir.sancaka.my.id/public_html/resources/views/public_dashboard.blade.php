@@ -496,6 +496,63 @@
             @endforelse
         </div>
 
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-12">
+            <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-gray-700 text-sm">Riwayat Gaji Pegawai Per Hari</h3>
+                <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-semibold">10 Hari Terakhir</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr class="bg-white">
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Total Pendapatan Kotor</th>
+
+                            @if(isset($operators) && count($operators) > 0)
+                                @foreach($operators as $op)
+                                    <th class="px-6 py-4 text-right text-xs font-bold text-indigo-600 uppercase tracking-wider">{{ $op->name }}</th>
+                                @endforeach
+                            @endif
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        @forelse($riwayat_gaji ?? [] as $rg)
+                            <tr class="hover:bg-gray-50 transition duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-bold">
+                                    {{ \Carbon\Carbon::parse($rg->tanggal)->translatedFormat('d F Y') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
+                                    <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded border border-emerald-100">
+                                        Rp {{ number_format($rg->pendapatan_kotor, 0, ',', '.') }}
+                                    </span>
+                                </td>
+
+                                @if(isset($operators) && count($operators) > 0)
+                                    @foreach($operators as $op)
+                                        <td class="px-6 py-4 whitespace-nowrap text-right font-black text-gray-700 text-base">
+                                            @if(isset($rg->gaji_pegawai[$op->name]))
+                                                Rp {{ number_format($rg->gaji_pegawai[$op->name]['earned'], 0, ',', '.') }}
+
+                                                @if($rg->gaji_pegawai[$op->name]['status'] == 'Manual')
+                                                    <span class="block text-[9px] text-orange-500 uppercase mt-0.5">Edit Manual</span>
+                                                @endif
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                    @endforeach
+                                @endif
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="100%" class="px-6 py-8 text-center text-gray-400 italic">Belum ada riwayat gaji terekam.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
