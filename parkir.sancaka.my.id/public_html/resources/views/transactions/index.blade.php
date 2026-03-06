@@ -351,6 +351,12 @@
 
         <form action="{{ route('transactions.storeRapel') }}" method="POST" class="p-5">
             @csrf
+
+            <div class="mb-4">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Tanggal Transaksi</label>
+                <input type="date" name="tanggal_rapel" id="rapel_tanggal" class="form-control w-full py-3 text-center rounded-lg border-2 border-emerald-100 focus:border-emerald-500 font-bold text-gray-700" value="{{ date('Y-m-d') }}" required>
+            </div>
+
             <div class="mb-4">
                 <label class="block text-sm font-bold text-gray-700 mb-2">Jenis Kendaraan & Tarif</label>
                 <select name="vehicle_type" id="rapel_vehicle_type" onchange="hitungOtomatis()" class="form-control w-full bg-white shadow-sm py-3 rounded-lg border-gray-300 focus:border-emerald-500 font-bold" required>
