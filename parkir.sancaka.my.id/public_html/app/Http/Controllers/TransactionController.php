@@ -342,4 +342,31 @@ class TransactionController extends Controller
             'success', "Berhasil mencatat $jumlah unit " . ucfirst($request->vehicle_type) . " (Total Rp " . number_format($request->total_uang, 0, ',', '.') . ")."
         );
     }
+
+    // ==========================================
+    // FUNGSI BARU: Hapus Semua Transaksi Berdasarkan Tanggal
+    // ==========================================
+    public function destroyAllByDate(Request $request)
+    {
+        // 1. Proteksi: Operator dilarang menghapus massal
+        if (auth()->user()->role == 'operator') {
+            abort(403, 'Operator tidak memiliki izin untuk menghapus histori parkir secara massal.');
+        }
+
+        // 2. Validasi Input Tanggal
+        $request->validate(['delete_date' => 'required|date']);
+        $tanggal = $request->delete_date;
+
+        // 3. Eksekusi Hapus Data
+        $deletedCount = Transaction::whereDate('entry_time', $tanggal)->delete();
+
+        // 4. Return Notifikasi
+        $formatTgl = \Carbon\Carbon::parse($tanggal)->translatedFormat('d F Y');
+
+        if ($deletedCount > 0) {
+            return redirect()->route('transactions.index')->with('success', "BERHASIL: $deletedCount data transaksi parkir pada tanggal $formatTgl telah dihapus permanen.");
+        } else {
+            return redirect()->back()->with('error', "Tidak ada data transaksi parkir pada tanggal $formatTgl untuk dihapus.");
+        }
+    }
 }
