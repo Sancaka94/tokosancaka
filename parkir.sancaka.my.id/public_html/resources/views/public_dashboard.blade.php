@@ -593,6 +593,7 @@
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal</th>
                             <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Total Kendaraan Keluar</th>
                             <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Total Omzet (Rp)</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-indigo-600 uppercase tracking-wider">Total Profit (50%)</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-100">
@@ -606,13 +607,16 @@
                                         {{ $trx->total_kendaraan }} Unit
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right font-black text-indigo-600 text-base md:text-lg">
+                                <td class="px-6 py-4 whitespace-nowrap text-right font-bold text-gray-600 text-base">
                                     Rp {{ number_format($trx->total_omzet, 0, ',', '.') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right font-black text-indigo-600 text-base md:text-lg bg-indigo-50/30">
+                                    Rp {{ number_format($trx->total_omzet / 2, 0, ',', '.') }}
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="3" class="px-6 py-8 text-center text-gray-400 italic">Belum ada pendapatan parkir terekam.</td>
+                                <td colspan="4" class="px-6 py-8 text-center text-gray-400 italic">Belum ada pendapatan parkir terekam.</td>
                             </tr>
                         @endforelse
                     </tbody>
