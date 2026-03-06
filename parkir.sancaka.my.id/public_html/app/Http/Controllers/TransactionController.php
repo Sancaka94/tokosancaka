@@ -306,22 +306,27 @@ class TransactionController extends Controller
         return redirect()->route('transactions.index')->with('success', "Berhasil mengeluarkan $jumlahKendaraan kendaraan. Pendapatan bertambah: Rp " . number_format($totalPendapatan, 0, ',', '.'));
     }
 
-    // ==========================================
+   // ==========================================
     // FUNGSI BARU: Simpan Rapel via Total Uang
     // ==========================================
     public function storeRapel(Request $request)
     {
+        // Tambahkan validasi untuk tanggal_rapel
         $request->validate([
             'vehicle_type'     => 'required|in:motor,mobil',
             'total_uang'       => 'required|numeric|min:3000',
             'jumlah_kendaraan' => 'required|numeric|min:1',
+            'tanggal_rapel'    => 'required|date',
         ]);
 
         $jumlah = $request->jumlah_kendaraan;
         $tarif = ($request->vehicle_type == 'motor') ? 3000 : 5000;
 
-        $now = \Carbon\Carbon::now();
-        $tenantId = auth()->user()->tenant_id;
+        // Ambil tanggal dari form, tapi gunakan jam saat ini agar data rapi di database
+        $tanggalInput = \Carbon\Carbon::parse($request->tanggal_rapel);
+        $waktuRecord = $tanggalInput->setTime(now()->hour, now()->minute, now()->second);
+
+        $tenantId = auth()->user()->tenant_id ?? null;
         $operatorId = auth()->id();
 
         // Lakukan looping sebanyak unit kendaraan
@@ -331,15 +336,17 @@ class TransactionController extends Controller
                 'operator_id'  => $operatorId,
                 'vehicle_type' => $request->vehicle_type,
                 'plate_number' => 'RPL-' . rand(10000, 99999), // Plat Random Khusus Rapel
-                'entry_time'   => $now,
-                'exit_time'    => $now, // Langsung dianggap keluar
+                'entry_time'   => $waktuRecord,
+                'exit_time'    => $waktuRecord, // Langsung dianggap keluar
                 'fee'          => $tarif, // Tarif sesuai standar
                 'status'       => 'keluar',
             ]);
         }
 
+        $formatTgl = $tanggalInput->translatedFormat('d F Y');
+
         return redirect()->route('transactions.index')->with(
-            'success', "Berhasil mencatat $jumlah unit " . ucfirst($request->vehicle_type) . " (Total Rp " . number_format($request->total_uang, 0, ',', '.') . ")."
+            'success', "Berhasil mencatat $jumlah unit " . ucfirst($request->vehicle_type) . " untuk tanggal $formatTgl (Total Rp " . number_format($request->total_uang, 0, ',', '.') . ")."
         );
     }
 
