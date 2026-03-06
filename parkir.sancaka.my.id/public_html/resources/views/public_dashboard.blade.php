@@ -121,6 +121,16 @@
                 </div>
             </div>
 
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between transform transition duration-300 hover:scale-105">
+                <div>
+                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Total Omzet Real (Hari Ini)</h5>
+                    <p class="text-2xl md:text-3xl font-black text-indigo-600 mt-2">
+                        Rp {{ number_format($data['total_pendapatan'] ?? 0, 0, ',', '.') }}
+                    </p>
+                </div>
+                <div class="text-4xl opacity-80">💰</div>
+            </div>
+
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden" style="border-radius: 8px;">
                 <div class="flex items-center justify-between z-10">
                     <div>
