@@ -434,6 +434,24 @@
             </div>
         </div>
 
+        @php
+            // ENGINE HITUNG TOTAL BULAN INI (Dijalankan otomatis)
+            $bulanSekarang = date('m');
+            $tahunSekarang = date('Y');
+            $hariBerjalan = date('j'); // Tanggal hari ini (misal tgl 6 = 6 hari berjalan)
+
+            $parkirBln = \App\Models\Transaction::whereMonth('entry_time', $bulanSekarang)
+                            ->whereYear('entry_time', $tahunSekarang)
+                            ->sum(\Illuminate\Support\Facades\DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) + IFNULL(toilet_fee, 0)'));
+
+            $kasBln = \App\Models\FinancialReport::whereMonth('tanggal', $bulanSekarang)
+                            ->whereYear('tanggal', $tahunSekarang)
+                            ->where('jenis', 'pemasukan')
+                            ->sum('nominal');
+
+            $kotorBulanIni = $parkirBln + $kasBln;
+        @endphp
+
         <div class="mb-6 mt-12 flex justify-between items-end">
             <div>
                 <h2 class="text-2xl font-bold text-gray-800">Estimasi Gaji Pegawai (Hari Ini)</h2>
@@ -453,6 +471,9 @@
                         'text-rose-600 bg-rose-100'
                     ];
                     $color = $colors[$index % 4];
+
+                    // Hitung Total Gaji 1 Bulan Ini
+                    $totalBulanIni = $op->type == 'percentage' ? ($op->amount / 100) * $kotorBulanIni : $op->amount * $hariBerjalan;
                 @endphp
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col relative overflow-hidden transform transition duration-300 hover:scale-105 hover:shadow-lg">
                     <div class="flex items-start gap-4 mb-4">
@@ -460,14 +481,17 @@
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                         </div>
                         <div>
-                            <h4 class="font-bold text-gray-800 text-lg">{{ $op->name }}</h4>
-                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full {{ $op->type == 'percentage' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'bg-green-50 text-green-600 border border-green-100' }}">
+                            <p class="text-[10px] text-gray-500 font-bold uppercase mb-0.5 tracking-wider">Total 1 Bln: <span class="text-indigo-600 font-black">Rp {{ number_format($totalBulanIni, 0, ',', '.') }}</span></p>
+
+                            <h4 class="font-bold text-gray-800 text-lg leading-none mb-1.5">{{ $op->name }}</h4>
+
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full {{ $op->type == 'percentage' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'bg-green-50 text-green-600 border border-green-100' }}">
                                 {{ $op->type == 'percentage' ? 'Bagi Hasil ('.(float)$op->amount.'%)' : 'Flat' }}
                             </span>
                         </div>
                     </div>
-                    <div>
-                        <p class="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-1">Estimasi Diterima</p>
+                    <div class="mt-2">
+                        <p class="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-1">Estimasi Diterima (Hari Ini)</p>
                         <p class="text-2xl font-black text-gray-800">Rp {{ number_format($op->gaji_hari_ini, 0, ',', '.') }}</p>
                     </div>
 
@@ -494,6 +518,71 @@
                     Belum ada data pegawai yang terdaftar.
                 </div>
             @endforelse
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-12">
+            <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-gray-700 text-sm">Riwayat Gaji Pegawai Per Hari</h3>
+                <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-semibold">10 Hari Terakhir</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr class="bg-white">
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Pendapatan Kotor</th>
+
+                            @if(isset($operators) && count($operators) > 0)
+                                @foreach($operators as $pegawai)
+                                    @php
+                                        $totalBulanIniTabel = $pegawai->salary_type == 'percentage' ? ($pegawai->salary_amount / 100) * $kotorBulanIni : $pegawai->salary_amount * $hariBerjalan;
+                                    @endphp
+                                    <th class="px-6 py-4 text-right tracking-wider border-l border-gray-100">
+                                        <span class="block text-[10px] text-gray-400 font-bold uppercase mb-1">
+                                            Total 1 Bln: <span class="text-emerald-500 font-black">Rp {{ number_format($totalBulanIniTabel, 0, ',', '.') }}</span>
+                                        </span>
+                                        <span class="block text-xs font-black text-indigo-600 uppercase">{{ $pegawai->name }}</span>
+                                    </th>
+                                @endforeach
+                            @endif
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        @forelse($riwayat_gaji ?? [] as $rg)
+                            <tr class="hover:bg-gray-50 transition duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-bold">
+                                    {{ \Carbon\Carbon::parse($rg->tanggal)->translatedFormat('d M Y') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
+                                    <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded border border-emerald-100">
+                                        Rp {{ number_format($rg->pendapatan_kotor, 0, ',', '.') }}
+                                    </span>
+                                </td>
+
+                                @if(isset($operators) && count($operators) > 0)
+                                    @foreach($operators as $pegawai)
+                                        <td class="px-6 py-4 whitespace-nowrap text-right font-black text-gray-700 text-base border-l border-gray-100">
+                                            @if(isset($rg->gaji_pegawai[$pegawai->name]))
+                                                Rp {{ number_format($rg->gaji_pegawai[$pegawai->name]['earned'], 0, ',', '.') }}
+
+                                                @if($rg->gaji_pegawai[$pegawai->name]['status'] == 'Manual')
+                                                    <span class="block text-[9px] text-orange-500 uppercase mt-0.5">Edit Manual</span>
+                                                @endif
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                    @endforeach
+                                @endif
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="100%" class="px-6 py-8 text-center text-gray-400 italic">Belum ada riwayat gaji terekam.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-12">
