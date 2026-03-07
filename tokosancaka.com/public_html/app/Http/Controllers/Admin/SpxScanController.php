@@ -680,19 +680,26 @@ class SpxScanController extends Controller
 
     }
 
-    /**
+   /**
      * [BARU] Mengupdate status resi menjadi sudah dicopy (is_copied = true)
      */
     public function markAsCopied($id)
     {
+        \Illuminate\Support\Facades\Log::info("LOG LOG: Request masuk ke markAsCopied untuk ID: {$id}");
+
         try {
-            // Menggunakan model SpxScan sesuai dengan file Model Anda
             $scan = \App\Models\SpxScan::findOrFail($id);
+            \Illuminate\Support\Facades\Log::info("LOG LOG: Data ditemukan. Status is_copied sebelum: {$scan->is_copied}");
+
             $scan->is_copied = true;
             $scan->save();
 
+            \Illuminate\Support\Facades\Log::info("LOG LOG: Data berhasil disimpan. Status is_copied sesudah: {$scan->is_copied}");
+
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG LOG: Terjadi error di markAsCopied: " . $e->getMessage());
+            
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }

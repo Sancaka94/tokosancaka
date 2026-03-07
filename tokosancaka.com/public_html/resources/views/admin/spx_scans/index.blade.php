@@ -89,7 +89,7 @@
                             </td>
                             {{-- KOLOM STATUS COPAS --}}
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm" id="status-copas-{{ $scan->id }}">
-                                ($scan->is_copied)
+                                @if($scan->is_copied)
                                     <span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> Copied</span>
                                 @else
                                     <span class="text-gray-400"><i class="fas fa-minus"></i> Belum</span>
@@ -143,39 +143,48 @@
 </div>
 
 <script>
-    // Update JS function untuk menerima scan.id dan kirim AJAX
     function copyResi(text, id) {
-        let iconId = 'icon-copy-' + id;
+        console.log('LOG LOG: Fungsi copyResi dipanggil. Text:', text, 'ID:', id);
 
-        // Eksekusi copy ke clipboard
+        let iconId = 'icon-copy-' + id;
+        
         navigator.clipboard.writeText(text).then(function() {
-            // Ubah icon jadi centang hijau sebagai tanda berhasil dicopy
+            console.log('LOG LOG: Text berhasil dicopy ke clipboard.');
+            
             let iconElement = document.getElementById(iconId);
             iconElement.className = 'fas fa-check text-green-500';
 
-            // Mengirim request ke server untuk update status "is_copied" ke database
+            console.log('LOG LOG: Mulai mengirim fetch (AJAX) ke server untuk ID:', id);
+
             fetch(`/admin/spx_scans/${id}/mark-copied`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}' // Menggunakan token CSRF Laravel
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('LOG LOG: Menerima response HTTP dari server:', response.status, response.statusText);
+                return response.json();
+            })
             .then(data => {
+                console.log('LOG LOG: Data JSON yang diterima dari server:', data);
                 if(data.success) {
-                    // Update tampilan kolom "Status Copas" tanpa reload halaman
+                    console.log('LOG LOG: Update berhasil! Mengubah status di HTML.');
                     document.getElementById('status-copas-' + id).innerHTML = '<span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> Copied</span>';
+                } else {
+                    console.log('LOG LOG: Server membalas success = false. Pesan error:', data.message);
                 }
             })
-            .catch(error => console.error('Error updating status:', error));
+            .catch(error => {
+                console.error('LOG LOG: Terjadi Error pada Fetch:', error);
+            });
 
-            // Kembalikan ke icon copy semula setelah 2 detik
             setTimeout(() => {
                 iconElement.className = 'fas fa-copy';
             }, 2000);
         }).catch(function(err) {
-            console.error('Gagal menyalin text: ', err);
+            console.error('LOG LOG: Gagal menyalin text:', err);
             alert('Gagal menyalin nomor resi.');
         });
     }
