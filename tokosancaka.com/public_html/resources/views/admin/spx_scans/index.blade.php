@@ -24,7 +24,6 @@
 
         {{-- Card Monitoring Dashboard --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            
             {{-- Card 1: Hari Ini --}}
             <div class="bg-indigo-50 rounded-xl p-5 border border-indigo-100 shadow-sm">
                 <div class="flex justify-between items-center mb-2">
@@ -114,22 +113,16 @@
                     </div>
                 </div>
             </div>
-
         </div>
 
         {{-- Filter Section --}}
         <div class="mb-4">
             <form action="{{ route('admin.spx_scans.index') }}" method="GET">
                 <div class="flex flex-col md:flex-row gap-2">
-                    {{-- Filter Tanggal Mulai --}}
                     <input type="date" name="start_date" class="px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" value="{{ request('start_date') }}" title="Tanggal Mulai">
-
                     <span class="self-center text-gray-500 font-medium hidden md:inline">s/d</span>
-
-                    {{-- Filter Tanggal Selesai --}}
                     <input type="date" name="end_date" class="px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" value="{{ request('end_date') }}" title="Tanggal Selesai">
 
-                    {{-- Filter Pencarian --}}
                     <div class="flex flex-grow">
                         <input type="text" name="search" class="w-full px-4 py-2 border border-gray-300 rounded-l-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Cari berdasarkan resi atau nama pengirim..." value="{{ request('search') }}">
                         <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-r-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-800 focus:outline-none focus:border-indigo-800 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
@@ -145,80 +138,62 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nomor Resi</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Pengirim</th>
-                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Input System</th> {{-- KOLOM BARU --}}
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu Scan</th>
-                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Pengirim</th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Jumlah Paket</th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status Input System</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Waktu Scan Terakhir</th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    @forelse ($scans as $scan)
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $scan->id }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                <div class="flex items-center gap-2">
-                                    {{-- Mengirim parameter ID scan ke JS --}}
-                                    <button type="button" onclick="copyResi('{{ $scan->resi_number }}', '{{ $scan->id }}')" class="text-red-400 hover:text-red-600 focus:outline-none transition-colors" title="Salin Nomor Resi">
-                                        <i id="icon-copy-{{ $scan->id }}" class="fas fa-copy"></i>
-                                    </button>
-                                    <span id="resi-{{ $scan->id }}">{{ $scan->resi_number }}</span>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                @if($scan->user)
-                                    {{ $scan->user->nama_lengkap }}
-                                @elseif($scan->kontak)
-                                    {{ $scan->kontak->nama }}
-                                @else
-                                    <span class="text-gray-400">Publik / N/A</span>
-                                @endif
+
+                    {{-- KODE BARU: Mengelompokkan data berdasarkan Nama Pengirim --}}
+                    @php
+                        $groupedScans = $scans->groupBy(function($scan) {
+                            return $scan->user->nama_lengkap ?? $scan->kontak->nama ?? 'Publik / N/A';
+                        });
+                    @endphp
+
+                    @forelse ($groupedScans as $namaPengirim => $packages)
+                        @php
+                            $totalPaket = $packages->count();
+                            $sudahDicopy = $packages->where('is_copied', true)->count();
+                            $waktuScanTerakhir = $packages->first()->created_at->format('d M Y, H:i');
+
+                            // ID unik untuk Modal berdasarkan loop index
+                            $modalId = 'modal-detail-' . $loop->index;
+                        @endphp
+
+                        <tr class="hover:bg-gray-50 transition duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                <i class="fas fa-user-circle text-gray-400 mr-2"></i> {{ $namaPengirim }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                @if($scan->status == 'Proses Pickup')
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">{{ $scan->status }}</span>
+                                <span class="bg-indigo-100 text-indigo-800 py-1 px-3 rounded-full text-xs font-bold shadow-sm">
+                                    {{ $totalPaket }} Paket
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+                                @if($sudahDicopy == $totalPaket)
+                                    <span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> Selesai Semua</span>
+                                @elseif($sudahDicopy > 0)
+                                    <span class="text-yellow-600 font-semibold"><i class="fas fa-spinner fa-spin"></i> {{ $sudahDicopy }} / {{ $totalPaket }} Selesai</span>
                                 @else
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">{{ $scan->status }}</span>
+                                    <span class="text-red-600 font-semibold"><i class="fas fa-minus"></i> Belum Diproses</span>
                                 @endif
                             </td>
-                            {{-- KOLOM STATUS COPAS --}}
-                            <td class="px-6 py-4 whitespace-nowrap text-center text-sm" id="status-copas-{{ $scan->id }}">
-                                @if($scan->is_copied)
-                                    <span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> DONE</span>
-                                @else
-                                    <span class="text-red-600 font-semibold"><i class="fas fa-minus"></i> Belum</span>
-                                @endif
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $waktuScanTerakhir }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $scan->created_at->format('d M Y, H:i') }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                <div class="flex items-center justify-center space-x-2">
-                                    @if($scan->status == 'Proses Pickup')
-                                        <form action="{{ route('admin.spx_scans.updateStatus', $scan->id) }}" method="POST" onsubmit="return confirm('Anda yakin ingin memproses paket ini?')">
-                                            @csrf
-                                            @method('PATCH')
-                                            <button type="submit" class="text-blue-600 hover:text-blue-900" title="Proses Lanjut">
-                                                <i class="fas fa-check-circle fa-lg"></i>
-                                            </button>
-                                        </form>
-                                    @endif
-                                    <a href="{{ route('admin.spx_scans.edit', $scan->id) }}" class="text-yellow-500 hover:text-yellow-700" title="Edit">
-                                        <i class="fas fa-pencil-alt fa-lg"></i>
-                                    </a>
-                                    <form action="{{ route('admin.spx_scans.destroy', $scan->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus data ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:text-red-900" title="Hapus">
-                                            <i class="fas fa-trash-alt fa-lg"></i>
-                                        </button>
-                                    </form>
-                                </div>
+                                <button onclick="openGroupModal('{{ $modalId }}')" class="inline-flex items-center px-3 py-1.5 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white tracking-widest hover:bg-gray-700 active:bg-gray-900 transition">
+                                    <i class="fas fa-list mr-1"></i> Detail
+                                </button>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-12 text-center">
+                            <td colspan="5" class="px-6 py-12 text-center">
                                 <div class="text-center">
                                     <i class="fas fa-box-open fa-4x text-gray-300"></i>
                                     <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data scan</h3>
@@ -234,19 +209,130 @@
         {{-- Pagination --}}
         <div class="mt-4">
             {{ $scans->appends(request()->query())->links() }}
+            <p class="text-xs text-gray-400 mt-2">*Catatan: Pengelompokan nama dilakukan berdasarkan halaman yang sedang aktif.</p>
         </div>
     </div>
 </div>
 
+{{-- ========================================== --}}
+{{-- MODALS SECTION (Digenerate untuk setiap Grup) --}}
+{{-- ========================================== --}}
+@foreach ($groupedScans as $namaPengirim => $packages)
+    @php
+        $modalId = 'modal-detail-' . $loop->index;
+    @endphp
+    <div id="{{ $modalId }}" class="fixed inset-0 z-50 hidden bg-gray-900 bg-opacity-60 overflow-y-auto h-full w-full backdrop-blur-sm transition-opacity duration-300 flex items-center justify-center">
+        <div class="relative mx-auto p-6 border w-11/12 md:w-3/4 lg:w-1/2 shadow-2xl rounded-2xl bg-white">
+
+            {{-- Header Modal --}}
+            <div class="flex justify-between items-center pb-4 border-b border-gray-200">
+                <h3 class="text-xl font-extrabold text-gray-800">
+                    <i class="fas fa-box text-indigo-500 mr-2"></i> Detail Paket: <span class="text-indigo-700">{{ $namaPengirim }}</span>
+                </h3>
+                <button onclick="closeGroupModal('{{ $modalId }}')" class="text-gray-400 hover:text-red-500 transition focus:outline-none">
+                    <i class="fas fa-times fa-lg"></i>
+                </button>
+            </div>
+
+            {{-- Body Modal (List Resi) --}}
+            <div class="mt-5 max-h-96 overflow-y-auto custom-scrollbar pr-2">
+                <table class="min-w-full divide-y divide-gray-200 border border-gray-100 rounded-lg overflow-hidden">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">No Resi</th>
+                            <th class="px-4 py-2 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status Input</th>
+                            <th class="px-4 py-2 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi System</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        @foreach($packages as $scan)
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" onclick="copyResi('{{ $scan->resi_number }}', '{{ $scan->id }}')" class="text-gray-400 hover:text-indigo-600 focus:outline-none transition-colors" title="Salin Nomor Resi">
+                                            <i id="icon-copy-{{ $scan->id }}" class="fas fa-copy"></i>
+                                        </button>
+                                        <span id="resi-{{ $scan->id }}">{{ $scan->resi_number }}</span>
+                                    </div>
+                                </td>
+
+                                <td class="px-4 py-3 whitespace-nowrap text-center text-sm" id="status-copas-{{ $scan->id }}">
+                                    @if($scan->is_copied)
+                                        <span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> DONE</span>
+                                    @else
+                                        <span class="text-red-600 font-semibold"><i class="fas fa-minus"></i> Belum</span>
+                                    @endif
+                                </td>
+
+                                <td class="px-4 py-3 whitespace-nowrap text-center text-sm font-medium">
+                                    <div class="flex items-center justify-center space-x-3">
+                                        @if($scan->status == 'Proses Pickup')
+                                            <form action="{{ route('admin.spx_scans.updateStatus', $scan->id) }}" method="POST" onsubmit="return confirm('Anda yakin ingin memproses paket ini?')">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="text-blue-600 hover:text-blue-900" title="Proses Lanjut">
+                                                    <i class="fas fa-check-circle fa-lg"></i>
+                                                </button>
+                                            </form>
+                                        @endif
+                                        <a href="{{ route('admin.spx_scans.edit', $scan->id) }}" class="text-yellow-500 hover:text-yellow-700" title="Edit">
+                                            <i class="fas fa-pencil-alt fa-lg"></i>
+                                        </a>
+                                        <form action="{{ route('admin.spx_scans.destroy', $scan->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus data ini?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-900" title="Hapus">
+                                                <i class="fas fa-trash-alt fa-lg"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- Footer Modal --}}
+            <div class="mt-6 flex justify-end pt-4 border-t border-gray-200">
+                <button onclick="closeGroupModal('{{ $modalId }}')" class="px-5 py-2.5 bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-xl font-medium transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+@endforeach
+
+{{-- Javascript --}}
 <script>
+    // Script untuk buka/tutup Modal Detail Grup
+    function openGroupModal(modalId) {
+        document.getElementById(modalId).classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeGroupModal(modalId) {
+        document.getElementById(modalId).classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Menutup modal jika klik area luar
+    window.onclick = function(event) {
+        if (event.target.classList.contains('bg-opacity-60')) {
+            event.target.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    // Script Copy Resi beserta Log aslinya
     function copyResi(text, id) {
         console.log('LOG LOG: Fungsi copyResi dipanggil. Text:', text, 'ID:', id);
 
         let iconId = 'icon-copy-' + id;
-        
+
         navigator.clipboard.writeText(text).then(function() {
             console.log('LOG LOG: Text berhasil dicopy ke clipboard.');
-            
+
             let iconElement = document.getElementById(iconId);
             iconElement.className = 'fas fa-check text-green-500';
 
@@ -267,7 +353,8 @@
                 console.log('LOG LOG: Data JSON yang diterima dari server:', data);
                 if(data.success) {
                     console.log('LOG LOG: Update berhasil! Mengubah status di HTML.');
-                    document.getElementById('status-copas-' + id).innerHTML = '<span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> Done</span>';
+                    // Update tampilan status menjadi Done hijau di dalam modal
+                    document.getElementById('status-copas-' + id).innerHTML = '<span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> DONE</span>';
                 } else {
                     console.log('LOG LOG: Server membalas success = false. Pesan error:', data.message);
                 }
