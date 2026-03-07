@@ -151,9 +151,10 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        {{-- KODE BARU: Kolom Nomor --}}
                         <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">No</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Pengirim</th>
+                        {{-- KODE BARU: Kolom Surat Jalan --}}
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Nomor Surat Jalan</th>
                         <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Jumlah Paket</th>
                         <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status Input System</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Waktu Scan Terakhir</th>
@@ -175,20 +176,30 @@
                             $sudahDicopy = $packages->where('is_copied', true)->count();
                             $waktuScanTerakhir = $packages->first()->created_at->format('d M Y, H:i');
 
+                            // KODE BARU: Mengambil nomor surat jalan yang unik dari grup paket ini
+                            $suratJalanCodes = $packages->pluck('suratJalan.kode_surat_jalan')->filter()->unique()->implode(', ');
+
                             // ID unik untuk Modal berdasarkan loop index
                             $modalId = 'modal-detail-' . $loop->index;
                         @endphp
 
                         <tr class="hover:bg-gray-50 transition duration-150">
-                            {{-- KODE BARU: Menampilkan Nomor Urut --}}
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
                                 {{ $loop->iteration }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                                 <i class="fas fa-user-circle text-gray-400 mr-2"></i> {{ $namaPengirim }}
                             </td>
+                            {{-- KODE BARU: Menampilkan Surat Jalan --}}
+                            <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-semibold text-blue-600">
+                                @if(!empty($suratJalanCodes))
+                                    {{ $suratJalanCodes }}
+                                @else
+                                    <span class="text-gray-400 italic font-normal">Belum Ada</span>
+                                @endif
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <span class="bg-green-100 text-green-800 py-1 px-3 rounded-full text-xs font-bold shadow-sm">
+                                <span class="bg-indigo-100 text-indigo-800 py-1 px-3 rounded-full text-xs font-bold shadow-sm">
                                     {{ $totalPaket }} Paket
                                 </span>
                             </td>
@@ -205,14 +216,14 @@
                                 {{ $waktuScanTerakhir }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                <button onclick="openGroupModal('{{ $modalId }}')" class="inline-flex items-center px-3 py-1.5 bg-red-800 border border-transparent rounded-md font-semibold text-xs text-white tracking-widest hover:bg-red-700 active:bg-red-900 transition">
+                                <button onclick="openGroupModal('{{ $modalId }}')" class="inline-flex items-center px-3 py-1.5 bg-red-800 border border-transparent rounded-md font-semibold text-xs text-white tracking-widest hover:bg-red-700 active:bg-red-900 transition shadow-sm">
                                     <i class="fas fa-list mr-1"></i> Detail
                                 </button>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center"> {{-- Ubah colspan jadi 6 --}}
+                            <td colspan="7" class="px-6 py-12 text-center">
                                 <div class="text-center">
                                     <i class="fas fa-box-open fa-4x text-gray-300"></i>
                                     <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data scan</h3>
