@@ -20,7 +20,7 @@
             <div class="flex flex-wrap gap-2">
                 {{-- KODE BARU: Tombol Copied ALL --}}
                 <button type="button" onclick="markAllCopied(this)" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring focus:ring-blue-200 transition shadow-sm">
-                    <i class="fas fa-check-double mr-2"></i> Copied ALL
+                    <i class="fas fa-check-double mr-2"></i> Input SPX ALL
                 </button>
 
                 <a href="{{ route('admin.spx_scans.export.excel') }}" class="inline-flex items-center px-4 py-2 bg-green-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-600 active:bg-green-700 focus:outline-none focus:border-green-700 focus:ring focus:ring-green-200 disabled:opacity-25 transition">
