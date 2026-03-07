@@ -12,7 +12,7 @@
             {{-- KODE BARU: Judul dengan Total Badge --}}
             <div class="flex items-center gap-3">
                 <h4 class="text-lg font-bold text-gray-800">Daftar Paket SPX</h4>
-                <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full shadow-sm border border-indigo-200">
+                <span class="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full shadow-sm border border-red-200">
                     Total: {{ number_format($totalScans, 0, ',', '.') }} Paket
                 </span>
             </div>
@@ -147,11 +147,11 @@
         </div>
 
         {{-- Penanda Tanggal Aktif --}}
-        <div class="px-6 py-4 bg-indigo-50 border-t border-b border-indigo-100 flex flex-col sm:flex-row justify-between items-center rounded-t-lg">
-            <h5 class="font-bold text-indigo-800 text-lg">
-                <i class="fas fa-calendar-day mr-2 text-indigo-500"></i> Menampilkan Data Tanggal: {{ $activeDateLabel }}
+        <div class="px-6 py-4 bg-red-50 border-t border-b border-red-100 flex flex-col sm:flex-row justify-between items-center rounded-t-lg">
+            <h5 class="font-bold text-red-800 text-lg">
+                <i class="fas fa-calendar-day mr-2 text-red-500"></i> Menampilkan Data Tanggal: {{ $activeDateLabel }}
             </h5>
-            <span class="text-sm font-semibold text-indigo-600 bg-white px-3 py-1 rounded-full shadow-sm mt-2 sm:mt-0">
+            <span class="text-sm font-semibold text-red-600 bg-white px-3 py-1 rounded-full shadow-sm mt-2 sm:mt-0">
                 Total di hari ini: {{ $scans->count() }} Paket
             </span>
         </div>
@@ -269,7 +269,7 @@
             {{-- Header Modal --}}
             <div class="flex justify-between items-center pb-4 border-b border-gray-200">
                 <h3 class="text-xl font-extrabold text-gray-800">
-                    <i class="fas fa-box text-indigo-500 mr-2"></i> Detail Paket: <span class="text-indigo-700">{{ $namaPengirim }}</span>
+                    <i class="fas fa-box text-red-500 mr-2"></i> Detail Paket: <span class="text-red-700">{{ $namaPengirim }}</span>
                 </h3>
                 <button onclick="closeGroupModal('{{ $modalId }}')" class="text-gray-400 hover:text-red-500 transition focus:outline-none">
                     <i class="fas fa-times fa-lg"></i>
@@ -298,7 +298,7 @@
 
                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
                                     <div class="flex items-center gap-2">
-                                        <button type="button" onclick="copyResi('{{ $scan->resi_number }}', '{{ $scan->id }}')" class="text-gray-400 hover:text-indigo-600 focus:outline-none transition-colors" title="Salin Nomor Resi">
+                                        <button type="button" onclick="copyResi('{{ $scan->resi_number }}', '{{ $scan->id }}')" class="text-gray-400 hover:text-red-600 focus:outline-none transition-colors" title="Salin Nomor Resi">
                                             <i id="icon-copy-{{ $scan->id }}" class="fas fa-copy"></i>
                                         </button>
                                         <span id="resi-{{ $scan->id }}">{{ $scan->resi_number }}</span>
