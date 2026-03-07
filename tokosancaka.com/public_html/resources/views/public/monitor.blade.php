@@ -118,6 +118,142 @@
 
         </div>
 
+        {{-- Tabel Data Surat Jalan --}}
+        <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8 border border-gray-100">
+            <div class="px-6 py-4 border-b border-gray-100 bg-white flex justify-between items-center">
+                <h3 class="font-bold text-gray-800 text-lg">Daftar Surat Jalan Terbaru</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">No</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama</th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Jumlah Paket</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal Scan</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nomor Surat Jalan</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        @forelse($suratJalans as $index => $sj)
+                            <tr class="hover:bg-gray-50 transition duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $index + 1 }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800">
+                                    {{ $sj->user->nama_lengkap ?? $sj->kontak->nama ?? 'N/A' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                    <span class="bg-indigo-100 text-indigo-800 py-1 px-3 rounded-full text-xs font-bold shadow-sm">
+                                        {{ $sj->jumlah_paket }} Paket
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ $sj->created_at->format('d M Y, H:i') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    {{-- Menggabungkan list resi untuk dikirim ke Modal JS --}}
+                                    @php
+                                        // Mengakomodasi kolom resi atau resi_number (jaga-jaga jika ada perbedaan)
+                                        $resiList = $sj->packages->map(function($p) { return $p->resi ?? $p->resi_number; })->implode(',');
+                                    @endphp
+                                    <button onclick="openModal('{{ $sj->kode_surat_jalan }}', '{{ $sj->user->nama_lengkap ?? $sj->kontak->nama ?? 'N/A' }}', '{{ $sj->jumlah_paket }}', '{{ $sj->created_at->format('d M Y, H:i') }}', '{{ $resiList }}')" 
+                                        class="text-indigo-600 hover:text-indigo-900 font-bold underline decoration-indigo-300 decoration-2 underline-offset-4 transition">
+                                        {{ $sj->kode_surat_jalan }}
+                                    </button>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                                    <i class="fas fa-box-open fa-3x mb-3 text-gray-300"></i>
+                                    <p>Belum ada data surat jalan.</p>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- MODAL SURAT JALAN (Hidden by default) --}}
+        <div id="sjModal" class="fixed inset-0 z-50 hidden bg-gray-900 bg-opacity-60 overflow-y-auto h-full w-full backdrop-blur-sm transition-opacity duration-300 flex items-center justify-center">
+            <div class="relative mx-auto p-6 border w-11/12 md:w-1/2 lg:w-1/3 shadow-2xl rounded-2xl bg-white transform transition-all">
+                <div class="flex justify-between items-center pb-4 border-b border-gray-200">
+                    <h3 class="text-xl font-extrabold text-gray-800"><i class="fas fa-file-invoice text-indigo-500 mr-2"></i> Detail Surat Jalan</h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-red-500 transition focus:outline-none">
+                        <i class="fas fa-times fa-lg"></i>
+                    </button>
+                </div>
+                <div class="mt-5 space-y-4">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <span class="text-gray-500 text-sm font-medium">Kode Surat Jalan</span>
+                        <span id="modal-kode" class="font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded"></span>
+                    </div>
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <span class="text-gray-500 text-sm font-medium">Nama Pengirim</span>
+                        <span id="modal-nama" class="font-semibold text-gray-800"></span>
+                    </div>
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <span class="text-gray-500 text-sm font-medium">Tanggal Scan</span>
+                        <span id="modal-tanggal" class="text-gray-800 text-sm font-medium"></span>
+                    </div>
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <span class="text-gray-500 text-sm font-medium">Jumlah Paket</span>
+                        <span id="modal-jumlah" class="font-bold text-gray-800"></span>
+                    </div>
+                    <div class="pt-2">
+                        <span class="text-gray-500 text-sm font-medium block mb-2">Daftar Resi dalam Surat Jalan:</span>
+                        <ul id="modal-resi-list" class="bg-gray-50 border border-gray-100 rounded-lg p-3 text-sm text-gray-700 max-h-48 overflow-y-auto space-y-2 custom-scrollbar">
+                            </ul>
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-end">
+                    <button onclick="closeModal()" class="px-5 py-2.5 bg-gray-800 text-white hover:bg-gray-900 rounded-xl font-medium shadow-md transition">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- SCRIPT UNTUK MODAL --}}
+        <script>
+            function openModal(kode, nama, jumlah, tanggal, resiString) {
+                document.getElementById('modal-kode').innerText = kode;
+                document.getElementById('modal-nama').innerText = nama;
+                document.getElementById('modal-jumlah').innerText = jumlah + ' Paket';
+                document.getElementById('modal-tanggal').innerText = tanggal;
+
+                // Memecah string resi menjadi array dan membuat HTML List
+                let resiList = resiString.split(',');
+                let resiHtml = '';
+                
+                if(resiString.trim() !== '') {
+                    resiList.forEach((resi, index) => {
+                        resiHtml += `<li class="flex items-center gap-3 p-2 bg-white rounded border border-gray-100 shadow-sm"><i class="fas fa-barcode text-indigo-400"></i> <span class="font-medium tracking-wide">${resi}</span></li>`;
+                    });
+                } else {
+                    resiHtml = '<li class="text-gray-400 italic text-center py-2">Tidak ada data resi</li>';
+                }
+                document.getElementById('modal-resi-list').innerHTML = resiHtml;
+
+                // Tampilkan Modal
+                document.getElementById('sjModal').classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // Mencegah background di-scroll
+            }
+
+            function closeModal() {
+                document.getElementById('sjModal').classList.add('hidden');
+                document.body.style.overflow = 'auto'; // Mengembalikan scroll
+            }
+
+            // Menutup modal jika user klik area gelap di luar modal
+            window.onclick = function(event) {
+                let modal = document.getElementById('sjModal');
+                if (event.target == modal) {
+                    closeModal();
+                }
+            }
+        </script>
+
         {{-- Footer Credit --}}
         <div class="text-center mt-12 text-sm text-gray-400">
             &copy; {{ date('Y') }} Sancaka Express. Data diperbarui secara real-time.
