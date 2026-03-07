@@ -90,7 +90,7 @@
                             {{-- KOLOM STATUS COPAS --}}
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm" id="status-copas-{{ $scan->id }}">
                                 @if($scan->is_copied)
-                                    <span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> Copied</span>
+                                    <span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> DONE</span>
                                 @else
                                     <span class="text-gray-400"><i class="fas fa-minus"></i> Belum</span>
                                 @endif
@@ -171,7 +171,7 @@
                 console.log('LOG LOG: Data JSON yang diterima dari server:', data);
                 if(data.success) {
                     console.log('LOG LOG: Update berhasil! Mengubah status di HTML.');
-                    document.getElementById('status-copas-' + id).innerHTML = '<span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> Copied</span>';
+                    document.getElementById('status-copas-' + id).innerHTML = '<span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> Done</span>';
                 } else {
                     console.log('LOG LOG: Server membalas success = false. Pesan error:', data.message);
                 }
