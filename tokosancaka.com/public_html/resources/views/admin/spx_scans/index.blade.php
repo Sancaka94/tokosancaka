@@ -344,8 +344,8 @@
 
             {{-- Footer Modal --}}
             <div class="mt-6 flex justify-end pt-4 border-t border-gray-200">
-                <button onclick="closeGroupModal('{{ $modalId }}')" class="px-5 py-2.5 bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-xl font-medium transition">
-                    Tutup
+                <button onclick="closeGroupModal('{{ $modalId }}')" class="px-5 py-2.5 bg-green-200 text-gray-800 hover:bg-green-300 rounded-xl font-medium transition">
+                    Close
                 </button>
             </div>
         </div>
