@@ -34,43 +34,75 @@ class SpxScanController extends Controller
 
 {
 
-    // METHOD 'show()' YANG SALAH SUDAH DIHAPUS
 
-
-
-    /**
-
-     * Menampilkan daftar semua data SPX Scan dengan filter dan pencarian.
-
-     */
-
-    /**
+   /**
      * Menampilkan daftar semua data SPX Scan dengan filter dan pencarian.
      */
     public function index(Request $request)
     {
-        $query = ScannedPackage::with('user', 'suratJalan')->latest();
+        // ---------------------------------------------------------
+        // 1. CARI TANGGAL UNIK UNTUK PAGINATION (1 Tanggal = 1 Halaman)
+        // ---------------------------------------------------------
+        $datesQuery = \App\Models\ScannedPackage::selectRaw('DATE(created_at) as scan_date')
+            ->distinct()
+            ->orderBy('scan_date', 'desc');
 
-        // [LOGIKA FILTER TETAP SAMA]
-        $query->when($request->filled('search'), function ($q) use ($request) {
+        // Terapkan Filter ke pencarian tanggal agar halaman kosong tidak ikut muncul
+        if ($request->filled('search')) {
             $search = $request->input('search');
-            $q->where('resi_number', 'like', "%{$search}%")
-              ->orWhereHas('user', function ($subq) use ($search) {
-                  $subq->where('nama_lengkap', 'like', "%{$search}%")
-                       ->orWhere('no_wa', 'like', "%{$search}%");
-              });
-        });
+            $datesQuery->where(function($q) use ($search) {
+                $q->where('resi_number', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($subq) use ($search) {
+                      $subq->where('nama_lengkap', 'like', "%{$search}%")
+                           ->orWhere('no_wa', 'like', "%{$search}%");
+                  });
+            });
+        }
 
-        $query->when($request->filled('start_date') && $request->filled('end_date'), function ($q) use ($request) {
+        if ($request->filled('start_date') && $request->filled('end_date')) {
             $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
             $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
-            $q->whereBetween('created_at', [$startDate, $endDate]);
-        });
+            $datesQuery->whereBetween('created_at', [$startDate, $endDate]);
+        }
 
-        $scans = $query->paginate(20)->withQueryString();
+        // Tampilkan 1 Tanggal per halaman
+        $paginatedDates = $datesQuery->paginate(1)->withQueryString();
 
         // ---------------------------------------------------------
-        // KODE BARU: MENGHITUNG DATA UNTUK CARD MONITORING
+        // 2. AMBIL DATA SCAN KHUSUS UNTUK TANGGAL YANG SEDANG AKTIF
+        // ---------------------------------------------------------
+        $scans = collect(); // Default koleksi kosong
+        $activeDateLabel = 'Belum ada data';
+
+        if ($paginatedDates->count() > 0) {
+            $activeDate = $paginatedDates->first()->scan_date;
+
+            // Format teks tanggal (Contoh: 07 Maret 2026)
+            Carbon::setLocale('id');
+            $activeDateLabel = Carbon::parse($activeDate)->translatedFormat('d F Y');
+
+            $scansQuery = \App\Models\ScannedPackage::with(['user', 'suratJalan'])
+                ->whereDate('created_at', $activeDate)
+                ->latest();
+
+            // Terapkan kembali filter pencarian pada data di tanggal ini
+            if ($request->filled('search')) {
+                $search = $request->input('search');
+                $scansQuery->where(function($q) use ($search) {
+                    $q->where('resi_number', 'like', "%{$search}%")
+                      ->orWhereHas('user', function ($subq) use ($search) {
+                          $subq->where('nama_lengkap', 'like', "%{$search}%")
+                               ->orWhere('no_wa', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            // Ambil semua data pada tanggal tersebut
+            $scans = $scansQuery->get();
+        }
+
+        // ---------------------------------------------------------
+        // 3. KODE PENGHITUNGAN CARD MONITOR (TETAP SAMA)
         // ---------------------------------------------------------
         $today = Carbon::today();
         $yesterday = Carbon::yesterday();
@@ -79,33 +111,28 @@ class SpxScanController extends Controller
         $lastMonthStart = Carbon::now()->subMonth()->startOfMonth();
         $lastMonthEnd = Carbon::now()->subMonth()->endOfMonth();
 
-        // 1. Hari Ini vs Kemarin
-        $countToday = ScannedPackage::whereDate('created_at', $today)->count();
-        $countYesterday = ScannedPackage::whereDate('created_at', $yesterday)->count();
+        $countToday = \App\Models\ScannedPackage::whereDate('created_at', $today)->count();
+        $countYesterday = \App\Models\ScannedPackage::whereDate('created_at', $yesterday)->count();
         $diffToday = $countToday - $countYesterday;
         $pctToday = $countYesterday > 0 ? round(($diffToday / $countYesterday) * 100, 1) : ($countToday > 0 ? 100 : 0);
 
-        // 2. Kemarin vs H-2 (Hari sebelumnya)
-        $countDayBefore = ScannedPackage::whereDate('created_at', $dayBeforeYesterday)->count();
+        $countDayBefore = \App\Models\ScannedPackage::whereDate('created_at', $dayBeforeYesterday)->count();
         $diffYesterday = $countYesterday - $countDayBefore;
         $pctYesterday = $countDayBefore > 0 ? round(($diffYesterday / $countDayBefore) * 100, 1) : ($countYesterday > 0 ? 100 : 0);
 
-        // 3. Bulan Ini vs Bulan Lalu
-        $countThisMonth = ScannedPackage::where('created_at', '>=', $thisMonth)->count();
-        $countLastMonth = ScannedPackage::whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])->count();
+        $countThisMonth = \App\Models\ScannedPackage::where('created_at', '>=', $thisMonth)->count();
+        $countLastMonth = \App\Models\ScannedPackage::whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])->count();
         $diffMonth = $countThisMonth - $countLastMonth;
         $pctMonth = $countLastMonth > 0 ? round(($diffMonth / $countLastMonth) * 100, 1) : ($countThisMonth > 0 ? 100 : 0);
 
-        // 4. Total Copied vs Belum Copied (Keseluruhan)
-        $countCopied = ScannedPackage::where('is_copied', true)->count();
-        $countNotCopied = ScannedPackage::where('is_copied', false)->count();
+        $countCopied = \App\Models\ScannedPackage::where('is_copied', true)->count();
+        $countNotCopied = \App\Models\ScannedPackage::where('is_copied', false)->count();
 
-        // KODE BARU: Menghitung total keseluruhan paket
-        $totalScans = ScannedPackage::count();
+        $totalScans = \App\Models\ScannedPackage::count();
 
-        // Mengirim semua variabel ke view
+        // Tambahkan 'paginatedDates' dan 'activeDateLabel' untuk dikirim ke View
         return view('admin.spx_scans.index', compact(
-            'scans',
+            'scans', 'paginatedDates', 'activeDateLabel',
             'countToday', 'diffToday', 'pctToday',
             'countYesterday', 'diffYesterday', 'pctYesterday',
             'countThisMonth', 'diffMonth', 'pctMonth',

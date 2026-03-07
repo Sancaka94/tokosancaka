@@ -146,6 +146,16 @@
             </form>
         </div>
 
+        {{-- Penanda Tanggal Aktif --}}
+        <div class="px-6 py-4 bg-indigo-50 border-t border-b border-indigo-100 flex flex-col sm:flex-row justify-between items-center rounded-t-lg">
+            <h5 class="font-bold text-indigo-800 text-lg">
+                <i class="fas fa-calendar-day mr-2 text-indigo-500"></i> Menampilkan Data Tanggal: {{ $activeDateLabel }}
+            </h5>
+            <span class="text-sm font-semibold text-indigo-600 bg-white px-3 py-1 rounded-full shadow-sm mt-2 sm:mt-0">
+                Total di hari ini: {{ $scans->count() }} Paket
+            </span>
+        </div>
+
         {{-- Table --}}
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -236,10 +246,12 @@
             </table>
         </div>
 
-        {{-- Pagination --}}
+       {{-- Pagination --}}
         <div class="mt-4">
-            {{ $scans->appends(request()->query())->links() }}
-            <p class="text-xs text-gray-400 mt-2">*Catatan: Pengelompokan nama dilakukan berdasarkan halaman yang sedang aktif.</p>
+            {{ $paginatedDates->appends(request()->query())->links() }}
+            <p class="text-xs text-gray-400 mt-2">
+                <i class="fas fa-info-circle mr-1"></i> Pagination membagi halaman per hari (Tanggal). Halaman 1 adalah tanggal terbaru, Halaman 2 tanggal sebelumnya, dst.
+            </p>
         </div>
     </div>
 </div>
