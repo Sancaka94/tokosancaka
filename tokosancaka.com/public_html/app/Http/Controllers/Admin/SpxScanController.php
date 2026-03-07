@@ -686,8 +686,8 @@ class SpxScanController extends Controller
     public function markAsCopied($id)
     {
         try {
-            // Perhatikan: Menggunakan model ScannedPackage sesuai dengan controller Anda
-            $scan = ScannedPackage::findOrFail($id);
+            // Menggunakan model SpxScan sesuai dengan file Model Anda
+            $scan = \App\Models\SpxScan::findOrFail($id);
             $scan->is_copied = true;
             $scan->save();
 
