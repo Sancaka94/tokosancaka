@@ -688,7 +688,8 @@ class SpxScanController extends Controller
         \Illuminate\Support\Facades\Log::info("LOG LOG: Request masuk ke markAsCopied untuk ID: {$id}");
 
         try {
-            $scan = \App\Models\SpxScan::findOrFail($id);
+            // PERBAIKAN: Gunakan ScannedPackage, bukan SpxScan!
+            $scan = \App\Models\ScannedPackage::findOrFail($id);
             \Illuminate\Support\Facades\Log::info("LOG LOG: Data ditemukan. Status is_copied sebelum: {$scan->is_copied}");
 
             $scan->is_copied = true;
