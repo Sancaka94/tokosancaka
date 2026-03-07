@@ -199,7 +199,7 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <span class="bg-indigo-100 text-indigo-800 py-1 px-3 rounded-full text-xs font-bold shadow-sm">
+                                <span class="bg-red-500 text-red-800 py-1 px-3 rounded-full text-xs font-bold shadow-sm">
                                     {{ $totalPaket }} Paket
                                 </span>
                             </td>
