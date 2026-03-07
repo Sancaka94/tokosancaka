@@ -42,7 +42,7 @@ class PublicMonitorController extends Controller
         $countCopied = ScannedPackage::where('is_copied', true)->count();
         $countNotCopied = ScannedPackage::where('is_copied', false)->count();
 
-       // ---------------------------------------------------------
+        // ---------------------------------------------------------
         // KODE BARU: Ambil data Surat Jalan terbaru (misal 50 data terakhir)
         // ---------------------------------------------------------
         $suratJalans = SuratJalan::with(['user', 'kontak', 'packages'])

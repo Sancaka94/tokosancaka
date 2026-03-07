@@ -13,7 +13,7 @@
 <body>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        
+
         {{-- Header Publik --}}
         <div class="text-center mb-10">
             <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Sancaka Express <span class="text-indigo-600">Monitor</span></h1>
@@ -25,7 +25,7 @@
 
         {{-- Card Monitoring Dashboard --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            
+
             {{-- Card 1: Hari Ini --}}
             <div class="bg-indigo-50 rounded-xl p-6 border border-indigo-100 shadow-md transform transition hover:-translate-y-1">
                 <div class="flex justify-between items-center mb-4">
@@ -155,7 +155,7 @@
                                         // Mengakomodasi kolom resi atau resi_number (jaga-jaga jika ada perbedaan)
                                         $resiList = $sj->packages->map(function($p) { return $p->resi ?? $p->resi_number; })->implode(',');
                                     @endphp
-                                    <button onclick="openModal('{{ $sj->kode_surat_jalan }}', '{{ $sj->user->nama_lengkap ?? $sj->kontak->nama ?? 'N/A' }}', '{{ $sj->jumlah_paket }}', '{{ $sj->created_at->format('d M Y, H:i') }}', '{{ $resiList }}')" 
+                                    <button onclick="openModal('{{ $sj->kode_surat_jalan }}', '{{ $sj->user->nama_lengkap ?? $sj->kontak->nama ?? 'N/A' }}', '{{ $sj->jumlah_paket }}', '{{ $sj->created_at->format('d M Y, H:i') }}', '{{ $resiList }}')"
                                         class="text-indigo-600 hover:text-indigo-900 font-bold underline decoration-indigo-300 decoration-2 underline-offset-4 transition">
                                         {{ $sj->kode_surat_jalan }}
                                     </button>
@@ -172,6 +172,12 @@
                     </tbody>
                 </table>
             </div>
+
+            {{-- KODE BARU: Menampilkan navigasi pagination --}}
+            <div class="mt-4 px-4">
+                {{ $suratJalans->links() }}
+            </div>
+
         </div>
 
         {{-- MODAL SURAT JALAN (Hidden by default) --}}
@@ -225,10 +231,20 @@
                 // Memecah string resi menjadi array dan membuat HTML List
                 let resiList = resiString.split(',');
                 let resiHtml = '';
-                
+
                 if(resiString.trim() !== '') {
                     resiList.forEach((resi, index) => {
-                        resiHtml += `<li class="flex items-center gap-3 p-2 bg-white rounded border border-gray-100 shadow-sm"><i class="fas fa-barcode text-indigo-400"></i> <span class="font-medium tracking-wide">${resi}</span></li>`;
+                        // KODE YANG DIUBAH: Menambahkan tombol copy di sisi kanan list
+                        resiHtml += `
+                            <li class="flex items-center justify-between p-2.5 bg-white rounded border border-gray-100 shadow-sm hover:border-indigo-200 transition">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas fa-barcode text-indigo-400"></i>
+                                    <span class="font-medium tracking-wide text-gray-700">${resi}</span>
+                                </div>
+                                <button type="button" onclick="copyResiModal('${resi}', 'copy-icon-modal-${index}')" class="text-gray-400 hover:text-indigo-600 focus:outline-none transition-colors" title="Salin Nomor Resi">
+                                    <i id="copy-icon-modal-${index}" class="fas fa-copy"></i>
+                                </button>
+                            </li>`;
                     });
                 } else {
                     resiHtml = '<li class="text-gray-400 italic text-center py-2">Tidak ada data resi</li>';
@@ -251,6 +267,22 @@
                 if (event.target == modal) {
                     closeModal();
                 }
+            }
+
+            // KODE BARU: Fungsi untuk eksekusi tombol copy di dalam modal
+            function copyResiModal(text, iconId) {
+                navigator.clipboard.writeText(text).then(function() {
+                    let iconElement = document.getElementById(iconId);
+                    // Ubah icon jadi centang hijau sebentar
+                    iconElement.className = 'fas fa-check text-green-500';
+
+                    // Kembalikan ke icon copy semula setelah 2 detik
+                    setTimeout(() => {
+                        iconElement.className = 'fas fa-copy';
+                    }, 2000);
+                }).catch(function(err) {
+                    console.error('Gagal menyalin text: ', err);
+                });
             }
         </script>
 
