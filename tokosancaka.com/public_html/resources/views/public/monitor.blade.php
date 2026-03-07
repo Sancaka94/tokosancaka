@@ -172,13 +172,12 @@
                     </tbody>
                 </table>
             </div>
+        </div>
 
-            {{-- KODE BARU: Menampilkan navigasi pagination --}}
+         {{-- KODE BARU: Menampilkan navigasi pagination --}}
             <div class="mt-4 px-4">
                 {{ $suratJalans->links() }}
             </div>
-
-        </div>
 
         {{-- MODAL SURAT JALAN (Hidden by default) --}}
         <div id="sjModal" class="fixed inset-0 z-50 hidden bg-gray-900 bg-opacity-60 overflow-y-auto h-full w-full backdrop-blur-sm transition-opacity duration-300 flex items-center justify-center">
