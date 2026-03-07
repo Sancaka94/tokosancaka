@@ -6,10 +6,23 @@
 @section('content')
 <div class="bg-white shadow-md rounded-lg overflow-hidden">
     {{-- Header --}}
+    {{-- Header --}}
     <div class="px-6 py-4 border-b border-gray-200">
-        <div class="flex justify-between items-center">
-            <h4 class="text-lg font-bold text-gray-800">Daftar Paket SPX</h4>
-            <div class="flex space-x-2">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+            {{-- KODE BARU: Judul dengan Total Badge --}}
+            <div class="flex items-center gap-3">
+                <h4 class="text-lg font-bold text-gray-800">Daftar Paket SPX</h4>
+                <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full shadow-sm border border-indigo-200">
+                    Total: {{ number_format($totalScans, 0, ',', '.') }} Paket
+                </span>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                {{-- KODE BARU: Tombol Copied ALL --}}
+                <button type="button" onclick="markAllCopied(this)" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring focus:ring-blue-200 transition shadow-sm">
+                    <i class="fas fa-check-double mr-2"></i> Copied ALL
+                </button>
+
                 <a href="{{ route('admin.spx_scans.export.excel') }}" class="inline-flex items-center px-4 py-2 bg-green-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-600 active:bg-green-700 focus:outline-none focus:border-green-700 focus:ring focus:ring-green-200 disabled:opacity-25 transition">
                     <i class="fas fa-file-excel mr-2"></i> Ekspor Excel
                 </a>
@@ -375,6 +388,59 @@
         }).catch(function(err) {
             console.error('LOG LOG: Gagal menyalin text:', err);
             alert('Gagal menyalin nomor resi.');
+        });
+    }
+
+    // [BARU] Script Copied ALL
+    function markAllCopied(btn) {
+        console.log('LOG LOG: Fungsi markAllCopied dipanggil.');
+
+        // Konfirmasi sebelum eksekusi
+        if(!confirm('Anda yakin ingin menandai SEMUA paket yang belum dicopy menjadi "Selesai/Copied"?\n\nResi yang ter-update juga akan otomatis disalin ke clipboard Anda.')) {
+            return;
+        }
+
+        let originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
+        btn.disabled = true;
+
+        fetch(`{{ route('admin.spx_scans.mark_all_copied') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('LOG LOG: Response markAllCopied:', data);
+            if(data.success) {
+                if(data.count > 0) {
+                    // Menyalin SEMUA resi ke clipboard sekaligus
+                    navigator.clipboard.writeText(data.resi_list).then(() => {
+                        alert(data.count + ' Resi berhasil disalin ke clipboard dan ditandai Selesai!');
+                        window.location.reload(); // Refresh halaman agar data terbaru muncul
+                    }).catch(err => {
+                        console.error('LOG LOG: Gagal copy massal ke clipboard:', err);
+                        alert('Status berhasil diubah di database, tetapi gagal menyalin teks ke clipboard browser.');
+                        window.location.reload();
+                    });
+                } else {
+                    alert('Semua paket sudah dalam status Selesai. Tidak ada yang perlu diubah.');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            } else {
+                alert('Terjadi kesalahan: ' + data.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('LOG LOG: Fetch error markAllCopied:', error);
+            alert('Gagal terhubung ke server.');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
         });
     }
 

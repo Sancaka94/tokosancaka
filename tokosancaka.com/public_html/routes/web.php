@@ -1023,3 +1023,5 @@ Route::post('/invoice/{id}/pay', [App\Http\Controllers\InvoiceController::class,
 
 // Route Publik untuk Monitor SPX
 Route::get('/spx-monitor', [App\Http\Controllers\PublicMonitorController::class, 'index'])->name('public.monitor');
+
+Route::post('/admin/spx_scans/mark-all-copied', [App\Http\Controllers\Admin\SpxScanController::class, 'markAllAsCopied'])->name('admin.spx_scans.mark_all_copied');

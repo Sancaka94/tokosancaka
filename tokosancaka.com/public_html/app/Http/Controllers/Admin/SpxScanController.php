@@ -60,7 +60,7 @@ class SpxScanController extends Controller
                        ->orWhere('no_wa', 'like', "%{$search}%");
               });
         });
-        
+
         $query->when($request->filled('start_date') && $request->filled('end_date'), function ($q) use ($request) {
             $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
             $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
@@ -100,13 +100,16 @@ class SpxScanController extends Controller
         $countCopied = ScannedPackage::where('is_copied', true)->count();
         $countNotCopied = ScannedPackage::where('is_copied', false)->count();
 
+        // KODE BARU: Menghitung total keseluruhan paket
+        $totalScans = ScannedPackage::count();
+
         // Mengirim semua variabel ke view
         return view('admin.spx_scans.index', compact(
             'scans',
             'countToday', 'diffToday', 'pctToday',
             'countYesterday', 'diffYesterday', 'pctYesterday',
             'countThisMonth', 'diffMonth', 'pctMonth',
-            'countCopied', 'countNotCopied'
+            'countCopied', 'countNotCopied', 'totalScans'
         ));
     }
 
@@ -720,7 +723,37 @@ class SpxScanController extends Controller
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("LOG LOG: Terjadi error di markAsCopied: " . $e->getMessage());
-            
+
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * [BARU] Menandai semua resi yang belum dicopy menjadi Copied sekaligus
+     */
+    public function markAllAsCopied()
+    {
+        \Illuminate\Support\Facades\Log::info("LOG LOG: Request masuk ke markAllAsCopied");
+
+        try {
+            // Ambil semua nomor resi yang status is_copied nya masih false
+            $uncopied = \App\Models\ScannedPackage::where('is_copied', false)->pluck('resi_number')->toArray();
+            $count = count($uncopied);
+
+            if ($count > 0) {
+                // Update semua statusnya menjadi true (sudah di copy)
+                \App\Models\ScannedPackage::where('is_copied', false)->update(['is_copied' => true]);
+            }
+
+            \Illuminate\Support\Facades\Log::info("LOG LOG: Berhasil menandai {$count} resi sebagai Copied secara massal.");
+
+            return response()->json([
+                'success' => true,
+                'resi_list' => implode("\n", $uncopied), // Gabungkan array jadi string dengan enter (baris baru)
+                'count' => $count
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG LOG: Terjadi error di markAllAsCopied: " . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
