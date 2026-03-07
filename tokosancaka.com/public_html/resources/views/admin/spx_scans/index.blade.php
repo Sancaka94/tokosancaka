@@ -21,6 +21,102 @@
     </div>
 
     <div class="p-6">
+
+        {{-- Card Monitoring Dashboard --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            
+            {{-- Card 1: Hari Ini --}}
+            <div class="bg-indigo-50 rounded-xl p-5 border border-indigo-100 shadow-sm">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-indigo-800 text-sm font-bold uppercase tracking-wider">Hari Ini</h3>
+                    <div class="p-2 bg-indigo-200 rounded-lg text-indigo-600"><i class="fas fa-calendar-day"></i></div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-extrabold text-gray-800">{{ $countToday }}</span>
+                    <span class="text-sm font-medium text-gray-500">paket</span>
+                </div>
+                <div class="mt-3 text-sm flex items-center gap-1 font-medium">
+                    @if($diffToday > 0)
+                        <span class="text-green-600 bg-green-100 px-1.5 py-0.5 rounded"><i class="fas fa-arrow-up"></i> {{ $pctToday }}%</span>
+                        <span class="text-gray-500 text-xs">(+{{ $diffToday }}) dr kemarin</span>
+                    @elseif($diffToday < 0)
+                        <span class="text-red-600 bg-red-100 px-1.5 py-0.5 rounded"><i class="fas fa-arrow-down"></i> {{ abs($pctToday) }}%</span>
+                        <span class="text-gray-500 text-xs">({{ $diffToday }}) dr kemarin</span>
+                    @else
+                        <span class="text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded"><i class="fas fa-minus"></i> 0%</span>
+                        <span class="text-gray-500 text-xs">Sama spt kemarin</span>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Card 2: Kemarin --}}
+            <div class="bg-blue-50 rounded-xl p-5 border border-blue-100 shadow-sm">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-blue-800 text-sm font-bold uppercase tracking-wider">Kemarin</h3>
+                    <div class="p-2 bg-blue-200 rounded-lg text-blue-600"><i class="fas fa-history"></i></div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-extrabold text-gray-800">{{ $countYesterday }}</span>
+                    <span class="text-sm font-medium text-gray-500">paket</span>
+                </div>
+                <div class="mt-3 text-sm flex items-center gap-1 font-medium">
+                    @if($diffYesterday > 0)
+                        <span class="text-green-600 bg-green-100 px-1.5 py-0.5 rounded"><i class="fas fa-arrow-up"></i> {{ $pctYesterday }}%</span>
+                        <span class="text-gray-500 text-xs">(+{{ $diffYesterday }}) dr H-2</span>
+                    @elseif($diffYesterday < 0)
+                        <span class="text-red-600 bg-red-100 px-1.5 py-0.5 rounded"><i class="fas fa-arrow-down"></i> {{ abs($pctYesterday) }}%</span>
+                        <span class="text-gray-500 text-xs">({{ $diffYesterday }}) dr H-2</span>
+                    @else
+                        <span class="text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded"><i class="fas fa-minus"></i> 0%</span>
+                        <span class="text-gray-500 text-xs">Sama spt H-2</span>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Card 3: Bulan Ini --}}
+            <div class="bg-purple-50 rounded-xl p-5 border border-purple-100 shadow-sm">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-purple-800 text-sm font-bold uppercase tracking-wider">Bulan Ini</h3>
+                    <div class="p-2 bg-purple-200 rounded-lg text-purple-600"><i class="fas fa-calendar-alt"></i></div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-extrabold text-gray-800">{{ $countThisMonth }}</span>
+                    <span class="text-sm font-medium text-gray-500">paket</span>
+                </div>
+                <div class="mt-3 text-sm flex items-center gap-1 font-medium">
+                    @if($diffMonth > 0)
+                        <span class="text-green-600 bg-green-100 px-1.5 py-0.5 rounded"><i class="fas fa-arrow-up"></i> {{ $pctMonth }}%</span>
+                        <span class="text-gray-500 text-xs">(+{{ $diffMonth }}) dr bln lalu</span>
+                    @elseif($diffMonth < 0)
+                        <span class="text-red-600 bg-red-100 px-1.5 py-0.5 rounded"><i class="fas fa-arrow-down"></i> {{ abs($pctMonth) }}%</span>
+                        <span class="text-gray-500 text-xs">({{ $diffMonth }}) dr bln lalu</span>
+                    @else
+                        <span class="text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded"><i class="fas fa-minus"></i> 0%</span>
+                        <span class="text-gray-500 text-xs">Sama spt bln lalu</span>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Card 4: Status Input (Copied vs Belum) --}}
+            <div class="bg-emerald-50 rounded-xl p-5 border border-emerald-100 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-emerald-800 text-sm font-bold uppercase tracking-wider">Status Resi</h3>
+                    <div class="p-2 bg-emerald-200 rounded-lg text-emerald-600"><i class="fas fa-clipboard-check"></i></div>
+                </div>
+                <div class="flex flex-col gap-2 mt-1">
+                    <div class="flex justify-between items-center bg-white px-3 py-2 rounded border border-emerald-100">
+                        <span class="text-sm font-semibold text-emerald-700"><i class="fas fa-check-double mr-1"></i> Selesai Input</span>
+                        <span class="font-bold text-gray-800">{{ $countCopied }}</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-white px-3 py-2 rounded border border-red-100">
+                        <span class="text-sm font-semibold text-red-600"><i class="fas fa-minus-circle mr-1"></i> Belum Input</span>
+                        <span class="font-bold text-gray-800">{{ $countNotCopied }}</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
         {{-- Filter Section --}}
         <div class="mb-4">
             <form action="{{ route('admin.spx_scans.index') }}" method="GET">

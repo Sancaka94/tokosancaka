@@ -44,50 +44,70 @@ class SpxScanController extends Controller
 
      */
 
+    /**
+     * Menampilkan daftar semua data SPX Scan dengan filter dan pencarian.
+     */
     public function index(Request $request)
-
     {
-
         $query = ScannedPackage::with('user', 'suratJalan')->latest();
 
-
-
+        // [LOGIKA FILTER TETAP SAMA]
         $query->when($request->filled('search'), function ($q) use ($request) {
-
             $search = $request->input('search');
-
             $q->where('resi_number', 'like', "%{$search}%")
-
               ->orWhereHas('user', function ($subq) use ($search) {
-
                   $subq->where('nama_lengkap', 'like', "%{$search}%")
-
                        ->orWhere('no_wa', 'like', "%{$search}%");
-
               });
-
         });
-
-
-
+        
         $query->when($request->filled('start_date') && $request->filled('end_date'), function ($q) use ($request) {
-
             $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
-
             $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
-
             $q->whereBetween('created_at', [$startDate, $endDate]);
-
         });
-
-
 
         $scans = $query->paginate(20)->withQueryString();
 
+        // ---------------------------------------------------------
+        // KODE BARU: MENGHITUNG DATA UNTUK CARD MONITORING
+        // ---------------------------------------------------------
+        $today = Carbon::today();
+        $yesterday = Carbon::yesterday();
+        $dayBeforeYesterday = Carbon::today()->subDays(2);
+        $thisMonth = Carbon::now()->startOfMonth();
+        $lastMonthStart = Carbon::now()->subMonth()->startOfMonth();
+        $lastMonthEnd = Carbon::now()->subMonth()->endOfMonth();
 
+        // 1. Hari Ini vs Kemarin
+        $countToday = ScannedPackage::whereDate('created_at', $today)->count();
+        $countYesterday = ScannedPackage::whereDate('created_at', $yesterday)->count();
+        $diffToday = $countToday - $countYesterday;
+        $pctToday = $countYesterday > 0 ? round(($diffToday / $countYesterday) * 100, 1) : ($countToday > 0 ? 100 : 0);
 
-        return view('admin.spx_scans.index', compact('scans'));
+        // 2. Kemarin vs H-2 (Hari sebelumnya)
+        $countDayBefore = ScannedPackage::whereDate('created_at', $dayBeforeYesterday)->count();
+        $diffYesterday = $countYesterday - $countDayBefore;
+        $pctYesterday = $countDayBefore > 0 ? round(($diffYesterday / $countDayBefore) * 100, 1) : ($countYesterday > 0 ? 100 : 0);
 
+        // 3. Bulan Ini vs Bulan Lalu
+        $countThisMonth = ScannedPackage::where('created_at', '>=', $thisMonth)->count();
+        $countLastMonth = ScannedPackage::whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])->count();
+        $diffMonth = $countThisMonth - $countLastMonth;
+        $pctMonth = $countLastMonth > 0 ? round(($diffMonth / $countLastMonth) * 100, 1) : ($countThisMonth > 0 ? 100 : 0);
+
+        // 4. Total Copied vs Belum Copied (Keseluruhan)
+        $countCopied = ScannedPackage::where('is_copied', true)->count();
+        $countNotCopied = ScannedPackage::where('is_copied', false)->count();
+
+        // Mengirim semua variabel ke view
+        return view('admin.spx_scans.index', compact(
+            'scans',
+            'countToday', 'diffToday', 'pctToday',
+            'countYesterday', 'diffYesterday', 'pctYesterday',
+            'countThisMonth', 'diffMonth', 'pctMonth',
+            'countCopied', 'countNotCopied'
+        ));
     }
 
 
