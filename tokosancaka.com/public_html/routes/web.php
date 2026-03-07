@@ -1019,3 +1019,7 @@ Route::get('/invoice/{invoice_no}/download', [App\Http\Controllers\InvoiceContro
 
 // 3. Proses Pembayaran via DOKU dari halaman tracking
 Route::post('/invoice/{id}/pay', [App\Http\Controllers\InvoiceController::class, 'payWithDoku'])->name('public.invoice.pay');
+
+
+// Route Publik untuk Monitor SPX
+Route::get('/spx-monitor', [App\Http\Controllers\PublicMonitorController::class, 'index'])->name('public.monitor');
