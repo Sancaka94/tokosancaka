@@ -664,7 +664,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::resource('couriers', CourierController::class);
 
     // SPX & Barcode
-    Route::post('/admin/spx_scans/{id}/mark-copied', [App\Http\Controllers\Admin\SpxScanController::class, 'markAsCopied'])->name('admin.spx_scans.mark_copied');
+    Route::post('/spx_scans/{id}/mark-copied', [App\Http\Controllers\Admin\SpxScanController::class, 'markAsCopied'])->name('spx_scans.mark_copied');
     Route::resource('spx-scans', SpxScanController::class)->names('spx_scans');
     Route::get('/surat-jalan/monitor', [SpxScanController::class, 'showMonitorPage'])->name('suratjalan.monitor.index');
     Route::get('/surat-jalan/monitor/export-pdf', [SpxScanController::class, 'exportMonitorPdf'])->name('suratjalan.monitor.export_pdf');
