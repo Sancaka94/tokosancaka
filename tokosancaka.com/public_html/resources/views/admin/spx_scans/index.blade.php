@@ -105,11 +105,11 @@
                 </div>
                 <div class="flex flex-col gap-2 mt-1">
                     <div class="flex justify-between items-center bg-white px-3 py-2 rounded border border-emerald-100">
-                        <span class="text-sm font-semibold text-emerald-700"><i class="fas fa-check-double mr-1"></i> Selesai Input</span>
+                        <span class="text-sm font-semibold text-emerald-700"><i class="fas fa-check-double mr-1"></i> Selesai Input System</span>
                         <span class="font-bold text-gray-800">{{ $countCopied }}</span>
                     </div>
                     <div class="flex justify-between items-center bg-white px-3 py-2 rounded border border-red-100">
-                        <span class="text-sm font-semibold text-red-600"><i class="fas fa-minus-circle mr-1"></i> Belum Input</span>
+                        <span class="text-sm font-semibold text-red-600"><i class="fas fa-minus-circle mr-1"></i> Belum Input System</span>
                         <span class="font-bold text-gray-800">{{ $countNotCopied }}</span>
                     </div>
                 </div>
