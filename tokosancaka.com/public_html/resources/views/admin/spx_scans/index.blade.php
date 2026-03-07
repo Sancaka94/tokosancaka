@@ -371,5 +371,6 @@
             alert('Gagal menyalin nomor resi.');
         });
     }
+
 </script>
 @endsection
