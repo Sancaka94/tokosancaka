@@ -25,10 +25,10 @@
         {{-- Card Monitoring Dashboard --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {{-- Card 1: Hari Ini --}}
-            <div class="bg-indigo-50 rounded-xl p-5 border border-indigo-100 shadow-sm">
+            <div class="bg-red-50 rounded-xl p-5 border border-red-100 shadow-sm">
                 <div class="flex justify-between items-center mb-2">
-                    <h3 class="text-indigo-800 text-sm font-bold uppercase tracking-wider">Hari Ini</h3>
-                    <div class="p-2 bg-indigo-200 rounded-lg text-indigo-600"><i class="fas fa-calendar-day"></i></div>
+                    <h3 class="text-red-800 text-sm font-bold uppercase tracking-wider">Hari Ini</h3>
+                    <div class="p-2 bg-red-200 rounded-lg text-red-600"><i class="fas fa-calendar-day"></i></div>
                 </div>
                 <div class="flex items-baseline gap-2">
                     <span class="text-3xl font-extrabold text-gray-800">{{ $countToday }}</span>
@@ -119,13 +119,13 @@
         <div class="mb-4">
             <form action="{{ route('admin.spx_scans.index') }}" method="GET">
                 <div class="flex flex-col md:flex-row gap-2">
-                    <input type="date" name="start_date" class="px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" value="{{ request('start_date') }}" title="Tanggal Mulai">
+                    <input type="date" name="start_date" class="px-4 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500" value="{{ request('start_date') }}" title="Tanggal Mulai">
                     <span class="self-center text-gray-500 font-medium hidden md:inline">s/d</span>
-                    <input type="date" name="end_date" class="px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" value="{{ request('end_date') }}" title="Tanggal Selesai">
+                    <input type="date" name="end_date" class="px-4 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500" value="{{ request('end_date') }}" title="Tanggal Selesai">
 
                     <div class="flex flex-grow">
-                        <input type="text" name="search" class="w-full px-4 py-2 border border-gray-300 rounded-l-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Cari berdasarkan resi atau nama pengirim..." value="{{ request('search') }}">
-                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-r-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-800 focus:outline-none focus:border-indigo-800 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
+                        <input type="text" name="search" class="w-full px-4 py-2 border border-gray-300 rounded-l-md focus:ring-red-500 focus:border-red-500" placeholder="Cari berdasarkan resi atau nama pengirim..." value="{{ request('search') }}">
+                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-r-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 active:bg-red-800 focus:outline-none focus:border-red-800 focus:ring ring-red-300 disabled:opacity-25 transition ease-in-out duration-150">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
@@ -138,6 +138,8 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
+                        {{-- KODE BARU: Kolom Nomor --}}
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">No</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Pengirim</th>
                         <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Jumlah Paket</th>
                         <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status Input System</th>
@@ -147,7 +149,7 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
 
-                    {{-- KODE BARU: Mengelompokkan data berdasarkan Nama Pengirim --}}
+                    {{-- Mengelompokkan data berdasarkan Nama Pengirim --}}
                     @php
                         $groupedScans = $scans->groupBy(function($scan) {
                             return $scan->user->nama_lengkap ?? $scan->kontak->nama ?? 'Publik / N/A';
@@ -165,6 +167,10 @@
                         @endphp
 
                         <tr class="hover:bg-gray-50 transition duration-150">
+                            {{-- KODE BARU: Menampilkan Nomor Urut --}}
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
+                                {{ $loop->iteration }}
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                                 <i class="fas fa-user-circle text-gray-400 mr-2"></i> {{ $namaPengirim }}
                             </td>
@@ -193,7 +199,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-12 text-center">
+                            <td colspan="6" class="px-6 py-12 text-center"> {{-- Ubah colspan jadi 6 --}}
                                 <div class="text-center">
                                     <i class="fas fa-box-open fa-4x text-gray-300"></i>
                                     <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data scan</h3>
@@ -227,7 +233,7 @@
             {{-- Header Modal --}}
             <div class="flex justify-between items-center pb-4 border-b border-gray-200">
                 <h3 class="text-xl font-extrabold text-gray-800">
-                    <i class="fas fa-box text-indigo-500 mr-2"></i> Detail Paket: <span class="text-indigo-700">{{ $namaPengirim }}</span>
+                    <i class="fas fa-box text-red-500 mr-2"></i> Detail Paket: <span class="text-red-700">{{ $namaPengirim }}</span>
                 </h3>
                 <button onclick="closeGroupModal('{{ $modalId }}')" class="text-gray-400 hover:text-red-500 transition focus:outline-none">
                     <i class="fas fa-times fa-lg"></i>
@@ -249,7 +255,7 @@
                             <tr class="hover:bg-gray-50">
                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
                                     <div class="flex items-center gap-2">
-                                        <button type="button" onclick="copyResi('{{ $scan->resi_number }}', '{{ $scan->id }}')" class="text-gray-400 hover:text-indigo-600 focus:outline-none transition-colors" title="Salin Nomor Resi">
+                                        <button type="button" onclick="copyResi('{{ $scan->resi_number }}', '{{ $scan->id }}')" class="text-gray-400 hover:text-red-600 focus:outline-none transition-colors" title="Salin Nomor Resi">
                                             <i id="icon-copy-{{ $scan->id }}" class="fas fa-copy"></i>
                                         </button>
                                         <span id="resi-{{ $scan->id }}">{{ $scan->resi_number }}</span>
