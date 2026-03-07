@@ -417,5 +417,22 @@ class ScanController extends Controller
 
         return $pdf->stream('SURAT-JALAN-' . $suratJalan->kode_surat_jalan . '.pdf');
     }
+
+     /**
+     * [BARU] Mengupdate status resi menjadi sudah dicopy (is_copied = true)
+     */
+    public function markAsCopied($id)
+    {
+        try {
+            // Menggunakan model SpxScan sesuai dengan file Model Anda
+            $scan = \App\Models\SpxScan::findOrFail($id);
+            $scan->is_copied = true;
+            $scan->save();
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
 }
 
