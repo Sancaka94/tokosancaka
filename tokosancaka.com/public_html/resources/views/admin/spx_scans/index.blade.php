@@ -92,7 +92,7 @@
                                 @if($scan->is_copied)
                                     <span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> DONE</span>
                                 @else
-                                    <span class="text-gray-400"><i class="fas fa-minus"></i> Belum</span>
+                                    <span class="text-red-600 font-semibold"><i class="fas fa-minus"></i> Belum</span>
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $scan->created_at->format('d M Y, H:i') }}</td>
