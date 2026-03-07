@@ -269,7 +269,7 @@
             {{-- Header Modal --}}
             <div class="flex justify-between items-center pb-4 border-b border-gray-200">
                 <h3 class="text-xl font-extrabold text-gray-800">
-                    <i class="fas fa-box text-red-500 mr-2"></i> Detail Paket: <span class="text-red-700">{{ $namaPengirim }}</span>
+                    <i class="fas fa-box text-indigo-500 mr-2"></i> Detail Paket: <span class="text-indigo-700">{{ $namaPengirim }}</span>
                 </h3>
                 <button onclick="closeGroupModal('{{ $modalId }}')" class="text-gray-400 hover:text-red-500 transition focus:outline-none">
                     <i class="fas fa-times fa-lg"></i>
@@ -281,17 +281,24 @@
                 <table class="min-w-full divide-y divide-gray-200 border border-gray-100 rounded-lg overflow-hidden">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">No Resi</th>
-                            <th class="px-4 py-2 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status Input</th>
-                            <th class="px-4 py-2 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi System</th>
+                            {{-- KODE BARU: Tambahan Header No --}}
+                            <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider w-12">No</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">No Resi</th>
+                            <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status Input</th>
+                            <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi System</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-100">
                         @foreach($packages as $scan)
                             <tr class="hover:bg-gray-50">
+                                {{-- KODE BARU: Menampilkan Nomor Urut --}}
+                                <td class="px-4 py-3 whitespace-nowrap text-center text-sm font-medium text-gray-500">
+                                    {{ $loop->iteration }}
+                                </td>
+
                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
                                     <div class="flex items-center gap-2">
-                                        <button type="button" onclick="copyResi('{{ $scan->resi_number }}', '{{ $scan->id }}')" class="text-gray-400 hover:text-red-600 focus:outline-none transition-colors" title="Salin Nomor Resi">
+                                        <button type="button" onclick="copyResi('{{ $scan->resi_number }}', '{{ $scan->id }}')" class="text-gray-400 hover:text-indigo-600 focus:outline-none transition-colors" title="Salin Nomor Resi">
                                             <i id="icon-copy-{{ $scan->id }}" class="fas fa-copy"></i>
                                         </button>
                                         <span id="resi-{{ $scan->id }}">{{ $scan->resi_number }}</span>
