@@ -175,7 +175,7 @@
                                 <i class="fas fa-user-circle text-gray-400 mr-2"></i> {{ $namaPengirim }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <span class="bg-indigo-100 text-indigo-800 py-1 px-3 rounded-full text-xs font-bold shadow-sm">
+                                <span class="bg-green-100 text-green-800 py-1 px-3 rounded-full text-xs font-bold shadow-sm">
                                     {{ $totalPaket }} Paket
                                 </span>
                             </td>
@@ -192,7 +192,7 @@
                                 {{ $waktuScanTerakhir }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                <button onclick="openGroupModal('{{ $modalId }}')" class="inline-flex items-center px-3 py-1.5 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white tracking-widest hover:bg-gray-700 active:bg-gray-900 transition">
+                                <button onclick="openGroupModal('{{ $modalId }}')" class="inline-flex items-center px-3 py-1.5 bg-red-800 border border-transparent rounded-md font-semibold text-xs text-white tracking-widest hover:bg-red-700 active:bg-red-900 transition">
                                     <i class="fas fa-list mr-1"></i> Detail
                                 </button>
                             </td>
