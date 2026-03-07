@@ -89,7 +89,7 @@
                             </td>
                             {{-- KOLOM STATUS COPAS --}}
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm" id="status-copas-{{ $scan->id }}">
-                                @if($scan->is_copied)
+                                ($scan->is_copied)
                                     <span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> Copied</span>
                                 @else
                                     <span class="text-gray-400"><i class="fas fa-minus"></i> Belum</span>
