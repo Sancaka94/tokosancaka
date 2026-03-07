@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\ScannedPackage;
+use App\Models\SuratJalan; // <--- PASTIKAN MODEL INI DI-IMPORT
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -41,11 +42,20 @@ class PublicMonitorController extends Controller
         $countCopied = ScannedPackage::where('is_copied', true)->count();
         $countNotCopied = ScannedPackage::where('is_copied', false)->count();
 
+       // ---------------------------------------------------------
+        // KODE BARU: Ambil data Surat Jalan terbaru (misal 50 data terakhir)
+        // ---------------------------------------------------------
+        $suratJalans = SuratJalan::with(['user', 'kontak', 'packages'])
+                            ->latest()
+                            ->take(50)
+                            ->get();
+
         return view('public.monitor', compact(
             'countToday', 'diffToday', 'pctToday',
             'countYesterday', 'diffYesterday', 'pctYesterday',
             'countThisMonth', 'diffMonth', 'pctMonth',
-            'countCopied', 'countNotCopied'
+            'countCopied', 'countNotCopied',
+            'suratJalans' // <--- PASTIKAN INI DIKIRIM KE VIEW
         ));
     }
 }
