@@ -47,8 +47,7 @@ class PublicMonitorController extends Controller
         // ---------------------------------------------------------
         $suratJalans = SuratJalan::with(['user', 'kontak', 'packages'])
                             ->latest()
-                            ->take(50)
-                            ->get();
+                            ->paginate(10);
 
         return view('public.monitor', compact(
             'countToday', 'diffToday', 'pctToday',
