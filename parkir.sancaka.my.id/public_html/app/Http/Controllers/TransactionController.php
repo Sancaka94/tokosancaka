@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Transaction;
+use App\Models\FinancialReport; // TAMBAHAN: Import model laporan keuangan/kas
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -322,6 +323,12 @@ class TransactionController extends Controller
         $jumlah = $request->jumlah_kendaraan;
         $tarif = ($request->vehicle_type == 'motor') ? 3000 : 5000;
 
+        // 1. Hitung total parkir yang sebenarnya
+        $totalBiayaParkir = $jumlah * $tarif;
+
+        // 2. Hitung kembalian (jika ada sisa uang)
+        $kembalian = $request->total_uang - $totalBiayaParkir;
+
         // Ambil tanggal dari form, tapi gunakan jam saat ini agar data rapi di database
         $tanggalInput = \Carbon\Carbon::parse($request->tanggal_rapel);
         $waktuRecord = $tanggalInput->setTime(now()->hour, now()->minute, now()->second);
@@ -329,7 +336,7 @@ class TransactionController extends Controller
         $tenantId = auth()->user()->tenant_id ?? null;
         $operatorId = auth()->id();
 
-        // Lakukan looping sebanyak unit kendaraan
+        // 3. Lakukan looping sebanyak unit kendaraan (murni untuk tiket parkir)
         for ($i = 0; $i < $jumlah; $i++) {
             Transaction::create([
                 'tenant_id'    => $tenantId,
@@ -343,11 +350,25 @@ class TransactionController extends Controller
             ]);
         }
 
-        $formatTgl = $tanggalInput->translatedFormat('d F Y');
+        // 4. Jika ada sisa uang/kembalian, catat sebagai Pemasukan Kas
+        if ($kembalian > 0) {
+            FinancialReport::create([
+                'tanggal'    => $tanggalInput->toDateString(),
+                'jenis'      => 'pemasukan',
+                'kategori'   => 'Lain-lain', // Anda bisa ganti kategori jika butuh spesifik
+                'keterangan' => "Sisa lebih/kembalian rapel parkir $jumlah unit " . ucfirst($request->vehicle_type),
+                'nominal'    => $kembalian,
+            ]);
+        }
 
-        return redirect()->route('transactions.index')->with(
-            'success', "Berhasil mencatat $jumlah unit " . ucfirst($request->vehicle_type) . " untuk tanggal $formatTgl (Total Rp " . number_format($request->total_uang, 0, ',', '.') . ")."
-        );
+        $formatTgl = $tanggalInput->translatedFormat('d F Y');
+        $pesanAlert = "Berhasil mencatat $jumlah unit " . ucfirst($request->vehicle_type) . " (Parkir: Rp " . number_format($totalBiayaParkir, 0, ',', '.') . ").";
+
+        if ($kembalian > 0) {
+            $pesanAlert .= " Sisa Rp " . number_format($kembalian, 0, ',', '.') . " masuk Kas.";
+        }
+
+        return redirect()->route('transactions.index')->with('success', $pesanAlert);
     }
 
     // ==========================================
