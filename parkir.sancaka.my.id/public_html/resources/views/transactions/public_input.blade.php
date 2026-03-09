@@ -9,7 +9,7 @@
         body { background-color: #e5e7eb; } /* Gray 200 */
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-3 md:p-4">
+<body class="min-h-screen flex flex-col items-center justify-start pt-6 pb-4 px-3 md:pt-10 md:px-4">
 
     <div class="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden p-5 md:p-10 border-t-8 border-blue-600">
 
