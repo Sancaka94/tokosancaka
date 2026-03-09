@@ -130,6 +130,8 @@
             $parkirHariIni = Transaction::whereDate('entry_time', $today)->sum($rumusTarif);
             $parkirKemarin = Transaction::whereDate('entry_time', $yesterday)->sum($rumusTarif);
 
+            $parkirH2 = Transaction::whereDate('entry_time', $h2)->sum($rumusTarif);
+
             $parkir7Hari = Transaction::whereDate('entry_time', '>=', Carbon::today()->subDays(6))
                                       ->whereDate('entry_time', '<=', Carbon::today())
                                       ->sum($rumusTarif);
