@@ -148,8 +148,10 @@
             $lapGajiHariIni = FinancialReport::whereDate('tanggal', $today)->where('kategori', 'Gaji Pegawai')->get();
             $lapGajiKemarin = FinancialReport::whereDate('tanggal', $yesterday)->where('kategori', 'Gaji Pegawai')->get();
 
-            $pendKotorHariIni = Transaction::whereDate('entry_time', $today)->sum($rumusTarif) + FinancialReport::whereDate('tanggal', $today)->where('jenis', 'pemasukan')->sum('nominal');
-            $pendKotorKemarin = Transaction::whereDate('entry_time', $yesterday)->sum($rumusTarif) + FinancialReport::whereDate('tanggal', $yesterday)->where('jenis', 'pemasukan')->sum('nominal');
+            // Ganti $rumusTarif menjadi $rumusParkirMurni agar toilet tidak dihitung
+            $pendKotorHariIni = Transaction::whereDate('entry_time', $today)->sum($rumusParkirMurni) + FinancialReport::whereDate('tanggal', $today)->where('jenis', 'pemasukan')->sum('nominal');
+
+            $pendKotorKemarin = Transaction::whereDate('entry_time', $yesterday)->sum($rumusParkirMurni) + FinancialReport::whereDate('tanggal', $yesterday)->where('jenis', 'pemasukan')->sum('nominal');
 
             $operatorData = [];
             foreach($operators as $op) {
@@ -493,7 +495,7 @@
                             ->sum('nominal');
 
             // Total Kotor (Gabungan dari semuanya untuk total bruto pegawai bila diperlukan)
-            $kotorBulanIni = $parkirBln + $toiletBln + $kasBln;
+            $dasarGajiBulanIni = $parkirBln + $kasBln;
         @endphp
 
         <div class="mb-6 mt-12 flex justify-between items-end">
@@ -517,7 +519,7 @@
                     $color = $colors[$index % 4];
 
                     // Hitung Total Gaji 1 Bulan Ini
-                    $totalBulanIni = $op->type == 'percentage' ? ($op->amount / 100) * $kotorBulanIni : $op->amount * $hariBerjalan;
+                    $dasarGajiBulanIni = $op->type == 'percentage' ? ($op->amount / 100) * $kotorBulanIni : $op->amount * $hariBerjalan;
                 @endphp
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col relative overflow-hidden transform transition duration-300 hover:scale-105 hover:shadow-lg">
                     <div class="flex items-start gap-4 mb-4">
@@ -579,11 +581,11 @@
                             @if(isset($operators) && count($operators) > 0)
                                 @foreach($operators as $pegawai)
                                     @php
-                                        $totalBulanIniTabel = $pegawai->salary_type == 'percentage' ? ($pegawai->salary_amount / 100) * $kotorBulanIni : $pegawai->salary_amount * $hariBerjalan;
+                                        $dasarGajiBulanIni = $pegawai->salary_type == 'percentage' ? ($pegawai->salary_amount / 100) * $kotorBulanIni : $pegawai->salary_amount * $hariBerjalan;
                                     @endphp
                                     <th class="px-6 py-4 text-right tracking-wider border-l border-gray-100">
                                         <span class="block text-[10px] text-gray-400 font-bold uppercase mb-1">
-                                            Total 1 Bln: <span class="text-emerald-500 font-black">Rp {{ number_format($totalBulanIniTabel, 0, ',', '.') }}</span>
+                                            Total 1 Bln: <span class="text-emerald-500 font-black">Rp {{ number_format($dasarGajiBulanIni, 0, ',', '.') }}</span>
                                         </span>
                                         <span class="block text-xs font-black text-indigo-600 uppercase">{{ $pegawai->name }}</span>
                                     </th>
