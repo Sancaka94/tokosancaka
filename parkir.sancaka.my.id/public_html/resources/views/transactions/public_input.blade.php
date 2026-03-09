@@ -13,11 +13,6 @@
 
     <div class="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden p-5 md:p-10 border-t-8 border-blue-600">
 
-        <div class="text-center mb-6 md:mb-8">
-            <h1 class="text-2xl md:text-4xl font-black text-gray-800 mb-2">SELAMAT DATANG</h1>
-            <p class="text-gray-500 font-bold text-xs md:text-lg">SILAKAN MASUKKAN PLAT ATAU PILIH KATEGORI</p>
-        </div>
-
         @if(session('success'))
             <div class="bg-green-100 border-l-8 border-green-500 text-green-700 p-4 md:p-5 rounded-lg mb-6 md:mb-8 font-black text-center text-lg md:text-xl shadow-inner">
                 {{ session('success') }}
@@ -32,7 +27,6 @@
 
         <form action="{{ route('transactions.public.store') }}" method="POST" class="w-full bg-blue-50/50 p-4 md:p-6 rounded-2xl border-2 border-blue-100">
             @csrf
-            <input type="hidden" name="kategori" value="umum">
 
             <div class="text-center mb-3 md:mb-4">
                 <h3 class="font-black text-gray-700 text-base md:text-xl">CUSTOMER UMUM</h3>
@@ -41,17 +35,27 @@
             <div class="mb-4">
                 <input type="text"
                        name="plate_number"
+                       inputmode="numeric"
+                       pattern="[0-9]*"
                        class="w-full text-center text-3xl md:text-4xl font-black uppercase tracking-widest py-4 md:py-5 border-4 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all placeholder-gray-300"
                        placeholder="PLAT NOMOR"
                        autocomplete="off"
                        autofocus
-                       oninput="this.value = this.value.toUpperCase()">
+                       oninput="this.value = this.value.replace(/[^0-9]/g, '')">
             </div>
 
-            <button type="submit" class="w-full bg-gray-800 hover:bg-gray-900 active:bg-black text-white font-black text-lg md:text-2xl py-4 rounded-xl shadow-lg transition-transform active:scale-95 flex justify-center items-center gap-2 md:gap-3">
-                <svg class="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                CETAK TIKET
-            </button>
+            <div class="flex gap-2 md:gap-3">
+                <button type="submit" name="kategori" value="umum" class="w-2/3 bg-gray-800 hover:bg-gray-900 active:bg-black text-white font-black text-lg md:text-2xl py-4 rounded-xl shadow-lg transition-transform active:scale-95 flex justify-center items-center gap-2 md:gap-3">
+                    <svg class="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    CETAK TIKET
+                </button>
+
+                <button type="submit" name="kategori" value="toilet" class="w-1/3 bg-cyan-600 hover:bg-cyan-700 active:bg-cyan-800 text-white font-black rounded-xl shadow-lg transition-transform active:scale-95 flex flex-col justify-center items-center py-2">
+                    <span class="text-2xl md:text-3xl mb-1">🚽</span>
+                    <span class="text-sm md:text-lg leading-none">TOILET</span>
+                    <span class="text-[10px] md:text-sm mt-1 font-medium">Rp 2.000</span>
+                </button>
+            </div>
         </form>
 
         <div class="relative flex py-5 md:py-6 items-center">
