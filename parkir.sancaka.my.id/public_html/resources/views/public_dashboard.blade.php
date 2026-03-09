@@ -483,19 +483,15 @@
                             ->whereYear('entry_time', $tahunSekarang)
                             ->sum(\Illuminate\Support\Facades\DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)'));
 
-            // Pendapatan Murni Toilet Bulan Ini
-            $toiletBln = \App\Models\Transaction::whereMonth('entry_time', $bulanSekarang)
-                            ->whereYear('entry_time', $tahunSekarang)
-                            ->sum(\Illuminate\Support\Facades\DB::raw('IFNULL(toilet_fee, 0)'));
-
             // Kas Bulan Ini
             $kasBln = \App\Models\FinancialReport::whereMonth('tanggal', $bulanSekarang)
                             ->whereYear('tanggal', $tahunSekarang)
                             ->where('jenis', 'pemasukan')
                             ->sum('nominal');
 
-            // Total Kotor (Gabungan dari semuanya untuk total bruto pegawai bila diperlukan)
-            $dasarGajiBulanIni = $parkirBln + $kasBln;
+            // Gaji diambil dari Parkir + Kas (Tanpa Toilet)
+            // Kita tetap pakai nama variabel $kotorBulanIni agar tidak error di bawahnya
+            $kotorBulanIni = $parkirBln + $kasBln;
         @endphp
 
         <div class="mb-6 mt-12 flex justify-between items-end">
