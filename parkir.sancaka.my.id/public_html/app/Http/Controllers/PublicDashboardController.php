@@ -282,4 +282,5 @@ class PublicDashboardController extends Controller
             'sepedaBiasaHariIni', 'sepedaListrikHariIni', 'pegawaiRsudHariIni', 'riwayat_gaji'
         ));
     }
+
 }
