@@ -42,7 +42,7 @@
 
         @php
             // =========================================================================
-            // ENGINE PERHITUNGAN CERDAS OTOMATIS (Ditulis di Blade)
+            // ENGINE PERHITUNGAN CERDAS OTOMATIS (VERSI FINAL & BERSIH)
             // =========================================================================
             use App\Models\Transaction;
             use App\Models\FinancialReport;
@@ -55,10 +55,9 @@
             $h2 = Carbon::today()->subDays(2);
             $lastMonth = Carbon::now()->subMonth();
 
-            // PISAHKAN RUMUS AGAR BISA DIBAGI 2 KHUSUS PARKIR
+            // PEMISAHAN RUMUS MUTLAK
             $rumusParkirMurni = DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)');
             $rumusToilet = DB::raw('IFNULL(toilet_fee, 0)');
-            $rumusTarif = DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) + IFNULL(toilet_fee, 0)');
 
             // Fungsi Helper untuk Menghitung Persen NAIK/TURUN
             if (!function_exists('hitungPersen')) {
@@ -69,8 +68,8 @@
                 }
             }
 
-            // --- 1. DATA KENDARAAN (HARI INI VS KEMARIN) ---
-            $motorHariIni = $data['motor_masuk'] ?? 0;
+            // --- 1. DATA KENDARAAN ---
+            $motorHariIni = Transaction::where('vehicle_type', 'motor')->whereDate('entry_time', $today)->count();
             $motorKemarin = Transaction::where('vehicle_type', 'motor')->whereDate('entry_time', $yesterday)->count();
 
             $sepedaHariIni = Transaction::whereDate('entry_time', $today)->where('plate_number', 'LIKE', 'SPD-%')->count();
@@ -82,7 +81,7 @@
             $pegawaiRsudHariIni = Transaction::whereDate('entry_time', $today)->where('plate_number', 'LIKE', 'RSUD-%')->count();
             $pegawaiRsudKemarin = Transaction::whereDate('entry_time', $yesterday)->where('plate_number', 'LIKE', 'RSUD-%')->count();
 
-            // --- 2. DATA PENDAPATAN & OMZET (KHUSUS PARKIR DIBAGI 2) ---
+            // --- 2. DATA PENDAPATAN & OMZET ---
 
             // HARI INI
             $parkirMurniHariIni = Transaction::whereDate('entry_time', $today)->sum($rumusParkirMurni);
@@ -90,7 +89,7 @@
             $kasMasukHariIni    = FinancialReport::whereDate('tanggal', $today)->where('jenis', 'pemasukan')->sum('nominal');
             $kasKeluarHariIni   = FinancialReport::whereDate('tanggal', $today)->where('jenis', 'pengeluaran')->sum('nominal');
 
-            $omzetHariIni      = $parkirMurniHariIni + $toiletHariIni;
+            $omzetHariIni      = $parkirMurniHariIni + $toiletHariIni + $kasMasukHariIni;
             $pendapatanHariIni = ($parkirMurniHariIni / 2) + $toiletHariIni + $kasMasukHariIni - $kasKeluarHariIni;
 
             // KEMARIN
@@ -99,7 +98,7 @@
             $kasMasukKemarin    = FinancialReport::whereDate('tanggal', $yesterday)->where('jenis', 'pemasukan')->sum('nominal');
             $kasKeluarKemarin   = FinancialReport::whereDate('tanggal', $yesterday)->where('jenis', 'pengeluaran')->sum('nominal');
 
-            $omzetKemarin      = $parkirMurniKemarin + $toiletKemarin;
+            $omzetKemarin      = $parkirMurniKemarin + $toiletKemarin + $kasMasukKemarin;
             $pendapatanKemarin = ($parkirMurniKemarin / 2) + $toiletKemarin + $kasMasukKemarin - $kasKeluarKemarin;
 
             // H-2
@@ -126,32 +125,33 @@
 
             $pendapatanBulanKemarin = ($parkirMurniBulanKemarin / 2) + $toiletBulanKemarin + $kasMasukBulanKemarin - $kasKeluarBulanKemarin;
 
-            // --- 3. DATA PARKIR MURNI ---
-            $parkirHariIni = Transaction::whereDate('entry_time', $today)->sum($rumusTarif);
-            $parkirKemarin = Transaction::whereDate('entry_time', $yesterday)->sum($rumusTarif);
-
-            $parkirH2 = Transaction::whereDate('entry_time', $h2)->sum($rumusTarif);
+            // --- 3. DATA PARKIR MURNI (KHUSUS 4 CARD BAWAH) ---
+            $parkirHariIni = $parkirMurniHariIni;
+            $parkirKemarin = $parkirMurniKemarin;
+            $parkirH2      = $parkirMurniH2;
 
             $parkir7Hari = Transaction::whereDate('entry_time', '>=', Carbon::today()->subDays(6))
                                       ->whereDate('entry_time', '<=', Carbon::today())
-                                      ->sum($rumusTarif);
+                                      ->sum($rumusParkirMurni);
 
             $parkir7HariLalu = Transaction::whereDate('entry_time', '>=', Carbon::today()->subDays(13))
                                           ->whereDate('entry_time', '<=', Carbon::today()->subDays(7))
-                                          ->sum($rumusTarif);
+                                          ->sum($rumusParkirMurni);
 
-            $parkirBulanIni = Transaction::whereMonth('entry_time', $today->month)->whereYear('entry_time', $today->year)->sum($rumusTarif);
-            $parkirBulanLalu = Transaction::whereMonth('entry_time', $lastMonth->month)->whereYear('entry_time', $lastMonth->year)->sum($rumusTarif);
+            $parkirBulanIni = $parkirMurniBulanIni;
+            $parkirBulanLalu = $parkirMurniBulanKemarin;
 
-            // --- 4. ENGINE GAJI PEGAWAI (UNTUK 4 CARD) ---
+            // --- 4. ENGINE GAJI PEGAWAI (UNTUK 4 CARD GAJI) ---
             $operators = User::where('role', 'operator')->get();
             $lapGajiHariIni = FinancialReport::whereDate('tanggal', $today)->where('kategori', 'Gaji Pegawai')->get();
             $lapGajiKemarin = FinancialReport::whereDate('tanggal', $yesterday)->where('kategori', 'Gaji Pegawai')->get();
 
-            // Ganti $rumusTarif menjadi $rumusParkirMurni agar toilet tidak dihitung
-            $pendKotorHariIni = Transaction::whereDate('entry_time', $today)->sum($rumusParkirMurni) + FinancialReport::whereDate('tanggal', $today)->where('jenis', 'pemasukan')->sum('nominal');
+            // AMBIL KAS MASUK TAPI KHUSUS PARKIR SAJA (Toilet/Umum Tidak Dihitung)
+            $kasMasukKhususParkirHariIni = FinancialReport::whereDate('tanggal', $today)->where('jenis', 'pemasukan')->where('kategori', 'Parkiran')->sum('nominal');
+            $kasMasukKhususParkirKemarin = FinancialReport::whereDate('tanggal', $yesterday)->where('jenis', 'pemasukan')->where('kategori', 'Parkiran')->sum('nominal');
 
-            $pendKotorKemarin = Transaction::whereDate('entry_time', $yesterday)->sum($rumusParkirMurni) + FinancialReport::whereDate('tanggal', $yesterday)->where('jenis', 'pemasukan')->sum('nominal');
+            $pendKotorHariIni = $parkirMurniHariIni + $kasMasukKhususParkirHariIni;
+            $pendKotorKemarin = $parkirMurniKemarin + $kasMasukKhususParkirKemarin;
 
             $operatorData = [];
             foreach($operators as $op) {
@@ -171,7 +171,15 @@
                 ];
             }
 
-            // --- EKSEKUSI PERSENTASE NAIK/TURUN UNTUK 12 CARD ---
+            // TOTAL BULAN INI UNTUK GAJI (Murni Parkir + Kas Parkir)
+            $kasParkirBln = FinancialReport::whereMonth('tanggal', $today->month)
+                                ->whereYear('tanggal', $today->year)
+                                ->where('jenis', 'pemasukan')
+                                ->where('kategori', 'Parkiran')
+                                ->sum('nominal');
+            $kotorBulanIni = $parkirMurniBulanIni + $kasParkirBln;
+
+            // --- EKSEKUSI PERSENTASE NAIK/TURUN UNTUK SEMUA CARD ---
             $cmpMotor = hitungPersen($motorHariIni, $motorKemarin);
             $cmpSepeda = hitungPersen($sepedaHariIni, $sepedaKemarin);
             $cmpListrik = hitungPersen($sepedaListrikHariIni, $sepedaListrikKemarin);
@@ -362,7 +370,7 @@
 
         <div class="mb-6 mt-12 text-center md:text-left">
             <h2 class="text-2xl font-bold text-gray-800">Profit Kendaraan (Murni Parkir)</h2>
-            <p class="text-gray-500 text-sm mt-1">Total uang masuk murni dari tiket parkir tanpa tambahan kas operasional.</p>
+            <p class="text-gray-500 text-sm mt-1">Total uang masuk murni dari tiket parkir tanpa tambahan toilet dan kas.</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -472,34 +480,10 @@
             </div>
         </div>
 
-        @php
-            // ENGINE HITUNG TOTAL BULAN INI (Dijalankan otomatis)
-            $bulanSekarang = date('m');
-            $tahunSekarang = date('Y');
-            $hariBerjalan = date('j'); // Tanggal hari ini (misal tgl 6 = 6 hari berjalan)
-
-            // Pendapatan Murni Parkir Bulan Ini
-            $parkirBln = \App\Models\Transaction::whereMonth('entry_time', $bulanSekarang)
-                            ->whereYear('entry_time', $tahunSekarang)
-                            ->sum(\Illuminate\Support\Facades\DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)'));
-
-            // Kas Bulan Ini
-            // Kas Bulan Ini (HANYA PARKIRAN, KECUALIKAN TOILET)
-            $kasBln = \App\Models\FinancialReport::whereMonth('tanggal', $bulanSekarang)
-                            ->whereYear('tanggal', $tahunSekarang)
-                            ->where('jenis', 'pemasukan')
-                            ->where('kategori', '!=', 'Toilet') // <--- INI TAMBAHANNYA
-                            ->sum('nominal');
-
-            // Gaji diambil dari Parkir + Kas (Tanpa Toilet)
-            // Kita tetap pakai nama variabel $kotorBulanIni agar tidak error di bawahnya
-            $kotorBulanIni = $parkirBln + $kasBln;
-        @endphp
-
         <div class="mb-6 mt-12 flex justify-between items-end">
             <div>
                 <h2 class="text-2xl font-bold text-gray-800">Estimasi Gaji Pegawai (Hari Ini)</h2>
-                <p class="text-gray-500 text-sm mt-1">Perhitungan otomatis gaji hari ini berdasarkan sistem bagi hasil atau flat.</p>
+                <p class="text-gray-500 text-sm mt-1">Perhitungan otomatis gaji hanya dari Parkir Murni + Kas Parkir.</p>
             </div>
             <span class="hidden md:inline-block text-[10px] bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full font-bold uppercase tracking-wider border border-purple-200">Dihitung Otomatis</span>
         </div>
@@ -507,7 +491,6 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             @forelse($operatorData as $index => $op)
                 @php
-                    // Pewarnaan dinamis untuk icon masing-masing pegawai
                     $colors = [
                         'text-blue-600 bg-blue-100',
                         'text-emerald-600 bg-emerald-100',
@@ -516,10 +499,9 @@
                     ];
                     $color = $colors[$index % 4];
 
-                    // PENTING: Hitung Total Gaji 1 Bulan Ini (Ini yang hilang tadi)
-                    $totalBulanIni = $op->type == 'percentage' ? ($op->amount / 100) * $kotorBulanIni : $op->amount * $hariBerjalan;
+                    // PENTING: Hitung Total Gaji 1 Bulan Ini berdasarkan dasar gaji (Parkir + Kas Parkir)
+                    $totalBulanIni = $op->type == 'percentage' ? ($op->amount / 100) * $kotorBulanIni : $op->amount * date('j');
                 @endphp
-
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col relative overflow-hidden transform transition duration-300 hover:scale-105 hover:shadow-lg">
                     <div class="flex items-start gap-4 mb-4">
                         <div class="{{ $color }} p-3 rounded-full flex-shrink-0">
@@ -580,11 +562,11 @@
                             @if(isset($operators) && count($operators) > 0)
                                 @foreach($operators as $pegawai)
                                     @php
-                                        $dasarGajiBulanIni = $pegawai->salary_type == 'percentage' ? ($pegawai->salary_amount / 100) * $kotorBulanIni : $pegawai->salary_amount * $hariBerjalan;
+                                        $totalBulanIniTabel = $pegawai->salary_type == 'percentage' ? ($pegawai->salary_amount / 100) * $kotorBulanIni : $pegawai->salary_amount * date('j');
                                     @endphp
                                     <th class="px-6 py-4 text-right tracking-wider border-l border-gray-100">
                                         <span class="block text-[10px] text-gray-400 font-bold uppercase mb-1">
-                                            Total 1 Bln: <span class="text-emerald-500 font-black">Rp {{ number_format($dasarGajiBulanIni, 0, ',', '.') }}</span>
+                                            Total 1 Bln: <span class="text-emerald-500 font-black">Rp {{ number_format($totalBulanIniTabel, 0, ',', '.') }}</span>
                                         </span>
                                         <span class="block text-xs font-black text-indigo-600 uppercase">{{ $pegawai->name }}</span>
                                     </th>
@@ -717,7 +699,7 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-12">
             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
                 <h3 class="font-bold text-gray-700 text-sm">Riwayat Pendapatan Kendaraan</h3>
-                <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full font-semibold">Murni Parkir</span>
+                <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full font-semibold">Murni Parkir & Toilet</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
@@ -726,7 +708,7 @@
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal</th>
                             <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Total Kendaraan Keluar</th>
                             <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Total Omzet (Rp)</th>
-                            <th class="px-6 py-4 text-right text-xs font-bold text-indigo-600 uppercase tracking-wider">Total Profit Khusus Parkir (50%)</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-indigo-600 uppercase tracking-wider">Total Profit Bersih</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-100">
@@ -744,7 +726,7 @@
                                     Rp {{ number_format($trx->total_omzet, 0, ',', '.') }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right font-black text-indigo-600 text-base md:text-lg bg-indigo-50/30">
-                                    Rp {{ number_format($trx->total_omzet / 2, 0, ',', '.') }}
+                                    Rp {{ number_format(($trx->total_parkir_saja / 2) + $trx->total_toilet, 0, ',', '.') }}
                                 </td>
                             </tr>
                         @empty
@@ -820,7 +802,6 @@
 
             const rawChartData = @json($chartData);
 
-            // Chart Harian (Line)
             if(rawChartData.harian && document.getElementById('chartHarianPublic')) {
                 const ctxH = document.getElementById('chartHarianPublic').getContext('2d');
                 new Chart(ctxH, {
@@ -830,7 +811,7 @@
                         datasets: [{
                             label: 'Pendapatan Bersih (Rp)',
                             data: rawChartData.harian.data,
-                            borderColor: '#10b981', // Emerald green
+                            borderColor: '#10b981',
                             backgroundColor: 'rgba(16, 185, 129, 0.1)',
                             borderWidth: 3,
                             pointBackgroundColor: '#10b981',
@@ -849,7 +830,6 @@
                 });
             }
 
-            // Chart Bulanan (Bar)
             if(rawChartData.bulanan && document.getElementById('chartBulananPublic')) {
                 const ctxB = document.getElementById('chartBulananPublic').getContext('2d');
                 new Chart(ctxB, {
@@ -859,7 +839,7 @@
                         datasets: [{
                             label: 'Pendapatan Bersih (Rp)',
                             data: rawChartData.bulanan.data,
-                            backgroundColor: '#3b82f6', // Blue
+                            backgroundColor: '#3b82f6',
                             borderRadius: 6
                         }]
                     },
