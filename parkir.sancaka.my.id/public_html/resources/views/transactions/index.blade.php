@@ -47,10 +47,17 @@
                     <span class="font-black text-xl uppercase tracking-wider">CETAK</span>
                 </button>
 
-                <button type="button" onclick="openRapelModal()" class="w-full bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white py-2 px-4 rounded-lg shadow flex justify-center items-center gap-2 transition-transform active:scale-95">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span class="font-bold text-sm">Input Dana</span>
-                </button>
+                <div class="flex gap-2 w-full">
+                    <button type="button" onclick="openRapelModal()" class="w-1/2 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white py-2 px-1 rounded-lg shadow flex justify-center items-center gap-1 transition-transform active:scale-95">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span class="font-bold text-[10px] md:text-[11px] uppercase tracking-wide">Rapel Parkir</span>
+                    </button>
+
+                    <button type="button" onclick="openKasModal()" class="w-1/2 bg-purple-500 hover:bg-purple-600 active:bg-purple-700 text-white py-2 px-1 rounded-lg shadow flex justify-center items-center gap-1 transition-transform active:scale-95">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span class="font-bold text-[10px] md:text-[11px] uppercase tracking-wide">Kas Manual</span>
+                    </button>
+                </div>
             </div>
         </form>
         @error('plate_number')
@@ -300,6 +307,16 @@
         document.getElementById('rapelModal').classList.add('hidden');
     }
 
+    // --- Logika Modal Kas Manual ---
+    function openKasModal() {
+        document.getElementById('kasModal').classList.remove('hidden');
+        setTimeout(() => document.getElementsByName('nominal')[0].focus(), 100);
+    }
+
+    function closeKasModal() {
+        document.getElementById('kasModal').classList.add('hidden');
+    }
+
     function hitungOtomatis() {
         let select = document.getElementById('rapel_vehicle_type');
         let tarif = parseInt(select.options[select.selectedIndex].getAttribute('data-tarif'));
@@ -344,7 +361,7 @@
     <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         <div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
             <h3 class="font-black text-lg text-gray-800 flex items-center gap-2">
-                <span>💰</span> Input Kendaraan via Total Uang
+                <span>💰</span> Rapel / Setoran Parkir
             </h3>
             <button type="button" onclick="closeRapelModal()" class="text-red-500 hover:bg-red-100 p-2 rounded-lg font-bold text-xl transition-colors leading-none">&times;</button>
         </div>
@@ -382,6 +399,58 @@
 
             <button type="submit" id="btnSubmitRapel" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-black text-lg shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                 SIMPAN DATA RAPEL
+            </button>
+        </form>
+    </div>
+</div>
+
+<div id="kasModal" class="fixed inset-0 z-[100] hidden bg-gray-900 bg-opacity-80 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+            <h3 class="font-black text-lg text-gray-800 flex items-center gap-2">
+                <span>📓</span> Input Kas Manual
+            </h3>
+            <button type="button" onclick="closeKasModal()" class="text-red-500 hover:bg-red-100 p-2 rounded-lg font-bold text-xl transition-colors leading-none">&times;</button>
+        </div>
+
+        <form action="{{ route('transactions.storeKas') }}" method="POST" class="p-5">
+            @csrf
+
+            <div class="mb-4">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Tanggal Transaksi</label>
+                <input type="date" name="tanggal" class="form-control w-full py-2 text-center rounded-lg border-2 border-purple-100 focus:border-purple-500 font-bold text-gray-700" value="{{ date('Y-m-d') }}" required>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Jenis Kas</label>
+                    <select name="jenis" class="form-control w-full bg-white shadow-sm py-2 rounded-lg border-2 border-gray-200 focus:border-purple-500 font-bold" required>
+                        <option value="pemasukan">Pemasukan (+)</option>
+                        <option value="pengeluaran">Pengeluaran (-)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Kategori</label>
+                    <select name="kategori" class="form-control w-full bg-white shadow-sm py-2 rounded-lg border-2 border-gray-200 focus:border-purple-500 font-bold" required>
+                        <option value="Parkiran">Parkiran</option>
+                        <option value="Toilet">Toilet</option>
+                        <option value="Operasional (Umum)">Operasional (Umum)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Nominal (Rp)</label>
+                <input type="number" name="nominal" class="form-control w-full text-2xl font-black text-center py-3 rounded-lg border-2 border-purple-300 focus:border-purple-500 focus:ring-purple-500" placeholder="0" required min="1">
+            </div>
+
+            <div class="mb-5">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Keterangan (Wajib)</label>
+                <input type="text" name="keterangan" class="form-control w-full py-2 px-3 rounded-lg border-2 border-gray-200 focus:border-purple-500" placeholder="Misal: Beli sapu / Setoran toilet manual" required>
+            </div>
+
+            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-black text-lg shadow-lg transition-transform active:scale-95">
+                SIMPAN KAS
             </button>
         </form>
     </div>

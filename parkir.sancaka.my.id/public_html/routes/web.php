@@ -69,7 +69,9 @@ Route::get('/financial/export/pdf', [App\Http\Controllers\FinancialReportControl
     Route::middleware('auth')->group(function () {
 
         // 1. Dashboard Utama (Menggunakan Controller, bukan Closure bawaan)
-        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::post('/transactions/kas', [App\Http\Controllers\TransactionController::class, 'storeKas'])->name('transactions.storeKas');
 
         // Route Hapus Semua Transaksi Berdasarkan Tanggal
     Route::delete('/transactions/destroy-all-by-date', [TransactionController::class, 'destroyAllByDate'])->name('transactions.destroyAllByDate');

@@ -397,4 +397,33 @@ class TransactionController extends Controller
             return redirect()->back()->with('error', "Tidak ada data transaksi parkir pada tanggal $formatTgl untuk dihapus.");
         }
     }
+
+    // ==========================================
+    // FUNGSI BARU: Simpan Kas Manual (Parkir/Toilet/Umum)
+    // ==========================================
+    public function storeKas(Request $request)
+    {
+        $request->validate([
+            'tanggal'    => 'required|date',
+            'jenis'      => 'required|in:pemasukan,pengeluaran',
+            'kategori'   => 'required|string',
+            'nominal'    => 'required|numeric|min:1',
+            'keterangan' => 'required|string|max:255'
+        ]);
+
+        \App\Models\FinancialReport::create([
+            'tanggal'    => $request->tanggal,
+            'jenis'      => $request->jenis,
+            'kategori'   => $request->kategori,
+            'nominal'    => $request->nominal,
+            'keterangan' => $request->keterangan
+        ]);
+
+        $statusJenis = $request->jenis == 'pemasukan' ? 'Pemasukan' : 'Pengeluaran';
+
+        return redirect()->route('transactions.index')->with(
+            'success',
+            "Data Kas ($statusJenis - {$request->kategori}) sebesar Rp " . number_format($request->nominal, 0, ',', '.') . " berhasil disimpan!"
+        );
+    }
 }
