@@ -21,32 +21,24 @@ class PublicDashboardController extends Controller
         // =========================================================
         // RUMUS TARIF OTOMATIS
         // =========================================================
-        // Rumus Omzet (Parkir + Toilet)
         $rumusTarif = DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) + IFNULL(toilet_fee, 0)');
 
-        // Rumus Khusus Parkir Murni (TANPA TOILET) untuk dasar gaji
+        // Rumus Khusus Parkir Murni (TANPA TOILET)
         $rumusParkirMurni = DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)');
 
         // =========================================================
         // 1. STATISTIK HARI INI & KEMARIN (Menggunakan Waktu Masuk)
         // =========================================================
-
-        // Hari Ini
         $parkirHariIni = Transaction::whereDate('entry_time', $today)->sum($rumusTarif);
-        $kasMasukHariIni = FinancialReport::whereDate('tanggal', $today)
-                                    ->where('jenis', 'pemasukan')->sum('nominal');
-        $kasKeluarHariIni = FinancialReport::whereDate('tanggal', $today)
-                                    ->where('jenis', 'pengeluaran')->sum('nominal');
+        $kasMasukHariIni = FinancialReport::whereDate('tanggal', $today)->where('jenis', 'pemasukan')->sum('nominal');
+        $kasKeluarHariIni = FinancialReport::whereDate('tanggal', $today)->where('jenis', 'pengeluaran')->sum('nominal');
 
         $pendapatanKotorHariIni = $parkirHariIni + $kasMasukHariIni;
         $pendapatanBersihHariIni = $pendapatanKotorHariIni - $kasKeluarHariIni;
 
-        // Kemarin
         $parkirKemarin = Transaction::whereDate('entry_time', $yesterday)->sum($rumusTarif);
-        $kasMasukKemarin = FinancialReport::whereDate('tanggal', $yesterday)
-                                    ->where('jenis', 'pemasukan')->sum('nominal');
-        $kasKeluarKemarin = FinancialReport::whereDate('tanggal', $yesterday)
-                                    ->where('jenis', 'pengeluaran')->sum('nominal');
+        $kasMasukKemarin = FinancialReport::whereDate('tanggal', $yesterday)->where('jenis', 'pemasukan')->sum('nominal');
+        $kasKeluarKemarin = FinancialReport::whereDate('tanggal', $yesterday)->where('jenis', 'pengeluaran')->sum('nominal');
 
         $pendapatanBersihKemarin = ($parkirKemarin + $kasMasukKemarin) - $kasKeluarKemarin;
 
@@ -60,41 +52,22 @@ class PublicDashboardController extends Controller
         // =========================================================
         // TAMBAHAN: HITUNG SEPEDA & PEGAWAI RSUD HARI INI
         // =========================================================
-        $sepedaBiasaHariIni = Transaction::whereDate('entry_time', $today)
-                                ->where('plate_number', 'LIKE', 'SPD-%')
-                                ->count();
-
-        $sepedaListrikHariIni = Transaction::whereDate('entry_time', $today)
-                                ->where('plate_number', 'LIKE', 'SPL-%')
-                                ->count();
-
-        $pegawaiRsudHariIni = Transaction::whereDate('entry_time', $today)
-                                ->where('plate_number', 'LIKE', 'RSUD-%')
-                                ->count();
+        $sepedaBiasaHariIni = Transaction::whereDate('entry_time', $today)->where('plate_number', 'LIKE', 'SPD-%')->count();
+        $sepedaListrikHariIni = Transaction::whereDate('entry_time', $today)->where('plate_number', 'LIKE', 'SPL-%')->count();
+        $pegawaiRsudHariIni = Transaction::whereDate('entry_time', $today)->where('plate_number', 'LIKE', 'RSUD-%')->count();
 
         // =========================================================
         // 2. PENDAPATAN BULAN INI & BULAN KEMARIN
         // =========================================================
-
-        // Bulan Ini
-        $parkirBulanIni = Transaction::whereMonth('entry_time', $now->month)
-                                ->whereYear('entry_time', $now->year)
-                                ->sum($rumusTarif);
-        $kasMasukBulanIni = FinancialReport::whereMonth('tanggal', $now->month)
-                                ->whereYear('tanggal', $now->year)->where('jenis', 'pemasukan')->sum('nominal');
-        $kasKeluarBulanIni = FinancialReport::whereMonth('tanggal', $now->month)
-                                ->whereYear('tanggal', $now->year)->where('jenis', 'pengeluaran')->sum('nominal');
+        $parkirBulanIni = Transaction::whereMonth('entry_time', $now->month)->whereYear('entry_time', $now->year)->sum($rumusTarif);
+        $kasMasukBulanIni = FinancialReport::whereMonth('tanggal', $now->month)->whereYear('tanggal', $now->year)->where('jenis', 'pemasukan')->sum('nominal');
+        $kasKeluarBulanIni = FinancialReport::whereMonth('tanggal', $now->month)->whereYear('tanggal', $now->year)->where('jenis', 'pengeluaran')->sum('nominal');
 
         $data['pendapatan_bulan_ini'] = ($parkirBulanIni + $kasMasukBulanIni) - $kasKeluarBulanIni;
 
-        // Bulan Kemarin
-        $parkirBulanLalu = Transaction::whereMonth('entry_time', $lastMonth->month)
-                                ->whereYear('entry_time', $lastMonth->year)
-                                ->sum($rumusTarif);
-        $kasMasukBulanLalu = FinancialReport::whereMonth('tanggal', $lastMonth->month)
-                                ->whereYear('tanggal', $lastMonth->year)->where('jenis', 'pemasukan')->sum('nominal');
-        $kasKeluarBulanLalu = FinancialReport::whereMonth('tanggal', $lastMonth->month)
-                                ->whereYear('tanggal', $lastMonth->year)->where('jenis', 'pengeluaran')->sum('nominal');
+        $parkirBulanLalu = Transaction::whereMonth('entry_time', $lastMonth->month)->whereYear('entry_time', $lastMonth->year)->sum($rumusTarif);
+        $kasMasukBulanLalu = FinancialReport::whereMonth('tanggal', $lastMonth->month)->whereYear('tanggal', $lastMonth->year)->where('jenis', 'pemasukan')->sum('nominal');
+        $kasKeluarBulanLalu = FinancialReport::whereMonth('tanggal', $lastMonth->month)->whereYear('tanggal', $lastMonth->year)->where('jenis', 'pengeluaran')->sum('nominal');
 
         $data['pendapatan_bulan_kemarin'] = ($parkirBulanLalu + $kasMasukBulanLalu) - $kasKeluarBulanLalu;
 
@@ -151,13 +124,16 @@ class PublicDashboardController extends Controller
         // =========================================================
         $operators = User::where('role', 'operator')->get();
 
-        $laporanGajiHariIni = FinancialReport::whereDate('tanggal', $today)
-            ->where('kategori', 'Gaji Pegawai')
-            ->get();
+        $laporanGajiHariIni = FinancialReport::whereDate('tanggal', $today)->where('kategori', 'Gaji Pegawai')->get();
 
-        // Hitung dasar gaji hari ini (HANYA PARKIR + KAS, TANPA TOILET)
+        // [KUNCI PERBAIKAN] KAS MASUK KHUSUS PARKIR (Kecualikan Toilet)
+        $kasMasukKhususParkirHariIni = FinancialReport::whereDate('tanggal', $today)
+            ->where('jenis', 'pemasukan')
+            ->where('kategori', '!=', 'Toilet')
+            ->sum('nominal');
+
         $parkirMurniHariIni = Transaction::whereDate('entry_time', $today)->sum($rumusParkirMurni);
-        $dasarGajiHariIni = $parkirMurniHariIni + $kasMasukHariIni;
+        $dasarGajiHariIni = $parkirMurniHariIni + $kasMasukKhususParkirHariIni;
 
         $employeeSalaries = $operators->map(function ($operator) use ($dasarGajiHariIni, $laporanGajiHariIni) {
 
@@ -170,7 +146,6 @@ class PublicDashboardController extends Controller
                 $statusGaji = 'Sudah Dibayar (Manual)';
             } else {
                 if ($operator->salary_type == 'percentage') {
-                    // Gunakan $dasarGajiHariIni (tanpa toilet)
                     $earned = ($operator->salary_amount / 100) * $dasarGajiHariIni;
                     $statusGaji = 'Estimasi (' . (float)$operator->salary_amount . '%)';
                 } else {
@@ -200,7 +175,6 @@ class PublicDashboardController extends Controller
         $data['parkir_7_hari'] = Transaction::whereDate('entry_time', '>=', $tujuhHariLalu)->sum($rumusTarif);
         $data['parkir_bulan_ini'] = Transaction::whereDate('entry_time', '>=', $awalBulan)->sum($rumusTarif);
 
-        // TABEL REKAPITULASI PENDAPATAN PER HARI
         $revenue_transactions = Transaction::select(
                 DB::raw('DATE(entry_time) as tanggal'),
                 DB::raw('COUNT(id) as total_kendaraan'),
@@ -215,15 +189,13 @@ class PublicDashboardController extends Controller
         // =========================================================
         // 8. REKAPITULASI GAJI HARIAN PER PEGAWAI
         // =========================================================
-
-        // Ambil data pendapatan kotor per hari (Khusus Parkir Murni, TANPA TOILET)
         $daily_revenues = Transaction::select(
                 DB::raw('DATE(entry_time) as tanggal'),
                 DB::raw('SUM(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) as total_parkir')
             )
             ->groupBy(DB::raw('DATE(entry_time)'))
             ->orderBy(DB::raw('DATE(entry_time)'), 'desc')
-            ->limit(10) // Tampilkan 10 hari terakhir
+            ->limit(10)
             ->get();
 
         $riwayat_gaji = [];
@@ -231,17 +203,17 @@ class PublicDashboardController extends Controller
         foreach ($daily_revenues as $rev) {
             $tgl = $rev->tanggal;
 
-            // Tambahkan Kas Masuk manual di hari itu (jika ada)
-            $kasMasukHarian = FinancialReport::whereDate('tanggal', $tgl)
+            // [KUNCI PERBAIKAN] KAS MASUK KHUSUS PARKIR (Kecualikan Toilet)
+            $kasMasukHarianKhususParkir = FinancialReport::whereDate('tanggal', $tgl)
                                 ->where('jenis', 'pemasukan')
+                                ->where('kategori', '!=', 'Toilet')
                                 ->sum('nominal');
 
-            // Pendapatan Kotor untuk Gaji = Parkir Murni + Kas Masuk
-            $pendapatanKotorHarian = $rev->total_parkir + $kasMasukHarian;
+            // Pendapatan Kotor = Parkir Murni + Kas Masuk (Tanpa Toilet)
+            $pendapatanKotorHarian = $rev->total_parkir + $kasMasukHarianKhususParkir;
 
             $gaji_per_pegawai = [];
             foreach ($operators as $op) {
-                // Cek apakah hari itu sudah diinput manual di Kas?
                 $gajiManual = FinancialReport::whereDate('tanggal', $tgl)
                     ->where('kategori', 'Gaji Pegawai')
                     ->where('keterangan', 'like', '%' . $op->name . '%')
@@ -282,5 +254,4 @@ class PublicDashboardController extends Controller
             'sepedaBiasaHariIni', 'sepedaListrikHariIni', 'pegawaiRsudHariIni', 'riwayat_gaji'
         ));
     }
-
 }
