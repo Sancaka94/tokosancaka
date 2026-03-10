@@ -484,9 +484,11 @@
                             ->sum(\Illuminate\Support\Facades\DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)'));
 
             // Kas Bulan Ini
+            // Kas Bulan Ini (HANYA PARKIRAN, KECUALIKAN TOILET)
             $kasBln = \App\Models\FinancialReport::whereMonth('tanggal', $bulanSekarang)
                             ->whereYear('tanggal', $tahunSekarang)
                             ->where('jenis', 'pemasukan')
+                            ->where('kategori', '!=', 'Toilet') // <--- INI TAMBAHANNYA
                             ->sum('nominal');
 
             // Gaji diambil dari Parkir + Kas (Tanpa Toilet)
