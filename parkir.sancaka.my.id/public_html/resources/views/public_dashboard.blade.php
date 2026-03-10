@@ -514,9 +514,10 @@
                     ];
                     $color = $colors[$index % 4];
 
-                    // Hitung Total Gaji 1 Bulan Ini
-                    $dasarGajiBulanIni = $op->type == 'percentage' ? ($op->amount / 100) * $kotorBulanIni : $op->amount * $hariBerjalan;
+                    // PENTING: Hitung Total Gaji 1 Bulan Ini (Ini yang hilang tadi)
+                    $totalBulanIni = $op->type == 'percentage' ? ($op->amount / 100) * $kotorBulanIni : $op->amount * $hariBerjalan;
                 @endphp
+
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col relative overflow-hidden transform transition duration-300 hover:scale-105 hover:shadow-lg">
                     <div class="flex items-start gap-4 mb-4">
                         <div class="{{ $color }} p-3 rounded-full flex-shrink-0">
