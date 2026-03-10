@@ -276,8 +276,8 @@
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-700">Jenis Transaksi Utama</label>
                                     <select name="transactions[0][jenis]" required class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
-                                        <option value="pemasukan">Setoran Parkir (Pemasukan)</option>
-                                        <option value="pengeluaran">Biaya Operasional (Pengeluaran)</option>
+                                        <option value="pemasukan">Pemasukan (+)</option>
+                                        <option value="pengeluaran">Pengeluaran (-)</option>
                                     </select>
                                 </div>
                             </div>
@@ -318,6 +318,7 @@
                                             <option value="" disabled selected>-- Pilih Kategori --</option>
                                             <option value="Parkiran">Parkiran</option>
                                             <option value="Toilet">Toilet</option>
+                                            <option value="Operasional (Umum)">Operasional (Umum)</option>
                                         </select>
                                     </div>
                                     <div>
@@ -371,7 +372,6 @@
         newBlock.querySelector('.btn-remove').classList.remove('hidden');
 
         // Update atribut name agar index array bertambah (transactions[0] -> transactions[1])
-        // UBAHAN DI SINI: Tambahkan `textarea` dalam query selector
         const inputs = newBlock.querySelectorAll('input, select, textarea');
 
         inputs.forEach(input => {
