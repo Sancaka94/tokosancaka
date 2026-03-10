@@ -19,10 +19,13 @@ class PublicDashboardController extends Controller
         $lastMonth = $now->copy()->subMonth();
 
         // =========================================================
-        // RUMUS TARIF OTOMATIS (BAYAR DI DEPAN / OMZET POTENSIAL)
-        // Menghitung tarif 3000 untuk motor & 5000 untuk mobil otomatis saat tiket dicetak
+        // RUMUS TARIF OTOMATIS
         // =========================================================
+        // Rumus Omzet (Parkir + Toilet)
         $rumusTarif = DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) + IFNULL(toilet_fee, 0)');
+
+        // Rumus Khusus Parkir Murni (TANPA TOILET) untuk dasar gaji
+        $rumusParkirMurni = DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)');
 
         // =========================================================
         // 1. STATISTIK HARI INI & KEMARIN (Menggunakan Waktu Masuk)
@@ -84,7 +87,7 @@ class PublicDashboardController extends Controller
 
         $data['pendapatan_bulan_ini'] = ($parkirBulanIni + $kasMasukBulanIni) - $kasKeluarBulanIni;
 
-        // Bulan Kemarin (Ditambahkan agar UI Dashboard bisa menampilkan trend Naik/Turun)
+        // Bulan Kemarin
         $parkirBulanLalu = Transaction::whereMonth('entry_time', $lastMonth->month)
                                 ->whereYear('entry_time', $lastMonth->year)
                                 ->sum($rumusTarif);
@@ -152,7 +155,11 @@ class PublicDashboardController extends Controller
             ->where('kategori', 'Gaji Pegawai')
             ->get();
 
-        $employeeSalaries = $operators->map(function ($operator) use ($pendapatanKotorHariIni, $laporanGajiHariIni) {
+        // Hitung dasar gaji hari ini (HANYA PARKIR + KAS, TANPA TOILET)
+        $parkirMurniHariIni = Transaction::whereDate('entry_time', $today)->sum($rumusParkirMurni);
+        $dasarGajiHariIni = $parkirMurniHariIni + $kasMasukHariIni;
+
+        $employeeSalaries = $operators->map(function ($operator) use ($dasarGajiHariIni, $laporanGajiHariIni) {
 
             $gajiManual = $laporanGajiHariIni->filter(function ($report) use ($operator) {
                 return stripos($report->keterangan, $operator->name) !== false;
@@ -163,7 +170,8 @@ class PublicDashboardController extends Controller
                 $statusGaji = 'Sudah Dibayar (Manual)';
             } else {
                 if ($operator->salary_type == 'percentage') {
-                    $earned = ($operator->salary_amount / 100) * $pendapatanKotorHariIni;
+                    // Gunakan $dasarGajiHariIni (tanpa toilet)
+                    $earned = ($operator->salary_amount / 100) * $dasarGajiHariIni;
                     $statusGaji = 'Estimasi (' . (float)$operator->salary_amount . '%)';
                 } else {
                     $earned = $operator->salary_amount;
@@ -196,20 +204,22 @@ class PublicDashboardController extends Controller
         $revenue_transactions = Transaction::select(
                 DB::raw('DATE(entry_time) as tanggal'),
                 DB::raw('COUNT(id) as total_kendaraan'),
-                DB::raw('SUM((CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) + IFNULL(toilet_fee, 0)) as total_omzet')
+                DB::raw('SUM((CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) + IFNULL(toilet_fee, 0)) as total_omzet'),
+                DB::raw('SUM(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) as total_parkir_saja'),
+                DB::raw('SUM(IFNULL(toilet_fee, 0)) as total_toilet')
             )
             ->groupBy(DB::raw('DATE(entry_time)'))
             ->orderBy(DB::raw('DATE(entry_time)'), 'desc')
             ->paginate(10, ['*'], 'revenue_page');
 
         // =========================================================
-        // TAMBAHAN: REKAPITULASI GAJI HARIAN PER PEGAWAI
+        // 8. REKAPITULASI GAJI HARIAN PER PEGAWAI
         // =========================================================
 
-        // Ambil data pendapatan kotor per hari (Parkir + Kas Masuk)
+        // Ambil data pendapatan kotor per hari (Khusus Parkir Murni, TANPA TOILET)
         $daily_revenues = Transaction::select(
                 DB::raw('DATE(entry_time) as tanggal'),
-                DB::raw('SUM((CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) + IFNULL(toilet_fee, 0)) as total_parkir')
+                DB::raw('SUM(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) as total_parkir')
             )
             ->groupBy(DB::raw('DATE(entry_time)'))
             ->orderBy(DB::raw('DATE(entry_time)'), 'desc')
@@ -226,6 +236,7 @@ class PublicDashboardController extends Controller
                                 ->where('jenis', 'pemasukan')
                                 ->sum('nominal');
 
+            // Pendapatan Kotor untuk Gaji = Parkir Murni + Kas Masuk
             $pendapatanKotorHarian = $rev->total_parkir + $kasMasukHarian;
 
             $gaji_per_pegawai = [];
@@ -263,12 +274,12 @@ class PublicDashboardController extends Controller
         }
 
         // =========================================================
-        // 8. RETURN VIEW
+        // 9. RETURN VIEW
         // =========================================================
         return view('public_dashboard', compact(
             'data', 'chartData', 'recent_transactions', 'revenue_transactions',
             'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas', 'recent_financials', 'employeeSalaries',
-            'sepedaBiasaHariIni', 'sepedaListrikHariIni', 'pegawaiRsudHariIni', 'riwayat_gaji' // <-- Variabel baru ditambahkan di sini
+            'sepedaBiasaHariIni', 'sepedaListrikHariIni', 'pegawaiRsudHariIni', 'riwayat_gaji'
         ));
     }
 }
