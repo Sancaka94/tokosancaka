@@ -41,16 +41,6 @@
         </div>
 
         @php
-            // =========================================================================
-            // BLOK UI HELPERS (HANYA UNTUK MENGHITUNG PERSENTASE NAIK/TURUN CARD)
-            // =========================================================================
-            use Carbon\Carbon;
-            use App\Models\Transaction;
-            use App\Models\FinancialReport;
-
-            $today = Carbon::today();
-            $yesterday = Carbon::yesterday();
-
             if (!function_exists('hitungPersen')) {
                 function hitungPersen($sekarang, $kemarin) {
                     $selisih = $sekarang - $kemarin;
@@ -59,37 +49,13 @@
                 }
             }
 
-            // Fallback ringan untuk Card persentase
-            $motorKemarin = Transaction::where('vehicle_type', 'motor')->whereDate('entry_time', $yesterday)->count();
-            $sepedaKemarin = Transaction::whereDate('entry_time', $yesterday)->where('plate_number', 'LIKE', 'SPD-%')->count();
-            $sepedaListrikKemarin = Transaction::whereDate('entry_time', $yesterday)->where('plate_number', 'LIKE', 'SPL-%')->count();
-            $pegawaiRsudKemarin = Transaction::whereDate('entry_time', $yesterday)->where('plate_number', 'LIKE', 'RSUD-%')->count();
-
-            $cmpMotor = hitungPersen($data['motor_masuk'] ?? 0, $motorKemarin);
-            $cmpSepeda = hitungPersen($sepedaBiasaHariIni ?? 0, $sepedaKemarin);
-            $cmpListrik = hitungPersen($sepedaListrikHariIni ?? 0, $sepedaListrikKemarin);
-            $cmpRsud = hitungPersen($pegawaiRsudHariIni ?? 0, $pegawaiRsudKemarin);
-
-            $kasMasukHariIni = FinancialReport::whereDate('tanggal', $today)->where('jenis', 'pemasukan')->sum('nominal');
-            $kasMasukKemarin = FinancialReport::whereDate('tanggal', $yesterday)->where('jenis', 'pemasukan')->sum('nominal');
-            $toiletHariIni = Transaction::whereDate('entry_time', $today)->sum('toilet_fee');
-            $toiletKemarin = Transaction::whereDate('entry_time', $yesterday)->sum('toilet_fee');
-
-            $omzetHariIni = ($data['parkir_hari_ini'] ?? 0) + $toiletHariIni + $kasMasukHariIni;
-            $omzetKemarin = ($data['parkir_kemarin'] ?? 0) + $toiletKemarin + $kasMasukKemarin;
-
+            // Hitung persentase untuk Card (Murni matematika perbandingan)
             $cmpPendapatanKemarin = hitungPersen($data['pendapatan_kemarin'] ?? 0, 0);
             $cmpPendapatan = hitungPersen($data['total_pendapatan'] ?? 0, $data['pendapatan_kemarin'] ?? 0);
-            $cmpOmzet = hitungPersen($omzetHariIni, $omzetKemarin);
+            $cmpOmzet = hitungPersen($omzetHariIni ?? 0, $omzetKemarin ?? 0);
             $cmpBulan = hitungPersen($data['pendapatan_bulan_ini'] ?? 0, $data['pendapatan_bulan_kemarin'] ?? 0);
 
             $cmpParkirHari = hitungPersen($data['parkir_hari_ini'] ?? 0, $data['parkir_kemarin'] ?? 0);
-            $cmpParkirKemarin = hitungPersen($data['parkir_kemarin'] ?? 0, 0);
-            $cmpParkir7 = hitungPersen($data['parkir_7_hari'] ?? 0, 0);
-            $cmpParkirBulan = hitungPersen($data['parkir_bulan_ini'] ?? 0, 0);
-
-            $kasMasukBulanIni = FinancialReport::whereMonth('tanggal', $today->month)->whereYear('tanggal', $today->year)->where('jenis', 'pemasukan')->sum('nominal');
-            $kotorBulanIni = ($data['parkir_bulan_ini'] ?? 0) + $kasMasukBulanIni;
         @endphp
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -102,17 +68,6 @@
                     </div>
                     <div class="text-4xl opacity-90">🏍️</div>
                 </div>
-                <div class="mt-3 flex items-center text-[11px] font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
-                    @if($cmpMotor['selisih'] == 0)
-                        <span>Stagnan sama dgn kemarin</span>
-                    @elseif($cmpMotor['is_naik'])
-                        <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                        <span>Naik {{ number_format(abs($cmpMotor['persen']), 1, ',', '.') }}% (+{{ number_format(abs($cmpMotor['selisih']), 0, ',', '.') }})</span>
-                    @else
-                        <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                        <span class="text-red-100">Turun {{ number_format(abs($cmpMotor['persen']), 1, ',', '.') }}% ({{ number_format($cmpMotor['selisih'], 0, ',', '.') }})</span>
-                    @endif
-                </div>
             </div>
 
             {{-- KARTU 2: SEPEDA --}}
@@ -123,17 +78,6 @@
                         <p class="text-2xl md:text-3xl font-black">{{ $sepedaBiasaHariIni ?? 0 }} <span class="text-sm font-medium text-teal-200">Unit</span></p>
                     </div>
                     <div class="text-4xl opacity-90">🚲</div>
-                </div>
-                <div class="mt-3 flex items-center text-[11px] font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
-                    @if($cmpSepeda['selisih'] == 0)
-                        <span>Stagnan sama dgn kemarin</span>
-                    @elseif($cmpSepeda['is_naik'])
-                        <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                        <span>Naik {{ number_format(abs($cmpSepeda['persen']), 1, ',', '.') }}% (+{{ number_format(abs($cmpSepeda['selisih']), 0, ',', '.') }})</span>
-                    @else
-                        <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                        <span class="text-red-100">Turun {{ number_format(abs($cmpSepeda['persen']), 1, ',', '.') }}% ({{ number_format($cmpSepeda['selisih'], 0, ',', '.') }})</span>
-                    @endif
                 </div>
             </div>
 
@@ -146,17 +90,6 @@
                     </div>
                     <div class="text-4xl opacity-90">⚡</div>
                 </div>
-                <div class="mt-3 flex items-center text-[11px] font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
-                    @if($cmpListrik['selisih'] == 0)
-                        <span>Stagnan sama dgn kemarin</span>
-                    @elseif($cmpListrik['is_naik'])
-                        <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                        <span>Naik {{ number_format(abs($cmpListrik['persen']), 1, ',', '.') }}% (+{{ number_format(abs($cmpListrik['selisih']), 0, ',', '.') }})</span>
-                    @else
-                        <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                        <span class="text-red-100">Turun {{ number_format(abs($cmpListrik['persen']), 1, ',', '.') }}% ({{ number_format($cmpListrik['selisih'], 0, ',', '.') }})</span>
-                    @endif
-                </div>
             </div>
 
             {{-- KARTU 4: PEGAWAI RSUD --}}
@@ -167,17 +100,6 @@
                         <p class="text-2xl md:text-3xl font-black">{{ $pegawaiRsudHariIni ?? 0 }} <span class="text-sm font-medium text-rose-200">Unit</span></p>
                     </div>
                     <div class="text-4xl opacity-90">🏥</div>
-                </div>
-                <div class="mt-3 flex items-center text-[11px] font-semibold bg-white/20 w-fit px-2 py-1 rounded-md z-10">
-                    @if($cmpRsud['selisih'] == 0)
-                        <span>Stagnan sama dgn kemarin</span>
-                    @elseif($cmpRsud['is_naik'])
-                        <svg class="w-3 h-3 text-white mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                        <span>Naik {{ number_format(abs($cmpRsud['persen']), 1, ',', '.') }}% (+{{ number_format(abs($cmpRsud['selisih']), 0, ',', '.') }})</span>
-                    @else
-                        <svg class="w-3 h-3 text-red-200 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                        <span class="text-red-100">Turun {{ number_format(abs($cmpRsud['persen']), 1, ',', '.') }}% ({{ number_format($cmpRsud['selisih'], 0, ',', '.') }})</span>
-                    @endif
                 </div>
             </div>
 
@@ -343,7 +265,7 @@
         <div class="mb-6 mt-12 flex justify-between items-end">
             <div>
                 <h2 class="text-2xl font-bold text-gray-800">Estimasi Gaji Pegawai (Hari Ini)</h2>
-                <p class="text-gray-500 text-sm mt-1">Perhitungan otomatis gaji hanya dari Parkir Murni + Semua Kas Pemasukan.</p>
+                <p class="text-gray-500 text-sm mt-1">Gaji dihitung otomatis dari Total Omzet (Parkir + Kas Masuk + Toilet).</p>
             </div>
             <span class="hidden md:inline-block text-[10px] bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full font-bold uppercase tracking-wider border border-purple-200">Dihitung Otomatis</span>
         </div>
@@ -353,7 +275,7 @@
                 @php
                     $colors = ['text-blue-600 bg-blue-100', 'text-emerald-600 bg-emerald-100', 'text-amber-600 bg-amber-100', 'text-rose-600 bg-rose-100'];
                     $color = $colors[$index % 4];
-                    $totalBulanIni = $op->type == 'percentage' ? ($op->amount / 100) * $kotorBulanIni : $op->amount * date('j');
+                    $totalBulanIni = $op->type == 'percentage' ? ($op->amount / 100) * ($omzetBulanIni ?? 0) : $op->amount * date('j');
                 @endphp
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col relative overflow-hidden transform transition duration-300 hover:scale-105 hover:shadow-lg">
                     <div class="flex items-start gap-4 mb-4">
@@ -389,7 +311,7 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-12">
             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
                 <h3 class="font-bold text-gray-700 text-sm">Riwayat Gaji Pegawai Per Hari</h3>
-                <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-semibold">10 Hari Terakhir</span>
+                <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-semibold">Semua Pendapatan Kotor</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
@@ -400,7 +322,7 @@
                             @if(isset($operators) && count($operators) > 0)
                                 @foreach($operators as $pegawai)
                                     @php
-                                        $totalBulanIniTabel = $pegawai->salary_type == 'percentage' ? ($pegawai->salary_amount / 100) * $kotorBulanIni : $pegawai->salary_amount * date('j');
+                                        $totalBulanIniTabel = $pegawai->salary_type == 'percentage' ? ($pegawai->salary_amount / 100) * ($omzetBulanIni ?? 0) : $pegawai->salary_amount * date('j');
                                     @endphp
                                     <th class="px-6 py-4 text-right tracking-wider border-l border-gray-100">
                                         <span class="block text-[10px] text-gray-400 font-bold uppercase mb-1">
@@ -422,9 +344,6 @@
                                     <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded border border-emerald-100 block w-fit font-black">
                                         Rp {{ number_format($rg->pendapatan_kotor, 0, ',', '.') }}
                                     </span>
-                                    @if(isset($rg->info_kas_masuk) && $rg->info_kas_masuk > 0)
-                                        <span class="block text-[10px] text-emerald-600 font-bold mt-1">+ Semua Kas: Rp {{ number_format($rg->info_kas_masuk, 0, ',', '.') }}</span>
-                                    @endif
                                 </td>
 
                                 @if(isset($operators) && count($operators) > 0)
@@ -566,9 +485,6 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right font-bold text-gray-600 text-base">
                                     Rp {{ number_format($trx->total_omzet, 0, ',', '.') }}
-                                    @if(isset($trx->info_kas_masuk) && $trx->info_kas_masuk > 0)
-                                        <span class="block text-[10px] text-green-600 font-bold mt-1">+ Semua Kas: Rp {{ number_format($trx->info_kas_masuk, 0, ',', '.') }}</span>
-                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right font-black text-indigo-600 text-base md:text-lg bg-indigo-50/30">
                                     Rp {{ number_format($trx->total_profit_bersih, 0, ',', '.') }}
