@@ -577,60 +577,55 @@
                    <tbody class="bg-white divide-y divide-gray-100">
                         @forelse($riwayat_gaji ?? [] as $rg)
                             @php
-                                // Paksa format tanggal jadi Y-m-d agar pasti terbaca oleh database
-                                $tglTabelGaji = \Carbon\Carbon::parse($rg->tanggal)->format('Y-m-d');
+                                // Paksa format jadi teks murni Y-m-d
+                                $tglStr = \Carbon\Carbon::parse($rg->tanggal)->format('Y-m-d');
 
-                                // Panggil langsung DB::raw di dalam loop agar tidak error scope
-                                $rumusParkirLoop = \Illuminate\Support\Facades\DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)');
+                                // Tarik ulang parkir murni
+                                $parkirMurni = \App\Models\Transaction::where(\Illuminate\Support\Facades\DB::raw('DATE(entry_time)'), $tglStr)
+                                    ->sum(\Illuminate\Support\Facades\DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)'));
 
-                                // Hitung Parkir Murni hari itu
-                                $parkirMurniTabel = \App\Models\Transaction::whereDate('entry_time', $tglTabelGaji)->sum($rumusParkirLoop);
+                                // Tarik KAS PARKIRAN (Pakai 'where' biasa, bukan whereDate)
+                                $kasMasukParkir = \App\Models\FinancialReport::where('tanggal', $tglStr)
+                                    ->where('jenis', 'pemasukan')
+                                    ->where('kategori', 'Parkiran')
+                                    ->sum('nominal');
 
-                                // Hitung Kas Parkir hari itu (khusus kategori Parkiran)
-                                $kasParkirTabel = \App\Models\FinancialReport::whereDate('tanggal', $tglTabelGaji)
-                                                    ->where('jenis', 'pemasukan')
-                                                    ->where('kategori', 'Parkiran')
-                                                    ->sum('nominal');
-
-                                // KOTOR GAJI: Hanya Parkir + Kas Parkir (TOILET TIDAK DIHITUNG)
-                                $kotorGajiTabel = $parkirMurniTabel + $kasParkirTabel;
+                                // Pendapatan Kotor = Parkir + Kas
+                                $pendapatanKotorFinal = $parkirMurni + $kasMasukParkir;
                             @endphp
                             <tr class="hover:bg-gray-50 transition duration-150">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-bold">
-                                    {{ \Carbon\Carbon::parse($tglTabelGaji)->translatedFormat('d M Y') }}
+                                    {{ \Carbon\Carbon::parse($tglStr)->translatedFormat('d M Y') }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
-                                    <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded border border-emerald-100 inline-block w-fit">
-                                        Rp {{ number_format($kotorGajiTabel, 0, ',', '.') }}
+                                    <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded border border-emerald-100 block w-fit">
+                                        Rp {{ number_format($pendapatanKotorFinal, 0, ',', '.') }}
                                     </span>
-                                    {{-- Indikator visual jika ada kas masuk parkiran --}}
-                                    @if($kasParkirTabel > 0)
-                                        <span class="block text-[10px] text-emerald-600 font-bold mt-1">+ Kas: Rp {{ number_format($kasParkirTabel, 0, ',', '.') }}</span>
+                                    @if($kasMasukParkir > 0)
+                                        <span class="block text-[10px] text-emerald-600 font-bold mt-1">+ Kas Parkir: Rp {{ number_format($kasMasukParkir, 0, ',', '.') }}</span>
                                     @endif
                                 </td>
 
                                 @if(isset($operators) && count($operators) > 0)
                                     @foreach($operators as $pegawai)
                                         @php
-                                            // Cek apakah ada edit manual kas untuk gaji pegawai di tanggal tsb
-                                            $manualEditTabel = \App\Models\FinancialReport::whereDate('tanggal', $tglTabelGaji)
+                                            $gajiManual = \App\Models\FinancialReport::where('tanggal', $tglStr)
                                                 ->where('kategori', 'Gaji Pegawai')
                                                 ->where('keterangan', 'LIKE', '%' . $pegawai->name . '%')
                                                 ->sum('nominal');
 
-                                            if ($manualEditTabel > 0) {
-                                                $gajiFinalTabel = $manualEditTabel;
+                                            if ($gajiManual > 0) {
+                                                $gajiFinalTabel = $gajiManual;
                                                 $statusGajiTabel = 'Manual';
                                             } else {
                                                 $gajiFinalTabel = $pegawai->salary_type == 'percentage'
-                                                    ? ($pegawai->salary_amount / 100) * $kotorGajiTabel
+                                                    ? ($pegawai->salary_amount / 100) * $pendapatanKotorFinal
                                                     : $pegawai->salary_amount;
                                                 $statusGajiTabel = 'Otomatis';
                                             }
                                         @endphp
                                         <td class="px-6 py-4 whitespace-nowrap text-right font-black text-gray-700 text-base border-l border-gray-100">
                                             Rp {{ number_format($gajiFinalTabel, 0, ',', '.') }}
-
                                             @if($statusGajiTabel == 'Manual')
                                                 <span class="block text-[9px] text-orange-500 uppercase mt-0.5">Edit Manual</span>
                                             @endif
