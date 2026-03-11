@@ -771,6 +771,7 @@
                         @endforelse
                     </tbody>
                 </table>
+
             </div>
             @if(isset($revenue_transactions) && $revenue_transactions->hasPages())
                 <div class="px-6 py-4 bg-white border-t border-gray-100">
