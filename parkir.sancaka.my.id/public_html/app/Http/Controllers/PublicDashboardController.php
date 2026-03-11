@@ -164,93 +164,81 @@ class PublicDashboardController extends Controller
         });
 
         // =========================================================
-        // 7. DATA TAMBAHAN: PENDAPATAN PARKIR & KENDARAAN MURNI
+        // 7. DATA PENDAPATAN (TABEL REVENUE) - SEMUA TRANSAKSI DIGABUNG
         // =========================================================
-        $tujuhHariLalu = Carbon::today()->subDays(6);
-        $awalBulan = Carbon::now()->startOfMonth();
-
-        $data['parkir_hari_ini'] = $parkirHariIni;
-        $data['parkir_kemarin'] = $parkirKemarin;
-
-        $data['parkir_7_hari'] = Transaction::whereDate('entry_time', '>=', $tujuhHariLalu)->sum($rumusTarif);
-        $data['parkir_bulan_ini'] = Transaction::whereDate('entry_time', '>=', $awalBulan)->sum($rumusTarif);
-
-        // --- PERBAIKAN TOTAL OMZET & PROFIT DI TABEL REVENUE ---
-        // Kita loop manual datanya agar bisa menarik kas masuk dan kas keluar per tanggal
-        $raw_revenue = Transaction::select(
-                DB::raw('DATE(entry_time) as tanggal'),
-                DB::raw('COUNT(id) as total_kendaraan'),
-                DB::raw('SUM(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) as total_parkir_saja'),
-                DB::raw('SUM(IFNULL(toilet_fee, 0)) as total_toilet')
-            )
-            ->groupBy(DB::raw('DATE(entry_time)'))
-            ->orderBy(DB::raw('DATE(entry_time)'), 'desc')
+        $revenue_transactions = Transaction::selectRaw('DATE(entry_time) as tanggal')
+            ->groupBy('tanggal')
+            ->orderBy('tanggal', 'desc')
             ->paginate(10, ['*'], 'revenue_page');
 
-        // Kita modifikasi setiap item pada pagination untuk menyisipkan data Kas
-        $revenue_transactions = tap($raw_revenue, function ($paginatedInstance) {
-            return $paginatedInstance->getCollection()->transform(function ($item) {
-                $tgl = $item->tanggal;
+        // Modifikasi data yang dikirim ke Blade
+        $revenue_transactions->getCollection()->transform(function ($item) {
+            $tglStr = $item->tanggal;
 
-                // Ambil Kas di hari tersebut
-                $kasMasuk = FinancialReport::whereDate('tanggal', $tgl)->where('jenis', 'pemasukan')->sum('nominal');
-                $kasKeluar = FinancialReport::whereDate('tanggal', $tgl)->where('jenis', 'pengeluaran')->sum('nominal');
+            // Tarik semua data di hari tersebut
+            $trxHariIni = Transaction::whereDate('entry_time', $tglStr)->get();
+            $item->total_kendaraan = $trxHariIni->count();
 
-                // Omzet = Parkir + Toilet + Semua Kas Masuk
-                $item->total_omzet = $item->total_parkir_saja + $item->total_toilet + $kasMasuk;
-                $item->tambahan_kas = $kasMasuk; // Opsional: untuk dipakai di view
-
-                // Profit Bersih = (Parkir/2) + Toilet + Kas Masuk - Kas Keluar
-                $item->total_profit_bersih = ($item->total_parkir_saja / 2) + $item->total_toilet + $kasMasuk - $kasKeluar;
-
-                return $item;
+            // Hitung Parkir & Toilet
+            $parkirMurni = $trxHariIni->sum(function($t) {
+                return ($t->fee != null && $t->fee > 0) ? $t->fee : ($t->vehicle_type == 'mobil' ? 5000 : 3000);
             });
+            $toiletMurni = $trxHariIni->sum('toilet_fee');
+
+            // Hitung SEMUA KAS (Pemasukan & Pengeluaran)
+            $semuaKasMasuk = FinancialReport::whereDate('tanggal', $tglStr)->where('jenis', 'pemasukan')->sum('nominal');
+            $semuaKasKeluar = FinancialReport::whereDate('tanggal', $tglStr)->where('jenis', 'pengeluaran')->sum('nominal');
+
+            // LOGIKA FINAL (Sesuai Permintaan: Semua digabung)
+            $item->total_omzet = $parkirMurni + $toiletMurni + $semuaKasMasuk;
+            $item->total_profit_bersih = ($parkirMurni / 2) + $toiletMurni + $semuaKasMasuk - $semuaKasKeluar;
+            $item->info_kas_masuk = $semuaKasMasuk; // Info tambahan buat tampilan
+
+            return $item;
         });
 
         // =========================================================
         // 8. REKAPITULASI GAJI HARIAN PER PEGAWAI
         // =========================================================
-        $daily_revenues = Transaction::select(
-                DB::raw('DATE(entry_time) as tanggal'),
-                DB::raw('SUM(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) as total_parkir')
-            )
-            ->groupBy(DB::raw('DATE(entry_time)'))
-            ->orderBy(DB::raw('DATE(entry_time)'), 'desc')
+        $daily_revenues = Transaction::selectRaw('DATE(entry_time) as tanggal')
+            ->groupBy('tanggal')
+            ->orderBy('tanggal', 'desc')
             ->limit(10)
             ->get();
 
         $riwayat_gaji = [];
 
         foreach ($daily_revenues as $rev) {
-            $tgl = $rev->tanggal;
+            $tglStr = $rev->tanggal;
 
-            // KAS MASUK KHUSUS PARKIR (Kecualikan Toilet)
-            $kasMasukHarianKhususParkir = FinancialReport::whereDate('tanggal', $tgl)
-                                ->where('jenis', 'pemasukan')
-                                ->where('kategori', '!=', 'Toilet') // Asumsi kategori Toilet tidak masuk gaji
-                                ->sum('nominal');
+            $trxHariIni = Transaction::whereDate('entry_time', $tglStr)->get();
+            $parkirMurni = $trxHariIni->sum(function($t) {
+                return ($t->fee != null && $t->fee > 0) ? $t->fee : ($t->vehicle_type == 'mobil' ? 5000 : 3000);
+            });
 
-            // Pendapatan Kotor = Parkir Murni + Kas Masuk (Tanpa Toilet)
-            $pendapatanKotorHarian = $rev->total_parkir + $kasMasukHarianKhususParkir;
+            // Untuk gaji, biasanya Kas Toilet / Umum TIDAK dihitung. Khusus Parkiran.
+            $kasMasukParkiran = FinancialReport::whereDate('tanggal', $tglStr)
+                ->where('jenis', 'pemasukan')
+                ->where('kategori', 'Parkiran')
+                ->sum('nominal');
+
+            $pendapatanKotorGaji = $parkirMurni + $kasMasukParkiran;
 
             $gaji_per_pegawai = [];
             foreach ($operators as $op) {
-                $gajiManual = FinancialReport::whereDate('tanggal', $tgl)
+                $gajiManual = FinancialReport::whereDate('tanggal', $tglStr)
                     ->where('kategori', 'Gaji Pegawai')
-                    ->where('keterangan', 'like', '%' . $op->name . '%')
+                    ->where('keterangan', 'LIKE', '%' . $op->name . '%')
                     ->sum('nominal');
 
                 if ($gajiManual > 0) {
                     $earned = $gajiManual;
                     $status = 'Manual';
                 } else {
-                    if ($op->salary_type == 'percentage') {
-                        $earned = ($op->salary_amount / 100) * $pendapatanKotorHarian;
-                        $status = 'Otomatis';
-                    } else {
-                        $earned = $op->salary_amount;
-                        $status = 'Otomatis';
-                    }
+                    $earned = $op->salary_type == 'percentage'
+                        ? ($op->salary_amount / 100) * $pendapatanKotorGaji
+                        : $op->salary_amount;
+                    $status = 'Otomatis';
                 }
 
                 $gaji_per_pegawai[$op->name] = [
@@ -260,9 +248,9 @@ class PublicDashboardController extends Controller
             }
 
             $riwayat_gaji[] = (object)[
-                'tanggal' => $tgl,
-                'pendapatan_kotor' => $pendapatanKotorHarian,
-                'tambahan_kas' => $kasMasukHarianKhususParkir, // Opsional
+                'tanggal' => $tglStr,
+                'pendapatan_kotor' => $pendapatanKotorGaji,
+                'info_kas_parkir' => $kasMasukParkiran,
                 'gaji_pegawai' => $gaji_per_pegawai
             ];
         }
