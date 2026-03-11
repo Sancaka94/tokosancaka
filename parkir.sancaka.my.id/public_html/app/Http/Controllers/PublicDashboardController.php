@@ -126,7 +126,7 @@ class PublicDashboardController extends Controller
 
         $laporanGajiHariIni = FinancialReport::whereDate('tanggal', $today)->where('kategori', 'Gaji Pegawai')->get();
 
-        // [KUNCI PERBAIKAN] KAS MASUK KHUSUS PARKIR (Kecualikan Toilet)
+        // KAS MASUK KHUSUS PARKIR (Kecualikan Toilet)
         $kasMasukKhususParkirHariIni = FinancialReport::whereDate('tanggal', $today)
             ->where('jenis', 'pemasukan')
             ->where('kategori', '!=', 'Toilet')
@@ -175,16 +175,37 @@ class PublicDashboardController extends Controller
         $data['parkir_7_hari'] = Transaction::whereDate('entry_time', '>=', $tujuhHariLalu)->sum($rumusTarif);
         $data['parkir_bulan_ini'] = Transaction::whereDate('entry_time', '>=', $awalBulan)->sum($rumusTarif);
 
-        $revenue_transactions = Transaction::select(
+        // --- PERBAIKAN TOTAL OMZET & PROFIT DI TABEL REVENUE ---
+        // Kita loop manual datanya agar bisa menarik kas masuk dan kas keluar per tanggal
+        $raw_revenue = Transaction::select(
                 DB::raw('DATE(entry_time) as tanggal'),
                 DB::raw('COUNT(id) as total_kendaraan'),
-                DB::raw('SUM((CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) + IFNULL(toilet_fee, 0)) as total_omzet'),
                 DB::raw('SUM(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END) as total_parkir_saja'),
                 DB::raw('SUM(IFNULL(toilet_fee, 0)) as total_toilet')
             )
             ->groupBy(DB::raw('DATE(entry_time)'))
             ->orderBy(DB::raw('DATE(entry_time)'), 'desc')
             ->paginate(10, ['*'], 'revenue_page');
+
+        // Kita modifikasi setiap item pada pagination untuk menyisipkan data Kas
+        $revenue_transactions = tap($raw_revenue, function ($paginatedInstance) {
+            return $paginatedInstance->getCollection()->transform(function ($item) {
+                $tgl = $item->tanggal;
+
+                // Ambil Kas di hari tersebut
+                $kasMasuk = FinancialReport::whereDate('tanggal', $tgl)->where('jenis', 'pemasukan')->sum('nominal');
+                $kasKeluar = FinancialReport::whereDate('tanggal', $tgl)->where('jenis', 'pengeluaran')->sum('nominal');
+
+                // Omzet = Parkir + Toilet + Semua Kas Masuk
+                $item->total_omzet = $item->total_parkir_saja + $item->total_toilet + $kasMasuk;
+                $item->tambahan_kas = $kasMasuk; // Opsional: untuk dipakai di view
+
+                // Profit Bersih = (Parkir/2) + Toilet + Kas Masuk - Kas Keluar
+                $item->total_profit_bersih = ($item->total_parkir_saja / 2) + $item->total_toilet + $kasMasuk - $kasKeluar;
+
+                return $item;
+            });
+        });
 
         // =========================================================
         // 8. REKAPITULASI GAJI HARIAN PER PEGAWAI
@@ -203,10 +224,10 @@ class PublicDashboardController extends Controller
         foreach ($daily_revenues as $rev) {
             $tgl = $rev->tanggal;
 
-            // [KUNCI PERBAIKAN] KAS MASUK KHUSUS PARKIR (Kecualikan Toilet)
+            // KAS MASUK KHUSUS PARKIR (Kecualikan Toilet)
             $kasMasukHarianKhususParkir = FinancialReport::whereDate('tanggal', $tgl)
                                 ->where('jenis', 'pemasukan')
-                                ->where('kategori', '!=', 'Toilet')
+                                ->where('kategori', '!=', 'Toilet') // Asumsi kategori Toilet tidak masuk gaji
                                 ->sum('nominal');
 
             // Pendapatan Kotor = Parkir Murni + Kas Masuk (Tanpa Toilet)
@@ -241,6 +262,7 @@ class PublicDashboardController extends Controller
             $riwayat_gaji[] = (object)[
                 'tanggal' => $tgl,
                 'pendapatan_kotor' => $pendapatanKotorHarian,
+                'tambahan_kas' => $kasMasukHarianKhususParkir, // Opsional
                 'gaji_pegawai' => $gaji_per_pegawai
             ];
         }
