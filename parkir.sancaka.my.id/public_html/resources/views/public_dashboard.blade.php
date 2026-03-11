@@ -577,11 +577,20 @@
                    <tbody class="bg-white divide-y divide-gray-100">
                         @forelse($riwayat_gaji ?? [] as $rg)
                             @php
-                                $tglTabelGaji = $rg->tanggal;
+                                // Paksa format tanggal jadi Y-m-d agar pasti terbaca oleh database
+                                $tglTabelGaji = \Carbon\Carbon::parse($rg->tanggal)->format('Y-m-d');
+
+                                // Panggil langsung DB::raw di dalam loop agar tidak error scope
+                                $rumusParkirLoop = \Illuminate\Support\Facades\DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)');
+
                                 // Hitung Parkir Murni hari itu
-                                $parkirMurniTabel = \App\Models\Transaction::whereDate('entry_time', $tglTabelGaji)->sum($rumusParkirMurni);
+                                $parkirMurniTabel = \App\Models\Transaction::whereDate('entry_time', $tglTabelGaji)->sum($rumusParkirLoop);
+
                                 // Hitung Kas Parkir hari itu (khusus kategori Parkiran)
-                                $kasParkirTabel = \App\Models\FinancialReport::whereDate('tanggal', $tglTabelGaji)->where('jenis', 'pemasukan')->where('kategori', 'Parkiran')->sum('nominal');
+                                $kasParkirTabel = \App\Models\FinancialReport::whereDate('tanggal', $tglTabelGaji)
+                                                    ->where('jenis', 'pemasukan')
+                                                    ->where('kategori', 'Parkiran')
+                                                    ->sum('nominal');
 
                                 // KOTOR GAJI: Hanya Parkir + Kas Parkir (TOILET TIDAK DIHITUNG)
                                 $kotorGajiTabel = $parkirMurniTabel + $kasParkirTabel;
@@ -591,9 +600,13 @@
                                     {{ \Carbon\Carbon::parse($tglTabelGaji)->translatedFormat('d M Y') }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
-                                    <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded border border-emerald-100">
+                                    <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded border border-emerald-100 inline-block w-fit">
                                         Rp {{ number_format($kotorGajiTabel, 0, ',', '.') }}
                                     </span>
+                                    {{-- Indikator visual jika ada kas masuk parkiran --}}
+                                    @if($kasParkirTabel > 0)
+                                        <span class="block text-[10px] text-emerald-600 font-bold mt-1">+ Kas: Rp {{ number_format($kasParkirTabel, 0, ',', '.') }}</span>
+                                    @endif
                                 </td>
 
                                 @if(isset($operators) && count($operators) > 0)
@@ -737,10 +750,17 @@
                     <tbody class="bg-white divide-y divide-gray-100">
                         @forelse($revenue_transactions ?? [] as $trx)
                             @php
-                                $tglRev = $trx->tanggal;
+                                // Paksa format tanggal Y-m-d
+                                $tglRev = \Carbon\Carbon::parse($trx->tanggal)->format('Y-m-d');
+
+                                $rumusParkirLoop = \Illuminate\Support\Facades\DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)');
+                                $rumusToiletLoop = \Illuminate\Support\Facades\DB::raw('IFNULL(toilet_fee, 0)');
+
                                 // Hitung data murni & kas secara live per tanggal
-                                $parkirMurniRev = \App\Models\Transaction::whereDate('entry_time', $tglRev)->sum($rumusParkirMurni);
-                                $toiletRev = \App\Models\Transaction::whereDate('entry_time', $tglRev)->sum($rumusToilet);
+                                $parkirMurniRev = \App\Models\Transaction::whereDate('entry_time', $tglRev)->sum($rumusParkirLoop);
+                                $toiletRev = \App\Models\Transaction::whereDate('entry_time', $tglRev)->sum($rumusToiletLoop);
+
+                                // Mengambil semua kas masuk & keluar di tanggal tersebut
                                 $kasMasukRev = \App\Models\FinancialReport::whereDate('tanggal', $tglRev)->where('jenis', 'pemasukan')->sum('nominal');
                                 $kasKeluarRev = \App\Models\FinancialReport::whereDate('tanggal', $tglRev)->where('jenis', 'pengeluaran')->sum('nominal');
 
@@ -759,9 +779,17 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right font-bold text-gray-600 text-base">
                                     Rp {{ number_format($omzetTabelRev, 0, ',', '.') }}
+                                    {{-- Menampilkan info jika ada tambahan dari kas --}}
+                                    @if($kasMasukRev > 0)
+                                        <span class="block text-[10px] text-green-500 font-normal mt-0.5">+ Kas: Rp {{ number_format($kasMasukRev, 0, ',', '.') }}</span>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right font-black text-indigo-600 text-base md:text-lg bg-indigo-50/30">
                                     Rp {{ number_format($profitTabelRev, 0, ',', '.') }}
+                                    {{-- Menampilkan info jika nominal sudah dipotong/ditambah kas --}}
+                                    @if($kasMasukRev > 0 || $kasKeluarRev > 0)
+                                        <span class="block text-[10px] text-indigo-400 font-normal mt-0.5">(Sdh termasuk Kas)</span>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
