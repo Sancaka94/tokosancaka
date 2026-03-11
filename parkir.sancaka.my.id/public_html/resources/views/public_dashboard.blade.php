@@ -745,27 +745,23 @@
                     <tbody class="bg-white divide-y divide-gray-100">
                         @forelse($revenue_transactions ?? [] as $trx)
                             @php
-                                // Paksa format tanggal Y-m-d
-                                $tglRev = \Carbon\Carbon::parse($trx->tanggal)->format('Y-m-d');
+                                $tglStr = \Carbon\Carbon::parse($trx->tanggal)->format('Y-m-d');
 
-                                $rumusParkirLoop = \Illuminate\Support\Facades\DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)');
-                                $rumusToiletLoop = \Illuminate\Support\Facades\DB::raw('IFNULL(toilet_fee, 0)');
+                                // Hitung parkir & toilet ulang dari DB
+                                $parkirSaja = \App\Models\Transaction::where(\Illuminate\Support\Facades\DB::raw('DATE(entry_time)'), $tglStr)->sum(\Illuminate\Support\Facades\DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)'));
+                                $toiletSaja = \App\Models\Transaction::where(\Illuminate\Support\Facades\DB::raw('DATE(entry_time)'), $tglStr)->sum('toilet_fee');
 
-                                // Hitung data murni & kas secara live per tanggal
-                                $parkirMurniRev = \App\Models\Transaction::whereDate('entry_time', $tglRev)->sum($rumusParkirLoop);
-                                $toiletRev = \App\Models\Transaction::whereDate('entry_time', $tglRev)->sum($rumusToiletLoop);
+                                // Tarik semua KAS (Pakai 'where' biasa)
+                                $semuaKasMasuk = \App\Models\FinancialReport::where('tanggal', $tglStr)->where('jenis', 'pemasukan')->sum('nominal');
+                                $semuaKasKeluar = \App\Models\FinancialReport::where('tanggal', $tglStr)->where('jenis', 'pengeluaran')->sum('nominal');
 
-                                // Mengambil semua kas masuk & keluar di tanggal tersebut
-                                $kasMasukRev = \App\Models\FinancialReport::whereDate('tanggal', $tglRev)->where('jenis', 'pemasukan')->sum('nominal');
-                                $kasKeluarRev = \App\Models\FinancialReport::whereDate('tanggal', $tglRev)->where('jenis', 'pengeluaran')->sum('nominal');
-
-                                // LOGIKA PENDAPATAN: Parkir + Toilet + Semua Kas
-                                $omzetTabelRev = $parkirMurniRev + $toiletRev + $kasMasukRev;
-                                $profitTabelRev = ($parkirMurniRev / 2) + $toiletRev + $kasMasukRev - $kasKeluarRev;
+                                // Eksekusi hitungan
+                                $omzetFinal = $parkirSaja + $toiletSaja + $semuaKasMasuk;
+                                $profitFinal = ($parkirSaja / 2) + $toiletSaja + $semuaKasMasuk - $semuaKasKeluar;
                             @endphp
                             <tr class="hover:bg-gray-50 transition duration-150">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-bold">
-                                    {{ \Carbon\Carbon::parse($tglRev)->translatedFormat('d F Y') }}
+                                    {{ \Carbon\Carbon::parse($tglStr)->translatedFormat('d F Y') }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 font-medium">
                                     <span class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded border border-blue-100">
@@ -773,18 +769,13 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right font-bold text-gray-600 text-base">
-                                    Rp {{ number_format($omzetTabelRev, 0, ',', '.') }}
-                                    {{-- Menampilkan info jika ada tambahan dari kas --}}
-                                    @if($kasMasukRev > 0)
-                                        <span class="block text-[10px] text-green-500 font-normal mt-0.5">+ Kas: Rp {{ number_format($kasMasukRev, 0, ',', '.') }}</span>
+                                    Rp {{ number_format($omzetFinal, 0, ',', '.') }}
+                                    @if($semuaKasMasuk > 0)
+                                        <span class="block text-[10px] text-green-600 font-bold mt-1">+ Kas Masuk: Rp {{ number_format($semuaKasMasuk, 0, ',', '.') }}</span>
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right font-black text-indigo-600 text-base md:text-lg bg-indigo-50/30">
-                                    Rp {{ number_format($profitTabelRev, 0, ',', '.') }}
-                                    {{-- Menampilkan info jika nominal sudah dipotong/ditambah kas --}}
-                                    @if($kasMasukRev > 0 || $kasKeluarRev > 0)
-                                        <span class="block text-[10px] text-indigo-400 font-normal mt-0.5">(Sdh termasuk Kas)</span>
-                                    @endif
+                                    Rp {{ number_format($profitFinal, 0, ',', '.') }}
                                 </td>
                             </tr>
                         @empty
