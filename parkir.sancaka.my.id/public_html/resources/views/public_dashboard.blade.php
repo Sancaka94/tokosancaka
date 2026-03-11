@@ -576,60 +576,29 @@
                     </thead>
                    <tbody class="bg-white divide-y divide-gray-100">
                         @forelse($riwayat_gaji ?? [] as $rg)
-                            @php
-                                $tglStr = \Carbon\Carbon::parse($rg->tanggal)->format('Y-m-d');
-
-                                // Tarik Parkir Murni pakai Collection PHP (Dijamin aman dari error SQL)
-                                $parkirMurni = \App\Models\Transaction::whereDate('entry_time', $tglStr)
-                                    ->get()
-                                    ->sum(function($trx) {
-                                        return ($trx->fee != null && $trx->fee > 0) ? $trx->fee : ($trx->vehicle_type == 'mobil' ? 5000 : 3000);
-                                    });
-
-                                // Tarik Kas Parkiran
-                                $kasMasukParkir = \App\Models\FinancialReport::whereDate('tanggal', $tglStr)
-                                    ->where('jenis', 'pemasukan')
-                                    ->where('kategori', 'Parkiran')
-                                    ->sum('nominal');
-
-                                // Kotor Gaji = Parkir Murni + Kas Parkiran
-                                $pendapatanKotorFinal = $parkirMurni + $kasMasukParkir;
-                            @endphp
                             <tr class="hover:bg-gray-50 transition duration-150">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-bold">
-                                    {{ \Carbon\Carbon::parse($tglStr)->translatedFormat('d M Y') }}
+                                    {{ \Carbon\Carbon::parse($rg->tanggal)->translatedFormat('d M Y') }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
                                     <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded border border-emerald-100 block w-fit font-black">
-                                        Rp {{ number_format($pendapatanKotorFinal, 0, ',', '.') }}
+                                        Rp {{ number_format($rg->pendapatan_kotor, 0, ',', '.') }}
                                     </span>
-                                    @if($kasMasukParkir > 0)
-                                        <span class="block text-[10px] text-emerald-600 font-bold mt-1">+ Kas: Rp {{ number_format($kasMasukParkir, 0, ',', '.') }}</span>
+                                    @if($rg->info_kas_parkir > 0)
+                                        <span class="block text-[10px] text-emerald-600 font-bold mt-1">+ Kas: Rp {{ number_format($rg->info_kas_parkir, 0, ',', '.') }}</span>
                                     @endif
                                 </td>
 
                                 @if(isset($operators) && count($operators) > 0)
                                     @foreach($operators as $pegawai)
-                                        @php
-                                            $gajiManual = \App\Models\FinancialReport::whereDate('tanggal', $tglStr)
-                                                ->where('kategori', 'Gaji Pegawai')
-                                                ->where('keterangan', 'LIKE', '%' . $pegawai->name . '%')
-                                                ->sum('nominal');
-
-                                            if ($gajiManual > 0) {
-                                                $gajiFinalTabel = $gajiManual;
-                                                $statusGajiTabel = 'Manual';
-                                            } else {
-                                                $gajiFinalTabel = $pegawai->salary_type == 'percentage'
-                                                    ? ($pegawai->salary_amount / 100) * $pendapatanKotorFinal
-                                                    : $pegawai->salary_amount;
-                                                $statusGajiTabel = 'Otomatis';
-                                            }
-                                        @endphp
                                         <td class="px-6 py-4 whitespace-nowrap text-right font-black text-gray-700 text-base border-l border-gray-100">
-                                            Rp {{ number_format($gajiFinalTabel, 0, ',', '.') }}
-                                            @if($statusGajiTabel == 'Manual')
-                                                <span class="block text-[9px] text-orange-500 uppercase mt-0.5">Edit Manual</span>
+                                            @if(isset($rg->gaji_pegawai[$pegawai->name]))
+                                                Rp {{ number_format($rg->gaji_pegawai[$pegawai->name]['earned'], 0, ',', '.') }}
+                                                @if($rg->gaji_pegawai[$pegawai->name]['status'] == 'Manual')
+                                                    <span class="block text-[9px] text-orange-500 uppercase mt-0.5">Edit Manual</span>
+                                                @endif
+                                            @else
+                                                -
                                             @endif
                                         </td>
                                     @endforeach
@@ -746,29 +715,9 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-100">
                         @forelse($revenue_transactions ?? [] as $trx)
-                            @php
-                                $tglStr = \Carbon\Carbon::parse($trx->tanggal)->format('Y-m-d');
-
-                                // Hitung Parkir Murni pakai Collection
-                                $parkirMurni = \App\Models\Transaction::whereDate('entry_time', $tglStr)
-                                    ->get()
-                                    ->sum(function($t) {
-                                        return ($t->fee != null && $t->fee > 0) ? $t->fee : ($t->vehicle_type == 'mobil' ? 5000 : 3000);
-                                    });
-
-                                $toiletSaja = \App\Models\Transaction::whereDate('entry_time', $tglStr)->sum('toilet_fee');
-
-                                // Tarik KAS
-                                $semuaKasMasuk = \App\Models\FinancialReport::whereDate('tanggal', $tglStr)->where('jenis', 'pemasukan')->sum('nominal');
-                                $semuaKasKeluar = \App\Models\FinancialReport::whereDate('tanggal', $tglStr)->where('jenis', 'pengeluaran')->sum('nominal');
-
-                                // LOGIKA FINAL PROFIT & OMZET
-                                $omzetFinal = $parkirMurni + $toiletSaja + $semuaKasMasuk;
-                                $profitFinal = ($parkirMurni / 2) + $toiletSaja + $semuaKasMasuk - $semuaKasKeluar;
-                            @endphp
                             <tr class="hover:bg-gray-50 transition duration-150">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-bold">
-                                    {{ \Carbon\Carbon::parse($tglStr)->translatedFormat('d F Y') }}
+                                    {{ \Carbon\Carbon::parse($trx->tanggal)->translatedFormat('d F Y') }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 font-medium">
                                     <span class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded border border-blue-100">
@@ -776,13 +725,13 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right font-bold text-gray-600 text-base">
-                                    Rp {{ number_format($omzetFinal, 0, ',', '.') }}
-                                    @if($semuaKasMasuk > 0)
-                                        <span class="block text-[10px] text-green-600 font-bold mt-1">+ Kas Masuk: Rp {{ number_format($semuaKasMasuk, 0, ',', '.') }}</span>
+                                    Rp {{ number_format($trx->total_omzet, 0, ',', '.') }}
+                                    @if($trx->info_kas_masuk > 0)
+                                        <span class="block text-[10px] text-green-600 font-bold mt-1">+ Kas Masuk: Rp {{ number_format($trx->info_kas_masuk, 0, ',', '.') }}</span>
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right font-black text-indigo-600 text-base md:text-lg bg-indigo-50/30">
-                                    Rp {{ number_format($profitFinal, 0, ',', '.') }}
+                                    Rp {{ number_format($trx->total_profit_bersih, 0, ',', '.') }}
                                 </td>
                             </tr>
                         @empty
