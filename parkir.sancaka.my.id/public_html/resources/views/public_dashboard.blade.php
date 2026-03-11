@@ -577,20 +577,22 @@
                    <tbody class="bg-white divide-y divide-gray-100">
                         @forelse($riwayat_gaji ?? [] as $rg)
                             @php
-                                // Paksa format jadi teks murni Y-m-d
                                 $tglStr = \Carbon\Carbon::parse($rg->tanggal)->format('Y-m-d');
 
-                                // Tarik ulang parkir murni
-                                $parkirMurni = \App\Models\Transaction::where(\Illuminate\Support\Facades\DB::raw('DATE(entry_time)'), $tglStr)
-                                    ->sum(\Illuminate\Support\Facades\DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)'));
+                                // Tarik Parkir Murni pakai Collection PHP (Dijamin aman dari error SQL)
+                                $parkirMurni = \App\Models\Transaction::whereDate('entry_time', $tglStr)
+                                    ->get()
+                                    ->sum(function($trx) {
+                                        return ($trx->fee != null && $trx->fee > 0) ? $trx->fee : ($trx->vehicle_type == 'mobil' ? 5000 : 3000);
+                                    });
 
-                                // Tarik KAS PARKIRAN (Pakai 'where' biasa, bukan whereDate)
-                                $kasMasukParkir = \App\Models\FinancialReport::where('tanggal', $tglStr)
+                                // Tarik Kas Parkiran
+                                $kasMasukParkir = \App\Models\FinancialReport::whereDate('tanggal', $tglStr)
                                     ->where('jenis', 'pemasukan')
                                     ->where('kategori', 'Parkiran')
                                     ->sum('nominal');
 
-                                // Pendapatan Kotor = Parkir + Kas
+                                // Kotor Gaji = Parkir Murni + Kas Parkiran
                                 $pendapatanKotorFinal = $parkirMurni + $kasMasukParkir;
                             @endphp
                             <tr class="hover:bg-gray-50 transition duration-150">
@@ -598,18 +600,18 @@
                                     {{ \Carbon\Carbon::parse($tglStr)->translatedFormat('d M Y') }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
-                                    <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded border border-emerald-100 block w-fit">
+                                    <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded border border-emerald-100 block w-fit font-black">
                                         Rp {{ number_format($pendapatanKotorFinal, 0, ',', '.') }}
                                     </span>
                                     @if($kasMasukParkir > 0)
-                                        <span class="block text-[10px] text-emerald-600 font-bold mt-1">+ Kas Parkir: Rp {{ number_format($kasMasukParkir, 0, ',', '.') }}</span>
+                                        <span class="block text-[10px] text-emerald-600 font-bold mt-1">+ Kas: Rp {{ number_format($kasMasukParkir, 0, ',', '.') }}</span>
                                     @endif
                                 </td>
 
                                 @if(isset($operators) && count($operators) > 0)
                                     @foreach($operators as $pegawai)
                                         @php
-                                            $gajiManual = \App\Models\FinancialReport::where('tanggal', $tglStr)
+                                            $gajiManual = \App\Models\FinancialReport::whereDate('tanggal', $tglStr)
                                                 ->where('kategori', 'Gaji Pegawai')
                                                 ->where('keterangan', 'LIKE', '%' . $pegawai->name . '%')
                                                 ->sum('nominal');
@@ -747,17 +749,22 @@
                             @php
                                 $tglStr = \Carbon\Carbon::parse($trx->tanggal)->format('Y-m-d');
 
-                                // Hitung parkir & toilet ulang dari DB
-                                $parkirSaja = \App\Models\Transaction::where(\Illuminate\Support\Facades\DB::raw('DATE(entry_time)'), $tglStr)->sum(\Illuminate\Support\Facades\DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)'));
-                                $toiletSaja = \App\Models\Transaction::where(\Illuminate\Support\Facades\DB::raw('DATE(entry_time)'), $tglStr)->sum('toilet_fee');
+                                // Hitung Parkir Murni pakai Collection
+                                $parkirMurni = \App\Models\Transaction::whereDate('entry_time', $tglStr)
+                                    ->get()
+                                    ->sum(function($t) {
+                                        return ($t->fee != null && $t->fee > 0) ? $t->fee : ($t->vehicle_type == 'mobil' ? 5000 : 3000);
+                                    });
 
-                                // Tarik semua KAS (Pakai 'where' biasa)
-                                $semuaKasMasuk = \App\Models\FinancialReport::where('tanggal', $tglStr)->where('jenis', 'pemasukan')->sum('nominal');
-                                $semuaKasKeluar = \App\Models\FinancialReport::where('tanggal', $tglStr)->where('jenis', 'pengeluaran')->sum('nominal');
+                                $toiletSaja = \App\Models\Transaction::whereDate('entry_time', $tglStr)->sum('toilet_fee');
 
-                                // Eksekusi hitungan
-                                $omzetFinal = $parkirSaja + $toiletSaja + $semuaKasMasuk;
-                                $profitFinal = ($parkirSaja / 2) + $toiletSaja + $semuaKasMasuk - $semuaKasKeluar;
+                                // Tarik KAS
+                                $semuaKasMasuk = \App\Models\FinancialReport::whereDate('tanggal', $tglStr)->where('jenis', 'pemasukan')->sum('nominal');
+                                $semuaKasKeluar = \App\Models\FinancialReport::whereDate('tanggal', $tglStr)->where('jenis', 'pengeluaran')->sum('nominal');
+
+                                // LOGIKA FINAL PROFIT & OMZET
+                                $omzetFinal = $parkirMurni + $toiletSaja + $semuaKasMasuk;
+                                $profitFinal = ($parkirMurni / 2) + $toiletSaja + $semuaKasMasuk - $semuaKasKeluar;
                             @endphp
                             <tr class="hover:bg-gray-50 transition duration-150">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-bold">
