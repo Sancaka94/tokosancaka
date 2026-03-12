@@ -147,11 +147,15 @@
         </div>
 
         {{-- Penanda Tanggal Aktif --}}
-        <div class="px-6 py-4 bg-red-50 border-t border-b border-red-100 flex flex-col sm:flex-row justify-between items-center rounded-t-lg">
-            <h5 class="font-bold text-red-800 text-lg">
-                <i class="fas fa-calendar-day mr-2 text-red-500"></i> Menampilkan Data Tanggal: {{ $activeDateLabel }}
+        @php
+            // KODE BARU: Cek apakah semua paket di hari ini sudah di-copy
+            $semuaSelesaiHariIni = $scans->count() > 0 && $scans->where('is_copied', true)->count() == $scans->count();
+        @endphp
+        <div class="px-6 py-4 {{ $semuaSelesaiHariIni ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100' }} border-t border-b flex flex-col sm:flex-row justify-between items-center rounded-t-lg transition-colors duration-300">
+            <h5 class="font-bold {{ $semuaSelesaiHariIni ? 'text-green-800' : 'text-red-800' }} text-lg">
+                <i class="fas fa-calendar-day mr-2 {{ $semuaSelesaiHariIni ? 'text-green-500' : 'text-red-500' }}"></i> Menampilkan Data Tanggal: {{ $activeDateLabel }}
             </h5>
-            <span class="text-sm font-semibold text-red-600 bg-white px-3 py-1 rounded-full shadow-sm mt-2 sm:mt-0">
+            <span class="text-sm font-semibold {{ $semuaSelesaiHariIni ? 'text-green-600' : 'text-red-600' }} bg-white px-3 py-1 rounded-full shadow-sm mt-2 sm:mt-0">
                 Total di hari ini: {{ $scans->count() }} Paket
             </span>
         </div>
