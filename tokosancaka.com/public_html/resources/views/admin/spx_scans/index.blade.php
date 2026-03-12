@@ -277,12 +277,19 @@
     <div id="{{ $modalId }}" class="fixed inset-0 z-50 hidden bg-gray-900 bg-opacity-60 overflow-y-auto h-full w-full backdrop-blur-sm transition-opacity duration-300 flex items-center justify-center">
         <div class="relative mx-auto p-6 border w-11/12 md:w-3/4 lg:w-1/2 shadow-2xl rounded-2xl bg-white">
 
-            {{-- Header Modal --}}
+           {{-- Header Modal --}}
+            @php
+                // Menghitung status copy khusus untuk paket di dalam modal ini
+                $jmlTotalModal = $packages->count();
+                $jmlCopiedModal = $packages->where('is_copied', true)->count();
+                $selesaiSemuaModal = ($jmlTotalModal > 0 && $jmlCopiedModal == $jmlTotalModal);
+            @endphp
             <div class="flex justify-between items-center pb-4 border-b border-gray-200">
                 <h3 class="text-xl font-extrabold text-gray-800">
-                    <i class="fas fa-box text-red-500 mr-2"></i> Detail Paket: <span class="text-red-700">{{ $namaPengirim }}</span>
+                    <i class="fas fa-box {{ $selesaiSemuaModal ? 'text-green-500' : 'text-red-500' }} mr-2 transition-colors duration-300"></i>
+                    Detail Paket: <span class="{{ $selesaiSemuaModal ? 'text-green-700' : 'text-red-700' }} transition-colors duration-300">{{ $namaPengirim }}</span>
                 </h3>
-                <button onclick="closeGroupModal('{{ $modalId }}')" class="text-gray-400 hover:text-red-500 transition focus:outline-none">
+                <button onclick="closeGroupModal('{{ $modalId }}')" class="text-gray-400 hover:{{ $selesaiSemuaModal ? 'text-green-500' : 'text-red-500' }} transition focus:outline-none">
                     <i class="fas fa-times fa-lg"></i>
                 </button>
             </div>
