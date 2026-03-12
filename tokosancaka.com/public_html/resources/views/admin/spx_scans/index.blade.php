@@ -5,7 +5,7 @@
 
 @section('content')
 <div class="bg-white shadow-md rounded-lg overflow-hidden">
-    {{-- Header --}}
+
     {{-- Header --}}
     <div class="px-6 py-4 border-b border-gray-200">
         <div class="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -208,8 +208,9 @@
                                     <span class="text-gray-400 italic font-normal">Belum Ada</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <span class="bg-red-200 text-red-800 py-1 px-3 rounded-full text-xs font-bold shadow-sm">
+                           <td class="px-6 py-4 whitespace-nowrap text-center">
+                                {{-- KODE BARU: Warna dinamis Jumlah Paket --}}
+                                <span class="{{ $sudahDicopy == $totalPaket ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800' }} py-1 px-3 rounded-full text-xs font-bold shadow-sm">
                                     {{ $totalPaket }} Paket
                                 </span>
                             </td>
@@ -226,7 +227,8 @@
                                 {{ $waktuScanTerakhir }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                <button onclick="openGroupModal('{{ $modalId }}')" class="inline-flex items-center px-3 py-1.5 bg-red-800 border border-transparent rounded-md font-semibold text-xs text-white tracking-widest hover:bg-red-700 active:bg-red-900 transition shadow-sm">
+                                {{-- KODE BARU: Warna dinamis Tombol Detail --}}
+                                <button onclick="openGroupModal('{{ $modalId }}')" class="inline-flex items-center px-3 py-1.5 {{ $sudahDicopy == $totalPaket ? 'bg-green-600 hover:bg-green-500 active:bg-green-700' : 'bg-red-800 hover:bg-red-700 active:bg-red-900' }} border border-transparent rounded-md font-semibold text-xs text-white tracking-widest transition shadow-sm">
                                     <i class="fas fa-list mr-1"></i> Detail
                                 </button>
                             </td>
