@@ -9,10 +9,15 @@
     {{-- Header --}}
     <div class="px-6 py-4 border-b border-gray-200">
         <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-            {{-- KODE BARU: Judul dengan Total Badge --}}
+
+           {{-- KODE BARU: Judul dengan Total Badge Dinamis --}}
             <div class="flex items-center gap-3">
                 <h4 class="text-lg font-bold text-gray-800">Daftar Paket SPX</h4>
-                <span class="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full shadow-sm border border-red-200">
+                @php
+                    // Cek apakah total keseluruhan paket sudah sama dengan total yang di-copy
+                    $semuaTotalSelesai = ($totalScans > 0 && $countCopied == $totalScans);
+                @endphp
+                <span class="{{ $semuaTotalSelesai ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200' }} text-xs font-bold px-3 py-1 rounded-full shadow-sm border transition-colors duration-300">
                     Total: {{ number_format($totalScans, 0, ',', '.') }} Paket
                 </span>
             </div>
