@@ -309,14 +309,28 @@
 <div id="spxGlobalModal" class="fixed inset-0 z-[9999] hidden bg-gray-900 bg-opacity-60 overflow-y-auto h-full w-full backdrop-blur-sm transition-opacity duration-300 flex items-center justify-center" style="display: none;">
     <div class="relative mx-auto p-6 border w-11/12 md:w-3/4 lg:w-2/3 shadow-2xl rounded-2xl bg-white">
 
-        {{-- Header Modal --}}
-        <div class="flex justify-between items-center pb-4 border-b border-gray-200">
-            <h3 class="text-xl font-extrabold text-gray-800 flex items-center gap-2">
-                <i class="fas fa-shipping-fast text-blue-600"></i> Laporan Quick Scan SPX
-            </h3>
-            <button onclick="closeSpxGlobalModal()" class="text-gray-400 hover:text-red-500 transition focus:outline-none">
-                <i class="fas fa-times fa-lg"></i>
-            </button>
+       {{-- Header Modal --}}
+        <div class="pb-4 border-b border-gray-200 relative">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-xl font-extrabold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-shipping-fast text-blue-600"></i> Laporan Quick Scan SPX
+                </h3>
+                <button onclick="closeSpxGlobalModal()" class="text-gray-400 hover:text-red-500 transition focus:outline-none">
+                    <i class="fas fa-times fa-lg"></i>
+                </button>
+            </div>
+            {{-- KODE BARU: Badge Counter SPX --}}
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="bg-gray-100 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                    Total: <span id="modal-summary-total">...</span>
+                </span>
+                <span class="bg-green-100 text-green-800 text-xs font-bold px-3 py-1.5 rounded-full border border-green-200 shadow-sm">
+                    <i class="fas fa-check-double mr-1"></i> Selesai: <span id="modal-summary-copied">...</span>
+                </span>
+                <span class="bg-red-100 text-red-800 text-xs font-bold px-3 py-1.5 rounded-full border border-red-200 shadow-sm">
+                    <i class="fas fa-minus-circle mr-1"></i> Belum: <span id="modal-summary-uncopied">...</span>
+                </span>
+            </div>
         </div>
 
         {{-- Body Modal (Tabel Resi) --}}
@@ -396,19 +410,41 @@
         .then(response => response.json())
         .then(data => {
             console.log('LOG LOG: Data SPX berhasil diambil', data);
+
+            // KODE BARU: Update nilai di Header Modal
+            if(data.summary) {
+                document.getElementById('modal-summary-total').textContent = data.summary.total_all;
+                document.getElementById('modal-summary-copied').textContent = data.summary.total_copied;
+                document.getElementById('modal-summary-uncopied').textContent = data.summary.total_uncopied;
+            }
+
             tbody.innerHTML = '';
 
-            if(data.length === 0) {
+            let itemsArray = data.items || [];
+
+            if(itemsArray.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-green-600 font-bold"><i class="fas fa-check-circle fa-2x mb-2"></i><br>Semua resi sudah selesai di-copy!</td></tr>`;
                 return;
             }
 
-            data.forEach(scan => {
+            // KODE BARU: Hitung jumlah paket per orang untuk daftar yang belum dicopy
+            let countPerPerson = {};
+            itemsArray.forEach(scan => {
+                countPerPerson[scan.pengirim] = (countPerPerson[scan.pengirim] || 0) + 1;
+            });
+
+            // Loop dan render data
+            itemsArray.forEach(scan => {
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-gray-50';
                 tr.innerHTML = `
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
-                        ${scan.pengirim}
+                        <div class="flex flex-col gap-1">
+                            <span>${scan.pengirim}</span>
+                            <span class="bg-red-50 text-red-600 text-[10px] px-2 py-0.5 rounded-md w-fit border border-red-100 shadow-sm">
+                                <i class="fas fa-box text-[9px] mr-1"></i> ${countPerPerson[scan.pengirim]} Paket (Belum di-copy)
+                            </span>
+                        </div>
                     </td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
                         <div class="flex items-center gap-2">
@@ -453,6 +489,18 @@
                 if(data.success) {
                     console.log('LOG LOG: Update berhasil di global modal!');
                     document.getElementById('global-status-copas-' + id).innerHTML = '<span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> DONE</span>';
+
+                    // KODE BARU: Update live counter di Header Modal saat berhasil dicopy
+                    let copiedEl = document.getElementById('modal-summary-copied');
+                    let uncopiedEl = document.getElementById('modal-summary-uncopied');
+
+                    if (copiedEl && uncopiedEl) {
+                        let currentCopied = parseInt(copiedEl.textContent) || 0;
+                        let currentUncopied = parseInt(uncopiedEl.textContent) || 0;
+
+                        copiedEl.textContent = currentCopied + 1;
+                        if(currentUncopied > 0) uncopiedEl.textContent = currentUncopied - 1;
+                    }
                 }
             })
             .catch(error => console.error('LOG LOG: Terjadi Error pada Fetch Global:', error));
@@ -463,4 +511,5 @@
             alert('Gagal menyalin nomor resi.');
         });
     }
+
 </script>

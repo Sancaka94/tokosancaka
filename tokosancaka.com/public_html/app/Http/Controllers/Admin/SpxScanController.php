@@ -793,7 +793,12 @@ class SpxScanController extends Controller
         try {
             \Illuminate\Support\Facades\Log::info("LOG LOG: Memanggil API getUnprocessedApi");
 
-            $unprocessed = \App\Models\ScannedPackage::with(['user', 'kontak'])
+            // KODE BARU: Ambil ringkasan jumlah
+            $totalAll = \App\Models\ScannedPackage::count();
+            $totalCopied = \App\Models\ScannedPackage::where('is_copied', true)->count();
+            $totalUncopied = \App\Models\ScannedPackage::where('is_copied', false)->count();
+
+            $unprocessedItems = \App\Models\ScannedPackage::with(['user', 'kontak'])
                             ->where('is_copied', false)
                             ->orderBy('created_at', 'desc')
                             ->get()
@@ -804,9 +809,17 @@ class SpxScanController extends Controller
                                     'pengirim' => $scan->user->nama_lengkap ?? $scan->kontak->nama ?? 'Publik / N/A'
                                 ];
                             })
-                            ->values(); // Memastikan format response adalah array
+                            ->values();
 
-            return response()->json($unprocessed);
+            // KODE BARU: Return format dipisah jadi summary dan items
+            return response()->json([
+                'summary' => [
+                    'total_all' => $totalAll,
+                    'total_copied' => $totalCopied,
+                    'total_uncopied' => $totalUncopied
+                ],
+                'items' => $unprocessedItems
+            ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("LOG LOG: Error di getUnprocessedApi: " . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
