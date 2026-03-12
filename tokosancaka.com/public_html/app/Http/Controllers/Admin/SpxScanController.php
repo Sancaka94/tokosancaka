@@ -785,5 +785,33 @@ class SpxScanController extends Controller
         }
     }
 
+    /**
+     * [BARU] Mengambil resi SPX yang belum di-copy untuk Global Modal (Sidebar)
+     */
+    public function getUnprocessedApi()
+    {
+        try {
+            \Illuminate\Support\Facades\Log::info("LOG LOG: Memanggil API getUnprocessedApi");
+
+            $unprocessed = \App\Models\ScannedPackage::with(['user', 'kontak'])
+                            ->where('is_copied', false)
+                            ->orderBy('created_at', 'desc')
+                            ->get()
+                            ->map(function($scan) {
+                                return [
+                                    'id' => $scan->id,
+                                    'resi_number' => $scan->resi_number,
+                                    'pengirim' => $scan->user->nama_lengkap ?? $scan->kontak->nama ?? 'Publik / N/A'
+                                ];
+                            })
+                            ->values(); // Memastikan format response adalah array
+
+            return response()->json($unprocessed);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG LOG: Error di getUnprocessedApi: " . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
 }
 
