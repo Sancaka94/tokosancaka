@@ -8,32 +8,35 @@
 
     {{-- Tombol Trigger Aktivitas --}}
     <div @mouseenter="activityOpen = true; monitorOpen = false"
-        class="fixed right-0 top-[33%] transform -translate-y-1/2 pointer-events-auto bg-blue-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-blue-700 hover:pr-3 z-[110]">
+        class="fixed right-0 top-[30%] transform -translate-y-1/2 pointer-events-auto bg-blue-600/95 backdrop-blur-sm border border-r-0 border-white/20 text-white py-5 px-1.5 rounded-l-2xl shadow-xl cursor-pointer transition-all duration-300 hover:bg-blue-600 hover:pr-4 z-[110]">
         <div class="flex flex-col items-center gap-2">
-            <i class="fas fa-history animate-pulse text-[10px]"></i>
+            <i class="fas fa-history animate-pulse text-[11px]"></i>
             <span class="text-[10px] font-bold writing-vertical tracking-widest" style="writing-mode: vertical-rl; text-orientation: mixed;">AKTIVITAS</span>
         </div>
     </div>
 
     {{-- Panel Isi Aktivitas --}}
-    <div class="h-full bg-white/95 backdrop-blur-md shadow-2xl border-l border-gray-200 w-96 transform transition-transform duration-300 ease-in-out overflow-y-auto custom-scrollbar relative pointer-events-auto z-[100]"
+    <div class="h-full bg-white/95 backdrop-blur-xl shadow-2xl border-l border-gray-100 w-96 transform transition-transform duration-300 ease-in-out overflow-y-auto custom-scrollbar relative pointer-events-auto z-[100]"
         :class="activityOpen ? 'translate-x-0' : 'translate-x-full'"
         @mouseleave="activityOpen = false">
 
         {{-- Header Aktivitas --}}
-        <div class="h-15 px-6 bg-blue-900 text-white flex justify-between items-center sticky top-0 z-10 shadow-md border-b border-blue-800">
+        <div class="h-16 px-6 bg-gradient-to-r from-blue-700 to-blue-600 text-white flex justify-between items-center sticky top-0 z-10 shadow-md">
             <h3 class="font-bold text-sm tracking-wider uppercase flex items-center gap-2">
-                <i class="fas fa-history text-blue-300"></i> Aktivitas Terbaru
+                <div class="p-1.5 bg-white/20 rounded-lg">
+                    <i class="fas fa-history text-white"></i>
+                </div>
+                Aktivitas Terbaru
             </h3>
-            <button @click="activityOpen = false" class="text-blue-200 hover:text-white transition focus:outline-none">
+            <button @click="activityOpen = false" class="text-blue-100 hover:text-white hover:bg-white/20 p-1.5 rounded-lg transition focus:outline-none">
                 <i class="fas fa-times text-lg"></i>
             </button>
         </div>
 
         {{-- List Aktivitas --}}
-        <div class="p-4 space-y-4 pb-20">
+        <div class="p-4 space-y-3 pb-20">
             @forelse ($pesananTerbaru as $pesanan)
-            <div class="flex items-start py-3 border-b border-gray-100 last:border-0 hover:bg-blue-50/50 transition-colors rounded-lg px-2 group">
+            <div class="flex items-start p-3 bg-white border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all duration-200 rounded-xl group cursor-default">
 
                 {{-- LOGO EKSPEDISI --}}
                 <div class="mt-1 flex-shrink-0">
@@ -43,10 +46,10 @@
                         $logoPath = "public/storage/logo-ekspedisi/{$kodeEks}.png";
                         $fullPath = asset($logoPath);
                     @endphp
-                    <div class="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
+                    <div class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden shadow-sm group-hover:shadow transition-all">
                         <img src="{{ $fullPath }}"
                                 alt="{{ $kodeEks }}"
-                                class="w-8 h-8 object-contain"
+                                class="w-7 h-7 object-contain"
                                 onerror="this.onerror=null; this.src='https://tokosancaka.com/storage/uploads/sancaka.png';">
                     </div>
                 </div>
@@ -54,48 +57,50 @@
                 <div class="ml-3 flex-1 min-w-0">
                     <div class="flex justify-between items-start">
                         <div class="flex flex-col">
-                            <p class="text-xs font-bold text-gray-800 tracking-tight flex items-center gap-1">
-                                Resi: {{ $pesanan->resi ?? $pesanan->nomor_invoice }}
-                                <button class="text-gray-400 hover:text-blue-600 transition" title="Salin" onclick="navigator.clipboard.writeText('{{ $pesanan->resi ?? $pesanan->nomor_invoice }}')">
-                                    <i class="far fa-copy text-[10px]"></i>
+                            <p class="text-xs font-extrabold text-gray-800 tracking-tight flex items-center gap-1.5">
+                                {{ $pesanan->resi ?? $pesanan->nomor_invoice }}
+                                <button class="text-gray-400 hover:text-blue-600 hover:bg-blue-50 p-1 rounded transition-colors" title="Salin" onclick="navigator.clipboard.writeText('{{ $pesanan->resi ?? $pesanan->nomor_invoice }}')">
+                                    <i class="far fa-copy text-[11px]"></i>
                                 </button>
                             </p>
                             @if($pesanan->resi)
-                            <a href="https://tokosancaka.com/tracking?resi={{ $pesanan->resi }}" target="_blank" class="mt-0.5 inline-flex items-center text-[9px] font-bold text-red-600 hover:text-red-800 uppercase">
-                                <i class="fas fa-search-location mr-1"></i> Lacak
+                            <a href="https://tokosancaka.com/tracking?resi={{ $pesanan->resi }}" target="_blank" class="mt-0.5 inline-flex items-center text-[10px] font-bold text-red-500 hover:text-red-700 uppercase transition-colors">
+                                <i class="fas fa-search-location mr-1"></i> Lacak Paket
                             </a>
                             @endif
                         </div>
-                        <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded ml-2 whitespace-nowrap">
+                        <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 ring-1 ring-inset ring-emerald-200 px-2 py-1 rounded-md ml-2 whitespace-nowrap shadow-sm">
                             Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
                         </span>
                     </div>
 
-                    <div class="mt-1.5 space-y-0.5">
-                        <div class="flex items-center text-[10px] text-green-700 font-bold truncate">
-                            <i class="fas fa-store w-3 mr-0.5 opacity-60"></i>
+                    <div class="mt-2.5 space-y-1 bg-gray-50/50 p-2 rounded-lg border border-gray-50">
+                        <div class="flex items-center text-[10px] text-gray-700 font-medium truncate">
+                            <i class="fas fa-store w-4 text-center text-emerald-600/70"></i>
                             <span class="truncate">{{ $pesanan->pembeli->store_name ?? 'Tanpa Nama Toko' }}</span>
                         </div>
-                        <div class="flex items-center text-[10px] text-blue-600 truncate">
-                            <i class="fas fa-user w-3 mr-0.5 opacity-60"></i>
+                        <div class="flex items-center text-[10px] text-gray-700 font-medium truncate">
+                            <i class="fas fa-user w-4 text-center text-blue-600/70"></i>
                             <span>{{ $pesanan->pembeli->nama_lengkap ?? 'User Tidak Dikenal' }}</span>
                         </div>
-                        <div class="flex items-center text-[9px] text-gray-400 mt-1">
-                            <i class="far fa-clock w-3 mr-0.5"></i>
+                        <div class="flex items-center text-[9px] text-gray-400 font-medium pt-0.5">
+                            <i class="far fa-clock w-4 text-center"></i>
                             <span>{{ $pesanan->created_at->diffForHumans() }}</span>
                         </div>
                     </div>
                 </div>
             </div>
             @empty
-                <div class="flex flex-col items-center justify-center py-10 text-gray-400">
-                    <i class="fas fa-box-open text-3xl mb-2 opacity-50"></i>
-                    <p class="text-xs">Belum ada aktivitas.</p>
+                <div class="flex flex-col items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    <i class="fas fa-box-open text-4xl mb-3 text-gray-300"></i>
+                    <p class="text-xs font-medium">Belum ada aktivitas terbaru.</p>
                 </div>
             @endforelse
 
-            <div class="pt-4 text-center">
-                <a href="#" class="text-[10px] font-bold uppercase text-blue-500 hover:text-blue-700 hover:underline">Lihat Semua Aktivitas</a>
+            <div class="pt-2 text-center">
+                <a href="#" class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors">
+                    Lihat Semua Aktivitas <i class="fas fa-arrow-right"></i>
+                </a>
             </div>
         </div>
     </div>
@@ -108,87 +113,86 @@
 
     {{-- Tombol Trigger Monitor --}}
     <div @mouseenter="monitorOpen = true; activityOpen = false"
-        class="fixed right-0 top-1/2 transform -translate-y-1/2 pointer-events-auto bg-red-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-red-700 hover:pr-3 z-[110]">
+        class="fixed right-0 top-[50%] transform -translate-y-1/2 pointer-events-auto bg-red-600/95 backdrop-blur-sm border border-r-0 border-white/20 text-white py-5 px-1.5 rounded-l-2xl shadow-xl cursor-pointer transition-all duration-300 hover:bg-red-600 hover:pr-4 z-[110]">
         <div class="flex flex-col items-center gap-2">
-            <i class="fas fa-desktop animate-pulse text-[10px]"></i>
+            <i class="fas fa-desktop animate-pulse text-[11px]"></i>
             <span class="text-[10px] font-bold writing-vertical tracking-widest" style="writing-mode: vertical-rl; text-orientation: mixed;">MONITOR</span>
         </div>
     </div>
 
     {{-- Panel Isi Monitor --}}
-    <div class="h-full bg-white/95 backdrop-blur-md shadow-2xl border-l border-gray-200 w-80 transform transition-transform duration-300 ease-in-out overflow-y-auto custom-scrollbar relative pointer-events-auto z-[100]"
+    <div class="h-full bg-gray-50/95 backdrop-blur-xl shadow-2xl border-l border-gray-200 w-80 transform transition-transform duration-300 ease-in-out overflow-y-auto custom-scrollbar relative pointer-events-auto z-[100]"
         :class="monitorOpen ? 'translate-x-0' : 'translate-x-full'"
         @mouseleave="monitorOpen = false">
 
         {{-- Header Monitor --}}
-        <div class="h-15 px-6 bg-red-900 text-white flex justify-between items-center sticky top-0 z-10 shadow-md border-b border-gray-700">
+        <div class="h-16 px-6 bg-gradient-to-r from-red-700 to-red-600 text-white flex justify-between items-center sticky top-0 z-10 shadow-md">
             <h3 class="font-bold text-sm tracking-wider uppercase flex items-center gap-2">
-                <i class="fas fa-chart-line text-red-500 animate-pulse"></i> Live Monitor
+                <div class="p-1.5 bg-white/20 rounded-lg">
+                    <i class="fas fa-chart-line text-white animate-pulse"></i>
+                </div>
+                Live Monitor
             </h3>
-            <button @click="monitorOpen = false" class="text-gray-400 hover:text-white transition focus:outline-none">
+            <button @click="monitorOpen = false" class="text-red-100 hover:text-white hover:bg-white/20 p-1.5 rounded-lg transition focus:outline-none">
                 <i class="fas fa-times text-lg"></i>
             </button>
         </div>
 
         {{-- Konten Kartu Monitor --}}
-        <div class="p-4 space-y-4 pb-20">
+        <div class="p-4 space-y-5 pb-20">
             {{-- GROUP 1: STATISTIK UTAMA (PUTIH) --}}
             <div class="space-y-3">
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Keuangan & User</p>
 
                 {{-- 1. Pendapatan --}}
-                <div class="relative group bg-white border border-gray-200 p-4 rounded-xl shadow-sm hover:shadow-md transition-all">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="bg-emerald-100 p-2 rounded-lg text-emerald-600"><i class="fas fa-coins"></i></div>
-                        <span class="text-[10px] font-bold text-gray-400 uppercase">Pendapatan</span>
+                <div class="relative group bg-white border border-gray-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-100 p-2 rounded-xl"><i class="fas fa-coins text-sm"></i></div>
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Pendapatan</span>
                     </div>
-                    <h3 class="text-xl font-extrabold text-gray-800 leading-none">
-                        Rp {{ number_format($totalPendapatan ?? 0, 0, ',', '.') }}
+                    <h3 class="text-2xl font-black text-gray-800 leading-none">
+                        <span class="text-sm font-bold text-gray-400 mr-0.5">Rp</span>{{ number_format($totalPendapatan ?? 0, 0, ',', '.') }}
                     </h3>
-                    <div class="mt-2 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div class="h-full bg-emerald-500 w-full animate-pulse"></div>
+                    <div class="mt-3 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-emerald-500 w-full animate-pulse rounded-full"></div>
                     </div>
                 </div>
 
                 {{-- 2. Total Pesanan --}}
-                <div class="relative group bg-white border border-gray-200 p-4 rounded-xl shadow-sm hover:shadow-md transition-all">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="bg-blue-100 p-2 rounded-lg text-blue-600"><i class="fas fa-box-open"></i></div>
-                        <span class="text-[10px] font-bold text-gray-400 uppercase">Total Pesanan</span>
+                <div class="relative group bg-white border border-gray-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="bg-blue-50 text-blue-600 ring-1 ring-inset ring-blue-100 p-2 rounded-xl"><i class="fas fa-box-open text-sm"></i></div>
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Total Pesanan</span>
                     </div>
-                    <h3 class="text-xl font-extrabold text-gray-800 leading-none">
+                    <h3 class="text-2xl font-black text-gray-800 leading-none">
                         {{ number_format($totalPesanan ?? 0, 0, ',', '.') }}
                     </h3>
-                    <div class="mt-2 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div class="h-full bg-blue-500 w-[80%]"></div>
+                    <div class="mt-3 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-blue-500 w-[80%] rounded-full"></div>
                     </div>
                 </div>
 
-                {{-- 3. Jumlah Toko --}}
-                <div class="relative group bg-white border border-gray-200 p-4 rounded-xl shadow-sm hover:shadow-md transition-all">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="bg-purple-100 p-2 rounded-lg text-purple-600"><i class="fas fa-store-alt"></i></div>
-                        <span class="text-[10px] font-bold text-gray-400 uppercase">Jumlah Toko</span>
+                <div class="grid grid-cols-2 gap-3">
+                    {{-- 3. Jumlah Toko --}}
+                    <div class="relative group bg-white border border-gray-100 p-3.5 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="bg-purple-50 text-purple-600 ring-1 ring-inset ring-purple-100 p-1.5 rounded-lg"><i class="fas fa-store-alt text-xs"></i></div>
+                        </div>
+                        <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-1">Jml Toko</span>
+                        <h3 class="text-xl font-black text-gray-800 leading-none">
+                            {{ number_format($jumlahToko ?? 0, 0, ',', '.') }}
+                        </h3>
                     </div>
-                    <h3 class="text-xl font-extrabold text-gray-800 leading-none">
-                        {{ number_format($jumlahToko ?? 0, 0, ',', '.') }}
-                    </h3>
-                    <div class="mt-2 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div class="h-full bg-purple-500 w-[60%]"></div>
-                    </div>
-                </div>
 
-                {{-- 4. Pengguna Baru --}}
-                <div class="relative group bg-white border border-gray-200 p-4 rounded-xl shadow-sm hover:shadow-md transition-all">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="bg-orange-100 p-2 rounded-lg text-orange-600"><i class="fas fa-user-check"></i></div>
-                        <span class="text-[10px] font-bold text-gray-400 uppercase">User Baru</span>
-                    </div>
-                    <h3 class="text-xl font-extrabold text-gray-800 leading-none">
-                        {{ number_format($penggunaBaru ?? 0, 0, ',', '.') }}
-                    </h3>
-                    <div class="mt-2 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div class="h-full bg-orange-500 w-[40%]"></div>
+                    {{-- 4. Pengguna Baru --}}
+                    <div class="relative group bg-white border border-gray-100 p-3.5 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="bg-orange-50 text-orange-600 ring-1 ring-inset ring-orange-100 p-1.5 rounded-lg"><i class="fas fa-user-check text-xs"></i></div>
+                        </div>
+                        <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-1">User Baru</span>
+                        <h3 class="text-xl font-black text-gray-800 leading-none">
+                            {{ number_format($penggunaBaru ?? 0, 0, ',', '.') }}
+                        </h3>
                     </div>
                 </div>
             </div>
@@ -198,94 +202,93 @@
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Status Paket</p>
 
                 {{-- 5. Total Terkirim (Hijau) --}}
-                <div class="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-700 p-4 rounded-xl shadow-md text-white group hover:scale-[1.02] transition-all duration-300">
+                <div class="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-600 p-4 rounded-2xl shadow-md text-white group hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border border-emerald-400/30">
                     <div class="relative z-10 flex justify-between items-start">
                         <div>
-                            <p class="text-[10px] font-bold uppercase opacity-80 mb-1">Total Terkirim</p>
-                            <h3 class="text-2xl font-black">{{ number_format($totalTerkirim ?? 0) }}</h3>
-                            <div class="flex items-center mt-2 text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded w-fit">
-                                <i class="fas fa-check-double mr-1"></i> Selesai
+                            <p class="text-[10px] font-bold uppercase text-emerald-50 mb-1 tracking-wide">Total Terkirim</p>
+                            <h3 class="text-3xl font-black drop-shadow-sm">{{ number_format($totalTerkirim ?? 0) }}</h3>
+                            <div class="flex items-center mt-2 text-[10px] font-bold bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-md w-fit shadow-sm border border-white/10">
+                                <i class="fas fa-check-double mr-1.5"></i> Selesai
                             </div>
                         </div>
-                        <div class="p-2 bg-white/20 rounded-lg">
+                        <div class="p-2 bg-white/20 backdrop-blur-sm rounded-xl shadow-sm border border-white/10">
                             <i class="fas fa-shipping-fast text-xl"></i>
                         </div>
                     </div>
-                    <div class="absolute -right-2 -bottom-2 text-white/10 text-6xl rotate-12 group-hover:scale-110 transition-transform">
+                    <div class="absolute -right-3 -bottom-3 text-white/10 text-7xl rotate-12 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
                         <i class="fas fa-box-check"></i>
                     </div>
                 </div>
 
                 {{-- 6. Sedang Dikirim (Biru) --}}
-                <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 p-4 rounded-xl shadow-md text-white group hover:scale-[1.02] transition-all duration-300">
+                <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-2xl shadow-md text-white group hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border border-blue-400/30">
                     <div class="relative z-10 flex justify-between items-start">
                         <div>
-                            <p class="text-[10px] font-bold uppercase opacity-80 mb-1">Sedang Dikirim</p>
-                            <h3 class="text-2xl font-black">{{ number_format($totalSedangDikirim ?? 0) }}</h3>
-                            <div class="flex items-center mt-2 text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded w-fit">
-                                <i class="fas fa-road mr-1"></i> On Process
+                            <p class="text-[10px] font-bold uppercase text-blue-50 mb-1 tracking-wide">Sedang Dikirim</p>
+                            <h3 class="text-3xl font-black drop-shadow-sm">{{ number_format($totalSedangDikirim ?? 0) }}</h3>
+                            <div class="flex items-center mt-2 text-[10px] font-bold bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-md w-fit shadow-sm border border-white/10">
+                                <i class="fas fa-road mr-1.5"></i> On Process
                             </div>
                         </div>
-                        <div class="p-2 bg-white/20 rounded-lg">
+                        <div class="p-2 bg-white/20 backdrop-blur-sm rounded-xl shadow-sm border border-white/10">
                             <i class="fas fa-truck-moving text-xl"></i>
                         </div>
                     </div>
-                    <div class="absolute -right-2 -bottom-2 text-white/10 text-6xl rotate-12 group-hover:scale-110 transition-transform">
+                    <div class="absolute -right-3 -bottom-3 text-white/10 text-7xl rotate-12 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
                         <i class="fas fa-route"></i>
                     </div>
                 </div>
 
                 {{-- 7. Menunggu Pickup (Orange) --}}
-                <div class="relative overflow-hidden bg-gradient-to-br from-orange-400 to-orange-600 p-4 rounded-xl shadow-md text-white group hover:scale-[1.02] transition-all duration-300">
+                <div class="relative overflow-hidden bg-gradient-to-br from-orange-400 to-orange-600 p-4 rounded-2xl shadow-md text-white group hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border border-orange-300/30">
                     <div class="relative z-10 flex justify-between items-start">
                         <div>
-                            <p class="text-[10px] font-bold uppercase opacity-80 mb-1">Menunggu Pickup</p>
-                            <h3 class="text-2xl font-black">{{ number_format($totalMenungguPickup ?? 0) }}</h3>
-                            <div class="flex items-center mt-2 text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded w-fit">
-                                <i class="fas fa-user-clock mr-1"></i> Siap Jemput
+                            <p class="text-[10px] font-bold uppercase text-orange-50 mb-1 tracking-wide">Menunggu Pickup</p>
+                            <h3 class="text-3xl font-black drop-shadow-sm">{{ number_format($totalMenungguPickup ?? 0) }}</h3>
+                            <div class="flex items-center mt-2 text-[10px] font-bold bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-md w-fit shadow-sm border border-white/10">
+                                <i class="fas fa-user-clock mr-1.5"></i> Siap Jemput
                             </div>
                         </div>
-                        <div class="p-2 bg-white/20 rounded-lg">
+                        <div class="p-2 bg-white/20 backdrop-blur-sm rounded-xl shadow-sm border border-white/10">
                             <i class="fas fa-user-ninja text-xl"></i>
                         </div>
                     </div>
-                    <div class="absolute -right-2 -bottom-2 text-white/10 text-6xl rotate-12 group-hover:scale-110 transition-transform">
+                    <div class="absolute -right-3 -bottom-3 text-white/10 text-7xl rotate-12 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
                         <i class="fas fa-hand-holding-box"></i>
                     </div>
                 </div>
 
                 {{-- 8. Gagal / Cancel (Merah) --}}
-                <div class="relative overflow-hidden bg-gradient-to-br from-rose-500 to-red-800 p-4 rounded-xl shadow-md text-white group hover:scale-[1.02] transition-all duration-300">
+                <div class="relative overflow-hidden bg-gradient-to-br from-rose-500 to-rose-700 p-4 rounded-2xl shadow-md text-white group hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border border-rose-400/30">
                     <div class="relative z-10 flex justify-between items-start">
                         <div>
-                            <p class="text-[10px] font-bold uppercase opacity-80 mb-1">Gagal / Cancel</p>
-                            <h3 class="text-2xl font-black">{{ number_format($totalGagal ?? 0) }}</h3>
-                            <div class="flex items-center mt-2 text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded w-fit">
-                                <i class="fas fa-exclamation-triangle mr-1"></i> Bermasalah
+                            <p class="text-[10px] font-bold uppercase text-rose-50 mb-1 tracking-wide">Gagal / Cancel</p>
+                            <h3 class="text-3xl font-black drop-shadow-sm">{{ number_format($totalGagal ?? 0) }}</h3>
+                            <div class="flex items-center mt-2 text-[10px] font-bold bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-md w-fit shadow-sm border border-white/10">
+                                <i class="fas fa-exclamation-triangle mr-1.5"></i> Bermasalah
                             </div>
                         </div>
-                        <div class="p-2 bg-white/20 rounded-lg">
+                        <div class="p-2 bg-white/20 backdrop-blur-sm rounded-xl shadow-sm border border-white/10">
                             <i class="fas fa-ban text-xl"></i>
                         </div>
                     </div>
-                    <div class="absolute -right-2 -bottom-2 text-white/10 text-6xl rotate-12 group-hover:scale-110 transition-transform">
+                    <div class="absolute -right-3 -bottom-3 text-white/10 text-7xl rotate-12 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
                         <i class="fas fa-times-circle"></i>
                     </div>
                 </div>
             </div>
 
             {{-- Status Realtime --}}
-            <div class="mt-6 pt-4 border-t border-gray-100 text-center">
-                <div class="flex justify-center gap-2 mt-2 items-center">
-                    <span class="relative flex h-3 w-3">
+            <div class="mt-6 pt-5 border-t border-gray-200 text-center">
+                <div class="inline-flex justify-center gap-2 items-center bg-green-50 px-3 py-1.5 rounded-full border border-green-100 shadow-sm">
+                    <span class="relative flex h-2.5 w-2.5">
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
                     </span>
-                    <span class="text-[10px] font-bold text-green-600">Live Connection</span>
+                    <span class="text-[10px] font-bold text-green-700 tracking-wide uppercase">Live Connection</span>
                 </div>
             </div>
 
-            {{-- Tombol SPX sudah dihapus dari sini supaya desainnya rapi --}}
         </div>
     </div>
 </div>
@@ -294,9 +297,9 @@
 {{-- 3. TOMBOL TRIGGER QUICK COPAS SPX (BERDIRI SENDIRI DI LUAR) --}}
 {{-- ========================================================= --}}
 <div onclick="openSpxGlobalModal()"
-    class="fixed right-0 top-[66%] transform -translate-y-1/2 pointer-events-auto bg-orange-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-orange-700 hover:pr-3 z-[110]">
+    class="fixed right-0 top-[70%] transform -translate-y-1/2 pointer-events-auto bg-orange-500/95 backdrop-blur-sm border border-r-0 border-white/20 text-white py-5 px-1.5 rounded-l-2xl shadow-xl cursor-pointer transition-all duration-300 hover:bg-orange-600 hover:pr-4 z-[110]">
     <div class="flex flex-col items-center gap-2">
-        <i class="fas fa-clipboard-list animate-pulse text-[10px]"></i>
+        <i class="fas fa-clipboard-list animate-pulse text-[11px]"></i>
         <span class="text-[10px] font-bold writing-vertical tracking-widest" style="writing-mode: vertical-rl; text-orientation: mixed;">SPX COPAS</span>
     </div>
 </div>
@@ -309,61 +312,67 @@
 {{-- ========================================================= --}}
 {{-- MODAL & SCRIPT QUICK COPAS SPX (GLOBAL) --}}
 {{-- ========================================================= --}}
-<div id="spxGlobalModal" class="fixed inset-0 z-[9999] hidden bg-gray-900 bg-opacity-60 overflow-y-auto h-full w-full backdrop-blur-sm transition-opacity duration-300 flex items-center justify-center" style="display: none;">
-    <div class="relative mx-auto p-6 border w-11/12 md:w-3/4 lg:w-2/3 shadow-2xl rounded-2xl bg-white">
+<div id="spxGlobalModal" class="fixed inset-0 z-[9999] hidden bg-gray-900/70 backdrop-blur-sm overflow-y-auto h-full w-full transition-opacity duration-300 flex items-center justify-center" style="display: none;">
+    <div class="relative mx-auto p-0 border-0 w-11/12 md:w-3/4 lg:w-2/3 shadow-2xl rounded-2xl bg-white overflow-hidden transform transition-all">
 
        {{-- Header Modal --}}
-        <div class="pb-4 border-b border-gray-200 relative">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="text-xl font-extrabold text-gray-800 flex items-center gap-2">
-                    <i class="fas fa-shipping-fast text-blue-600"></i> Laporan Quick Scan SPX
+        <div class="p-6 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-black text-gray-800 flex items-center gap-2.5">
+                    <div class="bg-blue-100 text-blue-600 p-2 rounded-lg shadow-sm">
+                        <i class="fas fa-shipping-fast"></i>
+                    </div>
+                    Laporan Quick Scan SPX
                 </h3>
-                <button onclick="closeSpxGlobalModal()" class="text-gray-400 hover:text-red-500 transition focus:outline-none">
-                    <i class="fas fa-times fa-lg"></i>
+                <button onclick="closeSpxGlobalModal()" class="text-gray-400 bg-gray-100 hover:bg-red-50 hover:text-red-500 w-8 h-8 rounded-full transition-colors focus:outline-none flex items-center justify-center">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
+
             {{-- Badge Counter SPX --}}
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="bg-gray-100 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
-                    Total: <span id="modal-summary-total">...</span>
+            <div class="flex flex-wrap items-center gap-2.5">
+                <span class="bg-white text-gray-800 text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm flex items-center gap-1.5">
+                    Total Scan: <span id="modal-summary-total" class="text-blue-600 text-sm">...</span>
                 </span>
-                <span class="bg-green-100 text-green-800 text-xs font-bold px-3 py-1.5 rounded-full border border-green-200 shadow-sm">
-                    <i class="fas fa-check-double mr-1"></i> Selesai: <span id="modal-summary-copied">...</span>
+                <span class="bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-200 shadow-sm flex items-center gap-1.5">
+                    <i class="fas fa-check-double"></i> Selesai: <span id="modal-summary-copied" class="text-sm">...</span>
                 </span>
-                <span class="bg-red-100 text-red-800 text-xs font-bold px-3 py-1.5 rounded-full border border-red-200 shadow-sm">
-                    <i class="fas fa-minus-circle mr-1"></i> Belum: <span id="modal-summary-uncopied">...</span>
+                <span class="bg-rose-50 text-rose-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-rose-200 shadow-sm flex items-center gap-1.5">
+                    <i class="fas fa-minus-circle"></i> Belum: <span id="modal-summary-uncopied" class="text-sm">...</span>
                 </span>
             </div>
         </div>
 
         {{-- Body Modal (Tabel Resi) --}}
-        <div class="mt-5 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
-            <table class="min-w-full divide-y divide-gray-200 border border-gray-100 rounded-lg overflow-hidden">
-                <thead class="bg-gray-50 sticky top-0 z-10">
-                    <tr>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Pengirim</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">No Resi</th>
-                        <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                    </tr>
-                </thead>
-                <tbody id="spx-global-tbody" class="bg-white divide-y divide-gray-100">
-                    <tr>
-                        <td colspan="3" class="px-4 py-8 text-center text-gray-500">
-                            <i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>
-                            Memuat data resi...
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="p-6 bg-white">
+            <div class="max-h-[55vh] overflow-y-auto custom-scrollbar rounded-xl border border-gray-200 shadow-sm">
+                <table class="min-w-full divide-y divide-gray-200 text-left">
+                    <thead class="bg-gray-50/90 backdrop-blur-sm sticky top-0 z-10">
+                        <tr>
+                            <th scope="col" class="px-5 py-3.5 text-xs font-black text-gray-500 uppercase tracking-wider border-b border-gray-200">Pengirim</th>
+                            <th scope="col" class="px-5 py-3.5 text-xs font-black text-gray-500 uppercase tracking-wider border-b border-gray-200">No Resi</th>
+                            <th scope="col" class="px-5 py-3.5 text-center text-xs font-black text-gray-500 uppercase tracking-wider border-b border-gray-200">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="spx-global-tbody" class="bg-white divide-y divide-gray-100">
+                        <tr>
+                            <td colspan="3" class="px-6 py-12 text-center text-gray-400">
+                                <i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-blue-500"></i><br>
+                                <span class="font-medium">Memuat data resi...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         {{-- Footer Modal --}}
-        <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-200">
-            <button onclick="closeSpxGlobalModal()" class="px-5 py-2 bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-lg font-medium transition">
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+            <button onclick="closeSpxGlobalModal()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-bold shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-gray-200">
                 Tutup
             </button>
-            <a href="/admin/spx_scans" class="px-5 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium transition">
-                Ke Halaman SPX <i class="fas fa-arrow-right ml-1"></i>
+            <a href="/admin/spx_scans" class="px-5 py-2.5 bg-blue-600 border border-transparent text-white hover:bg-blue-700 rounded-xl font-bold shadow-sm hover:shadow transition-all flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+                Ke Halaman SPX <i class="fas fa-arrow-right"></i>
             </a>
         </div>
     </div>
@@ -402,7 +411,7 @@
         console.log('LOG LOG: Mengambil data SPX via AJAX');
         const tbody = document.getElementById('spx-global-tbody');
 
-        tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-gray-500"><i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>Memuat data resi...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-12 text-center text-gray-400"><i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-blue-500"></i><br><span class="font-medium">Memuat data resi...</span></td></tr>`;
 
         fetch('/admin/spx_scans/api/unprocessed', {
             headers: {
@@ -426,7 +435,7 @@
             let itemsArray = data.items || [];
 
             if(itemsArray.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-green-600 font-bold"><i class="fas fa-check-circle fa-2x mb-2"></i><br>Semua resi sudah selesai di-copy!</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-12 text-center text-emerald-600"><div class="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-3"><i class="fas fa-check-circle fa-2xl"></i></div><p class="font-bold text-lg">Hore!</p><p class="text-sm font-medium mt-1">Semua resi sudah selesai di-copy.</p></td></tr>`;
                 return;
             }
 
@@ -439,26 +448,28 @@
             // Loop dan render data
             itemsArray.forEach(scan => {
                 const tr = document.createElement('tr');
-                tr.className = 'hover:bg-gray-50';
+                tr.className = 'hover:bg-gray-50/80 transition-colors';
                 tr.innerHTML = `
-                    <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
-                        <div class="flex flex-col gap-1">
-                            <span>${scan.pengirim}</span>
-                            <span class="bg-red-50 text-red-600 text-[10px] px-2 py-0.5 rounded-md w-fit border border-red-100 shadow-sm">
+                    <td class="px-5 py-4 whitespace-nowrap">
+                        <div class="flex flex-col gap-1.5">
+                            <span class="text-sm font-bold text-gray-900">${scan.pengirim}</span>
+                            <span class="bg-rose-50 text-rose-600 text-[10px] px-2.5 py-1 rounded-md w-fit border border-rose-100 shadow-sm font-bold">
                                 <i class="fas fa-box text-[9px] mr-1"></i> ${countPerPerson[scan.pengirim]} Paket (Belum di-copy)
                             </span>
                         </div>
                     </td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        <div class="flex items-center gap-2">
-                            <button type="button" onclick="copyResiGlobal('${scan.resi_number}', '${scan.id}')" class="text-gray-400 hover:text-blue-600 focus:outline-none transition-colors" title="Salin Nomor Resi">
+                    <td class="px-5 py-4 whitespace-nowrap">
+                        <div class="flex items-center gap-2.5">
+                            <button type="button" onclick="copyResiGlobal('${scan.resi_number}', '${scan.id}')" class="bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 w-8 h-8 rounded-lg focus:outline-none transition-all shadow-sm flex items-center justify-center" title="Salin Nomor Resi">
                                 <i id="global-icon-copy-${scan.id}" class="fas fa-copy"></i>
                             </button>
-                            <span id="global-resi-${scan.id}">${scan.resi_number}</span>
+                            <span id="global-resi-${scan.id}" class="text-sm font-bold text-gray-800 tracking-wide">${scan.resi_number}</span>
                         </div>
                     </td>
-                    <td class="px-4 py-3 whitespace-nowrap text-center text-sm" id="global-status-copas-${scan.id}">
-                        <span class="text-red-600 font-semibold"><i class="fas fa-minus"></i> Belum</span>
+                    <td class="px-5 py-4 whitespace-nowrap text-center" id="global-status-copas-${scan.id}">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-bold border border-gray-200 shadow-sm">
+                            <i class="fas fa-minus"></i> Belum
+                        </span>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -466,7 +477,7 @@
         })
         .catch(error => {
             console.error('LOG LOG: Error fetch data SPX', error);
-            tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-red-500"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Gagal memuat data.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-12 text-center text-rose-500"><i class="fas fa-exclamation-triangle fa-3x mb-3 opacity-80"></i><br><span class="font-bold">Gagal memuat data. Silakan coba lagi.</span></td></tr>`;
         });
     }
 
@@ -474,11 +485,16 @@
     function copyResiGlobal(text, id) {
         console.log('LOG LOG: copyResiGlobal dipanggil. Text:', text, 'ID:', id);
         let iconId = 'global-icon-copy-' + id;
+        let btnElement = document.getElementById(iconId).parentElement;
 
         navigator.clipboard.writeText(text).then(function() {
             console.log('LOG LOG: Text berhasil dicopy ke clipboard dari modal global.');
             let iconElement = document.getElementById(iconId);
-            iconElement.className = 'fas fa-check text-green-500';
+
+            // Animasi tombol saat berhasil di-copy
+            btnElement.classList.remove('bg-gray-100', 'text-gray-500', 'hover:bg-blue-100');
+            btnElement.classList.add('bg-emerald-100', 'text-emerald-600', 'ring-2', 'ring-emerald-400');
+            iconElement.className = 'fas fa-check';
 
             fetch(`/admin/spx_scans/${id}/mark-copied`, {
                 method: 'POST',
@@ -491,7 +507,7 @@
             .then(data => {
                 if(data.success) {
                     console.log('LOG LOG: Update berhasil di global modal!');
-                    document.getElementById('global-status-copas-' + id).innerHTML = '<span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> DONE</span>';
+                    document.getElementById('global-status-copas-' + id).innerHTML = '<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200 shadow-sm"><i class="fas fa-check-double"></i> DONE</span>';
 
                     // Update live counter di Header Modal saat berhasil dicopy
                     let copiedEl = document.getElementById('modal-summary-copied');
@@ -508,7 +524,12 @@
             })
             .catch(error => console.error('LOG LOG: Terjadi Error pada Fetch Global:', error));
 
-            setTimeout(() => { iconElement.className = 'fas fa-copy'; }, 2000);
+            // Kembalikan style tombol setelah 2 detik
+            setTimeout(() => {
+                btnElement.classList.add('bg-gray-100', 'text-gray-500', 'hover:bg-blue-100');
+                btnElement.classList.remove('bg-emerald-100', 'text-emerald-600', 'ring-2', 'ring-emerald-400');
+                iconElement.className = 'fas fa-copy';
+            }, 2000);
         }).catch(function(err) {
             console.error('LOG LOG: Gagal menyalin text global:', err);
             alert('Gagal menyalin nomor resi.');
