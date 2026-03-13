@@ -6,7 +6,7 @@
 <div x-data="{ activityOpen: false }"
     class="fixed inset-y-0 right-0 z-[100] flex items-center justify-end h-screen pointer-events-none">
 
-    {{-- Tombol Trigger --}}
+    {{-- Tombol Trigger Aktivitas --}}
     <div @mouseenter="activityOpen = true; monitorOpen = false"
         class="fixed right-0 top-[33%] transform -translate-y-1/2 pointer-events-auto bg-blue-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-blue-700 hover:pr-3 z-[110]">
         <div class="flex flex-col items-center gap-2">
@@ -15,7 +15,7 @@
         </div>
     </div>
 
-    {{-- Panel Isi --}}
+    {{-- Panel Isi Aktivitas --}}
     <div class="h-full bg-white/95 backdrop-blur-md shadow-2xl border-l border-gray-200 w-96 transform transition-transform duration-300 ease-in-out overflow-y-auto custom-scrollbar relative pointer-events-auto z-[100]"
         :class="activityOpen ? 'translate-x-0' : 'translate-x-full'"
         @mouseleave="activityOpen = false">
@@ -106,7 +106,7 @@
 <div x-data="{ monitorOpen: false }"
     class="fixed inset-y-0 right-0 z-[100] flex items-center justify-end h-screen pointer-events-none">
 
-    {{-- Tombol Trigger --}}
+    {{-- Tombol Trigger Monitor --}}
     <div @mouseenter="monitorOpen = true; activityOpen = false"
         class="fixed right-0 top-1/2 transform -translate-y-1/2 pointer-events-auto bg-red-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-red-700 hover:pr-3 z-[110]">
         <div class="flex flex-col items-center gap-2">
@@ -115,7 +115,7 @@
         </div>
     </div>
 
-    {{-- Panel Isi --}}
+    {{-- Panel Isi Monitor --}}
     <div class="h-full bg-white/95 backdrop-blur-md shadow-2xl border-l border-gray-200 w-80 transform transition-transform duration-300 ease-in-out overflow-y-auto custom-scrollbar relative pointer-events-auto z-[100]"
         :class="monitorOpen ? 'translate-x-0' : 'translate-x-full'"
         @mouseleave="monitorOpen = false">
@@ -285,16 +285,19 @@
                 </div>
             </div>
 
-            {{-- ========================================================= --}}
-            {{-- KODE BARU: TOMBOL QUICK COPAS SPX (DITARUH DI BAWAH MONITOR) --}}
-            {{-- ========================================================= --}}
-            <div class="mt-6 pt-4 border-t border-gray-200">
-                <button onclick="openSpxGlobalModal()" class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-bold shadow-md hover:shadow-lg">
-                    <i class="fas fa-clipboard-list text-lg"></i> Quick Copas SPX
-                </button>
-            </div>
-
+            {{-- Tombol SPX sudah dihapus dari sini supaya desainnya rapi --}}
         </div>
+    </div>
+</div>
+
+{{-- ========================================================= --}}
+{{-- 3. TOMBOL TRIGGER QUICK COPAS SPX (BERDIRI SENDIRI DI LUAR) --}}
+{{-- ========================================================= --}}
+<div onclick="openSpxGlobalModal()"
+    class="fixed right-0 top-[66%] transform -translate-y-1/2 pointer-events-auto bg-orange-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-orange-700 hover:pr-3 z-[110]">
+    <div class="flex flex-col items-center gap-2">
+        <i class="fas fa-clipboard-list animate-pulse text-[10px]"></i>
+        <span class="text-[10px] font-bold writing-vertical tracking-widest" style="writing-mode: vertical-rl; text-orientation: mixed;">SPX COPAS</span>
     </div>
 </div>
 
@@ -302,9 +305,9 @@
 {{-- SELESAI: GROUP SIDEBAR KANAN --}}
 {{-- ========================================================= --}}
 
+
 {{-- ========================================================= --}}
-{{-- KODE BARU: MODAL & SCRIPT QUICK COPAS SPX (GLOBAL) --}}
-{{-- Ditaruh di luar struktur sidebar agar z-index aman --}}
+{{-- MODAL & SCRIPT QUICK COPAS SPX (GLOBAL) --}}
 {{-- ========================================================= --}}
 <div id="spxGlobalModal" class="fixed inset-0 z-[9999] hidden bg-gray-900 bg-opacity-60 overflow-y-auto h-full w-full backdrop-blur-sm transition-opacity duration-300 flex items-center justify-center" style="display: none;">
     <div class="relative mx-auto p-6 border w-11/12 md:w-3/4 lg:w-2/3 shadow-2xl rounded-2xl bg-white">
@@ -319,7 +322,7 @@
                     <i class="fas fa-times fa-lg"></i>
                 </button>
             </div>
-            {{-- KODE BARU: Badge Counter SPX --}}
+            {{-- Badge Counter SPX --}}
             <div class="flex flex-wrap items-center gap-2">
                 <span class="bg-gray-100 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
                     Total: <span id="modal-summary-total">...</span>
@@ -368,7 +371,7 @@
 
 <script>
     function openSpxGlobalModal() {
-        console.log('LOG LOG: Membuka Modal Global SPX dari Sidebar Monitor');
+        console.log('LOG LOG: Membuka Modal Global SPX dari Floating Button');
         const modal = document.getElementById('spxGlobalModal');
         modal.style.display = 'flex';
         modal.classList.remove('hidden');
@@ -411,7 +414,7 @@
         .then(data => {
             console.log('LOG LOG: Data SPX berhasil diambil', data);
 
-            // KODE BARU: Update nilai di Header Modal
+            // Update nilai di Header Modal
             if(data.summary) {
                 document.getElementById('modal-summary-total').textContent = data.summary.total_all;
                 document.getElementById('modal-summary-copied').textContent = data.summary.total_copied;
@@ -427,7 +430,7 @@
                 return;
             }
 
-            // KODE BARU: Hitung jumlah paket per orang untuk daftar yang belum dicopy
+            // Hitung jumlah paket per orang untuk daftar yang belum dicopy
             let countPerPerson = {};
             itemsArray.forEach(scan => {
                 countPerPerson[scan.pengirim] = (countPerPerson[scan.pengirim] || 0) + 1;
@@ -473,7 +476,7 @@
         let iconId = 'global-icon-copy-' + id;
 
         navigator.clipboard.writeText(text).then(function() {
-            console.log('LOG LOG: Text berhasil dicopy ke clipboard dari sidebar.');
+            console.log('LOG LOG: Text berhasil dicopy ke clipboard dari modal global.');
             let iconElement = document.getElementById(iconId);
             iconElement.className = 'fas fa-check text-green-500';
 
@@ -490,7 +493,7 @@
                     console.log('LOG LOG: Update berhasil di global modal!');
                     document.getElementById('global-status-copas-' + id).innerHTML = '<span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> DONE</span>';
 
-                    // KODE BARU: Update live counter di Header Modal saat berhasil dicopy
+                    // Update live counter di Header Modal saat berhasil dicopy
                     let copiedEl = document.getElementById('modal-summary-copied');
                     let uncopiedEl = document.getElementById('modal-summary-uncopied');
 
