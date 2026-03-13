@@ -371,7 +371,7 @@
             <button onclick="closeSpxGlobalModal()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-bold shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-gray-200">
                 Tutup
             </button>
-            <a href="/admin/spx_scans" class="px-5 py-2.5 bg-blue-600 border border-transparent text-white hover:bg-blue-700 rounded-xl font-bold shadow-sm hover:shadow transition-all flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+            <a href="/admin/spx-scans" class="px-5 py-2.5 bg-blue-600 border border-transparent text-white hover:bg-blue-700 rounded-xl font-bold shadow-sm hover:shadow transition-all flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
                 Ke Halaman SPX <i class="fas fa-arrow-right"></i>
             </a>
         </div>
