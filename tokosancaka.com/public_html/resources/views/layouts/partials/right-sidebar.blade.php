@@ -297,7 +297,7 @@
 {{-- 3. TOMBOL TRIGGER QUICK COPAS SPX (BERDIRI SENDIRI DI LUAR) --}}
 {{-- ========================================================= --}}
 <div onclick="openSpxGlobalModal()"
-    class="fixed right-0 top-[calc(70%+10px)] transform -translate-y-1/2 pointer-events-auto bg-orange-500/95 backdrop-blur-sm border border-r-0 border-white/20 text-white py-5 px-1.5 rounded-l-2xl shadow-xl cursor-pointer transition-all duration-300 hover:bg-orange-600 hover:pr-4 z-[110]">
+    class="fixed right-0 top-[calc(70%+8px)] transform -translate-y-1/2 pointer-events-auto bg-orange-500/95 backdrop-blur-sm border border-r-0 border-white/20 text-white py-5 px-1.5 rounded-l-2xl shadow-xl cursor-pointer transition-all duration-300 hover:bg-orange-600 hover:pr-4 z-[110]">
     <div class="flex flex-col items-center gap-2">
         <i class="fas fa-clipboard-list animate-pulse text-[11px]"></i>
         <span class="text-[10px] font-bold writing-vertical tracking-widest" style="writing-mode: vertical-rl; text-orientation: mixed;">SPX Tracking</span>
