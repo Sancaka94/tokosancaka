@@ -35,6 +35,7 @@
             <div class="mb-4">
                 <input type="text"
                        name="plate_number"
+                       id="plate_number"
                        inputmode="numeric"
                        pattern="[0-9]*"
                        class="w-full text-center text-3xl md:text-4xl font-black uppercase tracking-widest py-4 md:py-5 border-4 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all placeholder-gray-300"
@@ -45,12 +46,17 @@
             </div>
 
             <div class="flex gap-2 md:gap-3">
-                <button type="submit" name="kategori" value="umum" class="w-2/3 bg-gray-800 hover:bg-gray-900 active:bg-black text-white font-black text-lg md:text-2xl py-4 rounded-xl shadow-lg transition-transform active:scale-95 flex justify-center items-center gap-2 md:gap-3">
-                    <svg class="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                <button type="submit" name="kategori" value="umum" class="w-1/2 bg-gray-800 hover:bg-gray-900 active:bg-black text-white font-black text-lg md:text-xl py-4 rounded-xl shadow-lg transition-transform active:scale-95 flex justify-center items-center gap-2 md:gap-3">
+                    <svg class="w-5 h-5 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                     CETAK TIKET
                 </button>
 
-                <button type="submit" name="kategori" value="toilet" class="w-1/3 bg-cyan-600 hover:bg-cyan-700 active:bg-cyan-800 text-white font-black rounded-xl shadow-lg transition-transform active:scale-95 flex flex-col justify-center items-center py-2">
+                <button type="submit" name="kategori" value="tanpa_plat" onclick="document.getElementById('plate_number').value=''" class="w-1/4 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-black rounded-xl shadow-lg transition-transform active:scale-95 flex flex-col justify-center items-center py-2">
+                    <span class="text-2xl md:text-3xl mb-1">🎫</span>
+                    <span class="text-[10px] md:text-sm leading-tight text-center">CETAK<br class="md:hidden"> LANGSUNG</span>
+                </button>
+
+                <button type="submit" name="kategori" value="toilet" onclick="document.getElementById('plate_number').value=''" class="w-1/4 bg-cyan-600 hover:bg-cyan-700 active:bg-cyan-800 text-white font-black rounded-xl shadow-lg transition-transform active:scale-95 flex flex-col justify-center items-center py-2">
                     <span class="text-2xl md:text-3xl mb-1">🚽</span>
                     <span class="text-sm md:text-lg leading-none">TOILET</span>
                     <span class="text-[10px] md:text-sm mt-1 font-medium">Rp 2.000</span>

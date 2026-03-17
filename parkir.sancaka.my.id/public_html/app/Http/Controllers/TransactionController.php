@@ -187,28 +187,33 @@ class TransactionController extends Controller
         return view('transactions.public_input');
     }
 
-    // ==========================================
+   // ==========================================
     // FUNGSI 1: INPUT PUBLIK (Mesin Mandiri)
     // ==========================================
     public function storePublic(Request $request)
     {
-        // Tambahkan validasi kategori 'sepeda'
+        // UPDATE VALIDASI: Tambahkan 'tanpa_plat' dan 'toilet' ke dalam daftar yang diizinkan
         $request->validate([
-            'kategori'     => 'required|in:sepeda,sepeda_listrik,pegawai_rsud,umum',
+            'kategori'     => 'required|in:sepeda,sepeda_listrik,pegawai_rsud,umum,tanpa_plat,toilet',
             'plate_number' => 'required_if:kategori,umum|string|max:20|nullable',
         ]);
 
         $plateNumber = '';
         $fee = null;
 
-        // Logika penentuan nomor plat & Tarif Awal
+        // UPDATE LOGIKA: Buatkan plat otomatis (dummy) untuk tanpa_plat dan toilet
         if ($request->kategori === 'sepeda') {
             $plateNumber = 'SPD-' . rand(1000, 9999);
-            $fee = 2000; // Simpan tarif 2000 di awal agar Dasbor langsung baca
+            $fee = 2000;
         } elseif ($request->kategori === 'sepeda_listrik') {
             $plateNumber = 'SPL-' . rand(1000, 9999);
         } elseif ($request->kategori === 'pegawai_rsud') {
             $plateNumber = 'RSUD-' . rand(1000, 9999);
+        } elseif ($request->kategori === 'tanpa_plat') {
+            $plateNumber = 'PLT-' . rand(1000, 9999); // Generate kode PLT untuk Tanpa Plat
+        } elseif ($request->kategori === 'toilet') {
+            $plateNumber = 'TLT-' . rand(1000, 9999); // Generate kode TLT untuk Toilet
+            $fee = 2000; // Set tarif langsung 2000 untuk toilet
         } else {
             $plateNumber = strtoupper($request->plate_number);
         }
@@ -223,11 +228,11 @@ class TransactionController extends Controller
             'plate_number' => $plateNumber,
             'entry_time'   => Carbon::now(),
             'status'       => 'masuk',
-            'fee'          => $fee, // Masukkan fee ke database
+            'fee'          => $fee,
         ]);
 
         return redirect()->back()->with([
-            'success'  => 'Tiket parkir untuk ' . $plateNumber . ' berhasil dicetak!',
+            'success'  => 'Tiket untuk ' . $plateNumber . ' berhasil dicetak!',
             'print_id' => $transaction->id
         ]);
     }
