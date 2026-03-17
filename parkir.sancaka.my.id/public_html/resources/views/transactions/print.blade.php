@@ -6,6 +6,8 @@ $plat = strtoupper($transaction->plate_number);
 $isSepeda        = str_starts_with($plat, 'SPD-');
 $isSepedaListrik = str_starts_with($plat, 'SPL-');
 $isPegawaiRSUD   = str_starts_with($plat, 'RSUD-');
+$isTanpaPlat     = str_starts_with($plat, 'PLT-'); // TAMBAHAN
+$isToilet        = str_starts_with($plat, 'TLT-'); // TAMBAHAN
 
 $text = "AZKEN PARKIR\n";
 $text .= "Jl. Dr. Wahidin No. 18A, Ngawi\n";
@@ -28,6 +30,17 @@ if ($isSepeda) {
     $text .= "--------------------------------\n";
     $text .= "ID Parkir: " . $plat . "\n";
     $text .= "Masuk    : " . \Carbon\Carbon::parse($transaction->entry_time)->format('d/m/Y H:i') . "\n";
+} elseif ($isTanpaPlat) {
+    $text .= "      *** TANPA PLAT *** \n";
+    $text .= "--------------------------------\n";
+    $text .= "ID Parkir: " . $plat . "\n";
+    $text .= "Masuk    : " . \Carbon\Carbon::parse($transaction->entry_time)->format('d/m/Y H:i') . "\n";
+} elseif ($isToilet) {
+    $text .= "      *** TIKET TOILET *** \n";
+    $text .= "--------------------------------\n";
+    $text .= "ID Tiket : " . $plat . "\n";
+    $text .= "Tarif    : Rp 2.000\n";
+    $text .= "Waktu    : " . \Carbon\Carbon::parse($transaction->entry_time)->format('d/m/Y H:i') . "\n";
 } else {
     $text .= "No. Plat : " . $plat . "\n";
     $text .= "Jenis    : " . ucfirst($transaction->vehicle_type) . "\n";
