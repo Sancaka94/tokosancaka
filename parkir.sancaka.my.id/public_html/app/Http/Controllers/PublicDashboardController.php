@@ -117,7 +117,13 @@ class PublicDashboardController extends Controller
         $totalPemasukanKas = FinancialReport::where('jenis', 'pemasukan')->sum('nominal');
         $totalPengeluaranKas = FinancialReport::where('jenis', 'pengeluaran')->sum('nominal');
         $saldoKas = $totalPemasukanKas - $totalPengeluaranKas;
-        $totalPemasukanToilet = FinancialReport::where('kategori', 'Toilet')->where('jenis', 'pemasukan')->sum('nominal');
+        // 1. Ambil toilet dari inputan Kas Manual
+        $toiletDariKas = FinancialReport::where('kategori', 'Toilet')->where('jenis', 'pemasukan')->sum('nominal');
+        // 2. Ambil toilet dari form catat parkir manual (riwayat lama)
+        $toiletDariParkir = Transaction::sum('toilet_fee');
+
+        // 3. Gabungkan keduanya & hitung nginap
+        $totalPemasukanToilet = $toiletDariKas + $toiletDariParkir;
         $totalPemasukanNginap = FinancialReport::where('kategori', 'Nginap')->where('jenis', 'pemasukan')->sum('nominal');
 
         // 6. ESTIMASI GAJI PEGAWAI (CARD ATAS)
