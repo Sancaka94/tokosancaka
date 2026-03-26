@@ -41,7 +41,7 @@ class PublicDashboardController extends Controller
         $kasKeluarHariIni = FinancialReport::whereDate('tanggal', $today)->where('jenis', 'pengeluaran')->sum('nominal');
 
         $omzetHariIni = $parkirHariIni + $kasMasukHariIni;
-        $profitHariIni = ($omzetHariIni / 2) + $toiletHariIni - $kasKeluarHariIni;
+        $profitHariIni = ($omzetHariIni / 2) + ($toiletHariIni - $kasKeluarHariIni);
 
         // KEMARIN
         $parkirKemarin = Transaction::whereDate('entry_time', $yesterday)->sum($rumusParkirMurni);
@@ -49,8 +49,8 @@ class PublicDashboardController extends Controller
         $kasMasukKemarin = FinancialReport::whereDate('tanggal', $yesterday)->where('jenis', 'pemasukan')->sum('nominal');
         $kasKeluarKemarin = FinancialReport::whereDate('tanggal', $yesterday)->where('jenis', 'pengeluaran')->sum('nominal');
 
-        $omzetKemarin = $parkirKemarin + $toiletKemarin + $kasMasukKemarin;
-        $profitKemarin = ($omzetKemarin / 2) - $kasKeluarKemarin;
+        $omzetKemarin = $parkirKemarin  + $kasMasukKemarin;
+        $profitKemarin = ($omzetKemarin / 2) + $toiletKemarin - $kasKeluarKemarin;
 
         // BULAN INI
         $parkirBulanIni = Transaction::whereMonth('entry_time', $now->month)->whereYear('entry_time', $now->year)->sum($rumusParkirMurni);
@@ -58,8 +58,8 @@ class PublicDashboardController extends Controller
         $kasMasukBulanIni = FinancialReport::whereMonth('tanggal', $now->month)->whereYear('tanggal', $now->year)->where('jenis', 'pemasukan')->sum('nominal');
         $kasKeluarBulanIni = FinancialReport::whereMonth('tanggal', $now->month)->whereYear('tanggal', $now->year)->where('jenis', 'pengeluaran')->sum('nominal');
 
-        $omzetBulanIni = $parkirBulanIni + $toiletBulanIni + $kasMasukBulanIni;
-        $profitBulanIni = ($omzetBulanIni / 2) - $kasKeluarBulanIni;
+        $omzetBulanIni = $parkirBulanIni + $kasMasukBulanIni;
+        $profitBulanIni = ($omzetBulanIni / 2) + $toiletBulanIni - $kasKeluarBulanIni;
 
         // BULAN LALU
         $parkirBulanLalu = Transaction::whereMonth('entry_time', $lastMonth->month)->whereYear('entry_time', $lastMonth->year)->sum($rumusParkirMurni);
@@ -67,8 +67,8 @@ class PublicDashboardController extends Controller
         $kasMasukBulanLalu = FinancialReport::whereMonth('tanggal', $lastMonth->month)->whereYear('tanggal', $lastMonth->year)->where('jenis', 'pemasukan')->sum('nominal');
         $kasKeluarBulanLalu = FinancialReport::whereMonth('tanggal', $lastMonth->month)->whereYear('tanggal', $lastMonth->year)->where('jenis', 'pengeluaran')->sum('nominal');
 
-        $omzetBulanLalu = $parkirBulanLalu + $toiletBulanLalu + $kasMasukBulanLalu;
-        $profitBulanLalu = ($omzetBulanLalu / 2) - $kasKeluarBulanLalu;
+        $omzetBulanLalu = $parkirBulanLalu  + $kasMasukBulanLalu;
+        $profitBulanLalu = ($omzetBulanLalu / 2) + $toiletBulanLalu - $kasKeluarBulanLalu;
 
         $data = [
             'motor_masuk' => $motorHariIni,
@@ -93,8 +93,8 @@ class PublicDashboardController extends Controller
             $km = FinancialReport::whereDate('tanggal', $date)->where('jenis', 'pemasukan')->sum('nominal');
             $kk = FinancialReport::whereDate('tanggal', $date)->where('jenis', 'pengeluaran')->sum('nominal');
 
-            $omz = $p + $t + $km;
-            $dataHarian[] = ($omz / 2) - $kk;
+            $omz = $p + $km;
+            $dataHarian[] = ($omz / 2) + $t - $kk;
         }
 
         $labelBulanan = []; $dataBulanan = [];
@@ -106,8 +106,8 @@ class PublicDashboardController extends Controller
             $km = FinancialReport::whereMonth('tanggal', $date->month)->whereYear('tanggal', $date->year)->where('jenis', 'pemasukan')->sum('nominal');
             $kk = FinancialReport::whereMonth('tanggal', $date->month)->whereYear('tanggal', $date->year)->where('jenis', 'pengeluaran')->sum('nominal');
 
-            $omz = $p + $t + $km;
-            $dataBulanan[] = ($omz / 2) - $kk;
+            $omz = $p + $km;
+            $dataBulanan[] = ($omz / 2) + $t - $kk;
         }
         $chartData = ['harian' => ['labels' => $labelHarian, 'data' => $dataHarian], 'bulanan' => ['labels' => $labelBulanan, 'data' => $dataBulanan]];
 
