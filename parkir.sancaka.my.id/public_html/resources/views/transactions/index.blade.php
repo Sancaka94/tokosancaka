@@ -435,6 +435,7 @@
                         <option value="Parkiran">Parkiran</option>
                         <option value="Toilet">Toilet</option>
                         <option value="Operasional (Umum)">Operasional (Umum)</option>
+                        <option value="Nginap">Nginap</option> </select>
                     </select>
                 </div>
             </div>

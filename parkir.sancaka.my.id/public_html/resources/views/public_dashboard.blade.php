@@ -432,6 +432,25 @@
             <p class="text-gray-500 text-sm mt-1">Laporan semua pemasukan dan pengeluaran operasional.</p>
         </div>
 
+        {{-- CARD DETAIL PEMASUKAN KAS --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
+                <div>
+                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Total Pemasukan Toilet</h5>
+                    <p class="text-2xl font-black text-emerald-600 mt-2">Rp {{ number_format($totalPemasukanToilet ?? 0, 0, ',', '.') }}</p>
+                </div>
+                <div class="text-4xl opacity-50">🚻</div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
+                <div>
+                    <h5 class="text-gray-400 text-sm font-bold uppercase tracking-wider">Total Pemasukan Nginap</h5>
+                    <p class="text-2xl font-black text-indigo-600 mt-2">Rp {{ number_format($totalPemasukanNginap ?? 0, 0, ',', '.') }}</p>
+                </div>
+                <div class="text-4xl opacity-50">🌙</div>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
                 <div>
