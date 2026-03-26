@@ -207,7 +207,8 @@ class PublicDashboardController extends Controller
             'data', 'chartData', 'recent_transactions', 'revenue_transactions',
             'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas', 'recent_financials', 'employeeSalaries',
             'sepedaBiasaHariIni', 'sepedaListrikHariIni', 'pegawaiRsudHariIni', 'riwayat_gaji', 'operators',
-            'omzetHariIni', 'omzetKemarin', 'omzetBulanIni'
+            'omzetHariIni', 'omzetKemarin', 'omzetBulanIni',
+            'totalPemasukanToilet', 'totalPemasukanNginap' // <--- PASTIKAN DUA KATA INI ADA DI SINI
         ));
     }
 }
