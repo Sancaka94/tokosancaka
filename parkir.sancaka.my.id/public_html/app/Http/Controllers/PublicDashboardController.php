@@ -40,8 +40,8 @@ class PublicDashboardController extends Controller
         $kasMasukHariIni = FinancialReport::whereDate('tanggal', $today)->where('jenis', 'pemasukan')->sum('nominal');
         $kasKeluarHariIni = FinancialReport::whereDate('tanggal', $today)->where('jenis', 'pengeluaran')->sum('nominal');
 
-        $omzetHariIni = $parkirHariIni + $toiletHariIni + $kasMasukHariIni;
-        $profitHariIni = ($omzetHariIni / 2) - $kasKeluarHariIni;
+        $omzetHariIni = $parkirHariIni + $kasMasukHariIni;
+        $profitHariIni = ($omzetHariIni / 2) + $toiletHariIni - $kasKeluarHariIni;
 
         // KEMARIN
         $parkirKemarin = Transaction::whereDate('entry_time', $yesterday)->sum($rumusParkirMurni);
