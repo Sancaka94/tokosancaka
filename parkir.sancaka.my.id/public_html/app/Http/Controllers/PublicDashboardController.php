@@ -117,6 +117,8 @@ class PublicDashboardController extends Controller
         $totalPemasukanKas = FinancialReport::where('jenis', 'pemasukan')->sum('nominal');
         $totalPengeluaranKas = FinancialReport::where('jenis', 'pengeluaran')->sum('nominal');
         $saldoKas = $totalPemasukanKas - $totalPengeluaranKas;
+        $totalPemasukanToilet = FinancialReport::where('kategori', 'Toilet')->where('jenis', 'pemasukan')->sum('nominal');
+        $totalPemasukanNginap = FinancialReport::where('kategori', 'Nginap')->where('jenis', 'pemasukan')->sum('nominal');
 
         // 6. ESTIMASI GAJI PEGAWAI (CARD ATAS)
         $operators = User::where('role', 'operator')->get();
