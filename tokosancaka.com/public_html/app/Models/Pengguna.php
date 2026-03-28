@@ -8,4 +8,5 @@ class Pengguna extends Authenticatable
 {
     protected $table = 'Pengguna';
     protected $primaryKey = 'id_pengguna';
+    protected $guarded = [];
 }
