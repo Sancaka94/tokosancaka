@@ -17,7 +17,7 @@ Updated: Fix Image URL (from products table) & Resi (shipping_reference)
                 <h1 class="text-3xl font-bold text-gray-900">Riwayat Belanja</h1>
                 <p class="mt-2 text-sm text-gray-600">Daftar transaksi marketplace Anda.</p>
             </div>
-            <a href="{{ route('katalog.index') }}" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 transition shadow-sm">
+            <a href="https://tokosancaka.com/etalase" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 transition shadow-sm">
                 <i class="fas fa-plus mr-2"></i> Belanja Lagi
             </a>
         </div>
