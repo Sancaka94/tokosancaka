@@ -88,69 +88,94 @@ class PesananActionController extends Controller
         return response()->json(['chats' => $chats]);
     }
 
-    /**
-     * 3. Mengirim Pesan Chat Komplain Baru (AJAX)
+   /**
+     * 3. Mengirim Pesan Chat Komplain Baru (AJAX) + MENDUKUNG FILE GAMBAR/VIDEO
      */
     public function sendChat(Request $request)
     {
         $request->validate([
             'invoice_number' => 'required',
-            'message'        => 'required|string'
+            'message'        => 'nullable|string',
+            'attachment'     => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov|max:10240', // Max 10MB
         ]);
+
+        if (empty($request->message) && !$request->hasFile('attachment')) {
+            return response()->json(['error' => 'Pesan atau lampiran tidak boleh kosong'], 400);
+        }
 
         $order = Order::where('invoice_number', $request->invoice_number)->first();
         if(!$order) return response()->json(['error' => 'Pesanan tidak ditemukan'], 404);
 
         DB::beginTransaction();
         try {
-            // Simpan Pesan ke Database
+            $attachmentPath = null;
+            if ($request->hasFile('attachment')) {
+                $attachmentPath = $request->file('attachment')->store('complain_attachments', 'public');
+            }
+
             $chat = ComplainChat::create([
                 'order_id'       => $order->id,
                 'invoice_number' => $order->invoice_number,
                 'sender_id'      => Auth::user()->id_pengguna,
                 'sender_type'    => 'customer',
-                'message'        => $request->message,
+                'message'        => $request->message ?? '',
+                'attachment'     => $attachmentPath, // Simpan path file
             ]);
 
-            // Jika ini pesan pertama, Otomatis ubah status Escrow jadi 'mediasi'
-            // Jika ini pesan pertama, Otomatis ubah status Escrow jadi 'mediasi'
             $escrow = Escrow::where('order_id', $order->id)->first();
             if($escrow && $escrow->status_dana === 'ditahan') {
                 $escrow->status_dana = 'mediasi';
                 $escrow->catatan = 'Dibekukan otomatis karena pembeli mengajukan komplain.';
                 $escrow->save();
-
-                // ----------------------------------------------------
-                // 🔥 KIRIM NOTIFIKASI WA REALTIME KE PENJUAL 🔥
-                // ----------------------------------------------------
-                $seller = $order->store->user ?? null;
-                if ($seller && $seller->no_wa) {
-                    $pesan = "*⚠ PERHATIAN: KOMPLAIN PESANAN ⚠*\n\n";
-                    $pesan .= "Halo *{$seller->nama_lengkap}*,\n";
-                    $pesan .= "Pembeli mengajukan komplain untuk pesanan:\n";
-                    $pesan .= "- Invoice: *{$order->invoice_number}*\n";
-                    $pesan .= "- Keluhan: _{$request->message}_\n\n";
-                    $pesan .= "Dana saat ini *dibekukan sementara* di Escrow Sancaka. Silakan login ke Dashboard Penjual dan buka menu Pusat Resolusi untuk merespon.";
-
-                    try {
-                        $phone = preg_replace('/^0/', '62', $seller->no_wa);
-                        app(\App\Services\FonnteService::class)->sendMessage($phone, $pesan);
-                    } catch (\Exception $e) {
-                        Log::error("Gagal kirim WA komplain ke Penjual: " . $e->getMessage());
-                    }
-                }
             }
 
             DB::commit();
-
-            // Load data pengirim agar bisa ditampilkan di frontend
             $chat->load('sender:id_pengguna,nama_lengkap');
-
             return response()->json(['success' => true, 'chat' => $chat]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Gagal Kirim Chat Komplain: " . $e->getMessage());
+            Log::error("Gagal Kirim Chat: " . $e->getMessage());
             return response()->json(['error' => 'Gagal mengirim pesan'], 500);
         }
+    }
+
+    /**
+     * 4. Aksi: Masalah Selesai (Otomatis Cairkan Dana)
+     */
+    public function selesaiKomplain($invoice)
+    {
+        $order = Order::where('invoice_number', $invoice)->firstOrFail();
+
+        // Panggil logika terima paket yang sudah ada (cairkan escrow)
+        $this->terimaPaket($order->id);
+
+        // Tambah jejak chat otomatis
+        ComplainChat::create([
+            'order_id' => $order->id, 'invoice_number' => $order->invoice_number,
+            'sender_id' => Auth::user()->id_pengguna, 'sender_type' => 'customer',
+            'message' => '✅ PEMBELI MENGKONFIRMASI MASALAH SELESAI. Paket diterima dan dana diteruskan ke penjual.',
+        ]);
+
+        return back()->with('success', 'Masalah berhasil diselesaikan! Dana diteruskan ke penjual.');
+    }
+
+    /**
+     * 5. Aksi: Ajukan Retur Barang
+     */
+    public function returPesanan($invoice)
+    {
+        $order = Order::where('invoice_number', $invoice)->firstOrFail();
+
+        // Ubah status order jadi proses retur
+        $order->status = 'returning';
+        $order->save();
+
+        ComplainChat::create([
+            'order_id' => $order->id, 'invoice_number' => $order->invoice_number,
+            'sender_id' => Auth::user()->id_pengguna, 'sender_type' => 'customer',
+            'message' => '⚠️ PEMBELI MENGAJUKAN RETUR/KEMBALIKAN BARANG. Mohon penjual/admin memberikan instruksi retur.',
+        ]);
+
+        return back()->with('success', 'Pengajuan retur berhasil dikirim. Silakan tunggu arahan penjual.');
     }
 }

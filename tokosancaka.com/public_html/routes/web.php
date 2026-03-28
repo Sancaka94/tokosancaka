@@ -1073,3 +1073,7 @@ Route::post('/customer/komplain/chat', [PesananActionController::class, 'sendCha
 // --- ROUTE KOMPLAIN SELLER ---
 Route::get('/seller/komplain/chat/{invoice}', [\App\Http\Controllers\Toko\OrderController::class, 'getChat'])->name('seller.komplain.get_chat');
 Route::post('/seller/komplain/chat', [\App\Http\Controllers\Toko\OrderController::class, 'sendChat'])->name('seller.komplain.send_chat');
+
+// Retur paket marketplce
+Route::post('/customer/komplain/selesai/{invoice}', [App\Http\Controllers\Customer\PesananActionController::class, 'selesaiKomplain'])->name('customer.komplain.selesai');
+Route::post('/customer/komplain/retur/{invoice}', [App\Http\Controllers\Customer\PesananActionController::class, 'returPesanan'])->name('customer.komplain.retur');

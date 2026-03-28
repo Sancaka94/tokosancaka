@@ -257,9 +257,9 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
 </div>
 
 <div id="komplainModal" class="fixed inset-0 z-[99] hidden bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 transition-opacity duration-300">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[550px] transform transition-all scale-95 opacity-0" id="komplainModalContent">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[600px] transform transition-all scale-95 opacity-0" id="komplainModalContent">
 
-        <div class="bg-red-600 px-4 py-3 flex justify-between items-center text-white shadow-md z-10">
+        <div class="bg-red-600 px-4 py-3 flex justify-between items-center text-white shadow-md z-20">
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-red-600">
                     <i class="fas fa-store text-sm"></i>
@@ -274,38 +274,49 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
             </button>
         </div>
 
-        <div id="chatScrollArea" class="flex-1 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-gray-100 p-4 overflow-y-auto flex flex-col gap-4">
+        <div class="bg-orange-50 px-4 py-2.5 border-b border-orange-200 flex justify-between items-center z-10 shadow-sm">
+            <span class="text-[10px] text-orange-800 font-bold"><i class="fas fa-lightbulb text-orange-500 mr-1"></i> Solusi Masalah:</span>
+            <div class="flex gap-2">
+                <form id="formRetur" method="POST" onsubmit="return confirm('Yakin ingin mengajukan Retur / Kembalikan Barang?');">
+                    @csrf
+                    <button type="submit" class="bg-white border border-red-500 text-red-600 text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-red-50 transition shadow-sm">Retur Paket</button>
+                </form>
+                <form id="formSelesai" method="POST" onsubmit="return confirm('Yakin masalah sudah selesai? Dana akan langsung diteruskan ke penjual.');">
+                    @csrf
+                    <button type="submit" class="bg-green-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-green-600 transition shadow-sm">Masalah Selesai</button>
+                </form>
+            </div>
+        </div>
 
+        <div id="chatScrollArea" class="flex-1 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-gray-100 p-4 overflow-y-auto flex flex-col gap-4">
             <div class="text-center mb-2">
                 <span class="bg-white border border-gray-200 text-gray-600 text-[10px] px-3 py-1 rounded-full font-bold shadow-sm">
                     Invoice: <span id="komplainInvoice" class="text-blue-600"></span>
                 </span>
                 <p class="text-[10px] text-red-500 mt-3 font-medium bg-red-50 p-2 rounded-lg border border-red-100 inline-block">
-                    <i class="fas fa-shield-alt mr-1"></i> Admin Sancaka memantau obrolan ini sebagai penengah.
+                    <i class="fas fa-shield-alt mr-1"></i> Admin Sancaka memantau obrolan ini.
                 </p>
             </div>
 
-            <div class="flex items-start gap-2">
-                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-500 shadow-sm border border-blue-200">
-                    <i class="fas fa-robot text-xs"></i>
-                </div>
-                <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-3 max-w-[80%] shadow-sm">
-                    <p class="text-xs text-gray-800 leading-relaxed">Halo kak! Silakan jelaskan kendala yang dialami. Sertakan foto/video *unboxing* paket sebagai bukti agar penjual dan Admin dapat membantu dengan cepat.</p>
-                    <p class="text-[9px] text-gray-400 mt-2 text-right">Sistem Otomatis</p>
-                </div>
-            </div>
-
             <div id="chatBoxContent" class="flex flex-col gap-1 mt-2"></div>
-
         </div>
 
-        <form onsubmit="sendChatMsg(event)" class="p-3 border-t border-gray-200 bg-white flex items-center gap-2">
+        <div id="filePreviewContainer" class="hidden bg-gray-50 p-2 border-t border-gray-200 flex items-center justify-between">
+            <span class="text-xs text-blue-600 font-medium flex items-center"><i class="fas fa-paperclip mr-2"></i> <span id="fileNameDisplay">File.jpg</span></span>
+            <button type="button" onclick="cancelUpload()" class="text-red-500 hover:text-red-700 text-xs"><i class="fas fa-times"></i> Batal</button>
+        </div>
+
+        <form onsubmit="sendChatMsg(event)" id="chatForm" class="p-3 border-t border-gray-200 bg-white flex items-center gap-2">
             @csrf
-            <button type="button" class="text-gray-400 hover:text-red-600 transition p-2 bg-gray-50 rounded-full border border-gray-200" title="Lampirkan Foto/Video (Fitur Menyusul)">
-                <i class="fas fa-paperclip"></i>
+
+            <input type="file" id="chatAttachmentInput" accept="image/*,video/mp4" class="hidden" onchange="handleFileSelect(this)">
+
+            <button type="button" onclick="document.getElementById('chatAttachmentInput').click()" class="text-gray-400 hover:text-blue-600 transition p-2 bg-gray-50 rounded-full border border-gray-200" title="Lampirkan Foto/Video">
+                <i class="fas fa-camera"></i>
             </button>
-            <input type="text" id="chatMessageInput" name="message" placeholder="Ketik keluhan Anda di sini..." class="flex-1 border-gray-300 rounded-full text-sm focus:ring-red-500 focus:border-red-500 px-4 py-2 bg-gray-50 shadow-inner" required autocomplete="off">
-            <button type="submit" class="bg-red-600 text-white w-10 h-10 rounded-full hover:bg-red-700 transition flex items-center justify-center shadow-md transform hover:scale-105">
+
+            <input type="text" id="chatMessageInput" placeholder="Ketik keluhan..." class="flex-1 border-gray-300 rounded-full text-sm focus:ring-red-500 focus:border-red-500 px-4 py-2 bg-gray-50 shadow-inner" autocomplete="off">
+            <button type="submit" id="btnSendChat" class="bg-red-600 text-white w-10 h-10 rounded-full hover:bg-red-700 transition flex items-center justify-center shadow-md transform hover:scale-105 flex-shrink-0">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </form>
@@ -320,15 +331,17 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
         document.getElementById('komplainInvoice').innerText = invoice;
         document.getElementById('komplainStoreName').innerText = storeName;
 
+        document.getElementById('formSelesai').action = `/customer/komplain/selesai/${invoice}`;
+        document.getElementById('formRetur').action = `/customer/komplain/retur/${invoice}`;
+
         const modal = document.getElementById('komplainModal');
         const content = document.getElementById('komplainModalContent');
 
         modal.classList.remove('hidden');
-        // Animasi masuk
         setTimeout(() => {
             content.classList.remove('scale-95', 'opacity-0');
             content.classList.add('scale-100', 'opacity-100');
-            loadChats(); // Panggil fungsi Tarik Data Chat
+            loadChats();
         }, 50);
     }
 
@@ -338,14 +351,31 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
 
         content.classList.remove('scale-100', 'opacity-100');
         content.classList.add('scale-95', 'opacity-0');
+        cancelUpload(); // Bersihkan file jika ada
 
         setTimeout(() => {
             modal.classList.add('hidden');
-            document.getElementById('chatBoxContent').innerHTML = ''; // Bersihkan isi chat agar tidak tertumpuk
+            document.getElementById('chatBoxContent').innerHTML = '';
         }, 300);
     }
 
-    // Load Chat dari Database via AJAX
+    function handleFileSelect(input) {
+        const preview = document.getElementById('filePreviewContainer');
+        const nameDisplay = document.getElementById('fileNameDisplay');
+        if(input.files && input.files[0]) {
+            nameDisplay.innerText = input.files[0].name;
+            preview.classList.remove('hidden');
+            preview.classList.add('flex');
+        }
+    }
+
+    function cancelUpload() {
+        document.getElementById('chatAttachmentInput').value = '';
+        const preview = document.getElementById('filePreviewContainer');
+        preview.classList.add('hidden');
+        preview.classList.remove('flex');
+    }
+
     function loadChats() {
         const chatBox = document.getElementById('chatBoxContent');
         chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4"><i class="fas fa-spinner fa-spin"></i> Memuat pesan...</div>';
@@ -363,86 +393,105 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
             })
             .catch(err => {
                 chatBox.innerHTML = '<div class="text-center text-xs text-red-500 my-4">Gagal memuat pesan.</div>';
-                console.error(err);
             });
     }
 
-    // Kirim Chat via AJAX (Dipanggil saat form disubmit)
     function sendChatMsg(e) {
         e.preventDefault();
-        const input = document.getElementById('chatMessageInput');
-        const msg = input.value;
-        if(msg.trim() === '') return;
+        const inputMsg = document.getElementById('chatMessageInput');
+        const inputFile = document.getElementById('chatAttachmentInput');
+        const btnSend = document.getElementById('btnSendChat');
 
-        input.value = ''; // Kosongkan
-        input.disabled = true;
+        if(inputMsg.value.trim() === '' && inputFile.files.length === 0) return;
+
+        let formData = new FormData();
+        formData.append('invoice_number', currentInvoice);
+        formData.append('message', inputMsg.value);
+        formData.append('_token', '{{ csrf_token() }}');
+        if(inputFile.files.length > 0) {
+            formData.append('attachment', inputFile.files[0]);
+        }
+
+        inputMsg.disabled = true;
+        btnSend.disabled = true;
+        btnSend.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
         fetch(`{{ route('customer.komplain.send_chat') }}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                invoice_number: currentInvoice,
-                message: msg
-            })
+            body: formData
         })
         .then(res => res.json())
         .then(data => {
-            input.disabled = false;
-            input.focus();
+            inputMsg.disabled = false;
+            btnSend.disabled = false;
+            btnSend.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            inputMsg.focus();
+
             if(data.success) {
+                inputMsg.value = '';
+                cancelUpload();
                 appendChatHTML(data.chat);
                 scrollToBottom();
             } else {
-                alert('Gagal mengirim pesan: ' + (data.error || 'Kesalahan sistem'));
+                alert('Gagal mengirim pesan: ' + (data.error || 'Kesalahan server'));
             }
         })
         .catch(err => {
-            input.disabled = false;
-            console.error(err);
-            alert('Terjadi kesalahan jaringan.');
+            inputMsg.disabled = false;
+            btnSend.disabled = false;
+            btnSend.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            alert('Terjadi kesalahan jaringan/server.');
         });
     }
 
-    // Render HTML Chat Bubble
     function appendChatHTML(chat) {
         const chatBox = document.getElementById('chatBoxContent');
         const isCustomer = chat.sender_type === 'customer';
+        const isAdmin = chat.sender_type === 'admin';
 
         const dateObj = new Date(chat.created_at);
         const time = dateObj.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
 
+        let mediaHtml = '';
+        if(chat.attachment) {
+            const fileUrl = `{{ asset('storage') }}/${chat.attachment}`;
+            const ext = chat.attachment.split('.').pop().toLowerCase();
+            if(ext === 'mp4' || ext === 'mov') {
+                mediaHtml = `<video controls class="max-w-full h-auto rounded-lg mt-2 mb-1 border border-gray-200 shadow-sm" style="max-height: 200px;"><source src="${fileUrl}" type="video/${ext}"></video>`;
+            } else {
+                mediaHtml = `<img src="${fileUrl}" class="max-w-full h-auto rounded-lg mt-2 mb-1 border border-gray-200 shadow-sm cursor-pointer" style="max-height: 200px;" onclick="window.open(this.src, '_blank')">`;
+            }
+        }
+
         let html = '';
         if(isCustomer) {
-            // Bubble Pembeli (Kanan)
             html = `
             <div class="flex items-start justify-end gap-2 mt-2">
-                <div class="bg-red-50 border border-red-100 rounded-2xl rounded-tr-none p-3 max-w-[80%] shadow-sm">
-                    <p class="text-xs text-gray-800 leading-relaxed">${chat.message}</p>
+                <div class="bg-red-50 border border-red-100 rounded-2xl rounded-tr-none p-3 max-w-[85%] shadow-sm">
+                    ${mediaHtml}
+                    ${chat.message ? `<p class="text-xs text-gray-800 leading-relaxed break-words">${chat.message}</p>` : ''}
                     <p class="text-[9px] text-gray-400 mt-1 text-right">${time}</p>
                 </div>
             </div>`;
         } else {
-            // Bubble Penjual / Admin (Kiri)
-            const icon = chat.sender_type === 'admin' ? '<i class="fas fa-shield-alt text-blue-500"></i>' : '<i class="fas fa-store text-orange-500"></i>';
-            const senderName = chat.sender_type === 'admin' ? 'Admin Sancaka' : (chat.sender ? chat.sender.nama_lengkap : 'Penjual');
+            const icon = isAdmin ? '<i class="fas fa-shield-alt text-blue-500"></i>' : '<i class="fas fa-store text-orange-500"></i>';
+            const senderName = isAdmin ? 'Admin Sancaka' : (chat.sender ? chat.sender.nama_lengkap : 'Penjual');
+            const nameColor = isAdmin ? 'text-blue-600' : 'text-orange-600';
 
             html = `
             <div class="flex items-start gap-2 mt-2">
                 <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-200 text-xs">
                     ${icon}
                 </div>
-                <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-3 max-w-[80%] shadow-sm">
-                    <p class="text-[10px] font-bold mb-1 ${chat.sender_type === 'admin' ? 'text-blue-600' : 'text-orange-600'}">${senderName}</p>
-                    <p class="text-xs text-gray-800 leading-relaxed">${chat.message}</p>
+                <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-3 max-w-[85%] shadow-sm">
+                    <p class="text-[10px] font-bold mb-1 ${nameColor}">${senderName}</p>
+                    ${mediaHtml}
+                    ${chat.message ? `<p class="text-xs text-gray-800 leading-relaxed break-words">${chat.message}</p>` : ''}
                     <p class="text-[9px] text-gray-400 mt-1 text-left">${time}</p>
                 </div>
             </div>`;
         }
 
-        // Hapus keterangan kosong jika ada
         if(chatBox.innerHTML.includes('Belum ada obrolan')) { chatBox.innerHTML = ''; }
         chatBox.insertAdjacentHTML('beforeend', html);
     }
