@@ -14,10 +14,8 @@ class EscrowController extends Controller
 {
     public function index(Request $request)
     {
-        // 1. AUTO-SYNC: Tarik semua pesanan yang sudah dibayar/diproses ke tabel Escrow
-        // (Pakai firstOrCreate agar tidak ada data ganda)
+        // 1. AUTO-SYNC: Tarik pesanan yang dibayar/diproses
         $paidOrders = Order::whereIn('status', ['paid', 'processing', 'shipped', 'shipment', 'completed', 'selesai', 'sampai'])->get();
-
         foreach($paidOrders as $ord) {
             \App\Models\Escrow::firstOrCreate(
                 ['order_id' => $ord->id],
@@ -32,21 +30,68 @@ class EscrowController extends Controller
             );
         }
 
-        // 2. Ambil data escrow untuk ditampilkan di tabel
-        $query = Escrow::with(['order.items.product', 'order.items.variant', 'store.user', 'buyer'])
-                       ->orderBy('created_at', 'desc');
+        // 2. QUERY UTAMA UNTUK TABEL
+        $query = Escrow::with(['order.items.product', 'order.items.variant', 'store.user', 'buyer']);
 
-        if ($request->has('status') && $request->status != '') {
-            $query->where('status_dana', $request->status);
-        } else {
-            $query->whereIn('status_dana', ['ditahan', 'mediasi']);
+        // Filter Tanggal
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('created_at', [
+                $request->start_date . ' 00:00:00',
+                $request->end_date . ' 23:59:59'
+            ]);
         }
 
-        $escrows = $query->paginate(15);
+        // Filter Status Order (Dari Tombol)
+        if ($request->filled('order_status') && $request->order_status !== 'all') {
+            $os = $request->order_status;
+            if ($os === 'selesai') {
+                $query->whereHas('order', function($q) {
+                    $q->whereIn('status', ['completed', 'selesai', 'sampai', 'delivered']);
+                });
+            } elseif ($os === 'dikirim') {
+                $query->whereHas('order', function($q) {
+                    $q->whereIn('status', ['shipped', 'shipment']);
+                });
+            } elseif ($os === 'batal') {
+                $query->whereHas('order', function($q) {
+                    $q->whereIn('status', ['canceled', 'rejected']);
+                });
+            } elseif ($os === 'bermasalah') {
+                $query->where('status_dana', 'mediasi');
+            }
+        }
 
-        return view('admin.escrow.index', compact('escrows'));
+        $query->orderBy('created_at', 'desc');
+        // Paginasi bawaan Laravel dengan query string agar filter tidak hilang saat pindah halaman
+        $escrows = $query->paginate(15)->withQueryString();
+
+        // 3. HITUNG DATA UNTUK 4 CARD METRIC (Berdasarkan filter tanggal jika ada)
+        $baseStatsQuery = Escrow::query();
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $baseStatsQuery->whereBetween('created_at', [
+                $request->start_date . ' 00:00:00',
+                $request->end_date . ' 23:59:59'
+            ]);
+        }
+
+        $countSelesai = (clone $baseStatsQuery)->whereHas('order', function($q) {
+            $q->whereIn('status', ['completed', 'selesai', 'sampai', 'delivered']);
+        })->count();
+
+        $countDikirim = (clone $baseStatsQuery)->whereHas('order', function($q) {
+            $q->whereIn('status', ['shipped', 'shipment']);
+        })->count();
+
+        $countBermasalah = (clone $baseStatsQuery)->where('status_dana', 'mediasi')->count();
+
+        $countBatal = (clone $baseStatsQuery)->whereHas('order', function($q) {
+            $q->whereIn('status', ['canceled', 'rejected']);
+        })->count();
+
+        return view('admin.escrow.index', compact(
+            'escrows', 'countSelesai', 'countDikirim', 'countBermasalah', 'countBatal'
+        ));
     }
-
     /**
      * Proses Pencairan Dana ke Penjual (Klik dari Admin)
      */
