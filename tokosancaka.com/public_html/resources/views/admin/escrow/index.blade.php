@@ -209,7 +209,7 @@
 
                                 <div class="bg-gray-50 p-2 rounded border border-gray-200">
                                     <ul class="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
-                                        @foreach($escrow->order->items as $item)
+                                    @foreach($escrow->order->items as $item)
                                             <li class="border-b border-gray-100 pb-2 last:border-0 last:pb-0 flex items-start gap-2">
 
                                                 {{-- LOGIKA GAMBAR BARU --}}
@@ -229,6 +229,17 @@
                                                             <i class="fas fa-image text-xs"></i>
                                                         </div>
                                                     @endif
+                                                </div>
+
+                                                <div class="flex-1 min-w-0 leading-tight">
+                                                    <div class="truncate text-gray-800 font-semibold text-[11px] mb-0.5" title="{{ $item->product->name ?? 'Produk' }}">{{ $item->product->name ?? 'Produk' }}</div>
+                                                    @if($item->variant)
+                                                        <div class="text-[9px] text-gray-500 truncate">{{ str_replace(';', ', ', $item->variant->combination_string) }}</div>
+                                                    @endif
+                                                    <div class="flex justify-between items-center mt-1">
+                                                        <span class="text-[10px] text-gray-500 font-medium">{{ $item->quantity }}x</span>
+                                                        <span class="text-[10px] font-bold text-gray-700">Rp {{ number_format($item->price, 0, ',', '.') }}</span>
+                                                    </div>
                                                 </div>
                                             </li>
                                         @endforeach
