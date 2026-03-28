@@ -1068,3 +1068,7 @@ Route::post('/customer/komplain/chat', [PesananActionController::class, 'sendCha
 // --- ROUTE CHAT ADMIN (TAMBAHKAN 2 BARIS INI) ---
     Route::get('/escrow/chat/{invoice}', [EscrowController::class, 'getChat'])->name('admin.escrow.get_chat');
     Route::post('/escrow/chat', [EscrowController::class, 'sendChat'])->name('admin.escrow.send_chat');
+
+// Kode komplain untuk penjual marketplace
+Route::get('/seller/komplain/chat/{invoice}', [OrderController::class, 'getChat'])->name('seller.komplain.get_chat');
+Route::post('/seller/komplain/chat', [OrderController::class, 'sendChat'])->name('seller.komplain.send_chat');
