@@ -174,7 +174,6 @@
                                 <div class="bg-blue-50/50 p-2 rounded border border-blue-100 mb-2">
                                     <div class="flex items-center gap-2 mb-1.5">
                                         @php
-                                            // Memanggil Helper yang sama persis seperti di menu Pesanan
                                             $ship = \App\Helpers\ShippingHelper::parseShippingMethod($escrow->order->shipping_courier ?? $escrow->order->expedition ?? '');
                                             $courierName = $ship['courier_name'] ?? $escrow->order->shipping_courier ?? 'N/A';
                                             $serviceName = $ship['service_name'] ?? $escrow->order->shipping_service ?? 'N/A';
@@ -292,8 +291,7 @@
                                 <div class="text-center p-2 bg-red-50 rounded border border-red-200 shadow-inner">
                                     <i class="fas fa-exclamation-triangle text-red-500 text-xl mb-1"></i>
                                     <p class="text-[10px] text-red-700 font-bold uppercase tracking-wider mb-2">Mediasi</p>
-
-                                    <button type="button" onclick="openKomplainModal('{{ $escrow->invoice_number }}', '{{ $escrow->store->name ?? 'Toko' }}')" class="w-full bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
+                                    <button type="button" onclick="openKomplainModal('{{ $escrow->invoice_number }}', '{{ addslashes($escrow->store->name ?? 'Toko') }}')" class="w-full bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
                                         <i class="fas fa-comments mr-1"></i> Buka Chat
                                     </button>
                                 </div>
@@ -401,14 +399,20 @@
         const chatBox = document.getElementById('chatBoxContent');
         chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4"><i class="fas fa-spinner fa-spin"></i> Memuat pesan...</div>';
 
-        fetch(`/admin/escrow/chat/${currentInvoice}`)
+        // MENGGUNAKAN {{ url() }} AGAR PATH AJAX TIDAK ERROR (NOT FOUND)
+        fetch(`{{ url('admin/escrow/chat') }}/${currentInvoice}`)
             .then(res => res.json())
             .then(data => {
                 chatBox.innerHTML = '';
                 if(data.chats && data.chats.length > 0) {
                     data.chats.forEach(chat => appendChatHTML(chat));
+                } else {
+                    chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4">Belum ada obrolan.</div>';
                 }
                 scrollToBottom();
+            })
+            .catch(err => {
+                chatBox.innerHTML = '<div class="text-center text-xs text-red-500 my-4">Gagal memuat pesan.</div>';
             });
     }
 
@@ -474,6 +478,8 @@
                 </div>
             </div>`;
         }
+
+        if(chatBox.innerHTML.includes('Belum ada obrolan')) { chatBox.innerHTML = ''; }
         chatBox.insertAdjacentHTML('beforeend', html);
     }
 
