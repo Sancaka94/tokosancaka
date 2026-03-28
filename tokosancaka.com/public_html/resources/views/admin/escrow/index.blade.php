@@ -41,7 +41,7 @@
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice & Dana</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Info Penjual</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Info Pembeli</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Detail Pesanan</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-72">Detail Pesanan & Kirim</th>
                         <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-40">Aksi & Status Order</th>
                     </tr>
                 </thead>
@@ -109,28 +109,67 @@
                             </div>
                         </td>
 
-                        <td class="px-6 py-4 align-top max-w-sm whitespace-normal">
+                        <td class="px-6 py-4 align-top whitespace-normal">
                             @if($escrow->order)
-                                <div class="text-xs text-gray-800 font-medium mb-1.5 flex items-center bg-blue-50 py-1 px-2 rounded border border-blue-100 w-max">
-                                    <span>Resi:</span>
-                                    <span class="text-blue-700 ml-1 font-bold" id="resi-{{$escrow->id}}">{{ $escrow->order->shipping_reference ?? 'Belum ada resi' }}</span>
-                                    @if($escrow->order->shipping_reference)
-                                        <button onclick="copyResi('{{ $escrow->order->shipping_reference }}')" class="ml-2 text-blue-400 hover:text-blue-800 transition-colors" title="Salin Resi">
-                                            <i class="far fa-copy text-sm"></i>
-                                        </button>
-                                    @endif
+
+                                <div class="bg-blue-50/50 p-2 rounded border border-blue-100 mb-2">
+                                    <div class="flex items-center gap-2 mb-1.5">
+                                        @php
+                                            // Ambil nama kurir dari DB (biasanya dari kolom shipping_courier)
+                                            $kurir = strtolower($escrow->order->shipping_courier ?? 'kurir');
+                                            // Path gambar logo kurir (contoh: storage/couriers/jne.png)
+                                            $logoPath = 'storage/couriers/' . $kurir . '.png';
+                                        @endphp
+                                        <img src="{{ asset($logoPath) }}"
+                                             onerror="this.src='https://placehold.co/50x25/e2e8f0/64748b?text=KURIR'"
+                                             class="h-6 w-auto object-contain rounded bg-white px-1 border border-gray-100 shadow-sm" alt="Logo Kurir">
+
+                                        <div class="leading-tight">
+                                            <div class="text-[11px] font-bold text-gray-800 uppercase">{{ $escrow->order->shipping_courier ?? 'EKSPEDISI' }}</div>
+                                            <div class="text-[9px] text-gray-500 uppercase">{{ $escrow->order->shipping_service ?? 'Layanan Pengiriman' }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-xs text-gray-800 font-medium flex items-center mt-1 pt-1 border-t border-blue-100/60 w-max">
+                                        <span class="text-gray-500 mr-1 text-[10px]">Resi:</span>
+                                        <span class="text-blue-700 font-bold tracking-wider" id="resi-{{$escrow->id}}">{{ $escrow->order->shipping_reference ?? 'Belum ada resi' }}</span>
+                                        @if($escrow->order->shipping_reference)
+                                            <button onclick="copyResi('{{ $escrow->order->shipping_reference }}')" class="ml-2 text-blue-400 hover:text-blue-800 transition-colors" title="Salin Resi">
+                                                <i class="far fa-copy"></i>
+                                            </button>
+                                        @endif
+                                    </div>
                                 </div>
 
-                                <div class="bg-gray-50 p-2 rounded border border-gray-200 mb-2">
-                                    <ul class="text-[11px] text-gray-600 space-y-1 max-h-20 overflow-y-auto pr-1">
+                                <div class="bg-gray-50 p-2 rounded border border-gray-200">
+                                    <div class="text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Daftar Barang:</div>
+                                    <ul class="space-y-2 max-h-36 overflow-y-auto pr-1">
                                         @foreach($escrow->order->items as $item)
-                                            <li class="border-b border-gray-100 pb-1 last:border-0 last:pb-0 flex justify-between">
-                                                <span class="truncate pr-2">{{ $item->product->name ?? 'Produk' }}</span>
-                                                <span class="font-medium whitespace-nowrap">{{ $item->quantity }}x</span>
+                                            <li class="border-b border-gray-100 pb-2 last:border-0 last:pb-0 flex items-start gap-2">
+
+                                                @php
+                                                    // Menarik gambar produk (Sesuaikan dengan nama kolom di DB mas, misalnya 'image' atau 'primary_image')
+                                                    $productImg = $item->product->primary_image ?? $item->product->image ?? 'default.png';
+                                                @endphp
+                                                <img src="{{ asset('storage/' . $productImg) }}"
+                                                     onerror="this.src='https://placehold.co/40x40/f3f4f6/a1a1aa?text=Img'"
+                                                     class="w-10 h-10 rounded object-cover border border-gray-200 flex-shrink-0 shadow-sm" alt="Produk">
+
+                                                <div class="flex-1 min-w-0 leading-tight">
+                                                    <div class="truncate text-gray-800 font-semibold text-[11px] mb-0.5" title="{{ $item->product->name ?? 'Produk' }}">{{ $item->product->name ?? 'Produk' }}</div>
+                                                    @if($item->variant)
+                                                        <div class="text-[9px] text-gray-500 truncate">{{ str_replace(';', ', ', $item->variant->combination_string) }}</div>
+                                                    @endif
+                                                    <div class="flex justify-between items-center mt-1">
+                                                        <span class="text-[10px] text-gray-500 font-medium">{{ $item->quantity }}x</span>
+                                                        <span class="text-[10px] font-bold text-gray-700">Rp {{ number_format($item->price, 0, ',', '.') }}</span>
+                                                    </div>
+                                                </div>
                                             </li>
                                         @endforeach
                                     </ul>
                                 </div>
+
                             @else
                                 <span class="text-xs text-red-500 italic">Data pesanan tidak ditemukan.</span>
                             @endif
@@ -222,7 +261,6 @@
 <script>
     function copyResi(text) {
         navigator.clipboard.writeText(text).then(function() {
-            // Animasi kecil saat berhasil copy
             alert("Resi disalin: " + text);
         }).catch(function(err) {
             console.error('Gagal menyalin resi: ', err);
