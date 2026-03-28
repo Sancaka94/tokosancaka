@@ -1077,3 +1077,8 @@ Route::post('/seller/komplain/chat', [\App\Http\Controllers\Toko\OrderController
 // Retur paket marketplce
 Route::post('/customer/komplain/selesai/{invoice}', [App\Http\Controllers\Customer\PesananActionController::class, 'selesaiKomplain'])->name('customer.komplain.selesai');
 Route::post('/customer/komplain/retur/{invoice}', [App\Http\Controllers\Customer\PesananActionController::class, 'returPesanan'])->name('customer.komplain.retur');
+
+
+// Kode Refund Produk Marketplace
+Route::post('/seller/komplain/retur/{invoice}', [\App\Http\Controllers\Toko\OrderController::class, 'approveRetur'])->name('seller.komplain.approve_retur');
+Route::post('/seller/komplain/refund/{invoice}', [\App\Http\Controllers\Toko\OrderController::class, 'approveRefund'])->name('seller.komplain.approve_refund');

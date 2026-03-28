@@ -209,9 +209,9 @@
 </div>
 
 <div id="komplainModal" class="fixed inset-0 z-[99] hidden bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[550px] transform transition-all scale-95 opacity-0" id="komplainModalContent">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[600px] transform transition-all scale-95 opacity-0" id="komplainModalContent">
 
-        <div class="bg-gradient-to-r from-orange-500 to-red-500 px-5 py-3 flex justify-between items-center text-white shadow-md z-10">
+        <div class="bg-gradient-to-r from-orange-500 to-red-500 px-5 py-3 flex justify-between items-center text-white shadow-md z-20">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
                     <i class="fas fa-headset text-sm"></i>
@@ -226,6 +226,24 @@
             </button>
         </div>
 
+        <div class="bg-orange-50 px-4 py-2.5 border-b border-orange-200 flex justify-between items-center z-10 shadow-sm">
+            <span class="text-[10px] text-orange-800 font-bold"><i class="fas fa-gavel text-orange-500 mr-1"></i> Aksi Penjual:</span>
+            <div class="flex gap-2">
+                <form id="formApproveRetur" method="POST" onsubmit="return confirm('Anda yakin menyetujui Retur Barang? \n\nSistem akan meminta pembeli memaketkan kembali barangnya.');">
+                    @csrf
+                    <button type="submit" class="bg-white border border-orange-500 text-orange-600 text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-orange-100 transition shadow-sm">
+                        Setujui Retur Barang
+                    </button>
+                </form>
+                <form id="formApproveRefund" method="POST" onsubmit="return confirm('Anda yakin menyetujui Pengembalian Dana?\n\nAdmin Sancaka akan segera mengembalikan uang ke Saldo Pembeli (Hanya harga barang, ongkir hangus).');">
+                    @csrf
+                    <button type="submit" class="bg-red-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-red-600 transition shadow-sm">
+                        Kembalikan Dana
+                    </button>
+                </form>
+            </div>
+        </div>
+
         <div id="chatScrollArea" class="flex-1 bg-[#f4f5f7] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] p-4 overflow-y-auto flex flex-col gap-4">
 
             <div class="text-center mb-2">
@@ -233,17 +251,29 @@
                     <i class="fas fa-receipt text-gray-400"></i> <span id="komplainInvoice" class="text-orange-600 ml-1"></span>
                 </span>
                 <p class="text-[10px] text-orange-600 mt-3 font-medium bg-orange-50 p-2.5 rounded-lg border border-orange-200 inline-block shadow-sm">
-                    <i class="fas fa-exclamation-circle mr-1"></i> Berikan solusi terbaik agar Admin dapat segera mencairkan dana Anda.
+                    <i class="fas fa-exclamation-circle mr-1"></i> Berikan solusi terbaik agar Admin dapat segera menyelesaikan masalah ini.
                 </p>
             </div>
 
             <div id="chatBoxContent" class="flex flex-col gap-1 mt-2"></div>
         </div>
 
-        <form onsubmit="sendChatMsg(event)" class="p-3 border-t border-gray-200 bg-white flex items-center gap-2">
+        <div id="filePreviewContainer" class="hidden bg-gray-50 p-2 border-t border-gray-200 flex items-center justify-between">
+            <span class="text-xs text-blue-600 font-medium flex items-center"><i class="fas fa-paperclip mr-2"></i> <span id="fileNameDisplay">File.jpg</span></span>
+            <button type="button" onclick="cancelUpload()" class="text-red-500 hover:text-red-700 text-xs"><i class="fas fa-times"></i> Batal</button>
+        </div>
+
+        <form onsubmit="sendChatMsg(event)" id="chatForm" class="p-3 border-t border-gray-200 bg-white flex items-center gap-2">
             @csrf
-            <input type="text" id="chatMessageInput" name="message" placeholder="Balas keluhan pembeli..." class="flex-1 border-gray-300 rounded-full text-sm focus:ring-orange-500 focus:border-orange-500 px-4 py-2.5 bg-gray-50 shadow-inner" required autocomplete="off">
-            <button type="submit" class="bg-orange-500 text-white w-10 h-10 rounded-full hover:bg-orange-600 transition-colors flex items-center justify-center shadow-md">
+
+            <input type="file" id="chatAttachmentInput" accept="image/*,video/mp4" class="hidden" onchange="handleFileSelect(this)">
+
+            <button type="button" onclick="document.getElementById('chatAttachmentInput').click()" class="text-gray-400 hover:text-orange-500 transition p-2 bg-gray-50 rounded-full border border-gray-200" title="Lampirkan Foto/Video">
+                <i class="fas fa-camera"></i>
+            </button>
+
+            <input type="text" id="chatMessageInput" name="message" placeholder="Balas keluhan pembeli..." class="flex-1 border-gray-300 rounded-full text-sm focus:ring-orange-500 focus:border-orange-500 px-4 py-2 bg-gray-50 shadow-inner" autocomplete="off">
+            <button type="submit" id="btnSendChat" class="bg-orange-500 text-white w-10 h-10 rounded-full hover:bg-orange-600 transition-colors flex items-center justify-center shadow-md">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </form>
@@ -257,6 +287,9 @@
         currentInvoice = invoice;
         document.getElementById('komplainInvoice').innerText = invoice;
         document.getElementById('komplainCustomerName').innerText = 'Pembeli: ' + customerName;
+
+        document.getElementById('formApproveRetur').action = `/seller/komplain/retur/${invoice}`;
+        document.getElementById('formApproveRefund').action = `/seller/komplain/refund/${invoice}`;
 
         const modal = document.getElementById('komplainModal');
         const content = document.getElementById('komplainModalContent');

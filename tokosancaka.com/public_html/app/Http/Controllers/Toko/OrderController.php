@@ -121,4 +121,57 @@ class OrderController extends Controller
             return response()->json(['error' => 'Gagal mengirim pesan'], 500);
         }
     }
+
+    /**
+     * Aksi Penjual: Menyetujui Retur Barang
+     */
+    public function approveRetur($invoice)
+    {
+        $order = Order::where('invoice_number', $invoice)->firstOrFail();
+
+        // Ubah status order (opsional, sesuaikan dengan nama status di database mas)
+        $order->status = 'return_approved';
+        $order->save();
+
+        // Kirim Chat Otomatis
+        ComplainChat::create([
+            'order_id'       => $order->id,
+            'invoice_number' => $order->invoice_number,
+            'sender_id'      => Auth::user()->id_pengguna,
+            'sender_type'    => 'seller',
+            'message'        => '✅ PENJUAL MENYETUJUI RETUR BARANG. Silakan pembeli mempersiapkan paket. Sistem akan segera memproses resi retur via KiriminAja.',
+        ]);
+
+        // (NANTI MAS BISA TAMBAHKAN LOGIKA API KIRIMINAJA DI SINI UNTUK GENERATE RESI RETUR)
+
+        return back()->with('success', 'Persetujuan retur berhasil dikirim. Menunggu resi balasan dari pembeli.');
+    }
+
+    /**
+     * Aksi Penjual: Setujui Pengembalian Dana (Refund)
+     */
+    public function approveRefund($invoice)
+    {
+        $order = Order::where('invoice_number', $invoice)->firstOrFail();
+
+        // Cari Dana Escrow yang sedang ditahan
+        $escrow = \App\Models\Escrow::where('order_id', $order->id)->first();
+        if($escrow) {
+            // Ubah status jadi refund_pending agar Admin tahu harus mengembalikan dana
+            $escrow->status_dana = 'refund_pending';
+            $escrow->catatan = 'Penjual menyetujui Pengembalian Dana. Menunggu Admin Sancaka memproses refund ke Pembeli (Hanya Harga Barang).';
+            $escrow->save();
+        }
+
+        // Kirim Chat Otomatis
+        ComplainChat::create([
+            'order_id'       => $order->id,
+            'invoice_number' => $order->invoice_number,
+            'sender_id'      => Auth::user()->id_pengguna,
+            'sender_type'    => 'seller',
+            'message'        => '✅ PENJUAL MENYETUJUI PENGEMBALIAN DANA. Menunggu Admin Sancaka memproses pencairan dana kembali ke saldo Pembeli (Tidak termasuk Ongkir).',
+        ]);
+
+        return back()->with('success', 'Persetujuan pengembalian dana berhasil dikirim ke Admin.');
+    }
 }
