@@ -281,6 +281,20 @@
                                         </button>
                                     @endif
                                 </div>
+
+                            @elseif($escrow->status_dana === 'refund_pending')
+                                <div class="text-center p-2 bg-yellow-50 rounded border border-yellow-200 shadow-inner">
+                                    <i class="fas fa-undo text-yellow-500 text-xl mb-1"></i>
+                                    <p class="text-[10px] text-yellow-700 font-bold uppercase tracking-wider mb-2">Refund Disetujui Penjual</p>
+
+                                    <form action="{{ route('admin.escrow.refund', $escrow->id) }}" method="POST" onsubmit="return confirm('Kembalikan dana Rp {{ number_format($escrow->nominal_ditahan - $escrow->nominal_ongkir, 0, ',', '.') }} ke saldo Pembeli? (Ongkir hangus)');">
+                                        @csrf
+                                        <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white text-[10px] font-bold py-2 rounded transition shadow-sm flex items-center justify-center">
+                                            <i class="fas fa-wallet mr-1"></i> Refund ke Pembeli
+                                        </button>
+                                    </form>
+                                </div>
+
                             @elseif($escrow->status_dana === 'dicairkan')
                                 <div class="text-center p-2">
                                     <i class="fas fa-check-circle text-green-500 text-3xl mb-2 drop-shadow-sm"></i>
