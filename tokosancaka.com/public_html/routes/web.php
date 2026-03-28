@@ -136,6 +136,8 @@ use App\Http\Controllers\PushWaController;
 
 use App\Http\Controllers\Auth\Customer\CustomerForgotPasswordController;
 
+use App\Http\Controllers\Admin\EscrowController;
+
 Route::get('/cek-sistem-sancaka', function () {
     // 1. Cek Koneksi Database
     try {
@@ -815,6 +817,19 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         // Ubah PpobProductController menjadi AdminPpobController
         Route::get('/{id}', [AdminPpobController::class, 'show'])->name('show');
     });
+
+    // ==========================================
+    // ROUTE ESCROW / PENAHANAN DANA
+    // ==========================================
+    // 1. Menampilkan Halaman Tabel Escrow
+    Route::get('/escrow', [EscrowController::class, 'index'])->name('admin.escrow.index');
+
+    // 2. Tombol Action: Cairkan Dana
+    Route::post('/escrow/{id}/cairkan', [EscrowController::class, 'cairkan'])->name('admin.escrow.cairkan');
+
+    // 3. Tombol Action: Mediasi
+    Route::get('/escrow/{id}/mediasi', [EscrowController::class, 'mediasi'])->name('admin.escrow.mediasi');
+
 });
 
 
