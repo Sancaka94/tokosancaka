@@ -34,12 +34,12 @@ class DataPenggunaController extends Controller
                   ->orWhere('no_wa', 'like', "%{$search}%");
             });
         }
-        
+
         // Filter berdasarkan Kota/Kabupaten (regency)
         if ($city) {
             $query->where('regency', 'like', "%{$city}%");
         }
-        
+
         // Ambil data dengan paginasi
         $pengguna = $query->paginate(10)->withQueryString();
 
@@ -101,12 +101,12 @@ public function update(Request $request, $id_pengguna)
             'required',
             'email',
             // Pastikan email unik, kecuali untuk pengguna yang sedang diedit
-            Rule::unique('pengguna')->ignore($data->id_pengguna, 'id_pengguna'),
+            Rule::unique('Pengguna')->ignore($data->id_pengguna, 'id_pengguna'),
         ],
         'no_wa' => 'nullable|string|max:15',
         'role' => 'required|in:Admin,Seller,Pelanggan',
         'status' => 'required|in:Aktif,Beku,Nonaktif',
-        
+
         // VITAL: Aturan Validasi untuk Password (Hanya divalidasi jika diisi)
         'password' => 'nullable|string|min:8|confirmed',
 
@@ -176,7 +176,7 @@ public function update(Request $request, $id_pengguna)
             // Asumsi Anda memiliki Blade view untuk mencetak PDF: 'pdf.pengguna'
             $pdf = Pdf::loadView('pdf.pengguna', compact('data'));
             return $pdf->download($filename . '.pdf');
-            
+
         }
 
         return redirect()->route('admin.customers.pengguna.index')->with('error', 'Format ekspor tidak valid.');
