@@ -131,7 +131,7 @@ public function update(Request $request, $id_pengguna)
     // --- Proses Update Data ---
     $data->update($updateData);
 
-    return redirect()->route('admin.customers.pengguna.index')
+    return redirect()->route('admin.customers.data.pengguna.index')
                      ->with('success', 'Data pengguna berhasil diperbarui.');
 }
 
