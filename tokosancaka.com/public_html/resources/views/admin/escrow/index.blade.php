@@ -211,17 +211,24 @@
                                     <ul class="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
                                         @foreach($escrow->order->items as $item)
                                             <li class="border-b border-gray-100 pb-2 last:border-0 last:pb-0 flex items-start gap-2">
-                                                @php $productImg = $item->product->primary_image ?? $item->product->image ?? 'default.png'; @endphp
-                                                <img src="{{ asset('storage/' . $productImg) }}" onerror="this.src='https://placehold.co/40x40/f3f4f6/a1a1aa?text=Img'" class="w-10 h-10 rounded object-cover border border-gray-200 flex-shrink-0 shadow-sm" alt="Produk">
-                                                <div class="flex-1 min-w-0 leading-tight">
-                                                    <div class="truncate text-gray-800 font-semibold text-[11px] mb-0.5" title="{{ $item->product->name ?? 'Produk' }}">{{ $item->product->name ?? 'Produk' }}</div>
-                                                    @if($item->variant)
-                                                        <div class="text-[9px] text-gray-500 truncate">{{ str_replace(';', ', ', $item->variant->combination_string) }}</div>
+
+                                                {{-- LOGIKA GAMBAR BARU --}}
+                                                <div class="w-10 h-10 flex-shrink-0 bg-gray-200 rounded overflow-hidden border border-gray-200 relative shadow-sm">
+                                                    @if($item->product && !empty($item->product->image_url))
+                                                        @php
+                                                            $rawPath = $item->product->image_url;
+                                                            $cleanPath = str_replace('public/', '', $rawPath);
+                                                            $imageUrl = asset('public/storage/' . $cleanPath);
+                                                        @endphp
+                                                        <img src="{{ $imageUrl }}"
+                                                             alt="{{ $item->product->name }}"
+                                                             class="w-full h-full object-cover"
+                                                             onerror="this.onerror=null; this.src='https://placehold.co/40x40/f3f4f6/a1a1aa?text=Img';">
+                                                    @else
+                                                        <div class="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-100">
+                                                            <i class="fas fa-image text-xs"></i>
+                                                        </div>
                                                     @endif
-                                                    <div class="flex justify-between items-center mt-1">
-                                                        <span class="text-[10px] text-gray-500 font-medium">{{ $item->quantity }}x</span>
-                                                        <span class="text-[10px] font-bold text-gray-700">Rp {{ number_format($item->price, 0, ',', '.') }}</span>
-                                                    </div>
                                                 </div>
                                             </li>
                                         @endforeach
