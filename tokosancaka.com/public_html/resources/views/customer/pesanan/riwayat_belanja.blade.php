@@ -1,6 +1,6 @@
 {{--
 File: resources/views/customer/pesanan/riwayat_belanja.blade.php
-Updated: Fix Image URL (from products table) & Resi (shipping_reference)
+Updated: Penambahan Tombol Terima Paket & Chat Komplain
 --}}
 
 @extends('layouts.customer')
@@ -98,21 +98,18 @@ Updated: Fix Image URL (from products table) & Resi (shipping_reference)
                                 @foreach($items->take(2) as $item)
                                     <div class="flex items-start gap-4 p-2 hover:bg-gray-50 rounded-lg transition">
 
-                                        {{-- GAMBAR PRODUK (DARI KOLOM image_url) --}}
+                                        {{-- GAMBAR PRODUK --}}
                                         <div class="w-20 h-20 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden border border-gray-200 relative group">
                                             @if($item->product && !empty($item->product->image_url))
                                                 @php
                                                     $rawPath = $item->product->image_url;
-                                                    // Bersihkan path
                                                     $cleanPath = str_replace('public/', '', $rawPath);
-                                                    // URL Final
                                                     $imageUrl = asset('public/storage/' . $cleanPath);
                                                 @endphp
-
                                                 <img src="{{ $imageUrl }}"
                                                      alt="{{ $item->product->name }}"
                                                      class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                                     onerror="this.onerror=null; this.src='https://via.placeholder.com/150?text=No+Pic';">
+                                                     onerror="this.onerror=null; this.src='https://placehold.co/150?text=No+Pic';">
                                             @else
                                                 <div class="w-full h-full flex flex-col items-center justify-center text-gray-400">
                                                     <i class="fas fa-image text-xl mb-1"></i>
@@ -165,9 +162,7 @@ Updated: Fix Image URL (from products table) & Resi (shipping_reference)
                                         </div>
                                     </div>
 
-                                    {{-- PERBAIKAN LOGIKA RESI: Cek shipping_resi ATAU shipping_reference --}}
                                     @php
-                                        // Cek kolom shipping_resi dulu (jika ada di model), kalau kosong pakai shipping_reference
                                         $resi = $order->shipping_resi ?? ($order->shipping_reference ?? null);
                                     @endphp
 
@@ -201,10 +196,27 @@ Updated: Fix Image URL (from products table) & Resi (shipping_reference)
                                                 </a>
                                             @endif
                                         @elseif(!empty($resi))
-                                            {{-- Tracking Link --}}
+                                            {{-- Lacak Paket --}}
                                             <a href="{{ route('tracking.index', ['resi' => $resi]) }}" class="block w-full text-center border border-red-600 text-red-600 text-sm font-bold py-2.5 rounded-lg hover:bg-red-50 transition">
                                                 Lacak Paket
                                             </a>
+
+                                            {{-- === TOMBOL TERIMA PAKET & KOMPLAIN === --}}
+                                            @if(in_array($status, ['shipped', 'dikirim', 'completed', 'selesai']))
+                                                <div class="grid grid-cols-2 gap-2 mt-1">
+                                                    <form action="{{ route('customer.pesanan.terima', $order->id ?? 0) }}" method="POST">
+                                                        @csrf
+                                                        <button type="submit" onclick="return confirm('Apakah Anda yakin paket sudah diterima dengan baik? \n\nDana akan langsung diteruskan ke saldo penjual dan tidak dapat dikembalikan.');" class="w-full bg-green-500 text-white text-[11px] font-bold py-2.5 rounded-lg hover:bg-green-600 transition flex items-center justify-center shadow-sm">
+                                                            <i class="fas fa-check-circle mr-1"></i> Terima
+                                                        </button>
+                                                    </form>
+
+                                                    <button type="button" onclick="openKomplainModal('{{ $order->invoice_number }}', '{{ $storeName }}')" class="w-full border border-orange-500 text-orange-500 text-[11px] font-bold py-2.5 rounded-lg hover:bg-orange-50 transition flex items-center justify-center shadow-sm">
+                                                        <i class="fas fa-headset mr-1"></i> Komplain
+                                                    </button>
+                                                </div>
+                                            @endif
+
                                             <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center text-gray-500 text-xs hover:text-gray-700 mt-1">
                                                 Lihat Invoice
                                             </a>
@@ -228,4 +240,88 @@ Updated: Fix Image URL (from products table) & Resi (shipping_reference)
         @endif
     </div>
 </div>
+
+<div id="komplainModal" class="fixed inset-0 z-[99] hidden bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[550px] transform transition-all scale-95 opacity-0" id="komplainModalContent">
+
+        <div class="bg-red-600 px-4 py-3 flex justify-between items-center text-white shadow-md z-10">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-red-600">
+                    <i class="fas fa-store text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-sm leading-tight">Pusat Resolusi</h3>
+                    <p class="text-[10px] opacity-90" id="komplainStoreName">Nama Toko</p>
+                </div>
+            </div>
+            <button onclick="closeKomplainModal()" class="text-white hover:text-red-200 bg-red-700 hover:bg-red-800 rounded-full w-8 h-8 flex items-center justify-center transition">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="flex-1 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-gray-100 p-4 overflow-y-auto flex flex-col gap-4">
+
+            <div class="text-center mb-2">
+                <span class="bg-white border border-gray-200 text-gray-600 text-[10px] px-3 py-1 rounded-full font-bold shadow-sm">
+                    Invoice: <span id="komplainInvoice" class="text-blue-600"></span>
+                </span>
+                <p class="text-[10px] text-red-500 mt-3 font-medium bg-red-50 p-2 rounded-lg border border-red-100 inline-block">
+                    <i class="fas fa-shield-alt mr-1"></i> Admin Sancaka memantau obrolan ini sebagai penengah.
+                </p>
+            </div>
+
+            <div class="flex items-start gap-2">
+                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-500 shadow-sm border border-blue-200">
+                    <i class="fas fa-robot text-xs"></i>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-3 max-w-[80%] shadow-sm">
+                    <p class="text-xs text-gray-800 leading-relaxed">Halo kak! Silakan jelaskan kendala yang dialami. Sertakan foto/video *unboxing* paket sebagai bukti agar penjual dan Admin dapat membantu dengan cepat.</p>
+                    <p class="text-[9px] text-gray-400 mt-2 text-right">Sistem Otomatis</p>
+                </div>
+            </div>
+
+            </div>
+
+        <form action="#" method="POST" class="p-3 border-t border-gray-200 bg-white flex items-center gap-2">
+            @csrf
+            <button type="button" class="text-gray-400 hover:text-red-600 transition p-2 bg-gray-50 rounded-full border border-gray-200" title="Lampirkan Foto/Video">
+                <i class="fas fa-paperclip"></i>
+            </button>
+            <input type="text" name="message" placeholder="Ketik keluhan Anda di sini..." class="flex-1 border-gray-300 rounded-full text-sm focus:ring-red-500 focus:border-red-500 px-4 py-2 bg-gray-50 shadow-inner" required>
+            <button type="submit" class="bg-red-600 text-white w-10 h-10 rounded-full hover:bg-red-700 transition flex items-center justify-center shadow-md transform hover:scale-105">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openKomplainModal(invoice, storeName) {
+        document.getElementById('komplainInvoice').innerText = invoice;
+        document.getElementById('komplainStoreName').innerText = storeName;
+
+        const modal = document.getElementById('komplainModal');
+        const content = document.getElementById('komplainModalContent');
+
+        modal.classList.remove('hidden');
+        // Sedikit delay untuk efek animasi masuk
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    function closeKomplainModal() {
+        const modal = document.getElementById('komplainModal');
+        const content = document.getElementById('komplainModalContent');
+
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+
+        // Tunggu animasi selesai baru sembunyikan modal
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+</script>
 @endsection
