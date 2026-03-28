@@ -586,23 +586,15 @@ class CheckoutController extends Controller
                     Log::info('Memulai proses DOKU (Jokul) Marketplace untuk ' . $order->invoice_number);
 
                     // ==============================================================
-                    // 🔥🔥 LOGIKA ROUTING DANA (UPDATE: CUKUP CEK ID SAJA) 🔥🔥
+                    // 🔥🔥 UBAH LOGIKA ROUTING DOKU (HOLD DANA KE ADMIN) 🔥🔥
                     // ==============================================================
-                    $targetSacId = null;
+                    $targetSacId = null; // <-- DIBUAT NULL AGAR DANA SELALU MASUK KE ADMIN DULU
 
-                    // 1. Cek apakah Toko punya ID Sub Account DOKU
-                    // (HAPUS cek status 'ACTIVE' sesuai info dari DOKU)
+                    // Pengecekan hanya untuk dicatat di Log saja
                     if (!empty($store->doku_sac_id)) {
-                        // KONDISI A: Toko SUDAH punya SAC ID
-                        // Dana akan langsung masuk ke dompet DOKU Toko Penjual
-                        // Status akun akan otomatis aktif saat terima dana pertama
-                        $targetSacId = $store->doku_sac_id;
-                        Log::info("DOKU Routing: Dana diarahkan ke Toko (SAC: {$targetSacId})");
+                        Log::info("DOKU Routing: Toko punya SAC ID ({$store->doku_sac_id}), TAPI dana ditahan di Admin Sancaka (Master Account) sampai admin klik cairkan.");
                     } else {
-                        // KONDISI B: Toko BELUM punya akun DOKU sama sekali
-                        // Dana masuk ke Master Account (Rekening Admin Sancaka)
-                        $targetSacId = null;
-                        Log::info("DOKU Routing: Toko tidak punya SAC ID. Dana cair ke Admin Sancaka (Master Account).");
+                        Log::info("DOKU Routing: Toko tidak punya SAC ID. Dana ditahan di Admin Sancaka (Master Account).");
                     }
 
                     $dokuService = new DokuJokulService();
