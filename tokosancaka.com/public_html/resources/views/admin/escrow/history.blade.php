@@ -7,7 +7,7 @@
     <div class="mb-6 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
             <div class="flex items-center gap-2 text-sm text-blue-600 font-medium mb-1">
-                <a href="{{ route('admin.escrow.index') }}" class="hover:underline"><i class="fas fa-arrow-left mr-1"></i> Kembali ke Escrow Utama</a>
+                <a href="{{ route('admin.escrow.index') }}" class="hover:underline"><i class="fas fa-arrow-left mr-1"></i> Dashboard Pencairan Dana Marketplace</a>
             </div>
             <h2 class="text-2xl font-bold text-gray-800">Riwayat Pencairan Dana</h2>
             <p class="text-sm text-gray-500 mt-1">Laporan rekam jejak dana yang sudah berhasil ditransfer ke saldo penjual.</p>
