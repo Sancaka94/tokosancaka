@@ -90,17 +90,33 @@ class KirimAjaController extends Controller
                     // Simpan status lama untuk validasi perubahan
                     $oldStatus = $order->status;
 
+                    // Siapkan wadah untuk data yang akan di-update ke database
+                    $updateOrderData = ['updated_at' => $updateTime];
+
                     if ($awb) {
-                        $order->shipping_reference = $awb;
+                        $updateOrderData['shipping_reference'] = $awb;
                     }
+
+                    if ($statusGeneral) {
+                        // Perbaikan: Ganti 'shipment' jadi 'shipped' karena standar e-commerce biasanya pakai shipped
+                        $finalStatus = ($statusGeneral === 'shipment') ? 'shipped' : $statusGeneral;
+
+                        // Hanya update jika status belum final atau status baru beda
+                        if ($order->status !== 'completed' && $order->status !== 'canceled') {
+                             $updateOrderData['status'] = $finalStatus;
+                        }
+
+                        // Timestamp logic
+                        if ($method === 'shipped_packages' && $shippedAt) $updateOrderData['shipped_at'] = Carbon::parse($shippedAt)->timezone('Asia/Jakarta');
+                        elseif ($method === 'finished_packages' && $finishedAt) $updateOrderData['finished_at'] = Carbon::parse($finishedAt)->timezone('Asia/Jakarta');
+                        elseif (isset($timestampMap[$method])) $updateOrderData[$timestampMap[$method]] = $updateTime;
 
                         // ---------------------------------------------------------------------
                         // 🔥 [FIX] TAHAN DANA DI ESCROW (JANGAN LANGSUNG CAIRKAN)
                         // ---------------------------------------------------------------------
                         // Syarat: Status BARU saja berubah jadi 'completed' DAN status lama BUKAN 'completed'
-                        if ($statusGeneral === 'completed' && $oldStatus !== 'completed') {
+                        if ($finalStatus === 'completed' && $oldStatus !== 'completed') {
 
-                            // Cek apakah data penahanan dana (Escrow) sudah dibuat untuk order ini?
                             $cekEscrow = \App\Models\Escrow::where('order_id', $order->id)->exists();
 
                             if (!$cekEscrow) {
@@ -114,16 +130,18 @@ class KirimAjaController extends Controller
                                     'nominal_ongkir'  => $order->shipping_cost ?? 0,
                                     'status_dana'     => 'ditahan',
                                 ]);
-                                Log::info("[WEBHOOK-KA] 🛡️ Dana pesanan $orderId berhasil DITAHAN di tabel Escrow. Menunggu pencairan manual.");
+                                Log::info("[WEBHOOK-KA] 🛡️ Dana pesanan $orderId berhasil DITAHAN di tabel Escrow.");
                             } else {
                                 Log::info("[WEBHOOK-KA] 🛡️ Escrow untuk pesanan $orderId sudah ada. Skip.");
                             }
-
-                            // Fungsi processMarketplaceRevenue dan processDokuDisbursement KITA HAPUS (Tidak dipanggil lagi)
-                            // Karena pencairan sekarang dilakukan 100% manual oleh Admin di menu Escrow.
                         }
-                    $order->save();
-                    Log::info("[WEBHOOK-KA] Updated Marketplace Order: $orderId");
+                    }
+
+                    // 🔥 PERBAIKAN UTAMA: Eksekusi Update via Query Builder (DB::table)
+                    // Ini memastikan data status langsung tertulis ke MySQL tanpa dihalangi Model
+                    DB::table('orders')->where('id', $order->id)->update($updateOrderData);
+
+                    Log::info("[WEBHOOK-KA] Updated Marketplace Order: $orderId ke status " . ($updateOrderData['status'] ?? $oldStatus));
                 }
 
                 // =========================================================================
@@ -203,11 +221,18 @@ class KirimAjaController extends Controller
                 $orderMarketplace = OrderMarketplace::where('invoice_number', $orderId)->first();
                 if ($orderMarketplace) {
                     $foundInMainDB = true;
-                    if ($awb) $orderMarketplace->shipping_resi = $awb;
+                    $updateMpData = ['updated_at' => $updateTime];
+
+                    if ($awb) $updateMpData['shipping_resi'] = $awb;
+
                     if ($statusGeneral && $orderMarketplace->status !== 'completed') {
-                        $orderMarketplace->status = $statusGeneral;
+                        $finalStatus = ($statusGeneral === 'shipment') ? 'shipped' : $statusGeneral;
+                        $updateMpData['status'] = $finalStatus;
                     }
-                    $orderMarketplace->save();
+
+                    // Gunakan nama tabel aslinya, sesuaikan jika namanya bukan 'order_marketplaces'
+                    $tableName = $orderMarketplace->getTable();
+                    DB::table($tableName)->where('id', $orderMarketplace->id)->update($updateMpData);
                 }
 
                 if (!$foundInMainDB) {
