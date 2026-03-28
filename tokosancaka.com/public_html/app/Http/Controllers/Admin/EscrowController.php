@@ -70,13 +70,16 @@ class EscrowController extends Controller
             // 3. Tambah Saldo ke Toko / Penjual & Catat Riwayat TopUp
             $seller = $escrow->store->user ?? null;
             if ($seller) {
-                // A. Tambahkan nominal ke saldo penjual
-                $seller->increment('saldo', $escrow->nominal_ditahan);
+                // 1. Hitung Dana Murni Penjual (Total Transaksi - Ongkir)
+                $nominalCair = $escrow->nominal_ditahan - $escrow->nominal_ongkir;
 
-                // B. Catat mutasi di tabel TopUp agar penjual punya riwayat pemasukan
+                // A. Tambahkan nominal MURNI ke saldo penjual
+                $seller->increment('saldo', $nominalCair);
+
+                // B. Catat mutasi di tabel TopUp
                 \App\Models\TopUp::create([
                     'customer_id'    => $seller->id_pengguna,
-                    'amount'         => $escrow->nominal_ditahan,
+                    'amount'         => $nominalCair, // <-- Pastikan ini pakai $nominalCair
                     'status'         => 'success',
                     'payment_method' => 'marketplace_revenue',
                     'transaction_id' => 'REV-' . $escrow->invoice_number, // Kunci Idempotency
