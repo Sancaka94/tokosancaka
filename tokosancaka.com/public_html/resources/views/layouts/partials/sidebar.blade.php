@@ -222,8 +222,8 @@
             {{-- ================= MARKETPLACE ================= --}}
 
             {{-- Marketplace Dropdown --}}
-            <div x-data="{ open: {{ request()->is('admin/products*') || request()->is('admin/spx-scans*') || request()->routeIs('admin.reviews.*') || request()->routeIs('admin.stores.*') || request()->routeIs('admin.orders.*') ? 'true' : 'false' }} }"
-                 x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+            <div x-data="{ open: {{ request()->is('admin/products*') || request()->is('admin/spx-scans*') || request()->routeIs('admin.reviews.*') || request()->routeIs('admin.stores.*') || request()->routeIs('admin.orders.*') || request()->routeIs('admin.escrow.*') ? 'true' : 'false' }} }"
+                -show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                  x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true">
 
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
@@ -241,6 +241,16 @@
 
                 <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
                     <ul class="pl-9 pr-2 py-1 space-y-1">
+                        {{-- MENU BARU: DATA ESCROW --}}
+                        <li>
+                            <a href="{{ route('admin.escrow.index') }}" wire:navigate
+                               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                               class="flex justify-between items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.escrow.*') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                <span><i class="fas fa-shield-alt mr-2 {{ request()->routeIs('admin.escrow.*') ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500' }}"></i> Data Escrow</span>
+                                {{-- Opsional: Badge notifikasi --}}
+                                <span id="escrow-badge" class="inline-flex items-center justify-center px-1.5 text-[10px] font-bold text-white bg-orange-500 rounded-md hidden">0</span>
+                            </a>
+                        </li>
                         <li><a href="{{ route('admin.reviews.index') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.reviews.*') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">Manajemen Ulasan</a></li>
                         <li><a href="{{ route('admin.categories.index', ['type' => 'marketplace']) }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.categories.*') && request('type') == 'marketplace' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">Kategori Produk</a></li>
                         <li><a href="{{ route('admin.stores.index') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.stores.index') || request()->routeIs('admin.stores.edit') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">Kelola Toko</a></li>
