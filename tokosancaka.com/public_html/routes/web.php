@@ -824,10 +824,13 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     // 1. Menampilkan Halaman Tabel Escrow
     Route::get('/escrow', [EscrowController::class, 'index'])->name('escrow.index');
 
-    // 2. Tombol Action: Cairkan Dana
+    // 2. Menampilkan Halaman Riwayat Escrow
+    Route::get('/escrow/history', [EscrowController::class, 'history'])->name('escrow.history');
+
+    // 3. Tombol Action: Cairkan Dana
     Route::post('/escrow/{id}/cairkan', [EscrowController::class, 'cairkan'])->name('escrow.cairkan');
 
-    // 3. Tombol Action: Mediasi
+    // 4. Tombol Action: Mediasi
     Route::get('/escrow/{id}/mediasi', [EscrowController::class, 'mediasi'])->name('escrow.mediasi');
 
 

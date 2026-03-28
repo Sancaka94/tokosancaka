@@ -202,4 +202,33 @@ class EscrowController extends Controller
             Log::error("Gagal kirim WA Notif Cair Escrow: " . $e->getMessage());
         }
     }
+
+    /**
+     * Menampilkan Halaman Riwayat Pencairan Escrow
+     */
+    public function history(Request $request)
+    {
+        // Ambil hanya data yang statusnya sudah 'dicairkan'
+        $query = Escrow::with(['store.user', 'order'])->where('status_dana', 'dicairkan');
+
+        // Filter berdasarkan tanggal pencairan (bukan tanggal order)
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('dicairkan_pada', [
+                $request->start_date . ' 00:00:00',
+                $request->end_date . ' 23:59:59'
+            ]);
+        }
+
+        $query->orderBy('dicairkan_pada', 'desc');
+
+        // Hitung total metrik untuk Card di atas tabel
+        $statsQuery = clone $query;
+        // Hitung total dana bersih yang sudah ditransfer ke penjual (Total - Ongkir)
+        $totalDanaBersih = $statsQuery->sum(DB::raw('nominal_ditahan - nominal_ongkir'));
+        $totalTransaksi = $statsQuery->count();
+
+        $escrows = $query->paginate(20)->withQueryString();
+
+        return view('admin.escrow.history', compact('escrows', 'totalDanaBersih', 'totalTransaksi'));
+    }
 }
