@@ -66,7 +66,7 @@
 
             {{-- Body Tabel (Loop) --}}
             <div class="bg-white divide-y divide-gray-200">
-                @forelse ($orders as $order)
+                forelse ($orders as $order)
                     <div class="p-6">
                         <div class="grid grid-cols-1 lg:grid-cols-12 gap-x-4 gap-y-6 text-sm">
 
