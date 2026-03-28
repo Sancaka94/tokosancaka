@@ -665,6 +665,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         ->name('admin.ppob.category');
 
 
+    // Pastikan ini di dalam: Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () { ... });
+
+Route::get('/escrow', [App\Http\Controllers\Admin\EscrowController::class, 'index'])->name('admin.escrow.index');
+Route::post('/escrow/{id}/cairkan', [App\Http\Controllers\Admin\EscrowController::class, 'cairkan'])->name('admin.escrow.cairkan');
+Route::get('/escrow/{id}/mediasi', [App\Http\Controllers\Admin\EscrowController::class, 'mediasi'])->name('admin.escrow.mediasi');
+
+
 
     // Rute AJAX untuk Manajemen Kategori
     Route::post('/categories/ajax-store', [App\Http\Controllers\Admin\CategoryController::class, 'storeAjax'])
