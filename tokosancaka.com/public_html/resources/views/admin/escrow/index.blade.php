@@ -168,23 +168,38 @@
                                 <div class="bg-blue-50/50 p-2 rounded border border-blue-100 mb-2">
                                     <div class="flex items-center gap-2 mb-1.5">
                                         @php
-                                            $kurir = strtolower($escrow->order->shipping_courier ?? 'kurir');
-                                            $logoPath = 'storage/couriers/' . $kurir . '.png';
+                                            // Memanggil Helper yang sama persis seperti di menu Pesanan
+                                            $ship = \App\Helpers\ShippingHelper::parseShippingMethod($escrow->order->shipping_courier ?? $escrow->order->expedition ?? '');
+                                            $courierName = $ship['courier_name'] ?? $escrow->order->shipping_courier ?? 'N/A';
+                                            $serviceName = $ship['service_name'] ?? $escrow->order->shipping_service ?? 'N/A';
+                                            $logoUrl     = $ship['logo_url'] ?? null;
                                         @endphp
-                                        <img src="{{ asset($logoPath) }}" onerror="this.src='https://placehold.co/50x25/e2e8f0/64748b?text=KURIR'" class="h-6 w-auto object-contain rounded bg-white px-1 border border-gray-100 shadow-sm" alt="Logo Kurir">
+
+                                        @if($logoUrl)
+                                            <img src="{{ $logoUrl }}" class="h-6 w-auto object-contain rounded bg-white px-1 border border-gray-100 shadow-sm" alt="{{ $courierName }}">
+                                        @else
+                                            <div class="h-6 px-2 flex items-center justify-center bg-gray-200 text-gray-500 font-bold text-[10px] rounded border border-gray-300">
+                                                {{ substr($courierName, 0, 4) }}
+                                            </div>
+                                        @endif
+
                                         <div class="leading-tight">
-                                            <div class="text-[11px] font-bold text-gray-800 uppercase">{{ $escrow->order->shipping_courier ?? 'EKSPEDISI' }}</div>
-                                            <div class="text-[9px] text-gray-500 uppercase">{{ $escrow->order->shipping_service ?? 'Layanan' }}</div>
+                                            <div class="text-[11px] font-bold text-gray-800 uppercase">{{ $courierName }}</div>
+                                            <div class="text-[9px] text-gray-500 uppercase">{{ $serviceName }}</div>
                                         </div>
                                     </div>
+
                                     <div class="text-xs text-gray-800 font-medium flex items-center mt-1 pt-1 border-t border-blue-100/60 w-max">
                                         <span class="text-gray-500 mr-1 text-[10px]">Resi:</span>
-                                        <span class="text-blue-700 font-bold tracking-wider">{{ $escrow->order->shipping_reference ?? 'Belum ada resi' }}</span>
+                                        <span class="text-blue-700 font-bold tracking-wider" id="resi-{{$escrow->id}}">{{ $escrow->order->shipping_reference ?? 'Belum ada resi' }}</span>
                                         @if($escrow->order->shipping_reference)
-                                            <button onclick="copyResi('{{ $escrow->order->shipping_reference }}')" class="ml-2 text-blue-400 hover:text-blue-800 transition-colors" title="Salin Resi"><i class="far fa-copy"></i></button>
+                                            <button onclick="copyResi('{{ $escrow->order->shipping_reference }}')" class="ml-2 text-blue-400 hover:text-blue-800 transition-colors" title="Salin Resi">
+                                                <i class="far fa-copy"></i>
+                                            </button>
                                         @endif
                                     </div>
                                 </div>
+
 
                                 <div class="bg-gray-50 p-2 rounded border border-gray-200">
                                     <ul class="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
