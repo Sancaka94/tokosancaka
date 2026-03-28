@@ -399,7 +399,7 @@
         const chatBox = document.getElementById('chatBoxContent');
         chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4"><i class="fas fa-spinner fa-spin"></i> Memuat pesan...</div>';
 
-        // MENGGUNAKAN {{ url() }} AGAR PATH AJAX TIDAK ERROR (NOT FOUND)
+
         fetch(`{{ url('admin/escrow/chat') }}/${currentInvoice}`)
             .then(res => res.json())
             .then(data => {
