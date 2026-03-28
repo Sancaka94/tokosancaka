@@ -94,38 +94,34 @@ class KirimAjaController extends Controller
                         $order->shipping_reference = $awb;
                     }
 
-                    if ($statusGeneral) {
-                        // Hanya update jika status belum final atau status baru beda
-                        if ($order->status !== 'completed' && $order->status !== 'canceled') {
-                             $order->status = $statusGeneral;
-                        }
-
-                        // Timestamp logic (Sama)
-                        if ($method === 'shipped_packages' && $shippedAt) $order->shipped_at = Carbon::parse($shippedAt)->timezone('Asia/Jakarta');
-                        elseif ($method === 'finished_packages' && $finishedAt) $order->finished_at = Carbon::parse($finishedAt)->timezone('Asia/Jakarta');
-                        elseif (isset($timestampMap[$method])) $order->{$timestampMap[$method]} = $updateTime;
-
-                        // ---------------------------------------------------------------------
-                        // 🔥 [FIX] PROTEKSI DOBEL PENCAIRAN (MARKETPLACE)
+                    // ---------------------------------------------------------------------
+                        // 🔥 [FIX] TAHAN DANA DI ESCROW (JANGAN LANGSUNG CAIRKAN)
                         // ---------------------------------------------------------------------
                         // Syarat: Status BARU saja berubah jadi 'completed' DAN status lama BUKAN 'completed'
                         if ($statusGeneral === 'completed' && $oldStatus !== 'completed') {
 
-                            // DOUBLE CHECK: Cek apakah saldo revenue sudah pernah masuk di tabel TopUp?
-                            // Kita cek berdasarkan transaction_id unik (REV-NoInvoice)
-                            $cekRevenueExists = TopUp::where('transaction_id', 'REV-' . $order->invoice_number)->exists();
+                            // Cek apakah data penahanan dana (Escrow) sudah dibuat untuk order ini?
+                            $cekEscrow = \App\Models\Escrow::where('order_id', $order->id)->exists();
 
-                            if (!$cekRevenueExists) {
-                                $this->processMarketplaceRevenue($order, $updateTime);
-
-                                // --- PROSES DOKU (AUTO CAIR) ---
-                                // Logika DOKU dipindah ke sini agar hanya jalan SEKALI saat status berubah
-                                $this->processDokuDisbursement($order);
+                            if (!$cekEscrow) {
+                                // Masukkan dana ke tabel Escrow dengan status "ditahan"
+                                \App\Models\Escrow::create([
+                                    'order_id'        => $order->id,
+                                    'invoice_number'  => $order->invoice_number,
+                                    'store_id'        => $order->store_id,
+                                    'user_id'         => $order->user_id,
+                                    'nominal_ditahan' => $order->total_amount ?? $order->subtotal,
+                                    'nominal_ongkir'  => $order->shipping_cost ?? 0,
+                                    'status_dana'     => 'ditahan',
+                                ]);
+                                Log::info("[WEBHOOK-KA] 🛡️ Dana pesanan $orderId berhasil DITAHAN di tabel Escrow. Menunggu pencairan manual.");
                             } else {
-                                Log::warning("[WEBHOOK-KA] 🛑 Saldo Marketplace sudah pernah dicairkan utk $orderId. Skip.");
+                                Log::info("[WEBHOOK-KA] 🛡️ Escrow untuk pesanan $orderId sudah ada. Skip.");
                             }
+
+                            // Fungsi processMarketplaceRevenue dan processDokuDisbursement KITA HAPUS (Tidak dipanggil lagi)
+                            // Karena pencairan sekarang dilakukan 100% manual oleh Admin di menu Escrow.
                         }
-                    }
                     $order->save();
                     Log::info("[WEBHOOK-KA] Updated Marketplace Order: $orderId");
                 }

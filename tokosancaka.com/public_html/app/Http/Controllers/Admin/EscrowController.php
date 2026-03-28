@@ -38,7 +38,7 @@ class EscrowController extends Controller
     }
 
     /**
-     * Proses Pencairan Dana ke Penjual
+     * Proses Pencairan Dana ke Penjual (Klik dari Admin)
      */
     public function cairkan(Request $request, $id)
     {
@@ -57,27 +57,37 @@ class EscrowController extends Controller
             $escrow->catatan = 'Dicairkan manual oleh Admin Sancaka.';
             $escrow->save();
 
-            // 3. Tambah Saldo ke Toko / Penjual
+            // 3. Tambah Saldo ke Toko / Penjual & Catat Riwayat TopUp
             $seller = $escrow->store->user ?? null;
             if ($seller) {
-                // Asumsi di tabel Pengguna mas ada kolom 'saldo'
-                // Kita tambahkan nominal_ditahan ke saldo penjual
+                // A. Tambahkan nominal ke saldo penjual
                 $seller->increment('saldo', $escrow->nominal_ditahan);
+
+                // B. Catat mutasi di tabel TopUp agar penjual punya riwayat pemasukan
+                \App\Models\TopUp::create([
+                    'customer_id'    => $seller->id_pengguna,
+                    'amount'         => $escrow->nominal_ditahan,
+                    'status'         => 'success',
+                    'payment_method' => 'marketplace_revenue',
+                    'transaction_id' => 'REV-' . $escrow->invoice_number, // Kunci Idempotency
+                    'reference_id'   => $escrow->invoice_number,
+                    'created_at'     => now(),
+                ]);
 
                 Log::info("ESCROW CAIR: Rp " . number_format($escrow->nominal_ditahan) . " ke {$seller->nama_lengkap} (Invoice: {$escrow->invoice_number})");
 
-                // 4. Kirim WA Notifikasi ke Penjual pakai Fonnte
+                // C. Kirim WA Notifikasi ke Penjual pakai Fonnte
                 $this->kirimNotifCair($seller, $escrow);
             }
 
-            // 5. Update status Order jadi 'completed' / selesai (Opsional, sesuaikan alur bisnis mas)
+            // 4. Update status Order jadi 'completed' / selesai
             if ($escrow->order) {
                 $escrow->order->status = 'completed';
                 $escrow->order->save();
             }
 
             DB::commit();
-            return back()->with('success', 'Dana sebesar Rp ' . number_format($escrow->nominal_ditahan, 0, ',', '.') . ' berhasil dicairkan ke saldo penjual.');
+            return back()->with('success', 'Dana sebesar Rp ' . number_format($escrow->nominal_ditahan, 0, ',', '.') . ' berhasil dicairkan ke saldo penjual dan tercatat di riwayat.');
 
         } catch (\Exception $e) {
             DB::rollBack();
