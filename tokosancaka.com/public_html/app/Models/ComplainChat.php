@@ -12,7 +12,7 @@ class ComplainChat extends Model
     protected $table = 'complain_chats';
     protected $guarded = [];
 
-    // Relasi untuk menarik nama pengirim (Customer/User)
+    // Relasi untuk menarik nama pengirim
     public function sender()
     {
         return $this->belongsTo(User::class, 'sender_id', 'id_pengguna');
