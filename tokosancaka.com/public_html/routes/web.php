@@ -822,13 +822,13 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     // ROUTE ESCROW / PENAHANAN DANA
     // ==========================================
     // 1. Menampilkan Halaman Tabel Escrow
-    Route::get('/escrow', [EscrowController::class, 'index'])->name('admin.escrow.index');
+    Route::get('/escrow', [EscrowController::class, 'index'])->name('escrow.index');
 
     // 2. Tombol Action: Cairkan Dana
-    Route::post('/escrow/{id}/cairkan', [EscrowController::class, 'cairkan'])->name('admin.escrow.cairkan');
+    Route::post('/escrow/{id}/cairkan', [EscrowController::class, 'cairkan'])->name('escrow.cairkan');
 
     // 3. Tombol Action: Mediasi
-    Route::get('/escrow/{id}/mediasi', [EscrowController::class, 'mediasi'])->name('admin.escrow.mediasi');
+    Route::get('/escrow/{id}/mediasi', [EscrowController::class, 'mediasi'])->name('escrow.mediasi');
 
 });
 
