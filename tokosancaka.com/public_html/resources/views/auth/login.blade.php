@@ -127,7 +127,7 @@
                             </label>
                         </div>
                         @if (Route::has('password.request') && !request()->is('admin/*'))
-                            <a href="{{ $passwordRequestRoute }}" class="small text-danger text-decoration-none">Lupa password?</a>
+                            <a href="https://tokosancaka.com/password/reset" class="small text-danger text-decoration-none">Lupa password?</a>
                         @endif
                     </div>
 
@@ -156,7 +156,7 @@
         const input = document.getElementById(fieldId);
         // Mengambil icon yang berada tepat setelah input di dalam parent yang sama
         const icon = input.parentElement.querySelector('.password-toggle-icon');
-        
+
         if (input.type === "password") {
             input.type = "text";
             icon.classList.remove('fa-eye');
