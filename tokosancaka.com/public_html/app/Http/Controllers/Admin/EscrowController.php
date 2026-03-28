@@ -12,28 +12,38 @@ use App\Services\FonnteService; // Untuk kirim WA notifikasi pencairan
 
 class EscrowController extends Controller
 {
-    /**
-     * Menampilkan daftar Escrow (Penahanan Dana)
-     */
     public function index(Request $request)
     {
-        // Ambil data escrow beserta relasinya biar tidak N+1 query (loading cepat)
-        // Kita ambil detail pesanan, toko, penjual (user di dalam toko), dan pembeli (buyer)
+        // 1. AUTO-SYNC: Tarik semua pesanan yang sudah dibayar/diproses ke tabel Escrow
+        // (Pakai firstOrCreate agar tidak ada data ganda)
+        $paidOrders = Order::whereIn('status', ['paid', 'processing', 'shipped', 'shipment', 'completed', 'selesai', 'sampai'])->get();
+
+        foreach($paidOrders as $ord) {
+            \App\Models\Escrow::firstOrCreate(
+                ['order_id' => $ord->id],
+                [
+                    'invoice_number'  => $ord->invoice_number,
+                    'store_id'        => $ord->store_id,
+                    'user_id'         => $ord->user_id,
+                    'nominal_ditahan' => $ord->total_amount ?? $ord->subtotal,
+                    'nominal_ongkir'  => $ord->shipping_cost ?? 0,
+                    'status_dana'     => 'ditahan',
+                ]
+            );
+        }
+
+        // 2. Ambil data escrow untuk ditampilkan di tabel
         $query = Escrow::with(['order.items.product', 'order.items.variant', 'store.user', 'buyer'])
                        ->orderBy('created_at', 'desc');
 
-        // Filter opsional jika mas mau tambahkan dropdown filter status di blade nanti
         if ($request->has('status') && $request->status != '') {
             $query->where('status_dana', $request->status);
         } else {
-            // Default: Tampilkan yang masih 'ditahan' atau 'mediasi' di halaman awal
             $query->whereIn('status_dana', ['ditahan', 'mediasi']);
         }
 
         $escrows = $query->paginate(15);
 
-        // Lempar data ke view blade yang sudah mas buat sebelumnya
-        // Ganti nama variabel di foreach blade mas dari $orders menjadi $escrows
         return view('admin.escrow.index', compact('escrows'));
     }
 
