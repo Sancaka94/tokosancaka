@@ -1,6 +1,6 @@
 {{--
 File: resources/views/customer/pesanan/riwayat_belanja.blade.php
-Updated: Penambahan Tombol Terima Paket & Chat Komplain
+Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
 --}}
 
 @extends('layouts.customer')
@@ -22,6 +22,18 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain
             </a>
         </div>
 
+        {{-- Alert Success/Error untuk Terima Paket --}}
+        @if(session('success'))
+            <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative shadow-sm">
+                <span class="block sm:inline"><i class="fas fa-check-circle mr-1"></i> {{ session('success') }}</span>
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative shadow-sm">
+                <span class="block sm:inline"><i class="fas fa-exclamation-circle mr-1"></i> {{ session('error') }}</span>
+            </div>
+        @endif
+
         {{-- Jika Tidak Ada Pesanan --}}
         @if($pesanans->isEmpty())
             <div class="bg-white rounded-xl shadow-sm p-12 text-center border border-dashed border-gray-300">
@@ -30,7 +42,7 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain
                 </div>
                 <h3 class="text-xl font-medium text-gray-900">Belum ada riwayat belanja</h3>
                 <p class="text-gray-500 mt-2 mb-6">Sepertinya Anda belum pernah checkout barang apapun.</p>
-                <a href="{{ route('katalog.index') }}" class="text-red-600 hover:text-red-800 font-semibold hover:underline">
+                <a href="https://tokosancaka.com/etalase" class="text-red-600 hover:text-red-800 font-semibold hover:underline">
                     Cari Produk Sekarang &rarr;
                 </a>
             </div>
@@ -206,7 +218,10 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain
                                                 <div class="grid grid-cols-2 gap-2 mt-1">
                                                     <form action="{{ route('customer.pesanan.terima', $order->id ?? 0) }}" method="POST">
                                                         @csrf
-                                                        <button type="submit" onclick="return confirm('Apakah Anda yakin paket sudah diterima dengan baik? \n\nDana akan langsung diteruskan ke saldo penjual dan tidak dapat dikembalikan.');" class="w-full bg-green-500 text-white text-[11px] font-bold py-2.5 rounded-lg hover:bg-green-600 transition flex items-center justify-center shadow-sm">
+                                                        <button type="submit"
+                                                                {{ in_array($status, ['completed', 'selesai']) ? 'disabled' : '' }}
+                                                                onclick="return confirm('Apakah Anda yakin paket sudah diterima dengan baik? \n\nDana akan langsung diteruskan ke saldo penjual dan tidak dapat dikembalikan.');"
+                                                                class="w-full {{ in_array($status, ['completed', 'selesai']) ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600' }} text-white text-[11px] font-bold py-2.5 rounded-lg transition flex items-center justify-center shadow-sm">
                                                             <i class="fas fa-check-circle mr-1"></i> Terima
                                                         </button>
                                                     </form>
@@ -259,7 +274,7 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain
             </button>
         </div>
 
-        <div class="flex-1 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-gray-100 p-4 overflow-y-auto flex flex-col gap-4">
+        <div id="chatScrollArea" class="flex-1 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-gray-100 p-4 overflow-y-auto flex flex-col gap-4">
 
             <div class="text-center mb-2">
                 <span class="bg-white border border-gray-200 text-gray-600 text-[10px] px-3 py-1 rounded-full font-bold shadow-sm">
@@ -280,14 +295,16 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain
                 </div>
             </div>
 
-            </div>
+            <div id="chatBoxContent" class="flex flex-col gap-1 mt-2"></div>
 
-        <form action="#" method="POST" class="p-3 border-t border-gray-200 bg-white flex items-center gap-2">
+        </div>
+
+        <form onsubmit="sendChatMsg(event)" class="p-3 border-t border-gray-200 bg-white flex items-center gap-2">
             @csrf
-            <button type="button" class="text-gray-400 hover:text-red-600 transition p-2 bg-gray-50 rounded-full border border-gray-200" title="Lampirkan Foto/Video">
+            <button type="button" class="text-gray-400 hover:text-red-600 transition p-2 bg-gray-50 rounded-full border border-gray-200" title="Lampirkan Foto/Video (Fitur Menyusul)">
                 <i class="fas fa-paperclip"></i>
             </button>
-            <input type="text" name="message" placeholder="Ketik keluhan Anda di sini..." class="flex-1 border-gray-300 rounded-full text-sm focus:ring-red-500 focus:border-red-500 px-4 py-2 bg-gray-50 shadow-inner" required>
+            <input type="text" id="chatMessageInput" name="message" placeholder="Ketik keluhan Anda di sini..." class="flex-1 border-gray-300 rounded-full text-sm focus:ring-red-500 focus:border-red-500 px-4 py-2 bg-gray-50 shadow-inner" required autocomplete="off">
             <button type="submit" class="bg-red-600 text-white w-10 h-10 rounded-full hover:bg-red-700 transition flex items-center justify-center shadow-md transform hover:scale-105">
                 <i class="fas fa-paper-plane"></i>
             </button>
@@ -296,7 +313,10 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain
 </div>
 
 <script>
+    let currentInvoice = '';
+
     function openKomplainModal(invoice, storeName) {
+        currentInvoice = invoice;
         document.getElementById('komplainInvoice').innerText = invoice;
         document.getElementById('komplainStoreName').innerText = storeName;
 
@@ -304,10 +324,11 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain
         const content = document.getElementById('komplainModalContent');
 
         modal.classList.remove('hidden');
-        // Sedikit delay untuk efek animasi masuk
+        // Animasi masuk
         setTimeout(() => {
             content.classList.remove('scale-95', 'opacity-0');
             content.classList.add('scale-100', 'opacity-100');
+            loadChats(); // Panggil fungsi Tarik Data Chat
         }, 50);
     }
 
@@ -318,10 +339,117 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain
         content.classList.remove('scale-100', 'opacity-100');
         content.classList.add('scale-95', 'opacity-0');
 
-        // Tunggu animasi selesai baru sembunyikan modal
         setTimeout(() => {
             modal.classList.add('hidden');
+            document.getElementById('chatBoxContent').innerHTML = ''; // Bersihkan isi chat agar tidak tertumpuk
         }, 300);
+    }
+
+    // Load Chat dari Database via AJAX
+    function loadChats() {
+        const chatBox = document.getElementById('chatBoxContent');
+        chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4"><i class="fas fa-spinner fa-spin"></i> Memuat pesan...</div>';
+
+        fetch(`/customer/komplain/chat/${currentInvoice}`)
+            .then(res => res.json())
+            .then(data => {
+                chatBox.innerHTML = '';
+                if(data.chats && data.chats.length === 0) {
+                    chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4">Belum ada obrolan. Silakan mulai percakapan.</div>';
+                } else if(data.chats) {
+                    data.chats.forEach(chat => appendChatHTML(chat));
+                }
+                scrollToBottom();
+            })
+            .catch(err => {
+                chatBox.innerHTML = '<div class="text-center text-xs text-red-500 my-4">Gagal memuat pesan.</div>';
+                console.error(err);
+            });
+    }
+
+    // Kirim Chat via AJAX (Dipanggil saat form disubmit)
+    function sendChatMsg(e) {
+        e.preventDefault();
+        const input = document.getElementById('chatMessageInput');
+        const msg = input.value;
+        if(msg.trim() === '') return;
+
+        input.value = ''; // Kosongkan
+        input.disabled = true;
+
+        fetch(`{{ route('customer.komplain.send_chat') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                invoice_number: currentInvoice,
+                message: msg
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            input.disabled = false;
+            input.focus();
+            if(data.success) {
+                appendChatHTML(data.chat);
+                scrollToBottom();
+            } else {
+                alert('Gagal mengirim pesan: ' + (data.error || 'Kesalahan sistem'));
+            }
+        })
+        .catch(err => {
+            input.disabled = false;
+            console.error(err);
+            alert('Terjadi kesalahan jaringan.');
+        });
+    }
+
+    // Render HTML Chat Bubble
+    function appendChatHTML(chat) {
+        const chatBox = document.getElementById('chatBoxContent');
+        const isCustomer = chat.sender_type === 'customer';
+
+        const dateObj = new Date(chat.created_at);
+        const time = dateObj.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
+
+        let html = '';
+        if(isCustomer) {
+            // Bubble Pembeli (Kanan)
+            html = `
+            <div class="flex items-start justify-end gap-2 mt-2">
+                <div class="bg-red-50 border border-red-100 rounded-2xl rounded-tr-none p-3 max-w-[80%] shadow-sm">
+                    <p class="text-xs text-gray-800 leading-relaxed">${chat.message}</p>
+                    <p class="text-[9px] text-gray-400 mt-1 text-right">${time}</p>
+                </div>
+            </div>`;
+        } else {
+            // Bubble Penjual / Admin (Kiri)
+            const icon = chat.sender_type === 'admin' ? '<i class="fas fa-shield-alt text-blue-500"></i>' : '<i class="fas fa-store text-orange-500"></i>';
+            const senderName = chat.sender_type === 'admin' ? 'Admin Sancaka' : (chat.sender ? chat.sender.nama_lengkap : 'Penjual');
+
+            html = `
+            <div class="flex items-start gap-2 mt-2">
+                <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-200 text-xs">
+                    ${icon}
+                </div>
+                <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-3 max-w-[80%] shadow-sm">
+                    <p class="text-[10px] font-bold mb-1 ${chat.sender_type === 'admin' ? 'text-blue-600' : 'text-orange-600'}">${senderName}</p>
+                    <p class="text-xs text-gray-800 leading-relaxed">${chat.message}</p>
+                    <p class="text-[9px] text-gray-400 mt-1 text-left">${time}</p>
+                </div>
+            </div>`;
+        }
+
+        // Hapus keterangan kosong jika ada
+        if(chatBox.innerHTML.includes('Belum ada obrolan')) { chatBox.innerHTML = ''; }
+        chatBox.insertAdjacentHTML('beforeend', html);
+    }
+
+    function scrollToBottom() {
+        const area = document.getElementById('chatScrollArea');
+        if(area) area.scrollTop = area.scrollHeight;
     }
 </script>
 @endsection

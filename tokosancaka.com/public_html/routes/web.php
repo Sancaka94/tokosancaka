@@ -111,6 +111,9 @@ use App\Http\Controllers\CashflowController;
 // Website fontend WA Integration
 //use App\Http\Controllers\WhatsappController;
 
+// Komplain Chat dan Pencairan Dana Marketplace
+use App\Http\Controllers\Customer\PesananActionController;
+
 use App\Http\Controllers\Toko\DokuRegistrationController;
 
 //Tools Broadcast Pesan WA
@@ -1055,3 +1058,9 @@ Route::get('/password/reset', [CustomerForgotPasswordController::class, 'showLin
 
 // 2. Route untuk memproses tombol "Kirim Link WA" (harus sama dengan action di form blade)
 Route::post('/password/reset', [CustomerForgotPasswordController::class, 'sendResetLinkRequest'])->name('password.phone');
+
+
+// Pencairan Dana Penjual Marketplace dan Komplain Chat
+Route::post('/customer/pesanan/{id}/terima', [PesananActionController::class, 'terimaPaket'])->name('customer.pesanan.terima');
+Route::get('/customer/komplain/chat/{invoice}', [PesananActionController::class, 'getChat'])->name('customer.komplain.get_chat');
+Route::post('/customer/komplain/chat', [PesananActionController::class, 'sendChat'])->name('customer.komplain.send_chat');
