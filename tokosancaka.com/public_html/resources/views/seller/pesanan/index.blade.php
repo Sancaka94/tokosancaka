@@ -3,59 +3,58 @@
 
 @push('styles')
 <style>
-    /* Style untuk ikon alamat (sama seperti dashboard) */
     .address-icon {
         width: 1.25rem; height: 1.25rem; flex-shrink: 0;
         display: flex; align-items: center; justify-content: center;
         border-radius: 50%; color: white;
     }
-    .icon-send { background-color: #3B82F6; } /* blue-500 */
-    .icon-receive { background-color: #8B5CF6; } /* violet-500 */
+    .icon-send { background-color: #3B82F6; }
+    .icon-receive { background-color: #8B5CF6; }
 </style>
 @endpush
 
 @section('content')
-<div class="py-12">
+<div class="py-12 bg-gray-50 min-h-screen">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
         {{-- Header & Tombol Kembali --}}
         <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
             <div>
-                <h2 class="text-2xl font-semibold text-gray-800">
+                <h2 class="text-2xl font-bold text-gray-800">
                     Laporan Pesanan Marketplace
                 </h2>
-                <p class="mt-1 text-gray-600">
+                <p class="mt-1 text-sm text-gray-600">
                     Semua pesanan produk yang masuk melalui checkout.
                 </p>
             </div>
             <div class="flex-shrink-0">
-                 <a href="{{ route('seller.dashboard') }}" class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-500 active:bg-gray-700">
+                 <a href="{{ route('seller.dashboard') }}" class="inline-flex items-center px-4 py-2.5 bg-gray-800 rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 transition shadow-sm">
                     &larr; Kembali ke Dashboard
                 </a>
             </div>
         </div>
 
         {{-- Card Utama --}}
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-xl border border-gray-200">
 
             {{-- Form Pencarian --}}
-            <div class="p-6 border-b border-gray-200">
+            <div class="p-6 border-b border-gray-100 bg-gray-50/50">
                 <form action="{{ route('seller.pesanan.marketplace.index') }}" method="GET">
                     <div class="flex flex-col md:flex-row gap-2">
                         <input type="text" name="search"
-                               class="block w-full md:w-1/3 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                               class="block w-full md:w-1/3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 text-sm"
                                placeholder="Cari No. Invoice atau Nama Pelanggan..."
                                value="{{ request('search') }}">
                         <button type="submit"
-                                class="inline-flex justify-center items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900">
-                            Cari
+                                class="inline-flex justify-center items-center px-5 py-2.5 bg-indigo-600 rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition shadow-sm">
+                            <i class="fas fa-search mr-2"></i> Cari
                         </button>
                     </div>
                 </form>
             </div>
 
             {{-- Header Tabel --}}
-            <div class="hidden lg:grid grid-cols-12 gap-4 px-6 py-3 bg-purple-50 border-b border-purple-200 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
+            <div class="hidden lg:grid grid-cols-12 gap-4 px-6 py-3 bg-indigo-50 border-b border-indigo-100 text-left text-xs font-bold text-indigo-800 uppercase tracking-wider">
                 <div class="col-span-1">No</div>
                 <div class="col-span-2">Transaksi</div>
                 <div class="col-span-3">Alamat</div>
@@ -66,84 +65,69 @@
 
             {{-- Body Tabel (Loop) --}}
             <div class="bg-white divide-y divide-gray-200">
-                forelse ($orders as $order)
-                    <div class="p-6">
+                @forelse ($orders as $order)
+                    <div class="p-6 hover:bg-indigo-50/30 transition-colors duration-200">
                         <div class="grid grid-cols-1 lg:grid-cols-12 gap-x-4 gap-y-6 text-sm">
 
                             {{-- NO --}}
                             <div class="lg:col-span-1">
-                                <span class="lg:hidden font-bold text-gray-500">NO: </span>
-                                <span class="text-gray-900 font-medium">{{ $loop->iteration + $orders->firstItem() - 1 }}</span>
+                                <span class="lg:hidden font-bold text-gray-500 text-xs">NO: </span>
+                                <span class="text-gray-900 font-bold">{{ $loop->iteration + $orders->firstItem() - 1 }}</span>
                             </div>
 
                             {{-- TRANSAKSI --}}
                             <div class="lg:col-span-2 space-y-1">
-                                <div class="font-bold text-blue-600 uppercase">{{ $order->payment_method }}</div>
-                                <div class="text-gray-900 font-medium">{{ $order->invoice_number }}</div>
+                                <div class="font-bold text-blue-600 uppercase text-xs">{{ $order->payment_method }}</div>
+                                <div class="text-gray-900 font-bold">{{ $order->invoice_number }}</div>
                                 <div class="text-xs text-gray-500">{{ $order->created_at->format('d M Y H:i') }}</div>
-                                {{-- ====================================================== --}}
-                                {{-- PERBAIKAN 1: Menggunakan nama toko dari order --}}
-                                {{-- ====================================================== --}}
-                                <div class="text-xs text-gray-500">Dibuat oleh: {{ $order->store->name ?? 'Toko' }}</div>
+                                <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">Dibuat oleh: <br><span class="text-gray-600 font-semibold">{{ $order->store->name ?? 'Toko' }}</span></div>
                             </div>
 
                             {{-- ALAMAT --}}
                             <div class="lg:col-span-3 space-y-3">
-                                {{-- ====================================================== --}}
-                                {{-- PERBAIKAN 2: Menggunakan alamat toko dari order --}}
-                                {{-- ====================================================== --}}
                                 {{-- Pengirim (Toko Anda) --}}
                                 <div class="flex gap-3">
-                                    <div class="address-icon icon-send">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                                    </div>
+                                    <div class="address-icon icon-send shadow-sm"><i class="fas fa-store text-[10px]"></i></div>
                                     <div>
-                                        {{-- Cek jika relasi store dan store.user ada --}}
                                         @if($order->store)
-                                            <div class="font-medium text-gray-900">{{ $order->store->name ?? 'Toko Pengirim' }} / {{ $order->store->user->no_wa ?? '' }}</div>
-                                            <div class="text-xs text-gray-600">{{ $order->store->address_detail ?? 'Alamat Toko' }}</div>
-                                            <div class="text-xs text-gray-500">{{ $order->store->village }}, {{ $order->store->district }}, {{ $order->store->regency }}</div>
+                                            <div class="font-bold text-gray-900 text-xs">{{ $order->store->name ?? 'Toko Pengirim' }} <span class="text-gray-400 font-normal">/ {{ $order->store->user->no_wa ?? '' }}</span></div>
+                                            <div class="text-[11px] text-gray-600 leading-tight mt-0.5">{{ $order->store->address_detail ?? 'Alamat Toko' }}</div>
                                         @else
-                                            <div class="font-medium text-gray-900">Toko Tidak Ditemukan</div>
+                                            <div class="font-bold text-red-500 text-xs">Toko Tidak Ditemukan</div>
                                         @endif
                                     </div>
                                 </div>
                                 {{-- Penerima (Customer) --}}
                                 <div class="flex gap-3">
-                                    <div class="address-icon icon-receive">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                                    </div>
+                                    <div class="address-icon icon-receive shadow-sm"><i class="fas fa-user text-[10px]"></i></div>
                                     <div>
-                                        <div class="font-medium text-gray-900">{{ $order->user->nama_lengkap ?? 'Customer' }} / {{ $order->user->no_wa ?? '' }}</div>
-                                        <div class="text-xs text-gray-600">{{ $order->shipping_address }}</div>
-                                        <div class="text-xs text-gray-500">{{ $order->user->village ?? '' }}, {{ $order->user->district ?? '' }}, {{ $order->user->regency ?? '' }}</div>
+                                        <div class="font-bold text-gray-900 text-xs">{{ $order->user->nama_lengkap ?? 'Customer' }} <span class="text-gray-400 font-normal">/ {{ $order->user->no_wa ?? '' }}</span></div>
+                                        <div class="text-[11px] text-gray-600 leading-tight mt-0.5">{{ $order->shipping_address }}</div>
                                     </div>
                                 </div>
                             </div>
 
                             {{-- EKSPEDISI & ONGKIR --}}
                             <div class="lg:col-span-2 space-y-1">
-                                {{-- ====================================================== --}}
-                                {{-- PERBAIKAN 3: Parsing string shipping_method --}}
-                                {{-- ====================================================== --}}
                                 @php
-                                    // Input: "regular-tiki-REG-7000-100"
                                     $shippingParts = explode('-', $order->shipping_method);
                                     $courier = $shippingParts[1] ?? 'N/A';
                                     $service = $shippingParts[2] ?? 'N/A';
                                 @endphp
-                                <div class="font-medium text-gray-800 uppercase">{{ $courier }} - {{ $service }}</div>
-                                <div class="font-semibold text-gray-900">Rp{{ number_format($order->shipping_cost) }}</div>
+                                <div class="font-bold text-gray-800 uppercase text-xs border-b border-gray-100 pb-1 w-max">{{ $courier }} - {{ $service }}</div>
+                                <div class="font-bold text-green-600 text-xs pt-1">Rp {{ number_format($order->shipping_cost) }}</div>
+
                                 @if($order->cod_fee > 0)
                                     @if(strtolower($order->payment_method) == 'cod')
-                                    <div class="text-xs text-gray-600">Tagihan COD: Rp{{ number_format($order->total_amount) }}</div>
-                                @elseif($order->cod_fee > 0)
-                                    <div class="text-xs text-gray-600">Biaya COD: Rp{{ number_format($order->cod_fee) }}</div>
+                                    <div class="text-[10px] text-orange-600 font-semibold">Tagihan COD: Rp {{ number_format($order->total_amount) }}</div>
+                                    @elseif($order->cod_fee > 0)
+                                    <div class="text-[10px] text-orange-600 font-semibold">Biaya COD: Rp {{ number_format($order->cod_fee) }}</div>
+                                    @endif
                                 @endif
-                                @endif
-                                {{-- Kode Resi sudah benar, masalah ada di Controller Mbah --}}
-                                <div class="text-xs text-gray-500 break-all">Resi: {{ $order->shipping_reference ?? '-' }}</div>
-                                <div class="text-xs text-blue-600 font-medium">Pickup</div>
+
+                                <div class="text-[10px] text-gray-500 mt-2 bg-gray-50 p-1 rounded border border-gray-200 w-max break-all">
+                                    <span class="font-bold">Resi:</span> {{ $order->shipping_reference ?? '-' }}
+                                </div>
                             </div>
 
                             {{-- ISI PAKET --}}
@@ -153,54 +137,250 @@
                                     $firstItem = $order->items->first();
                                     $dimension = 'Dimensi: -';
                                 @endphp
-                                @foreach($order->items as $item)
-                                    @php
-                                        $productWeight = $item->product->weight ?? 0;
-                                        $totalWeight += $productWeight * $item->quantity;
-
-                                        // ======================================================
-                                        // PERBAIKAN 4: Ganti default dimensi ke 5
-                                        // ======================================================
-                                        if($loop->first && $item->product) {
-                                            $dimension = "Dimensi: " . ($item->product->length ?? '5') . "x" . ($item->product->width ?? '5') . "x" . ($item->product->height ?? '5') . " cm";
-                                        }
-                                    @endphp
-                                    <div class="text-xs">
-                                        <div class="font-medium text-gray-800 uppercase">{{ $item->product->name ?? 'Produk Dihapus' }} ({{$item->quantity}}x)</div>
-                                        <div class="text-gray-600">Rp{{ number_format($item->price) }}</div>
-                                    </div>
-                                @endforeach
-                                <div class="text-xs text-gray-500 border-t pt-2 mt-2">
-                                    <div>Berat: {{ number_format($totalWeight) }} gram</div>
-                                    <div>{{ $dimension }}</div>
+                                <div class="bg-gray-50 rounded p-2 border border-gray-100 max-h-24 overflow-y-auto custom-scrollbar">
+                                    @foreach($order->items as $item)
+                                        @php
+                                            $totalWeight += ($item->product->weight ?? 0) * $item->quantity;
+                                            if($loop->first && $item->product) {
+                                                $dimension = "Dim. " . ($item->product->length ?? '5') . "x" . ($item->product->width ?? '5') . "x" . ($item->product->height ?? '5') . " cm";
+                                            }
+                                        @endphp
+                                        <div class="text-[10px] mb-1.5 last:mb-0 border-b border-gray-200 last:border-0 pb-1.5 last:pb-0">
+                                            <div class="font-bold text-gray-800 truncate" title="{{ $item->product->name ?? 'Produk' }}">{{ $item->product->name ?? 'Produk Dihapus' }} ({{$item->quantity}}x)</div>
+                                            <div class="text-blue-600 font-semibold">Rp {{ number_format($item->price) }}</div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <div class="flex flex-wrap gap-1 text-[9px] font-bold text-gray-500">
+                                    <span class="bg-gray-100 px-1.5 py-0.5 rounded">{{ number_format($totalWeight) }} gr</span>
+                                    <span class="bg-gray-100 px-1.5 py-0.5 rounded">{{ $dimension }}</span>
                                 </div>
                             </div>
 
-                            {{-- STATUS --}}
-                            <div class="lg:col-span-2">
-                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $order->status_badge_class }}">
+                            {{-- STATUS & TOMBOL KOMPLAIN --}}
+                            <div class="lg:col-span-2 flex flex-col items-start lg:items-end">
+                                <span class="px-3 py-1 inline-flex text-[11px] leading-5 font-bold rounded-full border shadow-sm {{ $order->status_badge_class }}">
                                     {{ Str::title($order->status) }}
                                 </span>
+
+                                {{-- Pengecekan Escrow (Apakah ada komplain?) --}}
+                                @php
+                                    $escrow = \App\Models\Escrow::where('order_id', $order->id)->first();
+                                    $isMediasi = $escrow && $escrow->status_dana === 'mediasi';
+                                @endphp
+
+                                @if($isMediasi)
+                                    <div class="mt-3 w-full">
+                                        <button onclick="openKomplainModal('{{ $order->invoice_number }}', '{{ $order->user->nama_lengkap ?? 'Pembeli' }}')" class="w-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-[10px] font-bold py-2 rounded-lg transition-colors flex items-center justify-center shadow-sm">
+                                            <i class="fas fa-exclamation-triangle mr-1.5 text-red-500 animate-pulse"></i> Ada Komplain!
+                                        </button>
+                                        <p class="text-[9px] text-gray-400 mt-1 text-center leading-tight">Dana Anda dibekukan sementara. Silakan cek pusat resolusi.</p>
+                                    </div>
+                                @endif
                             </div>
 
                         </div>
                     </div>
                 @empty
-                    <div class="p-6 text-center text-gray-500">
-                        @if(request('search'))
-                            Pesanan dengan No. Invoice atau Pelanggan "{{ request('search') }}" tidak ditemukan.
-                        @else
-                            Belum ada pesanan produk yang masuk.
-                        @endif
+                    <div class="p-12 text-center">
+                        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-box-open text-gray-400 text-3xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-700">Tidak ada pesanan</h3>
+                        <p class="text-sm text-gray-500 mt-1">
+                            @if(request('search'))
+                                Pesanan dengan keyword "{{ request('search') }}" tidak ditemukan.
+                            @else
+                                Belum ada pesanan produk yang masuk ke toko Anda.
+                            @endif
+                        </p>
                     </div>
-                @endforelse
+                @endempty
             </div>
 
             {{-- Pagination --}}
-            <div class="p-6 bg-gray-50 border-t">
-                {{ $orders->links() }}
-            </div>
+            @if($orders->hasPages())
+                <div class="p-4 bg-gray-50 border-t border-gray-200">
+                    {{ $orders->links('pagination::tailwind') }}
+                </div>
+            @endif
         </div>
     </div>
 </div>
+
+<div id="komplainModal" class="fixed inset-0 z-[99] hidden bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[550px] transform transition-all scale-95 opacity-0" id="komplainModalContent">
+
+        <div class="bg-gradient-to-r from-orange-500 to-red-500 px-5 py-3 flex justify-between items-center text-white shadow-md z-10">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                    <i class="fas fa-headset text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-sm tracking-wide">Pusat Resolusi Penjual</h3>
+                    <p class="text-[10px] text-orange-100 uppercase" id="komplainCustomerName">Nama Pembeli</p>
+                </div>
+            </div>
+            <button onclick="closeKomplainModal()" class="text-white hover:text-red-200 hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div id="chatScrollArea" class="flex-1 bg-[#f4f5f7] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] p-4 overflow-y-auto flex flex-col gap-4">
+
+            <div class="text-center mb-2">
+                <span class="bg-white border border-gray-200 text-gray-600 text-[10px] px-3 py-1 rounded-full font-bold shadow-sm inline-flex items-center gap-1">
+                    <i class="fas fa-receipt text-gray-400"></i> <span id="komplainInvoice" class="text-orange-600 ml-1"></span>
+                </span>
+                <p class="text-[10px] text-orange-600 mt-3 font-medium bg-orange-50 p-2.5 rounded-lg border border-orange-200 inline-block shadow-sm">
+                    <i class="fas fa-exclamation-circle mr-1"></i> Berikan solusi terbaik agar Admin dapat segera mencairkan dana Anda.
+                </p>
+            </div>
+
+            <div id="chatBoxContent" class="flex flex-col gap-1 mt-2"></div>
+        </div>
+
+        <form onsubmit="sendChatMsg(event)" class="p-3 border-t border-gray-200 bg-white flex items-center gap-2">
+            @csrf
+            <input type="text" id="chatMessageInput" name="message" placeholder="Balas keluhan pembeli..." class="flex-1 border-gray-300 rounded-full text-sm focus:ring-orange-500 focus:border-orange-500 px-4 py-2.5 bg-gray-50 shadow-inner" required autocomplete="off">
+            <button type="submit" class="bg-orange-500 text-white w-10 h-10 rounded-full hover:bg-orange-600 transition-colors flex items-center justify-center shadow-md">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    let currentInvoice = '';
+
+    function openKomplainModal(invoice, customerName) {
+        currentInvoice = invoice;
+        document.getElementById('komplainInvoice').innerText = invoice;
+        document.getElementById('komplainCustomerName').innerText = 'Pembeli: ' + customerName;
+
+        const modal = document.getElementById('komplainModal');
+        const content = document.getElementById('komplainModalContent');
+
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+            loadChats();
+        }, 50);
+    }
+
+    function closeKomplainModal() {
+        const modal = document.getElementById('komplainModal');
+        const content = document.getElementById('komplainModalContent');
+
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.getElementById('chatBoxContent').innerHTML = '';
+        }, 300);
+    }
+
+    function loadChats() {
+        const chatBox = document.getElementById('chatBoxContent');
+        chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4"><i class="fas fa-spinner fa-spin"></i> Memuat pesan...</div>';
+
+        // URL GANTI SESUAI ROUTE SELLER MAS
+        fetch(`/seller/komplain/chat/${currentInvoice}`)
+            .then(res => res.json())
+            .then(data => {
+                chatBox.innerHTML = '';
+                if(data.chats && data.chats.length === 0) {
+                    chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4">Belum ada obrolan.</div>';
+                } else if(data.chats) {
+                    data.chats.forEach(chat => appendChatHTML(chat));
+                }
+                scrollToBottom();
+            })
+            .catch(err => {
+                chatBox.innerHTML = '<div class="text-center text-xs text-red-500 my-4">Gagal memuat pesan.</div>';
+            });
+    }
+
+    function sendChatMsg(e) {
+        e.preventDefault();
+        const input = document.getElementById('chatMessageInput');
+        const msg = input.value;
+        if(msg.trim() === '') return;
+
+        input.value = '';
+        input.disabled = true;
+
+        // URL GANTI SESUAI ROUTE SELLER MAS
+        fetch(`{{ route('seller.komplain.send_chat') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                invoice_number: currentInvoice,
+                message: msg
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            input.disabled = false;
+            input.focus();
+            if(data.success) {
+                appendChatHTML(data.chat);
+                scrollToBottom();
+            } else {
+                alert('Gagal mengirim pesan!');
+            }
+        });
+    }
+
+    function appendChatHTML(chat) {
+        const chatBox = document.getElementById('chatBoxContent');
+        const isSeller = chat.sender_type === 'seller';
+
+        const dateObj = new Date(chat.created_at);
+        const time = dateObj.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
+
+        let html = '';
+        if(isSeller) {
+            // Bubble Penjual (Kanan)
+            html = `
+            <div class="flex items-start justify-end gap-2 mt-2">
+                <div class="bg-orange-50 border border-orange-100 rounded-2xl rounded-tr-none p-3 max-w-[80%] shadow-sm">
+                    <p class="text-xs text-gray-800 leading-relaxed">${chat.message}</p>
+                    <p class="text-[9px] text-gray-400 mt-1 text-right">${time}</p>
+                </div>
+            </div>`;
+        } else {
+            // Bubble Pembeli / Admin (Kiri)
+            const isAdmin = chat.sender_type === 'admin';
+            const icon = isAdmin ? '<i class="fas fa-shield-alt text-blue-500"></i>' : '<i class="fas fa-user text-gray-500"></i>';
+            const senderName = isAdmin ? 'Admin Sancaka' : (chat.sender ? chat.sender.nama_lengkap : 'Pembeli');
+            const nameColor = isAdmin ? 'text-blue-600' : 'text-gray-600';
+
+            html = `
+            <div class="flex items-start gap-2 mt-2">
+                <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-200 text-xs">
+                    ${icon}
+                </div>
+                <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-3 max-w-[80%] shadow-sm">
+                    <p class="text-[10px] font-bold mb-1 ${nameColor}">${senderName}</p>
+                    <p class="text-xs text-gray-800 leading-relaxed">${chat.message}</p>
+                    <p class="text-[9px] text-gray-400 mt-1 text-left">${time}</p>
+                </div>
+            </div>`;
+        }
+
+        if(chatBox.innerHTML.includes('Belum ada obrolan')) { chatBox.innerHTML = ''; }
+        chatBox.insertAdjacentHTML('beforeend', html);
+    }
+
+    function scrollToBottom() {
+        const area = document.getElementById('chatScrollArea');
+        if(area) area.scrollTop = area.scrollHeight;
+    }
+</script>
 @endsection
