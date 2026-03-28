@@ -289,9 +289,13 @@
                                     <p class="text-[10px] text-gray-400 mt-1">{{ $escrow->dicairkan_pada ? $escrow->dicairkan_pada->format('d M Y') : '-' }}</p>
                                 </div>
                             @elseif($escrow->status_dana === 'mediasi')
-                                <div class="text-center p-3 bg-red-50 rounded border border-red-200 shadow-inner">
-                                    <i class="fas fa-exclamation-triangle text-red-500 text-2xl mb-1"></i>
-                                    <p class="text-[10px] text-red-700 font-bold uppercase tracking-wider">Mediasi</p>
+                                <div class="text-center p-2 bg-red-50 rounded border border-red-200 shadow-inner">
+                                    <i class="fas fa-exclamation-triangle text-red-500 text-xl mb-1"></i>
+                                    <p class="text-[10px] text-red-700 font-bold uppercase tracking-wider mb-2">Mediasi</p>
+
+                                    <button type="button" onclick="openKomplainModal('{{ $escrow->invoice_number }}', '{{ $escrow->store->name ?? 'Toko' }}')" class="w-full bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
+                                        <i class="fas fa-comments mr-1"></i> Buka Chat
+                                    </button>
                                 </div>
                             @endif
                         </td>
@@ -317,6 +321,46 @@
     </div>
 </div>
 
+<div id="komplainModal" class="fixed inset-0 z-[99] hidden bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[550px] transform transition-all scale-95 opacity-0" id="komplainModalContent">
+
+        <div class="bg-gray-800 px-4 py-3 flex justify-between items-center text-white shadow-md z-10">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white border-2 border-white">
+                    <i class="fas fa-user-shield text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-sm leading-tight">Pantau Pusat Resolusi</h3>
+                    <p class="text-[10px] text-gray-300" id="komplainStoreName">Nama Toko</p>
+                </div>
+            </div>
+            <button onclick="closeKomplainModal()" class="text-white hover:text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-full w-8 h-8 flex items-center justify-center transition">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div id="chatScrollArea" class="flex-1 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-gray-100 p-4 overflow-y-auto flex flex-col gap-4">
+            <div class="text-center mb-2">
+                <span class="bg-white border border-gray-200 text-gray-600 text-[10px] px-3 py-1 rounded-full font-bold shadow-sm">
+                    Invoice: <span id="komplainInvoice" class="text-blue-600"></span>
+                </span>
+                <p class="text-[10px] text-blue-500 mt-3 font-medium bg-blue-50 p-2 rounded-lg border border-blue-100 inline-block">
+                    <i class="fas fa-info-circle mr-1"></i> Anda memantau chat ini sebagai Admin (Wasit).
+                </p>
+            </div>
+            <div id="chatBoxContent" class="flex flex-col gap-1 mt-2"></div>
+        </div>
+
+        <form onsubmit="sendChatMsg(event)" class="p-3 border-t border-gray-200 bg-white flex items-center gap-2">
+            @csrf
+            <input type="text" id="chatMessageInput" name="message" placeholder="Balas sebagai Admin (Wasit)..." class="flex-1 border-gray-300 rounded-full text-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2 bg-gray-50 shadow-inner" required autocomplete="off">
+            <button type="submit" class="bg-blue-600 text-white w-10 h-10 rounded-full hover:bg-blue-700 transition flex items-center justify-center shadow-md">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
 <style>
     /* Custom Scrollbar kecil untuk list produk */
     .custom-scrollbar::-webkit-scrollbar { width: 4px; }
@@ -324,6 +368,120 @@
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 </style>
+
+<script>
+    let currentInvoice = '';
+
+    function openKomplainModal(invoice, storeName) {
+        currentInvoice = invoice;
+        document.getElementById('komplainInvoice').innerText = invoice;
+        document.getElementById('komplainStoreName').innerText = storeName;
+        const modal = document.getElementById('komplainModal');
+        const content = document.getElementById('komplainModalContent');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+            loadChats();
+        }, 50);
+    }
+
+    function closeKomplainModal() {
+        const modal = document.getElementById('komplainModal');
+        const content = document.getElementById('komplainModalContent');
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.getElementById('chatBoxContent').innerHTML = '';
+        }, 300);
+    }
+
+    function loadChats() {
+        const chatBox = document.getElementById('chatBoxContent');
+        chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4"><i class="fas fa-spinner fa-spin"></i> Memuat pesan...</div>';
+
+        fetch(`/admin/escrow/chat/${currentInvoice}`)
+            .then(res => res.json())
+            .then(data => {
+                chatBox.innerHTML = '';
+                if(data.chats && data.chats.length > 0) {
+                    data.chats.forEach(chat => appendChatHTML(chat));
+                }
+                scrollToBottom();
+            });
+    }
+
+    function sendChatMsg(e) {
+        e.preventDefault();
+        const input = document.getElementById('chatMessageInput');
+        const msg = input.value;
+        if(msg.trim() === '') return;
+
+        input.value = '';
+        input.disabled = true;
+
+        fetch(`{{ route('admin.escrow.send_chat') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ invoice_number: currentInvoice, message: msg })
+        })
+        .then(res => res.json())
+        .then(data => {
+            input.disabled = false;
+            input.focus();
+            if(data.success) {
+                appendChatHTML(data.chat);
+                scrollToBottom();
+            }
+        });
+    }
+
+    function appendChatHTML(chat) {
+        const chatBox = document.getElementById('chatBoxContent');
+        const isAdmin = chat.sender_type === 'admin';
+        const time = new Date(chat.created_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
+
+        let html = '';
+        if(isAdmin) {
+            // Bubble Admin (Kanan - Karena admin yang sedang login)
+            html = `
+            <div class="flex items-start justify-end gap-2 mt-2">
+                <div class="bg-blue-50 border border-blue-100 rounded-2xl rounded-tr-none p-3 max-w-[80%] shadow-sm">
+                    <p class="text-xs text-gray-800 leading-relaxed">${chat.message}</p>
+                    <p class="text-[9px] text-gray-400 mt-1 text-right">${time}</p>
+                </div>
+            </div>`;
+        } else {
+            // Bubble Pembeli / Penjual (Kiri)
+            const isCustomer = chat.sender_type === 'customer';
+            const icon = isCustomer ? '<i class="fas fa-user text-gray-500"></i>' : '<i class="fas fa-store text-orange-500"></i>';
+            const senderName = isCustomer ? 'Pembeli' : 'Penjual';
+            const nameColor = isCustomer ? 'text-gray-600' : 'text-orange-600';
+
+            html = `
+            <div class="flex items-start gap-2 mt-2">
+                <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-200 text-xs">
+                    ${icon}
+                </div>
+                <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-3 max-w-[80%] shadow-sm">
+                    <p class="text-[10px] font-bold mb-1 ${nameColor}">${senderName}</p>
+                    <p class="text-xs text-gray-800 leading-relaxed">${chat.message}</p>
+                    <p class="text-[9px] text-gray-400 mt-1 text-left">${time}</p>
+                </div>
+            </div>`;
+        }
+        chatBox.insertAdjacentHTML('beforeend', html);
+    }
+
+    function scrollToBottom() {
+        const area = document.getElementById('chatScrollArea');
+        if(area) area.scrollTop = area.scrollHeight;
+    }
+</script>
 
 <script>
     function copyResi(text) {
@@ -334,4 +492,5 @@
         });
     }
 </script>
+
 @endsection

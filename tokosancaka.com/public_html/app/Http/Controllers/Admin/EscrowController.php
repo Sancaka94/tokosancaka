@@ -231,4 +231,42 @@ class EscrowController extends Controller
 
         return view('admin.escrow.history', compact('escrows', 'totalDanaBersih', 'totalTransaksi'));
     }
+
+    /**
+     * Menarik Riwayat Chat Komplain (AJAX Admin)
+     */
+    public function getChat($invoice)
+    {
+        $chats = \App\Models\ComplainChat::with('sender:id_pengguna,nama_lengkap')
+                             ->where('invoice_number', $invoice)
+                             ->orderBy('created_at', 'asc')
+                             ->get();
+        return response()->json(['chats' => $chats]);
+    }
+
+    /**
+     * Admin Mengirim Pesan sebagai Wasit (AJAX)
+     */
+    public function sendChat(Request $request)
+    {
+        $request->validate(['invoice_number' => 'required', 'message' => 'required|string']);
+        $order = Order::where('invoice_number', $request->invoice_number)->first();
+
+        if(!$order) return response()->json(['error' => 'Pesanan tidak ditemukan'], 404);
+
+        try {
+            $chat = \App\Models\ComplainChat::create([
+                'order_id'       => $order->id,
+                'invoice_number' => $order->invoice_number,
+                'sender_id'      => \Illuminate\Support\Facades\Auth::id(), // ID Admin
+                'sender_type'    => 'admin',
+                'message'        => $request->message,
+            ]);
+
+            return response()->json(['success' => true, 'chat' => $chat]);
+        } catch (\Exception $e) {
+            Log::error("Gagal Kirim Chat Admin: " . $e->getMessage());
+            return response()->json(['error' => 'Gagal mengirim pesan'], 500);
+        }
+    }
 }

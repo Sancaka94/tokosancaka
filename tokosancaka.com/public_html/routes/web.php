@@ -1064,3 +1064,7 @@ Route::post('/password/reset', [CustomerForgotPasswordController::class, 'sendRe
 Route::post('/customer/pesanan/{id}/terima', [PesananActionController::class, 'terimaPaket'])->name('customer.pesanan.terima');
 Route::get('/customer/komplain/chat/{invoice}', [PesananActionController::class, 'getChat'])->name('customer.komplain.get_chat');
 Route::post('/customer/komplain/chat', [PesananActionController::class, 'sendChat'])->name('customer.komplain.send_chat');
+
+// --- ROUTE CHAT ADMIN (TAMBAHKAN 2 BARIS INI) ---
+    Route::get('/escrow/chat/{invoice}', [EscrowController::class, 'getChat'])->name('admin.escrow.get_chat');
+    Route::post('/escrow/chat', [EscrowController::class, 'sendChat'])->name('admin.escrow.send_chat');

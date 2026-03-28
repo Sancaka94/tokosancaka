@@ -113,11 +113,32 @@ class PesananActionController extends Controller
             ]);
 
             // Jika ini pesan pertama, Otomatis ubah status Escrow jadi 'mediasi'
+            // Jika ini pesan pertama, Otomatis ubah status Escrow jadi 'mediasi'
             $escrow = Escrow::where('order_id', $order->id)->first();
             if($escrow && $escrow->status_dana === 'ditahan') {
                 $escrow->status_dana = 'mediasi';
                 $escrow->catatan = 'Dibekukan otomatis karena pembeli mengajukan komplain.';
                 $escrow->save();
+
+                // ----------------------------------------------------
+                // 🔥 KIRIM NOTIFIKASI WA REALTIME KE PENJUAL 🔥
+                // ----------------------------------------------------
+                $seller = $order->store->user ?? null;
+                if ($seller && $seller->no_wa) {
+                    $pesan = "*⚠ PERHATIAN: KOMPLAIN PESANAN ⚠*\n\n";
+                    $pesan .= "Halo *{$seller->nama_lengkap}*,\n";
+                    $pesan .= "Pembeli mengajukan komplain untuk pesanan:\n";
+                    $pesan .= "- Invoice: *{$order->invoice_number}*\n";
+                    $pesan .= "- Keluhan: _{$request->message}_\n\n";
+                    $pesan .= "Dana saat ini *dibekukan sementara* di Escrow Sancaka. Silakan login ke Dashboard Penjual dan buka menu Pusat Resolusi untuk merespon.";
+
+                    try {
+                        $phone = preg_replace('/^0/', '62', $seller->no_wa);
+                        app(\App\Services\FonnteService::class)->sendMessage($phone, $pesan);
+                    } catch (\Exception $e) {
+                        Log::error("Gagal kirim WA komplain ke Penjual: " . $e->getMessage());
+                    }
+                }
             }
 
             DB::commit();
