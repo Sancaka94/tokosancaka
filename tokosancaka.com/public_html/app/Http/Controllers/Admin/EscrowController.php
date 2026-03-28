@@ -4,96 +4,134 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Escrow;
 use App\Models\Order;
-use App\Models\Store;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\FonnteService; // Untuk kirim WA notifikasi pencairan
 
 class EscrowController extends Controller
 {
     /**
-     * Tampilkan halaman daftar Escrow
+     * Menampilkan daftar Escrow (Penahanan Dana)
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Tampilkan order yang sudah LUNAS tapi dananya BELUM DICAIRKAN ke penjual
-        $orders = Order::with(['store.user', 'user', 'items.product', 'items.variant'])
-            ->whereIn('status', ['paid', 'processing', 'shipped', 'delivered', 'sampai'])
-            ->where('is_fund_disbursed', false) // Hanya yang dananya masih ditahan admin
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
+        // Ambil data escrow beserta relasinya biar tidak N+1 query (loading cepat)
+        // Kita ambil detail pesanan, toko, penjual (user di dalam toko), dan pembeli (buyer)
+        $query = Escrow::with(['order.items.product', 'order.items.variant', 'store.user', 'buyer'])
+                       ->orderBy('created_at', 'desc');
 
-        return view('admin.escrow.index', compact('orders'));
+        // Filter opsional jika mas mau tambahkan dropdown filter status di blade nanti
+        if ($request->has('status') && $request->status != '') {
+            $query->where('status_dana', $request->status);
+        } else {
+            // Default: Tampilkan yang masih 'ditahan' atau 'mediasi' di halaman awal
+            $query->whereIn('status_dana', ['ditahan', 'mediasi']);
+        }
+
+        $escrows = $query->paginate(15);
+
+        // Lempar data ke view blade yang sudah mas buat sebelumnya
+        // Ganti nama variabel di foreach blade mas dari $orders menjadi $escrows
+        return view('admin.escrow.index', compact('escrows'));
     }
 
     /**
-     * Proses pencairan dana ke penjual
+     * Proses Pencairan Dana ke Penjual
      */
     public function cairkan(Request $request, $id)
     {
-        $order = Order::with('store.user')->findOrFail($id);
+        $escrow = Escrow::with(['store.user', 'order'])->findOrFail($id);
 
-        // Validasi ganda biar admin nggak double klik
-        if ($order->is_fund_disbursed) {
-            return back()->with('error', 'Dana untuk pesanan ini sudah pernah dicairkan.');
+        // 1. Validasi cegah double klik
+        if ($escrow->status_dana === 'dicairkan') {
+            return back()->with('error', 'Dana untuk invoice ini sudah pernah dicairkan sebelumnya.');
         }
 
         DB::beginTransaction();
         try {
-            // 1. Ubah status penanda dana
-            $order->is_fund_disbursed = true;
-            $order->status = 'completed'; // Atau biarkan statusnya jika pakai status lain
-            $order->save();
+            // 2. Update status Escrow
+            $escrow->status_dana = 'dicairkan';
+            $escrow->dicairkan_pada = now();
+            $escrow->catatan = 'Dicairkan manual oleh Admin Sancaka.';
+            $escrow->save();
 
-            // 2. Tambahkan Saldo ke Toko Penjual
-            $store = $order->store;
-            if ($store) {
-                // Asumsi mas punya kolom 'saldo' di tabel stores atau users penjual
-                // Jika pakai DOKU SAC, di sinilah proses API Transfer DOKU dari Master ke SAC dipanggil
+            // 3. Tambah Saldo ke Toko / Penjual
+            $seller = $escrow->store->user ?? null;
+            if ($seller) {
+                // Asumsi di tabel Pengguna mas ada kolom 'saldo'
+                // Kita tambahkan nominal_ditahan ke saldo penjual
+                $seller->increment('saldo', $escrow->nominal_ditahan);
 
-                // Contoh tambah saldo internal sistem:
-                // $store->increment('saldo', $order->subtotal);
+                Log::info("ESCROW CAIR: Rp " . number_format($escrow->nominal_ditahan) . " ke {$seller->nama_lengkap} (Invoice: {$escrow->invoice_number})");
 
-                // Catat mutasi/log keuangan jika mas punya tabel mutasi
-                Log::info("Escrow Cair: Dana Rp " . number_format($order->subtotal) . " dicairkan ke toko {$store->name} (Order: {$order->invoice_number})");
+                // 4. Kirim WA Notifikasi ke Penjual pakai Fonnte
+                $this->kirimNotifCair($seller, $escrow);
+            }
+
+            // 5. Update status Order jadi 'completed' / selesai (Opsional, sesuaikan alur bisnis mas)
+            if ($escrow->order) {
+                $escrow->order->status = 'completed';
+                $escrow->order->save();
             }
 
             DB::commit();
-
-            // 3. Kirim Notifikasi ke Penjual (Opsional tapi disarankan)
-            if ($store && $store->user) {
-                $pesan = "Dana sebesar Rp " . number_format($order->subtotal) . " dari pesanan {$order->invoice_number} telah diteruskan ke saldo Anda.";
-                $store->user->notify(new \App\Notifications\NotifikasiUmum([
-                    'tipe' => 'Pencairan Dana',
-                    'judul' => 'Dana Masuk!',
-                    'pesan_utama' => $pesan,
-                    'url' => url('seller/keuangan'), // Sesuaikan url seller
-                    'icon' => 'fas fa-wallet',
-                ]));
-            }
-
-            return back()->with('success', 'Dana berhasil dicairkan ke penjual!');
+            return back()->with('success', 'Dana sebesar Rp ' . number_format($escrow->nominal_ditahan, 0, ',', '.') . ' berhasil dicairkan ke saldo penjual.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Gagal cairkan escrow: " . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan sistem saat mencairkan dana.');
+            Log::error("Gagal cairkan escrow ID {$id}: " . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem saat mencairkan dana: ' . $e->getMessage());
         }
     }
 
     /**
-     * Tampilkan halaman / proses Mediasi (Komplain)
+     * Ubah status menjadi Mediasi (Komplain)
      */
     public function mediasi($id)
     {
-        $order = Order::findOrFail($id);
+        $escrow = Escrow::findOrFail($id);
 
-        // Ubah status order menjadi mediasi/komplain
-        $order->status = 'in_mediation';
-        $order->save();
+        if ($escrow->status_dana === 'dicairkan') {
+            return back()->with('error', 'Tidak bisa mediasi, dana sudah telanjur dicairkan ke penjual.');
+        }
 
-        // Redirect ke halaman khusus mediasi (Misal ada chat antara admin, pembeli, penjual)
-        // Sementara kita lempar notif sukses dulu
-        return back()->with('info', "Pesanan {$order->invoice_number} masuk dalam status Mediasi/Komplain. Dana ditahan secara permanen sampai masalah selesai.");
+        $escrow->status_dana = 'mediasi';
+        $escrow->catatan = 'Pesanan masuk dalam tahap mediasi / komplain.';
+        $escrow->save();
+
+        if ($escrow->order) {
+            $escrow->order->status = 'in_mediation'; // Atau status lain di sistem mas
+            $escrow->order->save();
+        }
+
+        return back()->with('warning', "Status Escrow {$escrow->invoice_number} diubah menjadi MEDIASI. Dana ditahan permanen sampai masalah selesai.");
+    }
+
+    /**
+     * Fungsi Private untuk kirim WA ke Penjual saat dana cair
+     */
+    private function kirimNotifCair($seller, $escrow)
+    {
+        if (!$seller->no_wa) return;
+
+        $nominal = number_format($escrow->nominal_ditahan, 0, ',', '.');
+        $pesan = "*Sancaka Express - PEMBERITAHUAN CAIR*\n\n";
+        $pesan .= "Halo *{$seller->nama_lengkap}*,\n";
+        $pesan .= "Dana penjualan Anda telah **DICAIRKAN** ke Saldo Akun.\n\n";
+        $pesan .= "Rincian:\n";
+        $pesan .= "- Invoice: {$escrow->invoice_number}\n";
+        $pesan .= "- Nominal: *Rp {$nominal}*\n";
+        $pesan .= "- Waktu: " . now()->format('d/m/Y H:i') . "\n\n";
+        $pesan .= "Silakan cek menu Saldo / Keuangan Anda di Dashboard Penjual. Terima kasih telah berjualan di Sancaka!";
+
+        try {
+            // Sesuai kode Fonnte mas sebelumnya
+            $phone = preg_replace('/^0/', '62', $seller->no_wa);
+            app(\App\Services\FonnteService::class)->sendMessage($phone, $pesan);
+        } catch (\Exception $e) {
+            Log::error("Gagal kirim WA Notif Cair Escrow: " . $e->getMessage());
+        }
     }
 }
