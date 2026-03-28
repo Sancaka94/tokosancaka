@@ -399,9 +399,14 @@
         const chatBox = document.getElementById('chatBoxContent');
         chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4"><i class="fas fa-spinner fa-spin"></i> Memuat pesan...</div>';
 
+        let chatUrl = "{{ route('admin.escrow.get_chat', ':invoice') }}";
+        chatUrl = chatUrl.replace(':invoice', currentInvoice);
 
-        fetch(`{{ url('admin/escrow/chat') }}/${currentInvoice}`)
-            .then(res => res.json())
+        fetch(chatUrl)
+            .then(res => {
+                if (!res.ok) throw new Error('Server merespon 404/500');
+                return res.json();
+            })
             .then(data => {
                 chatBox.innerHTML = '';
                 if(data.chats && data.chats.length > 0) {
@@ -412,7 +417,8 @@
                 scrollToBottom();
             })
             .catch(err => {
-                chatBox.innerHTML = '<div class="text-center text-xs text-red-500 my-4">Gagal memuat pesan.</div>';
+                chatBox.innerHTML = '<div class="text-center text-xs text-red-500 my-4">Gagal memuat pesan. Pastikan rute sudah terdaftar!</div>';
+                console.error('Error fetching chat:', err);
             });
     }
 
