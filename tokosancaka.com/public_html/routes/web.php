@@ -134,6 +134,8 @@ use App\Http\Controllers\Admin\AkuntansiController;
 
 use App\Http\Controllers\PushWaController;
 
+use App\Http\Controllers\Auth\Customer\CustomerForgotPasswordController;
+
 Route::get('/cek-sistem-sancaka', function () {
     // 1. Cek Koneksi Database
     try {
@@ -1027,3 +1029,10 @@ Route::get('/spx-monitor', [App\Http\Controllers\PublicMonitorController::class,
 Route::post('/admin/spx_scans/mark-all-copied', [App\Http\Controllers\Admin\SpxScanController::class, 'markAllAsCopied'])->name('admin.spx_scans.mark_all_copied');
 
 Route::get('/admin/spx_scans/api/unprocessed', [App\Http\Controllers\Admin\SpxScanController::class, 'getUnprocessedApi'])->name('admin.spx_scans.api_unprocessed');
+
+
+// 1. Route untuk nampilin halaman input WA (yang linknya mas tuju tadi)
+Route::get('/password/reset', [CustomerForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
+
+// 2. Route untuk memproses tombol "Kirim Link WA" (harus sama dengan action di form blade)
+Route::post('/password/reset', [CustomerForgotPasswordController::class, 'sendResetLinkRequest'])->name('password.phone');
