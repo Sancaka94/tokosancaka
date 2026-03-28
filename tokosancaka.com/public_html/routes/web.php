@@ -1082,3 +1082,6 @@ Route::post('/customer/komplain/retur/{invoice}', [App\Http\Controllers\Customer
 // Kode Refund Produk Marketplace
 Route::post('/seller/komplain/retur/{invoice}', [\App\Http\Controllers\Toko\OrderController::class, 'approveRetur'])->name('seller.komplain.approve_retur');
 Route::post('/seller/komplain/refund/{invoice}', [\App\Http\Controllers\Toko\OrderController::class, 'approveRefund'])->name('seller.komplain.approve_refund');
+
+// Admin setuju refund dana marketplace komplain
+Route::post('/escrow/{id}/refund', [\App\Http\Controllers\Admin\EscrowController::class, 'refund'])->name('admin.escrow.refund');

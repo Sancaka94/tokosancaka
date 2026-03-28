@@ -269,4 +269,59 @@ class EscrowController extends Controller
             return response()->json(['error' => 'Gagal mengirim pesan'], 500);
         }
     }
+
+    /**
+     * Admin Mengeksekusi Pengembalian Dana ke Pembeli (Refund)
+     */
+    public function refund(Request $request, $id)
+    {
+        $escrow = \App\Models\Escrow::with(['buyer', 'order'])->findOrFail($id);
+
+        if ($escrow->status_dana !== 'refund_pending') {
+            return back()->with('error', 'Status belum disetujui penjual untuk refund.');
+        }
+
+        DB::beginTransaction();
+        try {
+            // Hitung dana yang dikembalikan (Hanya harga barang, ongkir hangus)
+            $danaRefund = $escrow->nominal_ditahan - $escrow->nominal_ongkir;
+
+            // Kembalikan dana ke saldo pembeli
+            $buyer = $escrow->buyer;
+            if ($buyer) {
+                $buyer->increment('saldo', $danaRefund);
+
+                // Catat mutasi TopUp untuk pembeli sebagai Refund
+                \App\Models\TopUp::create([
+                    'customer_id'    => $buyer->id_pengguna,
+                    'amount'         => $danaRefund,
+                    'status'         => 'success',
+                    'payment_method' => 'refund_marketplace',
+                    'transaction_id' => 'REF-' . $escrow->invoice_number,
+                    'reference_id'   => $escrow->invoice_number,
+                    'created_at'     => now(),
+                ]);
+            }
+
+            // Ubah status Order jadi 'returned' (Dikembalikan)
+            if ($escrow->order) {
+                $escrow->order->update(['status' => 'returned']);
+            }
+
+            // Update status Escrow
+            $escrow->update([
+                'status_dana'    => 'dicairkan', // Kita set dicairkan agar masuk ke riwayat
+                'dicairkan_pada' => now(),
+                'catatan'        => 'REFUND KE PEMBELI: Rp ' . number_format($danaRefund, 0, ',', '.')
+            ]);
+
+            DB::commit();
+            return back()->with('success', 'Berhasil! Dana sebesar Rp ' . number_format($danaRefund, 0, ',', '.') . ' telah dikembalikan ke Saldo Pembeli.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("Refund Error: " . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem saat memproses refund.');
+        }
+    }
 }

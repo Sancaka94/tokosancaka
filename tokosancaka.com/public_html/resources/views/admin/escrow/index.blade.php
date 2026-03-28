@@ -301,12 +301,30 @@
                                     <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Cair</p>
                                     <p class="text-[10px] text-gray-400 mt-1">{{ $escrow->dicairkan_pada ? $escrow->dicairkan_pada->format('d M Y') : '-' }}</p>
                                 </div>
-                            @elseif($escrow->status_dana === 'mediasi')
+                           @elseif($escrow->status_dana === 'mediasi')
                                 <div class="text-center p-2 bg-red-50 rounded border border-red-200 shadow-inner">
                                     <i class="fas fa-exclamation-triangle text-red-500 text-xl mb-1"></i>
                                     <p class="text-[10px] text-red-700 font-bold uppercase tracking-wider mb-2">Mediasi</p>
                                     <button type="button" onclick="openKomplainModal('{{ $escrow->invoice_number }}', '{{ addslashes($escrow->store->name ?? 'Toko') }}')" class="w-full bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
                                         <i class="fas fa-comments mr-1"></i> Buka Chat
+                                    </button>
+                                </div>
+
+                            {{-- LOGIKA BARU: TOMBOL REFUND MUNCUL DI SINI --}}
+                            @elseif($escrow->status_dana === 'refund_pending')
+                                <div class="text-center p-2 bg-yellow-50 rounded border border-yellow-200 shadow-inner">
+                                    <i class="fas fa-undo text-yellow-500 text-xl mb-1"></i>
+                                    <p class="text-[10px] text-yellow-700 font-bold uppercase tracking-wider mb-2 leading-tight">Refund Disetujui Penjual</p>
+
+                                    <form action="{{ route('admin.escrow.refund', $escrow->id) }}" method="POST" onsubmit="return confirm('Kembalikan dana Bersih (Tanpa Ongkir) sebesar Rp {{ number_format($danaPenjual, 0, ',', '.') }} ke saldo Pembeli?');">
+                                        @csrf
+                                        <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white text-[10px] font-bold py-2 rounded transition shadow-sm flex items-center justify-center">
+                                            <i class="fas fa-wallet mr-1"></i> Refund Pembeli
+                                        </button>
+                                    </form>
+
+                                    <button type="button" onclick="openKomplainModal('{{ $escrow->invoice_number }}', '{{ addslashes($escrow->store->name ?? 'Toko') }}')" class="w-full mt-1 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-[9px] font-bold py-1 rounded transition shadow-sm flex items-center justify-center">
+                                        Lihat Chat
                                     </button>
                                 </div>
                             @endif
