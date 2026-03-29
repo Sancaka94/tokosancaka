@@ -1579,7 +1579,7 @@ public function cetakThermal($resi)
                     'amount'         => -$ongkirRetur,
                     'status'         => 'success',
                     'payment_method' => 'saldo_sancaka',
-                    'transaction_id' => 'RET-' . $order->invoice_number . '-' . time(),
+                    'transaction_id' => 'SCK-' . $order->invoice_number . '-' . time(),
                     'catatan'        => 'Ongkir Retur Resi Baru'
                 ]);
             }
@@ -1600,7 +1600,7 @@ public function cetakThermal($resi)
                 'zipcode' => $request->sender_postal_code, 'schedule' => $scheduleClock,
                 'platform_name' => 'tokosancaka.com', 'category' => 'regular',
                 'packages' => [[
-                    'order_id' => 'RET-'.$order->invoice_number.'-'.rand(100,999),
+                    'order_id' => 'SCK-'.$order->invoice_number.'-'.rand(100,999),
                     'item_name' => $itemDesc,
                     'package_type_id' => 1, // Barang Umum
                     'destination_name' => $request->receiver_name, 'destination_phone' => $request->receiver_phone,
