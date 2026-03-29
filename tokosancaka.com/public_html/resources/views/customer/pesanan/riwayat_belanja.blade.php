@@ -379,6 +379,35 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                     </div>
                 </div>
 
+                {{-- START: INFO BERAT & DIMENSI PAKET (TAMBAHAN BARU) --}}
+                <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-sm mt-2">
+                    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 border-b border-gray-200 pb-1.5"><i class="fas fa-box mr-1 text-teal-500"></i> Detail & Dimensi Paket</p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                            <label class="text-[9px] text-gray-500 font-bold">Berat Aktual (Gram)</label>
+                            <input type="number" id="kr-actual-weight" class="w-full text-[11px] p-1.5 border border-gray-300 rounded bg-gray-100 cursor-not-allowed text-gray-600" readonly>
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-gray-500 font-bold">Panjang (cm) <span class="text-red-500">*</span></label>
+                            <input type="number" name="length" id="kr-length" value="1" min="1" class="w-full text-[11px] p-1.5 border border-teal-300 rounded focus:ring-teal-500 bg-white" required>
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-gray-500 font-bold">Lebar (cm) <span class="text-red-500">*</span></label>
+                            <input type="number" name="width" id="kr-width" value="1" min="1" class="w-full text-[11px] p-1.5 border border-teal-300 rounded focus:ring-teal-500 bg-white" required>
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-gray-500 font-bold">Tinggi (cm) <span class="text-red-500">*</span></label>
+                            <input type="number" name="height" id="kr-height" value="1" min="1" class="w-full text-[11px] p-1.5 border border-teal-300 rounded focus:ring-teal-500 bg-white" required>
+                        </div>
+                    </div>
+                    <div class="mt-2 bg-teal-50 p-2 rounded border border-teal-100 flex items-center justify-between">
+                        <span class="text-[10px] text-teal-800 font-bold">Estimasi Volumetrik:</span>
+                        <span class="text-xs font-bold text-teal-600"><span id="kr-volumetric-weight">1</span> Gram</span>
+                    </div>
+                    <p class="text-[9px] text-gray-500 mt-1 italic">* Pastikan dimensi diisi agar API ekspedisi tidak error.</p>
+                </div>
+                {{-- END: INFO BERAT & DIMENSI PAKET --}}
+
                 {{-- KOTAK PENCARIAN KECAMATAN DIBUKA DEFAULT --}}
                 <div id="kr-manual-search-box" class="bg-blue-50 border border-blue-200 p-3 rounded-lg shadow-sm">
                     <p class="text-[10px] text-blue-800 font-bold mb-2"><i class="fas fa-map-marker-alt mr-1"></i> Verifikasi Area Kecamatan (Bisa Dicari):</p>
@@ -652,6 +681,8 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
         document.getElementById('kr-receiver-address-input').value = data.store_address;
         document.getElementById('kr-receiver-phone').value = data.store_phone;
 
+        document.getElementById('kr-actual-weight').value = data.weight;
+
         Swal.fire({ title: 'Mencari Lokasi...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
         let promises = [];
@@ -848,6 +879,41 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
         const area = document.getElementById('chatScrollArea');
         if(area) area.scrollTop = area.scrollHeight;
     }
+
+    // ==========================================
+    // 5. LOGIKA KALKULASI BERAT VOLUMETRIK
+    // ==========================================
+    function calculateModalVolumetric() {
+        const pInput = document.getElementById('kr-length');
+        const lInput = document.getElementById('kr-width');
+        const tInput = document.getElementById('kr-height');
+        const volOutput = document.getElementById('kr-volumetric-weight');
+
+        // Pastikan elemen ada sebelum dihitung
+        if(pInput && lInput && tInput && volOutput) {
+            let p = parseFloat(pInput.value) || 1;
+            let l = parseFloat(lInput.value) || 1;
+            let t = parseFloat(tInput.value) || 1;
+
+            let volumeKg = (p * l * t) / 6000;
+            let volumeGram = Math.round(volumeKg * 1000);
+
+            if (volumeGram < 1) volumeGram = 1;
+            volOutput.innerText = volumeGram.toLocaleString('id-ID');
+        }
+    }
+
+    // Pasang event listener saat halaman dimuat
+    document.addEventListener("DOMContentLoaded", function() {
+        const pInput = document.getElementById('kr-length');
+        const lInput = document.getElementById('kr-width');
+        const tInput = document.getElementById('kr-height');
+
+        if(pInput) pInput.addEventListener('input', calculateModalVolumetric);
+        if(lInput) lInput.addEventListener('input', calculateModalVolumetric);
+        if(tInput) tInput.addEventListener('input', calculateModalVolumetric);
+    });
+
 </script>
 
 @endsection
