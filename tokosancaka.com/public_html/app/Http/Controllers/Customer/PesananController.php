@@ -1542,7 +1542,7 @@ public function cetakThermal($resi)
         return redirect()->route('checkout.invoice', ['invoice' => $invoiceNumber]);
     }
 
-  /**
+    /**
      * 6. Aksi: Pembeli Membuat Resi Retur via KiriminAja (FULL DINAMIS)
      */
     public function prosesKirimRetur(Request $request, KiriminAjaService $kirimaja)
@@ -1550,10 +1550,14 @@ public function cetakThermal($resi)
         \Log::info('--- START PROSES KIRIM RETUR ---');
         \Log::info('Request Data Lengkap:', $request->all());
 
+        // Validasi input tambahan
         $request->validate([
             'invoice_number' => 'required',
             'expedition'     => 'required', // String dinamis dari JS (ex: regular-sicepat-reg-15000-0-0)
-            'payment_method' => 'required'
+            'payment_method' => 'required',
+            'width'          => 'nullable|numeric|min:1',
+            'length'         => 'nullable|numeric|min:1',
+            'height'         => 'nullable|numeric|min:1',
         ]);
 
         $order = Order::with(['user', 'store.user'])->where('invoice_number', $request->invoice_number)->firstOrFail();
@@ -1611,12 +1615,21 @@ public function cetakThermal($resi)
                 \Log::info('Metode Pembayaran: DOKU / Lainnya', ['metode' => $request->payment_method]);
             }
 
-            // 3. HITUNG BERAT & HARGA
+            // 3. HITUNG BERAT, HARGA & TANGKAP DIMENSI DINAMIS
             $weight = $order->items->sum(function($item) { return ($item->product->weight ?? 1000) * $item->quantity; });
             $weight = $weight > 0 ? $weight : 1000;
             $itemDesc = "Retur Order " . $order->invoice_number;
 
-            \Log::info('Kalkulasi Berat Paket:', ['total_weight' => $weight, 'item_desc' => $itemDesc]);
+            // Tangkap dimensi dari form blade, set default 1 jika kosong agar API tidak error
+            $width  = (int) ($request->width ?? 1);
+            $length = (int) ($request->length ?? 1);
+            $height = (int) ($request->height ?? 1);
+
+            \Log::info('Kalkulasi Berat & Dimensi Paket:', [
+                'total_weight' => $weight,
+                'dimensions'   => "{$length}x{$width}x{$height}",
+                'item_desc'    => $itemDesc
+            ]);
 
             // ==========================================
             // 4. TEMBAK API KIRIMINAJA UNTUK BUAT RESI
@@ -1636,7 +1649,7 @@ public function cetakThermal($resi)
                 \Log::info("LOG LOG - Hari kerja & sebelum jam 5 sore: Pickup diset sore ini", ['schedule' => $scheduleClock]);
             }
 
-            // Perbaikan Null Kode Pos (Mencegah "Error validation package meta data")
+            // Perbaikan Null Kode Pos
             $senderZip = !empty($request->sender_postal_code) ? $request->sender_postal_code : '00000';
             $receiverZip = !empty($request->receiver_postal_code) ? $request->receiver_postal_code : '00000';
 
@@ -1661,6 +1674,13 @@ public function cetakThermal($resi)
                     'destination_kelurahan_id' => $request->receiver_subdistrict_id,
                     'destination_zipcode'      => $receiverZip,
                     'weight'                   => (int) $weight,
+
+                    // --- TAMBAHAN DIMENSI DINAMIS ---
+                    'width'                    => $width,
+                    'length'                   => $length,
+                    'height'                   => $height,
+                    // --------------------------------
+
                     'item_value'               => 10000,
                     'insurance_amount'         => 0,
                     'cod'                      => 0,
@@ -1709,7 +1729,7 @@ public function cetakThermal($resi)
 
             $order->update(['status' => 'returning']);
 
-            ComplainChat::create([
+            \App\Models\ComplainChat::create([
                 'order_id' => $order->id, 'invoice_number' => $order->invoice_number,
                 'sender_id' => $user->id_pengguna, 'sender_type' => 'customer',
                 'message' => "📦 *PEMBELI TELAH MENGIRIM BALIK PAKET (RETUR)*\nKurir: " . strtoupper($courier) . "\nResi Retur: *" . $resiRetur . "*"
