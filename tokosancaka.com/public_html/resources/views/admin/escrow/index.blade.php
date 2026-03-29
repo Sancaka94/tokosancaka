@@ -15,7 +15,7 @@
         </a>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center hover:shadow-md transition-shadow">
             <div class="p-3 rounded-full bg-blue-50 text-blue-500 mr-4">
                 <i class="fas fa-truck-fast text-xl"></i>
@@ -55,6 +55,17 @@
                 <h3 class="text-2xl font-bold text-gray-800">{{ $countBatal }}</h3>
             </div>
         </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center hover:shadow-md transition-shadow">
+            <div class="p-3 rounded-full bg-purple-50 text-purple-500 mr-4">
+                <i class="fas fa-undo-alt text-xl"></i>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Total Refund</p>
+                <h3 class="text-2xl font-bold text-gray-800">{{ $countRefund ?? 0 }}</h3>
+            </div>
+        </div>
+
     </div>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">

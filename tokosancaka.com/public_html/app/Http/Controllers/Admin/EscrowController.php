@@ -88,8 +88,18 @@ class EscrowController extends Controller
             $q->whereIn('status', ['canceled', 'rejected', 'returned']);
         })->count();
 
+        // 🌟 TAMBAHKAN KODE INI UNTUK MENGHITUNG TOTAL REFUND 🌟
+        $countRefund = (clone $baseStatsQuery)->where(function($query) {
+            // Hitung yang sedang menunggu refund ATAU yang sudah direfund (berdasarkan catatan)
+            $query->where('status_dana', 'refund_pending')
+                  ->orWhere(function($q) {
+                      $q->where('status_dana', 'dicairkan')
+                        ->where('catatan', 'LIKE', '%REFUND%');
+                  });
+        })->count();
+
         return view('admin.escrow.index', compact(
-            'escrows', 'countSelesai', 'countDikirim', 'countBermasalah', 'countBatal'
+            'escrows', 'countSelesai', 'countDikirim', 'countBermasalah', 'countBatal' , 'countRefund'
         ));
     }
     /**
@@ -208,10 +218,9 @@ class EscrowController extends Controller
      */
     public function history(Request $request)
     {
-        // Ambil hanya data yang statusnya sudah 'dicairkan'
-        $query = Escrow::with(['store.user', 'order'])->where('status_dana', 'dicairkan');
+        // Ambil data yang statusnya sudah 'dicairkan' (Termasuk Cair Normal & Refund)
+        $query = \App\Models\Escrow::with(['store.user', 'buyer', 'order'])->where('status_dana', 'dicairkan');
 
-        // Filter berdasarkan tanggal pencairan (bukan tanggal order)
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('dicairkan_pada', [
                 $request->start_date . ' 00:00:00',
@@ -220,16 +229,19 @@ class EscrowController extends Controller
         }
 
         $query->orderBy('dicairkan_pada', 'desc');
-
-        // Hitung total metrik untuk Card di atas tabel
         $statsQuery = clone $query;
-        // Hitung total dana bersih yang sudah ditransfer ke penjual (Total - Ongkir)
-        $totalDanaBersih = $statsQuery->sum(DB::raw('nominal_ditahan - nominal_ongkir'));
-        $totalTransaksi = $statsQuery->count();
+
+        // 1. Hitung Total Cair ke Penjual (Normal)
+        $totalDanaBersih = (clone $statsQuery)->where('catatan', 'NOT LIKE', '%REFUND%')->sum(\Illuminate\Support\Facades\DB::raw('nominal_ditahan - nominal_ongkir'));
+        $totalTransaksi = (clone $statsQuery)->where('catatan', 'NOT LIKE', '%REFUND%')->count();
+
+        // 2. Hitung Total Refund ke Pembeli
+        $totalDanaRefund = (clone $statsQuery)->where('catatan', 'LIKE', '%REFUND%')->sum(\Illuminate\Support\Facades\DB::raw('nominal_ditahan - nominal_ongkir'));
+        $totalTransaksiRefund = (clone $statsQuery)->where('catatan', 'LIKE', '%REFUND%')->count();
 
         $escrows = $query->paginate(20)->withQueryString();
 
-        return view('admin.escrow.history', compact('escrows', 'totalDanaBersih', 'totalTransaksi'));
+        return view('admin.escrow.history', compact('escrows', 'totalDanaBersih', 'totalTransaksi', 'totalDanaRefund', 'totalTransaksiRefund'));
     }
 
     /**
