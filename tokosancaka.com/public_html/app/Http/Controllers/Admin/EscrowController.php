@@ -219,35 +219,64 @@ class EscrowController extends Controller
         }
     }
 
-    /**
+   /**
      * Menampilkan Halaman Riwayat Pencairan Escrow
      */
     public function history(Request $request)
     {
-        // Ambil data yang statusnya sudah 'dicairkan' (Termasuk Cair Normal & Refund)
-        $query = \App\Models\Escrow::with(['store.user', 'buyer', 'order'])->where('status_dana', 'dicairkan');
+        // 1. Ambil data dengan status dicairkan ATAU yang pesanannya berstatus return
+        $query = \App\Models\Escrow::with(['store.user', 'buyer', 'order'])
+            ->where(function ($q) {
+                $q->where('status_dana', 'dicairkan')
+                  ->orWhereHas('order', function ($orderQuery) {
+                      $orderQuery->whereIn('status', ['returning', 'return_approved', 'returned']);
+                  });
+            });
 
+        // 2. Filter Tanggal (Opsional)
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('dicairkan_pada', [
+                $request->start_date . ' 00:00:00',
+                $request->end_date . ' 23:59:59'
+            ])->orWhereBetween('updated_at', [ // Fallback ke updated_at jika belum dicairkan (kasus retur)
                 $request->start_date . ' 00:00:00',
                 $request->end_date . ' 23:59:59'
             ]);
         }
 
-        $query->orderBy('dicairkan_pada', 'desc');
+        $query->orderBy('updated_at', 'desc'); // Urutkan berdasarkan waktu terakhir diupdate
         $statsQuery = clone $query;
 
-        // 1. Hitung Total Cair ke Penjual (Normal)
-        $totalDanaBersih = (clone $statsQuery)->where('catatan', 'NOT LIKE', '%REFUND%')->sum(\Illuminate\Support\Facades\DB::raw('nominal_ditahan - nominal_ongkir'));
-        $totalTransaksi = (clone $statsQuery)->where('catatan', 'NOT LIKE', '%REFUND%')->count();
+        // 3. HITUNGAN METRIK (CARDS)
+        // A. Total Cair ke Penjual (Normal)
+        $totalDanaBersih = (clone $statsQuery)->where('status_dana', 'dicairkan')
+                            ->where('catatan', 'NOT LIKE', '%REFUND%')
+                            ->sum(\Illuminate\Support\Facades\DB::raw('nominal_ditahan - nominal_ongkir'));
+        $totalTransaksi = (clone $statsQuery)->where('status_dana', 'dicairkan')
+                            ->where('catatan', 'NOT LIKE', '%REFUND%')
+                            ->count();
 
-        // 2. Hitung Total Refund ke Pembeli
-        $totalDanaRefund = (clone $statsQuery)->where('catatan', 'LIKE', '%REFUND%')->sum(\Illuminate\Support\Facades\DB::raw('nominal_ditahan - nominal_ongkir'));
-        $totalTransaksiRefund = (clone $statsQuery)->where('catatan', 'LIKE', '%REFUND%')->count();
+        // B. Total Refund ke Pembeli
+        $totalDanaRefund = (clone $statsQuery)->where('status_dana', 'dicairkan')
+                            ->where('catatan', 'LIKE', '%REFUND%')
+                            ->sum(\Illuminate\Support\Facades\DB::raw('nominal_ditahan - nominal_ongkir'));
+
+        // C. Total Nilai Barang yang Diretur
+        $totalNilaiRetur = (clone $statsQuery)->whereHas('order', function ($orderQuery) {
+            $orderQuery->whereIn('status', ['returning', 'return_approved', 'returned']);
+        })->sum('nominal_ditahan');
+
+        // D. Jumlah Transaksi Bermasalah (Refund + Retur)
+        $totalTransaksiBermasalah = (clone $statsQuery)->where(function($q) {
+            $q->where('catatan', 'LIKE', '%REFUND%')
+              ->orWhereHas('order', function ($oq) {
+                  $oq->whereIn('status', ['returning', 'return_approved', 'returned']);
+              });
+        })->count();
 
         $escrows = $query->paginate(20)->withQueryString();
 
-        return view('admin.escrow.history', compact('escrows', 'totalDanaBersih', 'totalTransaksi', 'totalDanaRefund', 'totalTransaksiRefund'));
+        return view('admin.escrow.history', compact('escrows', 'totalDanaBersih', 'totalTransaksi', 'totalDanaRefund', 'totalNilaiRetur', 'totalTransaksiBermasalah'));
     }
 
     /**
