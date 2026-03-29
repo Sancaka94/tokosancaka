@@ -202,7 +202,7 @@
                                         ];
                                     @endphp
                                     <div class="mt-3 w-full">
-                                        <button onclick="openReturModal({{ htmlspecialchars(json_encode($returData)) }})" class="w-full bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-700 text-[10px] font-bold py-2 rounded-lg transition-colors flex items-center justify-center shadow-sm">
+                                        <button type="button" data-info="{{ json_encode($returData) }}" onclick="openReturModal(this)" class="w-full bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-700 text-[10px] font-bold py-2 rounded-lg transition-colors flex items-center justify-center shadow-sm">
                                             <i class="fas fa-box-open mr-1.5 text-teal-500"></i> Info Retur
                                         </button>
                                     </div>
@@ -306,7 +306,10 @@
 </div>
 
 <script>
-    function openReturModal(data) {
+    function openReturModal(btn) {
+        // Ambil dan parse data JSON dari tombol
+        const data = JSON.parse(btn.getAttribute('data-info'));
+
         document.getElementById('rm-store-name').innerText = data.store_name;
         document.getElementById('rm-store-address').innerText = data.store_address;
         document.getElementById('rm-buyer-name').innerText = data.buyer_name;
