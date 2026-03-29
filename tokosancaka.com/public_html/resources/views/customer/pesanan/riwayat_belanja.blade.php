@@ -1,6 +1,6 @@
 {{--
 File: resources/views/customer/pesanan/riwayat_belanja.blade.php
-Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Null Safety & Logic Flow
+Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Null Safety & Logic Flow + Form Readonly
 --}}
 
 @extends('layouts.customer')
@@ -341,64 +341,73 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
         <div class="bg-teal-600 px-5 py-4 flex justify-between items-center text-white shadow-md z-10">
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm"><i class="fas fa-box-open text-sm"></i></div>
-                <div><h3 class="font-bold text-sm leading-tight">Pengembalian Barang</h3><p class="text-[10px] text-teal-100">Buat resi otomatis via KiriminAja</p></div>
+                <div><h3 class="font-bold text-sm leading-tight">Pengembalian Barang</h3><p class="text-[10px] text-teal-100">Verifikasi Data & Buat Resi KiriminAja</p></div>
             </div>
-            <button onclick="closeKirimReturModal()" class="text-white hover:text-teal-200 bg-teal-700 hover:bg-teal-800 rounded-full w-8 h-8 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="closeKirimReturModal()" class="text-white hover:text-teal-200 bg-teal-700 hover:bg-teal-800 rounded-full w-8 h-8 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
         </div>
 
         <form action="{{ route('customer.pesanan.kirim_retur') }}" method="POST" id="formKirimRetur" class="flex-1 overflow-y-auto max-h-[80vh] custom-scrollbar">
             @csrf
             <input type="hidden" name="invoice_number" id="kr-invoice">
             <input type="hidden" id="kr-hidden-weight"><input type="hidden" id="kr-hidden-price">
-
-            <input type="hidden" name="sender_name" id="kr-sender-name-input"><input type="hidden" name="sender_phone" id="kr-sender-phone">
-            <input type="hidden" name="sender_address" id="kr-sender-address-input"><input type="hidden" name="sender_district_id" id="kr-sender_district_id">
-            <input type="hidden" name="sender_subdistrict_id" id="kr-sender_subdistrict_id"><input type="hidden" name="sender_postal_code" id="kr-sender_postal_code">
-
-            <input type="hidden" name="receiver_name" id="kr-receiver-name-input"><input type="hidden" name="receiver_phone" id="kr-receiver-phone">
-            <input type="hidden" name="receiver_address" id="kr-receiver-address-input"><input type="hidden" name="receiver_district_id" id="kr-receiver_district_id">
-            <input type="hidden" name="receiver_subdistrict_id" id="kr-receiver_subdistrict_id"><input type="hidden" name="receiver_postal_code" id="kr-receiver_postal_code">
-
             <input type="hidden" name="expedition" id="kr-expedition" required>
 
+            {{-- Hidden IDs untuk Kecamatan/Kelurahan --}}
+            <input type="hidden" name="sender_district_id" id="kr-sender_district_id">
+            <input type="hidden" name="sender_subdistrict_id" id="kr-sender_subdistrict_id">
+            <input type="hidden" name="sender_postal_code" id="kr-sender_postal_code">
+            <input type="hidden" name="receiver_district_id" id="kr-receiver_district_id">
+            <input type="hidden" name="receiver_subdistrict_id" id="kr-receiver_subdistrict_id">
+            <input type="hidden" name="receiver_postal_code" id="kr-receiver_postal_code">
+
             <div class="p-5 space-y-4">
+
+                {{-- DATA INPUT TERLIHAT TAPI DIKUNCI (READONLY) --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                        <p class="text-[10px] font-bold text-teal-600 uppercase tracking-wider mb-1 border-b border-gray-200 pb-1"><i class="fas fa-user mr-1"></i> Pengirim (Anda)</p>
-                        <p class="text-xs font-bold text-gray-800 mt-1.5" id="kr-sender-name-display"></p>
-                        <p class="text-[10px] text-gray-600 mt-1 leading-relaxed" id="kr-sender-address-display"></p>
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2">
+                        <p class="text-[10px] font-bold text-teal-600 uppercase tracking-wider mb-1 border-b border-gray-200 pb-1"><i class="fas fa-user mr-1"></i> Data Pengirim (Anda)</p>
+                        <input type="text" name="sender_name" id="kr-sender-name-input" class="w-full text-[11px] p-1.5 border border-gray-300 rounded focus:ring-teal-500 bg-gray-100 cursor-not-allowed" placeholder="Nama Pengirim" readonly required>
+                        <input type="text" name="sender_phone" id="kr-sender-phone" class="w-full text-[11px] p-1.5 border border-gray-300 rounded focus:ring-teal-500 bg-gray-100 cursor-not-allowed" placeholder="No. WA Pengirim" readonly required>
+                        <textarea name="sender_address" id="kr-sender-address-input" rows="2" class="w-full text-[11px] p-1.5 border border-gray-300 rounded focus:ring-teal-500 leading-tight bg-gray-100 cursor-not-allowed" placeholder="Alamat Lengkap" readonly required></textarea>
                     </div>
-                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                        <p class="text-[10px] font-bold text-orange-600 uppercase tracking-wider mb-1 border-b border-gray-200 pb-1"><i class="fas fa-store mr-1"></i> Penerima (Toko)</p>
-                        <p class="text-xs font-bold text-gray-800 mt-1.5" id="kr-receiver-name-display"></p>
-                        <p class="text-[10px] text-gray-600 mt-1 leading-relaxed" id="kr-receiver-address-display"></p>
+
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2">
+                        <p class="text-[10px] font-bold text-orange-600 uppercase tracking-wider mb-1 border-b border-gray-200 pb-1"><i class="fas fa-store mr-1"></i> Data Penerima (Toko)</p>
+                        <input type="text" name="receiver_name" id="kr-receiver-name-input" class="w-full text-[11px] p-1.5 border border-gray-300 rounded focus:ring-orange-500 bg-gray-100 cursor-not-allowed" placeholder="Nama Toko" readonly>
+                        <input type="text" name="receiver_phone" id="kr-receiver-phone" class="w-full text-[11px] p-1.5 border border-gray-300 rounded focus:ring-orange-500 bg-gray-100 cursor-not-allowed" placeholder="No. WA Toko" readonly>
+                        <textarea name="receiver_address" id="kr-receiver-address-input" rows="2" class="w-full text-[11px] p-1.5 border border-gray-300 rounded focus:ring-orange-500 leading-tight bg-gray-100 cursor-not-allowed" placeholder="Alamat Toko" readonly></textarea>
                     </div>
                 </div>
 
-                <div id="kr-manual-search-box" class="hidden bg-red-50 border border-red-200 p-3 rounded-lg shadow-sm">
-                    <p class="text-[10px] text-red-600 font-bold mb-2">⚠️ Lokasi belum terdeteksi. Silakan ketik Kecamatan Anda & Toko:</p>
+                {{-- KOTAK PENCARIAN KECAMATAN DIBUKA DEFAULT --}}
+                <div id="kr-manual-search-box" class="bg-blue-50 border border-blue-200 p-3 rounded-lg shadow-sm">
+                    <p class="text-[10px] text-blue-800 font-bold mb-2"><i class="fas fa-map-marker-alt mr-1"></i> Verifikasi Area Kecamatan (Bisa Dicari):</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
                         <div class="relative">
-                            <input type="text" id="kr-search-sender" class="w-full text-[11px] p-2 border border-red-300 rounded focus:ring-red-500" placeholder="Kec. Anda..." autocomplete="off">
+                            <label class="text-[9px] text-gray-500 font-bold">Kec. Pengirim</label>
+                            <input type="text" id="kr-search-sender" class="w-full text-[11px] p-2 border border-blue-300 rounded focus:ring-blue-500" placeholder="Ketik Kec. Anda..." autocomplete="off">
                             <div id="kr-res-sender" class="absolute z-50 w-full bg-white border border-gray-200 rounded shadow max-h-32 overflow-y-auto hidden text-xs"></div>
                         </div>
                         <div class="relative">
-                            <input type="text" id="kr-search-receiver" class="w-full text-[11px] p-2 border border-red-300 rounded focus:ring-red-500" placeholder="Kec. Toko..." autocomplete="off">
+                            <label class="text-[9px] text-gray-500 font-bold">Kec. Penerima</label>
+                            <input type="text" id="kr-search-receiver" class="w-full text-[11px] p-2 border border-blue-300 rounded focus:ring-blue-500" placeholder="Ketik Kec. Toko..." autocomplete="off">
                             <div id="kr-res-receiver" class="absolute z-50 w-full bg-white border border-gray-200 rounded shadow max-h-32 overflow-y-auto hidden text-xs"></div>
                         </div>
                     </div>
-                    <button type="button" onclick="retryFetchOngkir()" class="w-full bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold py-2 rounded shadow-sm">Coba Tampilkan Ekspedisi</button>
+                    <button type="button" onclick="retryFetchOngkir()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-2 rounded shadow-sm transition">
+                        <i class="fas fa-sync-alt mr-1"></i> Perbarui Tarif Ekspedisi
+                    </button>
                 </div>
 
-                <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl space-y-3 shadow-inner">
-                    <label class="block text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-1">Pilih Ekspedisi Retur</label>
+                <div class="bg-teal-50 border border-teal-100 p-4 rounded-xl space-y-3 shadow-inner">
+                    <label class="block text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1">Pilih Ekspedisi Retur</label>
                     <div id="retur_ekspedisi_list" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                        <div class="text-center text-xs text-blue-500 py-4"><i class="fas fa-spinner fa-spin text-xl mb-2"></i><br>Mencari rute kurir terbaik...</div>
+                        <div class="text-center text-xs text-teal-500 py-4"><i class="fas fa-spinner fa-spin text-xl mb-2"></i><br>Mencari rute kurir terbaik...</div>
                     </div>
 
-                    <div class="pt-2 border-t border-blue-200">
-                        <label class="block text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-1">Metode Pembayaran Ongkir</label>
-                        <select name="payment_method" required class="w-full border-blue-200 text-gray-700 text-sm rounded-lg focus:ring-blue-500 bg-white">
+                    <div class="pt-2 border-t border-teal-200">
+                        <label class="block text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1">Metode Pembayaran Ongkir</label>
+                        <select name="payment_method" required class="w-full border-teal-200 text-gray-700 text-sm rounded-lg focus:ring-teal-500 bg-white">
                             <option value="saldo">Potong Saldo Sancaka (Tersedia: Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }})</option>
                             <option value="doku">DOKU Payment Gateway</option>
                         </select>
@@ -550,6 +559,10 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                 document.getElementById(`kr-${prefix}_district_id`).value = item.district_id || d.district_id || '';
                 document.getElementById(`kr-${prefix}_subdistrict_id`).value = item.subdistrict_id || d.subdistrict_id || '';
                 document.getElementById(`kr-${prefix}_postal_code`).value = d.postal_code || '';
+
+                // Tambahan: Isi otomatis field pencarian dengan nama area yang didapat
+                document.getElementById(`kr-search-${prefix}`).value = item.label || item.full_address || searchQuery;
+
                 return true;
             }
             return false;
@@ -567,14 +580,12 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
         const listContainer = document.getElementById('retur_ekspedisi_list');
 
         if(!senderSub || !receiverSub) {
-            document.getElementById('kr-manual-search-box').classList.remove('hidden');
-            listContainer.innerHTML = '';
+            listContainer.innerHTML = '<div class="text-xs text-red-500 font-bold p-3">Silakan lengkapi/verifikasi area Kecamatan di atas terlebih dahulu.</div>';
             document.getElementById('btn-submit-retur').disabled = true;
             document.getElementById('btn-submit-retur').classList.add('opacity-50', 'cursor-not-allowed');
             return;
         }
 
-        document.getElementById('kr-manual-search-box').classList.add('hidden');
         document.getElementById('btn-submit-retur').disabled = false;
         document.getElementById('btn-submit-retur').classList.remove('opacity-50', 'cursor-not-allowed');
 
@@ -607,9 +618,9 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                 const valueStr = `regular-${serviceCode}-${item.service_type}-${cost}-0-0`;
 
                 listContainer.insertAdjacentHTML('beforeend', `
-                    <label class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition bg-white shadow-sm">
+                    <label class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-teal-50 hover:border-teal-400 transition bg-white shadow-sm">
                         <div class="flex items-center gap-3">
-                            <input type="radio" name="pilih_kurir_retur" value="${valueStr}" required class="w-4 h-4 text-blue-600 focus:ring-blue-500" onchange="document.getElementById('kr-expedition').value = this.value;">
+                            <input type="radio" name="pilih_kurir_retur" value="${valueStr}" required class="w-4 h-4 text-teal-600 focus:ring-teal-500" onchange="document.getElementById('kr-expedition').value = this.value;">
                             <div class="w-12 h-8 flex items-center justify-center border border-gray-100 rounded bg-white p-1">
                                 <img src="${logoUrl}" class="max-h-full object-contain" onerror="this.src='https://placehold.co/50x20?text=${serviceCode}'">
                             </div>
@@ -633,11 +644,6 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
         document.getElementById('kr-invoice').value = data.invoice;
         document.getElementById('kr-hidden-weight').value = data.weight;
         document.getElementById('kr-hidden-price').value = data.item_price;
-
-        document.getElementById('kr-sender-name-display').innerText = data.buyer_name;
-        document.getElementById('kr-sender-address-display').innerText = data.buyer_address;
-        document.getElementById('kr-receiver-name-display').innerText = data.store_name;
-        document.getElementById('kr-receiver-address-display').innerText = data.store_address;
 
         document.getElementById('kr-sender-name-input').value = data.buyer_name;
         document.getElementById('kr-sender-address-input').value = data.buyer_address;
@@ -710,7 +716,7 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
     function retryFetchOngkir() {
         const weight = document.getElementById('kr-hidden-weight').value;
         const price = document.getElementById('kr-hidden-price').value;
-        document.getElementById('retur_ekspedisi_list').innerHTML = '<div class="text-center text-xs text-blue-500 py-4"><i class="fas fa-spinner fa-spin text-xl mb-2"></i><br>Mencari ulang...</div>';
+        document.getElementById('retur_ekspedisi_list').innerHTML = '<div class="text-center text-xs text-teal-500 py-4"><i class="fas fa-spinner fa-spin text-xl mb-2"></i><br>Mencari ulang...</div>';
         fetchOngkirRetur(weight, price);
     }
 
