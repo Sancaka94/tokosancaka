@@ -1664,7 +1664,7 @@ public function cetakThermal($resi)
                 'platform_name' => 'tokosancaka.com',
                 'category'      => 'regular',
                 'packages' => [[
-                    'order_id'                 => 'SCK-'.'RTR-'. rand(1000,9999) .'-'. time(),
+                    'order_id'                 => 'SCK-'.'RTR-'. rand(1000,9999),
                     'item_name'                => $itemDesc,
                     'package_type_id'          => 1,
                     'destination_name'         => $request->receiver_name,
