@@ -66,17 +66,17 @@
             </div>
         </div>
 
-        <dic class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center hover:shadow-md transition-shadow">
-            <div class="p-3 rounded-full bg-teal-50 text-teal-500 mr-3">
-                <i class="fas fa-exchange-alt text-lg"></i>
-            </div>
-            <div>
-                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Total Retur</p>
-                <h3 class="text-xl font-bold text-gray-800">{{ $countRetur ?? 0 }}</h3>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center hover:shadow-md transition-shadow">
+                <div class="p-3 rounded-full bg-teal-50 text-teal-500 mr-3">
+                    <i class="fas fa-exchange-alt text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Total Retur</p>
+                    <h3 class="text-xl font-bold text-gray-800">{{ $countRetur ?? 0 }}</h3>
+                </div>
             </div>
         </div>
-
     </div>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
