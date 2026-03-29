@@ -78,6 +78,38 @@ class KirimAjaController extends Controller
                 $finishedAt = $data['finished_at'] ?? null;
                 $updateTime = now()->timezone('Asia/Jakarta');
 
+                    // =========================================================================
+                    // 🔥 LOGIKA BARU: TANGKAP RESI RETUR
+                    // =========================================================================
+                    if (strpos($orderId, '-RTR-') !== false || strpos($orderId, 'RTR-') !== false) {
+                        if ($awb) {
+                            // Cari data retur yang resinya masih 'PROSES-PICKUP'
+                            $returnOrder = \App\Models\ReturnOrder::where('new_resi', 'PROSES-PICKUP')->latest()->first();
+
+                            if ($returnOrder) {
+                                $oldResiFallback = $returnOrder->new_resi;
+
+                                // 1. Update tabel return_orders
+                                $returnOrder->update(['new_resi' => $awb]);
+
+                                // 2. Update tabel complain_chats (Ganti teks PROSES-PICKUP jadi AWB Asli)
+                                if ($oldResiFallback === 'PROSES-PICKUP') {
+                                    DB::table('complain_chats')
+                                        ->where('invoice_number', $returnOrder->invoice_number)
+                                        ->where('message', 'LIKE', '%PROSES-PICKUP%')
+                                        ->update([
+                                            'message' => DB::raw("REPLACE(message, 'PROSES-PICKUP', '{$awb}')")
+                                        ]);
+                                }
+
+                                Log::info("[WEBHOOK-KA] ✅ Resi Retur Diperbarui | Invoice: {$returnOrder->invoice_number} | AWB Asli: {$awb}");
+                            }
+                        }
+
+                        // Lanjut ke loop berikutnya, skip proses update order biasa
+                        continue;
+                    }
+
                 $foundInMainDB = false;
 
                 // =========================================================================
