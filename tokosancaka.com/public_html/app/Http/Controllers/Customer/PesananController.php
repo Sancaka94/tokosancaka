@@ -1603,7 +1603,7 @@ public function cetakThermal($resi)
                     'amount'         => -$ongkirRetur,
                     'status'         => 'success',
                     'payment_method' => 'saldo_sancaka',
-                    'transaction_id' => 'SCK-' . $order->invoice_number . '-' . time(),
+                    'transaction_id' => 'SCK-' . 'RTR-' . $order->invoice_number . '-' . time(),
                     'catatan'        => 'Ongkir Retur Resi Baru'
                 ]);
                 \Log::info('Potong Saldo Berhasil', ['sisa_saldo' => $user->saldo]);
@@ -1618,47 +1618,67 @@ public function cetakThermal($resi)
 
             \Log::info('Kalkulasi Berat Paket:', ['total_weight' => $weight, 'item_desc' => $itemDesc]);
 
+            // ==========================================
             // 4. TEMBAK API KIRIMINAJA UNTUK BUAT RESI
-            // Asumsi jadwal besok jika sudah sore
-            $scheduleClock = date('Y-m-d H:i:s');
-            if ((int)date('H') >= 15) {
-                $scheduleClock = date('Y-m-d H:i:s', strtotime('+1 day 09:00:00'));
-                \Log::info('Jam sudah melebihi 15:00, jadwal pickup diubah ke besok:', ['schedule' => $scheduleClock]);
+            // ==========================================
+
+            $dayOfWeek = (int)date('N'); // 7 untuk Minggu
+            $currentHour = (int)date('H');
+
+            // Logika: Jika Hari Minggu (7) ATAU sudah jam 17:00 (5 sore) ke atas
+            if ($dayOfWeek == 7 || $currentHour >= 17) {
+                $scheduleClock = date('Y-m-d 09:00:00', strtotime('+1 day'));
+                $reason = ($dayOfWeek == 7) ? 'Hari Minggu' : 'Sudah jam 5 sore';
+                \Log::info("LOG LOG - $reason: Jadwal pickup dilempar ke besok jam 09:00", ['schedule' => $scheduleClock]);
+            } else {
+                // Jika hari kerja dan masih di bawah jam 5 sore, pickup jam 3 sore hari ini
+                $scheduleClock = date('Y-m-d 15:00:00');
+                \Log::info("LOG LOG - Hari kerja & sebelum jam 5 sore: Pickup diset sore ini", ['schedule' => $scheduleClock]);
             }
 
+            // Perbaikan Null Kode Pos (Mencegah "Error validation package meta data")
+            $senderZip = !empty($request->sender_postal_code) ? $request->sender_postal_code : '00000';
+            $receiverZip = !empty($request->receiver_postal_code) ? $request->receiver_postal_code : '00000';
+
             $payload = [
-                'address' => $request->sender_address, 'phone' => $request->sender_phone, 'name' => $request->sender_name,
-                'kecamatan_id' => $request->sender_district_id, 'kelurahan_id' => $request->sender_subdistrict_id,
-                'zipcode' => $request->sender_postal_code, 'schedule' => $scheduleClock,
-                'platform_name' => 'tokosancaka.com', 'category' => 'regular',
+                'address'       => $request->sender_address,
+                'phone'         => $request->sender_phone,
+                'name'          => $request->sender_name,
+                'kecamatan_id'  => $request->sender_district_id,
+                'kelurahan_id'  => $request->sender_subdistrict_id,
+                'zipcode'       => $senderZip,
+                'schedule'      => $scheduleClock,
+                'platform_name' => 'tokosancaka.com',
+                'category'      => 'regular',
                 'packages' => [[
-                    'order_id' => 'SCK-'.$order->invoice_number.'-'.rand(100,999),
-                    'item_name' => $itemDesc,
-                    'package_type_id' => 1, // Barang Umum
-                    'destination_name' => $request->receiver_name, 'destination_phone' => $request->receiver_phone,
-                    'destination_address' => $request->receiver_address,
-                    'destination_kecamatan_id' => $request->receiver_district_id, 'destination_kelurahan_id' => $request->receiver_subdistrict_id,
-                    'destination_zipcode' => $request->receiver_postal_code,
-                    'weight' => (int) $weight,
-                    'item_value' => 10000, // Nilai default asuransi retur
-                    'insurance_amount' => 0, 'cod' => 0,
-                    'service' => $courier, 'service_type' => $service_type,
-                    'shipping_cost' => $ongkirRetur
+                    'order_id'                 => 'SCK-'.'RTR-'.$order->invoice_number.'-'.rand(100,999),
+                    'item_name'                => $itemDesc,
+                    'package_type_id'          => 1,
+                    'destination_name'         => $request->receiver_name,
+                    'destination_phone'        => $request->receiver_phone,
+                    'destination_address'      => $request->receiver_address,
+                    'destination_kecamatan_id' => $request->receiver_district_id,
+                    'destination_kelurahan_id' => $request->receiver_subdistrict_id,
+                    'destination_zipcode'      => $receiverZip,
+                    'weight'                   => (int) $weight,
+                    'item_value'               => 10000,
+                    'insurance_amount'         => 0,
+                    'cod'                      => 0,
+                    'service'                  => $courier,
+                    'service_type'             => $service_type,
+                    'shipping_cost'            => $ongkirRetur
                 ]]
             ];
 
-            \Log::info('Payload KiriminAja Retur (Akan Dikirim ke API):', json_decode(json_encode($payload), true));
+            \Log::info('LOG LOG - Payload Akhir KiriminAja:', $payload);
 
             $kiriminResponse = $kirimaja->createExpressOrder($payload);
 
-            \Log::info('Response dari API KiriminAja:', is_array($kiriminResponse) ? $kiriminResponse : ['raw_response' => $kiriminResponse]);
+            \Log::info('LOG LOG - Response API KiriminAja:', $kiriminResponse);
 
             if (($kiriminResponse['status'] ?? false) !== true) {
                 $errorMsg = $kiriminResponse['text'] ?? ($kiriminResponse['errors'][0]['text'] ?? 'Gagal membuat order di sistem ekspedisi.');
-                \Log::error('API KiriminAja merespon dengan GAGAL / FALSE', [
-                    'error_msg' => $errorMsg,
-                    'full_response' => $kiriminResponse
-                ]);
+                \Log::error('LOG LOG - API KiriminAja Gagal:', ['msg' => $errorMsg]);
                 throw new Exception($errorMsg);
             }
 
