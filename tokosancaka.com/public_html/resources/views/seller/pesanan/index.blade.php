@@ -157,62 +157,88 @@
                                 </div>
                             </div>
 
-                            {{-- STATUS & TOMBOL KOMPLAIN --}}
-                            {{-- STATUS & TOMBOL AKSI --}}
-                            <div class="lg:col-span-2 flex flex-col items-start lg:items-end">
-                                <span class="px-3 py-1 inline-flex text-[11px] leading-5 font-bold rounded-full border shadow-sm {{ $order->status_badge_class }}">
+                            {{-- STATUS & TOMBOL AKSI PINTAR (SELLER) --}}
+                            <div class="lg:col-span-2 flex flex-col items-start lg:items-end w-full">
+
+                                {{-- Badge Status Utama --}}
+                                <span class="px-3 py-1 inline-flex text-[11px] leading-5 font-bold rounded-full border shadow-sm {{ $order->status_badge_class }} mb-2">
                                     {{ Str::title($order->status) }}
                                 </span>
 
                                 @php
                                     $escrow = \App\Models\Escrow::where('order_id', $order->id)->first();
-                                    $isMediasi = $escrow && $escrow->status_dana === 'mediasi';
                                     $statusOrder = strtolower($order->status);
+
+                                    // Deteksi Status Bermasalah
                                     $isRetur = in_array($statusOrder, ['returning', 'return_approved', 'returned']);
+                                    $isRefundPending = $escrow && $escrow->status_dana === 'refund_pending';
+                                    $isDicairkan = $escrow && $escrow->status_dana === 'dicairkan';
+                                    $isRefundDone = $isDicairkan && str_contains(strtoupper($escrow->catatan ?? ''), 'REFUND');
+                                    $isMediasi = $escrow && $escrow->status_dana === 'mediasi';
                                 @endphp
 
-                                {{-- JIKA STATUS RETUR --}}
-                                @if($isRetur)
-                                    @php
-                                        // Ambil data resi retur dari database
-                                        $returnOrder = \App\Models\ReturnOrder::where('order_id', $order->id)->first();
+                                {{-- 1. TAMPILAN JIKA REFUND SELESAI --}}
+                                @if($isRefundDone)
+                                    <div class="text-center p-2 bg-red-50 border border-red-200 rounded-lg w-full mb-2 shadow-inner">
+                                        <i class="fas fa-undo-alt text-red-500 text-xl mb-1"></i>
+                                        <p class="text-[10px] text-red-700 font-bold uppercase tracking-wider">Refund Selesai</p>
+                                    </div>
 
-                                        // Tentukan data yang akan ditampilkan (prioritaskan data dari ReturnOrder jika ada)
-                                        $returCourier = $returnOrder ? $returnOrder->courier : ($order->shipping_courier ?? 'Kurir');
-                                        $returResi    = $returnOrder ? $returnOrder->new_resi : 'Menunggu Input Resi';
-                                        $returCost    = $returnOrder ? $returnOrder->shipping_cost : 0;
+                                {{-- 2. TAMPILAN JIKA REFUND PENDING --}}
+                                @elseif($isRefundPending)
+                                    <div class="text-center p-2 bg-yellow-50 border border-yellow-200 rounded-lg w-full mb-2 shadow-inner">
+                                        <i class="fas fa-undo text-yellow-500 text-xl mb-1"></i>
+                                        <p class="text-[10px] text-yellow-700 font-bold uppercase tracking-wider leading-tight">Proses Refund</p>
+                                    </div>
 
-                                        $ship = \App\Helpers\ShippingHelper::parseShippingMethod($returCourier);
+                                {{-- 3. TAMPILAN JIKA PROSES RETUR --}}
+                                @elseif($isRetur)
+                                    <div class="w-full mb-2">
+                                        @php
+                                            // Ambil data dari tabel return_orders
+                                            $returnOrder = \App\Models\ReturnOrder::where('order_id', $order->id)->first();
+                                            $returCourier = $returnOrder ? $returnOrder->courier : ($order->shipping_courier ?? 'Kurir');
+                                            $returResi    = $returnOrder ? $returnOrder->new_resi : 'Menunggu Resi';
+                                            $returCost    = $returnOrder ? $returnOrder->shipping_cost : 0;
+                                            $ship = \App\Helpers\ShippingHelper::parseShippingMethod($returCourier);
 
-                                        $returData = [
-                                            'store_name'    => $order->store->name ?? 'Toko Tidak Diketahui',
-                                            'store_address' => $order->store->address_detail ?? '-',
-                                            'buyer_name'    => $order->user->nama_lengkap ?? 'Pembeli Tidak Diketahui',
-                                            'buyer_address' => $order->shipping_address ?? '-',
-                                            'courier'       => $ship['courier_name'] ?? $returCourier,
-                                            'service'       => $ship['service_name'] ?? 'REGULER',
-                                            'logo'          => $ship['logo_url'] ?? '',
-                                            'resi'          => $returResi,
-                                            'cost'          => number_format($returCost, 0, ',', '.'),
-                                            'date'          => $returnOrder ? $returnOrder->created_at->format('d M Y, H:i') : '-',
-                                            // Tombol lacak hanya aktif jika resi sudah bukan 'PROSES-PICKUP' atau Kosong
-                                            'track_url'     => ($returnOrder && $returnOrder->new_resi && $returnOrder->new_resi !== 'PROSES-PICKUP')
-                                                                ? route('tracking.index', ['resi' => $returnOrder->new_resi])
-                                                                : '#'
-                                        ];
-                                    @endphp
-                                    <div class="mt-3 w-full">
+                                            $returData = [
+                                                'store_name'    => $order->store->name ?? 'Toko Tidak Diketahui',
+                                                'store_address' => $order->store->address_detail ?? '-',
+                                                'buyer_name'    => $order->user->nama_lengkap ?? 'Pembeli Tidak Diketahui',
+                                                'buyer_address' => $order->shipping_address ?? '-',
+                                                'courier'       => $ship['courier_name'] ?? $returCourier,
+                                                'service'       => $ship['service_name'] ?? 'REGULER',
+                                                'logo'          => $ship['logo_url'] ?? '',
+                                                'resi'          => $returResi,
+                                                'cost'          => number_format($returCost, 0, ',', '.'),
+                                                'date'          => $returnOrder ? $returnOrder->created_at->format('d M Y, H:i') : '-',
+                                                'track_url'     => ($returnOrder && $returnOrder->new_resi && $returnOrder->new_resi !== 'PROSES-PICKUP')
+                                                                    ? route('tracking.index', ['resi' => $returnOrder->new_resi])
+                                                                    : '#'
+                                            ];
+                                        @endphp
                                         <button type="button" data-info="{{ json_encode($returData) }}" onclick="openReturModal(this)" class="w-full bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-700 text-[10px] font-bold py-2 rounded-lg transition-colors flex items-center justify-center shadow-sm">
-                                            <i class="fas fa-box-open mr-1.5 text-teal-500"></i> Info Retur
+                                            <i class="fas fa-exchange-alt mr-1.5 text-teal-500"></i> Info Retur
                                         </button>
+                                        @if($statusOrder === 'returned')
+                                            <div class="text-center mt-1 text-[9px] text-teal-600 font-bold"><i class="fas fa-check-circle"></i> Retur Tiba</div>
+                                        @endif
+                                    </div>
+
+                                {{-- 4. TAMPILAN JIKA MEDIASI AKTIF --}}
+                                @elseif($isMediasi)
+                                    <div class="text-center p-2 bg-orange-50 border border-orange-200 rounded-lg w-full mb-2 shadow-inner">
+                                        <i class="fas fa-gavel text-orange-500 text-xl mb-1"></i>
+                                        <p class="text-[10px] text-orange-700 font-bold uppercase tracking-wider">Mediasi Admin</p>
                                     </div>
                                 @endif
 
-                                {{-- JIKA ADA MASALAH (MEDIASI / RETUR / REFUND PENDING) --}}
-                                @if($isMediasi || $isRetur || ($escrow && $escrow->status_dana === 'refund_pending'))
-                                    <div class="mt-2 w-full">
-                                        <button onclick="openKomplainModal('{{ $order->invoice_number }}', '{{ addslashes($order->user->nama_lengkap ?? 'Pembeli') }}')" class="w-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-[10px] font-bold py-2 rounded-lg transition-colors flex items-center justify-center shadow-sm">
-                                            <i class="fas fa-comments mr-1.5 text-red-500 animate-pulse"></i> Pusat Resolusi
+                                {{-- TOMBOL CHAT RESOLUSI (Selalu muncul jika ada riwayat masalah) --}}
+                                @if($isRetur || $isMediasi || $isRefundPending || $isRefundDone)
+                                    <div class="w-full mt-1">
+                                        <button type="button" onclick="openKomplainModal('{{ $order->invoice_number }}', '{{ addslashes($order->user->nama_lengkap ?? 'Pembeli') }}')" class="w-full bg-white hover:bg-red-50 border border-gray-300 hover:border-red-300 text-gray-700 hover:text-red-600 text-[10px] font-bold py-2 rounded-lg transition-colors flex items-center justify-center shadow-sm">
+                                            <i class="fas fa-comments mr-1.5 text-red-400"></i> Chat Resolusi
                                         </button>
                                     </div>
                                 @endif
