@@ -77,6 +77,7 @@
                 </div>
             </div>
         </div>
+
     </div>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
