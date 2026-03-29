@@ -174,19 +174,31 @@
                                 {{-- JIKA STATUS RETUR --}}
                                 @if($isRetur)
                                     @php
-                                        $ship = \App\Helpers\ShippingHelper::parseShippingMethod($order->shipping_courier ?? $order->expedition ?? '');
+                                        // Ambil data resi retur dari database
+                                        $returnOrder = \App\Models\ReturnOrder::where('order_id', $order->id)->first();
+
+                                        // Tentukan data yang akan ditampilkan (prioritaskan data dari ReturnOrder jika ada)
+                                        $returCourier = $returnOrder ? $returnOrder->courier : ($order->shipping_courier ?? 'Kurir');
+                                        $returResi    = $returnOrder ? $returnOrder->new_resi : 'Menunggu Input Resi';
+                                        $returCost    = $returnOrder ? $returnOrder->shipping_cost : 0;
+
+                                        $ship = \App\Helpers\ShippingHelper::parseShippingMethod($returCourier);
+
                                         $returData = [
-                                            'store_name' => $order->store->name ?? 'Toko Tidak Diketahui',
+                                            'store_name'    => $order->store->name ?? 'Toko Tidak Diketahui',
                                             'store_address' => $order->store->address_detail ?? '-',
-                                            'buyer_name' => $order->user->nama_lengkap ?? 'Pembeli Tidak Diketahui',
+                                            'buyer_name'    => $order->user->nama_lengkap ?? 'Pembeli Tidak Diketahui',
                                             'buyer_address' => $order->shipping_address ?? '-',
-                                            'courier' => $ship['courier_name'] ?? $order->shipping_courier ?? 'Kurir',
-                                            'service' => $ship['service_name'] ?? '-',
-                                            'logo' => $ship['logo_url'] ?? '',
-                                            'resi' => $order->shipping_reference ?? 'Belum ada resi',
-                                            'cost' => number_format($order->shipping_cost ?? 0, 0, ',', '.'),
-                                            'date' => $order->created_at ? $order->created_at->format('d M Y, H:i') : '-',
-                                            'track_url' => $order->shipping_reference ? route('tracking.index', ['resi' => $order->shipping_reference]) : '#'
+                                            'courier'       => $ship['courier_name'] ?? $returCourier,
+                                            'service'       => $ship['service_name'] ?? 'REGULER',
+                                            'logo'          => $ship['logo_url'] ?? '',
+                                            'resi'          => $returResi,
+                                            'cost'          => number_format($returCost, 0, ',', '.'),
+                                            'date'          => $returnOrder ? $returnOrder->created_at->format('d M Y, H:i') : '-',
+                                            // Tombol lacak hanya aktif jika resi sudah bukan 'PROSES-PICKUP' atau Kosong
+                                            'track_url'     => ($returnOrder && $returnOrder->new_resi && $returnOrder->new_resi !== 'PROSES-PICKUP')
+                                                                ? route('tracking.index', ['resi' => $returnOrder->new_resi])
+                                                                : '#'
                                         ];
                                     @endphp
                                     <div class="mt-3 w-full">
@@ -267,7 +279,7 @@
             </div>
 
             <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1.5"><i class="fas fa-truck-fast mr-1 text-teal-500"></i> Data Ekspedisi Resi Awal</p>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1.5"><i class="fas fa-truck-fast mr-1 text-teal-500"></i> Data Ekspedisi Pengembalian (Retur)</p>
                 <div class="flex items-center justify-between flex-wrap gap-4">
                     <div class="flex items-center gap-3">
                         <img id="rm-logo" src="" class="h-10 w-auto object-contain border border-gray-100 rounded p-1 bg-white hidden">
@@ -277,9 +289,9 @@
                             <p class="text-[10px] text-gray-500 uppercase" id="rm-service"></p>
                         </div>
                     </div>
-                    <div class="text-right bg-gray-50 px-3 py-1.5 rounded border border-gray-100">
-                        <p class="text-[9px] text-gray-500 uppercase font-bold">Nomor Resi Awal</p>
-                        <p class="text-sm font-mono font-bold text-blue-600" id="rm-resi"></p>
+                    <div class="text-right bg-blue-50 px-3 py-1.5 rounded border border-blue-100">
+                        <p class="text-[9px] text-blue-600 uppercase font-bold">Nomor Resi Retur</p>
+                        <p class="text-sm font-mono font-bold text-blue-700" id="rm-resi"></p>
                     </div>
                 </div>
             </div>
