@@ -193,6 +193,7 @@
 
                         <td class="px-4 py-4 align-top whitespace-normal">
                             @if($escrow->order)
+                                {{-- 1. DATA EKSPEDISI AWAL (KIRIM KETIKA CHECKOUT) --}}
                                 <div class="bg-blue-50/50 p-2 rounded border border-blue-100 mb-2">
                                     <div class="flex items-center gap-2 mb-1.5">
                                         @php
@@ -217,7 +218,7 @@
                                     </div>
 
                                     <div class="text-xs text-gray-800 font-medium flex items-center mt-1 pt-1 border-t border-blue-100/60 w-max">
-                                        <span class="text-gray-500 mr-1 text-[10px]">Resi:</span>
+                                        <span class="text-gray-500 mr-1 text-[10px]">Resi Awal:</span>
                                         <span class="text-blue-700 font-bold tracking-wider" id="resi-{{$escrow->id}}">{{ $escrow->order->shipping_reference ?? 'Belum ada resi' }}</span>
                                         @if($escrow->order->shipping_reference)
                                             <button onclick="copyResi('{{ $escrow->order->shipping_reference }}')" class="ml-2 text-blue-400 hover:text-blue-800 transition-colors" title="Salin Resi">
@@ -227,13 +228,52 @@
                                     </div>
                                 </div>
 
+                                {{-- 2. DATA EKSPEDISI RETUR (JIKA ADA PENGEMBALIAN) --}}
+                                @php
+                                    $returnOrderInfo = \App\Models\ReturnOrder::where('order_id', $escrow->order_id)->first();
+                                @endphp
+                                @if($returnOrderInfo)
+                                    <div class="bg-teal-50/50 p-2 rounded border border-teal-100 mb-2 relative overflow-hidden">
+                                        <div class="absolute -right-2 -top-2 text-teal-100 opacity-50"><i class="fas fa-exchange-alt text-4xl"></i></div>
+                                        <div class="text-[9px] font-bold text-teal-600 uppercase mb-1.5 flex items-center"><i class="fas fa-truck-loading mr-1"></i> Paket Retur</div>
+                                        <div class="flex items-center gap-2 mb-1.5 relative z-10">
+                                            @php
+                                                $shipRetur = \App\Helpers\ShippingHelper::parseShippingMethod($returnOrderInfo->courier . ' REG');
+                                                $courierNameRetur = $shipRetur['courier_name'] ?? $returnOrderInfo->courier;
+                                                $logoUrlRetur     = $shipRetur['logo_url'] ?? null;
+                                            @endphp
 
+                                            @if($logoUrlRetur)
+                                                <img src="{{ $logoUrlRetur }}" class="h-6 w-auto object-contain rounded bg-white px-1 border border-gray-100 shadow-sm" alt="{{ $courierNameRetur }}">
+                                            @else
+                                                <div class="h-6 px-2 flex items-center justify-center bg-gray-200 text-gray-500 font-bold text-[10px] rounded border border-gray-300">
+                                                    {{ substr($courierNameRetur, 0, 4) }}
+                                                </div>
+                                            @endif
+
+                                            <div class="leading-tight flex-1">
+                                                <div class="text-[11px] font-bold text-gray-800 uppercase">{{ $courierNameRetur }}</div>
+                                                <div class="text-[9px] text-gray-600 font-medium">Ongkir: <span class="text-red-500 font-bold">Rp {{ number_format($returnOrderInfo->shipping_cost, 0, ',', '.') }}</span></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="text-xs text-gray-800 font-medium flex items-center mt-1 pt-1 border-t border-teal-100/60 w-max relative z-10">
+                                            <span class="text-gray-500 mr-1 text-[10px]">Resi Retur:</span>
+                                            <span class="text-teal-700 font-bold tracking-wider">{{ $returnOrderInfo->new_resi }}</span>
+                                            @if($returnOrderInfo->new_resi && $returnOrderInfo->new_resi !== 'PROSES-PICKUP')
+                                                <button onclick="copyResi('{{ $returnOrderInfo->new_resi }}')" class="ml-2 text-teal-500 hover:text-teal-800 transition-colors" title="Salin Resi">
+                                                    <i class="far fa-copy"></i>
+                                                </button>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- 3. DAFTAR ITEM PRODUK --}}
                                 <div class="bg-gray-50 p-2 rounded border border-gray-200">
                                     <ul class="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
                                     @foreach($escrow->order->items as $item)
                                             <li class="border-b border-gray-100 pb-2 last:border-0 last:pb-0 flex items-start gap-2">
-
-                                                {{-- LOGIKA GAMBAR BARU --}}
                                                 <div class="w-10 h-10 flex-shrink-0 bg-gray-200 rounded overflow-hidden border border-gray-200 relative shadow-sm">
                                                     @if($item->product && !empty($item->product->image_url))
                                                         @php
@@ -242,9 +282,9 @@
                                                             $imageUrl = asset('public/storage/' . $cleanPath);
                                                         @endphp
                                                         <img src="{{ $imageUrl }}"
-                                                             alt="{{ $item->product->name }}"
-                                                             class="w-full h-full object-cover"
-                                                             onerror="this.onerror=null; this.src='https://placehold.co/40x40/f3f4f6/a1a1aa?text=Img';">
+                                                            alt="{{ $item->product->name }}"
+                                                            class="w-full h-full object-cover"
+                                                            onerror="this.onerror=null; this.src='https://placehold.co/40x40/f3f4f6/a1a1aa?text=Img';">
                                                     @else
                                                         <div class="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-100">
                                                             <i class="fas fa-image text-xs"></i>
