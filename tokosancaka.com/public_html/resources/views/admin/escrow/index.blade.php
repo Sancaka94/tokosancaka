@@ -272,13 +272,41 @@
                         </td>
 
                         <td class="px-4 py-4 whitespace-nowrap text-center align-top bg-gray-50/50 border-l border-gray-100">
-                            @if($escrow->status_dana === 'ditahan')
+                            @php
+                                $statusOrder = strtolower($escrow->order->status ?? '');
+                                $isRetur = in_array($statusOrder, ['returning', 'return_approved', 'returned']);
+                            @endphp
 
-                                @php
-                                    $statusOrder = strtolower($escrow->order->status ?? '');
-                                    $isDelivered = in_array($statusOrder, ['completed', 'selesai', 'sampai', 'delivered']);
-                                @endphp
+                            {{-- 1. JIKA STATUS PESANAN ADALAH RETUR --}}
+                            @if($isRetur)
+                                <div class="text-center p-2 bg-teal-50 rounded border border-teal-200 shadow-inner mb-2">
+                                    <i class="fas fa-exchange-alt text-teal-500 text-xl mb-1"></i>
+                                    <p class="text-[10px] text-teal-700 font-bold uppercase tracking-wider mb-2">Proses Retur</p>
+                                    @php
+                                        $ship = \App\Helpers\ShippingHelper::parseShippingMethod($escrow->order->shipping_courier ?? $escrow->order->expedition ?? '');
+                                        $returData = [
+                                            'store_name' => $escrow->store->name ?? 'Toko Tidak Diketahui',
+                                            'store_address' => $escrow->store->address_detail ?? '-',
+                                            'buyer_name' => $escrow->buyer->nama_lengkap ?? 'Pembeli Tidak Diketahui',
+                                            'buyer_address' => $escrow->order->shipping_address ?? '-',
+                                            'courier' => $ship['courier_name'] ?? $escrow->order->shipping_courier ?? 'Kurir',
+                                            'service' => $ship['service_name'] ?? '-',
+                                            'logo' => $ship['logo_url'] ?? '',
+                                            'resi' => $escrow->order->shipping_reference ?? 'Belum ada resi',
+                                            'cost' => number_format($escrow->order->shipping_cost ?? 0, 0, ',', '.'),
+                                            'date' => $escrow->order->created_at ? $escrow->order->created_at->format('d M Y, H:i') : '-',
+                                            'track_url' => $escrow->order->shipping_reference ? route('tracking.index', ['resi' => $escrow->order->shipping_reference]) : '#'
+                                        ];
+                                    @endphp
+                                    <button type="button" onclick="openReturModal({{ htmlspecialchars(json_encode($returData)) }})" class="w-full bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
+                                        <i class="fas fa-box-open mr-1"></i> Info Retur
+                                    </button>
+                                </div>
+                            @endif
 
+                            {{-- 2. STATUS ESCROW LAINNYA --}}
+                            @if($escrow->status_dana === 'ditahan' && !$isRetur)
+                                @php $isDelivered = in_array($statusOrder, ['completed', 'selesai', 'sampai', 'delivered']); @endphp
                                 <div class="flex flex-col space-y-2">
                                     @if($isDelivered)
                                         <div class="text-[10px] font-bold text-green-600 mb-1 border-b border-green-200 pb-1"><i class="fas fa-box-open"></i> DITERIMA</div>
@@ -307,19 +335,17 @@
                             @elseif($escrow->status_dana === 'refund_pending')
                                 <div class="text-center p-2 bg-yellow-50 rounded border border-yellow-200 shadow-inner">
                                     <i class="fas fa-undo text-yellow-500 text-xl mb-1"></i>
-                                    <p class="text-[10px] text-yellow-700 font-bold uppercase tracking-wider mb-2">Refund Disetujui Penjual</p>
-
-                                    <form action="{{ route('admin.escrow.refund', $escrow->id) }}" method="POST" onsubmit="return confirm('Kembalikan dana Rp {{ number_format($escrow->nominal_ditahan - $escrow->nominal_ongkir, 0, ',', '.') }} ke saldo Pembeli? (Ongkir hangus)');">
+                                    <p class="text-[10px] text-yellow-700 font-bold uppercase tracking-wider mb-2 leading-tight">Refund Disetujui Penjual</p>
+                                    <form action="{{ route('admin.escrow.refund', $escrow->id) }}" method="POST" onsubmit="return confirm('Kembalikan dana Bersih Rp {{ number_format($danaPenjual, 0, ',', '.') }} ke saldo Pembeli?');">
                                         @csrf
                                         <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white text-[10px] font-bold py-2 rounded transition shadow-sm flex items-center justify-center">
-                                            <i class="fas fa-wallet mr-1"></i> Refund ke Pembeli
+                                            <i class="fas fa-wallet mr-1"></i> Refund Pembeli
                                         </button>
                                     </form>
                                 </div>
 
                             @elseif($escrow->status_dana === 'dicairkan')
-                                {{-- CEK APAKAH INI PENCAIRAN NORMAL ATAU REFUND --}}
-                                @if(str_contains(strtoupper($escrow->catatan), 'REFUND') || strtolower($escrow->order->status ?? '') === 'returned')
+                                @if(str_contains(strtoupper($escrow->catatan), 'REFUND') || $isRetur)
                                     <div class="text-center p-2">
                                         <i class="fas fa-undo-alt text-red-500 text-3xl mb-2 drop-shadow-sm"></i>
                                         <p class="text-[11px] text-red-600 font-bold uppercase tracking-wider">Refund</p>
@@ -333,55 +359,18 @@
                                     </div>
                                 @endif
 
-                           @elseif($escrow->status_dana === 'mediasi')
+                            @elseif($escrow->status_dana === 'mediasi' && !$isRetur)
                                 <div class="text-center p-2 bg-red-50 rounded border border-red-200 shadow-inner">
                                     <i class="fas fa-exclamation-triangle text-red-500 text-xl mb-1"></i>
                                     <p class="text-[10px] text-red-700 font-bold uppercase tracking-wider mb-2">Mediasi</p>
-                                    <button type="button" onclick="openKomplainModal('{{ $escrow->invoice_number }}', '{{ addslashes($escrow->store->name ?? 'Toko') }}')" class="w-full bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
-                                        <i class="fas fa-comments mr-1"></i> Buka Chat
-                                    </button>
                                 </div>
-
-                            {{-- LOGIKA TOMBOL INFO RETUR --}}
-                            @if(in_array(strtolower($escrow->order->status ?? ''), ['returning', 'return_approved']))
-                                @php
-                                    $ship = \App\Helpers\ShippingHelper::parseShippingMethod($escrow->order->shipping_courier ?? $escrow->order->expedition ?? '');
-                                    $returData = [
-                                        'store_name' => $escrow->store->name ?? 'Toko Tidak Diketahui',
-                                        'store_address' => $escrow->store->address_detail ?? '-',
-                                        'buyer_name' => $escrow->buyer->nama_lengkap ?? 'Pembeli Tidak Diketahui',
-                                        'buyer_address' => $escrow->order->shipping_address ?? '-',
-                                        'courier' => $ship['courier_name'] ?? $escrow->order->shipping_courier ?? 'Kurir',
-                                        'service' => $ship['service_name'] ?? '-',
-                                        'logo' => $ship['logo_url'] ?? '',
-                                        'resi' => $escrow->order->shipping_reference ?? 'Belum ada resi',
-                                        'cost' => number_format($escrow->order->shipping_cost ?? 0, 0, ',', '.'),
-                                        'date' => $escrow->order->created_at ? $escrow->order->created_at->format('d M Y, H:i') : '-',
-                                        'track_url' => $escrow->order->shipping_reference ? route('tracking.index', ['resi' => $escrow->order->shipping_reference]) : '#'
-                                    ];
-                                @endphp
-                                <button type="button" onclick="openReturModal({{ htmlspecialchars(json_encode($returData)) }})" class="w-full mt-1.5 bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-700 text-[10px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
-                                    <i class="fas fa-box-open mr-1"></i> Info Retur
-                                </button>
                             @endif
 
-                            {{-- LOGIKA BARU: TOMBOL REFUND MUNCUL DI SINI --}}
-                            @elseif($escrow->status_dana === 'refund_pending')
-                                <div class="text-center p-2 bg-yellow-50 rounded border border-yellow-200 shadow-inner">
-                                    <i class="fas fa-undo text-yellow-500 text-xl mb-1"></i>
-                                    <p class="text-[10px] text-yellow-700 font-bold uppercase tracking-wider mb-2 leading-tight">Refund Disetujui Penjual</p>
-
-                                    <form action="{{ route('admin.escrow.refund', $escrow->id) }}" method="POST" onsubmit="return confirm('Kembalikan dana Bersih (Tanpa Ongkir) sebesar Rp {{ number_format($danaPenjual, 0, ',', '.') }} ke saldo Pembeli?');">
-                                        @csrf
-                                        <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white text-[10px] font-bold py-2 rounded transition shadow-sm flex items-center justify-center">
-                                            <i class="fas fa-wallet mr-1"></i> Refund Pembeli
-                                        </button>
-                                    </form>
-
-                                    <button type="button" onclick="openKomplainModal('{{ $escrow->invoice_number }}', '{{ addslashes($escrow->store->name ?? 'Toko') }}')" class="w-full mt-1 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-[9px] font-bold py-1 rounded transition shadow-sm flex items-center justify-center">
-                                        Lihat Chat
-                                    </button>
-                                </div>
+                            {{-- 3. JIKA BERMASALAH (RETUR/MEDIASI/REFUND PENDING), SELALU TAMPILKAN TOMBOL CHAT --}}
+                            @if($isRetur || $escrow->status_dana === 'mediasi' || $escrow->status_dana === 'refund_pending')
+                                <button type="button" onclick="openKomplainModal('{{ $escrow->invoice_number }}', '{{ addslashes($escrow->store->name ?? 'Toko') }}')" class="w-full mt-1 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-[9px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
+                                    Lihat Chat Resolusi
+                                </button>
                             @endif
                         </td>
                     </tr>
