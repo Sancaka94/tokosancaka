@@ -98,8 +98,14 @@ class EscrowController extends Controller
                   });
         })->count();
 
+        // 🌟 TAMBAHKAN KODE INI UNTUK MENGHITUNG TOTAL RETUR 🌟
+        $countRetur = (clone $baseStatsQuery)->whereHas('order', function($q) {
+            // Hitung pesanan yang sedang proses retur atau disetujui retur
+            $q->whereIn('status', ['returning', 'return_approved']);
+        })->count();
+
         return view('admin.escrow.index', compact(
-            'escrows', 'countSelesai', 'countDikirim', 'countBermasalah', 'countBatal' , 'countRefund'
+            'escrows', 'countSelesai', 'countDikirim', 'countBermasalah', 'countBatal' , 'countRefund', 'countRetur'
         ));
     }
     /**

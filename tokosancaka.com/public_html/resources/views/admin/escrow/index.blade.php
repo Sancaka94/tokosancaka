@@ -15,7 +15,7 @@
         </a>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center hover:shadow-md transition-shadow">
             <div class="p-3 rounded-full bg-blue-50 text-blue-500 mr-4">
                 <i class="fas fa-truck-fast text-xl"></i>
@@ -64,6 +64,18 @@
                 <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Total Refund</p>
                 <h3 class="text-2xl font-bold text-gray-800">{{ $countRefund ?? 0 }}</h3>
             </div>
+        </div>
+
+        <dic class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center hover:shadow-md transition-shadow">
+            <div class="p-3 rounded-full bg-teal-50 text-teal-500 mr-3">
+                <i class="fas fa-exchange-alt text-lg"></i>
+            </div>
+            <div>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Total Retur</p>
+                <h3 class="text-xl font-bold text-gray-800">{{ $countRetur ?? 0 }}</h3>
+            </div>
+        </div>
         </div>
 
     </div>
@@ -331,6 +343,29 @@
                                     </button>
                                 </div>
 
+                            {{-- LOGIKA TOMBOL INFO RETUR --}}
+                            @if(in_array(strtolower($escrow->order->status ?? ''), ['returning', 'return_approved']))
+                                @php
+                                    $ship = \App\Helpers\ShippingHelper::parseShippingMethod($escrow->order->shipping_courier ?? $escrow->order->expedition ?? '');
+                                    $returData = [
+                                        'store_name' => $escrow->store->name ?? 'Toko Tidak Diketahui',
+                                        'store_address' => $escrow->store->address_detail ?? '-',
+                                        'buyer_name' => $escrow->buyer->nama_lengkap ?? 'Pembeli Tidak Diketahui',
+                                        'buyer_address' => $escrow->order->shipping_address ?? '-',
+                                        'courier' => $ship['courier_name'] ?? $escrow->order->shipping_courier ?? 'Kurir',
+                                        'service' => $ship['service_name'] ?? '-',
+                                        'logo' => $ship['logo_url'] ?? '',
+                                        'resi' => $escrow->order->shipping_reference ?? 'Belum ada resi',
+                                        'cost' => number_format($escrow->order->shipping_cost ?? 0, 0, ',', '.'),
+                                        'date' => $escrow->order->created_at ? $escrow->order->created_at->format('d M Y, H:i') : '-',
+                                        'track_url' => $escrow->order->shipping_reference ? route('tracking.index', ['resi' => $escrow->order->shipping_reference]) : '#'
+                                    ];
+                                @endphp
+                                <button type="button" onclick="openReturModal({{ htmlspecialchars(json_encode($returData)) }})" class="w-full mt-1.5 bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-700 text-[10px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
+                                    <i class="fas fa-box-open mr-1"></i> Info Retur
+                                </button>
+                            @endif
+
                             {{-- LOGIKA BARU: TOMBOL REFUND MUNCUL DI SINI --}}
                             @elseif($escrow->status_dana === 'refund_pending')
                                 <div class="text-center p-2 bg-yellow-50 rounded border border-yellow-200 shadow-inner">
@@ -411,6 +446,126 @@
         </form>
     </div>
 </div>
+
+<div id="returModal" class="fixed inset-0 z-[100] hidden bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col transform transition-all scale-95 opacity-0" id="returModalContent">
+        <div class="bg-teal-600 px-5 py-4 flex justify-between items-center text-white shadow-md z-10">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-teal-600">
+                    <i class="fas fa-exchange-alt text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-sm leading-tight">Informasi Retur & Pengiriman</h3>
+                    <p class="text-[10px] text-teal-100">Cek alamat lengkap dan lacak paket</p>
+                </div>
+            </div>
+            <button onclick="closeReturModal()" class="text-white hover:text-teal-200 bg-teal-700 hover:bg-teal-800 rounded-full w-8 h-8 flex items-center justify-center transition">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="p-5 bg-gray-50 flex-1 overflow-y-auto max-h-[70vh]">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-100 pb-1.5"><i class="fas fa-store mr-1 text-teal-500"></i> Pengirim (Toko)</p>
+                    <p class="text-sm font-bold text-gray-800" id="rm-store-name"></p>
+                    <p class="text-[11px] text-gray-600 mt-1.5 leading-relaxed" id="rm-store-address"></p>
+                </div>
+                <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-100 pb-1.5"><i class="fas fa-user mr-1 text-teal-500"></i> Penerima (Pembeli)</p>
+                    <p class="text-sm font-bold text-gray-800" id="rm-buyer-name"></p>
+                    <p class="text-[11px] text-gray-600 mt-1.5 leading-relaxed" id="rm-buyer-address"></p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1.5"><i class="fas fa-truck-fast mr-1 text-teal-500"></i> Data Ekspedisi</p>
+
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <div class="flex items-center gap-3">
+                        <img id="rm-logo" src="" class="h-10 w-auto object-contain border border-gray-100 rounded p-1 bg-white hidden">
+                        <div id="rm-no-logo" class="h-10 w-10 flex items-center justify-center bg-gray-100 text-gray-400 rounded border border-gray-200 text-xs font-bold hidden">IMG</div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-800 uppercase" id="rm-courier"></p>
+                            <p class="text-[10px] text-gray-500 uppercase" id="rm-service"></p>
+                        </div>
+                    </div>
+
+                    <div class="text-right bg-gray-50 px-3 py-1.5 rounded border border-gray-100">
+                        <p class="text-[9px] text-gray-500 uppercase font-bold">Nomor Resi</p>
+                        <p class="text-sm font-mono font-bold text-blue-600" id="rm-resi"></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mt-4 pt-3 border-t border-gray-100">
+                    <div>
+                        <p class="text-[9px] text-gray-500 uppercase font-bold">Tanggal Kirim</p>
+                        <p class="text-xs font-bold text-gray-800 mt-0.5" id="rm-date"></p>
+                    </div>
+                    <div>
+                        <p class="text-[9px] text-gray-500 uppercase font-bold">Total Ongkir</p>
+                        <p class="text-xs font-bold text-gray-800 mt-0.5">Rp <span id="rm-cost"></span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5">
+                <a href="#" id="rm-track-btn" target="_blank" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow-sm flex items-center justify-center transition-colors">
+                    <i class="fas fa-map-marker-alt mr-2"></i> Lacak Resi (Tracking)
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openReturModal(data) {
+        // Isi Data Modal
+        document.getElementById('rm-store-name').innerText = data.store_name;
+        document.getElementById('rm-store-address').innerText = data.store_address;
+        document.getElementById('rm-buyer-name').innerText = data.buyer_name;
+        document.getElementById('rm-buyer-address').innerText = data.buyer_address;
+        document.getElementById('rm-courier').innerText = data.courier;
+        document.getElementById('rm-service').innerText = data.service;
+        document.getElementById('rm-resi').innerText = data.resi;
+        document.getElementById('rm-date').innerText = data.date;
+        document.getElementById('rm-cost').innerText = data.cost;
+
+        // Handle Logo
+        const imgEl = document.getElementById('rm-logo');
+        const noImgEl = document.getElementById('rm-no-logo');
+        if(data.logo && data.logo !== '') {
+            imgEl.src = data.logo;
+            imgEl.classList.remove('hidden');
+            noImgEl.classList.add('hidden');
+        } else {
+            imgEl.classList.add('hidden');
+            noImgEl.classList.remove('hidden');
+        }
+
+        // Link Tracking
+        document.getElementById('rm-track-btn').href = data.track_url;
+
+        // Tampilkan Modal
+        const modal = document.getElementById('returModal');
+        const content = document.getElementById('returModalContent');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    function closeReturModal() {
+        const modal = document.getElementById('returModal');
+        const content = document.getElementById('returModalContent');
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+</script>
 
 <style>
     /* Custom Scrollbar kecil untuk list produk */
