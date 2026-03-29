@@ -8,7 +8,8 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
 @section('title', 'Riwayat Belanja')
 
 @section('content')
-<div class="bg-gray-50 min-h-screen py-8">
+{{-- Hapus min-h-screen agar mengikuti alur tinggi flex layout bawaan --}}
+<div class="bg-gray-50 py-8">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {{-- Header --}}
@@ -842,3 +843,5 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
         if(area) area.scrollTop = area.scrollHeight;
     }
 </script>
+
+@endsection
