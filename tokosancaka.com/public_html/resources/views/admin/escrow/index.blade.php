@@ -296,11 +296,21 @@
                                 </div>
 
                             @elseif($escrow->status_dana === 'dicairkan')
-                                <div class="text-center p-2">
-                                    <i class="fas fa-check-circle text-green-500 text-3xl mb-2 drop-shadow-sm"></i>
-                                    <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Cair</p>
-                                    <p class="text-[10px] text-gray-400 mt-1">{{ $escrow->dicairkan_pada ? $escrow->dicairkan_pada->format('d M Y') : '-' }}</p>
-                                </div>
+                                {{-- CEK APAKAH INI PENCAIRAN NORMAL ATAU REFUND --}}
+                                @if(str_contains(strtoupper($escrow->catatan), 'REFUND') || strtolower($escrow->order->status ?? '') === 'returned')
+                                    <div class="text-center p-2">
+                                        <i class="fas fa-undo-alt text-red-500 text-3xl mb-2 drop-shadow-sm"></i>
+                                        <p class="text-[11px] text-red-600 font-bold uppercase tracking-wider">Refund</p>
+                                        <p class="text-[9px] text-gray-400 mt-1">{{ $escrow->dicairkan_pada ? $escrow->dicairkan_pada->format('d M Y') : '-' }}</p>
+                                    </div>
+                                @else
+                                    <div class="text-center p-2">
+                                        <i class="fas fa-check-circle text-green-500 text-3xl mb-2 drop-shadow-sm"></i>
+                                        <p class="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Cair</p>
+                                        <p class="text-[9px] text-gray-400 mt-1">{{ $escrow->dicairkan_pada ? $escrow->dicairkan_pada->format('d M Y') : '-' }}</p>
+                                    </div>
+                                @endif
+
                            @elseif($escrow->status_dana === 'mediasi')
                                 <div class="text-center p-2 bg-red-50 rounded border border-red-200 shadow-inner">
                                     <i class="fas fa-exclamation-triangle text-red-500 text-xl mb-1"></i>

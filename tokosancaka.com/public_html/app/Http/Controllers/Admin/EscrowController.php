@@ -54,7 +54,7 @@ class EscrowController extends Controller
                 });
             } elseif ($os === 'batal') {
                 $query->whereHas('order', function($q) {
-                    $q->whereIn('status', ['canceled', 'rejected']);
+                    $q->whereIn('status', ['canceled', 'rejected', 'returned']);
                 });
             } elseif ($os === 'bermasalah') {
                 $query->where('status_dana', 'mediasi');
@@ -85,7 +85,7 @@ class EscrowController extends Controller
         $countBermasalah = (clone $baseStatsQuery)->where('status_dana', 'mediasi')->count();
 
         $countBatal = (clone $baseStatsQuery)->whereHas('order', function($q) {
-            $q->whereIn('status', ['canceled', 'rejected']);
+            $q->whereIn('status', ['canceled', 'rejected', 'returned']);
         })->count();
 
         return view('admin.escrow.index', compact(
