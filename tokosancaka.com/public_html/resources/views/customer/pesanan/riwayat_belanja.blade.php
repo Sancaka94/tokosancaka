@@ -1,6 +1,6 @@
 {{--
 File: resources/views/customer/pesanan/riwayat_belanja.blade.php
-Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
+Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Null Safety & Logic Flow
 --}}
 
 @extends('layouts.customer')
@@ -84,7 +84,7 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
                             @php
                                 $status = strtolower($order->status);
                                 $badgeClass = match($status) {
-                                    'paid', 'completed', 'success', 'lunas' => 'bg-green-100 text-green-800 border-green-200',
+                                    'paid', 'completed', 'success', 'lunas', 'selesai' => 'bg-green-100 text-green-800 border-green-200',
                                     'pending', 'unpaid', 'menunggu_pembayaran' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
                                     'processing', 'diproses' => 'bg-blue-100 text-blue-800 border-blue-200',
                                     'shipped', 'dikirim' => 'bg-purple-100 text-purple-800 border-purple-200',
@@ -173,15 +173,21 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
                                             @if(!empty($order->invoice_number))
                                                 <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-red-600 text-white text-sm font-bold py-2.5 rounded-lg hover:bg-red-700 transition shadow-lg shadow-red-200">Bayar Sekarang</a>
                                             @endif
-                                        @elseif(!empty($resi))
-                                            <a href="{{ route('tracking.index', ['resi' => $resi]) }}" class="block w-full text-center border border-red-600 text-red-600 text-sm font-bold py-2.5 rounded-lg hover:bg-red-50 transition">Lacak Paket Awal</a>
+                                            <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center text-gray-500 text-xs hover:text-gray-700 mt-1 transition">Lihat Invoice</a>
+
+                                        @else
+
+                                            {{-- Lacak Resi Utama --}}
+                                            @if(!empty($resi) && $resi !== 'NULL')
+                                                <a href="{{ route('tracking.index', ['resi' => $resi]) }}" class="block w-full text-center border border-red-600 text-red-600 text-sm font-bold py-2 rounded-lg hover:bg-red-50 transition">Lacak Paket Awal</a>
+                                            @endif
 
                                             @php
                                                 $escrow = \App\Models\Escrow::where('order_id', $order->id)->first();
-                                                $isMediasi = $escrow && $escrow->status_dana === 'mediasi';
                                                 $isCair = $escrow && $escrow->status_dana === 'dicairkan';
                                             @endphp
 
+                                            {{-- Tombol Aksi Pesanan (Terima & Komplain) --}}
                                             @if(in_array($status, ['shipped', 'dikirim', 'completed', 'selesai']))
                                                 <div class="grid grid-cols-2 gap-2 mt-1">
                                                     <form action="{{ route('customer.pesanan.terima', $order->id ?? 0) }}" method="POST">
@@ -193,10 +199,11 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
 
                                                     {{-- DATA UNTUK TOMBOL KOMPLAIN (BISA LANGSUNG RETUR) --}}
                                                     @php
-                                                        $weight = $order->items->sum(function($item) { return ($item->product->weight ?? 1000) * $item->quantity; });
+                                                        // Menggunakan safe null operator (?->) untuk menghindari error jika data dihapus
+                                                        $weight = $order->items->sum(function($item) { return ($item->product?->weight ?? 1000) * $item->quantity; });
                                                         $itemPrice = $order->items->sum(function($item) { return $item->price * $item->quantity; });
                                                         $buyerArea = trim(($order->shipping_district ?? '') . ' ' . ($order->shipping_regency ?? ''));
-                                                        $storeArea = trim(($seller->district ?? '') . ' ' . ($seller->regency ?? ''));
+                                                        $storeArea = trim(($seller?->district ?? '') . ' ' . ($seller?->regency ?? ''));
 
                                                         $returKirimData = [
                                                             'invoice' => $order->invoice_number,
@@ -206,8 +213,8 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
                                                             'buyer_address' => $order->shipping_address ?? '',
                                                             'buyer_area' => $buyerArea,
                                                             'store_name' => $storeName,
-                                                            'store_phone' => $seller->no_wa ?? '08000000000',
-                                                            'store_address' => $seller->address_detail ?? 'Alamat Toko',
+                                                            'store_phone' => $seller?->no_wa ?? '08000000000',
+                                                            'store_address' => $seller?->address_detail ?? 'Alamat Toko',
                                                             'store_area' => $storeArea,
                                                             'weight' => $weight > 0 ? $weight : 1000,
                                                             'item_price' => $itemPrice > 0 ? $itemPrice : 10000,
@@ -219,7 +226,7 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
                                                 </div>
                                             @endif
 
-                                            {{-- === CEK DATA RETUR === --}}
+                                            {{-- Tombol Lacak & Resi Retur --}}
                                             @php
                                                 $returnOrder = \App\Models\ReturnOrder::where('order_id', $order->id)->first();
                                             @endphp
@@ -228,17 +235,17 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
                                                 @php
                                                     // Kita render ulang data untuk fallback jika status sudah approve tapi belum input
                                                     if(!isset($returKirimData)) {
-                                                        $weight = $order->items->sum(function($item) { return ($item->product->weight ?? 1000) * $item->quantity; });
+                                                        $weight = $order->items->sum(function($item) { return ($item->product?->weight ?? 1000) * $item->quantity; });
                                                         $itemPrice = $order->items->sum(function($item) { return $item->price * $item->quantity; });
                                                         $buyerArea = trim(($order->shipping_district ?? '') . ' ' . ($order->shipping_regency ?? ''));
-                                                        $storeArea = trim(($seller->district ?? '') . ' ' . ($seller->regency ?? ''));
+                                                        $storeArea = trim(($seller?->district ?? '') . ' ' . ($seller?->regency ?? ''));
 
                                                         $returKirimData = [
                                                             'invoice' => $order->invoice_number, 'old_resi' => $order->shipping_reference ?? '-',
                                                             'buyer_name' => Auth::user()->nama_lengkap ?? '', 'buyer_phone' => Auth::user()->no_wa ?? '08000000000',
                                                             'buyer_address' => $order->shipping_address ?? '', 'buyer_area' => $buyerArea,
-                                                            'store_name' => $storeName, 'store_phone' => $seller->no_wa ?? '08000000000',
-                                                            'store_address' => $seller->address_detail ?? 'Alamat Toko', 'store_area' => $storeArea,
+                                                            'store_name' => $storeName, 'store_phone' => $seller?->no_wa ?? '08000000000',
+                                                            'store_address' => $seller?->address_detail ?? 'Alamat Toko', 'store_area' => $storeArea,
                                                             'weight' => $weight > 0 ? $weight : 1000, 'item_price' => $itemPrice > 0 ? $itemPrice : 10000,
                                                         ];
                                                     }
@@ -252,7 +259,7 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
                                                 @php
                                                     $shipInfo = \App\Helpers\ShippingHelper::parseShippingMethod($returnOrder->courier);
                                                     $infoReturData = [
-                                                        'store_name' => $storeName, 'store_address' => $seller->address_detail ?? '-',
+                                                        'store_name' => $storeName, 'store_address' => $seller?->address_detail ?? '-',
                                                         'buyer_name' => Auth::user()->nama_lengkap ?? 'Pembeli', 'buyer_address' => $order->shipping_address ?? '-',
                                                         'courier' => strtoupper($returnOrder->courier), 'service' => 'REGULER',
                                                         'logo' => $shipInfo['logo_url'] ?? '', 'resi' => $returnOrder->new_resi,
@@ -266,9 +273,8 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
                                                 </button>
                                             @endif
 
-                                            <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center text-gray-500 text-xs hover:text-gray-700 mt-1">Lihat Invoice</a>
-                                        @else
-                                            <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-gray-100 text-gray-700 text-sm font-bold py-2.5 rounded-lg hover:bg-gray-200 transition">Detail Pesanan</a>
+                                            <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-gray-100 text-gray-700 text-sm font-bold py-2 rounded-lg mt-2 hover:bg-gray-200 transition">Detail & Invoice</a>
+
                                         @endif
                                     </div>
                                 </div>
@@ -283,6 +289,7 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
     </div>
 </div>
 
+{{-- MODALS TETAP SAMA (Hanya indentasi diperbaiki) --}}
 <div id="komplainModal" class="fixed inset-0 z-[99] hidden bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[600px] transform transition-all scale-95 opacity-0" id="komplainModalContent">
 
@@ -527,8 +534,6 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
     // ==========================================
     // 2. LOGIKA INPUT RESI RETUR (KIRIMINAJA API)
     // ==========================================
-
-    // Trik: Mengambil 2 kata terakhir dari alamat (kecamatan, kota) untuk bypass geocoding error
     async function fetchKiriminAjaAreaId(addressString, prefix) {
         if (!addressString) return false;
         try {
@@ -560,7 +565,6 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
         const receiverDist = document.getElementById('kr-receiver_district_id').value;
         const listContainer = document.getElementById('retur_ekspedisi_list');
 
-        // JIKA ID WILAYAH KOSONG -> TAMPILKAN PENCARIAN MANUAL
         if(!senderSub || !receiverSub) {
             document.getElementById('kr-manual-search-box').classList.remove('hidden');
             listContainer.innerHTML = '';
@@ -569,7 +573,6 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
             return;
         }
 
-        // Sembunyikan pencarian manual jika sukses
         document.getElementById('kr-manual-search-box').classList.add('hidden');
         document.getElementById('btn-submit-retur').disabled = false;
         document.getElementById('btn-submit-retur').classList.remove('opacity-50', 'cursor-not-allowed');
@@ -626,7 +629,6 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
     function openKirimReturModal(btn) {
         const data = JSON.parse(btn.getAttribute('data-retur'));
 
-        // Isi Data Form Utama
         document.getElementById('kr-invoice').value = data.invoice;
         document.getElementById('kr-hidden-weight').value = data.weight;
         document.getElementById('kr-hidden-price').value = data.item_price;
@@ -645,9 +647,7 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
 
         Swal.fire({ title: 'Mencari Lokasi...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
-        // Mulai pencarian wilayah
         let promises = [];
-        // Kirim string 'buyer_area' dan 'store_area' (bukan alamat penuh) agar API akurat
         if(data.buyer_area) promises.push(fetchKiriminAjaAreaId(data.buyer_area, 'sender'));
         if(data.store_area) promises.push(fetchKiriminAjaAreaId(data.store_area, 'receiver'));
 
@@ -673,7 +673,6 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
         setTimeout(() => { modal.classList.add('hidden'); }, 300);
     }
 
-    // --- SETUP MANUAL SEARCH KECAMATAN (JIKA AUTO GAGAL) ---
     function setupManualSearchRetur(prefix) {
         const input = document.getElementById(`kr-search-${prefix}`);
         const resDiv = document.getElementById(`kr-res-${prefix}`);
