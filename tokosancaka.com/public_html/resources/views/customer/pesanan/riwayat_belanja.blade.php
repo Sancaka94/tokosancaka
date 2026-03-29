@@ -213,20 +213,30 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
                                                 Lacak Paket
                                             </a>
 
+                                            {{-- === CEK STATUS DANA ESCROW === --}}
+                                            @php
+                                                $escrow = \App\Models\Escrow::where('order_id', $order->id)->first();
+                                                $isMediasi = $escrow && $escrow->status_dana === 'mediasi';
+                                                $isCair = $escrow && $escrow->status_dana === 'dicairkan'; // Cek apakah dana sudah cair
+                                            @endphp
+
                                             {{-- === TOMBOL TERIMA PAKET & KOMPLAIN === --}}
                                             @if(in_array($status, ['shipped', 'dikirim', 'completed', 'selesai']))
                                                 <div class="grid grid-cols-2 gap-2 mt-1">
                                                     <form action="{{ route('customer.pesanan.terima', $order->id ?? 0) }}" method="POST">
                                                         @csrf
                                                         <button type="submit"
-                                                                {{ in_array($status, ['completed', 'selesai']) ? 'disabled' : '' }}
+                                                                {{ $isCair ? 'disabled' : '' }}
                                                                 onclick="return confirm('Apakah Anda yakin paket sudah diterima dengan baik? \n\nDana akan langsung diteruskan ke saldo penjual dan tidak dapat dikembalikan.');"
-                                                                class="w-full {{ in_array($status, ['completed', 'selesai']) ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600' }} text-white text-[11px] font-bold py-2.5 rounded-lg transition flex items-center justify-center shadow-sm">
-                                                            <i class="fas fa-check-circle mr-1"></i> Terima
+                                                                class="w-full {{ $isCair ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600' }} text-white text-[11px] font-bold py-2.5 rounded-lg transition flex items-center justify-center shadow-sm">
+                                                            <i class="fas fa-check-circle mr-1"></i> {{ $isCair ? 'Selesai' : 'Terima' }}
                                                         </button>
                                                     </form>
 
-                                                    <button type="button" onclick="openKomplainModal('{{ $order->invoice_number }}', '{{ $storeName }}')" class="w-full border border-orange-500 text-orange-500 text-[11px] font-bold py-2.5 rounded-lg hover:bg-orange-50 transition flex items-center justify-center shadow-sm">
+                                                    <button type="button"
+                                                            {{ $isCair ? 'disabled' : '' }}
+                                                            onclick="openKomplainModal('{{ $order->invoice_number }}', '{{ $storeName }}')"
+                                                            class="w-full border {{ $isCair ? 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed' : 'border-orange-500 text-orange-500 hover:bg-orange-50' }} text-[11px] font-bold py-2.5 rounded-lg transition flex items-center justify-center shadow-sm">
                                                         <i class="fas fa-headset mr-1"></i> Komplain
                                                     </button>
                                                 </div>

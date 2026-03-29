@@ -14,29 +14,26 @@ use Illuminate\Support\Facades\Log;
 
 class PesananActionController extends Controller
 {
-    /**
-     * 1. Fungsi Terima Paket & Cairkan Dana Otomatis
-     */
     public function terimaPaket($id)
     {
         $order = Order::findOrFail($id);
+        $escrow = Escrow::with('store.user')->where('order_id', $order->id)->first();
 
-        // Validasi: pastikan belum selesai
-        if (in_array(strtolower($order->status), ['completed', 'selesai', 'delivered'])) {
-            return back()->with('error', 'Pesanan ini sudah diselesaikan sebelumnya.');
+        // Validasi yang Benar: Cek Dana Escrow-nya, BUKAN status order-nya
+        if ($escrow && $escrow->status_dana === 'dicairkan') {
+            return back()->with('error', 'Pesanan ini sudah selesai dan dana telah diteruskan ke penjual.');
         }
 
         DB::beginTransaction();
         try {
-            // A. Update Status Pesanan menjadi Completed
-            $order->status = 'completed';
-            $order->finished_at = now();
-            $order->save();
+            // A. Pastikan Order menjadi Completed (Jaga-jaga jika statusnya masih shipped)
+            if ($order->status !== 'completed') {
+                $order->status = 'completed';
+                $order->finished_at = now();
+                $order->save();
+            }
 
-            // B. Cari Escrow yang menahan dana ini
-            $escrow = Escrow::with('store.user')->where('order_id', $order->id)->first();
-
-            // C. Jika dana masih ditahan / mediasi, CAIRKAN SEKARANG!
+            // B. Cairkan Escrow ke Penjual
             if ($escrow && in_array($escrow->status_dana, ['ditahan', 'mediasi'])) {
 
                 $danaPenjual = $escrow->nominal_ditahan - $escrow->nominal_ongkir;
@@ -52,7 +49,7 @@ class PesananActionController extends Controller
                 if ($seller) {
                     $seller->increment('saldo', $danaPenjual);
 
-                    // Catat di riwayat TopUp
+                    // Catat di riwayat TopUp Penjual
                     TopUp::create([
                         'customer_id'    => $seller->id_pengguna,
                         'amount'         => $danaPenjual,
