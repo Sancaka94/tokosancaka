@@ -339,7 +339,7 @@
                                                                 ? route('tracking.index', ['resi' => $returnOrder->new_resi]) : '#'
                                         ];
                                     @endphp
-                                    <button type="button" onclick="openReturModal({{ htmlspecialchars(json_encode($returData)) }})" class="w-full bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
+                                    <button type="button" data-info="{{ json_encode($returData) }}" onclick="openReturModal(this)" class="w-full bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
                                         <i class="fas fa-box-open mr-1"></i> Info Retur
                                     </button>
                                     @if($statusOrder === 'returned')
