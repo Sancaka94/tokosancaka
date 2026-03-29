@@ -283,19 +283,29 @@
                                     <i class="fas fa-exchange-alt text-teal-500 text-xl mb-1"></i>
                                     <p class="text-[10px] text-teal-700 font-bold uppercase tracking-wider mb-2">Proses Retur</p>
                                     @php
-                                        $ship = \App\Helpers\ShippingHelper::parseShippingMethod($escrow->order->shipping_courier ?? $escrow->order->expedition ?? '');
+                                        // Ambil data dari tabel return_orders
+                                        $returnOrder = \App\Models\ReturnOrder::where('order_id', $escrow->order_id)->first();
+
+                                        $returCourier = $returnOrder ? $returnOrder->courier : ($escrow->order->shipping_courier ?? 'Kurir');
+                                        $returResi    = $returnOrder ? $returnOrder->new_resi : 'Menunggu Resi';
+                                        $returCost    = $returnOrder ? $returnOrder->shipping_cost : 0;
+
+                                        $ship = \App\Helpers\ShippingHelper::parseShippingMethod($returCourier);
+
                                         $returData = [
-                                            'store_name' => $escrow->store->name ?? 'Toko Tidak Diketahui',
+                                            'store_name'    => $escrow->store->name ?? 'Toko Tidak Diketahui',
                                             'store_address' => $escrow->store->address_detail ?? '-',
-                                            'buyer_name' => $escrow->buyer->nama_lengkap ?? 'Pembeli Tidak Diketahui',
+                                            'buyer_name'    => $escrow->buyer->nama_lengkap ?? 'Pembeli Tidak Diketahui',
                                             'buyer_address' => $escrow->order->shipping_address ?? '-',
-                                            'courier' => $ship['courier_name'] ?? $escrow->order->shipping_courier ?? 'Kurir',
-                                            'service' => $ship['service_name'] ?? '-',
-                                            'logo' => $ship['logo_url'] ?? '',
-                                            'resi' => $escrow->order->shipping_reference ?? 'Belum ada resi',
-                                            'cost' => number_format($escrow->order->shipping_cost ?? 0, 0, ',', '.'),
-                                            'date' => $escrow->order->created_at ? $escrow->order->created_at->format('d M Y, H:i') : '-',
-                                            'track_url' => $escrow->order->shipping_reference ? route('tracking.index', ['resi' => $escrow->order->shipping_reference]) : '#'
+                                            'courier'       => $ship['courier_name'] ?? $returCourier,
+                                            'service'       => $ship['service_name'] ?? 'REGULER',
+                                            'logo'          => $ship['logo_url'] ?? '',
+                                            'resi'          => $returResi,
+                                            'cost'          => number_format($returCost, 0, ',', '.'),
+                                            'date'          => $returnOrder ? $returnOrder->created_at->format('d M Y, H:i') : '-',
+                                            'track_url'     => ($returnOrder && $returnOrder->new_resi && $returnOrder->new_resi !== 'PROSES-PICKUP')
+                                                                ? route('tracking.index', ['resi' => $returnOrder->new_resi])
+                                                                : '#'
                                         ];
                                     @endphp
                                     <button type="button" onclick="openReturModal({{ htmlspecialchars(json_encode($returData)) }})" class="w-full bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
@@ -467,7 +477,7 @@
             </div>
 
             <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1.5"><i class="fas fa-truck-fast mr-1 text-teal-500"></i> Data Ekspedisi</p>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1.5"><i class="fas fa-truck-fast mr-1 text-teal-500"></i> Data Ekspedisi Pengembalian (Retur)</p>
 
                 <div class="flex items-center justify-between flex-wrap gap-4">
                     <div class="flex items-center gap-3">
@@ -479,9 +489,9 @@
                         </div>
                     </div>
 
-                    <div class="text-right bg-gray-50 px-3 py-1.5 rounded border border-gray-100">
-                        <p class="text-[9px] text-gray-500 uppercase font-bold">Nomor Resi</p>
-                        <p class="text-sm font-mono font-bold text-blue-600" id="rm-resi"></p>
+                    <div class="text-right bg-blue-50 px-3 py-1.5 rounded border border-blue-100">
+                        <p class="text-[9px] text-blue-600 uppercase font-bold">Nomor Resi Retur</p>
+                        <p class="text-sm font-mono font-bold text-blue-700" id="rm-resi"></p>
                     </div>
                 </div>
 
@@ -506,7 +516,23 @@
     </div>
 </div>
 
+<style>
+    /* Custom Scrollbar kecil untuk list produk */
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>
+
 <script>
+    function copyResi(text) {
+        navigator.clipboard.writeText(text).then(function() {
+            alert("Resi disalin: " + text);
+        }).catch(function(err) {
+            alert("Gagal menyalin resi.");
+        });
+    }
+
     function openReturModal(data) {
         // Isi Data Modal
         document.getElementById('rm-store-name').innerText = data.store_name;
@@ -553,17 +579,7 @@
             modal.classList.add('hidden');
         }, 300);
     }
-</script>
 
-<style>
-    /* Custom Scrollbar kecil untuk list produk */
-    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-</style>
-
-<script>
     let currentInvoice = '';
 
     function openKomplainModal(invoice, storeName) {
@@ -653,7 +669,7 @@
 
         let html = '';
         if(isAdmin) {
-            // Bubble Admin (Kanan - Karena admin yang sedang login)
+            // Bubble Admin
             html = `
             <div class="flex items-start justify-end gap-2 mt-2">
                 <div class="bg-blue-50 border border-blue-100 rounded-2xl rounded-tr-none p-3 max-w-[80%] shadow-sm">
@@ -662,7 +678,7 @@
                 </div>
             </div>`;
         } else {
-            // Bubble Pembeli / Penjual (Kiri)
+            // Bubble Pembeli / Penjual
             const isCustomer = chat.sender_type === 'customer';
             const icon = isCustomer ? '<i class="fas fa-user text-gray-500"></i>' : '<i class="fas fa-store text-orange-500"></i>';
             const senderName = isCustomer ? 'Pembeli' : 'Penjual';
@@ -688,16 +704,6 @@
     function scrollToBottom() {
         const area = document.getElementById('chatScrollArea');
         if(area) area.scrollTop = area.scrollHeight;
-    }
-</script>
-
-<script>
-    function copyResi(text) {
-        navigator.clipboard.writeText(text).then(function() {
-            alert("Resi disalin: " + text);
-        }).catch(function(err) {
-            alert("Gagal menyalin resi.");
-        });
     }
 </script>
 
