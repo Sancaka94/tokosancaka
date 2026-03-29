@@ -15,66 +15,65 @@
         </a>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center hover:shadow-md transition-shadow">
-            <div class="p-3 rounded-full bg-blue-50 text-blue-500 mr-4">
-                <i class="fas fa-truck-fast text-xl"></i>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center hover:shadow-md transition-shadow">
+            <div class="p-3 rounded-full bg-blue-50 text-blue-500 mr-3">
+                <i class="fas fa-truck-fast text-lg"></i>
             </div>
             <div>
-                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Sedang Dikirim</p>
-                <h3 class="text-2xl font-bold text-gray-800">{{ $countDikirim }}</h3>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Dikirim</p>
+                <h3 class="text-xl font-bold text-gray-800">{{ $countDikirim }}</h3>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center hover:shadow-md transition-shadow">
-            <div class="p-3 rounded-full bg-green-50 text-green-500 mr-4">
-                <i class="fas fa-box-open text-xl"></i>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center hover:shadow-md transition-shadow">
+            <div class="p-3 rounded-full bg-green-50 text-green-500 mr-3">
+                <i class="fas fa-box-open text-lg"></i>
             </div>
             <div>
-                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Pesanan Selesai</p>
-                <h3 class="text-2xl font-bold text-gray-800">{{ $countSelesai }}</h3>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Selesai</p>
+                <h3 class="text-xl font-bold text-gray-800">{{ $countSelesai }}</h3>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center hover:shadow-md transition-shadow">
-            <div class="p-3 rounded-full bg-orange-50 text-orange-500 mr-4">
-                <i class="fas fa-gavel text-xl"></i>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center hover:shadow-md transition-shadow">
+            <div class="p-3 rounded-full bg-orange-50 text-orange-500 mr-3">
+                <i class="fas fa-gavel text-lg"></i>
             </div>
             <div>
-                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Bermasalah (Mediasi)</p>
-                <h3 class="text-2xl font-bold text-gray-800">{{ $countBermasalah }}</h3>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Mediasi</p>
+                <h3 class="text-xl font-bold text-gray-800">{{ $countBermasalah }}</h3>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center hover:shadow-md transition-shadow">
-            <div class="p-3 rounded-full bg-red-50 text-red-500 mr-4">
-                <i class="fas fa-times-circle text-xl"></i>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center hover:shadow-md transition-shadow">
+            <div class="p-3 rounded-full bg-red-50 text-red-500 mr-3">
+                <i class="fas fa-times-circle text-lg"></i>
             </div>
             <div>
-                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Gagal / Dibatalkan</p>
-                <h3 class="text-2xl font-bold text-gray-800">{{ $countBatal }}</h3>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Batal</p>
+                <h3 class="text-xl font-bold text-gray-800">{{ $countBatal }}</h3>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center hover:shadow-md transition-shadow">
-            <div class="p-3 rounded-full bg-purple-50 text-purple-500 mr-4">
-                <i class="fas fa-undo-alt text-xl"></i>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center hover:shadow-md transition-shadow">
+            <div class="p-3 rounded-full bg-purple-50 text-purple-500 mr-3">
+                <i class="fas fa-undo-alt text-lg"></i>
             </div>
             <div>
-                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Total Refund</p>
-                <h3 class="text-2xl font-bold text-gray-800">{{ $countRefund ?? 0 }}</h3>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Refund</p>
+                <h3 class="text-xl font-bold text-gray-800">{{ $countRefund ?? 0 }}</h3>
             </div>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center hover:shadow-md transition-shadow">
-                <div class="p-3 rounded-full bg-teal-50 text-teal-500 mr-3">
-                    <i class="fas fa-exchange-alt text-lg"></i>
-                </div>
-                <div>
-                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Total Retur</p>
-                    <h3 class="text-xl font-bold text-gray-800">{{ $countRetur ?? 0 }}</h3>
-                </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center hover:shadow-md transition-shadow">
+            <div class="p-3 rounded-full bg-teal-50 text-teal-500 mr-3">
+                <i class="fas fa-exchange-alt text-lg"></i>
+            </div>
+            <div>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Retur</p>
+                <h3 class="text-xl font-bold text-gray-800">{{ $countRetur ?? 0 }}</h3>
             </div>
         </div>
 
