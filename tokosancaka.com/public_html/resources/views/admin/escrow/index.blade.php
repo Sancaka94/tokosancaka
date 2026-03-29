@@ -277,13 +277,12 @@
                                 $isRetur = in_array($statusOrder, ['returning', 'return_approved', 'returned']);
                             @endphp
 
-                            {{-- 1. JIKA STATUS PESANAN ADALAH RETUR --}}
+                            {{-- JIKA STATUS ADALAH RETUR (BLOK INI MENGGANTIKAN SEMUA STATUS LAINNYA) --}}
                             @if($isRetur)
                                 <div class="text-center p-2 bg-teal-50 rounded border border-teal-200 shadow-inner mb-2">
                                     <i class="fas fa-exchange-alt text-teal-500 text-xl mb-1"></i>
                                     <p class="text-[10px] text-teal-700 font-bold uppercase tracking-wider mb-2">Proses Retur</p>
                                     @php
-                                        // Ambil data dari tabel return_orders
                                         $returnOrder = \App\Models\ReturnOrder::where('order_id', $escrow->order_id)->first();
 
                                         $returCourier = $returnOrder ? $returnOrder->courier : ($escrow->order->shipping_courier ?? 'Kurir');
@@ -308,72 +307,81 @@
                                                                 : '#'
                                         ];
                                     @endphp
-                                    <button type="button" onclick="openReturModal({{ htmlspecialchars(json_encode($returData)) }})" class="w-full bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
+                                    {{-- PERBAIKAN TOMBOL: Pakai data-info agar JSON tidak merusak tag HTML --}}
+                                    <button type="button" data-info="{{ json_encode($returData) }}" onclick="openReturModal(this)" class="w-full bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold py-1.5 rounded transition shadow-sm flex items-center justify-center">
                                         <i class="fas fa-box-open mr-1"></i> Info Retur
                                     </button>
                                 </div>
-                            @endif
 
-                            {{-- 2. STATUS ESCROW LAINNYA --}}
-                            @if($escrow->status_dana === 'ditahan' && !$isRetur)
-                                @php $isDelivered = in_array($statusOrder, ['completed', 'selesai', 'sampai', 'delivered']); @endphp
-                                <div class="flex flex-col space-y-2">
-                                    @if($isDelivered)
-                                        <div class="text-[10px] font-bold text-green-600 mb-1 border-b border-green-200 pb-1"><i class="fas fa-box-open"></i> DITERIMA</div>
-                                        <form action="{{ route('admin.escrow.cairkan', $escrow->id) }}" method="POST" onsubmit="return confirm('PENTING!\nYakin cairkan DANA BERSIH Rp {{ number_format($danaPenjual, 0, ',', '.') }} ke Penjual?');">
-                                            @csrf
-                                            <button type="submit" class="w-full inline-flex justify-center items-center px-2 py-2 border border-transparent text-[11px] font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700 transition-colors">
-                                                <i class="fas fa-money-bill-wave mr-1"></i> Cairkan ({{ number_format($danaPenjual/1000, 0) }}k)
-                                            </button>
-                                        </form>
-                                        <form action="{{ route('admin.escrow.mediasi', $escrow->id) }}" method="GET" onsubmit="return confirm('Ubah status jadi MEDIASI?');">
-                                            <button type="submit" class="w-full inline-flex justify-center items-center px-2 py-2 border border-orange-200 text-[11px] font-medium rounded shadow-sm text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors">
-                                                <i class="fas fa-balance-scale mr-1"></i> Mediasi
-                                            </button>
-                                        </form>
-                                    @else
-                                        <div class="text-[10px] font-bold text-gray-500 mb-1 border-b border-gray-200 pb-1"><i class="fas fa-truck text-blue-400"></i> {{ strtoupper($statusOrder ?: 'PROSES') }}</div>
-                                        <button disabled type="button" class="w-full inline-flex justify-center items-center px-2 py-2 border border-gray-200 text-[11px] font-medium rounded shadow-inner text-gray-400 bg-gray-100 cursor-not-allowed">
-                                            <i class="fas fa-lock mr-1"></i> Cairkan
-                                        </button>
-                                        <button disabled type="button" class="w-full inline-flex justify-center items-center px-2 py-2 border border-gray-200 text-[11px] font-medium rounded shadow-inner text-gray-400 bg-gray-50 cursor-not-allowed">
-                                            <i class="fas fa-lock mr-1"></i> Mediasi
-                                        </button>
-                                    @endif
-                                </div>
-
-                            @elseif($escrow->status_dana === 'refund_pending')
-                                <div class="text-center p-2 bg-yellow-50 rounded border border-yellow-200 shadow-inner">
-                                    <i class="fas fa-undo text-yellow-500 text-xl mb-1"></i>
-                                    <p class="text-[10px] text-yellow-700 font-bold uppercase tracking-wider mb-2 leading-tight">Refund Disetujui Penjual</p>
-                                    <form action="{{ route('admin.escrow.refund', $escrow->id) }}" method="POST" onsubmit="return confirm('Kembalikan dana Bersih Rp {{ number_format($danaPenjual, 0, ',', '.') }} ke saldo Pembeli?');">
-                                        @csrf
-                                        <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white text-[10px] font-bold py-2 rounded transition shadow-sm flex items-center justify-center">
-                                            <i class="fas fa-wallet mr-1"></i> Refund Pembeli
-                                        </button>
-                                    </form>
-                                </div>
-
-                            @elseif($escrow->status_dana === 'dicairkan')
-                                @if(str_contains(strtoupper($escrow->catatan), 'REFUND') || $isRetur)
-                                    <div class="text-center p-2">
-                                        <i class="fas fa-undo-alt text-red-500 text-3xl mb-2 drop-shadow-sm"></i>
-                                        <p class="text-[11px] text-red-600 font-bold uppercase tracking-wider">Refund</p>
-                                        <p class="text-[9px] text-gray-400 mt-1">{{ $escrow->dicairkan_pada ? $escrow->dicairkan_pada->format('d M Y') : '-' }}</p>
-                                    </div>
-                                @else
-                                    <div class="text-center p-2">
-                                        <i class="fas fa-check-circle text-green-500 text-3xl mb-2 drop-shadow-sm"></i>
-                                        <p class="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Cair</p>
-                                        <p class="text-[9px] text-gray-400 mt-1">{{ $escrow->dicairkan_pada ? $escrow->dicairkan_pada->format('d M Y') : '-' }}</p>
+                                {{-- Jika sudah direfund ke pembeli gara-gara retur --}}
+                                @if($escrow->status_dana === 'dicairkan')
+                                    <div class="text-center mt-2">
+                                        <p class="text-[10px] text-green-600 font-bold uppercase"><i class="fas fa-check-circle"></i> Retur Selesai</p>
                                     </div>
                                 @endif
 
-                            @elseif($escrow->status_dana === 'mediasi' && !$isRetur)
-                                <div class="text-center p-2 bg-red-50 rounded border border-red-200 shadow-inner">
-                                    <i class="fas fa-exclamation-triangle text-red-500 text-xl mb-1"></i>
-                                    <p class="text-[10px] text-red-700 font-bold uppercase tracking-wider mb-2">Mediasi</p>
-                                </div>
+                            @else
+                                {{-- JIKA BUKAN RETUR, TAMPILKAN STATUS ESCROW NORMAL --}}
+                                @if($escrow->status_dana === 'ditahan')
+                                    @php $isDelivered = in_array($statusOrder, ['completed', 'selesai', 'sampai', 'delivered']); @endphp
+                                    <div class="flex flex-col space-y-2">
+                                        @if($isDelivered)
+                                            <div class="text-[10px] font-bold text-green-600 mb-1 border-b border-green-200 pb-1"><i class="fas fa-box-open"></i> DITERIMA</div>
+                                            <form action="{{ route('admin.escrow.cairkan', $escrow->id) }}" method="POST" onsubmit="return confirm('PENTING!\nYakin cairkan DANA BERSIH Rp {{ number_format($danaPenjual, 0, ',', '.') }} ke Penjual?');">
+                                                @csrf
+                                                <button type="submit" class="w-full inline-flex justify-center items-center px-2 py-2 border border-transparent text-[11px] font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700 transition-colors">
+                                                    <i class="fas fa-money-bill-wave mr-1"></i> Cairkan ({{ number_format($danaPenjual/1000, 0) }}k)
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('admin.escrow.mediasi', $escrow->id) }}" method="GET" onsubmit="return confirm('Ubah status jadi MEDIASI?');">
+                                                <button type="submit" class="w-full inline-flex justify-center items-center px-2 py-2 border border-orange-200 text-[11px] font-medium rounded shadow-sm text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors">
+                                                    <i class="fas fa-balance-scale mr-1"></i> Mediasi
+                                                </button>
+                                            </form>
+                                        @else
+                                            <div class="text-[10px] font-bold text-gray-500 mb-1 border-b border-gray-200 pb-1"><i class="fas fa-truck text-blue-400"></i> {{ strtoupper($statusOrder ?: 'PROSES') }}</div>
+                                            <button disabled type="button" class="w-full inline-flex justify-center items-center px-2 py-2 border border-gray-200 text-[11px] font-medium rounded shadow-inner text-gray-400 bg-gray-100 cursor-not-allowed">
+                                                <i class="fas fa-lock mr-1"></i> Cairkan
+                                            </button>
+                                            <button disabled type="button" class="w-full inline-flex justify-center items-center px-2 py-2 border border-gray-200 text-[11px] font-medium rounded shadow-inner text-gray-400 bg-gray-50 cursor-not-allowed">
+                                                <i class="fas fa-lock mr-1"></i> Mediasi
+                                            </button>
+                                        @endif
+                                    </div>
+
+                                @elseif($escrow->status_dana === 'refund_pending')
+                                    <div class="text-center p-2 bg-yellow-50 rounded border border-yellow-200 shadow-inner">
+                                        <i class="fas fa-undo text-yellow-500 text-xl mb-1"></i>
+                                        <p class="text-[10px] text-yellow-700 font-bold uppercase tracking-wider mb-2 leading-tight">Refund Disetujui Penjual</p>
+                                        <form action="{{ route('admin.escrow.refund', $escrow->id) }}" method="POST" onsubmit="return confirm('Kembalikan dana Bersih Rp {{ number_format($danaPenjual, 0, ',', '.') }} ke saldo Pembeli?');">
+                                            @csrf
+                                            <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white text-[10px] font-bold py-2 rounded transition shadow-sm flex items-center justify-center">
+                                                <i class="fas fa-wallet mr-1"></i> Refund Pembeli
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                @elseif($escrow->status_dana === 'dicairkan')
+                                    @if(str_contains(strtoupper($escrow->catatan), 'REFUND'))
+                                        <div class="text-center p-2">
+                                            <i class="fas fa-undo-alt text-red-500 text-3xl mb-2 drop-shadow-sm"></i>
+                                            <p class="text-[11px] text-red-600 font-bold uppercase tracking-wider">Refund</p>
+                                            <p class="text-[9px] text-gray-400 mt-1">{{ $escrow->dicairkan_pada ? $escrow->dicairkan_pada->format('d M Y') : '-' }}</p>
+                                        </div>
+                                    @else
+                                        <div class="text-center p-2">
+                                            <i class="fas fa-check-circle text-green-500 text-3xl mb-2 drop-shadow-sm"></i>
+                                            <p class="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Cair</p>
+                                            <p class="text-[9px] text-gray-400 mt-1">{{ $escrow->dicairkan_pada ? $escrow->dicairkan_pada->format('d M Y') : '-' }}</p>
+                                        </div>
+                                    @endif
+
+                                @elseif($escrow->status_dana === 'mediasi')
+                                    <div class="text-center p-2 bg-red-50 rounded border border-red-200 shadow-inner">
+                                        <i class="fas fa-exclamation-triangle text-red-500 text-xl mb-1"></i>
+                                        <p class="text-[10px] text-red-700 font-bold uppercase tracking-wider mb-2">Mediasi</p>
+                                    </div>
+                                @endif
                             @endif
 
                             {{-- 3. JIKA BERMASALAH (RETUR/MEDIASI/REFUND PENDING), SELALU TAMPILKAN TOMBOL CHAT --}}
@@ -533,7 +541,10 @@
         });
     }
 
-    function openReturModal(data) {
+    function openReturModal(btn) {
+        // Parsing data dari atribut data-info tombol
+        const data = JSON.parse(btn.getAttribute('data-info'));
+
         // Isi Data Modal
         document.getElementById('rm-store-name').innerText = data.store_name;
         document.getElementById('rm-store-address').innerText = data.store_address;
