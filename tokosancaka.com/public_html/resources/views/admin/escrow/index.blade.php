@@ -76,7 +76,6 @@
                 <h3 class="text-xl font-bold text-gray-800">{{ $countRetur ?? 0 }}</h3>
             </div>
         </div>
-        </div>
 
     </div>
 
