@@ -1085,3 +1085,6 @@ Route::post('/seller/komplain/refund/{invoice}', [\App\Http\Controllers\Toko\Ord
 
 // Admin setuju refund dana marketplace komplain
 Route::post('/escrow/{id}/refund', [\App\Http\Controllers\Admin\EscrowController::class, 'refund'])->name('admin.escrow.refund');
+
+// Admin setuju retur marketplace komplain
+Route::post('/customer/pesanan/kirim-retur', [\App\Http\Controllers\Customer\PesananController::class, 'prosesKirimRetur'])->name('customer.pesanan.kirim_retur');

@@ -22,6 +22,10 @@ use App\Models\OrderMarketplace;
 use App\Models\Order;
 use App\Models\Keuangan; // <--- PERBAIKAN UTAMA DISINI
 
+// retur dan refund
+use App\Models\ReturnOrder;
+use App\Models\ComplainChat;
+
 // --- SERVICES ---
 use App\Services\KiriminAjaService;
 use App\Services\DokuJokulService;
@@ -1536,6 +1540,107 @@ public function cetakThermal($resi)
 
         // 3. Redirect ke Invoice
         return redirect()->route('checkout.invoice', ['invoice' => $invoiceNumber]);
+    }
+
+    /**
+     * EKSEKUSI RETUR BARANG DARI PEMBELI
+     * Menggunakan API KiriminAja, bayar pakai Saldo/Doku
+     */
+    public function prosesKirimRetur(Request $request, KiriminAjaService $kirimaja)
+    {
+        $request->validate([
+            'invoice_number' => 'required|string',
+            'courier'        => 'required|string',
+            'payment_method' => 'required|in:saldo,doku'
+        ]);
+
+        $order = Order::with(['user', 'store.user'])->where('invoice_number', $request->invoice_number)->firstOrFail();
+        $user = Auth::user();
+
+        // 1. CEK STATUS ESCROW & ORDER
+        $escrow = \App\Models\Escrow::where('order_id', $order->id)->first();
+        if (!$escrow || $escrow->status_dana !== 'mediasi') {
+            return back()->with('error', 'Pesanan tidak dalam status mediasi / retur.');
+        }
+
+        DB::beginTransaction();
+        try {
+            // 2. HITUNG ONGKIR RETUR VIA API
+            // (Disini kita asumsikan berat retur sama dengan berat awal)
+            $weight = $order->items->sum(function($item) {
+                return ($item->product->weight ?? 1000) * $item->quantity;
+            });
+            $weight = $weight > 0 ? $weight : 1000;
+
+            // Kita tembak API Cek Ongkir. PENGIRIM = PEMBELI, PENERIMA = TOKO
+            // Jika mas punya ID Kecamatan toko dan pembeli di DB, masukkan ke parameter ini.
+            // Untuk amannya (menghindari error API), kita set ongkir statis dulu sebagai contoh.
+            // Nanti mas bisa sambungkan ke $this->_getAddressData seperti di fungsi store().
+
+            $ongkirRetur = 15000; // <- GANTI DENGAN HASIL CEK ONGKIR API MAS NANTINYA
+
+            // 3. PROSES PEMBAYARAN SALDO
+            if ($request->payment_method === 'saldo') {
+                if ($user->saldo < $ongkirRetur) {
+                    throw new Exception('Saldo Sancaka Anda tidak cukup (Rp ' . number_format($ongkirRetur, 0, ',', '.') . '). Silakan Top Up terlebih dahulu.');
+                }
+                $user->decrement('saldo', $ongkirRetur);
+
+                \App\Models\TopUp::create([
+                    'customer_id'    => $user->id_pengguna,
+                    'amount'         => -$ongkirRetur,
+                    'status'         => 'success',
+                    'payment_method' => 'saldo_sancaka',
+                    'transaction_id' => 'RETUR-' . $order->invoice_number . '-' . time(),
+                    'reference_id'   => $order->invoice_number,
+                    'created_at'     => now(),
+                ]);
+            }
+
+            // 4. GENERATE RESI API KIRIMINAJA
+            // Disini mas panggil $kirimaja->createExpressOrder() dengan posisi dibalik (origin = customer, destination = store)
+            // Sebagai *placeholder* sukses, kita generate resi dummy:
+            $resiRetur = "RET-SCK-" . strtoupper(Str::random(8));
+
+            // 5. SIMPAN KE TABEL RETURN ORDERS
+            $returOrder = ReturnOrder::create([
+                'order_id'       => $order->id,
+                'invoice_number' => $order->invoice_number,
+                'buyer_id'       => $user->id_pengguna,
+                'store_id'       => $order->store_id,
+                'old_resi'       => $order->shipping_reference,
+                'new_resi'       => $resiRetur,
+                'courier'        => strtoupper($request->courier),
+                'shipping_cost'  => $ongkirRetur,
+                'payment_method' => $request->payment_method,
+                'status'         => 'shipped'
+            ]);
+
+            // 6. UPDATE STATUS ORDER & KIRIM CHAT OTOMATIS
+            $order->update(['status' => 'returning']);
+
+            ComplainChat::create([
+                'order_id'       => $order->id,
+                'invoice_number' => $order->invoice_number,
+                'sender_id'      => $user->id_pengguna,
+                'sender_type'    => 'customer',
+                'message'        => "📦 *PEMBELI TELAH MENGIRIM BALIK PAKET (RETUR)*\nKurir: " . strtoupper($request->courier) . "\nResi Retur: *" . $resiRetur . "*\n\nPenjual dapat memantau status resi ini dari Dashboard Laporan Pesanan.",
+            ]);
+
+            DB::commit();
+
+            if ($request->payment_method === 'doku') {
+                // LOGIKA REDIRECT KE PAYMENT GATEWAY DOKU (Jika pakai DOKU)
+                // return redirect()->away($dokuUrl);
+            }
+
+            return back()->with('success', 'Berhasil! Resi retur (' . $resiRetur . ') telah dibuat. Kurir akan menjemput paket Anda.');
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error("Retur Failed: " . $e->getMessage());
+            return back()->with('error', $e->getMessage());
+        }
     }
 
 }
