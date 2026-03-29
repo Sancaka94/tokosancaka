@@ -1,6 +1,6 @@
 {{--
 File: resources/views/customer/pesanan/riwayat_belanja.blade.php
-Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
+Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur
 --}}
 
 @extends('layouts.customer')
@@ -22,7 +22,6 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
             </a>
         </div>
 
-        {{-- Alert Success/Error untuk Terima Paket --}}
         @if(session('success'))
             <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative shadow-sm">
                 <span class="block sm:inline"><i class="fas fa-check-circle mr-1"></i> {{ session('success') }}</span>
@@ -34,7 +33,6 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
             </div>
         @endif
 
-        {{-- Jika Tidak Ada Pesanan --}}
         @if($pesanans->isEmpty())
             <div class="bg-white rounded-xl shadow-sm p-12 text-center border border-dashed border-gray-300">
                 <div class="mx-auto w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-6">
@@ -48,12 +46,11 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
             </div>
         @else
 
-            {{-- List Pesanan --}}
             <div class="space-y-6">
                 @foreach($pesanans as $order)
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-300">
 
-                        {{-- 1. HEADER KARTU (LOGO TOKO & STATUS) --}}
+                        {{-- HEADER KARTU --}}
                         <div class="px-6 py-4 bg-gray-50 border-b border-gray-100 flex flex-wrap justify-between items-center gap-4">
                             <div class="flex items-center gap-3">
                                 @php
@@ -101,16 +98,13 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
                             </span>
                         </div>
 
-                        {{-- 2. BODY KARTU --}}
+                        {{-- BODY KARTU --}}
                         <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
 
-                            {{-- KOLOM KIRI: PRODUK --}}
                             <div class="md:col-span-2 space-y-4">
                                 @php $items = $order->items ?? collect([]); @endphp
-
                                 @foreach($items->take(2) as $item)
                                     <div class="flex items-start gap-4 p-2 hover:bg-gray-50 rounded-lg transition">
-                                        {{-- GAMBAR PRODUK --}}
                                         <div class="w-20 h-20 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden border border-gray-200 relative group">
                                             @if($item->product && !empty($item->product->image_url))
                                                 @php
@@ -118,66 +112,41 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
                                                     $cleanPath = str_replace('public/', '', $rawPath);
                                                     $imageUrl = asset('public/storage/' . $cleanPath);
                                                 @endphp
-                                                <img src="{{ $imageUrl }}"
-                                                     alt="{{ $item->product->name }}"
-                                                     class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                                     onerror="this.onerror=null; this.src='https://placehold.co/150?text=No+Pic';">
+                                                <img src="{{ $imageUrl }}" alt="{{ $item->product->name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.onerror=null; this.src='https://placehold.co/150?text=No+Pic';">
                                             @else
-                                                <div class="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                                                    <i class="fas fa-image text-xl mb-1"></i>
-                                                    <span class="text-[9px]">No Pic</span>
-                                                </div>
+                                                <div class="w-full h-full flex flex-col items-center justify-center text-gray-400"><i class="fas fa-image text-xl mb-1"></i><span class="text-[9px]">No Pic</span></div>
                                             @endif
                                         </div>
 
                                         <div>
-                                            <h5 class="text-sm font-bold text-gray-900 line-clamp-2">
-                                                {{ $item->product?->name ?? 'Produk Dihapus' }}
-                                            </h5>
-                                            @if($item->variant)
-                                                <p class="text-xs text-gray-500 mt-1">
-                                                    Varian: {{ $item->variant->sku_code ?? 'Default' }}
-                                                </p>
-                                            @endif
-                                            <p class="text-xs text-gray-700 font-medium mt-2">
-                                                {{ $item->quantity }} x Rp {{ number_format($item->price, 0, ',', '.') }}
-                                            </p>
+                                            <h5 class="text-sm font-bold text-gray-900 line-clamp-2">{{ $item->product?->name ?? 'Produk Dihapus' }}</h5>
+                                            @if($item->variant) <p class="text-xs text-gray-500 mt-1">Varian: {{ $item->variant->sku_code ?? 'Default' }}</p> @endif
+                                            <p class="text-xs text-gray-700 font-medium mt-2">{{ $item->quantity }} x Rp {{ number_format($item->price, 0, ',', '.') }}</p>
                                         </div>
                                     </div>
                                 @endforeach
                             </div>
 
-                            {{-- KOLOM KANAN: PENGIRIMAN & TOTAL --}}
                             <div class="flex flex-col justify-between border-t md:border-t-0 md:border-l border-gray-100 md:pl-8 pt-4 md:pt-0">
-
                                 <div class="mb-4">
                                     <p class="text-xs text-gray-500 uppercase font-bold mb-2 tracking-wider">KURIR PENGIRIMAN</p>
-
                                     <div class="flex items-center gap-3">
                                         @php
                                             $parts = explode('-', $order->shipping_method);
                                             $courierName = $parts[1] ?? 'Kurir';
                                             $logoExpedition = asset('public/storage/logo-ekspedisi/' . strtolower($courierName) . '.png');
                                         @endphp
-
                                         <div class="w-12 h-auto bg-white rounded border border-gray-200 p-1">
-                                            <img src="{{ $logoExpedition }}"
-                                                 alt="{{ $courierName }}"
-                                                 class="w-full h-full object-contain"
-                                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                            <img src="{{ $logoExpedition }}" alt="{{ $courierName }}" class="w-full h-full object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                                             <i class="fas fa-truck text-gray-400 text-lg hidden text-center w-full mt-1"></i>
                                         </div>
-
                                         <div>
                                             <p class="text-sm font-bold text-gray-800 uppercase">{{ $courierName }}</p>
                                             <p class="text-[10px] text-gray-500">{{ strtoupper($parts[2] ?? '') }}</p>
                                         </div>
                                     </div>
 
-                                    @php
-                                        $resi = $order->shipping_resi ?? ($order->shipping_reference ?? null);
-                                    @endphp
-
+                                    @php $resi = $order->shipping_resi ?? ($order->shipping_reference ?? null); @endphp
                                     @if(!empty($resi) && $resi !== 'NULL')
                                         <div class="mt-3 bg-green-50 border border-green-200 rounded p-2 flex justify-between items-center group cursor-pointer" onclick="navigator.clipboard.writeText('{{ $resi }}'); alert('Resi disalin!')">
                                             <div>
@@ -188,8 +157,7 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
                                         </div>
                                     @elseif(in_array($status, ['paid', 'processing']))
                                         <div class="mt-3 text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-100 flex items-start gap-2">
-                                            <i class="fas fa-clock mt-0.5"></i>
-                                            <span>Menunggu Resi dari Penjual</span>
+                                            <i class="fas fa-clock mt-0.5"></i><span>Menunggu Resi dari Penjual</span>
                                         </div>
                                     @endif
                                 </div>
@@ -203,41 +171,49 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
                                     <div class="grid gap-2">
                                         @if(in_array($status, ['pending', 'unpaid', 'menunggu_pembayaran']))
                                             @if(!empty($order->invoice_number))
-                                                <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-red-600 text-white text-sm font-bold py-2.5 rounded-lg hover:bg-red-700 transition shadow-lg shadow-red-200">
-                                                    Bayar Sekarang
-                                                </a>
+                                                <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-red-600 text-white text-sm font-bold py-2.5 rounded-lg hover:bg-red-700 transition shadow-lg shadow-red-200">Bayar Sekarang</a>
                                             @endif
                                         @elseif(!empty($resi))
-                                            {{-- Lacak Paket --}}
-                                            <a href="{{ route('tracking.index', ['resi' => $resi]) }}" class="block w-full text-center border border-red-600 text-red-600 text-sm font-bold py-2.5 rounded-lg hover:bg-red-50 transition">
-                                                Lacak Paket Awal
-                                            </a>
+                                            <a href="{{ route('tracking.index', ['resi' => $resi]) }}" class="block w-full text-center border border-red-600 text-red-600 text-sm font-bold py-2.5 rounded-lg hover:bg-red-50 transition">Lacak Paket Awal</a>
 
-                                            {{-- === CEK STATUS DANA ESCROW === --}}
                                             @php
                                                 $escrow = \App\Models\Escrow::where('order_id', $order->id)->first();
                                                 $isMediasi = $escrow && $escrow->status_dana === 'mediasi';
                                                 $isCair = $escrow && $escrow->status_dana === 'dicairkan';
                                             @endphp
 
-                                            {{-- === TOMBOL TERIMA PAKET & KOMPLAIN === --}}
                                             @if(in_array($status, ['shipped', 'dikirim', 'completed', 'selesai']))
                                                 <div class="grid grid-cols-2 gap-2 mt-1">
                                                     <form action="{{ route('customer.pesanan.terima', $order->id ?? 0) }}" method="POST">
                                                         @csrf
-                                                        <button type="submit"
-                                                                {{ $isCair ? 'disabled' : '' }}
-                                                                onclick="return confirm('Apakah Anda yakin paket sudah diterima dengan baik? \n\nDana akan langsung diteruskan ke saldo penjual dan tidak dapat dikembalikan.');"
-                                                                class="w-full {{ $isCair ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600' }} text-white text-[11px] font-bold py-2.5 rounded-lg transition flex items-center justify-center shadow-sm">
+                                                        <button type="submit" {{ $isCair ? 'disabled' : '' }} onclick="return confirm('Paket diterima dengan baik? Dana akan diteruskan ke penjual.');" class="w-full {{ $isCair ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600' }} text-white text-[11px] font-bold py-2.5 rounded-lg transition flex items-center justify-center shadow-sm">
                                                             <i class="fas fa-check-circle mr-1"></i> {{ $isCair ? 'Selesai' : 'Terima' }}
                                                         </button>
                                                     </form>
 
-                                                    <button type="button"
-                                                            {{ $isCair ? 'disabled' : '' }}
-                                                            @if(isset($returKirimData)) data-retur="{{ json_encode($returKirimData) }}" @endif
-                                                            onclick="openKomplainModal('{{ $order->invoice_number }}', '{{ addslashes($storeName) }}', this)"
-                                                            class="w-full border {{ $isCair ? 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed' : 'border-orange-500 text-orange-500 hover:bg-orange-50' }} text-[11px] font-bold py-2.5 rounded-lg transition flex items-center justify-center shadow-sm">
+                                                    {{-- DATA UNTUK TOMBOL KOMPLAIN (BISA LANGSUNG RETUR) --}}
+                                                    @php
+                                                        $weight = $order->items->sum(function($item) { return ($item->product->weight ?? 1000) * $item->quantity; });
+                                                        $itemPrice = $order->items->sum(function($item) { return $item->price * $item->quantity; });
+                                                        $buyerArea = trim(($order->shipping_district ?? '') . ' ' . ($order->shipping_regency ?? ''));
+                                                        $storeArea = trim(($seller->district ?? '') . ' ' . ($seller->regency ?? ''));
+
+                                                        $returKirimData = [
+                                                            'invoice' => $order->invoice_number,
+                                                            'old_resi' => $order->shipping_reference ?? '-',
+                                                            'buyer_name' => Auth::user()->nama_lengkap ?? '',
+                                                            'buyer_phone' => Auth::user()->no_wa ?? '08000000000',
+                                                            'buyer_address' => $order->shipping_address ?? '',
+                                                            'buyer_area' => $buyerArea,
+                                                            'store_name' => $storeName,
+                                                            'store_phone' => $seller->no_wa ?? '08000000000',
+                                                            'store_address' => $seller->address_detail ?? 'Alamat Toko',
+                                                            'store_area' => $storeArea,
+                                                            'weight' => $weight > 0 ? $weight : 1000,
+                                                            'item_price' => $itemPrice > 0 ? $itemPrice : 10000,
+                                                        ];
+                                                    @endphp
+                                                    <button type="button" {{ $isCair ? 'disabled' : '' }} data-retur="{{ json_encode($returKirimData) }}" onclick="openKomplainModal('{{ $order->invoice_number }}', '{{ addslashes($storeName) }}', this)" class="w-full border {{ $isCair ? 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed' : 'border-orange-500 text-orange-500 hover:bg-orange-50' }} text-[11px] font-bold py-2.5 rounded-lg transition flex items-center justify-center shadow-sm">
                                                         <i class="fas fa-headset mr-1"></i> Komplain
                                                     </button>
                                                 </div>
@@ -248,79 +224,61 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
                                                 $returnOrder = \App\Models\ReturnOrder::where('order_id', $order->id)->first();
                                             @endphp
 
-                                            {{-- Jika Penjual Setuju Retur tapi Pembeli belum input resi --}}
                                             @if(in_array($status, ['returning', 'return_approved']) && !$returnOrder)
                                                 @php
-                                                    $weight = $order->items->sum(function($item) { return ($item->product->weight ?? 1000) * $item->quantity; });
-                                                    $itemPrice = $order->items->sum(function($item) { return $item->price * $item->quantity; });
+                                                    // Kita render ulang data untuk fallback jika status sudah approve tapi belum input
+                                                    if(!isset($returKirimData)) {
+                                                        $weight = $order->items->sum(function($item) { return ($item->product->weight ?? 1000) * $item->quantity; });
+                                                        $itemPrice = $order->items->sum(function($item) { return $item->price * $item->quantity; });
+                                                        $buyerArea = trim(($order->shipping_district ?? '') . ' ' . ($order->shipping_regency ?? ''));
+                                                        $storeArea = trim(($seller->district ?? '') . ' ' . ($seller->regency ?? ''));
 
-                                                    $returKirimData = [
-                                                        'invoice' => $order->invoice_number,
-                                                        'old_resi' => $order->shipping_reference ?? '-',
-                                                        'buyer_name' => Auth::user()->nama_lengkap ?? '',
-                                                        'buyer_phone' => Auth::user()->no_wa ?? '08000000000',
-                                                        'buyer_address' => $order->shipping_address ?? '',
-                                                        'store_name' => $storeName,
-                                                        'store_phone' => $seller->no_wa ?? '08000000000',
-                                                        'store_address' => $seller->address_detail ?? 'Alamat Toko',
-                                                        'weight' => $weight > 0 ? $weight : 1000,
-                                                        'item_price' => $itemPrice > 0 ? $itemPrice : 10000,
-                                                    ];
+                                                        $returKirimData = [
+                                                            'invoice' => $order->invoice_number, 'old_resi' => $order->shipping_reference ?? '-',
+                                                            'buyer_name' => Auth::user()->nama_lengkap ?? '', 'buyer_phone' => Auth::user()->no_wa ?? '08000000000',
+                                                            'buyer_address' => $order->shipping_address ?? '', 'buyer_area' => $buyerArea,
+                                                            'store_name' => $storeName, 'store_phone' => $seller->no_wa ?? '08000000000',
+                                                            'store_address' => $seller->address_detail ?? 'Alamat Toko', 'store_area' => $storeArea,
+                                                            'weight' => $weight > 0 ? $weight : 1000, 'item_price' => $itemPrice > 0 ? $itemPrice : 10000,
+                                                        ];
+                                                    }
                                                 @endphp
-                                                <button type="button"
-                                                        data-retur="{{ json_encode($returKirimData) }}"
-                                                        onclick="openKirimReturModal(this)"
-                                                        class="w-full mt-2 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold py-2.5 rounded-lg transition shadow-sm flex items-center justify-center animate-pulse">
+                                                <button type="button" data-retur="{{ json_encode($returKirimData) }}" onclick="openKirimReturModal(this)" class="w-full mt-2 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold py-2.5 rounded-lg transition shadow-sm flex items-center justify-center animate-pulse">
                                                     <i class="fas fa-truck-loading mr-1.5"></i> Input Resi Retur
                                                 </button>
                                             @endif
 
-                                            {{-- Jika Pembeli sudah input resi retur --}}
                                             @if($returnOrder)
                                                 @php
                                                     $shipInfo = \App\Helpers\ShippingHelper::parseShippingMethod($returnOrder->courier);
                                                     $infoReturData = [
-                                                        'store_name' => $storeName,
-                                                        'store_address' => $seller->address_detail ?? '-',
-                                                        'buyer_name' => Auth::user()->nama_lengkap ?? 'Pembeli',
-                                                        'buyer_address' => $order->shipping_address ?? '-',
-                                                        'courier' => strtoupper($returnOrder->courier),
-                                                        'service' => 'REGULER',
-                                                        'logo' => $shipInfo['logo_url'] ?? '',
-                                                        'resi' => $returnOrder->new_resi,
+                                                        'store_name' => $storeName, 'store_address' => $seller->address_detail ?? '-',
+                                                        'buyer_name' => Auth::user()->nama_lengkap ?? 'Pembeli', 'buyer_address' => $order->shipping_address ?? '-',
+                                                        'courier' => strtoupper($returnOrder->courier), 'service' => 'REGULER',
+                                                        'logo' => $shipInfo['logo_url'] ?? '', 'resi' => $returnOrder->new_resi,
                                                         'cost' => number_format($returnOrder->shipping_cost, 0, ',', '.'),
                                                         'date' => $returnOrder->created_at->format('d M Y, H:i'),
                                                         'track_url' => route('tracking.index', ['resi' => $returnOrder->new_resi])
                                                     ];
                                                 @endphp
-                                                <button type="button"
-                                                        data-info="{{ json_encode($infoReturData) }}"
-                                                        onclick="openReturModal(this)"
-                                                        class="w-full mt-2 bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-700 text-[11px] font-bold py-2 rounded-lg transition shadow-sm flex items-center justify-center">
+                                                <button type="button" data-info="{{ json_encode($infoReturData) }}" onclick="openReturModal(this)" class="w-full mt-2 bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-700 text-[11px] font-bold py-2 rounded-lg transition shadow-sm flex items-center justify-center">
                                                     <i class="fas fa-exchange-alt mr-1.5"></i> Lacak Pengembalian
                                                 </button>
                                             @endif
 
-                                            <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center text-gray-500 text-xs hover:text-gray-700 mt-1">
-                                                Lihat Invoice
-                                            </a>
+                                            <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center text-gray-500 text-xs hover:text-gray-700 mt-1">Lihat Invoice</a>
                                         @else
-                                            <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-gray-100 text-gray-700 text-sm font-bold py-2.5 rounded-lg hover:bg-gray-200 transition">
-                                                Detail Pesanan
-                                            </a>
+                                            <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-gray-100 text-gray-700 text-sm font-bold py-2.5 rounded-lg hover:bg-gray-200 transition">Detail Pesanan</a>
                                         @endif
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 @endforeach
             </div>
 
-            <div class="mt-8">
-                {{ $pesanans->links() }}
-            </div>
+            <div class="mt-8">{{ $pesanans->links() }}</div>
         @endif
     </div>
 </div>
@@ -330,47 +288,28 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
 
         <div class="bg-red-600 px-4 py-3 flex justify-between items-center text-white shadow-md z-20">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-red-600">
-                    <i class="fas fa-store text-sm"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-sm leading-tight">Pusat Resolusi</h3>
-                    <p class="text-[10px] opacity-90" id="komplainStoreName">Nama Toko</p>
-                </div>
+                <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-red-600"><i class="fas fa-store text-sm"></i></div>
+                <div><h3 class="font-bold text-sm leading-tight">Pusat Resolusi</h3><p class="text-[10px] opacity-90" id="komplainStoreName">Nama Toko</p></div>
             </div>
-            <button onclick="closeKomplainModal()" class="text-white hover:text-red-200 bg-red-700 hover:bg-red-800 rounded-full w-8 h-8 flex items-center justify-center transition">
-                <i class="fas fa-times"></i>
-            </button>
+            <button onclick="closeKomplainModal()" class="text-white hover:text-red-200 bg-red-700 hover:bg-red-800 rounded-full w-8 h-8 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
         </div>
 
         <div class="bg-orange-50 px-4 py-2.5 border-b border-orange-200 flex justify-between items-center z-10 shadow-sm">
             <span class="text-[10px] text-orange-800 font-bold"><i class="fas fa-lightbulb text-orange-500 mr-1"></i> Solusi Masalah:</span>
             <div class="flex gap-2">
-                <button type="button" id="btnAksiReturChat" class="bg-white border border-red-500 text-red-600 text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-red-50 transition shadow-sm">
-                    Ajukan Retur Paket
-                </button>
-
-                <form id="formRetur" method="POST" class="hidden">
-                    @csrf
-                </form>
-
+                <button type="button" id="btnAksiReturChat" class="bg-white border border-red-500 text-red-600 text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-red-50 transition shadow-sm">Ajukan Retur Paket</button>
+                <form id="formRetur" method="POST" class="hidden">@csrf</form>
                 <form id="formSelesai" method="POST" onsubmit="return confirm('Yakin masalah sudah selesai? Dana akan langsung diteruskan ke penjual.');">
-                    @csrf
-                    <button type="submit" class="bg-green-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-green-600 transition shadow-sm">Masalah Selesai</button>
+                    @csrf <button type="submit" class="bg-green-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-green-600 transition shadow-sm">Masalah Selesai</button>
                 </form>
             </div>
         </div>
 
         <div id="chatScrollArea" class="flex-1 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-gray-100 p-4 overflow-y-auto flex flex-col gap-4">
             <div class="text-center mb-2">
-                <span class="bg-white border border-gray-200 text-gray-600 text-[10px] px-3 py-1 rounded-full font-bold shadow-sm">
-                    Invoice: <span id="komplainInvoice" class="text-blue-600"></span>
-                </span>
-                <p class="text-[10px] text-red-500 mt-3 font-medium bg-red-50 p-2 rounded-lg border border-red-100 inline-block">
-                    <i class="fas fa-shield-alt mr-1"></i> Admin Sancaka memantau obrolan ini.
-                </p>
+                <span class="bg-white border border-gray-200 text-gray-600 text-[10px] px-3 py-1 rounded-full font-bold shadow-sm">Invoice: <span id="komplainInvoice" class="text-blue-600"></span></span>
+                <p class="text-[10px] text-red-500 mt-3 font-medium bg-red-50 p-2 rounded-lg border border-red-100 inline-block"><i class="fas fa-shield-alt mr-1"></i> Admin Sancaka memantau obrolan ini.</p>
             </div>
-
             <div id="chatBoxContent" class="flex flex-col gap-1 mt-2"></div>
         </div>
 
@@ -381,17 +320,10 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
 
         <form onsubmit="sendChatMsg(event)" id="chatForm" class="p-3 border-t border-gray-200 bg-white flex items-center gap-2">
             @csrf
-
             <input type="file" id="chatAttachmentInput" accept="image/*,video/mp4" class="hidden" onchange="handleFileSelect(this)">
-
-            <button type="button" onclick="document.getElementById('chatAttachmentInput').click()" class="text-gray-400 hover:text-blue-600 transition p-2 bg-gray-50 rounded-full border border-gray-200" title="Lampirkan Foto/Video">
-                <i class="fas fa-camera"></i>
-            </button>
-
+            <button type="button" onclick="document.getElementById('chatAttachmentInput').click()" class="text-gray-400 hover:text-blue-600 transition p-2 bg-gray-50 rounded-full border border-gray-200" title="Lampirkan Foto/Video"><i class="fas fa-camera"></i></button>
             <input type="text" id="chatMessageInput" placeholder="Ketik keluhan..." class="flex-1 border-gray-300 rounded-full text-sm focus:ring-red-500 focus:border-red-500 px-4 py-2 bg-gray-50 shadow-inner" autocomplete="off">
-            <button type="submit" id="btnSendChat" class="bg-red-600 text-white w-10 h-10 rounded-full hover:bg-red-700 transition flex items-center justify-center shadow-md transform hover:scale-105 flex-shrink-0">
-                <i class="fas fa-paper-plane"></i>
-            </button>
+            <button type="submit" id="btnSendChat" class="bg-red-600 text-white w-10 h-10 rounded-full hover:bg-red-700 transition flex items-center justify-center shadow-md transform hover:scale-105 flex-shrink-0"><i class="fas fa-paper-plane"></i></button>
         </form>
     </div>
 </div>
@@ -406,10 +338,11 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
             <button onclick="closeKirimReturModal()" class="text-white hover:text-teal-200 bg-teal-700 hover:bg-teal-800 rounded-full w-8 h-8 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
         </div>
 
-        <form action="{{ route('customer.pesanan.kirim_retur') }}" method="POST" id="formKirimRetur" class="flex-1 overflow-y-auto max-h-[75vh]">
+        <form action="{{ route('customer.pesanan.kirim_retur') }}" method="POST" id="formKirimRetur" class="flex-1 overflow-y-auto max-h-[80vh] custom-scrollbar">
             @csrf
-
             <input type="hidden" name="invoice_number" id="kr-invoice">
+            <input type="hidden" id="kr-hidden-weight"><input type="hidden" id="kr-hidden-price">
+
             <input type="hidden" name="sender_name" id="kr-sender-name-input"><input type="hidden" name="sender_phone" id="kr-sender-phone">
             <input type="hidden" name="sender_address" id="kr-sender-address-input"><input type="hidden" name="sender_district_id" id="kr-sender_district_id">
             <input type="hidden" name="sender_subdistrict_id" id="kr-sender_subdistrict_id"><input type="hidden" name="sender_postal_code" id="kr-sender_postal_code">
@@ -434,6 +367,21 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
                     </div>
                 </div>
 
+                <div id="kr-manual-search-box" class="hidden bg-red-50 border border-red-200 p-3 rounded-lg shadow-sm">
+                    <p class="text-[10px] text-red-600 font-bold mb-2">⚠️ Lokasi belum terdeteksi. Silakan ketik Kecamatan Anda & Toko:</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                        <div class="relative">
+                            <input type="text" id="kr-search-sender" class="w-full text-[11px] p-2 border border-red-300 rounded focus:ring-red-500" placeholder="Kec. Anda..." autocomplete="off">
+                            <div id="kr-res-sender" class="absolute z-50 w-full bg-white border border-gray-200 rounded shadow max-h-32 overflow-y-auto hidden text-xs"></div>
+                        </div>
+                        <div class="relative">
+                            <input type="text" id="kr-search-receiver" class="w-full text-[11px] p-2 border border-red-300 rounded focus:ring-red-500" placeholder="Kec. Toko..." autocomplete="off">
+                            <div id="kr-res-receiver" class="absolute z-50 w-full bg-white border border-gray-200 rounded shadow max-h-32 overflow-y-auto hidden text-xs"></div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="retryFetchOngkir()" class="w-full bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold py-2 rounded shadow-sm">Coba Tampilkan Ekspedisi</button>
+                </div>
+
                 <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl space-y-3 shadow-inner">
                     <label class="block text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-1">Pilih Ekspedisi Retur</label>
                     <div id="retur_ekspedisi_list" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
@@ -452,7 +400,7 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
 
             <div class="bg-white px-5 py-4 border-t border-gray-200 flex justify-end gap-2">
                 <button type="button" onclick="closeKirimReturModal()" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Batal</button>
-                <button type="submit" onclick="return confirm('Sistem akan membuat Resi Pickup dan memotong biaya ongkir retur. Lanjutkan?')" class="px-5 py-2 text-xs font-bold text-white bg-teal-600 rounded-lg hover:bg-teal-700 shadow-md transition flex items-center">
+                <button type="submit" id="btn-submit-retur" onclick="return confirm('Sistem akan membuat Resi Pickup dan memotong biaya ongkir retur. Lanjutkan?')" class="px-5 py-2 text-xs font-bold text-white bg-teal-600 rounded-lg hover:bg-teal-700 shadow-md transition flex items-center">
                     <i class="fas fa-check-circle mr-2"></i> Bayar & Buat Resi
                 </button>
             </div>
@@ -464,17 +412,10 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col transform transition-all scale-95 opacity-0" id="returModalContent">
         <div class="bg-teal-600 px-5 py-4 flex justify-between items-center text-white shadow-md z-10">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm">
-                    <i class="fas fa-exchange-alt text-sm"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-sm leading-tight">Informasi Pengembalian Barang</h3>
-                    <p class="text-[10px] text-teal-100">Cek alamat dan lacak paket retur</p>
-                </div>
+                <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm"><i class="fas fa-exchange-alt text-sm"></i></div>
+                <div><h3 class="font-bold text-sm leading-tight">Informasi Pengembalian Barang</h3><p class="text-[10px] text-teal-100">Cek alamat dan lacak paket retur</p></div>
             </div>
-            <button onclick="closeReturModal()" class="text-white hover:text-teal-200 bg-teal-700 hover:bg-teal-800 rounded-full w-8 h-8 flex items-center justify-center transition">
-                <i class="fas fa-times"></i>
-            </button>
+            <button onclick="closeReturModal()" class="text-white hover:text-teal-200 bg-teal-700 hover:bg-teal-800 rounded-full w-8 h-8 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
         </div>
 
         <div class="p-5 bg-gray-50 flex-1 overflow-y-auto max-h-[70vh]">
@@ -518,19 +459,24 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     let currentInvoice = '';
 
     // ==========================================
-    // 1. LOGIKA CHAT KOMPLAIN & RESOLUSI
+    // 1. LOGIKA CHAT & RESOLUSI
     // ==========================================
     function openKomplainModal(invoice, storeName, btnElement = null) {
         currentInvoice = invoice;
         document.getElementById('komplainInvoice').innerText = invoice;
         document.getElementById('komplainStoreName').innerText = storeName;
-
         document.getElementById('formSelesai').action = `/customer/komplain/selesai/${invoice}`;
         document.getElementById('formRetur').action = `/customer/komplain/retur/${invoice}`;
 
@@ -575,48 +521,21 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         content.classList.remove('scale-100', 'opacity-100');
         content.classList.add('scale-95', 'opacity-0');
         cancelUpload();
-        setTimeout(() => {
-            modal.classList.add('hidden');
-            document.getElementById('chatBoxContent').innerHTML = '';
-        }, 300);
+        setTimeout(() => { modal.classList.add('hidden'); document.getElementById('chatBoxContent').innerHTML = ''; }, 300);
     }
 
     // ==========================================
-    // 2. LOGIKA INPUT RESI RETUR (KIRIMINAJA)
+    // 2. LOGIKA INPUT RESI RETUR (KIRIMINAJA API)
     // ==========================================
 
-    // Fungsi untuk melacak ID Wilayah di background (Geocoding KiriminAja)
+    // Trik: Mengambil 2 kata terakhir dari alamat (kecamatan, kota) untuk bypass geocoding error
     async function fetchKiriminAjaAreaId(addressString, prefix) {
+        if (!addressString) return false;
         try {
-            const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(addressString)}`);
-            const data = await response.json();
+            let parts = addressString.split(',');
+            let searchQuery = parts.length >= 2 ? parts.slice(-2).join(' ') : addressString;
 
-            if (data && data.length > 0) {
-                const item = data[0]; // Ambil hasil pertama yang paling relevan
-
-                // Set Hidden Input sesuai format create.blade.php
-                document.getElementById(`kr-${prefix}_district_id`).value = item.district_id || (item.data_lengkap ? item.data_lengkap.district_id : '');
-                document.getElementById(`kr-${prefix}_subdistrict_id`).value = item.subdistrict_id || (item.data_lengkap ? item.data_lengkap.subdistrict_id : '');
-
-                // Set Detail Wilayah
-                const d = item.data_lengkap || {};
-                document.getElementById(`kr-${prefix}_village`).value = d.village || '';
-                document.getElementById(`kr-${prefix}_district`).value = d.district || '';
-                document.getElementById(`kr-${prefix}_regency`).value = d.regency || '';
-                document.getElementById(`kr-${prefix}_province`).value = d.province || '';
-                document.getElementById(`kr-${prefix}_postal_code`).value = d.postal_code || '';
-            } else {
-                console.warn(`Data wilayah ${prefix} tidak ditemukan dari API.`);
-            }
-        } catch (error) {
-            console.error(`Gagal Fetch Wilayah ${prefix}:`, error);
-        }
-    }
-
-    // FUNGSI PENCARIAN ID WILAYAH OTOMATIS
-    async function fetchKiriminAjaAreaId(addressString, prefix) {
-        try {
-            const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(addressString)}`);
+            const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(searchQuery.trim())}`);
             const data = await response.json();
 
             if (data && data.length > 0) {
@@ -625,11 +544,15 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
                 document.getElementById(`kr-${prefix}_district_id`).value = item.district_id || d.district_id || '';
                 document.getElementById(`kr-${prefix}_subdistrict_id`).value = item.subdistrict_id || d.subdistrict_id || '';
                 document.getElementById(`kr-${prefix}_postal_code`).value = d.postal_code || '';
+                return true;
             }
-        } catch (error) { console.error(`Geocode Error:`, error); }
+            return false;
+        } catch (error) {
+            console.error(`Geocode Error ${prefix}:`, error);
+            return false;
+        }
     }
 
-    // FUNGSI CEK ONGKIR OTOMATIS SAAT BUKA MODAL
     async function fetchOngkirRetur(weight, itemPrice) {
         const senderSub = document.getElementById('kr-sender_subdistrict_id').value;
         const senderDist = document.getElementById('kr-sender_district_id').value;
@@ -637,10 +560,19 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         const receiverDist = document.getElementById('kr-receiver_district_id').value;
         const listContainer = document.getElementById('retur_ekspedisi_list');
 
+        // JIKA ID WILAYAH KOSONG -> TAMPILKAN PENCARIAN MANUAL
         if(!senderSub || !receiverSub) {
-            listContainer.innerHTML = '<div class="text-xs text-red-500 font-bold p-3 bg-red-50 rounded">⚠️ Gagal melacak Kode Pos alamat Anda / Toko. Harap ubah alamat terlebih dahulu.</div>';
+            document.getElementById('kr-manual-search-box').classList.remove('hidden');
+            listContainer.innerHTML = '';
+            document.getElementById('btn-submit-retur').disabled = true;
+            document.getElementById('btn-submit-retur').classList.add('opacity-50', 'cursor-not-allowed');
             return;
         }
+
+        // Sembunyikan pencarian manual jika sukses
+        document.getElementById('kr-manual-search-box').classList.add('hidden');
+        document.getElementById('btn-submit-retur').disabled = false;
+        document.getElementById('btn-submit-retur').classList.remove('opacity-50', 'cursor-not-allowed');
 
         const params = new URLSearchParams({
             sender_district_id: senderDist, sender_subdistrict_id: senderSub,
@@ -691,18 +623,19 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         }
     }
 
-    // TRIGGER BUKA MODAL DARI TOMBOL CHAT
     function openKirimReturModal(btn) {
         const data = JSON.parse(btn.getAttribute('data-retur'));
 
-        // Isi Visual Form
+        // Isi Data Form Utama
         document.getElementById('kr-invoice').value = data.invoice;
+        document.getElementById('kr-hidden-weight').value = data.weight;
+        document.getElementById('kr-hidden-price').value = data.item_price;
+
         document.getElementById('kr-sender-name-display').innerText = data.buyer_name;
         document.getElementById('kr-sender-address-display').innerText = data.buyer_address;
         document.getElementById('kr-receiver-name-display').innerText = data.store_name;
         document.getElementById('kr-receiver-address-display').innerText = data.store_address;
 
-        // Isi Hidden Inputs utk Database
         document.getElementById('kr-sender-name-input').value = data.buyer_name;
         document.getElementById('kr-sender-address-input').value = data.buyer_address;
         document.getElementById('kr-sender-phone').value = data.buyer_phone;
@@ -710,13 +643,15 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         document.getElementById('kr-receiver-address-input').value = data.store_address;
         document.getElementById('kr-receiver-phone').value = data.store_phone;
 
-        Swal.fire({ title: 'Mencari Kurir Terbaik...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+        Swal.fire({ title: 'Mencari Lokasi...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
-        // Tarik ID Wilayah -> Lalu Cek Ongkir -> Baru Buka Modal
-        Promise.all([
-            fetchKiriminAjaAreaId(data.buyer_address, 'sender'),
-            fetchKiriminAjaAreaId(data.store_address, 'receiver')
-        ]).then(() => {
+        // Mulai pencarian wilayah
+        let promises = [];
+        // Kirim string 'buyer_area' dan 'store_area' (bukan alamat penuh) agar API akurat
+        if(data.buyer_area) promises.push(fetchKiriminAjaAreaId(data.buyer_area, 'sender'));
+        if(data.store_area) promises.push(fetchKiriminAjaAreaId(data.store_area, 'receiver'));
+
+        Promise.all(promises).then(() => {
             fetchOngkirRetur(data.weight, data.item_price).then(() => {
                 Swal.close();
                 const modal = document.getElementById('kirimReturModal');
@@ -738,40 +673,52 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         setTimeout(() => { modal.classList.add('hidden'); }, 300);
     }
 
-    // Logika Konfirmasi Bayar & Buat Resi Retur
-    document.getElementById('formKirimRetur').addEventListener('submit', function(e) {
-        e.preventDefault();
+    // --- SETUP MANUAL SEARCH KECAMATAN (JIKA AUTO GAGAL) ---
+    function setupManualSearchRetur(prefix) {
+        const input = document.getElementById(`kr-search-${prefix}`);
+        const resDiv = document.getElementById(`kr-res-${prefix}`);
 
-        const districtSender = document.getElementById('kr-sender_district_id').value;
-        const districtReceiver = document.getElementById('kr-receiver_district_id').value;
-
-        if(!districtSender || !districtReceiver) {
-            Swal.fire('Error Wilayah', 'Sistem gagal mendeteksi kode pos / kecamatan alamat Anda atau Toko. Silakan hubungi Admin.', 'error');
-            return false;
-        }
-
-        Swal.fire({
-            title: 'Buat Resi Retur?',
-            text: "Sistem akan memotong saldo Anda atau mengarahkan ke DOKU untuk biaya ongkir retur otomatis dari KiriminAja.",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#0D9488',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Ya, Bayar & Buat Resi'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-                this.submit();
-            }
+        input.addEventListener('input', async () => {
+            if(input.value.length < 3) { resDiv.classList.add('hidden'); return; }
+            try {
+                const res = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(input.value)}`);
+                const data = await res.json();
+                resDiv.innerHTML = '';
+                resDiv.classList.remove('hidden');
+                if(data && data.length > 0) {
+                    data.forEach(item => {
+                        let div = document.createElement('div');
+                        div.className = 'p-2 text-xs border-b cursor-pointer hover:bg-gray-100';
+                        div.innerText = item.label || item.full_address;
+                        div.onclick = () => {
+                            input.value = item.label || item.full_address;
+                            const d = item.data_lengkap || {};
+                            document.getElementById(`kr-${prefix}_district_id`).value = item.district_id || d.district_id || '';
+                            document.getElementById(`kr-${prefix}_subdistrict_id`).value = item.subdistrict_id || d.subdistrict_id || '';
+                            document.getElementById(`kr-${prefix}_postal_code`).value = d.postal_code || '';
+                            resDiv.classList.add('hidden');
+                        };
+                        resDiv.appendChild(div);
+                    });
+                }
+            } catch(e) {}
         });
-    });
+    }
+    setupManualSearchRetur('sender');
+    setupManualSearchRetur('receiver');
+
+    function retryFetchOngkir() {
+        const weight = document.getElementById('kr-hidden-weight').value;
+        const price = document.getElementById('kr-hidden-price').value;
+        document.getElementById('retur_ekspedisi_list').innerHTML = '<div class="text-center text-xs text-blue-500 py-4"><i class="fas fa-spinner fa-spin text-xl mb-2"></i><br>Mencari ulang...</div>';
+        fetchOngkirRetur(weight, price);
+    }
 
     // ==========================================
-    // 3. LOGIKA LACAK RETUR (INFO MODAL)
+    // 3. LOGIKA INFO LACAK RETUR
     // ==========================================
     function openReturModal(btn) {
         const data = JSON.parse(btn.getAttribute('data-info'));
-
         document.getElementById('rm-store-name').innerText = data.store_name;
         document.getElementById('rm-store-address').innerText = data.store_address;
         document.getElementById('rm-buyer-name').innerText = data.buyer_name;
@@ -783,22 +730,16 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         const imgEl = document.getElementById('rm-logo');
         const noImgEl = document.getElementById('rm-no-logo');
         if(data.logo && data.logo !== '') {
-            imgEl.src = data.logo;
-            imgEl.classList.remove('hidden');
-            noImgEl.classList.add('hidden');
+            imgEl.src = data.logo; imgEl.classList.remove('hidden'); noImgEl.classList.add('hidden');
         } else {
-            imgEl.classList.add('hidden');
-            noImgEl.classList.remove('hidden');
+            imgEl.classList.add('hidden'); noImgEl.classList.remove('hidden');
         }
         document.getElementById('rm-track-btn').href = data.track_url;
 
         const modal = document.getElementById('returModal');
         const content = document.getElementById('returModalContent');
         modal.classList.remove('hidden');
-        setTimeout(() => {
-            content.classList.remove('scale-95', 'opacity-0');
-            content.classList.add('scale-100', 'opacity-100');
-        }, 50);
+        setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); content.classList.add('scale-100', 'opacity-100'); }, 50);
     }
 
     function closeReturModal() {
@@ -810,43 +751,33 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
     }
 
     // ==========================================
-    // 4. LOGIKA UPLOAD & AJAX CHAT
+    // 4. LOGIKA CHAT AJAX (FILE UPLOAD)
     // ==========================================
     function handleFileSelect(input) {
         const preview = document.getElementById('filePreviewContainer');
         const nameDisplay = document.getElementById('fileNameDisplay');
         if(input.files && input.files[0]) {
             nameDisplay.innerText = input.files[0].name;
-            preview.classList.remove('hidden');
-            preview.classList.add('flex');
+            preview.classList.remove('hidden'); preview.classList.add('flex');
         }
     }
-
     function cancelUpload() {
         document.getElementById('chatAttachmentInput').value = '';
         const preview = document.getElementById('filePreviewContainer');
-        preview.classList.add('hidden');
-        preview.classList.remove('flex');
+        preview.classList.add('hidden'); preview.classList.remove('flex');
     }
 
     function loadChats() {
         const chatBox = document.getElementById('chatBoxContent');
         chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4"><i class="fas fa-spinner fa-spin"></i> Memuat pesan...</div>';
-
         fetch(`/customer/komplain/chat/${currentInvoice}`)
             .then(res => res.json())
             .then(data => {
                 chatBox.innerHTML = '';
-                if(data.chats && data.chats.length === 0) {
-                    chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4">Belum ada obrolan. Silakan mulai percakapan.</div>';
-                } else if(data.chats) {
-                    data.chats.forEach(chat => appendChatHTML(chat));
-                }
+                if(data.chats && data.chats.length === 0) chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4">Belum ada obrolan. Silakan mulai percakapan.</div>';
+                else if(data.chats) data.chats.forEach(chat => appendChatHTML(chat));
                 scrollToBottom();
-            })
-            .catch(err => {
-                chatBox.innerHTML = '<div class="text-center text-xs text-red-500 my-4">Gagal memuat pesan.</div>';
-            });
+            }).catch(err => { chatBox.innerHTML = '<div class="text-center text-xs text-red-500 my-4">Gagal memuat pesan.</div>'; });
     }
 
     function sendChatMsg(e) {
@@ -861,38 +792,19 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         formData.append('invoice_number', currentInvoice);
         formData.append('message', inputMsg.value);
         formData.append('_token', '{{ csrf_token() }}');
-        if(inputFile.files.length > 0) {
-            formData.append('attachment', inputFile.files[0]);
-        }
+        if(inputFile.files.length > 0) formData.append('attachment', inputFile.files[0]);
 
-        inputMsg.disabled = true;
-        btnSend.disabled = true;
-        btnSend.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        inputMsg.disabled = true; btnSend.disabled = true; btnSend.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-        fetch(`{{ route('customer.komplain.send_chat') }}`, {
-            method: 'POST',
-            body: formData
-        })
+        fetch(`{{ route('customer.komplain.send_chat') }}`, { method: 'POST', body: formData })
         .then(res => res.json())
         .then(data => {
-            inputMsg.disabled = false;
-            btnSend.disabled = false;
-            btnSend.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            inputMsg.disabled = false; btnSend.disabled = false; btnSend.innerHTML = '<i class="fas fa-paper-plane"></i>';
             inputMsg.focus();
-
-            if(data.success) {
-                inputMsg.value = '';
-                cancelUpload();
-                appendChatHTML(data.chat);
-                scrollToBottom();
-            } else {
-                alert('Gagal mengirim pesan: ' + (data.error || 'Kesalahan server'));
-            }
-        })
-        .catch(err => {
-            inputMsg.disabled = false;
-            btnSend.disabled = false;
-            btnSend.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            if(data.success) { inputMsg.value = ''; cancelUpload(); appendChatHTML(data.chat); scrollToBottom(); }
+            else { alert('Gagal mengirim pesan: ' + (data.error || 'Kesalahan server')); }
+        }).catch(err => {
+            inputMsg.disabled = false; btnSend.disabled = false; btnSend.innerHTML = '<i class="fas fa-paper-plane"></i>';
             alert('Terjadi kesalahan jaringan/server.');
         });
     }
@@ -901,7 +813,6 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         const chatBox = document.getElementById('chatBoxContent');
         const isCustomer = chat.sender_type === 'customer';
         const isAdmin = chat.sender_type === 'admin';
-
         const dateObj = new Date(chat.created_at);
         const time = dateObj.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
 
@@ -909,43 +820,21 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         if(chat.attachment) {
             const fileUrl = `{{ asset('storage') }}/${chat.attachment}`;
             const ext = chat.attachment.split('.').pop().toLowerCase();
-            if(ext === 'mp4' || ext === 'mov') {
-                mediaHtml = `<video controls class="max-w-full h-auto rounded-lg mt-2 mb-1 border border-gray-200 shadow-sm" style="max-height: 200px;"><source src="${fileUrl}" type="video/${ext}"></video>`;
-            } else {
-                mediaHtml = `<img src="${fileUrl}" class="max-w-full h-auto rounded-lg mt-2 mb-1 border border-gray-200 shadow-sm cursor-pointer" style="max-height: 200px;" onclick="window.open(this.src, '_blank')">`;
-            }
+            if(ext === 'mp4' || ext === 'mov') mediaHtml = `<video controls class="max-w-full h-auto rounded-lg mt-2 mb-1 border border-gray-200 shadow-sm" style="max-height: 200px;"><source src="${fileUrl}" type="video/${ext}"></video>`;
+            else mediaHtml = `<img src="${fileUrl}" class="max-w-full h-auto rounded-lg mt-2 mb-1 border border-gray-200 shadow-sm cursor-pointer" style="max-height: 200px;" onclick="window.open(this.src, '_blank')">`;
         }
 
         let html = '';
         if(isCustomer) {
-            html = `
-            <div class="flex items-start justify-end gap-2 mt-2">
-                <div class="bg-red-50 border border-red-100 rounded-2xl rounded-tr-none p-3 max-w-[85%] shadow-sm">
-                    ${mediaHtml}
-                    ${chat.message ? `<p class="text-xs text-gray-800 leading-relaxed break-words">${chat.message}</p>` : ''}
-                    <p class="text-[9px] text-gray-400 mt-1 text-right">${time}</p>
-                </div>
-            </div>`;
+            html = `<div class="flex items-start justify-end gap-2 mt-2"><div class="bg-red-50 border border-red-100 rounded-2xl rounded-tr-none p-3 max-w-[85%] shadow-sm">${mediaHtml}${chat.message ? `<p class="text-xs text-gray-800 leading-relaxed break-words">${chat.message}</p>` : ''}<p class="text-[9px] text-gray-400 mt-1 text-right">${time}</p></div></div>`;
         } else {
             const icon = isAdmin ? '<i class="fas fa-shield-alt text-blue-500"></i>' : '<i class="fas fa-store text-orange-500"></i>';
             const senderName = isAdmin ? 'Admin Sancaka' : (chat.sender ? chat.sender.nama_lengkap : 'Penjual');
             const nameColor = isAdmin ? 'text-blue-600' : 'text-orange-600';
-
-            html = `
-            <div class="flex items-start gap-2 mt-2">
-                <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-200 text-xs">
-                    ${icon}
-                </div>
-                <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-3 max-w-[85%] shadow-sm">
-                    <p class="text-[10px] font-bold mb-1 ${nameColor}">${senderName}</p>
-                    ${mediaHtml}
-                    ${chat.message ? `<p class="text-xs text-gray-800 leading-relaxed break-words">${chat.message}</p>` : ''}
-                    <p class="text-[9px] text-gray-400 mt-1 text-left">${time}</p>
-                </div>
-            </div>`;
+            html = `<div class="flex items-start gap-2 mt-2"><div class="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-200 text-xs">${icon}</div><div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-3 max-w-[85%] shadow-sm"><p class="text-[10px] font-bold mb-1 ${nameColor}">${senderName}</p>${mediaHtml}${chat.message ? `<p class="text-xs text-gray-800 leading-relaxed break-words">${chat.message}</p>` : ''}<p class="text-[9px] text-gray-400 mt-1 text-left">${time}</p></div></div>`;
         }
 
-        if(chatBox.innerHTML.includes('Belum ada obrolan')) { chatBox.innerHTML = ''; }
+        if(chatBox.innerHTML.includes('Belum ada obrolan')) chatBox.innerHTML = '';
         chatBox.insertAdjacentHTML('beforeend', html);
     }
 
@@ -954,4 +843,3 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         if(area) area.scrollTop = area.scrollHeight;
     }
 </script>
-@endsection
