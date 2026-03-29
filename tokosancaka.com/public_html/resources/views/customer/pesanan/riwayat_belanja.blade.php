@@ -1,6 +1,6 @@
 {{--
 File: resources/views/customer/pesanan/riwayat_belanja.blade.php
-Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
+Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
 --}}
 
 @extends('layouts.customer')
@@ -91,7 +91,8 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
                                     'pending', 'unpaid', 'menunggu_pembayaran' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
                                     'processing', 'diproses' => 'bg-blue-100 text-blue-800 border-blue-200',
                                     'shipped', 'dikirim' => 'bg-purple-100 text-purple-800 border-purple-200',
-                                    'failed', 'expired', 'batal' => 'bg-red-100 text-red-800 border-red-200',
+                                    'failed', 'expired', 'batal', 'canceled', 'rejected' => 'bg-red-100 text-red-800 border-red-200',
+                                    'returning', 'return_approved', 'returned' => 'bg-teal-100 text-teal-800 border-teal-200',
                                     default => 'bg-gray-100 text-gray-800 border-gray-200'
                                 };
                             @endphp
@@ -109,7 +110,6 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
 
                                 @foreach($items->take(2) as $item)
                                     <div class="flex items-start gap-4 p-2 hover:bg-gray-50 rounded-lg transition">
-
                                         {{-- GAMBAR PRODUK --}}
                                         <div class="w-20 h-20 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden border border-gray-200 relative group">
                                             @if($item->product && !empty($item->product->image_url))
@@ -210,14 +210,14 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
                                         @elseif(!empty($resi))
                                             {{-- Lacak Paket --}}
                                             <a href="{{ route('tracking.index', ['resi' => $resi]) }}" class="block w-full text-center border border-red-600 text-red-600 text-sm font-bold py-2.5 rounded-lg hover:bg-red-50 transition">
-                                                Lacak Paket
+                                                Lacak Paket Awal
                                             </a>
 
                                             {{-- === CEK STATUS DANA ESCROW === --}}
                                             @php
                                                 $escrow = \App\Models\Escrow::where('order_id', $order->id)->first();
                                                 $isMediasi = $escrow && $escrow->status_dana === 'mediasi';
-                                                $isCair = $escrow && $escrow->status_dana === 'dicairkan'; // Cek apakah dana sudah cair
+                                                $isCair = $escrow && $escrow->status_dana === 'dicairkan';
                                             @endphp
 
                                             {{-- === TOMBOL TERIMA PAKET & KOMPLAIN === --}}
@@ -240,6 +240,51 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
                                                         <i class="fas fa-headset mr-1"></i> Komplain
                                                     </button>
                                                 </div>
+                                            @endif
+
+                                            {{-- === CEK DATA RETUR === --}}
+                                            @php
+                                                $returnOrder = \App\Models\ReturnOrder::where('order_id', $order->id)->first();
+                                            @endphp
+
+                                            {{-- Jika Penjual Setuju Retur tapi Pembeli belum input resi --}}
+                                            @if(in_array($status, ['returning', 'return_approved']) && !$returnOrder)
+                                                @php
+                                                    $returKirimData = [
+                                                        'invoice' => $order->invoice_number,
+                                                        'old_resi' => $order->shipping_reference ?? '-',
+                                                        'buyer_name' => Auth::user()->nama_lengkap ?? '',
+                                                        'buyer_address' => $order->shipping_address ?? '',
+                                                        'store_name' => $storeName,
+                                                        'store_address' => $seller->address_detail ?? 'Alamat Toko',
+                                                    ];
+                                                @endphp
+                                                <button type="button" onclick="openKirimReturModal({{ htmlspecialchars(json_encode($returKirimData)) }})" class="w-full mt-2 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold py-2.5 rounded-lg transition shadow-sm flex items-center justify-center animate-pulse">
+                                                    <i class="fas fa-truck-loading mr-1.5"></i> Input Resi Retur
+                                                </button>
+                                            @endif
+
+                                            {{-- Jika Pembeli sudah input resi retur --}}
+                                            @if($returnOrder)
+                                                @php
+                                                    $shipInfo = \App\Helpers\ShippingHelper::parseShippingMethod($returnOrder->courier);
+                                                    $infoReturData = [
+                                                        'store_name' => $storeName,
+                                                        'store_address' => $seller->address_detail ?? '-',
+                                                        'buyer_name' => Auth::user()->nama_lengkap ?? 'Pembeli',
+                                                        'buyer_address' => $order->shipping_address ?? '-',
+                                                        'courier' => strtoupper($returnOrder->courier),
+                                                        'service' => 'REGULER',
+                                                        'logo' => $shipInfo['logo_url'] ?? '',
+                                                        'resi' => $returnOrder->new_resi,
+                                                        'cost' => number_format($returnOrder->shipping_cost, 0, ',', '.'),
+                                                        'date' => $returnOrder->created_at->format('d M Y, H:i'),
+                                                        'track_url' => route('tracking.index', ['resi' => $returnOrder->new_resi])
+                                                    ];
+                                                @endphp
+                                                <button type="button" onclick="openReturModal({{ htmlspecialchars(json_encode($infoReturData)) }})" class="w-full mt-2 bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-700 text-[11px] font-bold py-2 rounded-lg transition shadow-sm flex items-center justify-center">
+                                                    <i class="fas fa-exchange-alt mr-1.5"></i> Lacak Pengembalian
+                                                </button>
                                             @endif
 
                                             <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center text-gray-500 text-xs hover:text-gray-700 mt-1">
@@ -287,9 +332,9 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
         <div class="bg-orange-50 px-4 py-2.5 border-b border-orange-200 flex justify-between items-center z-10 shadow-sm">
             <span class="text-[10px] text-orange-800 font-bold"><i class="fas fa-lightbulb text-orange-500 mr-1"></i> Solusi Masalah:</span>
             <div class="flex gap-2">
-                <form id="formRetur" method="POST" onsubmit="return confirm('Yakin ingin mengajukan Retur / Kembalikan Barang?');">
+                <form id="formRetur" method="POST" onsubmit="return submitRetur(event, this);">
                     @csrf
-                    <button type="submit" class="bg-white border border-red-500 text-red-600 text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-red-50 transition shadow-sm">Retur Paket</button>
+                    <button type="submit" class="bg-white border border-red-500 text-red-600 text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-red-50 transition shadow-sm">Ajukan Retur Paket</button>
                 </form>
                 <form id="formSelesai" method="POST" onsubmit="return confirm('Yakin masalah sudah selesai? Dana akan langsung diteruskan ke penjual.');">
                     @csrf
@@ -333,6 +378,137 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
     </div>
 </div>
 
+<div id="kirimReturModal" class="fixed inset-0 z-[100] hidden bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col transform transition-all scale-95 opacity-0" id="kirimReturModalContent">
+        <div class="bg-teal-600 px-5 py-4 flex justify-between items-center text-white shadow-md z-10">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm">
+                    <i class="fas fa-box-open text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-sm leading-tight">Pengembalian Barang</h3>
+                    <p class="text-[10px] text-teal-100">Buat resi otomatis via KiriminAja</p>
+                </div>
+            </div>
+            <button onclick="closeKirimReturModal()" class="text-white hover:text-teal-200 bg-teal-700 hover:bg-teal-800 rounded-full w-8 h-8 flex items-center justify-center transition">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form action="{{ route('customer.pesanan.kirim_retur') }}" method="POST" id="formKirimRetur" class="flex-1 overflow-y-auto max-h-[75vh]">
+            @csrf
+            <input type="hidden" name="invoice_number" id="kr-invoice">
+
+            <div class="p-5 space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Nomor Resi Awal (Acuan)</label>
+                    <input type="text" id="kr-old-resi" name="old_resi" readonly class="w-full bg-gray-100 border border-gray-200 text-gray-700 text-xs rounded-lg px-3 py-2 font-mono">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <p class="text-[10px] font-bold text-teal-600 uppercase tracking-wider mb-1 border-b border-gray-200 pb-1"><i class="fas fa-user mr-1"></i> Pengirim (Anda)</p>
+                        <p class="text-xs font-bold text-gray-800 mt-1.5" id="kr-sender-name"></p>
+                        <p class="text-[10px] text-gray-600 mt-1 leading-relaxed" id="kr-sender-address"></p>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <p class="text-[10px] font-bold text-orange-600 uppercase tracking-wider mb-1 border-b border-gray-200 pb-1"><i class="fas fa-store mr-1"></i> Penerima (Toko)</p>
+                        <p class="text-xs font-bold text-gray-800 mt-1.5" id="kr-receiver-name"></p>
+                        <p class="text-[10px] text-gray-600 mt-1 leading-relaxed" id="kr-receiver-address"></p>
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl space-y-3 shadow-inner">
+                    <div>
+                        <label class="block text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-1">Pilih Ekspedisi Retur</label>
+                        <select name="courier" required class="w-full border-blue-200 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 bg-white shadow-sm">
+                            <option value="">-- Pilih Ekspedisi KiriminAja --</option>
+                            <option value="sicepat">SiCepat Ekspres</option>
+                            <option value="jne">JNE Express</option>
+                            <option value="jnt">J&T Express</option>
+                            <option value="sap">SAP Express</option>
+                            <option value="idexpress">ID Express</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-1">Metode Pembayaran Ongkir</label>
+                        <select name="payment_method" required class="w-full border-blue-200 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 bg-white shadow-sm">
+                            <option value="saldo">Saldo Sancaka (Otomatis Potong)</option>
+                            <option value="doku">DOKU Payment Gateway</option>
+                        </select>
+                    </div>
+                    <p class="text-[9px] text-blue-600 italic mt-2"><i class="fas fa-info-circle"></i> Sistem akan otomatis memotong biaya sesuai ongkir ekspedisi yang dipilih dan mengeluarkan nomor resi Retur.</p>
+                </div>
+            </div>
+
+            <div class="bg-white px-5 py-4 border-t border-gray-200 flex justify-end gap-2">
+                <button type="button" onclick="closeKirimReturModal()" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Batal</button>
+                <button type="submit" onclick="return confirm('Sistem akan memotong saldo Anda atau mengarahkan ke DOKU untuk biaya ongkir retur. Lanjutkan?')" class="px-5 py-2 text-xs font-bold text-white bg-teal-600 rounded-lg hover:bg-teal-700 shadow-md transition flex items-center">
+                    <i class="fas fa-check-circle mr-2"></i> Bayar & Buat Resi
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="returModal" class="fixed inset-0 z-[100] hidden bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col transform transition-all scale-95 opacity-0" id="returModalContent">
+        <div class="bg-teal-600 px-5 py-4 flex justify-between items-center text-white shadow-md z-10">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm">
+                    <i class="fas fa-exchange-alt text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-sm leading-tight">Informasi Pengembalian Barang</h3>
+                    <p class="text-[10px] text-teal-100">Cek alamat dan lacak paket retur</p>
+                </div>
+            </div>
+            <button onclick="closeReturModal()" class="text-white hover:text-teal-200 bg-teal-700 hover:bg-teal-800 rounded-full w-8 h-8 flex items-center justify-center transition">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="p-5 bg-gray-50 flex-1 overflow-y-auto max-h-[70vh]">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-100 pb-1.5"><i class="fas fa-user mr-1 text-teal-500"></i> Pengirim Retur (Anda)</p>
+                    <p class="text-sm font-bold text-gray-800" id="rm-buyer-name"></p>
+                    <p class="text-[11px] text-gray-600 mt-1.5 leading-relaxed" id="rm-buyer-address"></p>
+                </div>
+                <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-100 pb-1.5"><i class="fas fa-store mr-1 text-teal-500"></i> Tujuan Retur (Toko)</p>
+                    <p class="text-sm font-bold text-gray-800" id="rm-store-name"></p>
+                    <p class="text-[11px] text-gray-600 mt-1.5 leading-relaxed" id="rm-store-address"></p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1.5"><i class="fas fa-truck-fast mr-1 text-teal-500"></i> Ekspedisi Pengembalian</p>
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <div class="flex items-center gap-3">
+                        <img id="rm-logo" src="" class="h-10 w-auto object-contain border border-gray-100 rounded p-1 bg-white hidden">
+                        <div id="rm-no-logo" class="h-10 w-10 flex items-center justify-center bg-gray-100 text-gray-400 rounded border border-gray-200 text-xs font-bold hidden">IMG</div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-800 uppercase" id="rm-courier"></p>
+                            <p class="text-[10px] text-gray-500 uppercase" id="rm-service"></p>
+                        </div>
+                    </div>
+                    <div class="text-right bg-teal-50 px-3 py-1.5 rounded border border-teal-100">
+                        <p class="text-[9px] text-teal-600 uppercase font-bold">Resi Baru</p>
+                        <p class="text-sm font-mono font-bold text-teal-700" id="rm-resi"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5">
+                <a href="#" id="rm-track-btn" target="_blank" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow-sm flex items-center justify-center transition-colors">
+                    <i class="fas fa-search-location mr-2"></i> Lacak Paket Sekarang
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     let currentInvoice = '';
 
@@ -361,12 +537,87 @@ Updated: Penambahan Tombol Terima Paket & Chat Komplain AJAX Full
 
         content.classList.remove('scale-100', 'opacity-100');
         content.classList.add('scale-95', 'opacity-0');
-        cancelUpload(); // Bersihkan file jika ada
+        cancelUpload();
 
         setTimeout(() => {
             modal.classList.add('hidden');
             document.getElementById('chatBoxContent').innerHTML = '';
         }, 300);
+    }
+
+    // Logic saat tombol "Ajukan Retur" di dalam chat diklik
+    function submitRetur(e, form) {
+        e.preventDefault();
+        if(confirm('Yakin ingin mengajukan Retur / Kembalikan Barang?')) {
+            // Tutup modal chat
+            closeKomplainModal();
+            // Jalankan submit form retur
+            form.submit();
+        }
+        return false;
+    }
+
+    function openKirimReturModal(data) {
+        document.getElementById('kr-invoice').value = data.invoice;
+        document.getElementById('kr-old-resi').value = data.old_resi;
+        document.getElementById('kr-sender-name').innerText = data.buyer_name;
+        document.getElementById('kr-sender-address').innerText = data.buyer_address;
+        document.getElementById('kr-receiver-name').innerText = data.store_name;
+        document.getElementById('kr-receiver-address').innerText = data.store_address;
+
+        const modal = document.getElementById('kirimReturModal');
+        const content = document.getElementById('kirimReturModalContent');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    function closeKirimReturModal() {
+        const modal = document.getElementById('kirimReturModal');
+        const content = document.getElementById('kirimReturModalContent');
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => { modal.classList.add('hidden'); }, 300);
+    }
+
+    function openReturModal(data) {
+        document.getElementById('rm-store-name').innerText = data.store_name;
+        document.getElementById('rm-store-address').innerText = data.store_address;
+        document.getElementById('rm-buyer-name').innerText = data.buyer_name;
+        document.getElementById('rm-buyer-address').innerText = data.buyer_address;
+        document.getElementById('rm-courier').innerText = data.courier;
+        document.getElementById('rm-service').innerText = data.service;
+        document.getElementById('rm-resi').innerText = data.resi;
+
+        const imgEl = document.getElementById('rm-logo');
+        const noImgEl = document.getElementById('rm-no-logo');
+        if(data.logo && data.logo !== '') {
+            imgEl.src = data.logo;
+            imgEl.classList.remove('hidden');
+            noImgEl.classList.add('hidden');
+        } else {
+            imgEl.classList.add('hidden');
+            noImgEl.classList.remove('hidden');
+        }
+        document.getElementById('rm-track-btn').href = data.track_url;
+
+        const modal = document.getElementById('returModal');
+        const content = document.getElementById('returModalContent');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    function closeReturModal() {
+        const modal = document.getElementById('returModal');
+        const content = document.getElementById('returModalContent');
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => { modal.classList.add('hidden'); }, 300);
     }
 
     function handleFileSelect(input) {
