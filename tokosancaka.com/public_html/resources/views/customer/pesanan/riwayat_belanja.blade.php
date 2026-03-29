@@ -235,7 +235,8 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
 
                                                     <button type="button"
                                                             {{ $isCair ? 'disabled' : '' }}
-                                                            onclick="openKomplainModal('{{ $order->invoice_number }}', '{{ $storeName }}')"
+                                                            @if(isset($returKirimData)) data-retur="{{ json_encode($returKirimData) }}" @endif
+                                                            onclick="openKomplainModal('{{ $order->invoice_number }}', '{{ addslashes($storeName) }}', this)"
                                                             class="w-full border {{ $isCair ? 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed' : 'border-orange-500 text-orange-500 hover:bg-orange-50' }} text-[11px] font-bold py-2.5 rounded-lg transition flex items-center justify-center shadow-sm">
                                                         <i class="fas fa-headset mr-1"></i> Komplain
                                                     </button>
@@ -259,7 +260,10 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
                                                         'store_address' => $seller->address_detail ?? 'Alamat Toko',
                                                     ];
                                                 @endphp
-                                                <button type="button" onclick="openKirimReturModal({{ htmlspecialchars(json_encode($returKirimData)) }})" class="w-full mt-2 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold py-2.5 rounded-lg transition shadow-sm flex items-center justify-center animate-pulse">
+                                                <button type="button"
+                                                        data-retur="{{ json_encode($returKirimData) }}"
+                                                        onclick="openKirimReturModal(this)"
+                                                        class="w-full mt-2 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold py-2.5 rounded-lg transition shadow-sm flex items-center justify-center animate-pulse">
                                                     <i class="fas fa-truck-loading mr-1.5"></i> Input Resi Retur
                                                 </button>
                                             @endif
@@ -282,7 +286,10 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
                                                         'track_url' => route('tracking.index', ['resi' => $returnOrder->new_resi])
                                                     ];
                                                 @endphp
-                                                <button type="button" onclick="openReturModal({{ htmlspecialchars(json_encode($infoReturData)) }})" class="w-full mt-2 bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-700 text-[11px] font-bold py-2 rounded-lg transition shadow-sm flex items-center justify-center">
+                                                <button type="button"
+                                                        data-info="{{ json_encode($infoReturData) }}"
+                                                        onclick="openReturModal(this)"
+                                                        class="w-full mt-2 bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-700 text-[11px] font-bold py-2 rounded-lg transition shadow-sm flex items-center justify-center">
                                                     <i class="fas fa-exchange-alt mr-1.5"></i> Lacak Pengembalian
                                                 </button>
                                             @endif
@@ -332,10 +339,14 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         <div class="bg-orange-50 px-4 py-2.5 border-b border-orange-200 flex justify-between items-center z-10 shadow-sm">
             <span class="text-[10px] text-orange-800 font-bold"><i class="fas fa-lightbulb text-orange-500 mr-1"></i> Solusi Masalah:</span>
             <div class="flex gap-2">
-                <form id="formRetur" method="POST" onsubmit="return submitRetur(event, this);">
+                <button type="button" id="btnAksiReturChat" class="bg-white border border-red-500 text-red-600 text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-red-50 transition shadow-sm">
+                    Ajukan Retur Paket
+                </button>
+
+                <form id="formRetur" method="POST" class="hidden">
                     @csrf
-                    <button type="submit" class="bg-white border border-red-500 text-red-600 text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-red-50 transition shadow-sm">Ajukan Retur Paket</button>
                 </form>
+
                 <form id="formSelesai" method="POST" onsubmit="return confirm('Yakin masalah sudah selesai? Dana akan langsung diteruskan ke penjual.');">
                     @csrf
                     <button type="submit" class="bg-green-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-green-600 transition shadow-sm">Masalah Selesai</button>
@@ -512,13 +523,39 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
 <script>
     let currentInvoice = '';
 
-    function openKomplainModal(invoice, storeName) {
+    function openKomplainModal(invoice, storeName, btnElement = null) {
         currentInvoice = invoice;
         document.getElementById('komplainInvoice').innerText = invoice;
         document.getElementById('komplainStoreName').innerText = storeName;
 
         document.getElementById('formSelesai').action = `/customer/komplain/selesai/${invoice}`;
         document.getElementById('formRetur').action = `/customer/komplain/retur/${invoice}`;
+
+        const btnReturChat = document.getElementById('btnAksiReturChat');
+
+        const newBtnReturChat = btnReturChat.cloneNode(true);
+        btnReturChat.parentNode.replaceChild(newBtnReturChat, btnReturChat);
+
+        if (btnElement && btnElement.hasAttribute('data-retur')) {
+            newBtnReturChat.innerText = "Input Resi Retur";
+            newBtnReturChat.classList.replace('text-red-600', 'text-teal-600');
+            newBtnReturChat.classList.replace('border-red-500', 'border-teal-500');
+
+            newBtnReturChat.onclick = function() {
+                closeKomplainModal();
+                openKirimReturModal(btnElement);
+            };
+        } else {
+            newBtnReturChat.innerText = "Ajukan Retur Paket";
+            newBtnReturChat.classList.replace('text-teal-600', 'text-red-600');
+            newBtnReturChat.classList.replace('border-teal-500', 'border-red-500');
+
+            newBtnReturChat.onclick = function() {
+                if(confirm('Yakin ingin mengajukan Retur / Kembalikan Barang?')) {
+                    document.getElementById('formRetur').submit();
+                }
+            };
+        }
 
         const modal = document.getElementById('komplainModal');
         const content = document.getElementById('komplainModalContent');
@@ -545,19 +582,18 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         }, 300);
     }
 
-    // Logic saat tombol "Ajukan Retur" di dalam chat diklik
     function submitRetur(e, form) {
         e.preventDefault();
         if(confirm('Yakin ingin mengajukan Retur / Kembalikan Barang?')) {
-            // Tutup modal chat
             closeKomplainModal();
-            // Jalankan submit form retur
             form.submit();
         }
         return false;
     }
 
-    function openKirimReturModal(data) {
+    function openKirimReturModal(btn) {
+        const data = JSON.parse(btn.getAttribute('data-retur'));
+
         document.getElementById('kr-invoice').value = data.invoice;
         document.getElementById('kr-old-resi').value = data.old_resi;
         document.getElementById('kr-sender-name').innerText = data.buyer_name;
@@ -567,6 +603,38 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
 
         const modal = document.getElementById('kirimReturModal');
         const content = document.getElementById('kirimReturModalContent');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    function openReturModal(btn) {
+        const data = JSON.parse(btn.getAttribute('data-info'));
+
+        document.getElementById('rm-store-name').innerText = data.store_name;
+        document.getElementById('rm-store-address').innerText = data.store_address;
+        document.getElementById('rm-buyer-name').innerText = data.buyer_name;
+        document.getElementById('rm-buyer-address').innerText = data.buyer_address;
+        document.getElementById('rm-courier').innerText = data.courier;
+        document.getElementById('rm-service').innerText = data.service;
+        document.getElementById('rm-resi').innerText = data.resi;
+
+        const imgEl = document.getElementById('rm-logo');
+        const noImgEl = document.getElementById('rm-no-logo');
+        if(data.logo && data.logo !== '') {
+            imgEl.src = data.logo;
+            imgEl.classList.remove('hidden');
+            noImgEl.classList.add('hidden');
+        } else {
+            imgEl.classList.add('hidden');
+            noImgEl.classList.remove('hidden');
+        }
+        document.getElementById('rm-track-btn').href = data.track_url;
+
+        const modal = document.getElementById('returModal');
+        const content = document.getElementById('returModalContent');
         modal.classList.remove('hidden');
         setTimeout(() => {
             content.classList.remove('scale-95', 'opacity-0');
