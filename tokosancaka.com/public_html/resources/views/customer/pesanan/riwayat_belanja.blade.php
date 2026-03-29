@@ -738,14 +738,6 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         setTimeout(() => { modal.classList.add('hidden'); }, 300);
     }
 
-    function closeKirimReturModal() {
-        const modal = document.getElementById('kirimReturModal');
-        const content = document.getElementById('kirimReturModalContent');
-        content.classList.remove('scale-100', 'opacity-100');
-        content.classList.add('scale-95', 'opacity-0');
-        setTimeout(() => { modal.classList.add('hidden'); }, 300);
-    }
-
     // Logika Konfirmasi Bayar & Buat Resi Retur
     document.getElementById('formKirimRetur').addEventListener('submit', function(e) {
         e.preventDefault();
