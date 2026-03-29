@@ -251,13 +251,20 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
                                             {{-- Jika Penjual Setuju Retur tapi Pembeli belum input resi --}}
                                             @if(in_array($status, ['returning', 'return_approved']) && !$returnOrder)
                                                 @php
+                                                    $weight = $order->items->sum(function($item) { return ($item->product->weight ?? 1000) * $item->quantity; });
+                                                    $itemPrice = $order->items->sum(function($item) { return $item->price * $item->quantity; });
+
                                                     $returKirimData = [
                                                         'invoice' => $order->invoice_number,
                                                         'old_resi' => $order->shipping_reference ?? '-',
                                                         'buyer_name' => Auth::user()->nama_lengkap ?? '',
+                                                        'buyer_phone' => Auth::user()->no_wa ?? '08000000000',
                                                         'buyer_address' => $order->shipping_address ?? '',
                                                         'store_name' => $storeName,
+                                                        'store_phone' => $seller->no_wa ?? '08000000000',
                                                         'store_address' => $seller->address_detail ?? 'Alamat Toko',
+                                                        'weight' => $weight > 0 ? $weight : 1000,
+                                                        'item_price' => $itemPrice > 0 ? $itemPrice : 10000,
                                                     ];
                                                 @endphp
                                                 <button type="button"
@@ -393,68 +400,59 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col transform transition-all scale-95 opacity-0" id="kirimReturModalContent">
         <div class="bg-teal-600 px-5 py-4 flex justify-between items-center text-white shadow-md z-10">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm">
-                    <i class="fas fa-box-open text-sm"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-sm leading-tight">Pengembalian Barang</h3>
-                    <p class="text-[10px] text-teal-100">Buat resi otomatis via KiriminAja</p>
-                </div>
+                <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm"><i class="fas fa-box-open text-sm"></i></div>
+                <div><h3 class="font-bold text-sm leading-tight">Pengembalian Barang</h3><p class="text-[10px] text-teal-100">Buat resi otomatis via KiriminAja</p></div>
             </div>
-            <button onclick="closeKirimReturModal()" class="text-white hover:text-teal-200 bg-teal-700 hover:bg-teal-800 rounded-full w-8 h-8 flex items-center justify-center transition">
-                <i class="fas fa-times"></i>
-            </button>
+            <button onclick="closeKirimReturModal()" class="text-white hover:text-teal-200 bg-teal-700 hover:bg-teal-800 rounded-full w-8 h-8 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
         </div>
 
         <form action="{{ route('customer.pesanan.kirim_retur') }}" method="POST" id="formKirimRetur" class="flex-1 overflow-y-auto max-h-[75vh]">
             @csrf
+
             <input type="hidden" name="invoice_number" id="kr-invoice">
+            <input type="hidden" name="sender_name" id="kr-sender-name-input"><input type="hidden" name="sender_phone" id="kr-sender-phone">
+            <input type="hidden" name="sender_address" id="kr-sender-address-input"><input type="hidden" name="sender_district_id" id="kr-sender_district_id">
+            <input type="hidden" name="sender_subdistrict_id" id="kr-sender_subdistrict_id"><input type="hidden" name="sender_postal_code" id="kr-sender_postal_code">
+
+            <input type="hidden" name="receiver_name" id="kr-receiver-name-input"><input type="hidden" name="receiver_phone" id="kr-receiver-phone">
+            <input type="hidden" name="receiver_address" id="kr-receiver-address-input"><input type="hidden" name="receiver_district_id" id="kr-receiver_district_id">
+            <input type="hidden" name="receiver_subdistrict_id" id="kr-receiver_subdistrict_id"><input type="hidden" name="receiver_postal_code" id="kr-receiver_postal_code">
+
+            <input type="hidden" name="expedition" id="kr-expedition" required>
 
             <div class="p-5 space-y-4">
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Nomor Resi Awal (Acuan)</label>
-                    <input type="text" id="kr-old-resi" name="old_resi" readonly class="w-full bg-gray-100 border border-gray-200 text-gray-700 text-xs rounded-lg px-3 py-2 font-mono">
-                </div>
-
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
                         <p class="text-[10px] font-bold text-teal-600 uppercase tracking-wider mb-1 border-b border-gray-200 pb-1"><i class="fas fa-user mr-1"></i> Pengirim (Anda)</p>
-                        <p class="text-xs font-bold text-gray-800 mt-1.5" id="kr-sender-name"></p>
-                        <p class="text-[10px] text-gray-600 mt-1 leading-relaxed" id="kr-sender-address"></p>
+                        <p class="text-xs font-bold text-gray-800 mt-1.5" id="kr-sender-name-display"></p>
+                        <p class="text-[10px] text-gray-600 mt-1 leading-relaxed" id="kr-sender-address-display"></p>
                     </div>
                     <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
                         <p class="text-[10px] font-bold text-orange-600 uppercase tracking-wider mb-1 border-b border-gray-200 pb-1"><i class="fas fa-store mr-1"></i> Penerima (Toko)</p>
-                        <p class="text-xs font-bold text-gray-800 mt-1.5" id="kr-receiver-name"></p>
-                        <p class="text-[10px] text-gray-600 mt-1 leading-relaxed" id="kr-receiver-address"></p>
+                        <p class="text-xs font-bold text-gray-800 mt-1.5" id="kr-receiver-name-display"></p>
+                        <p class="text-[10px] text-gray-600 mt-1 leading-relaxed" id="kr-receiver-address-display"></p>
                     </div>
                 </div>
 
                 <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl space-y-3 shadow-inner">
-                    <div>
-                        <label class="block text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-1">Pilih Ekspedisi Retur</label>
-                        <select name="courier" required class="w-full border-blue-200 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 bg-white shadow-sm">
-                            <option value="">-- Pilih Ekspedisi KiriminAja --</option>
-                            <option value="sicepat">SiCepat Ekspres</option>
-                            <option value="jne">JNE Express</option>
-                            <option value="jnt">J&T Express</option>
-                            <option value="sap">SAP Express</option>
-                            <option value="idexpress">ID Express</option>
-                        </select>
+                    <label class="block text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-1">Pilih Ekspedisi Retur</label>
+                    <div id="retur_ekspedisi_list" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                        <div class="text-center text-xs text-blue-500 py-4"><i class="fas fa-spinner fa-spin text-xl mb-2"></i><br>Mencari rute kurir terbaik...</div>
                     </div>
-                    <div>
+
+                    <div class="pt-2 border-t border-blue-200">
                         <label class="block text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-1">Metode Pembayaran Ongkir</label>
-                        <select name="payment_method" required class="w-full border-blue-200 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 bg-white shadow-sm">
-                            <option value="saldo">Saldo Sancaka (Otomatis Potong)</option>
+                        <select name="payment_method" required class="w-full border-blue-200 text-gray-700 text-sm rounded-lg focus:ring-blue-500 bg-white">
+                            <option value="saldo">Potong Saldo Sancaka (Tersedia: Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }})</option>
                             <option value="doku">DOKU Payment Gateway</option>
                         </select>
                     </div>
-                    <p class="text-[9px] text-blue-600 italic mt-2"><i class="fas fa-info-circle"></i> Sistem akan otomatis memotong biaya sesuai ongkir ekspedisi yang dipilih dan mengeluarkan nomor resi Retur.</p>
                 </div>
             </div>
 
             <div class="bg-white px-5 py-4 border-t border-gray-200 flex justify-end gap-2">
                 <button type="button" onclick="closeKirimReturModal()" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Batal</button>
-                <button type="submit" onclick="return confirm('Sistem akan memotong saldo Anda atau mengarahkan ke DOKU untuk biaya ongkir retur. Lanjutkan?')" class="px-5 py-2 text-xs font-bold text-white bg-teal-600 rounded-lg hover:bg-teal-700 shadow-md transition flex items-center">
+                <button type="submit" onclick="return confirm('Sistem akan membuat Resi Pickup dan memotong biaya ongkir retur. Lanjutkan?')" class="px-5 py-2 text-xs font-bold text-white bg-teal-600 rounded-lg hover:bg-teal-700 shadow-md transition flex items-center">
                     <i class="fas fa-check-circle mr-2"></i> Bayar & Buat Resi
                 </button>
             </div>
@@ -520,9 +518,14 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
     let currentInvoice = '';
 
+    // ==========================================
+    // 1. LOGIKA CHAT KOMPLAIN & RESOLUSI
+    // ==========================================
     function openKomplainModal(invoice, storeName, btnElement = null) {
         currentInvoice = invoice;
         document.getElementById('komplainInvoice').innerText = invoice;
@@ -532,7 +535,6 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         document.getElementById('formRetur').action = `/customer/komplain/retur/${invoice}`;
 
         const btnReturChat = document.getElementById('btnAksiReturChat');
-
         const newBtnReturChat = btnReturChat.cloneNode(true);
         btnReturChat.parentNode.replaceChild(newBtnReturChat, btnReturChat);
 
@@ -559,7 +561,6 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
 
         const modal = document.getElementById('komplainModal');
         const content = document.getElementById('komplainModalContent');
-
         modal.classList.remove('hidden');
         setTimeout(() => {
             content.classList.remove('scale-95', 'opacity-0');
@@ -571,75 +572,162 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
     function closeKomplainModal() {
         const modal = document.getElementById('komplainModal');
         const content = document.getElementById('komplainModalContent');
-
         content.classList.remove('scale-100', 'opacity-100');
         content.classList.add('scale-95', 'opacity-0');
         cancelUpload();
-
         setTimeout(() => {
             modal.classList.add('hidden');
             document.getElementById('chatBoxContent').innerHTML = '';
         }, 300);
     }
 
-    function submitRetur(e, form) {
-        e.preventDefault();
-        if(confirm('Yakin ingin mengajukan Retur / Kembalikan Barang?')) {
-            closeKomplainModal();
-            form.submit();
+    // ==========================================
+    // 2. LOGIKA INPUT RESI RETUR (KIRIMINAJA)
+    // ==========================================
+
+    // Fungsi untuk melacak ID Wilayah di background (Geocoding KiriminAja)
+    async function fetchKiriminAjaAreaId(addressString, prefix) {
+        try {
+            const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(addressString)}`);
+            const data = await response.json();
+
+            if (data && data.length > 0) {
+                const item = data[0]; // Ambil hasil pertama yang paling relevan
+
+                // Set Hidden Input sesuai format create.blade.php
+                document.getElementById(`kr-${prefix}_district_id`).value = item.district_id || (item.data_lengkap ? item.data_lengkap.district_id : '');
+                document.getElementById(`kr-${prefix}_subdistrict_id`).value = item.subdistrict_id || (item.data_lengkap ? item.data_lengkap.subdistrict_id : '');
+
+                // Set Detail Wilayah
+                const d = item.data_lengkap || {};
+                document.getElementById(`kr-${prefix}_village`).value = d.village || '';
+                document.getElementById(`kr-${prefix}_district`).value = d.district || '';
+                document.getElementById(`kr-${prefix}_regency`).value = d.regency || '';
+                document.getElementById(`kr-${prefix}_province`).value = d.province || '';
+                document.getElementById(`kr-${prefix}_postal_code`).value = d.postal_code || '';
+            } else {
+                console.warn(`Data wilayah ${prefix} tidak ditemukan dari API.`);
+            }
+        } catch (error) {
+            console.error(`Gagal Fetch Wilayah ${prefix}:`, error);
         }
-        return false;
     }
 
+    // FUNGSI PENCARIAN ID WILAYAH OTOMATIS
+    async function fetchKiriminAjaAreaId(addressString, prefix) {
+        try {
+            const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(addressString)}`);
+            const data = await response.json();
+
+            if (data && data.length > 0) {
+                const item = data[0];
+                const d = item.data_lengkap || {};
+                document.getElementById(`kr-${prefix}_district_id`).value = item.district_id || d.district_id || '';
+                document.getElementById(`kr-${prefix}_subdistrict_id`).value = item.subdistrict_id || d.subdistrict_id || '';
+                document.getElementById(`kr-${prefix}_postal_code`).value = d.postal_code || '';
+            }
+        } catch (error) { console.error(`Geocode Error:`, error); }
+    }
+
+    // FUNGSI CEK ONGKIR OTOMATIS SAAT BUKA MODAL
+    async function fetchOngkirRetur(weight, itemPrice) {
+        const senderSub = document.getElementById('kr-sender_subdistrict_id').value;
+        const senderDist = document.getElementById('kr-sender_district_id').value;
+        const receiverSub = document.getElementById('kr-receiver_subdistrict_id').value;
+        const receiverDist = document.getElementById('kr-receiver_district_id').value;
+        const listContainer = document.getElementById('retur_ekspedisi_list');
+
+        if(!senderSub || !receiverSub) {
+            listContainer.innerHTML = '<div class="text-xs text-red-500 font-bold p-3 bg-red-50 rounded">⚠️ Gagal melacak Kode Pos alamat Anda / Toko. Harap ubah alamat terlebih dahulu.</div>';
+            return;
+        }
+
+        const params = new URLSearchParams({
+            sender_district_id: senderDist, sender_subdistrict_id: senderSub,
+            receiver_district_id: receiverDist, receiver_subdistrict_id: receiverSub,
+            weight: weight, item_price: itemPrice, service_type: 'regular',
+            item_type: 1, ansuransi: 'tidak', _token: '{{ csrf_token() }}'
+        });
+
+        try {
+            const response = await fetch(`{{ route('kirimaja.cekongkir') }}?${params.toString()}`);
+            const res = await response.json();
+
+            let results = [];
+            if (res.body && res.body.results) { results = res.body.results; }
+            else if (res.results) { results = res.results; }
+            else if (Array.isArray(res)) { results = res; }
+
+            listContainer.innerHTML = '';
+            if(results.length === 0) {
+                listContainer.innerHTML = '<div class="text-xs text-red-500 font-bold p-3">Tidak ada kurir tersedia untuk rute ini.</div>';
+                return;
+            }
+
+            results.sort((a, b) => parseFloat(a.cost) - parseFloat(b.cost)).forEach(item => {
+                const cost = parseFloat(item.cost) || 0;
+                const serviceCode = item.service.toLowerCase();
+                const logoUrl = `{{ asset('public/storage/logo-ekspedisi/') }}/${serviceCode.replace(/\s+/g, '')}.png`;
+                const valueStr = `regular-${serviceCode}-${item.service_type}-${cost}-0-0`;
+
+                listContainer.insertAdjacentHTML('beforeend', `
+                    <label class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition bg-white shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <input type="radio" name="pilih_kurir_retur" value="${valueStr}" required class="w-4 h-4 text-blue-600 focus:ring-blue-500" onchange="document.getElementById('kr-expedition').value = this.value;">
+                            <div class="w-12 h-8 flex items-center justify-center border border-gray-100 rounded bg-white p-1">
+                                <img src="${logoUrl}" class="max-h-full object-contain" onerror="this.src='https://placehold.co/50x20?text=${serviceCode}'">
+                            </div>
+                            <div>
+                                <div class="text-[11px] font-bold text-gray-800 uppercase">${item.service_name}</div>
+                                <div class="text-[9px] text-gray-500">Estimasi: ${item.etd ? item.etd.replace('Hari','') + ' Hari' : '-'}</div>
+                            </div>
+                        </div>
+                        <div class="text-xs font-bold text-red-600">Rp ${cost.toLocaleString('id-ID')}</div>
+                    </label>
+                `);
+            });
+        } catch(e) {
+            listContainer.innerHTML = '<div class="text-xs text-red-500">Gagal memuat ongkir dari KiriminAja.</div>';
+        }
+    }
+
+    // TRIGGER BUKA MODAL DARI TOMBOL CHAT
     function openKirimReturModal(btn) {
         const data = JSON.parse(btn.getAttribute('data-retur'));
 
+        // Isi Visual Form
         document.getElementById('kr-invoice').value = data.invoice;
-        document.getElementById('kr-old-resi').value = data.old_resi;
-        document.getElementById('kr-sender-name').innerText = data.buyer_name;
-        document.getElementById('kr-sender-address').innerText = data.buyer_address;
-        document.getElementById('kr-receiver-name').innerText = data.store_name;
-        document.getElementById('kr-receiver-address').innerText = data.store_address;
+        document.getElementById('kr-sender-name-display').innerText = data.buyer_name;
+        document.getElementById('kr-sender-address-display').innerText = data.buyer_address;
+        document.getElementById('kr-receiver-name-display').innerText = data.store_name;
+        document.getElementById('kr-receiver-address-display').innerText = data.store_address;
 
-        const modal = document.getElementById('kirimReturModal');
-        const content = document.getElementById('kirimReturModalContent');
-        modal.classList.remove('hidden');
-        setTimeout(() => {
-            content.classList.remove('scale-95', 'opacity-0');
-            content.classList.add('scale-100', 'opacity-100');
-        }, 50);
-    }
+        // Isi Hidden Inputs utk Database
+        document.getElementById('kr-sender-name-input').value = data.buyer_name;
+        document.getElementById('kr-sender-address-input').value = data.buyer_address;
+        document.getElementById('kr-sender-phone').value = data.buyer_phone;
+        document.getElementById('kr-receiver-name-input').value = data.store_name;
+        document.getElementById('kr-receiver-address-input').value = data.store_address;
+        document.getElementById('kr-receiver-phone').value = data.store_phone;
 
-    function openReturModal(btn) {
-        const data = JSON.parse(btn.getAttribute('data-info'));
+        Swal.fire({ title: 'Mencari Kurir Terbaik...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
-        document.getElementById('rm-store-name').innerText = data.store_name;
-        document.getElementById('rm-store-address').innerText = data.store_address;
-        document.getElementById('rm-buyer-name').innerText = data.buyer_name;
-        document.getElementById('rm-buyer-address').innerText = data.buyer_address;
-        document.getElementById('rm-courier').innerText = data.courier;
-        document.getElementById('rm-service').innerText = data.service;
-        document.getElementById('rm-resi').innerText = data.resi;
-
-        const imgEl = document.getElementById('rm-logo');
-        const noImgEl = document.getElementById('rm-no-logo');
-        if(data.logo && data.logo !== '') {
-            imgEl.src = data.logo;
-            imgEl.classList.remove('hidden');
-            noImgEl.classList.add('hidden');
-        } else {
-            imgEl.classList.add('hidden');
-            noImgEl.classList.remove('hidden');
-        }
-        document.getElementById('rm-track-btn').href = data.track_url;
-
-        const modal = document.getElementById('returModal');
-        const content = document.getElementById('returModalContent');
-        modal.classList.remove('hidden');
-        setTimeout(() => {
-            content.classList.remove('scale-95', 'opacity-0');
-            content.classList.add('scale-100', 'opacity-100');
-        }, 50);
+        // Tarik ID Wilayah -> Lalu Cek Ongkir -> Baru Buka Modal
+        Promise.all([
+            fetchKiriminAjaAreaId(data.buyer_address, 'sender'),
+            fetchKiriminAjaAreaId(data.store_address, 'receiver')
+        ]).then(() => {
+            fetchOngkirRetur(data.weight, data.item_price).then(() => {
+                Swal.close();
+                const modal = document.getElementById('kirimReturModal');
+                const content = document.getElementById('kirimReturModalContent');
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                }, 50);
+            });
+        });
     }
 
     function closeKirimReturModal() {
@@ -650,7 +738,48 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         setTimeout(() => { modal.classList.add('hidden'); }, 300);
     }
 
-    function openReturModal(data) {
+    function closeKirimReturModal() {
+        const modal = document.getElementById('kirimReturModal');
+        const content = document.getElementById('kirimReturModalContent');
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => { modal.classList.add('hidden'); }, 300);
+    }
+
+    // Logika Konfirmasi Bayar & Buat Resi Retur
+    document.getElementById('formKirimRetur').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const districtSender = document.getElementById('kr-sender_district_id').value;
+        const districtReceiver = document.getElementById('kr-receiver_district_id').value;
+
+        if(!districtSender || !districtReceiver) {
+            Swal.fire('Error Wilayah', 'Sistem gagal mendeteksi kode pos / kecamatan alamat Anda atau Toko. Silakan hubungi Admin.', 'error');
+            return false;
+        }
+
+        Swal.fire({
+            title: 'Buat Resi Retur?',
+            text: "Sistem akan memotong saldo Anda atau mengarahkan ke DOKU untuk biaya ongkir retur otomatis dari KiriminAja.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#0D9488',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Ya, Bayar & Buat Resi'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+                this.submit();
+            }
+        });
+    });
+
+    // ==========================================
+    // 3. LOGIKA LACAK RETUR (INFO MODAL)
+    // ==========================================
+    function openReturModal(btn) {
+        const data = JSON.parse(btn.getAttribute('data-info'));
+
         document.getElementById('rm-store-name').innerText = data.store_name;
         document.getElementById('rm-store-address').innerText = data.store_address;
         document.getElementById('rm-buyer-name').innerText = data.buyer_name;
@@ -688,6 +817,9 @@ Updated: Penambahan Modal Retur Ekspedisi + Logic Chat Resolusi
         setTimeout(() => { modal.classList.add('hidden'); }, 300);
     }
 
+    // ==========================================
+    // 4. LOGIKA UPLOAD & AJAX CHAT
+    // ==========================================
     function handleFileSelect(input) {
         const preview = document.getElementById('filePreviewContainer');
         const nameDisplay = document.getElementById('fileNameDisplay');

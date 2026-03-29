@@ -1542,47 +1542,35 @@ public function cetakThermal($resi)
         return redirect()->route('checkout.invoice', ['invoice' => $invoiceNumber]);
     }
 
-    /**
-     * EKSEKUSI RETUR BARANG DARI PEMBELI
-     * Menggunakan API KiriminAja, bayar pakai Saldo/Doku
+   /**
+     * 6. Aksi: Pembeli Membuat Resi Retur via KiriminAja (FULL DINAMIS)
      */
     public function prosesKirimRetur(Request $request, KiriminAjaService $kirimaja)
     {
         $request->validate([
-            'invoice_number' => 'required|string',
-            'courier'        => 'required|string',
-            'payment_method' => 'required|in:saldo,doku'
+            'invoice_number' => 'required',
+            'expedition'     => 'required', // String dinamis dari JS (ex: regular-sicepat-reg-15000-0-0)
+            'payment_method' => 'required'
         ]);
 
         $order = Order::with(['user', 'store.user'])->where('invoice_number', $request->invoice_number)->firstOrFail();
         $user = Auth::user();
 
-        // 1. CEK STATUS ESCROW & ORDER
-        $escrow = \App\Models\Escrow::where('order_id', $order->id)->first();
-        if (!$escrow || $escrow->status_dana !== 'mediasi') {
-            return back()->with('error', 'Pesanan tidak dalam status mediasi / retur.');
-        }
+        // 1. Parsing Data Ekspedisi Dinamis
+        $parts = explode('-', $request->expedition);
+        $serviceGroup  = $parts[0] ?? 'regular';
+        $courier       = $parts[1] ?? 'kurir';
+        $service_type  = $parts[2] ?? 'reg';
+        $ongkirRetur   = (int)($parts[3] ?? 0);
+
+        if ($ongkirRetur <= 0) return back()->with('error', 'Ongkos kirim tidak valid.');
 
         DB::beginTransaction();
         try {
-            // 2. HITUNG ONGKIR RETUR VIA API
-            // (Disini kita asumsikan berat retur sama dengan berat awal)
-            $weight = $order->items->sum(function($item) {
-                return ($item->product->weight ?? 1000) * $item->quantity;
-            });
-            $weight = $weight > 0 ? $weight : 1000;
-
-            // Kita tembak API Cek Ongkir. PENGIRIM = PEMBELI, PENERIMA = TOKO
-            // Jika mas punya ID Kecamatan toko dan pembeli di DB, masukkan ke parameter ini.
-            // Untuk amannya (menghindari error API), kita set ongkir statis dulu sebagai contoh.
-            // Nanti mas bisa sambungkan ke $this->_getAddressData seperti di fungsi store().
-
-            $ongkirRetur = 15000; // <- GANTI DENGAN HASIL CEK ONGKIR API MAS NANTINYA
-
-            // 3. PROSES PEMBAYARAN SALDO
+            // 2. PEMBAYARAN SALDO
             if ($request->payment_method === 'saldo') {
                 if ($user->saldo < $ongkirRetur) {
-                    throw new Exception('Saldo Sancaka Anda tidak cukup (Rp ' . number_format($ongkirRetur, 0, ',', '.') . '). Silakan Top Up terlebih dahulu.');
+                    throw new Exception('Saldo Anda tidak cukup untuk membayar ongkir retur (Rp '.number_format($ongkirRetur,0,',','.').').');
                 }
                 $user->decrement('saldo', $ongkirRetur);
 
@@ -1591,50 +1579,80 @@ public function cetakThermal($resi)
                     'amount'         => -$ongkirRetur,
                     'status'         => 'success',
                     'payment_method' => 'saldo_sancaka',
-                    'transaction_id' => 'RETUR-' . $order->invoice_number . '-' . time(),
-                    'reference_id'   => $order->invoice_number,
-                    'created_at'     => now(),
+                    'transaction_id' => 'RET-' . $order->invoice_number . '-' . time(),
+                    'catatan'        => 'Ongkir Retur Resi Baru'
                 ]);
             }
 
-            // 4. GENERATE RESI API KIRIMINAJA
-            // Disini mas panggil $kirimaja->createExpressOrder() dengan posisi dibalik (origin = customer, destination = store)
-            // Sebagai *placeholder* sukses, kita generate resi dummy:
-            $resiRetur = "RET-SCK-" . strtoupper(Str::random(8));
+            // 3. HITUNG BERAT & HARGA
+            $weight = $order->items->sum(function($item) { return ($item->product->weight ?? 1000) * $item->quantity; });
+            $weight = $weight > 0 ? $weight : 1000;
+            $itemDesc = "Retur Order " . $order->invoice_number;
 
-            // 5. SIMPAN KE TABEL RETURN ORDERS
-            $returOrder = ReturnOrder::create([
+            // 4. TEMBAK API KIRIMINAJA UNTUK BUAT RESI
+            // Asumsi jadwal besok jika sudah sore
+            $scheduleClock = date('Y-m-d H:i:s');
+            if ((int)date('H') >= 15) { $scheduleClock = date('Y-m-d H:i:s', strtotime('+1 day 09:00:00')); }
+
+            $payload = [
+                'address' => $request->sender_address, 'phone' => $request->sender_phone, 'name' => $request->sender_name,
+                'kecamatan_id' => $request->sender_district_id, 'kelurahan_id' => $request->sender_subdistrict_id,
+                'zipcode' => $request->sender_postal_code, 'schedule' => $scheduleClock,
+                'platform_name' => 'tokosancaka.com', 'category' => 'regular',
+                'packages' => [[
+                    'order_id' => 'RET-'.$order->invoice_number.'-'.rand(100,999),
+                    'item_name' => $itemDesc,
+                    'package_type_id' => 1, // Barang Umum
+                    'destination_name' => $request->receiver_name, 'destination_phone' => $request->receiver_phone,
+                    'destination_address' => $request->receiver_address,
+                    'destination_kecamatan_id' => $request->receiver_district_id, 'destination_kelurahan_id' => $request->receiver_subdistrict_id,
+                    'destination_zipcode' => $request->receiver_postal_code,
+                    'weight' => (int) $weight,
+                    'item_value' => 10000, // Nilai default asuransi retur
+                    'insurance_amount' => 0, 'cod' => 0,
+                    'service' => $courier, 'service_type' => $service_type,
+                    'shipping_cost' => $ongkirRetur
+                ]]
+            ];
+
+            Log::info('Payload KiriminAja Retur:', $payload);
+            $kiriminResponse = $kirimaja->createExpressOrder($payload);
+
+            if (($kiriminResponse['status'] ?? false) !== true) {
+                $errorMsg = $kiriminResponse['text'] ?? ($kiriminResponse['errors'][0]['text'] ?? 'Gagal membuat order di sistem ekspedisi.');
+                throw new Exception($errorMsg);
+            }
+
+            // Ambil Resi Baru
+            $resiRetur = $kiriminResponse['awb'] ?? $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+            if(empty($resiRetur)) {
+                $resiRetur = $kiriminResponse['payment_ref'] ?? 'PROSES-PICKUP';
+            }
+
+            // 5. SIMPAN DATABASE & CHAT
+            \App\Models\ReturnOrder::create([
                 'order_id'       => $order->id,
                 'invoice_number' => $order->invoice_number,
                 'buyer_id'       => $user->id_pengguna,
                 'store_id'       => $order->store_id,
                 'old_resi'       => $order->shipping_reference,
                 'new_resi'       => $resiRetur,
-                'courier'        => strtoupper($request->courier),
+                'courier'        => strtoupper($courier),
                 'shipping_cost'  => $ongkirRetur,
                 'payment_method' => $request->payment_method,
                 'status'         => 'shipped'
             ]);
 
-            // 6. UPDATE STATUS ORDER & KIRIM CHAT OTOMATIS
             $order->update(['status' => 'returning']);
 
             ComplainChat::create([
-                'order_id'       => $order->id,
-                'invoice_number' => $order->invoice_number,
-                'sender_id'      => $user->id_pengguna,
-                'sender_type'    => 'customer',
-                'message'        => "📦 *PEMBELI TELAH MENGIRIM BALIK PAKET (RETUR)*\nKurir: " . strtoupper($request->courier) . "\nResi Retur: *" . $resiRetur . "*\n\nPenjual dapat memantau status resi ini dari Dashboard Laporan Pesanan.",
+                'order_id' => $order->id, 'invoice_number' => $order->invoice_number,
+                'sender_id' => $user->id_pengguna, 'sender_type' => 'customer',
+                'message' => "📦 *PEMBELI TELAH MENGIRIM BALIK PAKET (RETUR)*\nKurir: " . strtoupper($courier) . "\nResi Retur: *" . $resiRetur . "*"
             ]);
 
             DB::commit();
-
-            if ($request->payment_method === 'doku') {
-                // LOGIKA REDIRECT KE PAYMENT GATEWAY DOKU (Jika pakai DOKU)
-                // return redirect()->away($dokuUrl);
-            }
-
-            return back()->with('success', 'Berhasil! Resi retur (' . $resiRetur . ') telah dibuat. Kurir akan menjemput paket Anda.');
+            return back()->with('success', 'Resi Retur berhasil dibuat! Kurir akan segera melakukan pickup.');
 
         } catch (Exception $e) {
             DB::rollBack();
