@@ -1542,11 +1542,14 @@ public function cetakThermal($resi)
         return redirect()->route('checkout.invoice', ['invoice' => $invoiceNumber]);
     }
 
-   /**
+  /**
      * 6. Aksi: Pembeli Membuat Resi Retur via KiriminAja (FULL DINAMIS)
      */
     public function prosesKirimRetur(Request $request, KiriminAjaService $kirimaja)
     {
+        \Log::info('--- START PROSES KIRIM RETUR ---');
+        \Log::info('Request Data Lengkap:', $request->all());
+
         $request->validate([
             'invoice_number' => 'required',
             'expedition'     => 'required', // String dinamis dari JS (ex: regular-sicepat-reg-15000-0-0)
@@ -1556,6 +1559,12 @@ public function cetakThermal($resi)
         $order = Order::with(['user', 'store.user'])->where('invoice_number', $request->invoice_number)->firstOrFail();
         $user = Auth::user();
 
+        \Log::info('Data Order & User Ditemukan:', [
+            'order_id' => $order->id,
+            'status_order' => $order->status,
+            'user_id' => $user->id_pengguna
+        ]);
+
         // 1. Parsing Data Ekspedisi Dinamis
         $parts = explode('-', $request->expedition);
         $serviceGroup  = $parts[0] ?? 'regular';
@@ -1563,13 +1572,28 @@ public function cetakThermal($resi)
         $service_type  = $parts[2] ?? 'reg';
         $ongkirRetur   = (int)($parts[3] ?? 0);
 
-        if ($ongkirRetur <= 0) return back()->with('error', 'Ongkos kirim tidak valid.');
+        \Log::info('Hasil Parsing Ekspedisi:', [
+            'serviceGroup' => $serviceGroup,
+            'courier'      => $courier,
+            'service_type' => $service_type,
+            'ongkirRetur'  => $ongkirRetur
+        ]);
+
+        if ($ongkirRetur <= 0) {
+            \Log::error('Validasi Gagal: Ongkos kirim <= 0', ['ongkir' => $ongkirRetur]);
+            return back()->with('error', 'Ongkos kirim tidak valid.');
+        }
 
         DB::beginTransaction();
         try {
             // 2. PEMBAYARAN SALDO
             if ($request->payment_method === 'saldo') {
+                \Log::info('Metode Pembayaran: Saldo Sancaka. Mengecek kecukupan saldo...');
                 if ($user->saldo < $ongkirRetur) {
+                    \Log::error('Validasi Gagal: Saldo tidak cukup', [
+                        'saldo_sekarang' => $user->saldo,
+                        'ongkir_dibutuhkan' => $ongkirRetur
+                    ]);
                     throw new Exception('Saldo Anda tidak cukup untuk membayar ongkir retur (Rp '.number_format($ongkirRetur,0,',','.').').');
                 }
                 $user->decrement('saldo', $ongkirRetur);
@@ -1582,6 +1606,9 @@ public function cetakThermal($resi)
                     'transaction_id' => 'SCK-' . $order->invoice_number . '-' . time(),
                     'catatan'        => 'Ongkir Retur Resi Baru'
                 ]);
+                \Log::info('Potong Saldo Berhasil', ['sisa_saldo' => $user->saldo]);
+            } else {
+                \Log::info('Metode Pembayaran: DOKU / Lainnya', ['metode' => $request->payment_method]);
             }
 
             // 3. HITUNG BERAT & HARGA
@@ -1589,10 +1616,15 @@ public function cetakThermal($resi)
             $weight = $weight > 0 ? $weight : 1000;
             $itemDesc = "Retur Order " . $order->invoice_number;
 
+            \Log::info('Kalkulasi Berat Paket:', ['total_weight' => $weight, 'item_desc' => $itemDesc]);
+
             // 4. TEMBAK API KIRIMINAJA UNTUK BUAT RESI
             // Asumsi jadwal besok jika sudah sore
             $scheduleClock = date('Y-m-d H:i:s');
-            if ((int)date('H') >= 15) { $scheduleClock = date('Y-m-d H:i:s', strtotime('+1 day 09:00:00')); }
+            if ((int)date('H') >= 15) {
+                $scheduleClock = date('Y-m-d H:i:s', strtotime('+1 day 09:00:00'));
+                \Log::info('Jam sudah melebihi 15:00, jadwal pickup diubah ke besok:', ['schedule' => $scheduleClock]);
+            }
 
             $payload = [
                 'address' => $request->sender_address, 'phone' => $request->sender_phone, 'name' => $request->sender_name,
@@ -1615,11 +1647,18 @@ public function cetakThermal($resi)
                 ]]
             ];
 
-            Log::info('Payload KiriminAja Retur:', $payload);
+            \Log::info('Payload KiriminAja Retur (Akan Dikirim ke API):', json_decode(json_encode($payload), true));
+
             $kiriminResponse = $kirimaja->createExpressOrder($payload);
+
+            \Log::info('Response dari API KiriminAja:', is_array($kiriminResponse) ? $kiriminResponse : ['raw_response' => $kiriminResponse]);
 
             if (($kiriminResponse['status'] ?? false) !== true) {
                 $errorMsg = $kiriminResponse['text'] ?? ($kiriminResponse['errors'][0]['text'] ?? 'Gagal membuat order di sistem ekspedisi.');
+                \Log::error('API KiriminAja merespon dengan GAGAL / FALSE', [
+                    'error_msg' => $errorMsg,
+                    'full_response' => $kiriminResponse
+                ]);
                 throw new Exception($errorMsg);
             }
 
@@ -1627,9 +1666,14 @@ public function cetakThermal($resi)
             $resiRetur = $kiriminResponse['awb'] ?? $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
             if(empty($resiRetur)) {
                 $resiRetur = $kiriminResponse['payment_ref'] ?? 'PROSES-PICKUP';
+                \Log::warning('Resi (AWB) kosong dari KiriminAja, menggunakan Payment Ref / Fallback.', ['resi_fallback' => $resiRetur]);
+            } else {
+                \Log::info('Resi Baru Berhasil Didapatkan:', ['awb' => $resiRetur]);
             }
 
             // 5. SIMPAN DATABASE & CHAT
+            \Log::info('Memulai penyimpanan data ke tabel ReturnOrder dan ComplainChat...');
+
             \App\Models\ReturnOrder::create([
                 'order_id'       => $order->id,
                 'invoice_number' => $order->invoice_number,
@@ -1652,11 +1696,17 @@ public function cetakThermal($resi)
             ]);
 
             DB::commit();
+            \Log::info('--- END PROSES KIRIM RETUR (SUCCESS) ---');
+
             return back()->with('success', 'Resi Retur berhasil dibuat! Kurir akan segera melakukan pickup.');
 
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error("Retur Failed: " . $e->getMessage());
+            \Log::error("EXCEPTION TERJADI (Retur Failed):", [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
             return back()->with('error', $e->getMessage());
         }
     }
