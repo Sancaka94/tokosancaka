@@ -75,6 +75,11 @@
                             <span>🏢</span> Profil Perusahaan
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('admin.settings.edit') }}" class="flex items-center gap-2 px-4 py-2 hover:bg-blue-700 transition-colors {{ request()->routeIs('admin.settings.*') ? 'bg-blue-800 border-l-4 border-white' : '' }}">
+                            <span>⚙️</span> Pengaturan Dashboard
+                        </a>
+                    </li>
                 @endif
             </ul>
         </nav>
