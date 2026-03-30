@@ -57,32 +57,34 @@ class PublicDashboardController extends Controller
 
                 $w->calculated_value = $calculated_base_value;
 
-                // KHUSUS JIKA WIDGET ADALAH GAJI PEGAWAI: KITA OLAH DATA PEGAWAINYA
+                // KHUSUS JIKA WIDGET ADALAH GAJI PEGAWAI (KARTU TUNGGAL):
                 if ($w->display_type == 'employee_salary') {
-                    $operators = User::where('role', 'operator')->get();
-                    $gajiManuals = FinancialReport::whereBetween('tanggal', [$startDate, $endDate])->where('kategori', 'Gaji Pegawai')->get();
-
-                    $w->employee_data = $operators->map(function ($operator) use ($calculated_base_value, $gajiManuals) {
-                        $gajiManual = $gajiManuals->filter(function ($report) use ($operator) {
-                            return stripos($report->keterangan, $operator->name) !== false;
-                        })->sum('nominal');
+                    $operator = User::find($w->user_id);
+                    if ($operator) {
+                        $gajiManual = FinancialReport::whereBetween('tanggal', [$startDate, $endDate])
+                            ->where('kategori', 'Gaji Pegawai')
+                            ->where('keterangan', 'LIKE', '%' . $operator->name . '%')
+                            ->sum('nominal');
 
                         if ($gajiManual > 0) {
                             $earned = $gajiManual;
                             $statusGaji = 'Sudah Dibayar (Manual)';
                         } else {
+                            // Mengalikan omzet dasar widget dengan persentase pegawai di tabel users
                             $earned = $operator->salary_type == 'percentage' ? ($operator->salary_amount / 100) * $calculated_base_value : $operator->salary_amount;
                             $statusGaji = 'Estimasi Otomatis';
                         }
 
-                        return (object)[
+                        $w->employee_data = (object)[
                             'name' => $operator->name,
                             'type' => $operator->salary_type,
                             'amount' => $operator->salary_amount,
                             'earned' => $earned,
                             'status' => $statusGaji
                         ];
-                    });
+                    } else {
+                        $w->employee_data = null; // Pegawai tidak ditemukan / dihapus
+                    }
                 }
             }
 

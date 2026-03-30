@@ -47,60 +47,100 @@
         </div>
 
         @php
-            $colors = ['blue' => 'from-blue-500 to-blue-600', 'green' => 'from-emerald-400 to-emerald-600', 'red' => 'from-red-500 to-red-600', 'orange' => 'from-orange-400 to-orange-500', 'indigo' => 'from-indigo-500 to-indigo-600', 'fuchsia' => 'from-fuchsia-500 to-fuchsia-600', 'slate' => 'from-slate-600 to-slate-700'];
-            $textColors = ['text-blue-600 bg-blue-50', 'text-emerald-600 bg-emerald-50', 'text-red-600 bg-red-50', 'text-orange-600 bg-orange-50', 'text-indigo-600 bg-indigo-50', 'text-fuchsia-600 bg-fuchsia-50', 'text-slate-600 bg-slate-50'];
+            $colors = [
+                'blue' => 'from-blue-500 to-blue-600',
+                'green' => 'from-emerald-400 to-emerald-600',
+                'red' => 'from-red-500 to-red-600',
+                'orange' => 'from-orange-400 to-orange-500',
+                'indigo' => 'from-indigo-500 to-indigo-600',
+                'fuchsia' => 'from-fuchsia-500 to-fuchsia-600',
+                'slate' => 'from-slate-600 to-slate-700'
+            ];
 
-            // -------------------------------------------------------------
-            // PENGELOMPOKAN WIDGET OTOMATIS BERDASARKAN KATA PERTAMA JUDUL
-            // -------------------------------------------------------------
-            $cards = collect($widgets)->where('display_type', 'card');
-            $charts = collect($widgets)->whereIn('display_type', ['chart_line', 'chart_bar']);
-            $salaries = collect($widgets)->where('display_type', 'employee_salary');
+            // PENGELOMPOKAN WIDGET BERDASARKAN TIPE AGAR RAPI
+            // Satukan Kartu Angka & Kartu Gaji ke dalam 1 Grid
+            $cards = collect($widgets ?? [])->whereIn('display_type', ['card', 'employee_salary']);
+            $charts = collect($widgets ?? [])->whereIn('display_type', ['chart_line', 'chart_bar']);
 
-            // Memisahkan Card menjadi grup-grup berdasarkan kata pertama
+            // Mengelompokkan berdasarkan kata pertama pada Judul
             $groupedCards = $cards->groupBy(function($w) {
-                // Ambil kata pertama dari judul, contoh: "Omzet Hari Ini" -> "OMZET"
-                $firstWord = explode(' ', trim($w->title))[0];
-                return strtoupper($firstWord);
+                return strtoupper(explode(' ', trim($w->title))[0]);
             });
         @endphp
 
         {{-- ======================================================= --}}
-        {{-- 2. KELOMPOK KARTU PENDAPATAN (CARDS) BERDASARKAN NAMA   --}}
+        {{-- 2. KELOMPOK KARTU PENDAPATAN & GAJI (BERDASARKAN NAMA)  --}}
         {{-- ======================================================= --}}
         @if($groupedCards->count() > 0)
             <div class="mb-2 border-b border-gray-200 pb-2">
-                <h2 class="text-2xl font-bold text-gray-800">Laporan Pendapatan Khusus</h2>
-                <p class="text-gray-500 text-sm mt-1">Kartu di bawah ini dikelompokkan secara otomatis berdasarkan namanya.</p>
+                <h2 class="text-2xl font-bold text-gray-800">Laporan Pendapatan & Gaji</h2>
+                <p class="text-gray-500 text-sm mt-1">Kartu di bawah ini dikelompokkan secara otomatis dari Dashboard Builder.</p>
             </div>
 
             @foreach($groupedCards as $groupName => $groupCards)
                 <div class="mt-8 mb-4">
-                    <h3 class="text-lg font-black text-gray-700 border-l-4 border-blue-500 pl-3 uppercase tracking-widest bg-gray-100 py-1 w-fit pr-4 rounded-r-md">
+                    <h3 class="text-lg font-black text-gray-700 border-l-4 border-blue-500 pl-3 uppercase tracking-widest bg-gray-100 py-1 w-fit pr-4 rounded-r-md shadow-sm">
                         KATEGORI: {{ $groupName }}
                     </h3>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     @foreach($groupCards as $w)
-                        <div class="bg-gradient-to-br {{ $colors[$w->color_theme] ?? 'from-blue-500 to-blue-600' }} rounded-xl shadow-md p-6 flex flex-col justify-center relative overflow-hidden text-white transform transition duration-300 hover:scale-105 hover:shadow-xl">
-                            <div class="flex items-center justify-between z-10">
-                                <div>
-                                    <h5 class="text-xs font-bold uppercase tracking-wider mb-1 opacity-90">{{ $w->title }}</h5>
-                                    <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($w->calculated_value ?? 0, 0, ',', '.') }}</p>
+
+                        {{-- A. JIKA WIDGET = KARTU ANGKA BIASA --}}
+                        @if($w->display_type == 'card')
+                            <div class="bg-gradient-to-br {{ $colors[$w->color_theme] ?? 'from-blue-500 to-blue-600' }} rounded-xl shadow-md p-6 flex flex-col justify-center relative overflow-hidden text-white transform transition duration-300 hover:scale-105 hover:shadow-xl">
+                                <div class="flex items-center justify-between z-10">
+                                    <div>
+                                        <h5 class="text-xs font-bold uppercase tracking-wider mb-1 opacity-90">{{ $w->title }}</h5>
+                                        <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($w->calculated_value ?? 0, 0, ',', '.') }}</p>
+                                    </div>
+                                    <div class="text-4xl opacity-90">{{ $w->icon }}</div>
                                 </div>
-                                <div class="text-4xl opacity-90">{{ $w->icon }}</div>
+                                <div class="mt-4 flex items-center gap-2 z-10">
+                                    <span class="text-[10px] font-bold bg-white/20 px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">
+                                        ⏳ {{ str_replace('_', ' ', $w->time_range) }}
+                                    </span>
+                                </div>
+                                <div class="absolute -right-4 -bottom-4 opacity-10 text-9xl transform -rotate-12 pointer-events-none">{{ $w->icon }}</div>
                             </div>
-                            <div class="mt-4 flex items-center gap-2 z-10">
-                                <span class="text-[10px] font-bold bg-white/20 px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">
-                                    ⏳ {{ str_replace('_', ' ', $w->time_range) }}
-                                </span>
+
+                        {{-- B. JIKA WIDGET = KARTU GAJI PEGAWAI --}}
+                        @elseif($w->display_type == 'employee_salary' && isset($w->employee_data))
+                            <div class="bg-gradient-to-br {{ $colors[$w->color_theme] ?? 'from-blue-500 to-blue-600' }} rounded-xl shadow-md p-6 flex flex-col justify-center relative overflow-hidden text-white transform transition duration-300 hover:scale-105 hover:shadow-xl ring-2 ring-white/30">
+                                <div class="flex items-center justify-between z-10 mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <div class="bg-white/20 p-2 rounded-full">
+                                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                        </div>
+                                        <h5 class="text-sm font-bold uppercase tracking-wider opacity-90 truncate max-w-[120px]">{{ $w->employee_data->name }}</h5>
+                                    </div>
+                                    <div class="text-2xl opacity-90">{{ $w->icon }}</div>
+                                </div>
+                                <div class="z-10 mt-1 border-t border-white/20 pt-2">
+                                    <p class="text-[10px] font-bold uppercase tracking-wider mb-1 opacity-80">{{ $w->title }}</p>
+                                    <p class="text-2xl md:text-3xl font-black text-yellow-300 drop-shadow-md">Rp {{ number_format($w->employee_data->earned ?? 0, 0, ',', '.') }}</p>
+                                </div>
+                                <div class="mt-4 flex items-center justify-between gap-2 z-10">
+                                    <span class="text-[10px] font-bold bg-white/20 px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">
+                                        ⏳ {{ str_replace('_', ' ', $w->time_range) }}
+                                    </span>
+                                    <span class="text-[10px] font-bold bg-white/20 px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">
+                                        {{ $w->employee_data->type == 'percentage' ? (float)$w->employee_data->amount.'% POTONGAN' : 'FLAT' }}
+                                    </span>
+                                </div>
+                                <div class="absolute -right-4 -bottom-4 opacity-10 text-9xl transform -rotate-12 pointer-events-none">{{ $w->icon }}</div>
                             </div>
-                            <div class="absolute -right-4 -bottom-4 opacity-10 text-9xl transform -rotate-12 pointer-events-none">{{ $w->icon }}</div>
-                        </div>
+                        @endif
+
                     @endforeach
                 </div>
             @endforeach
+        @else
+            <div class="bg-white p-12 rounded-2xl shadow-sm text-center text-gray-500 font-medium border border-dashed border-gray-300 mt-8">
+                <span class="text-4xl block mb-3">📭</span>
+                Belum ada Kartu Pendapatan atau Gaji Pegawai yang dibuat di Dashboard Builder.
+            </div>
         @endif
 
         {{-- ======================================================= --}}
@@ -126,70 +166,9 @@
         @endif
 
         {{-- ======================================================= --}}
-        {{-- 4. KELOMPOK GAJI PEGAWAI DINAMIS                        --}}
+        {{-- 4. TABEL TRANSPARANSI KAS MANUAL                        --}}
         {{-- ======================================================= --}}
-        @if($salaries->count() > 0)
-            <div class="mb-4 mt-12 border-b border-gray-200 pb-2">
-                <h2 class="text-2xl font-bold text-gray-800">Estimasi Gaji & Upah Pegawai</h2>
-            </div>
-
-            @foreach($salaries as $w)
-                <div class="mb-12 bg-indigo-50/30 p-6 rounded-2xl border border-indigo-100">
-                    <div class="flex flex-col md:flex-row md:justify-between md:items-end mb-6">
-                        <div>
-                            <h2 class="text-xl font-black text-gray-800 flex items-center gap-2">{{ $w->icon }} {{ $w->title }}</h2>
-                            <p class="text-gray-500 text-sm mt-1">
-                                Dasar perhitungan murni diambil dari: <br class="md:hidden">
-                                <span class="font-bold text-blue-600">Parkir {{ (float)$w->pct_parkir }}%</span>,
-                                <span class="font-bold text-indigo-600">Nginap {{ (float)$w->pct_nginap }}%</span>,
-                                <span class="font-bold text-emerald-600">Toilet {{ (float)$w->pct_toilet }}%</span>,
-                                <span class="font-bold text-amber-600">Kas Lain {{ (float)$w->pct_kas_lain }}%</span>
-                            </p>
-                        </div>
-                        <span class="mt-3 md:mt-0 inline-block text-[10px] bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full font-bold uppercase tracking-wider border border-purple-200 shadow-sm">
-                            ⏳ Waktu Kalkulasi: {{ str_replace('_', ' ', $w->time_range) }}
-                        </span>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                        @forelse($w->employee_data ?? [] as $index => $op)
-                            @php $colorClass = array_values($textColors)[$index % count($textColors)]; @endphp
-                            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col relative transform transition duration-300 hover:scale-105 hover:shadow-lg">
-                                <div class="flex items-start gap-4 mb-4">
-                                    <div class="{{ $colorClass }} p-3 rounded-full flex-shrink-0">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-bold text-gray-800 text-lg leading-none mb-1.5">{{ $op->name }}</h4>
-                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
-                                            {{ $op->type == 'percentage' ? 'Bagi Hasil ('.(float)$op->amount.'%)' : 'Flat' }}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="mt-2">
-                                    <p class="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-1">Estimasi Hak Diterima</p>
-                                    <p class="text-2xl font-black text-gray-800">Rp {{ number_format($op->earned ?? 0, 0, ',', '.') }}</p>
-                                </div>
-                                <div class="mt-4 pt-4 border-t border-gray-100 flex items-center text-[11px] font-bold">
-                                    <span class="text-gray-500 flex items-center bg-gray-50 border border-gray-100 px-2 py-1.5 rounded w-full justify-center">
-                                        {{ $op->status }}
-                                    </span>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="col-span-4 bg-white p-6 rounded-xl shadow-sm text-center text-gray-500 font-medium border border-dashed border-gray-300">
-                                Belum ada data pegawai / operator.
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
-            @endforeach
-        @endif
-
-        {{-- ======================================================= --}}
-        {{-- 5. TABEL TRANSPARANSI KAS MANUAL                        --}}
-        {{-- ======================================================= --}}
-        <div class="mb-6 mt-16 text-center md:text-left">
+        <div class="mb-6 mt-16 text-center md:text-left border-b border-gray-200 pb-2">
             <h2 class="text-2xl font-bold text-gray-800">Transparansi Keuangan (Buku Kas)</h2>
             <p class="text-gray-500 text-sm mt-1">Laporan global akumulasi semua pemasukan dan pengeluaran manual.</p>
         </div>
@@ -221,9 +200,9 @@
         </div>
 
         {{-- ======================================================= --}}
-        {{-- 6. TABEL AKTIVITAS KENDARAAN                            --}}
+        {{-- 5. TABEL AKTIVITAS KENDARAAN                            --}}
         {{-- ======================================================= --}}
-        @if(isset($recent_transactions))
+        @if(isset($recent_transactions) && count($recent_transactions) > 0)
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-12">
             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
                 <h3 class="font-bold text-gray-700 text-sm">Aktivitas Kendaraan Masuk / Keluar</h3>
@@ -233,7 +212,7 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead><tr class="bg-white"><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Plat Nomor</th><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Jenis</th><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Waktu Mulai</th><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th></tr></thead>
                     <tbody class="bg-white divide-y divide-gray-100">
-                        @forelse($recent_transactions as $trx)
+                        @foreach($recent_transactions as $trx)
                             <tr class="hover:bg-gray-50 transition duration-150">
                                 <td class="px-6 py-4 whitespace-nowrap"><span class="font-black text-gray-700 tracking-wider bg-gray-100 px-3 py-1 rounded border shadow-sm">{{ Str::mask($trx->plate_number, '*', 4, 3) }}</span></td>
                                 <td class="px-6 py-4 whitespace-nowrap font-bold text-gray-600 capitalize">{{ $trx->vehicle_type }}</td>
@@ -243,9 +222,7 @@
                                     @else <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-green-100 text-green-800">✔ Selesai</span> @endif
                                 </td>
                             </tr>
-                        @empty
-                            <tr><td colspan="4" class="px-6 py-8 text-center text-gray-400 italic">Belum ada aktivitas kendaraan terekam.</td></tr>
-                        @endforelse
+                        @endforeach
                     </tbody>
                 </table>
             </div>
@@ -254,16 +231,16 @@
         @endif
 
         {{-- ======================================================= --}}
-        {{-- 7. TABEL BUKU KAS                                       --}}
+        {{-- 6. TABEL BUKU KAS                                       --}}
         {{-- ======================================================= --}}
-        @if(isset($recent_financials))
+        @if(isset($recent_financials) && count($recent_financials) > 0)
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4"><h3 class="font-bold text-gray-700 text-sm">Entri Buku Kas Terbaru</h3></div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead><tr class="bg-white"><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tgl Input</th><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kategori Catatan</th><th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aliran Dana (Rp)</th></tr></thead>
                     <tbody class="bg-white divide-y divide-gray-100">
-                        @forelse($recent_financials as $kas)
+                        @foreach($recent_financials as $kas)
                             <tr class="hover:bg-gray-50 transition duration-150">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-bold">{{ \Carbon\Carbon::parse($kas->tanggal)->format('d/m/Y') }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-600"><span class="font-black text-gray-700 bg-gray-100 px-2 py-0.5 rounded text-xs uppercase">{{ $kas->kategori }}</span> @if($kas->keterangan)<span class="text-gray-500 block mt-1 text-xs italic">"{{ $kas->keterangan }}"</span>@endif</td>
@@ -272,9 +249,7 @@
                                     @else <span class="text-rose-600 bg-rose-50 px-3 py-1 rounded-lg border border-rose-100">- {{ number_format($kas->nominal, 0, ',', '.') }}</span> @endif
                                 </td>
                             </tr>
-                        @empty
-                            <tr><td colspan="3" class="px-6 py-8 text-center text-gray-400 italic">Belum ada catatan kas yang diinput.</td></tr>
-                        @endforelse
+                        @endforeach
                     </tbody>
                 </table>
             </div>
@@ -294,7 +269,7 @@
             Chart.defaults.font.family = "'Inter', sans-serif";
 
             // Mencetak Grafik dari Collection Charts
-            @if($charts->count() > 0)
+            @if(isset($charts) && $charts->count() > 0)
                 @foreach($charts as $w)
                     new Chart(document.getElementById('chart_{{ $w->id }}').getContext('2d'), {
                         type: '{{ $w->display_type == "chart_line" ? "line" : "bar" }}',
