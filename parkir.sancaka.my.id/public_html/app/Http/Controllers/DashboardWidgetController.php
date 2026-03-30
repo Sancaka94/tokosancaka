@@ -10,9 +10,11 @@ class DashboardWidgetController extends Controller
     // Menampilkan halaman Builder dan daftar Kartu
     public function index()
     {
-        // Ambil semua widget, urutkan berdasarkan order_index
         $widgets = DashboardWidget::orderBy('order_index', 'asc')->get();
-        return view('admin.widgets', compact('widgets'));
+        // AMBIL DATA PEGAWAI
+        $operators = \App\Models\User::where('role', 'operator')->get();
+
+        return view('admin.widgets', compact('widgets', 'operators'));
     }
 
     // Menyimpan Kartu Baru
