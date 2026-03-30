@@ -43,8 +43,9 @@ class PublicDashboardController extends Controller
                 $startDate = Carbon::now()->startOfMonth();
                 $endDate = Carbon::now()->endOfMonth();
             } elseif ($w->time_range == 'last_month') {
-                $startDate = Carbon::now()->subMonth()->startOfMonth();
-                $endDate = Carbon::now()->subMonth()->endOfMonth();
+                // FIX: Kunci dulu ke tanggal 1 bulan ini, baru dimundurkan 1 bulan
+                $startDate = Carbon::now()->startOfMonth()->subMonth()->startOfDay();
+                $endDate = Carbon::now()->startOfMonth()->subMonth()->endOfMonth();
             }
 
             // TARIK DATA DARI DATABASE BERDASARKAN TANGGAL KARTU
