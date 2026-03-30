@@ -80,6 +80,12 @@
                             <span>⚙️</span> Pengaturan Dashboard
                         </a>
                     </li>
+
+                    <li>
+                        <a href="{{ route('admin.builder.index') }}" class="flex items-center gap-2 px-4 py-2 hover:bg-blue-700 transition-colors {{ request()->routeIs('admin.builder.*') ? 'bg-blue-800 border-l-4 border-white' : '' }}">
+                            <span>🛠️</span> Dashboard Builder
+                        </a>
+                    </li>
                 @endif
             </ul>
         </nav>
