@@ -6,10 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\Transaction;
 use App\Models\FinancialReport;
 use App\Models\User;
-use App\Models\DashboardWidget; // <-- Panggil Model Widget Anda
+use App\Models\DashboardWidget;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 class PublicDashboardController extends Controller
 {
@@ -18,60 +17,115 @@ class PublicDashboardController extends Controller
         $now = Carbon::now();
         $today = Carbon::today();
 
-        // RUMUS DB UTAMA
         $rumusParkirMurni = DB::raw('(CASE WHEN fee IS NOT NULL AND fee > 0 THEN fee WHEN vehicle_type = "mobil" THEN 5000 ELSE 3000 END)');
         $rumusToilet = DB::raw('IFNULL(toilet_fee, 0)');
 
         // =========================================================
-        // 1. ENGINE DASHBOARD BUILDER (KARTU DINAMIS)
+        // 1. ENGINE DASHBOARD BUILDER (ALL IN ONE WIDGETS)
         // =========================================================
-        // Ambil semua kartu yang statusnya Aktif (1)
         $widgets = DashboardWidget::where('is_active', true)->orderBy('order_index', 'asc')->get();
 
         foreach ($widgets as $w) {
-            $startDate = $today;
-            $endDate = $today->copy()->endOfDay();
 
-            // Atur rentang waktu otomatis berdasarkan pilihan di UI Admin
-            if ($w->time_range == 'yesterday') {
-                $startDate = Carbon::yesterday();
-                $endDate = Carbon::yesterday()->endOfDay();
-            } elseif ($w->time_range == 'last_7_days') {
-                $startDate = Carbon::today()->subDays(6);
-                $endDate = Carbon::today()->endOfDay();
-            } elseif ($w->time_range == 'this_month') {
-                $startDate = Carbon::now()->startOfMonth();
-                $endDate = Carbon::now()->endOfMonth();
-            } elseif ($w->time_range == 'last_month') {
-                // FIX: Kunci dulu ke tanggal 1 bulan ini, baru dimundurkan 1 bulan
-                $startDate = Carbon::now()->startOfMonth()->subMonth()->startOfDay();
-                $endDate = Carbon::now()->startOfMonth()->subMonth()->endOfMonth();
+            // JIKA WIDGET = KARTU ANGKA ATAU KARTU GAJI PEGAWAI
+            if ($w->display_type == 'card' || $w->display_type == 'employee_salary') {
+                $startDate = $today;
+                $endDate = $today->copy()->endOfDay();
+
+                if ($w->time_range == 'yesterday') {
+                    $startDate = Carbon::yesterday();
+                    $endDate = Carbon::yesterday()->endOfDay();
+                } elseif ($w->time_range == 'last_7_days') {
+                    $startDate = Carbon::today()->subDays(6);
+                    $endDate = Carbon::today()->endOfDay();
+                } elseif ($w->time_range == 'this_month') {
+                    $startDate = Carbon::now()->startOfMonth();
+                    $endDate = Carbon::now()->endOfMonth();
+                } elseif ($w->time_range == 'last_month') {
+                    $startDate = Carbon::now()->startOfMonth()->subMonth()->startOfDay();
+                    $endDate = Carbon::now()->startOfMonth()->subMonth()->endOfMonth();
+                }
+
+                // Hitung Data Mentah sesuai Tanggal
+                $p = Transaction::whereBetween('entry_time', [$startDate, $endDate])->sum($rumusParkirMurni) + FinancialReport::whereBetween('tanggal', [$startDate, $endDate])->where('jenis', 'pemasukan')->where('kategori', 'Parkiran')->sum('nominal');
+                $n = FinancialReport::whereBetween('tanggal', [$startDate, $endDate])->where('jenis', 'pemasukan')->where('kategori', 'LIKE', '%nginap%')->sum('nominal');
+                $t = Transaction::whereBetween('entry_time', [$startDate, $endDate])->sum('toilet_fee') + FinancialReport::whereBetween('tanggal', [$startDate, $endDate])->where('jenis', 'pemasukan')->where('kategori', 'LIKE', '%toilet%')->sum('nominal');
+                $l = FinancialReport::whereBetween('tanggal', [$startDate, $endDate])->where('jenis', 'pemasukan')->where('kategori', '!=', 'Parkiran')->where('kategori', 'NOT LIKE', '%toilet%')->where('kategori', 'NOT LIKE', '%nginap%')->sum('nominal');
+
+                // Hitung Nilai berdasarkan Rumus Widget
+                $calculated_base_value = ($p * ($w->pct_parkir / 100)) + ($n * ($w->pct_nginap / 100)) + ($t * ($w->pct_toilet / 100)) + ($l * ($w->pct_kas_lain / 100));
+
+                $w->calculated_value = $calculated_base_value;
+
+                // KHUSUS JIKA WIDGET ADALAH GAJI PEGAWAI: KITA OLAH DATA PEGAWAINYA
+                if ($w->display_type == 'employee_salary') {
+                    $operators = User::where('role', 'operator')->get();
+                    $gajiManuals = FinancialReport::whereBetween('tanggal', [$startDate, $endDate])->where('kategori', 'Gaji Pegawai')->get();
+
+                    $w->employee_data = $operators->map(function ($operator) use ($calculated_base_value, $gajiManuals) {
+                        $gajiManual = $gajiManuals->filter(function ($report) use ($operator) {
+                            return stripos($report->keterangan, $operator->name) !== false;
+                        })->sum('nominal');
+
+                        if ($gajiManual > 0) {
+                            $earned = $gajiManual;
+                            $statusGaji = 'Sudah Dibayar (Manual)';
+                        } else {
+                            $earned = $operator->salary_type == 'percentage' ? ($operator->salary_amount / 100) * $calculated_base_value : $operator->salary_amount;
+                            $statusGaji = 'Estimasi Otomatis';
+                        }
+
+                        return (object)[
+                            'name' => $operator->name,
+                            'type' => $operator->salary_type,
+                            'amount' => $operator->salary_amount,
+                            'earned' => $earned,
+                            'status' => $statusGaji
+                        ];
+                    });
+                }
             }
 
-            // TARIK DATA DARI DATABASE BERDASARKAN TANGGAL KARTU
-            $trx_p = Transaction::whereBetween('entry_time', [$startDate, $endDate])->sum($rumusParkirMurni);
-            $kas_p = FinancialReport::whereBetween('tanggal', [$startDate, $endDate])->where('jenis', 'pemasukan')->where('kategori', 'Parkiran')->sum('nominal');
-            $total_parkir = $trx_p + $kas_p;
+            // JIKA WIDGET = GRAFIK GARIS (7 HARI TERAKHIR)
+            elseif ($w->display_type == 'chart_line') {
+                $labels = []; $data = [];
+                for ($i = 6; $i >= 0; $i--) {
+                    $date = Carbon::today()->subDays($i);
+                    $labels[] = $date->translatedFormat('d M');
 
-            $total_nginap = FinancialReport::whereBetween('tanggal', [$startDate, $endDate])->where('jenis', 'pemasukan')->where('kategori', 'LIKE', '%nginap%')->sum('nominal');
+                    $p = Transaction::whereDate('entry_time', $date)->sum($rumusParkirMurni) + FinancialReport::whereDate('tanggal', $date)->where('jenis', 'pemasukan')->where('kategori', 'Parkiran')->sum('nominal');
+                    $n = FinancialReport::whereDate('tanggal', $date)->where('jenis', 'pemasukan')->where('kategori', 'LIKE', '%nginap%')->sum('nominal');
+                    $t = Transaction::whereDate('entry_time', $date)->sum('toilet_fee') + FinancialReport::whereDate('tanggal', $date)->where('jenis', 'pemasukan')->where('kategori', 'LIKE', '%toilet%')->sum('nominal');
+                    $l = FinancialReport::whereDate('tanggal', $date)->where('jenis', 'pemasukan')->where('kategori', '!=', 'Parkiran')->where('kategori', 'NOT LIKE', '%toilet%')->where('kategori', 'NOT LIKE', '%nginap%')->sum('nominal');
 
-            $trx_t = Transaction::whereBetween('entry_time', [$startDate, $endDate])->sum('toilet_fee');
-            $kas_t = FinancialReport::whereBetween('tanggal', [$startDate, $endDate])->where('jenis', 'pemasukan')->where('kategori', 'LIKE', '%toilet%')->sum('nominal');
-            $total_toilet = $trx_t + $kas_t;
+                    $data[] = ($p * ($w->pct_parkir / 100)) + ($n * ($w->pct_nginap / 100)) + ($t * ($w->pct_toilet / 100)) + ($l * ($w->pct_kas_lain / 100));
+                }
+                $w->chart_labels = $labels;
+                $w->chart_data = $data;
+            }
 
-            $total_kas_lain = FinancialReport::whereBetween('tanggal', [$startDate, $endDate])->where('jenis', 'pemasukan')
-                ->where('kategori', '!=', 'Parkiran')->where('kategori', 'NOT LIKE', '%toilet%')->where('kategori', 'NOT LIKE', '%nginap%')->sum('nominal');
+            // JIKA WIDGET = GRAFIK BATANG (6 BULAN TERAKHIR)
+            elseif ($w->display_type == 'chart_bar') {
+                $labels = []; $data = [];
+                for ($i = 5; $i >= 0; $i--) {
+                    $date = Carbon::now()->startOfMonth()->subMonths($i);
+                    $labels[] = $date->translatedFormat('M Y');
+                    $m = $date->month; $y = $date->year;
 
-            // EKSEKUSI RUMUS PERSENTASE (Inilah keajaibannya!)
-            $w->calculated_value =
-                ($total_parkir * ($w->pct_parkir / 100)) +
-                ($total_nginap * ($w->pct_nginap / 100)) +
-                ($total_toilet * ($w->pct_toilet / 100)) +
-                ($total_kas_lain * ($w->pct_kas_lain / 100));
+                    $p = Transaction::whereMonth('entry_time', $m)->whereYear('entry_time', $y)->sum($rumusParkirMurni) + FinancialReport::whereMonth('tanggal', $m)->whereYear('tanggal', $y)->where('jenis', 'pemasukan')->where('kategori', 'Parkiran')->sum('nominal');
+                    $n = FinancialReport::whereMonth('tanggal', $m)->whereYear('tanggal', $y)->where('jenis', 'pemasukan')->where('kategori', 'LIKE', '%nginap%')->sum('nominal');
+                    $t = Transaction::whereMonth('entry_time', $m)->whereYear('entry_time', $y)->sum('toilet_fee') + FinancialReport::whereMonth('tanggal', $m)->whereYear('tanggal', $y)->where('jenis', 'pemasukan')->where('kategori', 'LIKE', '%toilet%')->sum('nominal');
+                    $l = FinancialReport::whereMonth('tanggal', $m)->whereYear('tanggal', $y)->where('jenis', 'pemasukan')->where('kategori', '!=', 'Parkiran')->where('kategori', 'NOT LIKE', '%toilet%')->where('kategori', 'NOT LIKE', '%nginap%')->sum('nominal');
+
+                    $data[] = ($p * ($w->pct_parkir / 100)) + ($n * ($w->pct_nginap / 100)) + ($t * ($w->pct_toilet / 100)) + ($l * ($w->pct_kas_lain / 100));
+                }
+                $w->chart_labels = $labels;
+                $w->chart_data = $data;
+            }
         }
 
         // =========================================================
-        // 2. DATA KENDARAAN TERATAS (Tetap Statis)
+        // 2. DATA KENDARAAN (Statis)
         // =========================================================
         $motorHariIni = Transaction::where('vehicle_type', 'motor')->whereDate('entry_time', $today)->count();
         $mobilHariIni = Transaction::where('vehicle_type', 'mobil')->whereDate('entry_time', $today)->count();
@@ -80,7 +134,7 @@ class PublicDashboardController extends Controller
         $pegawaiRsudHariIni = Transaction::whereDate('entry_time', $today)->where('plate_number', 'LIKE', 'RSUD-%')->count();
 
         // =========================================================
-        // 3. AKTIVITAS TABEL BAWAH (Tetap Statis)
+        // 3. TABEL AKTIVITAS & KAS (Statis)
         // =========================================================
         $recent_transactions = Transaction::latest('entry_time')->paginate(6, ['*'], 'parkir_page');
         $recent_financials = FinancialReport::latest('tanggal')->paginate(6, ['*'], 'kas_page');
@@ -89,10 +143,12 @@ class PublicDashboardController extends Controller
         $totalPengeluaranKas = FinancialReport::where('jenis', 'pengeluaran')->sum('nominal');
         $saldoKas = $totalPemasukanKas - $totalPengeluaranKas;
 
-        // Kirim semua data ke Blade
+        $totalPemasukanToilet = Transaction::sum('toilet_fee') + FinancialReport::where('kategori', 'LIKE', '%toilet%')->where('jenis', 'pemasukan')->sum('nominal');
+        $totalPemasukanNginap = FinancialReport::where('kategori', 'LIKE', '%nginap%')->where('jenis', 'pemasukan')->sum('nominal');
+
         return view('public_dashboard', compact(
-            'widgets', // <-- Variabel Kartu Dinamis
-            'recent_transactions', 'recent_financials', 'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas',
+            'widgets', 'recent_transactions', 'recent_financials', 'totalPemasukanKas', 'totalPengeluaranKas', 'saldoKas',
+            'totalPemasukanToilet', 'totalPemasukanNginap',
             'motorHariIni', 'mobilHariIni', 'sepedaBiasaHariIni', 'sepedaListrikHariIni', 'pegawaiRsudHariIni'
         ));
     }
