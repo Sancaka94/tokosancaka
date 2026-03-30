@@ -35,9 +35,7 @@
             </div>
         </div>
 
-        {{-- ======================================================= --}}
-        {{-- 1. KENDARAAN MASUK (Top Statis)                           --}}
-        {{-- ======================================================= --}}
+        {{-- 1. KENDARAAN MASUK (Top Statis) --}}
         <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center transform hover:-translate-y-1 transition duration-200"><span class="text-2xl block mb-1">🏍️</span><p class="text-xl font-black text-gray-800">{{ $motorHariIni ?? 0 }}</p><h5 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Motor</h5></div>
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center transform hover:-translate-y-1 transition duration-200"><span class="text-2xl block mb-1">🚗</span><p class="text-xl font-black text-gray-800">{{ $mobilHariIni ?? 0 }}</p><h5 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mobil</h5></div>
@@ -47,72 +45,65 @@
         </div>
 
         @php
-            $colors = [
-                'blue' => 'from-blue-500 to-blue-600',
-                'green' => 'from-emerald-400 to-emerald-600',
-                'red' => 'from-red-500 to-red-600',
-                'orange' => 'from-orange-400 to-orange-500',
-                'indigo' => 'from-indigo-500 to-indigo-600',
-                'fuchsia' => 'from-fuchsia-500 to-fuchsia-600',
-                'slate' => 'from-slate-600 to-slate-700'
-            ];
-
-            // PENGELOMPOKAN WIDGET BERDASARKAN TIPE AGAR RAPI
-            // Satukan Kartu Angka & Kartu Gaji ke dalam 1 Grid
+            $colors = ['blue' => 'from-blue-500 to-blue-600', 'green' => 'from-emerald-400 to-emerald-600', 'red' => 'from-red-500 to-red-600', 'orange' => 'from-orange-400 to-orange-500', 'indigo' => 'from-indigo-500 to-indigo-600', 'fuchsia' => 'from-fuchsia-500 to-fuchsia-600', 'slate' => 'from-slate-600 to-slate-700'];
             $cards = collect($widgets ?? [])->whereIn('display_type', ['card', 'employee_salary']);
             $charts = collect($widgets ?? [])->whereIn('display_type', ['chart_line', 'chart_bar']);
-
-            // Mengelompokkan berdasarkan kata pertama pada Judul
-            $groupedCards = $cards->groupBy(function($w) {
-                return strtoupper(explode(' ', trim($w->title))[0]);
-            });
+            $groupedCards = $cards->groupBy(function($w) { return strtoupper(explode(' ', trim($w->title))[0]); });
         @endphp
 
-        {{-- ======================================================= --}}
-        {{-- 2. KELOMPOK KARTU PENDAPATAN & GAJI (BERDASARKAN NAMA)  --}}
-        {{-- ======================================================= --}}
+        {{-- 2. KELOMPOK KARTU PENDAPATAN & GAJI DENGAN PERBANDINGAN --}}
         @if($groupedCards->count() > 0)
             <div class="mb-2 border-b border-gray-200 pb-2">
                 <h2 class="text-2xl font-bold text-gray-800">Laporan Pendapatan & Gaji</h2>
-                <p class="text-gray-500 text-sm mt-1">Kartu di bawah ini dikelompokkan secara otomatis dari Dashboard Builder.</p>
+                <p class="text-gray-500 text-sm mt-1">Sistem otomatis menghitung perbandingan (naik/turun) dengan periode waktu sebelumnya.</p>
             </div>
 
             @foreach($groupedCards as $groupName => $groupCards)
                 <div class="mt-8 mb-4">
-                    <h3 class="text-lg font-black text-gray-700 border-l-4 border-blue-500 pl-3 uppercase tracking-widest bg-gray-100 py-1 w-fit pr-4 rounded-r-md shadow-sm">
-                        KATEGORI: {{ $groupName }}
-                    </h3>
+                    <h3 class="text-lg font-black text-gray-700 border-l-4 border-blue-500 pl-3 uppercase tracking-widest bg-gray-100 py-1 w-fit pr-4 rounded-r-md shadow-sm">KATEGORI: {{ $groupName }}</h3>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     @foreach($groupCards as $w)
 
-                        {{-- A. JIKA WIDGET = KARTU ANGKA BIASA --}}
+                        {{-- A. KARTU ANGKA BIASA --}}
                         @if($w->display_type == 'card')
                             <div class="bg-gradient-to-br {{ $colors[$w->color_theme] ?? 'from-blue-500 to-blue-600' }} rounded-xl shadow-md p-6 flex flex-col justify-center relative overflow-hidden text-white transform transition duration-300 hover:scale-105 hover:shadow-xl">
                                 <div class="flex items-center justify-between z-10">
                                     <div>
                                         <h5 class="text-xs font-bold uppercase tracking-wider mb-1 opacity-90">{{ $w->title }}</h5>
-                                        <p class="text-2xl md:text-3xl font-black">Rp {{ number_format($w->calculated_value ?? 0, 0, ',', '.') }}</p>
+                                        <p class="text-2xl md:text-3xl font-black drop-shadow-md">Rp {{ number_format($w->calculated_value ?? 0, 0, ',', '.') }}</p>
                                     </div>
                                     <div class="text-4xl opacity-90">{{ $w->icon }}</div>
                                 </div>
-                                <div class="mt-4 flex items-center gap-2 z-10">
-                                    <span class="text-[10px] font-bold bg-white/20 px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">
-                                        ⏳ {{ str_replace('_', ' ', $w->time_range) }}
-                                    </span>
+
+                                {{-- BLOK PERBANDINGAN (NAIK/TURUN) --}}
+                                @if(isset($w->comparison))
+                                <div class="mt-2 mb-2 flex items-center text-[11px] font-bold bg-white/20 w-fit px-2 py-1 rounded-md z-10 backdrop-blur-sm shadow-sm">
+                                    @if($w->comparison->selisih == 0)
+                                        <span>➖ Stagnan (Rp 0)</span>
+                                    @elseif($w->comparison->is_naik)
+                                        <svg class="w-3 h-3 text-green-300 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                                        <span class="text-green-100">+{{ number_format(abs($w->comparison->persen), 1, ',', '.') }}% (Rp {{ number_format(abs($w->comparison->selisih), 0, ',', '.') }})</span>
+                                    @else
+                                        <svg class="w-3 h-3 text-red-300 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                                        <span class="text-red-100">-{{ number_format(abs($w->comparison->persen), 1, ',', '.') }}% (Rp {{ number_format(abs($w->comparison->selisih), 0, ',', '.') }})</span>
+                                    @endif
+                                </div>
+                                @endif
+
+                                <div class="mt-2 flex items-center gap-2 z-10">
+                                    <span class="text-[10px] font-bold bg-black/20 px-2 py-1 rounded-md uppercase tracking-wider">⏳ {{ str_replace('_', ' ', $w->time_range) }}</span>
                                 </div>
                                 <div class="absolute -right-4 -bottom-4 opacity-10 text-9xl transform -rotate-12 pointer-events-none">{{ $w->icon }}</div>
                             </div>
 
-                        {{-- B. JIKA WIDGET = KARTU GAJI PEGAWAI --}}
+                        {{-- B. KARTU GAJI PEGAWAI --}}
                         @elseif($w->display_type == 'employee_salary' && isset($w->employee_data))
                             <div class="bg-gradient-to-br {{ $colors[$w->color_theme] ?? 'from-blue-500 to-blue-600' }} rounded-xl shadow-md p-6 flex flex-col justify-center relative overflow-hidden text-white transform transition duration-300 hover:scale-105 hover:shadow-xl ring-2 ring-white/30">
                                 <div class="flex items-center justify-between z-10 mb-2">
                                     <div class="flex items-center gap-2">
-                                        <div class="bg-white/20 p-2 rounded-full">
-                                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                                        </div>
+                                        <div class="bg-white/20 p-2 rounded-full"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg></div>
                                         <h5 class="text-sm font-bold uppercase tracking-wider opacity-90 truncate max-w-[120px]">{{ $w->employee_data->name }}</h5>
                                     </div>
                                     <div class="text-2xl opacity-90">{{ $w->icon }}</div>
@@ -121,13 +112,25 @@
                                     <p class="text-[10px] font-bold uppercase tracking-wider mb-1 opacity-80">{{ $w->title }}</p>
                                     <p class="text-2xl md:text-3xl font-black text-yellow-300 drop-shadow-md">Rp {{ number_format($w->employee_data->earned ?? 0, 0, ',', '.') }}</p>
                                 </div>
-                                <div class="mt-4 flex items-center justify-between gap-2 z-10">
-                                    <span class="text-[10px] font-bold bg-white/20 px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">
-                                        ⏳ {{ str_replace('_', ' ', $w->time_range) }}
-                                    </span>
-                                    <span class="text-[10px] font-bold bg-white/20 px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">
-                                        {{ $w->employee_data->type == 'percentage' ? (float)$w->employee_data->amount.'% POTONGAN' : 'FLAT' }}
-                                    </span>
+
+                                {{-- BLOK PERBANDINGAN GAJI (NAIK/TURUN) --}}
+                                @if(isset($w->employee_data->comparison))
+                                <div class="mt-2 mb-2 flex items-center text-[11px] font-bold bg-white/20 w-fit px-2 py-1 rounded-md z-10 backdrop-blur-sm shadow-sm">
+                                    @if($w->employee_data->comparison->selisih == 0)
+                                        <span>➖ Stagnan</span>
+                                    @elseif($w->employee_data->comparison->is_naik)
+                                        <svg class="w-3 h-3 text-green-300 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                                        <span class="text-green-100">+{{ number_format(abs($w->employee_data->comparison->persen), 1, ',', '.') }}%</span>
+                                    @else
+                                        <svg class="w-3 h-3 text-red-300 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                                        <span class="text-red-100">-{{ number_format(abs($w->employee_data->comparison->persen), 1, ',', '.') }}%</span>
+                                    @endif
+                                </div>
+                                @endif
+
+                                <div class="mt-2 flex items-center justify-between gap-2 z-10">
+                                    <span class="text-[10px] font-bold bg-black/20 px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">⏳ {{ str_replace('_', ' ', $w->time_range) }}</span>
+                                    <span class="text-[10px] font-bold bg-black/20 px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">{{ $w->employee_data->type == 'percentage' ? (float)$w->employee_data->amount.'% POTONGAN' : 'FLAT' }}</span>
                                 </div>
                                 <div class="absolute -right-4 -bottom-4 opacity-10 text-9xl transform -rotate-12 pointer-events-none">{{ $w->icon }}</div>
                             </div>
@@ -138,83 +141,49 @@
             @endforeach
         @else
             <div class="bg-white p-12 rounded-2xl shadow-sm text-center text-gray-500 font-medium border border-dashed border-gray-300 mt-8">
-                <span class="text-4xl block mb-3">📭</span>
-                Belum ada Kartu Pendapatan atau Gaji Pegawai yang dibuat di Dashboard Builder.
+                <span class="text-4xl block mb-3">📭</span> Belum ada Kartu Pendapatan atau Gaji Pegawai yang dibuat.
             </div>
         @endif
 
-        {{-- ======================================================= --}}
-        {{-- 3. KELOMPOK GRAFIK (CHARTS)                             --}}
-        {{-- ======================================================= --}}
+        {{-- 3. KELOMPOK GRAFIK (CHARTS) --}}
         @if($charts->count() > 0)
-            <div class="mb-4 mt-12 border-b border-gray-200 pb-2">
-                <h2 class="text-2xl font-bold text-gray-800">Analisis Visual (Grafik)</h2>
-            </div>
-
+            <div class="mb-4 mt-12 border-b border-gray-200 pb-2"><h2 class="text-2xl font-bold text-gray-800">Analisis Visual (Grafik)</h2></div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
                 @foreach($charts as $w)
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-                        <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-                            <h3 class="font-bold text-gray-700 text-sm">{{ $w->icon }} {{ $w->title }}</h3>
-                        </div>
-                        <div class="p-4 flex-1 min-h-[250px] w-full">
-                            <canvas id="chart_{{ $w->id }}"></canvas>
-                        </div>
+                        <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center"><h3 class="font-bold text-gray-700 text-sm">{{ $w->icon }} {{ $w->title }}</h3></div>
+                        <div class="p-4 flex-1 min-h-[250px] w-full"><canvas id="chart_{{ $w->id }}"></canvas></div>
                     </div>
                 @endforeach
             </div>
         @endif
 
-        {{-- ======================================================= --}}
-        {{-- 4. TABEL TRANSPARANSI KAS MANUAL                        --}}
-        {{-- ======================================================= --}}
+        {{-- 4. TABEL TRANSPARANSI KAS MANUAL --}}
         <div class="mb-6 mt-16 text-center md:text-left border-b border-gray-200 pb-2">
             <h2 class="text-2xl font-bold text-gray-800">Transparansi Keuangan (Buku Kas)</h2>
             <p class="text-gray-500 text-sm mt-1">Laporan global akumulasi semua pemasukan dan pengeluaran manual.</p>
         </div>
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between hover:shadow-md transition">
-                <div><h5 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Akumulasi Toilet</h5><p class="text-2xl font-black text-emerald-600 mt-1">Rp {{ number_format($totalPemasukanToilet ?? 0, 0, ',', '.') }}</p></div>
-                <div class="text-4xl opacity-50 bg-emerald-50 w-16 h-16 flex items-center justify-center rounded-full">🚻</div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between hover:shadow-md transition">
-                <div><h5 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Akumulasi Nginap</h5><p class="text-2xl font-black text-indigo-600 mt-1">Rp {{ number_format($totalPemasukanNginap ?? 0, 0, ',', '.') }}</p></div>
-                <div class="text-4xl opacity-50 bg-indigo-50 w-16 h-16 flex items-center justify-center rounded-full">🌙</div>
-            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between hover:shadow-md transition"><div><h5 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Akumulasi Toilet</h5><p class="text-2xl font-black text-emerald-600 mt-1">Rp {{ number_format($totalPemasukanToilet ?? 0, 0, ',', '.') }}</p></div><div class="text-4xl opacity-50 bg-emerald-50 w-16 h-16 flex items-center justify-center rounded-full">🚻</div></div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between hover:shadow-md transition"><div><h5 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Akumulasi Nginap</h5><p class="text-2xl font-black text-indigo-600 mt-1">Rp {{ number_format($totalPemasukanNginap ?? 0, 0, ',', '.') }}</p></div><div class="text-4xl opacity-50 bg-indigo-50 w-16 h-16 flex items-center justify-center rounded-full">🌙</div></div>
         </div>
-
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between hover:shadow-md transition">
-                <div><h5 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Semua Pemasukan Kas</h5><p class="text-2xl font-black text-green-600 mt-1">Rp {{ number_format($totalPemasukanKas ?? 0, 0, ',', '.') }}</p></div>
-                <div class="text-3xl opacity-50">📥</div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between hover:shadow-md transition">
-                <div><h5 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Semua Pengeluaran Kas</h5><p class="text-2xl font-black text-red-600 mt-1">Rp {{ number_format($totalPengeluaranKas ?? 0, 0, ',', '.') }}</p></div>
-                <div class="text-3xl opacity-50">📤</div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between border-l-4 border-l-blue-500 hover:shadow-md transition">
-                <div><h5 class="text-blue-500 text-xs font-bold uppercase tracking-wider">Saldo Uang Kas Di Laci</h5><p class="text-2xl font-black text-blue-700 mt-1">Rp {{ number_format($saldoKas ?? 0, 0, ',', '.') }}</p></div>
-                <div class="text-3xl opacity-50">💰</div>
-            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between hover:shadow-md transition"><div><h5 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Semua Pemasukan Kas</h5><p class="text-2xl font-black text-green-600 mt-1">Rp {{ number_format($totalPemasukanKas ?? 0, 0, ',', '.') }}</p></div><div class="text-3xl opacity-50">📥</div></div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between hover:shadow-md transition"><div><h5 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Semua Pengeluaran Kas</h5><p class="text-2xl font-black text-red-600 mt-1">Rp {{ number_format($totalPengeluaranKas ?? 0, 0, ',', '.') }}</p></div><div class="text-3xl opacity-50">📤</div></div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between border-l-4 border-l-blue-500 hover:shadow-md transition"><div><h5 class="text-blue-500 text-xs font-bold uppercase tracking-wider">Saldo Uang Kas Di Laci</h5><p class="text-2xl font-black text-blue-700 mt-1">Rp {{ number_format($saldoKas ?? 0, 0, ',', '.') }}</p></div><div class="text-3xl opacity-50">💰</div></div>
         </div>
 
-        {{-- ======================================================= --}}
-        {{-- 5. TABEL AKTIVITAS KENDARAAN                            --}}
-        {{-- ======================================================= --}}
+        {{-- 5. TABEL AKTIVITAS KENDARAAN --}}
         @if(isset($recent_transactions) && count($recent_transactions) > 0)
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-12">
-            <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-                <h3 class="font-bold text-gray-700 text-sm">Aktivitas Kendaraan Masuk / Keluar</h3>
-                <span class="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-bold border border-blue-200">Data Disamarkan</span>
-            </div>
+            <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center"><h3 class="font-bold text-gray-700 text-sm">Aktivitas Kendaraan Masuk / Keluar</h3><span class="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-bold border border-blue-200">Data Disamarkan</span></div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead><tr class="bg-white"><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Plat Nomor</th><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Jenis</th><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Waktu Mulai</th><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th></tr></thead>
+                    <thead><tr class="bg-white"><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase">Plat Nomor</th><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase">Jenis</th><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase">Waktu Mulai</th><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase">Status</th></tr></thead>
                     <tbody class="bg-white divide-y divide-gray-100">
                         @foreach($recent_transactions as $trx)
                             <tr class="hover:bg-gray-50 transition duration-150">
-                                <td class="px-6 py-4 whitespace-nowrap"><span class="font-black text-gray-700 tracking-wider bg-gray-100 px-3 py-1 rounded border shadow-sm">{{ Str::mask($trx->plate_number, '*', 4, 3) }}</span></td>
+                                <td class="px-6 py-4 whitespace-nowrap"><span class="font-black text-gray-700 bg-gray-100 px-3 py-1 rounded border shadow-sm">{{ Str::mask($trx->plate_number, '*', 4, 3) }}</span></td>
                                 <td class="px-6 py-4 whitespace-nowrap font-bold text-gray-600 capitalize">{{ $trx->vehicle_type }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-gray-500 font-medium">{{ $trx->entry_time ? \Carbon\Carbon::parse($trx->entry_time)->translatedFormat('d M, H:i') . ' WIB' : '-' }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">
@@ -230,15 +199,13 @@
         </div>
         @endif
 
-        {{-- ======================================================= --}}
-        {{-- 6. TABEL BUKU KAS                                       --}}
-        {{-- ======================================================= --}}
+        {{-- 6. TABEL BUKU KAS --}}
         @if(isset($recent_financials) && count($recent_financials) > 0)
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4"><h3 class="font-bold text-gray-700 text-sm">Entri Buku Kas Terbaru</h3></div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead><tr class="bg-white"><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tgl Input</th><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kategori Catatan</th><th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aliran Dana (Rp)</th></tr></thead>
+                    <thead><tr class="bg-white"><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase">Tgl Input</th><th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase">Kategori Catatan</th><th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase">Aliran Dana (Rp)</th></tr></thead>
                     <tbody class="bg-white divide-y divide-gray-100">
                         @foreach($recent_financials as $kas)
                             <tr class="hover:bg-gray-50 transition duration-150">
@@ -267,8 +234,6 @@
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             Chart.defaults.font.family = "'Inter', sans-serif";
-
-            // Mencetak Grafik dari Collection Charts
             @if(isset($charts) && $charts->count() > 0)
                 @foreach($charts as $w)
                     new Chart(document.getElementById('chart_{{ $w->id }}').getContext('2d'), {
