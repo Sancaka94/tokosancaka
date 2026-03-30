@@ -7,6 +7,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\TenantRegistrationController;
 use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\PublicDashboardController;
+use App\Http\Controllers\DashboardSettingController; // Pastikan ini dipanggil
 
 
 use App\Http\Middleware\IdentifyTenant;
@@ -98,6 +99,10 @@ Route::get('/financial/export/pdf', [App\Http\Controllers\FinancialReportControl
         Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
         Route::get('transactions/{transaction}/print', [TransactionController::class, 'print'])->name('transactions.print');
+
+        // Khusus Pengaturan Dashboard (Hanya untuk Superadmin & Admin)
+    Route::get('/admin/settings', [DashboardSettingController::class, 'edit'])->name('admin.settings.edit');
+    Route::post('/admin/settings', [DashboardSettingController::class, 'update'])->name('admin.settings.update');
     });
 
     // Tambahkan 2 baris ini di bawah rute financial.index / financial.store

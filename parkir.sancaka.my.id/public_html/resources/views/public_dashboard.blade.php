@@ -104,6 +104,7 @@
             </div>
 
             {{-- KARTU 5: PROFIT KEMARIN --}}
+            @if($setting->tampil_card_harian)
             <div class="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
@@ -113,8 +114,10 @@
                     <div class="text-4xl opacity-90">⏳</div>
                 </div>
             </div>
+            @endif
 
             {{-- KARTU 6: PROFIT HARI INI --}}
+            @if($setting->tampil_card_harian)
             <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
@@ -135,8 +138,10 @@
                     @endif
                 </div>
             </div>
+            @endif
 
             {{-- KARTU 7: OMZET HARI INI --}}
+            @if($setting->tampil_card_harian)
             <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
@@ -157,8 +162,10 @@
                     @endif
                 </div>
             </div>
+            @endif
 
             {{-- KARTU 8: PROFIT BULAN INI --}}
+            @if($setting->tampil_card_bulanan)
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
@@ -179,6 +186,7 @@
                     @endif
                 </div>
             </div>
+            @endif
         </div>
 
         {{-- PARKIR MURNI KARTU --}}
@@ -188,6 +196,7 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            @if($setting->tampil_card_harian)
             <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
@@ -218,7 +227,9 @@
                     <div class="text-4xl opacity-80">📅</div>
                 </div>
             </div>
+            @endif
 
+            @if($setting->tampil_card_mingguan)
             <div class="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
@@ -228,7 +239,9 @@
                     <div class="text-4xl opacity-80">📊</div>
                 </div>
             </div>
+            @endif
 
+            @if($setting->tampil_card_bulanan)
             <div class="bg-gradient-to-br from-fuchsia-500 to-fuchsia-600 rounded-xl shadow-md p-6 flex flex-col justify-center text-white transform transition duration-300 hover:scale-105 relative overflow-hidden">
                 <div class="flex items-center justify-between z-10">
                     <div>
@@ -238,10 +251,13 @@
                     <div class="text-4xl opacity-80">📅</div>
                 </div>
             </div>
+            @endif
         </div>
 
         {{-- GRAFIK --}}
+        @if($setting->tampil_grafik_harian || $setting->tampil_grafik_bulanan)
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            @if($setting->tampil_grafik_harian)
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="bg-gray-50 border-b border-gray-100 px-6 py-4">
                     <h3 class="font-bold text-gray-700 text-sm">Grafik Pendapatan Bersih (7 Hari Terakhir)</h3>
@@ -250,7 +266,9 @@
                     <canvas id="chartHarianPublic" height="250"></canvas>
                 </div>
             </div>
+            @endif
 
+            @if($setting->tampil_grafik_bulanan)
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="bg-gray-50 border-b border-gray-100 px-6 py-4">
                     <h3 class="font-bold text-gray-700 text-sm">Grafik Pendapatan Bersih (6 Bulan Terakhir)</h3>
@@ -259,13 +277,21 @@
                     <canvas id="chartBulananPublic" height="250"></canvas>
                 </div>
             </div>
+            @endif
         </div>
+        @endif
 
         {{-- GAJI PEGAWAI --}}
         <div class="mb-6 mt-12 flex justify-between items-end">
             <div>
                 <h2 class="text-2xl font-bold text-gray-800">Estimasi Gaji Pegawai (Hari Ini)</h2>
-                <p class="text-gray-500 text-sm mt-1">Gaji dihitung otomatis murni dari Total Omzet Parkir (Otomatis & Kas Manual) serta Kas Nginap, tanpa Toilet.</p>
+                <p class="text-gray-500 text-sm mt-1">
+                    @if($setting->gaji_hanya_dari_parkir)
+                        Gaji dihitung otomatis MURNI dari Omzet Parkiran (Otomatis & Kas Manual) tanpa campuran lainnya.
+                    @else
+                        Gaji dihitung otomatis berdasarkan TOTAL KESELURUHAN Omzet Pendapatan (Parkir, Kas, Nginap, Toilet).
+                    @endif
+                </p>
             </div>
             <span class="hidden md:inline-block text-[10px] bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full font-bold uppercase tracking-wider border border-purple-200">Dihitung Otomatis</span>
         </div>
@@ -311,7 +337,13 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-12">
             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
                 <h3 class="font-bold text-gray-700 text-sm">Riwayat Gaji Pegawai Per Hari</h3>
-                <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-semibold">Gaji Murni Parkir & Nginap</span>
+                <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-semibold">
+                    @if($setting->gaji_hanya_dari_parkir)
+                        Gaji Murni Parkiran Saja
+                    @else
+                        Gaji Dari Total Keseluruhan
+                    @endif
+                </span>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
