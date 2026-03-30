@@ -81,7 +81,7 @@
                     </h3>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                     @foreach($groupCards as $w)
                         <div class="bg-gradient-to-br {{ $colors[$w->color_theme] ?? 'from-blue-500 to-blue-600' }} rounded-xl shadow-md p-6 flex flex-col justify-center relative overflow-hidden text-white transform transition duration-300 hover:scale-105 hover:shadow-xl">
                             <div class="flex items-center justify-between z-10">
@@ -151,7 +151,7 @@
                         </span>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                         @forelse($w->employee_data ?? [] as $index => $op)
                             @php $colorClass = array_values($textColors)[$index % count($textColors)]; @endphp
                             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col relative transform transition duration-300 hover:scale-105 hover:shadow-lg">
