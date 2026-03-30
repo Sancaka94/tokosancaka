@@ -203,8 +203,12 @@
             document.getElementById('inp_active').checked = true;
             document.getElementById('inp_pct_parkir').value = '0';
             document.getElementById('inp_pct_nginap').value = '0';
-            document.getElementById('inp_toilet').value = '0';
-            document.getElementById('inp_kas_lain').value = '0';
+
+            // FIX TYPO ID DI SINI:
+            document.getElementById('inp_pct_toilet').value = '0';
+            document.getElementById('inp_pct_kas_lain').value = '0';
+            document.getElementById('inp_order').value = '0';
+
         } else {
             document.getElementById('modalTitle').innerHTML = '✏️ Edit Widget';
             form.action = `/admin/builder/${data.id}`;
@@ -219,6 +223,7 @@
             document.getElementById('inp_color').value = data.color_theme;
             document.getElementById('inp_time').value = data.time_range;
             document.getElementById('inp_active').checked = data.is_active;
+
             document.getElementById('inp_pct_parkir').value = parseFloat(data.pct_parkir);
             document.getElementById('inp_pct_nginap').value = parseFloat(data.pct_nginap);
             document.getElementById('inp_pct_toilet').value = parseFloat(data.pct_toilet);
