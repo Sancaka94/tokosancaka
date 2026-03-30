@@ -130,7 +130,7 @@
 
                                 <div class="mt-2 flex items-center justify-between gap-2 z-10">
                                     <span class="text-[10px] font-bold bg-black/20 px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">⏳ {{ str_replace('_', ' ', $w->time_range) }}</span>
-                                    <span class="text-[10px] font-bold bg-black/20 px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">{{ $w->employee_data->type == 'percentage' ? (float)$w->employee_data->amount.'% POTONGAN' : 'FLAT' }}</span>
+                                    <span class="text-[10px] font-bold bg-black/20 px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">{{ $w->employee_data->type == 'percentage' ? (float)$w->employee_data->amount.'% PEMBAGIAN' : 'FLAT' }}</span>
                                 </div>
                                 <div class="absolute -right-4 -bottom-4 opacity-10 text-9xl transform -rotate-12 pointer-events-none">{{ $w->icon }}</div>
                             </div>
