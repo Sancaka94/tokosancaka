@@ -265,7 +265,7 @@
         <div class="mb-6 mt-12 flex justify-between items-end">
             <div>
                 <h2 class="text-2xl font-bold text-gray-800">Estimasi Gaji Pegawai (Hari Ini)</h2>
-                <p class="text-gray-500 text-sm mt-1">Gaji dihitung otomatis dari Total Omzet (Parkir + Kas Masuk + Toilet).</p>
+                <p class="text-gray-500 text-sm mt-1">Gaji dihitung otomatis murni dari Total Omzet Parkir (Otomatis & Kas Manual) serta Kas Nginap, tanpa Toilet.</p>
             </div>
             <span class="hidden md:inline-block text-[10px] bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full font-bold uppercase tracking-wider border border-purple-200">Dihitung Otomatis</span>
         </div>
@@ -311,7 +311,7 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-12">
             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
                 <h3 class="font-bold text-gray-700 text-sm">Riwayat Gaji Pegawai Per Hari</h3>
-                <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-semibold">Semua Pendapatan Kotor</span>
+                <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-semibold">Gaji Murni Parkir & Nginap</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
