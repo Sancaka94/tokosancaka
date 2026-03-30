@@ -113,7 +113,9 @@ class PublicDashboardController extends Controller
 
         $labelBulanan = []; $dataBulanan = [];
         for ($i = 5; $i >= 0; $i--) {
-            $date = Carbon::now()->subMonths($i);
+            // PERBAIKAN DI SINI: Tambahkan startOfMonth() sebelum subMonths()
+            $date = Carbon::now()->startOfMonth()->subMonths($i);
+
             $labelBulanan[] = $date->translatedFormat('M Y');
             $p = Transaction::whereMonth('entry_time', $date->month)->whereYear('entry_time', $date->year)->sum($rumusParkirMurni);
             $t = Transaction::whereMonth('entry_time', $date->month)->whereYear('entry_time', $date->year)->sum($rumusToilet);
