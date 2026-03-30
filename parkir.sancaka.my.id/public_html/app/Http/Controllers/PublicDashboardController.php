@@ -142,11 +142,22 @@ class PublicDashboardController extends Controller
         // Total akumulasi Nginap
         $totalPemasukanNginap = FinancialReport::where('kategori', 'LIKE', '%nginap%')->where('jenis', 'pemasukan')->sum('nominal');
 
+        // =========================================================
         // 6. ESTIMASI GAJI PEGAWAI (CARD ATAS)
+        // =========================================================
+
+        // Menghitung omzet khusus untuk dasar gaji (tanpa toilet)
+        $kasNginap_today = FinancialReport::whereDate('tanggal', $today)
+            ->where('jenis', 'pemasukan')
+            ->where('kategori', 'LIKE', '%nginap%')
+            ->sum('nominal');
+
+        $omzetGajiHariIni = $p_today + $kasParkir_today + $kasNginap_today;
+
         $operators = User::where('role', 'operator')->get();
         $laporanGajiHariIni = FinancialReport::whereDate('tanggal', $today)->where('kategori', 'Gaji Pegawai')->get();
 
-        $employeeSalaries = $operators->map(function ($operator) use ($omzetHariIni, $laporanGajiHariIni) {
+        $employeeSalaries = $operators->map(function ($operator) use ($omzetGajiHariIni, $laporanGajiHariIni) {
             $gajiManual = $laporanGajiHariIni->filter(function ($report) use ($operator) {
                 return stripos($report->keterangan, $operator->name) !== false;
             })->sum('nominal');
@@ -155,7 +166,8 @@ class PublicDashboardController extends Controller
                 $earned = $gajiManual;
                 $statusGaji = 'Sudah Dibayar (Manual)';
             } else {
-                $earned = $operator->salary_type == 'percentage' ? ($operator->salary_amount / 100) * $omzetHariIni : $operator->salary_amount;
+                // Kalkulasi memakai $omzetGajiHariIni murni tanpa toilet
+                $earned = $operator->salary_type == 'percentage' ? ($operator->salary_amount / 100) * $omzetGajiHariIni : $operator->salary_amount;
                 $statusGaji = 'Estimasi Otomatis';
             }
             return (object)['name' => $operator->name, 'type' => $operator->salary_type, 'amount' => $operator->salary_amount, 'earned' => $earned, 'status' => $statusGaji];
@@ -186,8 +198,17 @@ class PublicDashboardController extends Controller
             $ku = FinancialReport::whereDate('tanggal', $date)->where('jenis', 'pemasukan')->where('kategori', '!=', 'Parkiran')->sum('nominal');
             $kk = FinancialReport::whereDate('tanggal', $date)->where('jenis', 'pengeluaran')->sum('nominal');
 
+            // Ambil kas nginap spesifik per tanggal loop untuk perhitungan gaji historis
+            $kasNginapDate = FinancialReport::whereDate('tanggal', $date)
+                ->where('jenis', 'pemasukan')
+                ->where('kategori', 'LIKE', '%nginap%')
+                ->sum('nominal');
+
             $omzetDate = $p + $t + $kp + $ku;
             $profitDate = (($p + $kp) / 2) + $t + $ku - $kk;
+
+            // Omzet gaji tanpa toilet
+            $omzetGajiDate = $p + $kp + $kasNginapDate;
 
             $revenue_data[] = (object)[
                 'tanggal' => $date,
@@ -202,7 +223,8 @@ class PublicDashboardController extends Controller
                 if ($gajiManual > 0) {
                     $earned = $gajiManual; $status = 'Manual';
                 } else {
-                    $earned = $op->salary_type == 'percentage' ? ($op->salary_amount / 100) * $omzetDate : $op->salary_amount;
+                    // Kalkulasi memakai $omzetGajiDate murni tanpa toilet
+                    $earned = $op->salary_type == 'percentage' ? ($op->salary_amount / 100) * $omzetGajiDate : $op->salary_amount;
                     $status = 'Otomatis';
                 }
                 $gaji_per_pegawai[$op->name] = ['earned' => $earned, 'status' => $status];
