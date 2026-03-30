@@ -8,6 +8,7 @@ use App\Http\Controllers\TenantRegistrationController;
 use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\PublicDashboardController;
 use App\Http\Controllers\DashboardSettingController; // Pastikan ini dipanggil
+use App\Http\Controllers\DashboardWidgetController; // <-- Tambahkan ini di atas
 
 
 use App\Http\Middleware\IdentifyTenant;
@@ -92,6 +93,11 @@ Route::get('/financial/export/pdf', [App\Http\Controllers\FinancialReportControl
             Route::get('/bulanan', [DashboardController::class, 'bulanan'])->name('bulanan');
             Route::get('/triwulan', [DashboardController::class, 'triwulan'])->name('triwulan');
         });
+
+        Route::get('/admin/builder', [DashboardWidgetController::class, 'index'])->name('admin.builder.index');
+        Route::post('/admin/builder', [DashboardWidgetController::class, 'store'])->name('admin.builder.store');
+        Route::put('/admin/builder/{id}', [DashboardWidgetController::class, 'update'])->name('admin.builder.update');
+        Route::delete('/admin/builder/{id}', [DashboardWidgetController::class, 'destroy'])->name('admin.builder.destroy');
 
         // 5. Pengaturan Profil Bawaan Breeze
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
