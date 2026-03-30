@@ -63,7 +63,7 @@
                     <h3 class="text-lg font-black text-gray-700 border-l-4 border-blue-500 pl-3 uppercase tracking-widest bg-gray-100 py-1 w-fit pr-4 rounded-r-md shadow-sm">KATEGORI: {{ $groupName }}</h3>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                     @foreach($groupCards as $w)
 
                         {{-- A. KARTU ANGKA BIASA --}}
