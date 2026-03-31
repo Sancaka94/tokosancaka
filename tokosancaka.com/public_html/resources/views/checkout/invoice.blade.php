@@ -184,11 +184,9 @@
                                     Belanja Lagi
                                 </a>
 
-                                {{-- 👇 COPY DAN PASTE KODE BARU INI DI SINI 👇 --}}
-                                <a href="{{ route('invoice.pdf', $order->invoice_number) }}" target="_blank" class="block w-full mt-3 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl shadow-sm hover:bg-gray-50 hover:border-gray-300 transition flex items-center justify-center">
+                                <a href="{{ url('invoice/' . $order->invoice_number . '/pdf') }}" target="_blank" class="block w-full mt-3 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl shadow-sm hover:bg-gray-50 hover:border-gray-300 transition flex items-center justify-center">
                                     <i class="fas fa-file-pdf text-red-500 mr-2 text-lg"></i> Download Invoice (PDF)
                                 </a>
-                                {{-- 👆 SAMPAI SINI 👆 --}}
                             </div>
 
                         {{-- 2. JIKA COD (BAYAR DITEMPAT) --}}
