@@ -417,7 +417,8 @@ width: 22px;
     .input-group-elegant {
         position: relative;
     }
-    #cekOngkirModal .input-group-elegant .form-control {
+    #cekOngkirModal .input-group-elegant .form-control,
+    #cekOngkirModal .input-group-elegant .form-select {
         padding-left: 3rem !important; /* PENTING: Paksa padding */
     }
     .input-group-elegant .input-icon {
@@ -2084,7 +2085,18 @@ width: 22px;
 
                         <div class="col-12"><hr class="my-2"></div>
 
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label for="service_type" class="form-label">Jenis Layanan</label>
+                            <div class="input-group-elegant">
+                                <i class="fa-solid fa-truck-fast input-icon"></i>
+                                <select class="form-select" id="service_type" name="service_type">
+                                    <option value="regular">Reguler</option>
+                                    <option value="cargo">Cargo</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
                             <label for="weight" class="form-label">Berat (gram)*</label>
                             <div class="input-group-elegant">
                                 <i class="fa-solid fa-weight-hanging input-icon"></i>
@@ -2092,7 +2104,7 @@ width: 22px;
                             </div>
                         </div>
 
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="item_value" class="form-label">Nilai Barang (Rp)</label>
                             <div class="input-group-elegant">
                                 <i class="fa-solid fa-dollar-sign input-icon"></i>
