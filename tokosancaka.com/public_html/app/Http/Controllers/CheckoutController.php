@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification; // <-- TAMBAHKAN INI
 use App\Notifications\NotifikasiUmum;      // <-- TAMBAHKAN INI
 use App\Events\AdminNotificationEvent; // <-- TAMBAHKAN INI
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TopUp;
@@ -1638,9 +1639,6 @@ TEXT;
         }
     }
 
-    /**
-     * FUNGSI UNTUK MENCETAK INVOICE PDF
-     */
     public function downloadPDF($invoice)
     {
         // 1. Cari data order beserta relasinya
@@ -1648,16 +1646,12 @@ TEXT;
             ->where('invoice_number', $invoice)
             ->firstOrFail();
 
-        // 2. Load View khusus PDF
-        // Kita menggunakan view khusus 'invoice_pdf' agar tampilannya rapi saat dicetak
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('checkout.invoice_pdf', compact('order'))
+        // 2. Load View khusus PDF (sekarang cukup pakai tulisan 'Pdf::')
+        $pdf = Pdf::loadView('checkout.invoice_pdf', compact('order'))
                 ->setPaper('a4', 'portrait');
 
-        // 3. Render dan Download filenya
+        // 3. Download filenya
         return $pdf->download('Invoice-' . $order->invoice_number . '.pdf');
-
-        // Catatan: Jika ingin file PDF-nya terbuka di browser (tidak langsung download),
-        // ubah ->download(...) menjadi ->stream(...)
     }
 
 } // Akhir Class
