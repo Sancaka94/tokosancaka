@@ -380,7 +380,7 @@
 
                 {{-- 1. OPSI INTERNAL (SALDO) --}}
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
-                    data-value="cash"
+                    data-value="SALDO"
                     data-label="Saldo Sancaka"
                     data-img="{{ asset('public/assets/saldo.png') }}">
                     <img src="{{ asset('public/assets/saldo.png') }}" class="h-8 w-8 object-contain mr-4">

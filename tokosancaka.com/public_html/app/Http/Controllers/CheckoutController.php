@@ -422,6 +422,16 @@ class CheckoutController extends Controller
             }
             $grand_total = $base_total + $cod_add_cost;
 
+            // 🔥 TAMBAHAN 1: Deteksi dan Validasi Saldo
+            $isPayWithSaldo = in_array(strtoupper($request->payment_method), ['POTONG SALDO', 'SALDO']);
+
+            if ($isPayWithSaldo) {
+                // Pastikan 'saldo' diganti dengan nama kolom dompet/saldo di tabel users Anda (misal: balance, dompet, dll)
+                if ($user->saldo < $grand_total) {
+                    throw ValidationException::withMessages(['payment_method' => 'Saldo Anda tidak mencukupi. Sisa saldo: Rp ' . number_format($user->saldo, 0, ',', '.')]);
+                }
+            }
+
             // --- 4. Buat Order & Order Items ---
             do {
                  $invoiceNumber = 'SCK-ORD-' . strtoupper(Str::random(8)); // Ini sudah benar
@@ -572,6 +582,18 @@ class CheckoutController extends Controller
                 //     Log::error('Gagal broadcast AdminNotificationEvent untuk COD/Cash', ['order_id' => $order->id, 'error' => $e->getMessage()]);
                 //}
 
+            }
+            // 🔥 TAMBAHAN 2: Logika Eksekusi Potong Saldo
+            elseif ($isPayWithSaldo) {
+                Log::info("Memulai proses POTONG SALDO untuk {$order->invoice_number}");
+
+                // 1. Kurangi saldo user (Sesuaikan nama kolom 'saldo' dengan database Anda)
+                $user->saldo -= $grand_total;
+                $user->save();
+
+                // 2. Simulasikan callback agar sistem otomatis mengurus resi KiriminAja & Notif WA
+                // Memanfaatkan fungsi Anda yang sudah sangat lengkap di bawah
+                $this->processOrderCallback($order->invoice_number, 'PAID', []);
             }
             else
             {
