@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use App\Services\KiriminAjaService; // Menggunakan Service yang Anda berikan
 use Exception;
-use Illuminate\Support\Facades\Http; 
+use Illuminate\Support\Facades\Http;
 
 class OngkirApiController extends Controller
 {
@@ -76,9 +76,9 @@ class OngkirApiController extends Controller
 
         try {
             $result = $this->kiriminAjaService->searchAddress($request->input('search'));
-            
+
             if (isset($result['status']) && $result['status'] === true && isset($result['data'])) {
-                
+
                 $mappedResults = array_map(function($item) {
                     $subdistrictName = $item['subdistrict_name'] ?? null;
                     $districtName = $item['district_name'] ?? null;
@@ -102,10 +102,10 @@ class OngkirApiController extends Controller
                         ])) . ($zipCode ? ' ' . $zipCode : '')
                     ];
                 }, $result['data']);
-                
+
                 return response()->json($mappedResults);
             }
-            
+
             return response()->json([]);
 
         } catch (Exception $e) {
@@ -134,11 +134,13 @@ class OngkirApiController extends Controller
             'width' => 'nullable|numeric|min:1',
             'height' => 'nullable|numeric|min:1',
             'item_value' => 'nullable|numeric',
-            'insurance' => 'nullable', 
-            
+            'insurance' => 'nullable',
+
+            'service_type' => 'nullable|string',
+
             // Fields untuk Instant (Geocode)
-            'origin_text' => 'required|string', 
-            'destination_text' => 'required|string', 
+            'origin_text' => 'required|string',
+            'destination_text' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -147,10 +149,10 @@ class OngkirApiController extends Controller
 
         try {
             $payload = $validator->validated();
-            
+
             $instantServices = [];
             $expressCargoServices = [];
-            
+
             // Ambil nilai barang asli
             $itemValue = (int)($payload['item_value'] ?? 0);
 
@@ -163,15 +165,15 @@ class OngkirApiController extends Controller
                     $payload['destination_id'],
                     $payload['destination_subdistrict_id'],
                     $payload['weight'],
-                    $payload['length'] ?? 1, 
+                    $payload['length'] ?? 1,
                     $payload['width'] ?? 1,
                     $payload['height'] ?? 1,
                     $itemValue, // Kirim nilai asli (0 diizinkan)
-                    null, 
-                    'regular', 
+                    null,
+                    'regular',
                     $request->has('insurance') ? 1 : 0
                 );
-                
+
                 if (isset($expressCargoResponse['status']) && $expressCargoResponse['status'] === true && isset($expressCargoResponse['results'])) {
                     $expressCargoServices = $expressCargoResponse['results'];
                     $finalWeight = $expressCargoResponse['final_weight'] ?? $payload['weight'];
@@ -183,7 +185,7 @@ class OngkirApiController extends Controller
             } catch (Exception $e) {
                 Log::error('KiriminAja Express/Cargo Cost Error: ' . $e->getMessage(), $payload);
             }
-            
+
             // --- 2. Panggil Layanan Instant (v4) ---
 
             // [PERBAIKAN 1: 'item_value' minimal 1]
@@ -191,7 +193,7 @@ class OngkirApiController extends Controller
 
             Log::info('Mencoba Geocode Asal: ' . $payload['origin_text']);
             $originCoords = $this->geocode($payload['origin_text']);
-            
+
             Log::info('Mencoba Geocode Tujuan: ' . $payload['destination_text']);
             $destinationCoords = $this->geocode($payload['destination_text']);
 
@@ -229,13 +231,34 @@ class OngkirApiController extends Controller
             } else {
                 Log::error('Geocode GAGAL, skipping instant check.');
             }
-            
+
+            // 3. Hitung berat final jika belum di-set
+            //if (!isset($finalWeight)) {
+            //     $volumeWeight = (($payload['length'] ?? 1) * ($payload['width'] ?? 1) * ($payload['height'] ?? 1)) / 6000 * 1000;
+            //     $finalWeight = max((int) $payload['weight'], $volumeWeight);
+            //}
+
             // 3. Hitung berat final jika belum di-set
             if (!isset($finalWeight)) {
-                 $volumeWeight = (($payload['length'] ?? 1) * ($payload['width'] ?? 1) * ($payload['height'] ?? 1)) / 6000 * 1000;
-                 $finalWeight = max((int) $payload['weight'], $volumeWeight);
+                // Tentukan kategori: jika request mengandung service_type 'cargo', maka 'trucking', selain itu 'regular'
+                $category = (isset($payload['service_type']) && $payload['service_type'] === 'cargo') ? 'trucking' : 'regular';
+
+                $weightInput = (int) $payload['weight'];
+                $lengthInput = (int) ($payload['length'] ?? 1);
+                $widthInput  = (int) ($payload['width'] ?? 1);
+                $heightInput = (int) ($payload['height'] ?? 1);
+
+                $volumetricWeight = 0;
+
+                // Rumus seperti di PesananController
+                if ($lengthInput > 0 && $widthInput > 0 && $heightInput > 0) {
+                    $pembagi = ($category === 'trucking') ? 4000 : 6000;
+                    $volumetricWeight = ($lengthInput * $widthInput * $heightInput) / $pembagi * 1000;
+                }
+
+                $finalWeight = max($weightInput, $volumetricWeight);
             }
-            
+
             // 4. Kembalikan data gabungan
             Log::info('--- SELESAI CEK ONGKIR (API HOMEPAGE) ---');
             return response()->json([
@@ -262,26 +285,26 @@ class OngkirApiController extends Controller
         $formattedServices = [];
         foreach ($apiResult as $courier) {
             // $courier['name'] adalah "gosend" atau "grab_express"
-            $courierName = $courier['name']; 
-            
+            $courierName = $courier['name'];
+
             // [PERBAIKAN] Ganti 'grab_express' menjadi 'grab' agar cocok dengan nama file Anda
             if ($courierName == 'grab_express') {
                 $courierName = 'grab';
             }
             $courierName = ucwords(str_replace('_', ' ', $courier['name']));
-            
+
             if (isset($courier['costs']) && is_array($courier['costs'])) {
                 foreach ($courier['costs'] as $cost) {
                     $formattedServices[] = [
                         // e.g., "Gosend Instant"
                         'courierName'  => $courier['name'], // 'gosend' (untuk logo)
-                        'service_name' => $courierName . ' ' . ucwords($cost['service_type']), 
+                        'service_name' => $courierName . ' ' . ucwords($cost['service_type']),
                         'service_type' => ucwords($cost['service_type']), // "Instant" atau "Sameday"
                         'etd'          => $cost['estimation'] ?? 'N/A',
-                        
+
                         // 'cost' atau 'final_price' akan dicek oleh JS
-                        'cost'         => $cost['price']['total_price'] ?? 0, 
-                        'final_price'  => $cost['price']['total_price'] ?? 0, 
+                        'cost'         => $cost['price']['total_price'] ?? 0,
+                        'final_price'  => $cost['price']['total_price'] ?? 0,
                         'price'        => $cost['price'] // Sertakan objek harga asli jika JS membutuhkannya
                     ];
                 }
