@@ -2888,12 +2888,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let cargoServices = [];
 
         if (data.instant?.length) {
-            instantServices = data.instant
-                .map(s => {
-                    s.numeric_price = getPrice(s);
-                    return s;
-                })
-                .filter(Boolean);
+            instantServices = data.instant.map(s => { s.numeric_price = getPrice(s); return s; }).filter(Boolean);
         }
 
         if (data.express_cargo?.length) {
@@ -2914,13 +2909,8 @@ document.addEventListener('DOMContentLoaded', function () {
         expressServices.sort((a, b) => a.numeric_price - b.numeric_price);
         cargoServices.sort((a, b) => a.numeric_price - b.numeric_price);
 
-        if (
-            instantServices.length === 0 &&
-            expressServices.length === 0 &&
-            cargoServices.length === 0
-        ) {
-            costResultsContainer.innerHTML +=
-                `<div class="alert alert-warning">Tidak ada layanan pengiriman untuk rute ini.</div>`;
+        if (instantServices.length === 0 && expressServices.length === 0 && cargoServices.length === 0) {
+            costResultsContainer.innerHTML += `<div class="alert alert-warning">Tidak ada layanan pengiriman untuk rute ini.</div>`;
             return;
         }
 
@@ -2929,9 +2919,54 @@ document.addEventListener('DOMContentLoaded', function () {
             expressServices.length ? 'express' :
             'cargo';
 
+        // ====================================================================
+        // KODE BARU: MENGAMBIL INPUT DAN MENGHITUNG VOLUMETRIK KE KILOGRAM (KG)
+        // ====================================================================
+        const inputWeight = parseFloat(document.getElementById('weight').value) || 0;
+        const inputL = parseFloat(document.getElementById('length').value) || 0;
+        const inputW = parseFloat(document.getElementById('width').value) || 0;
+        const inputH = parseFloat(document.getElementById('height').value) || 0;
+
+        let volInfoHtml = '';
+        if (inputL > 0 && inputW > 0 && inputH > 0) {
+            // Rumus Volumetrik Reguler (/6000) dan Cargo (/4000)
+            const volRegulerKg = (inputL * inputW * inputH) / 6000;
+            const volCargoKg = (inputL * inputW * inputH) / 4000;
+
+            volInfoHtml = `
+                <hr class="my-2" style="border-color: #93c5fd;">
+                <div class="row text-center text-dark" style="font-size: 0.85rem;">
+                    <div class="col-4 border-end border-info">
+                        <span class="d-block opacity-75">Aktual</span>
+                        <strong>${(inputWeight / 1000).toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})} kg</strong>
+                    </div>
+                    <div class="col-4 border-end border-info">
+                        <span class="d-block opacity-75">Vol. Reguler</span>
+                        <strong>${volRegulerKg.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})} kg</strong>
+                    </div>
+                    <div class="col-4">
+                        <span class="d-block opacity-75">Vol. Cargo</span>
+                        <strong>${volCargoKg.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})} kg</strong>
+                    </div>
+                </div>
+            `;
+        } else {
+            volInfoHtml = `
+                <hr class="my-2" style="border-color: #93c5fd;">
+                <div class="text-center text-dark" style="font-size: 0.85rem;">
+                    <span class="opacity-75">Berat Aktual:</span> <strong>${(inputWeight / 1000).toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})} kg</strong> <span class="opacity-75">(Dimensi tidak diisi)</span>
+                </div>
+            `;
+        }
+
+        // Tampilkan kotak Info Biru dengan detail lengkap
         let html = `
-            <div class="alert alert-info">
-                <strong>Berat Dihitung:</strong> ${final_weight.toLocaleString('id-ID')} gram
+            <div class="alert alert-info pb-2 shadow-sm" style="background-color: #e0f2fe; border: 1px solid #bae6fd;">
+                <div class="d-flex align-items-center text-dark mb-1">
+                    <i class="fa-solid fa-scale-balanced fs-5 me-2 text-primary"></i>
+                    <span class="fs-6"><strong>Berat Dihitung (Final):</strong> ${(final_weight / 1000).toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})} kg</span>
+                </div>
+                ${volInfoHtml}
             </div>
 
             <ul class="nav nav-tabs" id="shipping-tabs" role="tablist">
