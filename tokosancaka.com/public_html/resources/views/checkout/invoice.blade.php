@@ -66,7 +66,7 @@
 
                                         {{-- TAMBAHAN: Cek kedua kolom (shipping_resi atau resi) --}}
                                         @php
-                                            $nomorResi = $order->shipping_resi ?? $order->resi ?? null;
+                                            $nomorResi = $order->shipping_reference ?? $order->resi ?? null;
                                         @endphp
 
                                         @if(!empty($nomorResi) && $nomorResi !== '-')
