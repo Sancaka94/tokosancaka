@@ -252,7 +252,7 @@
                         @else
                             <div class="text-center py-8">
                                 <p class="text-gray-600 mb-4 text-sm">Gagal memuat data pembayaran. Silakan hubungi admin atau:</p>
-                                <a href="{{ $order->payment_url ?? '#' }}" target="_blank" class="block w-full py-3 bg-gray-800 text-white rounded-xl font-bold">
+                                <a href="{{ $order->payment_url ?? 'https://wa.me/6285745808809' }}" target="_blank" class="block w-full py-3 bg-gray-800 text-white rounded-xl font-bold">
                                     Coba Link Alternatif
                                 </a>
                             </div>
