@@ -50,6 +50,33 @@
                             <p class="text-base font-bold text-gray-900">{{ $order->user->nama_lengkap ?? 'Pelanggan' }}</p>
                             <p class="text-sm text-gray-600">{{ $order->user->no_wa ?? '-' }}</p>
                             <p class="text-sm text-gray-600 mt-1">{{ $order->shipping_address ?? 'Alamat tidak tersedia' }}</p>
+
+                            {{-- 👇 COPY DAN PASTE KODE BARU INI DI SINI 👇 --}}
+                            @if(in_array(strtolower($order->status), ['paid', 'processing', 'shipped', 'completed']))
+                                <div class="pt-3 border-t border-blue-200 mt-3">
+                                    @php
+                                        $kurirParts = explode('-', $order->shipping_method);
+                                        // Formatnya biasanya "tipe-kurir-layanan", ambil kurir dan layanannya
+                                        $namaKurir = strtoupper(($kurirParts[1] ?? 'KURIR') . ' - ' . ($kurirParts[2] ?? ''));
+                                    @endphp
+                                    <p class="text-sm text-gray-600">Ekspedisi: <span class="font-bold text-gray-900">{{ $namaKurir }}</span></p>
+
+                                    <div class="mt-1 flex items-center">
+                                        <span class="text-sm text-gray-600 mr-2">No. Resi:</span>
+                                        @if(!empty($order->shipping_resi) && $order->shipping_resi !== '-')
+                                            <span class="px-2 py-1 bg-white border border-blue-300 text-blue-700 font-mono font-bold rounded text-xs select-all">
+                                                {{ $order->shipping_resi }}
+                                            </span>
+                                        @else
+                                            <span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded italic">
+                                                Menunggu update kurir...
+                                            </span>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+                            {{-- 👆 SAMPAI SINI 👆 --}}
+
                         </div>
 
                         {{-- Daftar Item --}}
@@ -156,6 +183,12 @@
                                 <a href="{{ url('etalase') }}" class="block w-full mt-6 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition">
                                     Belanja Lagi
                                 </a>
+
+                                {{-- 👇 COPY DAN PASTE KODE BARU INI DI SINI 👇 --}}
+                                <a href="{{ route('invoice.pdf', $order->invoice_number) }}" target="_blank" class="block w-full mt-3 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl shadow-sm hover:bg-gray-50 hover:border-gray-300 transition flex items-center justify-center">
+                                    <i class="fas fa-file-pdf text-red-500 mr-2 text-lg"></i> Download Invoice (PDF)
+                                </a>
+                                {{-- 👆 SAMPAI SINI 👆 --}}
                             </div>
 
                         {{-- 2. JIKA COD (BAYAR DITEMPAT) --}}
