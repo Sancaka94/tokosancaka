@@ -594,6 +594,7 @@ class CheckoutController extends Controller
                 // 2. Simulasikan callback agar sistem otomatis mengurus resi KiriminAja & Notif WA
                 // Memanfaatkan fungsi Anda yang sudah sangat lengkap di bawah
                 $this->processOrderCallback($order->invoice_number, 'PAID', []);
+                $order->refresh();
             }
             else
             {
