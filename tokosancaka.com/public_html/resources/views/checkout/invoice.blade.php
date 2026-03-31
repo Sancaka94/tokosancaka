@@ -63,9 +63,15 @@
 
                                     <div class="mt-1 flex items-center">
                                         <span class="text-sm text-gray-600 mr-2">No. Resi:</span>
-                                        @if(!empty($order->shipping_resi) && $order->shipping_resi !== '-')
+
+                                        {{-- TAMBAHAN: Cek kedua kolom (shipping_resi atau resi) --}}
+                                        @php
+                                            $nomorResi = $order->shipping_resi ?? $order->resi ?? null;
+                                        @endphp
+
+                                        @if(!empty($nomorResi) && $nomorResi !== '-')
                                             <span class="px-2 py-1 bg-white border border-blue-300 text-blue-700 font-mono font-bold rounded text-xs select-all">
-                                                {{ $order->shipping_resi }}
+                                                {{ $nomorResi }}
                                             </span>
                                         @else
                                             <span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded italic">
