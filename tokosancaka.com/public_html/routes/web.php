@@ -1088,3 +1088,6 @@ Route::post('/escrow/{id}/refund', [\App\Http\Controllers\Admin\EscrowController
 
 // Admin setuju retur marketplace komplain
 Route::post('/customer/pesanan/kirim-retur', [\App\Http\Controllers\Customer\PesananController::class, 'prosesKirimRetur'])->name('customer.pesanan.kirim_retur');
+
+//download pdg invoice marketplace
+Route::get('/invoice/{invoice}/pdf', [App\Http\Controllers\CheckoutController::class, 'downloadPDF'])->name('invoice.pdf');

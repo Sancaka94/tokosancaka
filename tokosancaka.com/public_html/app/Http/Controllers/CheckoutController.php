@@ -1638,4 +1638,26 @@ TEXT;
         }
     }
 
+    /**
+     * FUNGSI UNTUK MENCETAK INVOICE PDF
+     */
+    public function downloadPDF($invoice)
+    {
+        // 1. Cari data order beserta relasinya
+        $order = Order::with('items.product', 'items.variant', 'store', 'user')
+            ->where('invoice_number', $invoice)
+            ->firstOrFail();
+
+        // 2. Load View khusus PDF
+        // Kita menggunakan view khusus 'invoice_pdf' agar tampilannya rapi saat dicetak
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('checkout.invoice_pdf', compact('order'))
+                ->setPaper('a4', 'portrait');
+
+        // 3. Render dan Download filenya
+        return $pdf->download('Invoice-' . $order->invoice_number . '.pdf');
+
+        // Catatan: Jika ingin file PDF-nya terbuka di browser (tidak langsung download),
+        // ubah ->download(...) menjadi ->stream(...)
+    }
+
 } // Akhir Class
