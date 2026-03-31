@@ -85,7 +85,7 @@
                             <p style="margin: 0 0 5px 0;">Kurir: <strong>{{ $namaKurir }}</strong></p>
 
                             @if(in_array(strtolower($order->status), ['paid', 'processing', 'shipped', 'completed']))
-                                <p style="margin: 0;">No. Resi: <strong>{{ !empty($order->shipping_resi) && $order->shipping_resi !== '-' ? $order->shipping_resi : 'Menunggu Update Kurir' }}</strong></p>
+                                <p style="margin: 0;">No. Resi: <strong>{{ !empty($order->shipping_reference) && $order->shipping_reference !== '-' ? $order->shipping_reference : 'Menunggu Update Kurir' }}</strong></p>
                             @else
                                 <p style="margin: 0; color: #7f8c8d; font-style: italic;">Resi muncul setelah lunas</p>
                             @endif
