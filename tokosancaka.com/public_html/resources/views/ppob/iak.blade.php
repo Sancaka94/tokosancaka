@@ -1,10 +1,25 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-lg-7 mb-4">
-            <div class="card shadow-sm border-0">
+<div class="container mt-4 mb-5">
+
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
                     <h5 class="mb-3 fw-bold"><i class="bi bi-wallet2 text-primary me-2"></i>Transaksi PPOB IAK</h5>
 
@@ -23,21 +38,8 @@
                 </div>
 
                 <div class="card-body pt-4">
-                    @if(session('success'))
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <i class="bi bi-check-circle me-1"></i> {{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
-
-                    @if(session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="bi bi-exclamation-triangle me-1"></i> {{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
-
                     <div class="tab-content" id="pills-tabContent">
+
                         <div class="tab-pane fade show active" id="pills-prabayar" role="tabpanel" aria-labelledby="pills-prabayar-tab" tabindex="0">
                             <form action="{{ route('ppob.store') }}" method="POST">
                                 @csrf
@@ -52,7 +54,7 @@
                                 </div>
 
                                 <div class="mb-4">
-                                    <label for="product_code_pra" class="form-label fw-semibold">Kode Produk</label>
+                                    <label for="product_code_pra" class="form-label fw-semibold">Kode Produk Prabayar</label>
                                     <div class="input-group">
                                         <span class="input-group-text bg-white"><i class="bi bi-tags text-muted"></i></span>
                                         <input type="text" class="form-control" id="product_code_pra" name="product_code" placeholder="Misal: tsel10000" required>
@@ -83,18 +85,18 @@
                                     <label for="product_code_pasca" class="form-label fw-semibold">Kode Produk Pascabayar</label>
                                     <div class="input-group">
                                         <span class="input-group-text bg-white"><i class="bi bi-lightning-charge text-muted"></i></span>
-                                        <input type="text" class="form-control" id="product_code_pasca" name="product_code" placeholder="Misal: plnpostpaid" required>
+                                        <input type="text" class="form-control" id="product_code_pasca" name="product_code" placeholder="Cari kode di tabel bawah (Misal: PLNPOSTPAID)" required>
                                     </div>
-                                    <div class="form-text">Masukkan kode produk pascabayar IAK yang valid.</div>
+                                    <div class="form-text text-warning"><i class="bi bi-info-circle"></i> Sistem akan melakukan pengecekan tagihan (Inquiry) terlebih dahulu sebelum pembayaran.</div>
                                 </div>
 
                                 <button type="submit" class="btn btn-dark w-100 py-2 fw-bold">
-                                    <i class="bi bi-search me-1"></i> Cek & Bayar Tagihan
+                                    <i class="bi bi-search me-1"></i> Cek Tagihan (Inquiry)
                                 </button>
                             </form>
                         </div>
-                    </div>
 
+                    </div>
                 </div>
             </div>
         </div>
@@ -109,20 +111,20 @@
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="ps-4">Tujuan</th>
-                                    <th>Produk</th>
+                                    <th class="ps-4">Detail Tujuan</th>
                                     <th>Status</th>
+                                    <th class="text-end pe-4">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($transactions as $trx)
                                 <tr>
                                     <td class="ps-4">
-                                        <div class="fw-semibold">{{ $trx->customer_id }}</div>
-                                        <small class="text-muted" style="font-size: 0.75rem;">{{ $trx->ref_id }}</small>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-light text-dark border">{{ $trx->product_code }}</span>
+                                        <div class="fw-bold">{{ $trx->customer_id }}</div>
+                                        <div class="small text-muted d-flex align-items-center gap-1">
+                                            <span class="badge bg-secondary rounded-pill" style="font-size: 0.65rem;">{{ strtoupper($trx->type) }}</span>
+                                            {{ $trx->product_code }}
+                                        </div>
                                     </td>
                                     <td>
                                         @if($trx->status == 'SUCCESS')
@@ -133,12 +135,87 @@
                                             <span class="badge bg-warning-subtle text-warning border border-warning-subtle"><i class="bi bi-arrow-repeat me-1"></i>Proses</span>
                                         @endif
                                     </td>
+                                    <td class="text-end pe-4">
+                                        @if($trx->status == 'PROCESS' && $trx->type == 'pascabayar' && $trx->tr_id)
+                                            <a href="{{ route('ppob.check_status', $trx->tr_id) }}" class="btn btn-sm btn-outline-info" title="Cek Status Tagihan">
+                                                <i class="bi bi-arrow-clockwise"></i>
+                                            </a>
+                                        @else
+                                            <span class="text-muted small">-</span>
+                                        @endif
+                                    </td>
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="3" class="text-center py-4 text-muted">
-                                        <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-                                        Belum ada transaksi
+                                    <td colspan="3" class="text-center py-5 text-muted">
+                                        <i class="bi bi-inbox fs-1 d-block mb-2 text-light"></i>
+                                        Belum ada riwayat transaksi
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white pt-4 pb-3 border-bottom d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                    <div>
+                        <h5 class="mb-1 fw-bold"><i class="bi bi-list-stars text-success me-2"></i>Pricelist Pascabayar (Tagihan)</h5>
+                        <small class="text-muted">Gunakan kode di bawah ini untuk form Pascabayar.</small>
+                    </div>
+
+                    <div class="d-flex gap-2 align-items-center">
+                        <div class="input-group input-group-sm" style="width: 250px;">
+                            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="searchPricelist" placeholder="Cari nama/kode produk...">
+                        </div>
+
+                        <form action="{{ route('ppob.sync_pricelist') }}" method="POST" class="m-0">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-success fw-semibold">
+                                <i class="bi bi-cloud-download me-1"></i> Sinkron IAK
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="table table-hover align-middle mb-0" id="pricelistTable">
+                            <thead class="table-light sticky-top" style="z-index: 1;">
+                                <tr>
+                                    <th class="ps-4">Kategori / Tipe</th>
+                                    <th>Nama Produk</th>
+                                    <th>Kode Produk</th>
+                                    <th>Admin (Fee)</th>
+                                    <th class="pe-4">Komisi Anda</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($pricelist as $item)
+                                <tr class="pricelist-row">
+                                    <td class="ps-4">
+                                        <span class="badge bg-dark-subtle text-dark text-uppercase border">{{ $item->type }}</span>
+                                    </td>
+                                    <td class="fw-semibold product-name">{{ $item->name }}</td>
+                                    <td>
+                                        <code class="fs-6 product-code user-select-all" role="button" title="Klik 2x untuk blok text">{{ $item->code }}</code>
+                                    </td>
+                                    <td>Rp {{ number_format($item->fee, 0, ',', '.') }}</td>
+                                    <td class="pe-4 text-success fw-bold">+ Rp {{ number_format($item->komisi, 0, ',', '.') }}</td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="bi bi-database-exclamation fs-1 d-block mb-3 text-light"></i>
+                                        Data pricelist kosong atau belum disinkronisasi.<br>
+                                        Silakan klik tombol <strong>Sinkron IAK</strong> di atas untuk menarik data terbaru.
                                     </td>
                                 </tr>
                                 @endforelse
@@ -150,11 +227,31 @@
         </div>
     </div>
 </div>
-@endsection
 
-{{-- Pastikan Bootstrap Icons dimuat, jika di layouts.app belum ada, Anda bisa uncomment baris di bawah ini --}}
-{{--
-@push('styles')
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+@push('scripts')
+<script>
+    // Fitur pencarian Real-time untuk tabel Pricelist
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchPricelist');
+        const rows = document.querySelectorAll('.pricelist-row');
+
+        if(searchInput) {
+            searchInput.addEventListener('keyup', function(e) {
+                const term = e.target.value.toLowerCase();
+
+                rows.forEach(row => {
+                    const name = row.querySelector('.product-name').textContent.toLowerCase();
+                    const code = row.querySelector('.product-code').textContent.toLowerCase();
+
+                    if(name.includes(term) || code.includes(term)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
 @endpush
---}}
+@endsection

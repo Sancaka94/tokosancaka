@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class TransactionPpobIak extends Model
 {
-    // Mengubah referensi tabel ke transactionppobiak
     protected $table = 'transactionppobiak';
 
     protected $fillable = [
         'ref_id',
+        'tr_id',
+        'type',
         'customer_id',
         'product_code',
         'price',
@@ -19,5 +20,5 @@ class TransactionPpobIak extends Model
         'message'
     ];
 
-    // LOG LOG - Pastikan log lama Anda dipertahankan jika ada
+    // LOG LOG - Jangan ubah atau hapus baris ini
 }

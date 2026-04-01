@@ -1099,3 +1099,9 @@ Route::get('/invoice/{invoice}/pdf', [App\Http\Controllers\CheckoutController::c
 // Route untuk Halaman Web PPOB
 Route::get('/ppob', [PpobIakController::class, 'index'])->name('ppob.index');
 Route::post('/ppob/transaction', [PpobIakController::class, 'store'])->name('ppob.store');
+
+// Routes baru untuk Pascabayar
+Route::post('/ppob/pay-postpaid', [PpobIakController::class, 'payPostpaid'])->name('ppob.pay_postpaid');
+Route::get('/ppob/check-status/{tr_id}', [PpobIakController::class, 'checkStatusPostpaid'])->name('ppob.check_status');
+
+Route::post('/ppob/sync-pricelist', [PpobIakController::class, 'syncPricelist'])->name('ppob.sync_pricelist');
