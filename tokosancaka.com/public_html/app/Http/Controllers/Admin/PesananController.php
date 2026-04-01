@@ -459,7 +459,7 @@ class PesananController extends Controller
 
     public function update(Request $request, $resi, KiriminAjaService $kirimaja)
     {
-        // 1. Validasi Input Dasar
+        // 1. Validasi Input LENGKAP (Sama persis dengan create/store)
         $validatedData = $request->validate([
             'sender_name' => 'required|string|max:255',
             'sender_phone' => 'required|string|max:20',
@@ -469,56 +469,81 @@ class PesananController extends Controller
             'receiver_address' => 'required|string',
             'item_description' => 'required|string',
             'weight' => 'required|numeric|min:1',
-            'expedition' => 'nullable|string',
-            'service_type' => 'nullable|string',
+            'expedition' => 'required|string',
+            'service_type' => 'required|string',
+            'item_type' => 'required|integer',
+            'item_price' => 'required|numeric|min:1',
+            'ansuransi' => 'required|string|in:iya,tidak',
             'length' => 'nullable|numeric|min:0',
             'width' => 'nullable|numeric|min:0',
             'height' => 'nullable|numeric|min:0',
+            // Data wilayah wajib diambil
+            'sender_lat' => 'nullable|numeric', 'sender_lng' => 'nullable|numeric',
+            'receiver_lat' => 'nullable|numeric', 'receiver_lng' => 'nullable|numeric',
+            'sender_district_id' => 'required|integer', 'sender_subdistrict_id' => 'required|integer',
+            'receiver_district_id' => 'required|integer', 'receiver_subdistrict_id' => 'required|integer',
+            'sender_postal_code' => 'nullable|string', 'receiver_postal_code' => 'nullable|string',
+            'payment_method' => 'required|string',
         ]);
 
         $order = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->firstOrFail();
 
-        // Sanitasi nomor telepon sebelum update
+        // Sanitasi nomor telepon
         $validatedData['sender_phone'] = $this->_sanitizePhoneNumber($request->input('sender_phone'));
         $validatedData['receiver_phone'] = $this->_sanitizePhoneNumber($request->input('receiver_phone'));
 
-        // 2. Simpan Perubahan Form ke Database (Update data dasar dulu)
-        $order->update($validatedData);
+        // 2. Mapping field untuk Update ke Database
+        $dbUpdateData = $validatedData;
+        $dbUpdateData['total_harga_barang'] = $validatedData['item_price']; // Simpan ke nama kolom DB yang benar
+        unset($dbUpdateData['item_price']); // Hapus dari array agar tidak error column not found di DB
+
+        $order->update($dbUpdateData);
 
         // ====================================================================
-        // 🔥 LOGIKA AUTO-RETRY API KIRIMINAJA KHUSUS STATUS "GAGAL KIRIM" 🔥
+        // 🔥 LOGIKA AUTO-RETRY API KIRIMINAJA (PAYLOAD SAMA DENGAN CREATE) 🔥
         // ====================================================================
         if ($order->status_pesanan === 'Gagal Kirim Resi' || $order->status_pesanan === 'Pembayaran Lunas (Gagal Auto-Resi)') {
             try {
-                // Ambil data terbaru dari order setelah di-update
-                $pesananData = $order->toArray();
+                // GABUNGKAN data DB dan Data Form Request agar keys API terpenuhi
+                // (seperti item_price, ansuransi, expedition utuh yang divalidasi)
+                $pesananData = array_merge($order->toArray(), $request->all());
 
-                // Siapkan Address Data dari Database (karena form edit tidak memuat lat/lng/district_id)
+                // Siapkan Address Data dengan struktur yg sama persis dgn _getAddressData
                 $senderAddressData = [
-                    'lat' => $order->sender_lat, 'lng' => $order->sender_lng,
+                    'lat' => $request->input('sender_lat') ?? $order->sender_lat,
+                    'lng' => $request->input('sender_lng') ?? $order->sender_lng,
                     'kirimaja_data' => [
-                        'district_id' => $order->sender_district_id,
-                        'subdistrict_id' => $order->sender_subdistrict_id,
-                        'postal_code' => $order->sender_postal_code
+                        'district_id' => $request->input('sender_district_id'),
+                        'subdistrict_id' => $request->input('sender_subdistrict_id'),
+                        'postal_code' => $request->input('sender_postal_code')
                     ]
                 ];
 
                 $receiverAddressData = [
-                    'lat' => $order->receiver_lat, 'lng' => $order->receiver_lng,
+                    'lat' => $request->input('receiver_lat') ?? $order->receiver_lat,
+                    'lng' => $request->input('receiver_lng') ?? $order->receiver_lng,
                     'kirimaja_data' => [
-                        'district_id' => $order->receiver_district_id,
-                        'subdistrict_id' => $order->receiver_subdistrict_id,
-                        'postal_code' => $order->receiver_postal_code
+                        'district_id' => $request->input('receiver_district_id'),
+                        'subdistrict_id' => $request->input('receiver_subdistrict_id'),
+                        'postal_code' => $request->input('receiver_postal_code')
                     ]
                 ];
 
-                // Ambil biaya yang sudah tersimpan sebelumnya
-                $cod_value = (in_array($order->payment_method, ['COD', 'CODBARANG'])) ? $order->price : 0;
-                $shipping_cost = (int) $order->shipping_cost;
-                $insurance_cost = (int) $order->insurance_cost;
+                // Hitung ulang harga agar biaya ongkir, fee, asuransi dari payload form update sesuai
+                $calculation = $this->_calculateTotalPaid($pesananData);
+                $cod_value = (in_array($pesananData['payment_method'], ['COD', 'CODBARANG'])) ? $calculation['cod_value'] : 0;
+                $shipping_cost = $calculation['shipping_cost'];
+                $insurance_cost = $calculation['ansuransi_fee'];
 
-                // Tembak ulang API KiriminAja
-                Log::info('🔄 Re-Payload KiriminAja dari Update form untuk: ' . $order->nomor_invoice);
+                // Update database untuk memastikan biayanya juga tersimpan jika user ganti layanan
+                $order->shipping_cost = $shipping_cost;
+                $order->insurance_cost = ($pesananData['ansuransi'] == 'iya') ? $insurance_cost : 0;
+                $order->price = ($cod_value > 0) ? $cod_value : $calculation['total_paid_ongkir'];
+                $order->save();
+
+                Log::info('🔄 Re-Payload KiriminAja dari Edit form untuk: ' . $order->nomor_invoice);
+
+                // Eksekusi API persis seperti fungsi Create
                 $kiriminResponse = $this->_createKiriminAjaOrder(
                     $pesananData, $order, $kirimaja,
                     $senderAddressData, $receiverAddressData,
@@ -535,28 +560,27 @@ class PesananController extends Controller
                     $finalResi = !empty($awbAsli) ? $awbAsli : $bookingId;
                     if (empty($finalResi)) $finalResi = 'REF-' . $order->nomor_invoice;
 
-                    // Timpa Resi Lama & Ubah Status menjadi Normal
+                    // Berhasil -> Ubah Menjadi Menunggu Pickup!
                     $order->resi = $finalResi;
                     $order->shipping_ref = $bookingId;
-                    $order->status = 'Pesanan Dibuat';
-                    $order->status_pesanan = 'Pesanan Dibuat';
+                    $order->status = 'Menunggu Pickup';
+                    $order->status_pesanan = 'Menunggu Pickup';
                     $order->save();
 
                     return redirect()->route('admin.pesanan.index')->with('success', 'Data diperbarui & Resi API berhasil didapatkan: ' . $finalResi);
 
                 } else {
                     Log::error('❌ Re-Payload KiriminAja Gagal:', $kiriminResponse);
-                    return redirect()->route('admin.pesanan.index')->with('error', 'Data pesanan diperbarui, tapi API KiriminAja MASIH menolak request: ' . ($kiriminResponse['text'] ?? 'Cek file log.'));
+                    return redirect()->route('admin.pesanan.index')->with('error', 'API KiriminAja masih menolak request. Alasan: ' . ($kiriminResponse['text'] ?? 'Format alamat / data tidak valid.'));
                 }
 
             } catch (\Exception $e) {
-                Log::error('Re-Payload Exception: ' . $e->getMessage());
+                Log::error('Re-Payload Exception: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
                 return redirect()->route('admin.pesanan.index')->with('error', 'Terjadi error sistem saat re-payload API: ' . $e->getMessage());
             }
         }
         // ====================================================================
 
-        // Default Return jika status pesanan normal (bukan Gagal Kirim Resi)
         return redirect()->route('admin.pesanan.index')->with('success', 'Pesanan ' . ($order->resi ?? $order->nomor_invoice) . ' berhasil diperbarui.');
     }
 
