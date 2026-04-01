@@ -167,8 +167,9 @@ class PpobIakController extends Controller
                 Log::info('LOG LOG - Prepaid Processed', ['ref_id' => $refId, 'status' => $finalStatus]);
 
                 // --- KODE REDIRECT KE INVOICE ---
-                return redirect()->route('ppob.invoice', ['ref_id' => $transaction->ref_id])
-                                 ->with('success', 'Transaksi berhasil diproses.');
+                // MENJADI INI (tambahkan .iak):
+                return redirect()->route('ppob.iak.invoice', ['ref_id' => $transaction->ref_id])
+                                ->with('success', 'Transaksi berhasil diproses.');
             }
 
             Log::error('LOG LOG - Prepaid API Error / Invalid Response Format', ['response' => $result]);
@@ -314,8 +315,9 @@ class PpobIakController extends Controller
 
                 Log::info('LOG LOG - Payment Postpaid Success/Process', ['tr_id' => $transaction->tr_id, 'status' => $status]); // LOG LOG
                 // Redirect menuju halaman invoice
-                return redirect()->route('ppob.invoice', ['ref_id' => $transaction->ref_id])
-                                 ->with('success', 'Pembayaran Tagihan Berhasil diproses!');
+                // MENJADI INI (tambahkan .iak):
+                return redirect()->route('ppob.iak.invoice', ['ref_id' => $transaction->ref_id])
+                                ->with('success', 'Pembayaran Tagihan Berhasil diproses!');
 
             }
 
