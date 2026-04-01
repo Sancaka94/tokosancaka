@@ -492,6 +492,9 @@ class PesananController extends Controller
         $validatedData['sender_phone'] = $this->_sanitizePhoneNumber($request->input('sender_phone'));
         $validatedData['receiver_phone'] = $this->_sanitizePhoneNumber($request->input('receiver_phone'));
 
+        $validatedData['sender_name'] = trim(preg_replace('/[^a-zA-Z0-9\s]/', '', $validatedData['sender_name']));
+        $validatedData['receiver_name'] = trim(preg_replace('/[^a-zA-Z0-9\s]/', '', $validatedData['receiver_name']));
+
         // 2. Mapping field untuk Update ke Database
         $dbUpdateData = $validatedData;
         $dbUpdateData['total_harga_barang'] = $validatedData['item_price']; // Simpan ke nama kolom DB yang benar
