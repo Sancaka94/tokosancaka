@@ -110,6 +110,8 @@ use App\Http\Controllers\CashflowController;
 
 use App\Http\Controllers\AdminPricelistController;
 
+use App\Http\Controllers\Admin\ProdukController; // Pastikan namespace controller sesuai
+
 // Website fontend WA Integration
 //use App\Http\Controllers\WhatsappController;
 
@@ -781,6 +783,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     });
     Route::get('/api/contacts/search', [AdminChatController::class, 'searchKontak'])->name('api.contacts.search');
 
+
     // =====================================================================
     // PPOB ADMIN (FIX FINAL: EXCEL & PDF - SUPPORT TITIK & STRIP)
     // =====================================================================
@@ -841,6 +844,8 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
     // 4. Tombol Action: Mediasi
     Route::get('/escrow/{id}/mediasi', [EscrowController::class, 'mediasi'])->name('escrow.mediasi');
+
+    Route::get('/produk', [ProdukController::class, 'index'])->name('produk.index');
 
 
 });
@@ -1114,3 +1119,5 @@ Route::get('/ppob/check-status-prepaid/{ref_id}', [PpobIakController::class, 'ch
 // Pastikan route ini berada di dalam middleware admin Anda jika ada
 Route::get('/admin/pricelist/upload', [AdminPricelistController::class, 'index'])->name('admin.pricelist.index');
 Route::post('/admin/pricelist/upload', [AdminPricelistController::class, 'upload'])->name('admin.pricelist.upload');
+
+
