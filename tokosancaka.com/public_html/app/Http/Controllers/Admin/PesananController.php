@@ -457,30 +457,106 @@ class PesananController extends Controller
         return view('admin.pesanan.edit', compact('pesanan', 'customers'));
     }
 
-    public function update(Request $request, $resi)
+    public function update(Request $request, $resi, App\Services\KiriminAjaService $kirimaja)
     {
-        // Validasi bisa lebih spesifik jika perlu
+        // 1. Validasi Input Dasar
         $validatedData = $request->validate([
             'sender_name' => 'required|string|max:255',
             'sender_phone' => 'required|string|max:20',
             'sender_address' => 'required|string',
-            // Tambahkan validasi field alamat lain jika bisa diedit
             'receiver_name' => 'required|string|max:255',
             'receiver_phone' => 'required|string|max:20',
             'receiver_address' => 'required|string',
-            // Tambahkan validasi field alamat lain jika bisa diedit
             'item_description' => 'required|string',
             'weight' => 'required|numeric|min:1',
-            // Hati-hati jika mengubah payment method atau expedition setelah dibuat
-            'payment_method' => 'required|string',
-            'expedition' => 'required|string',
+            'expedition' => 'nullable|string',
+            'service_type' => 'nullable|string',
+            'length' => 'nullable|numeric|min:0',
+            'width' => 'nullable|numeric|min:0',
+            'height' => 'nullable|numeric|min:0',
         ]);
-        $order = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->firstOrFail();
-        // Sanitasi nomor telepon sebelum update
-        $validatedData['sender_phone'] = $this->_sanitizePhoneNumber($request->input('sender_phone')); // Ambil dari request
-        $validatedData['receiver_phone'] = $this->_sanitizePhoneNumber($request->input('receiver_phone')); // Ambil dari request
 
+        $order = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->firstOrFail();
+
+        // Sanitasi nomor telepon sebelum update
+        $validatedData['sender_phone'] = $this->_sanitizePhoneNumber($request->input('sender_phone'));
+        $validatedData['receiver_phone'] = $this->_sanitizePhoneNumber($request->input('receiver_phone'));
+
+        // 2. Simpan Perubahan Form ke Database (Update data dasar dulu)
         $order->update($validatedData);
+
+        // ====================================================================
+        // 🔥 LOGIKA AUTO-RETRY API KIRIMINAJA KHUSUS STATUS "GAGAL KIRIM" 🔥
+        // ====================================================================
+        if ($order->status_pesanan === 'Gagal Kirim Resi' || $order->status_pesanan === 'Pembayaran Lunas (Gagal Auto-Resi)') {
+            try {
+                // Ambil data terbaru dari order setelah di-update
+                $pesananData = $order->toArray();
+
+                // Siapkan Address Data dari Database (karena form edit tidak memuat lat/lng/district_id)
+                $senderAddressData = [
+                    'lat' => $order->sender_lat, 'lng' => $order->sender_lng,
+                    'kirimaja_data' => [
+                        'district_id' => $order->sender_district_id,
+                        'subdistrict_id' => $order->sender_subdistrict_id,
+                        'postal_code' => $order->sender_postal_code
+                    ]
+                ];
+
+                $receiverAddressData = [
+                    'lat' => $order->receiver_lat, 'lng' => $order->receiver_lng,
+                    'kirimaja_data' => [
+                        'district_id' => $order->receiver_district_id,
+                        'subdistrict_id' => $order->receiver_subdistrict_id,
+                        'postal_code' => $order->receiver_postal_code
+                    ]
+                ];
+
+                // Ambil biaya yang sudah tersimpan sebelumnya
+                $cod_value = (in_array($order->payment_method, ['COD', 'CODBARANG'])) ? $order->price : 0;
+                $shipping_cost = (int) $order->shipping_cost;
+                $insurance_cost = (int) $order->insurance_cost;
+
+                // Tembak ulang API KiriminAja
+                Log::info('🔄 Re-Payload KiriminAja dari Update form untuk: ' . $order->nomor_invoice);
+                $kiriminResponse = $this->_createKiriminAjaOrder(
+                    $pesananData, $order, $kirimaja,
+                    $senderAddressData, $receiverAddressData,
+                    $cod_value, $shipping_cost, $insurance_cost
+                );
+
+                // Cek Respons API
+                if (($kiriminResponse['status'] ?? false) === true) {
+
+                    // Ekstrak Resi Baru
+                    $bookingId = $kiriminResponse['pickup_number'] ?? $kiriminResponse['id'] ?? $kiriminResponse['data']['id'] ?? $kiriminResponse['payment_ref'] ?? null;
+                    $awbAsli = $kiriminResponse['awb'] ?? $kiriminResponse['data']['awb'] ?? ($kiriminResponse['details'][0]['awb'] ?? null) ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+
+                    $finalResi = !empty($awbAsli) ? $awbAsli : $bookingId;
+                    if (empty($finalResi)) $finalResi = 'REF-' . $order->nomor_invoice;
+
+                    // Timpa Resi Lama & Ubah Status menjadi Normal
+                    $order->resi = $finalResi;
+                    $order->shipping_ref = $bookingId;
+                    $order->status = 'Pesanan Dibuat';
+                    $order->status_pesanan = 'Pesanan Dibuat';
+                    $order->save();
+
+                    return redirect()->route('admin.pesanan.index')->with('success', 'Data diperbarui & Resi API berhasil didapatkan: ' . $finalResi);
+
+                } else {
+                    Log::error('❌ Re-Payload KiriminAja Gagal:', $kiriminResponse);
+                    return redirect()->route('admin.pesanan.index')->with('error', 'Data pesanan diperbarui, tapi API KiriminAja MASIH menolak request: ' . ($kiriminResponse['text'] ?? 'Cek file log.'));
+                }
+
+            } catch (\Exception $e) {
+                Log::error('Re-Payload Exception: ' . $e->getMessage());
+                return redirect()->route('admin.pesanan.index')->with('error', 'Terjadi error sistem saat re-payload API: ' . $e->getMessage());
+            }
+        }
+        // ====================================================================
+
+        // Default Return jika status pesanan normal (bukan Gagal Kirim Resi)
         return redirect()->route('admin.pesanan.index')->with('success', 'Pesanan ' . ($order->resi ?? $order->nomor_invoice) . ' berhasil diperbarui.');
     }
 

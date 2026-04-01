@@ -38,6 +38,7 @@ class KirimAjaController extends Controller
                 'finished_packages'        => 'Selesai',
                 'returned_packages'        => 'Dalam Proses Retur',
                 'return_finished_packages' => 'Retur Selesai',
+                'error_packages'           => 'Gagal Kirim Resi', // <--- TAMBAHAN BARU
             ];
 
             $generalStatusMap = [
@@ -47,6 +48,7 @@ class KirimAjaController extends Controller
                 'finished_packages'        => 'completed',
                 'returned_packages'        => 'returning',
                 'return_finished_packages' => 'returned',
+                'error_packages'           => 'error', // <--- TAMBAHAN BARU (untuk marketplace)
             ];
 
             $timestampMap = [
