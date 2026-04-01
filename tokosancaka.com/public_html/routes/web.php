@@ -1115,6 +1115,8 @@ Route::post('/ppob/sync-pricelist', [PpobIakController::class, 'syncPricelist'])
 
 Route::get('/ppob/check-status-prepaid/{ref_id}', [PpobIakController::class, 'checkStatusPrepaid'])->name('ppob.check_status_prepaid');
 
+Route::post('/ppob/store', [PpobIakController::class, 'store'])->name('ppob.store');
+Route::get('/ppob/invoice/{ref_id}', [PpobIakController::class, 'invoice'])->name('ppob.invoice');
 
 // Pastikan route ini berada di dalam middleware admin Anda jika ada
 Route::get('/admin/pricelist/upload', [AdminPricelistController::class, 'index'])->name('admin.pricelist.index');

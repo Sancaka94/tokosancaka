@@ -149,7 +149,10 @@ class PpobIakController extends Controller
                 }
 
                 Log::info('LOG LOG - Prepaid Processed', ['ref_id' => $refId, 'status' => $finalStatus]); // LOG LOG
-                return back()->with('success', 'Transaksi prabayar diproses. Status: ' . $finalStatus . ' (Sistem sedang menunggu konfirmasi operator).');
+                // Redirect menuju halaman invoice
+                return redirect()->route('ppob.invoice', ['ref_id' => $transaction->ref_id])
+                                 ->with('success', 'Transaksi berhasil diproses.');
+
             }
 
             Log::error('LOG LOG - Prepaid API Error / Invalid Response Format', ['response' => $result]); // LOG LOG
@@ -294,7 +297,10 @@ class PpobIakController extends Controller
                 }
 
                 Log::info('LOG LOG - Payment Postpaid Success/Process', ['tr_id' => $transaction->tr_id, 'status' => $status]); // LOG LOG
-                return redirect()->route('ppob.index')->with('success', 'Pembayaran Tagihan Berhasil diproses!');
+                // Redirect menuju halaman invoice
+                return redirect()->route('ppob.invoice', ['ref_id' => $transaction->ref_id])
+                                 ->with('success', 'Pembayaran Tagihan Berhasil diproses!');
+
             }
 
             // PERBAIKAN: Jika format response salah / tidak ada 'data'
@@ -406,5 +412,14 @@ class PpobIakController extends Controller
 
         Log::info('LOG LOG - Webhook Processed Successfully', ['ref_id' => $refId, 'finalStatus' => $finalStatus, 'sn' => $sn]); // LOG LOG
         return response()->json(['message' => 'Callback received successfully'], 200);
+    }
+
+    // --- FUNGSI UNTUK MENAMPILKAN INVOICE ---
+    public function invoice($ref_id)
+    {
+        // Tarik data transaksi berdasarkan ref_id
+        $transaction = TransactionPpobIak::where('ref_id', $ref_id)->firstOrFail();
+
+        return view('ppob.invoice', compact('transaction'));
     }
 }

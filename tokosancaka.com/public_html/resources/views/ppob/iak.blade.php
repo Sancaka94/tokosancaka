@@ -99,9 +99,18 @@
                                     </div>
                                 </div>
 
-                                <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-3" id="btn-submit-pra" disabled>
-                                    <i class="bi bi-cart-check me-1"></i> Beli Sekarang
-                                </button>
+                                @if(auth()->check() && auth()->user()->role === 'seller')
+                                    <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-3" id="btn-submit-pra" disabled>
+                                        <i class="bi bi-cart-check me-1"></i> Beli Sekarang
+                                    </button>
+                                @else
+                                    <div class="alert alert-danger mt-3 mb-0 text-center border-0 shadow-sm" role="alert">
+                                        <i class="bi bi-exclamation-triangle-fill me-2"></i> Maaf, fitur pembelian saat ini hanya tersedia untuk <b>Seller</b>.
+                                    </div>
+                                    <button type="button" class="btn btn-secondary w-100 py-3 fw-bold rounded-3 mt-3" disabled>
+                                        <i class="bi bi-lock-fill me-1"></i> Beli Sekarang (Terkunci)
+                                    </button>
+                                @endif
                             </form>
                         </div>
 
