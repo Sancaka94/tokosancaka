@@ -60,7 +60,7 @@
                     <div class="tab-content" id="pills-tabContent">
 
                         <div class="tab-pane fade show active" id="pills-prabayar" role="tabpanel" aria-labelledby="pills-prabayar-tab" tabindex="0">
-                            <form action="{{ route('ppob.store') }}" method="POST">
+                            <form action="{{ route('ppob.iak.store') }}" method="POST">
                                 @csrf
                                 <input type="hidden" name="type" value="prabayar">
 
