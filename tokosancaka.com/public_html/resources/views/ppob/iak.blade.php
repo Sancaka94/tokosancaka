@@ -24,6 +24,18 @@
         </div>
     @endif
 
+    @if ($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> <strong>Gagal!</strong>
+            <ul class="mb-0 mt-1">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
     <div class="row g-4">
         <div class="col-lg-7">
             <div class="card shadow-sm border-0 h-100">
@@ -126,7 +138,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // PERBAIKAN: Ambil saldo user (pastikan kolom 'balance' sesuai dengan skema database kamu)
-        let currentBalance = {{ auth()->user()->balance_iak ?? 0 }};
+        let currentBalance = parseFloat("{{ auth()->user()->balance_iak ?? 0 }}") || 0;
 
         const phoneInput = document.getElementById('customer_id_pra');
         const badgeContainer = document.getElementById('operator-badge');
