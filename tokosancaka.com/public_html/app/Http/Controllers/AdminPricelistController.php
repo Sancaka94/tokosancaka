@@ -265,4 +265,27 @@ class AdminPricelistController extends Controller
             return response()->json(['success' => false, 'message' => 'Koneksi Server Gagal']);
         }
     }
+
+    /**
+     * Endpoint API Internal untuk mengambil produk berdasarkan Operator & Tipe
+     */
+    public function getProductsByOperator(Request $request)
+    {
+        $operator = $request->operator; // Contoh: 'INDOSAT', 'TELKOMSEL'
+        $type = $request->type;         // Contoh: 'pulsa', 'data'
+
+        // Cari produk di database (Pastikan model IakPricelistPrepaid sudah di-import di atas)
+        // Kita gunakan LIKE karena di database mungkin tertulis "Indosat Ooredoo" atau "Telkomsel"
+        $products = \App\Models\IakPricelistPrepaid::where('operator', 'LIKE', "%{$operator}%")
+                        ->where('type', $type)
+                        ->where('status', 'Active') // Hanya ambil yang aktif
+                        ->orderBy('price', 'asc')   // Urutkan dari harga termurah
+                        ->get(['code', 'description', 'price']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $products
+        ]);
+    }
+
 }

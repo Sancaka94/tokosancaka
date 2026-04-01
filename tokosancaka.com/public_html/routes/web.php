@@ -1145,3 +1145,6 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
 
     Route::get('/iak/live-balance', [AdminPricelistController::class, 'liveBalanceApi'])->name('iak.live_balance');
 });
+
+
+Route::get('/ppob/get-products', [App\Http\Controllers\PpobController::class, 'getProductsByOperator'])->name('ppob.get_products');

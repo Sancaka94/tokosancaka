@@ -1,6 +1,13 @@
 @extends('layouts.app')
 
 @section('content')
+<style>
+    /* Efek hover dan klik untuk kartu produk */
+    .product-card { transition: all 0.2s ease-in-out; }
+    .product-card:hover { transform: translateY(-2px); border-color: #0d6efd !important; }
+    .product-card.selected { border-color: #0d6efd !important; background-color: #e7f1ff !important; box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25); }
+</style>
+
 <div class="container mt-4 mb-5">
 
     @if(session('success'))
@@ -49,7 +56,7 @@
                                     <label for="customer_id_pra" class="form-label fw-semibold">Nomor HP / Tujuan</label>
                                     <div class="input-group">
                                         <span class="input-group-text bg-white"><i class="bi bi-telephone text-muted"></i></span>
-                                        <input type="text" class="form-control" id="customer_id_pra" name="customer_id" placeholder="081234567890" autocomplete="off" required>
+                                        <input type="text" class="form-control form-control-lg" id="customer_id_pra" name="customer_id" placeholder="081234567890" autocomplete="off" required>
                                     </div>
                                     <div id="operator-badge" class="mt-2 d-none">
                                         <span class="badge bg-primary px-3 py-2" id="operator-name"></span>
@@ -57,48 +64,36 @@
                                     </div>
                                 </div>
 
-                                <div class="mb-4">
-                                    <label for="product_code_pra" class="form-label fw-semibold">Kode Produk Prabayar</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white"><i class="bi bi-tags text-muted"></i></span>
-                                        <input type="text" class="form-control" id="product_code_pra" name="product_code" placeholder="Misal: tsel10000" required>
-                                    </div>
-                                    <div class="form-text">Masukkan kode produk prabayar IAK yang valid.</div>
+                                <div class="mb-3 d-none" id="category-selector-container">
+                                    <label class="form-label fw-semibold">Jenis Layanan</label>
+                                    <select class="form-select" id="product_category_pra">
+                                        <option value="pulsa">📱 Pulsa Reguler</option>
+                                        <option value="data">🌐 Paket Data</option>
+                                    </select>
                                 </div>
 
-                                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
+                                <div class="mb-4 d-none" id="product-list-container">
+                                    <label class="form-label fw-semibold">Pilih Nominal / Paket</label>
+                                    <div class="row g-3" id="product-list">
+                                        </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="product_code_pra" class="form-label fw-semibold">Kode Produk (Otomatis)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-tags text-muted"></i></span>
+                                        <input type="text" class="form-control bg-light" id="product_code_pra" name="product_code" placeholder="Pilih produk di atas..." readonly required>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-3" id="btn-submit-pra" disabled>
                                     <i class="bi bi-cart-check me-1"></i> Beli Sekarang
                                 </button>
                             </form>
                         </div>
 
                         <div class="tab-pane fade" id="pills-pascabayar" role="tabpanel" aria-labelledby="pills-pascabayar-tab" tabindex="0">
-                            <form action="{{ route('ppob.store') }}" method="POST">
-                                @csrf
-                                <input type="hidden" name="type" value="pascabayar">
-
-                                <div class="mb-3">
-                                    <label for="customer_id_pasca" class="form-label fw-semibold">ID Pelanggan / No Tagihan</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white"><i class="bi bi-person-vcard text-muted"></i></span>
-                                        <input type="text" class="form-control" id="customer_id_pasca" name="customer_id" placeholder="Contoh: 532110000000" required>
-                                    </div>
-                                </div>
-
-                                <div class="mb-4">
-                                    <label for="product_code_pasca" class="form-label fw-semibold">Kode Produk Pascabayar</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white"><i class="bi bi-lightning-charge text-muted"></i></span>
-                                        <input type="text" class="form-control" id="product_code_pasca" name="product_code" placeholder="Cari kode di tabel bawah (Misal: PLNPOSTPAID)" required>
-                                    </div>
-                                    <div class="form-text text-warning"><i class="bi bi-info-circle"></i> Sistem akan melakukan pengecekan tagihan (Inquiry) terlebih dahulu sebelum pembayaran.</div>
-                                </div>
-
-                                <button type="submit" class="btn btn-dark w-100 py-2 fw-bold">
-                                    <i class="bi bi-search me-1"></i> Cek Tagihan (Inquiry)
-                                </button>
-                            </form>
-                        </div>
+                            </div>
 
                     </div>
                 </div>
@@ -106,139 +101,66 @@
         </div>
 
         <div class="col-lg-5">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-2">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-clock-history text-secondary me-2"></i>5 Transaksi Terakhir</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="ps-4">Detail Tujuan</th>
-                                    <th>Status</th>
-                                    <th class="text-end pe-4">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($transactions ?? [] as $trx)
-                                <tr>
-                                    <td class="ps-4">
-                                        <div class="fw-bold">{{ $trx->customer_id }}</div>
-                                        <div class="small text-muted d-flex align-items-center gap-1 mb-1">
-                                            <span class="badge bg-secondary rounded-pill" style="font-size: 0.65rem;">{{ strtoupper($trx->type) }}</span>
-                                            {{ $trx->product_code }}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        @if($trx->status == 'SUCCESS')
-                                            <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-circle-fill me-1"></i>Sukses</span>
-                                        @elseif($trx->status == 'FAILED')
-                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="bi bi-x-circle-fill me-1"></i>Gagal</span>
-                                        @else
-                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle"><i class="bi bi-arrow-repeat me-1"></i>Proses</span>
-                                        @endif
-                                    </td>
-                                    <td class="text-end pe-4">
-                                        </td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="3" class="text-center py-5 text-muted">
-                                        <i class="bi bi-inbox fs-1 d-block mb-2 text-light"></i>
-                                        Belum ada riwayat transaksi
-                                    </td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
             </div>
-        </div>
     </div>
-
-    <div class="row mt-4">
-        </div>
 </div>
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-
-        // 1. Logika Pencarian Tabel (Pricelist Pascabayar)
-        const searchInput = document.getElementById('searchPricelist');
-        const rows = document.querySelectorAll('.pricelist-row');
-
-        if(searchInput) {
-            searchInput.addEventListener('keyup', function(e) {
-                const term = e.target.value.toLowerCase();
-                rows.forEach(row => {
-                    const name = row.querySelector('.product-name').textContent.toLowerCase();
-                    const code = row.querySelector('.product-code').textContent.toLowerCase();
-                    if(name.includes(term) || code.includes(term)) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-            });
-        }
-
-        // ==========================================
-        // 2. LOGIKA DETEKSI OPERATOR IAK
-        // ==========================================
+        // Elemen-elemen DOM
         const phoneInput = document.getElementById('customer_id_pra');
         const badgeContainer = document.getElementById('operator-badge');
         const operatorNameSpan = document.getElementById('operator-name');
         const operatorMsgSpan = document.getElementById('operator-msg');
 
-        // Data Prefix sesuai dokumentasi IAK
+        const categoryContainer = document.getElementById('category-selector-container');
+        const categorySelect = document.getElementById('product_category_pra');
+        const productContainer = document.getElementById('product-list-container');
+        const productList = document.getElementById('product-list');
+        const productCodeInput = document.getElementById('product_code_pra');
+        const btnSubmitPra = document.getElementById('btn-submit-pra');
+
+        let currentOperator = ''; // Menyimpan operator yang sedang terdeteksi
+
+        // Data Prefix IAK
         const prefixes = {
             'INDOSAT': { code: ['0814','0815','0816','0855','0856','0857','0858'], color: 'bg-warning text-dark' },
             'XL': { code: ['0817','0818','0819','0859','0878','0877'], color: 'bg-primary' },
-            'AXIS': { code: ['0838','0837','0831','0832'], color: 'bg-purple' }, // custom style or use primary
+            'AXIS': { code: ['0838','0837','0831','0832'], color: 'bg-purple' },
             'TELKOMSEL': { code: ['0812','0813','0852','0853','0821','0823','0822','0851'], color: 'bg-danger' },
             'SMARTFREN': { code: ['0881','0882','0883','0884','0885','0886','0887','0888'], color: 'bg-info text-dark' },
             'THREE': { code: ['0896','0897','0898','0899','0895'], color: 'bg-dark' },
             'BY.U': { code: ['085154','085155','085156','085157','085158'], color: 'bg-primary' }
         };
 
+        // Event saat input Nomor HP diketik
         if(phoneInput) {
             phoneInput.addEventListener('input', function(e) {
-                let number = e.target.value;
-
-                // Hapus karakter non-angka
-                number = number.replace(/[^0-9]/g, '');
+                let number = e.target.value.replace(/[^0-9]/g, '');
                 e.target.value = number;
 
-                // Mulai deteksi jika nomor sudah 4 digit
                 if(number.length >= 4) {
                     let foundOperator = 'UNKNOWN';
                     let foundColor = 'bg-secondary';
 
-                    // Cek khusus by.U yang butuh 6 digit
                     if(number.length >= 6) {
                         let prefix6 = number.substring(0, 6);
                         if(prefixes['BY.U'].code.includes(prefix6)) {
-                            foundOperator = 'BY.U';
-                            foundColor = prefixes['BY.U'].color;
+                            foundOperator = 'BY.U'; foundColor = prefixes['BY.U'].color;
                         }
                     }
 
-                    // Jika bukan by.U, cek 4 digit pertama
                     if(foundOperator === 'UNKNOWN') {
                         let prefix4 = number.substring(0, 4);
                         for (const [operator, data] of Object.entries(prefixes)) {
                             if(operator !== 'BY.U' && data.code.includes(prefix4)) {
-                                foundOperator = operator;
-                                foundColor = data.color;
+                                foundOperator = operator; foundColor = data.color;
                                 break;
                             }
                         }
                     }
 
-                    // Tampilkan Badge
                     badgeContainer.classList.remove('d-none');
                     operatorNameSpan.className = `badge ${foundColor} px-3 py-2`;
 
@@ -246,7 +168,15 @@
                         operatorNameSpan.textContent = foundOperator;
                         operatorMsgSpan.textContent = 'Nomor Valid';
                         operatorMsgSpan.className = 'text-success ms-2 small fw-bold';
+
+                        // JIKA OPERATOR BERBEDA DENGAN SEBELUMNYA, TARIK DATA PRODUK BARU
+                        if(currentOperator !== foundOperator) {
+                            currentOperator = foundOperator;
+                            categoryContainer.classList.remove('d-none');
+                            fetchProducts(currentOperator, categorySelect.value);
+                        }
                     } else {
+                        resetProductView();
                         operatorNameSpan.textContent = 'Tidak Dikenal';
                         operatorNameSpan.className = 'badge bg-secondary px-3 py-2';
                         operatorMsgSpan.textContent = 'Prefix tidak cocok dengan operator manapun';
@@ -254,10 +184,82 @@
                     }
 
                 } else {
-                    // Sembunyikan jika kurang dari 4 digit
                     badgeContainer.classList.add('d-none');
+                    resetProductView();
                 }
             });
+        }
+
+        // Event saat Pilihan "Pulsa / Paket Data" diganti
+        categorySelect.addEventListener('change', function(e) {
+            if(currentOperator) {
+                fetchProducts(currentOperator, e.target.value);
+            }
+        });
+
+        // Fungsi Reset Tampilan
+        function resetProductView() {
+            currentOperator = '';
+            categoryContainer.classList.add('d-none');
+            productContainer.classList.add('d-none');
+            productList.innerHTML = '';
+            productCodeInput.value = '';
+            btnSubmitPra.disabled = true;
+        }
+
+        // FUNGSI AJAX: Menarik Produk dari Database
+        function fetchProducts(operator, type) {
+            productContainer.classList.remove('d-none');
+            productList.innerHTML = `<div class="col-12 text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div><span class="ms-2 text-muted">Mencari produk ${operator}...</span></div>`;
+
+            // Reset pilihan sebelumnya
+            productCodeInput.value = '';
+            btnSubmitPra.disabled = true;
+
+            fetch(`{{ route('ppob.get_products') }}?operator=${operator}&type=${type}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success && data.data.length > 0) {
+                    let html = '';
+                    data.data.forEach(item => {
+                        let rpPrice = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price);
+
+                        // Merender Grid Kartu Produk
+                        html += `
+                        <div class="col-6 col-md-4">
+                            <div class="card h-100 border product-card cursor-pointer shadow-sm" style="cursor: pointer;" onclick="selectProduct('${item.code}', this)">
+                                <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                    <div class="small fw-bold text-dark mb-2 lh-sm" title="${item.description}">${item.description}</div>
+                                    <div class="text-primary fw-bolder fs-6">${rpPrice}</div>
+                                </div>
+                            </div>
+                        </div>`;
+                    });
+                    productList.innerHTML = html;
+                } else {
+                    productList.innerHTML = `<div class="col-12 text-center py-3"><div class="text-muted small">Belum ada produk aktif untuk kategori ini.</div></div>`;
+                }
+            })
+            .catch(err => {
+                productList.innerHTML = `<div class="col-12 text-center py-3"><div class="text-danger small">Gagal memuat produk. Periksa koneksi Anda.</div></div>`;
+            });
+        }
+
+        // Fungsi saat Kartu Produk diklik
+        window.selectProduct = function(code, element) {
+            // Hapus status 'selected' dari semua kartu
+            document.querySelectorAll('.product-card').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            // Tambahkan efek ke kartu yang dipilih
+            element.classList.add('selected');
+
+            // Masukkan kode produk ke input form dan aktifkan tombol Beli
+            productCodeInput.value = code;
+            btnSubmitPra.disabled = false;
         }
     });
 </script>
