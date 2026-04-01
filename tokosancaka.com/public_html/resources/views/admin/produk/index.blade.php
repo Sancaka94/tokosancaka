@@ -224,7 +224,6 @@ function fetchLiveBalance() {
     const balanceEl = document.getElementById('live-balance-amount');
     const btnIcon = document.querySelector('#btn-refresh-balance svg');
 
-    // Efek muter saat diklik
     btnIcon.classList.add('animate-spin');
     balanceEl.innerHTML = '<span class="animate-pulse text-lg font-normal text-blue-200">Memuat saldo...</span>';
 
@@ -237,21 +236,21 @@ function fetchLiveBalance() {
     .then(res => res.json())
     .then(data => {
         btnIcon.classList.remove('animate-spin');
+
         if(data.success) {
-            // Ubah format angka menjadi format Rupiah (Rp 10.000.000)
             let rp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(data.balance);
             balanceEl.innerHTML = rp;
         } else {
-            balanceEl.innerHTML = '<span class="text-red-300 text-lg text-sm">Gagal memuat saldo</span>';
+            // Menampilkan error spesifik dari IAK (misal: "API Error: PAGE NOT FOUND" atau "Invalid Signature")
+            balanceEl.innerHTML = `<span class="text-red-300 text-lg font-medium">${data.message}</span>`;
         }
     })
     .catch(err => {
         btnIcon.classList.remove('animate-spin');
-        balanceEl.innerHTML = '<span class="text-red-300 text-lg text-sm">Koneksi terputus</span>';
+        balanceEl.innerHTML = '<span class="text-red-300 text-lg font-medium">Route / URL AJAX Tidak Ditemukan</span>';
     });
 }
 
-// Otomatis tarik saldo saat halaman admin dibuka
 document.addEventListener('DOMContentLoaded', fetchLiveBalance);
 </script>
 

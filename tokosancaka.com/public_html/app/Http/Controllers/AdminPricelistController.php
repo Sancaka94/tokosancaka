@@ -228,7 +228,7 @@ class AdminPricelistController extends Controller
     }
 
     /**
-     * API Internal: Tarik Saldo IAK secara Real-Time via AJAX
+     * API Internal: Tarik Saldo IAK secara Real-Time via AJAX (Widget Biru)
      */
     public function liveBalanceApi()
     {
@@ -236,29 +236,33 @@ class AdminPricelistController extends Controller
         $apiKey = env('IAK_API_KEY');
         $sign = md5($username . $apiKey . 'bl');
 
-        $baseUrl = rtrim(env('IAK_URL'), '/');
-        if (!str_ends_with(strtolower($baseUrl), '/api')) {
-            $baseUrl .= '/api';
-        }
-        $url = $baseUrl . '/v1/legacy/index';
+        $baseUrl = str_replace('/api', '', rtrim(env('IAK_URL'), '/'));
+        $url = $baseUrl . '/api/check-balance';
 
         try {
-            $response = Http::asForm()->post($url, [
-                'commands' => 'balance',
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json'
+            ])->post($url, [
                 'username' => $username,
                 'sign'     => $sign
             ]);
 
-            if ($response->successful() && $response->json('data.balance') !== null) {
+            $data = $response->json();
+
+            // Jika sukses dan key balance tersedia
+            if ($response->successful() && isset($data['data']['balance'])) {
                 return response()->json([
                     'success' => true,
-                    'balance' => $response->json('data.balance')
+                    'balance' => $data['data']['balance']
                 ]);
             }
 
-            return response()->json(['success' => false, 'message' => 'Gagal membaca API']);
+            // Jika gagal, tangkap pesan aslinya agar bisa dilihat di layar
+            $errorMsg = $data['data']['message'] ?? 'Format response IAK berubah';
+            return response()->json(['success' => false, 'message' => 'API Error: ' . $errorMsg]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Koneksi Server Gagal']);
         }
     }
 }
