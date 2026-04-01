@@ -66,7 +66,7 @@ class PpobIakController extends Controller
                             'fee'      => $item['fee'],
                             'komisi'   => $item['komisi'],
                             'type'     => $item['type'],
-                            'category' => $item['category'],
+                            'category' => $item['category'] ?? 'postpaid',
                             'province' => $item['province'] ?? null,
                         ]
                     );
