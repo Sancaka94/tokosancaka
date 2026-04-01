@@ -220,4 +220,39 @@ class AdminPricelistController extends Controller
             return back()->with('error', 'Terjadi kesalahan koneksi saat sinkronisasi: ' . $e->getMessage());
         }
     }
+
+    /**
+     * API Internal: Tarik Saldo IAK secara Real-Time via AJAX
+     */
+    public function liveBalanceApi()
+    {
+        $username = env('IAK_USERNAME');
+        $apiKey = env('IAK_API_KEY');
+        $sign = md5($username . $apiKey . 'bl');
+
+        $baseUrl = rtrim(env('IAK_URL'), '/');
+        if (!str_ends_with(strtolower($baseUrl), '/api')) {
+            $baseUrl .= '/api';
+        }
+        $url = $baseUrl . '/v1/legacy/index';
+
+        try {
+            $response = Http::asForm()->post($url, [
+                'commands' => 'balance',
+                'username' => $username,
+                'sign'     => $sign
+            ]);
+
+            if ($response->successful() && $response->json('data.balance') !== null) {
+                return response()->json([
+                    'success' => true,
+                    'balance' => $response->json('data.balance')
+                ]);
+            }
+
+            return response()->json(['success' => false, 'message' => 'Gagal membaca API']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
 }

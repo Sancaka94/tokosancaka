@@ -1143,4 +1143,5 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
     Route::post('/iak/check-balance', [AdminPricelistController::class, 'checkBalance'])->name('iak.check_balance');
     Route::post('/iak/sync-pricelist', [AdminPricelistController::class, 'syncPricelistApi'])->name('iak.sync_pricelist');
 
+    Route::get('/iak/live-balance', [AdminPricelistController::class, 'liveBalanceApi'])->name('admin.iak.live_balance');
 });

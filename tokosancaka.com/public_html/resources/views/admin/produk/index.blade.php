@@ -32,6 +32,33 @@
         </div>
     @endif
 
+    <div class="mb-6 bg-gradient-to-r from-blue-700 to-blue-900 rounded-xl shadow-lg p-6 flex flex-col md:flex-row justify-between items-center text-white relative overflow-hidden">
+        <div class="absolute right-0 top-0 opacity-10 pointer-events-none">
+            <svg class="w-48 h-48 -mt-10 -mr-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.64-2.25 1.64-1.74 0-2.33-.97-2.4-1.93H7.81c.12 1.74 1.36 2.91 3.09 3.27V19h2.34v-1.64c1.65-.3 2.85-1.4 2.85-2.97 0-2.02-1.72-2.77-3.78-3.25z"/></svg>
+        </div>
+
+        <div class="flex items-center gap-5 z-10 mb-4 md:mb-0">
+            <div class="bg-white/20 p-4 rounded-full backdrop-blur-sm shadow-inner">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+            </div>
+            <div>
+                <h3 class="text-blue-200 text-sm font-semibold uppercase tracking-wider mb-1">Total Saldo IAK</h3>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-bold tracking-tight" id="live-balance-amount">
+                        <span class="animate-pulse text-lg font-normal text-blue-200">Menghubungkan ke API...</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="z-10">
+             <button onclick="fetchLiveBalance()" id="btn-refresh-balance" class="bg-white/10 hover:bg-white/25 border border-white/20 transition-all px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 backdrop-blur-sm shadow-sm">
+                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                 Refresh Real-Time
+             </button>
+        </div>
+    </div>
+
     <div class="flex flex-col md:flex-row gap-6">
         <div class="w-full md:w-1/4 lg:w-1/5">
             <div class="bg-white shadow rounded-lg p-4 sticky top-4">
@@ -191,4 +218,43 @@
         </div>
     </div>
 </div>
+
+<script>
+function fetchLiveBalance() {
+    const balanceEl = document.getElementById('live-balance-amount');
+    const btnIcon = document.querySelector('#btn-refresh-balance svg');
+
+    // Efek muter saat diklik
+    btnIcon.classList.add('animate-spin');
+    balanceEl.innerHTML = '<span class="animate-pulse text-lg font-normal text-blue-200">Memuat saldo...</span>';
+
+    fetch('{{ route("admin.iak.live_balance") }}', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        btnIcon.classList.remove('animate-spin');
+        if(data.success) {
+            // Ubah format angka menjadi format Rupiah (Rp 10.000.000)
+            let rp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(data.balance);
+            balanceEl.innerHTML = rp;
+        } else {
+            balanceEl.innerHTML = '<span class="text-red-300 text-lg text-sm">Gagal memuat saldo</span>';
+        }
+    })
+    .catch(err => {
+        btnIcon.classList.remove('animate-spin');
+        balanceEl.innerHTML = '<span class="text-red-300 text-lg text-sm">Koneksi terputus</span>';
+    });
+}
+
+// Otomatis tarik saldo saat halaman admin dibuka
+document.addEventListener('DOMContentLoaded', fetchLiveBalance);
+</script>
+
 @endsection
+
+
