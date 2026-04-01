@@ -146,6 +146,23 @@ class PpobIakController extends Controller
                 $finalStatus = $codeInfo ? strtoupper($codeInfo->status) : ($statusMap[$result['data']['status']] ?? 'PROCESS');
                 $finalMessage = $codeInfo ? $codeInfo->description . ' - ' . $codeInfo->solution : ($result['data']['message'] ?? 'Request Terkirim');
 
+                // --- TAMBAHAN LOGIKA REFUND SALDO ---
+                // Jika status aslinya PROCESS/PENDING, lalu berubah jadi FAILED
+                if (in_array($transaction->status, ['PROCESS', 'PENDING']) && $finalStatus === 'FAILED') {
+                    if ($transaction->customer_id) { // Asumsi auth()->user() tidak bisa dipakai karena ini mungkin via cronjob, kita cari user pemilik transaksi jika ada relasinya.
+                         // Jika tabel TransactionPpobIak memiliki user_id, gunakan:
+                         // $user = \App\Models\User::find($transaction->user_id);
+                         // Namun karena kita pakai auth()->user() saat store, dan ini ditekan manual oleh user yang login:
+                         if (auth()->check()) {
+                             $user = auth()->user();
+                             $user->balance_iak += $transaction->price; // Kembalikan saldo
+                             $user->save();
+                             Log::info('LOG LOG - Saldo Refunded (Check Status)', ['ref_id' => $transaction->ref_id, 'amount' => $transaction->price]);
+                         }
+                    }
+                }
+                // ------------------------------------
+
                 $transaction->update([
                     'status'  => $finalStatus,
                     'price'   => $product->price, // Menggunakan harga dari database
