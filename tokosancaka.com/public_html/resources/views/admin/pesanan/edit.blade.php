@@ -14,7 +14,7 @@
 
 <div class="max-w-7xl mx-auto">
 
-    <form action="{{ route('admin.pesanan.update', ['resi' => $pesanan->resi]) }}" method="POST">
+    <form action="{{ route('admin.pesanan.update', $pesanan->resi ?? $pesanan->nomor_invoice) }}" method="POST">
 
         @csrf
 
@@ -22,7 +22,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            
+
 
             <!-- Kolom Kiri: Pengirim & Penerima -->
 
@@ -202,7 +202,7 @@
 
                 </div>
 
-                
+
 
                 <!-- Aksi -->
 
@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const motorcycleChecklist = document.getElementById('motorcycle_checklist');
 
-    
+
 
     function updateExpeditions() {
 
