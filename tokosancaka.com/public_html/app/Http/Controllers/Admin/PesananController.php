@@ -472,8 +472,8 @@ class PesananController extends Controller
             'item_description' => 'required|string',
             'weight' => 'required|numeric|min:1',
             // Hati-hati jika mengubah payment method atau expedition setelah dibuat
-            // 'payment_method' => 'required|string',
-            // 'expedition' => 'required|string',
+            'payment_method' => 'required|string',
+            'expedition' => 'required|string',
         ]);
         $order = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->firstOrFail();
         // Sanitasi nomor telepon sebelum update
