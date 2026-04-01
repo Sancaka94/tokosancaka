@@ -105,7 +105,7 @@ class AdminPricelistController extends Controller
         }
     }
 
-    /**
+   /**
      * Mengecek sisa saldo di akun IAK
      */
     public function checkBalance()
@@ -114,7 +114,10 @@ class AdminPricelistController extends Controller
         $apiKey = env('IAK_API_KEY');
         // LOG LOG: Format Sign Cek Saldo = md5(username + api_key + 'bl')
         $sign = md5($username . $apiKey . 'bl');
-        $url = env('IAK_URL') . '/v1/legacy/index';
+
+        // Membersihkan trailing slash dan /api jika terlanjur ditulis di .env
+        $baseUrl = str_replace('/api', '', rtrim(env('IAK_URL'), '/'));
+        $url = $baseUrl . '/v1/legacy/index';
 
         try {
             $response = Http::post($url, [
@@ -146,7 +149,12 @@ class AdminPricelistController extends Controller
         $apiKey = env('IAK_API_KEY');
         // LOG LOG: Format Sign Pricelist = md5(username + api_key + 'pl')
         $sign = md5($username . $apiKey . 'pl');
-        $url = env('IAK_URL') . '/v1/legacy/index';
+
+        // Membersihkan trailing slash dan /api dari .env
+        $baseUrl = str_replace('/api', '', rtrim(env('IAK_URL'), '/'));
+
+        // FIX 404: Tambahkan /all/all untuk memenuhi parameter path /:type/:operator
+        $url = $baseUrl . '/v1/legacy/index/all/all';
 
         try {
             $response = Http::post($url, [
@@ -156,7 +164,8 @@ class AdminPricelistController extends Controller
                 'status'   => 'all'
             ]);
 
-            if ($response->successful()) {
+            // Cek apakah response sukses dan datanya benar-benar ada
+            if ($response->successful() && $response->json('data') && !isset($response->json('data')['rc'])) {
                 $products = $response->json('data');
                 $count = 0;
 
@@ -185,8 +194,10 @@ class AdminPricelistController extends Controller
                 return back()->with('success', "Sinkronisasi sukses! $count produk berhasil diupdate langsung dari IAK.");
             }
 
-            Log::error('LOG LOG - IAK Pricelist Error: ' . $response->body());
-            return back()->with('error', 'Gagal menarik data pricelist dari IAK.');
+            // Jika API IAK mengembalikan format error (seperti 404 tadi)
+            $errorMsg = $response->json('data.message') ?? $response->body();
+            Log::error('LOG LOG - IAK Pricelist Error: ' . $errorMsg);
+            return back()->with('error', 'Gagal menarik data pricelist dari IAK: ' . $errorMsg);
 
         } catch (\Exception $e) {
             Log::error('LOG LOG - IAK Pricelist Exception: ' . $e->getMessage());
