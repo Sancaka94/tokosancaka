@@ -61,7 +61,7 @@
                            required>
 
                     <p class="mt-2 text-sm text-red-500 bg-red-50 p-2 rounded border border-red-100 inline-block">
-                        <strong>Perhatian:</strong> Pastikan format kolom berurutan: A (No), B (Operator), C (Kode), D (Nominal), F (Harga Rp), G (Status).
+                        <strong>Perhatian:</strong> *Pastikan format kolom berurutan: A (No), B (Operator), C (Kode), D (Nominal), E (Detail), F (Harga Rp), G (Status).
                     </p>
                 </div>
 
