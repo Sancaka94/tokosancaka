@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Product; // Sesuaikan dengan nama Model Anda
+use App\Models\IakPricelistPrepaid; // Model yang benar
+use Illuminate\Support\Facades\Log; // Import Log Laravel
+use Illuminate\Support\Facades\Auth;
 
 class ProdukController extends Controller
 {
@@ -13,16 +15,18 @@ class ProdukController extends Controller
      */
     public function index(Request $request)
     {
-        $currentTab = $request->input('tab', 'pulsa-prabayar');
+        // LOG LOG
+        $currentTab = $request->input('tab', 'pulsa');
         $search = $request->input('search');
         $status = $request->input('status');
 
-        $query = Product::where('kategori', $currentTab);
+        $query = IakPricelistPrepaid::where('type', $currentTab);
 
         if (!empty($search)) {
             $query->where(function($q) use ($search) {
-                $q->where('kode_sku', 'like', '%' . $search . '%')
-                  ->orWhere('nama_produk', 'like', '%' . $search . '%');
+                $q->where('code', 'like', '%' . $search . '%')
+                  ->orWhere('description', 'like', '%' . $search . '%')
+                  ->orWhere('operator', 'like', '%' . $search . '%');
             });
         }
 
@@ -40,9 +44,8 @@ class ProdukController extends Controller
      */
     public function create(Request $request)
     {
-        // Menangkap tab saat ini agar form tahu mau menambahkan ke kategori mana
-        $currentTab = $request->input('tab', 'pulsa-prabayar');
-
+        // LOG LOG
+        $currentTab = $request->input('tab', 'pulsa');
         return view('admin.produk.create', compact('currentTab'));
     }
 
@@ -51,33 +54,29 @@ class ProdukController extends Controller
      */
     public function store(Request $request)
     {
-        // 1. Validasi input dari form
+        // LOG LOG
         $request->validate([
-            'kode_sku'    => 'required|unique:products,kode_sku', // Pastikan nama tabel sesuai, misal: 'products'
-            'nama_produk' => 'required|string|max:255',
-            'kategori'    => 'required|string',
-            'harga_modal' => 'required|numeric|min:0',
-            'harga_jual'  => 'required|numeric|min:0',
-            'status'      => 'required|in:aktif,gangguan,nonaktif',
-        ], [
-            // Kustomisasi pesan error (opsional)
-            'kode_sku.required' => 'Kode SKU wajib diisi.',
-            'kode_sku.unique'   => 'Kode SKU sudah terdaftar, gunakan kode lain.',
-            'nama_produk.required' => 'Nama produk wajib diisi.',
+            'operator'    => 'required|string',
+            'code'        => 'required|unique:iak_pricelist_prepaid,code',
+            'description' => 'required|string|max:255',
+            'type'        => 'required|string',
+            'price'       => 'required|numeric|min:0',
+            'status'      => 'required',
         ]);
 
-        // 2. Simpan ke database
-        Product::create([
-            'kode_sku'    => $request->kode_sku,
-            'nama_produk' => $request->nama_produk,
-            'kategori'    => $request->kategori,
-            'harga_modal' => $request->harga_modal,
-            'harga_jual'  => $request->harga_jual,
+        $product = IakPricelistPrepaid::create([
+            'operator'    => $request->operator,
+            'code'        => $request->code,
+            'description' => $request->description,
+            'type'        => $request->type,
+            'price'       => $request->price,
             'status'      => $request->status,
         ]);
 
-        // 3. Redirect kembali ke index dengan tab yang sesuai
-        return redirect()->route('admin.produk.index', ['tab' => $request->kategori])
+        // Mencatat log aktivitas
+        Log::info("PRODUK_IAK: Admin " . (Auth::user()->name ?? 'System') . " menambahkan produk baru [" . $product->code . "]");
+
+        return redirect()->route('admin.produk.index', ['tab' => $request->type])
                          ->with('success', 'Produk berhasil ditambahkan!');
     }
 
@@ -86,8 +85,8 @@ class ProdukController extends Controller
      */
     public function edit($id)
     {
-        $product = Product::findOrFail($id);
-
+        // LOG LOG
+        $product = IakPricelistPrepaid::findOrFail($id);
         return view('admin.produk.edit', compact('product'));
     }
 
@@ -96,31 +95,25 @@ class ProdukController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $product = Product::findOrFail($id);
+        // LOG LOG
+        $product = IakPricelistPrepaid::findOrFail($id);
 
-        // 1. Validasi input
         $request->validate([
-            // Abaikan aturan unique untuk ID produk yang sedang diedit
-            'kode_sku'    => 'required|unique:products,kode_sku,' . $product->id,
-            'nama_produk' => 'required|string|max:255',
-            'kategori'    => 'required|string',
-            'harga_modal' => 'required|numeric|min:0',
-            'harga_jual'  => 'required|numeric|min:0',
-            'status'      => 'required|in:aktif,gangguan,nonaktif',
+            'operator'    => 'required|string',
+            'code'        => 'required|unique:iak_pricelist_prepaid,code,' . $product->id,
+            'description' => 'required|string|max:255',
+            'type'        => 'required|string',
+            'price'       => 'required|numeric|min:0',
+            'status'      => 'required',
         ]);
 
-        // 2. Update data
-        $product->update([
-            'kode_sku'    => $request->kode_sku,
-            'nama_produk' => $request->nama_produk,
-            'kategori'    => $request->kategori,
-            'harga_modal' => $request->harga_modal,
-            'harga_jual'  => $request->harga_jual,
-            'status'      => $request->status,
-        ]);
+        $oldPrice = $product->price;
+        $product->update($request->all());
 
-        // 3. Redirect kembali ke index
-        return redirect()->route('admin.produk.index', ['tab' => $request->kategori])
+        // Mencatat log aktivitas perubahan
+        Log::info("PRODUK_IAK: Admin " . (Auth::user()->name ?? 'System') . " mengubah produk [" . $product->code . "]. Harga: $oldPrice -> " . $product->price);
+
+        return redirect()->route('admin.produk.index', ['tab' => $request->type])
                          ->with('success', 'Produk berhasil diperbarui!');
     }
 
@@ -129,14 +122,17 @@ class ProdukController extends Controller
      */
     public function destroy($id)
     {
-        $product = Product::findOrFail($id);
-
-        // Simpan kategori sebelum dihapus agar redirect kembalinya pas di tab tersebut
-        $kategori = $product->kategori;
+        // LOG LOG
+        $product = IakPricelistPrepaid::findOrFail($id);
+        $code = $product->code;
+        $type = $product->type;
 
         $product->delete();
 
-        return redirect()->route('admin.produk.index', ['tab' => $kategori])
+        // Mencatat log penghapusan (Warning)
+        Log::warning("PRODUK_IAK: Admin " . (Auth::user()->name ?? 'System') . " MENGHAPUS produk [" . $code . "]");
+
+        return redirect()->route('admin.produk.index', ['tab' => $type])
                          ->with('success', 'Produk berhasil dihapus!');
     }
 }

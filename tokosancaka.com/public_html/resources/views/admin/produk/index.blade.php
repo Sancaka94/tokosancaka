@@ -23,25 +23,25 @@
                 <h3 class="font-bold text-gray-700 mb-4 text-lg border-b pb-2">Kategori Produk</h3>
 
                 @php
-                    // Ambil parameter tab dari URL, default ke 'pulsa-prabayar'
-                    $currentTab = request('tab', 'pulsa-prabayar');
+                    // Tab default disesuaikan dengan isi kolom 'type' di database IAK
+                    $currentTab = request('tab', 'pulsa');
 
-                    // Daftar semua kategori
+                    // Mapping slug tab ke value kolom 'type' di database
                     $categories = [
-                        'pulsa-prabayar' => '📱 Pulsa Prabayar',
-                        'paket-data' => '🌐 Paket Data',
-                        'token-pln' => '⚡ Token PLN',
-                        'e-money' => '💳 E-Money',
+                        'pulsa' => '📱 Pulsa Prabayar',
+                        'data' => '🌐 Paket Data',
+                        'pln' => '⚡ Token PLN',
+                        'etoll' => '💳 E-Money',
                         'game' => '🎮 Game',
-                        'voucher-belanja' => '🛍️ Voucher Belanja',
-                        'pulsa-internasional' => '🌍 Pulsa Internasional',
-                        'esim-internasional' => '📲 e-SIM Internasional',
-                        'e-meterai' => '📜 E-Meterai',
+                        'voucher' => '🛍️ Voucher Belanja',
+                        'intl' => '🌍 Internasional',
+                        'esim' => '📲 e-SIM',
+                        'meterai' => '📜 E-Meterai',
                         'streaming' => '🎬 Streaming',
-                        'paket-bicara' => '📞 Paket Bicara',
+                        'call' => '📞 Paket Bicara',
                         'pgn' => '🔥 PGN',
                         'roaming' => '✈️ Roaming',
-                        'pascabayar-tagihan' => '🧾 Pulsa Pascabayar & Tagihan'
+                        'pasca' => '🧾 Pascabayar & Tagihan'
                     ];
                 @endphp
 
@@ -67,13 +67,13 @@
                     <input type="hidden" name="tab" value="{{ $currentTab }}">
 
                     <h2 class="text-xl font-bold text-gray-800 w-full lg:w-auto">
-                        Data {{ ucwords(str_replace('-', ' ', $currentTab)) }}
+                        Data {{ $categories[$currentTab] ?? ucwords($currentTab) }}
                     </h2>
 
                     <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
                         <div class="relative w-full sm:w-64">
-                            <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari kode atau nama..."
-                                   class="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                            <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari kode atau deskripsi..."
+                                   class="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -81,15 +81,14 @@
                             </div>
                         </div>
 
-                        <select name="status" class="text-sm border border-gray-300 rounded-lg px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" onchange="this.form.submit()">
+                        <select name="status" class="text-sm border border-gray-300 rounded-lg px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="this.form.submit()">
                             <option value="">Semua Status</option>
-                            <option value="aktif" {{ request('status') == 'aktif' ? 'selected' : '' }}>Aktif</option>
-                            <option value="gangguan" {{ request('status') == 'gangguan' ? 'selected' : '' }}>Gangguan</option>
-                            <option value="nonaktif" {{ request('status') == 'nonaktif' ? 'selected' : '' }}>Nonaktif</option>
+                            <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Aktif</option>
+                            <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Nonaktif</option>
                         </select>
 
                         <button type="submit" class="bg-blue-600 text-white px-5 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto">
-                            Terapkan
+                            Filter
                         </button>
                     </div>
                 </form>
@@ -98,52 +97,50 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode SKU</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Produk</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Modal</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Jual</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Operator</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deskripsi</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harga</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($products as $item)
                                 <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
+                                        {{ $item->operator }}
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {{ $item->kode_sku }}
+                                        {{ $item->code }}
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-700">
-                                        {{ $item->nama_produk }}
+                                        {{ $item->description }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        Rp {{ number_format($item->harga_modal, 0, ',', '.') }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        Rp {{ number_format($item->harga_jual, 0, ',', '.') }}
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                        Rp {{ number_format($item->price, 0, ',', '.') }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @if($item->status == 'aktif')
+                                        @if($item->status == 'active')
                                             <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Aktif</span>
-                                        @elseif($item->status == 'gangguan')
-                                            <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Gangguan</span>
                                         @else
                                             <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Nonaktif</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
-                                        <button class="text-red-600 hover:text-red-900">Hapus</button>
+                                        <div class="flex justify-end gap-2">
+                                            <a href="{{ route('admin.produk.edit', $item->id) }}" class="text-blue-600 hover:text-blue-900">Edit</a>
+                                            <form action="{{ route('admin.produk.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Yakin hapus data?')">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-900">Hapus</button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500">
-                                        <div class="flex flex-col items-center">
-                                            <svg class="h-10 w-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                            </svg>
-                                            <p>Data tidak ditemukan untuk pencarian atau filter ini.</p>
-                                        </div>
+                                    <td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500">
+                                        Data tidak ditemukan.
                                     </td>
                                 </tr>
                             @endforelse
