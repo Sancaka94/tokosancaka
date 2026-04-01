@@ -18,36 +18,40 @@ class AdminPricelistController extends Controller
     {
         $request->validate([
             'file' => 'required|mimes:xlsx,xls,csv',
-            'type' => 'required|string' // Pulsa, Data, Game, dll
+            'type' => 'required|string'
         ]);
 
         try {
-            // Mengubah file excel menjadi array (mengambil Sheet pertama saja)
             $data = Excel::toArray([], $request->file('file'));
             $sheet = $data[0];
 
             $count = 0;
 
             foreach ($sheet as $key => $row) {
-                // Lewati baris yang kosong atau header yang bukan data
-                // Kolom B = index 1 (Operator), Kolom C = index 2 (Kode Produk)
-                if (empty($row[1]) || empty($row[2]) || $row[1] == 'Operator') {
+                // Lewati baris pertama (header) atau jika Kode kosong
+                if ($key == 0 || empty($row[2]) || $row[1] == 'Operator') {
                     continue;
                 }
 
-                // Kolom F = index 5 (Harga). Bersihkan teks "Rp " dan titik "." agar jadi angka murni
+                // Bersihkan teks "Rp " dan titik "." dari Kolom F (Harga)
                 $rawPrice = $row[5] ?? '0';
                 $cleanPrice = preg_replace('/[^0-9]/', '', $rawPrice);
 
+                // Logika Deskripsi: Jika Kolom E (Index 4) isinya "-", kita pakai nominal di Kolom D (Index 3) saja.
+                // Jika Kolom E ada teks penjelasannya, kita gunakan teks dari Kolom E tersebut.
+                $nominal = $row[3] ?? '';
+                $detail = $row[4] ?? '';
+                $finalDescription = ($detail != '' && $detail != '-') ? $detail : $nominal;
+
                 // Insert atau Update ke Database
                 IakPricelistPrepaid::updateOrCreate(
-                    ['code' => $row[2]], // Update jika kode sudah ada
+                    ['code' => $row[2]], // Patokan update adalah kode produk
                     [
                         'operator'    => $row[1],
-                        'description' => $row[3], // Nominal
+                        'description' => $finalDescription,
                         'price'       => $cleanPrice,
                         'status'      => $row[6] ?? 'Active',
-                        'type'        => $request->type // Dari input form
+                        'type'        => $request->type
                     ]
                 );
 
