@@ -401,6 +401,14 @@ class PpobIakController extends Controller
         $sign   = $data['sign'] ?? null;
 
         $expectedSign = md5($this->username . $this->apiKey . $refId);
+        // --- TAMBAHKAN LOG INI UNTUK MENGINTIP ISI SIGNATURE ---
+        Log::info('LOG LOG - Webhook Signature Check', [
+            'received_sign' => $sign,
+            'expected_sign' => $expectedSign,
+            'ref_id_tested' => $refId
+        ]);
+        // --------------------------------------------------------
+
         if ($sign && $sign !== $expectedSign) {
             return response()->json(['message' => 'Invalid signature'], 403);
         }
