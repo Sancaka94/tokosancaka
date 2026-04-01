@@ -178,42 +178,51 @@ class KirimAjaController extends Controller
                     Log::info("[WEBHOOK-KA] Updated Marketplace Order: $orderId ke status " . ($updateOrderData['status'] ?? $oldStatus));
                 }
 
-                // =========================================================================
-                // 🔥 BAGIAN 1.B: CEK PESANAN MANUAL (FIX DOBEL INPUT KEUANGAN)
-                // =========================================================================
+                    // =========================================================================
+                    // 🔥 BAGIAN 1.B: CEK PESANAN MANUAL (FIX DOBEL INPUT KEUANGAN)
+                    // =========================================================================
 
-                // [PENTING] Tambahkan lockForUpdate agar tidak balapan data (Race Condition)
-                // Kita gunakan query builder dengan lock
-                $cekPesanan = DB::table('Pesanan')
-                                ->where('nomor_invoice', $orderId)
-                                ->lockForUpdate()
-                                ->first();
+                    $cekPesanan = DB::table('Pesanan')
+                                    ->where('nomor_invoice', $orderId)
+                                    ->lockForUpdate()
+                                    ->first();
 
-                if ($cekPesanan) {
-                    $foundInMainDB = true;
-                    $updateData = ['updated_at' => now()];
+                    if ($cekPesanan) {
+                        $foundInMainDB = true;
+                        $updateData = ['updated_at' => now()];
+                        $statusLamaPesanan = $cekPesanan->status;
 
-                    // Simpan status lama sebelum update
-                    $statusLamaPesanan = $cekPesanan->status;
+                        $perluUpdate = false; // Buat penanda apakah ada data yang berubah
 
-                    if ($awb) {
-                        $updateData['resi'] = $awb;
-                    }
-
-                    // UPDATE STATUS
-                    if ($statusPesananIndo && $cekPesanan->status !== $statusPesananIndo) {
-                        $updateData['status'] = $statusPesananIndo;
-                        if (\Illuminate\Support\Facades\Schema::hasColumn('Pesanan', 'status_pesanan')) {
-                            $updateData['status_pesanan'] = $statusPesananIndo;
+                        // 1. CEK PERUBAHAN RESI/AWB
+                        if ($awb && $cekPesanan->resi !== $awb) {
+                            $updateData['resi'] = $awb;
+                            $perluUpdate = true; // Tandai bahwa resi harus diupdate
                         }
 
-                        if ($method === 'shipped_packages' && $shippedAt) $updateData['shipped_at'] = Carbon::parse($shippedAt)->timezone('Asia/Jakarta');
-                        elseif ($method === 'finished_packages' && $finishedAt) $updateData['finished_at'] = Carbon::parse($finishedAt)->timezone('Asia/Jakarta');
-                        elseif (isset($timestampMap[$method])) $updateData[$timestampMap[$method]] = $updateTime;
+                        // 2. CEK PERUBAHAN STATUS
+                        if ($statusPesananIndo && $cekPesanan->status !== $statusPesananIndo) {
+                            $updateData['status'] = $statusPesananIndo;
+                            if (\Illuminate\Support\Facades\Schema::hasColumn('Pesanan', 'status_pesanan')) {
+                                $updateData['status_pesanan'] = $statusPesananIndo;
+                            }
 
-                        DB::table('Pesanan')->where('nomor_invoice', $orderId)->update($updateData);
-                        Log::info("[WEBHOOK-KA] Updated Pesanan Manual: $orderId -> $statusPesananIndo");
-                    }
+                            if ($method === 'shipped_packages' && $shippedAt) $updateData['shipped_at'] = Carbon::parse($shippedAt)->timezone('Asia/Jakarta');
+                            elseif ($method === 'finished_packages' && $finishedAt) $updateData['finished_at'] = Carbon::parse($finishedAt)->timezone('Asia/Jakarta');
+                            elseif (isset($timestampMap[$method])) $updateData[$timestampMap[$method]] = $updateTime;
+
+                            $perluUpdate = true; // Tandai bahwa status harus diupdate
+                        }
+
+                        // 3. EKSEKUSI UPDATE KE DATABASE (Jika Resi atau Status berubah)
+                        if ($perluUpdate) {
+                            DB::table('Pesanan')->where('nomor_invoice', $orderId)->update($updateData);
+                            Log::info("[WEBHOOK-KA] Updated Pesanan: $orderId | AWB: " . ($updateData['resi'] ?? $cekPesanan->resi) . " | Status: " . ($updateData['status'] ?? $cekPesanan->status));
+                        }
+
+                        // ---------------------------------------------------------
+                        // 2. SIMPAN KEUANGAN (Sisa kode di bawahnya biarkan tetap sama)
+                        // ---------------------------------------------------------
 
                     // ---------------------------------------------------------
                     // 2. SIMPAN KEUANGAN (FIX DOBEL INPUT)
