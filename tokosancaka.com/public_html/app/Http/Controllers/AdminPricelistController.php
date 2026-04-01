@@ -28,29 +28,66 @@ class AdminPricelistController extends Controller
             $count = 0;
 
             foreach ($sheet as $key => $row) {
-                // Lewati baris pertama (header) atau jika Kode kosong
-                if ($key == 0 || empty($row[2]) || $row[1] == 'Operator') {
+                // Lewati baris pertama (header)
+                if ($key == 0) {
                     continue;
                 }
 
-                // Bersihkan teks "Rp " dan titik "." dari Kolom F (Harga)
-                $rawPrice = $row[5] ?? '0';
-                $cleanPrice = preg_replace('/[^0-9]/', '', $rawPrice);
+                // ========================================================
+                // LOGIKA UNTUK PASCABAYAR (Berdasarkan format gambar)
+                // ========================================================
+                if ($request->type === 'pasca') {
+                    // Cek jika Product Code (Kolom B / Index 1) kosong, maka lewati
+                    if (empty($row[1]) || $row[1] == 'Product Code') {
+                        continue;
+                    }
 
-                // Logika Deskripsi: Jika Kolom E (Index 4) isinya "-", kita pakai nominal di Kolom D (Index 3) saja.
-                // Jika Kolom E ada teks penjelasannya, kita gunakan teks dari Kolom E tersebut.
-                $nominal = $row[3] ?? '';
-                $detail = $row[4] ?? '';
-                $finalDescription = ($detail != '' && $detail != '-') ? $detail : $nominal;
+                    $code = $row[1];
+                    $operator = 'Pascabayar'; // Set default operator untuk Pasca
+                    $description = $row[2]; // Product Name (Kolom C)
 
-                // Insert atau Update ke Database
+                    // Bersihkan Fee (Kolom D / Index 3) dari "Rp" dan titik
+                    $rawPrice = $row[3] ?? '0';
+                    $cleanPrice = preg_replace('/[^0-9]/', '', $rawPrice);
+                    if (empty($cleanPrice)) $cleanPrice = 0; // Fallback jika kosong
+
+                    $status = $row[5] ?? 'Active'; // Kolom F
+
+                }
+                // ========================================================
+                // LOGIKA UNTUK PRABAYAR (Sesuai format lama)
+                // ========================================================
+                else {
+                    // Cek jika Kode (Kolom C / Index 2) kosong, maka lewati
+                    if (empty($row[2]) || $row[1] == 'Operator') {
+                        continue;
+                    }
+
+                    $code = $row[2];
+                    $operator = $row[1]; // Operator (Kolom B)
+
+                    // Bersihkan Harga (Kolom F / Index 5)
+                    $rawPrice = $row[5] ?? '0';
+                    $cleanPrice = preg_replace('/[^0-9]/', '', $rawPrice);
+                    if (empty($cleanPrice)) $cleanPrice = 0; // Fallback jika kosong
+
+                    $nominal = $row[3] ?? '';
+                    $detail = $row[4] ?? '';
+                    $description = ($detail != '' && $detail != '-') ? $detail : $nominal;
+
+                    $status = $row[6] ?? 'Active'; // Kolom G
+                }
+
+                // ========================================================
+                // INSERT ATAU UPDATE KE DATABASE
+                // ========================================================
                 IakPricelistPrepaid::updateOrCreate(
-                    ['code' => $row[2]], // Patokan update adalah kode produk
+                    ['code' => $code], // Patokan update adalah kode produk
                     [
-                        'operator'    => $row[1],
-                        'description' => $finalDescription,
+                        'operator'    => $operator,
+                        'description' => $description,
                         'price'       => $cleanPrice,
-                        'status'      => $row[6] ?? 'Active',
+                        'status'      => $status,
                         'type'        => $request->type
                     ]
                 );
