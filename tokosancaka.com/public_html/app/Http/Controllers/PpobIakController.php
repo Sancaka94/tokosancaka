@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log; // LOG LOG: Tambahkan ini untuk mengaktifkan fitur pencatatan log
 use App\Models\TransactionPpobIak;
 use App\Models\IakResponseCode; // Jangan lupa import model di atas
 use App\Models\IakPricelistPostpaid; // Import di bagian atas
@@ -42,6 +43,8 @@ class PpobIakController extends Controller
         // Sign untuk pricelist pasca: md5(username + api_key + 'pl')
         $sign = md5($this->username . $this->apiKey . 'pl');
 
+        Log::info('LOG LOG - Sync Pricelist Request initiated.'); // LOG LOG
+
         try {
             $response = Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', [
                 'commands' => 'pricelist-pasca',
@@ -53,6 +56,7 @@ class PpobIakController extends Controller
             $result = $response->json();
 
             if ($response->successful() && isset($result['data']['pasca'])) {
+                Log::info('LOG LOG - Sync Pricelist Success. Memasukkan data ke DB...'); // LOG LOG
                 foreach ($result['data']['pasca'] as $item) {
                     IakPricelistPostpaid::updateOrCreate(
                         ['code' => $item['code']], // Cek berdasarkan kode produk
@@ -70,9 +74,11 @@ class PpobIakController extends Controller
                 return back()->with('success', 'Pricelist berhasil diperbarui dari server IAK.');
             }
 
+            Log::error('LOG LOG - Sync Pricelist Failed Response', ['response' => $result]); // LOG LOG
             return back()->with('error', 'Gagal sinkronisasi: ' . ($result['message'] ?? 'Unknown Error'));
 
         } catch (\Exception $e) {
+            Log::error('LOG LOG - Sync Pricelist Exception', ['error' => $e->getMessage()]); // LOG LOG
             return back()->with('error', 'Koneksi error: ' . $e->getMessage());
         }
     }
@@ -89,7 +95,7 @@ class PpobIakController extends Controller
             return $this->inquiryPostpaid($request);
         }
 
-        // --- LOGIKA PRABAYAR (Tetap sama seperti sebelumnya) ---
+        // --- LOGIKA PRABAYAR ---
         $refId = 'TRX-' . time() . '-' . rand(100, 999);
         $sign = md5($this->username . $this->apiKey . $refId);
 
@@ -100,6 +106,8 @@ class PpobIakController extends Controller
             'product_code' => $request->product_code,
             'status'       => 'PROCESS',
         ]);
+
+        Log::info('LOG LOG - Prepaid Request', ['ref_id' => $refId, 'customer_id' => $request->customer_id, 'product' => $request->product_code]); // LOG LOG
 
         try {
             $response = Http::post($this->prepaidBaseUrl . '/api/top-up', [
@@ -124,15 +132,20 @@ class PpobIakController extends Controller
                 ]);
 
                 if ($finalStatus == 'FAILED') {
+                    Log::error('LOG LOG - Prepaid Failed Status from API', ['ref_id' => $refId, 'message' => $transaction->message]); // LOG LOG
                     return back()->with('error', 'Transaksi prabayar gagal: ' . $transaction->message);
                 }
+
+                Log::info('LOG LOG - Prepaid Processed', ['ref_id' => $refId, 'status' => $finalStatus]); // LOG LOG
                 return back()->with('success', 'Transaksi prabayar diproses. Status: ' . $finalStatus);
             }
 
+            Log::error('LOG LOG - Prepaid API Error / Invalid Response Format', ['response' => $result]); // LOG LOG
             $transaction->update(['status' => 'FAILED', 'message' => $result['data']['message'] ?? 'API Error']);
             return back()->with('error', 'Terjadi kesalahan sistem prabayar.');
 
         } catch (\Exception $e) {
+            Log::error('LOG LOG - Prepaid Exception', ['ref_id' => $refId, 'error' => $e->getMessage()]); // LOG LOG
             $transaction->update(['status' => 'FAILED', 'message' => $e->getMessage()]);
             return back()->with('error', 'Gagal menghubungi server: ' . $e->getMessage());
         }
@@ -143,6 +156,8 @@ class PpobIakController extends Controller
     {
         $refId = 'INQ-' . time() . '-' . rand(100, 999);
         $sign = md5($this->username . $this->apiKey . $refId);
+
+        Log::info('LOG LOG - Inquiry Postpaid Request', ['ref_id' => $refId, 'customer_id' => $request->customer_id, 'product' => $request->product_code]); // LOG LOG
 
         try {
             $response = Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', [
@@ -158,6 +173,8 @@ class PpobIakController extends Controller
 
             // Jika Inquiry Sukses (Biasanya response code 00 untuk IAK Postpaid)
             if ($response->successful() && isset($result['data']) && $result['data']['response_code'] === '00') {
+
+                Log::info('LOG LOG - Inquiry Postpaid Success', ['tr_id' => $result['data']['tr_id']]); // LOG LOG
 
                 // Simpan data inquiry ke DB dengan status PENDING INQUIRY
                 $transaction = TransactionPpobIak::create([
@@ -175,9 +192,11 @@ class PpobIakController extends Controller
                 return view('ppob.inquiry', compact('transaction', 'result'));
             }
 
+            Log::error('LOG LOG - Inquiry Postpaid Failed Response', ['response' => $result]); // LOG LOG
             return back()->with('error', 'Inquiry Gagal: ' . ($result['data']['message'] ?? 'Tagihan tidak ditemukan/sudah lunas.'));
 
         } catch (\Exception $e) {
+            Log::error('LOG LOG - Inquiry Postpaid Exception', ['error' => $e->getMessage()]); // LOG LOG
             return back()->with('error', 'Gagal melakukan inquiry: ' . $e->getMessage());
         }
     }
@@ -189,6 +208,8 @@ class PpobIakController extends Controller
 
         // Sign untuk payment pascabayar biasanya menggunakan tr_id
         $sign = md5($this->username . $this->apiKey . $transaction->tr_id);
+
+        Log::info('LOG LOG - Payment Postpaid Request', ['tr_id' => $transaction->tr_id]); // LOG LOG
 
         try {
             $response = Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', [
@@ -211,15 +232,24 @@ class PpobIakController extends Controller
                 ]);
 
                 if ($status == 'FAILED') {
+                    Log::error('LOG LOG - Payment Postpaid Failed Status', ['tr_id' => $transaction->tr_id, 'message' => $transaction->message]); // LOG LOG
                     return redirect()->route('ppob.index')->with('error', 'Pembayaran gagal: ' . $transaction->message);
                 }
 
-                return redirect()->route('ppob.index')->with('success', 'Pembayaran Tagihan Berhasil!');
+                Log::info('LOG LOG - Payment Postpaid Success/Process', ['tr_id' => $transaction->tr_id, 'status' => $status]); // LOG LOG
+                return redirect()->route('ppob.index')->with('success', 'Pembayaran Tagihan Berhasil diproses!');
             }
+
+            // PERBAIKAN: Jika format response salah / tidak ada 'data'
+            Log::error('LOG LOG - Payment Postpaid Invalid Response', ['response' => $result]); // LOG LOG
+            $transaction->update(['message' => 'Invalid API Response Format']);
+            return redirect()->route('ppob.index')->with('error', 'Gagal memproses pembayaran. Response API tidak sesuai.');
 
         } catch (\Exception $e) {
             // ALUR 3: REQUEST PAYMENT NOT RECEIVED / TIMEOUT
             // Biarkan status tetap PROCESS, dan panggil check status (opsional bisa dilakukan via cronjob/tombol manual)
+            Log::error('LOG LOG - Payment Postpaid Exception (Timeout/Connection)', ['tr_id' => $transaction->tr_id, 'error' => $e->getMessage()]); // LOG LOG
+
             $transaction->update(['message' => 'Timeout: ' . $e->getMessage()]);
             return redirect()->route('ppob.index')->with('error', 'Koneksi terputus. Sistem akan melakukan pengecekan status otomatis.');
         }
@@ -231,34 +261,45 @@ class PpobIakController extends Controller
         $transaction = TransactionPpobIak::where('tr_id', $tr_id)->firstOrFail();
         $sign = md5($this->username . $this->apiKey . $transaction->ref_id);
 
-        $response = Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', [
-            'commands' => 'cs-pasca',
-            'username' => $this->username,
-            'ref_id'   => $transaction->ref_id,
-            'sign'     => $sign
-        ]);
+        Log::info('LOG LOG - Check Status Request', ['tr_id' => $tr_id, 'ref_id' => $transaction->ref_id]); // LOG LOG
 
-        $result = $response->json();
-
-        if ($response->successful() && isset($result['data'])) {
-            $apiCode = $result['data']['response_code']; // Ambil kode dari IAK (misal: "00", "39", "106")
-
-            // Cek ke tabel response code yang baru kita buat
-            $codeInfo = IakResponseCode::where('code', $apiCode)->first();
-
-            // Jika kode ditemukan di database, gunakan status dan pesannya. Jika tidak, gunakan default.
-            $finalStatus  = $codeInfo ? strtoupper($codeInfo->status) : 'PROCESS';
-            $finalMessage = $codeInfo ? $codeInfo->description . ' - ' . $codeInfo->solution : ($result['data']['message'] ?? 'Status update');
-
-            $transaction->update([
-                'status'  => $finalStatus,
-                'message' => $finalMessage
+        try {
+            $response = Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', [
+                'commands' => 'cs-pasca',
+                'username' => $this->username,
+                'ref_id'   => $transaction->ref_id,
+                'sign'     => $sign
             ]);
 
-            return redirect()->back()->with('success', 'Status tagihan berhasil di-refresh: ' . $codeInfo->description);
-        }
+            $result = $response->json();
 
-        return redirect()->back()->with('error', 'Gagal mengecek status.');
+            if ($response->successful() && isset($result['data'])) {
+                $apiCode = $result['data']['response_code']; // Ambil kode dari IAK (misal: "00", "39", "106")
+
+                // Cek ke tabel response code yang baru kita buat
+                $codeInfo = IakResponseCode::where('code', $apiCode)->first();
+
+                // Jika kode ditemukan di database, gunakan status dan pesannya. Jika tidak, gunakan default.
+                $finalStatus  = $codeInfo ? strtoupper($codeInfo->status) : 'PROCESS';
+                $finalMessage = $codeInfo ? $codeInfo->description . ' - ' . $codeInfo->solution : ($result['data']['message'] ?? 'Status update');
+
+                $transaction->update([
+                    'status'  => $finalStatus,
+                    'message' => $finalMessage
+                ]);
+
+                Log::info('LOG LOG - Check Status Result', ['ref_id' => $transaction->ref_id, 'apiCode' => $apiCode, 'finalStatus' => $finalStatus]); // LOG LOG
+                return redirect()->back()->with('success', 'Status tagihan berhasil di-refresh: ' . ($codeInfo->description ?? $finalMessage));
+            }
+
+            // PERBAIKAN: Tangkap respon aneh
+            Log::error('LOG LOG - Check Status Invalid Response', ['response' => $result]); // LOG LOG
+            return redirect()->back()->with('error', 'Gagal mengecek status. Response API tidak sesuai.');
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG - Check Status Exception', ['error' => $e->getMessage()]); // LOG LOG
+            return redirect()->back()->with('error', 'Gagal terhubung ke API saat cek status.');
+        }
     }
 
     /**
@@ -266,11 +307,14 @@ class PpobIakController extends Controller
      */
     public function webhook(Request $request)
     {
-        // LOG LOG
+        // LOG LOG - Sesuai instruksi lama
         // IAK mengirimkan callback dalam format JSON di dalam object "data"
         $data = $request->input('data');
 
+        Log::info('LOG LOG - Webhook Incoming Data', ['payload' => $data]); // LOG LOG
+
         if (!$data || !isset($data['ref_id'])) {
+            Log::error('LOG LOG - Webhook Invalid Payload Format'); // LOG LOG
             return response()->json(['message' => 'Invalid payload format'], 400);
         }
 
@@ -285,6 +329,7 @@ class PpobIakController extends Controller
         $expectedSign = md5($this->username . $this->apiKey . $refId);
 
         if ($sign && $sign !== $expectedSign) {
+            Log::error('LOG LOG - Webhook Invalid Signature', ['received' => $sign, 'expected' => $expectedSign]); // LOG LOG
             return response()->json(['message' => 'Invalid signature'], 403);
         }
 
@@ -292,6 +337,7 @@ class PpobIakController extends Controller
         $transaction = TransactionPpobIak::where('ref_id', $refId)->first();
 
         if (!$transaction) {
+            Log::error('LOG LOG - Webhook Transaction Not Found', ['ref_id' => $refId]); // LOG LOG
             return response()->json(['message' => 'Transaction not found'], 404);
         }
 
@@ -311,8 +357,9 @@ class PpobIakController extends Controller
             'message' => $data['message'] ?? 'Status updated by Webhook'
         ]);
 
+        Log::info('LOG LOG - Webhook Processed Successfully', ['ref_id' => $refId, 'finalStatus' => $finalStatus]); // LOG LOG
+
         // 5. Berikan response 200 OK agar IAK tahu webhook berhasil diterima
         return response()->json(['message' => 'Callback received successfully'], 200);
     }
-
 }
