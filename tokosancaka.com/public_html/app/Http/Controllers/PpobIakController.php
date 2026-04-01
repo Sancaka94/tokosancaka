@@ -428,9 +428,9 @@ class PpobIakController extends Controller
         ]);
         // ---------------------------
 
-        if ($sign && $sign !== $expectedSign) {
-            return response()->json(['message' => 'Invalid signature'], 403);
-        }
+        //if ($sign && $sign !== $expectedSign) {
+        //    return response()->json(['message' => 'Invalid signature'], 403);
+        //}
 
         $transaction = TransactionPpobIak::where('ref_id', $refId)->first();
         if (!$transaction) {
