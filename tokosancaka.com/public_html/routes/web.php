@@ -1151,3 +1151,5 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
 
 // Ubah dari PpobController menjadi AdminPricelistController
 Route::get('/ppob/get-products', [App\Http\Controllers\AdminPricelistController::class, 'getProductsByOperator'])->name('ppob.get_products');
+
+Route::get('/ppob/invoice/{ref_id}', [App\Http\Controllers\PpobIakController::class, 'invoice'])->name('ppob.invoice');

@@ -99,6 +99,19 @@ class PpobIakController extends Controller
             return $this->inquiryPostpaid($request);
         }
 
+        // --- TAMBAHAN BARU: Cek Saldo IAK di Backend ---
+        $user = auth()->user();
+        $product = IakPricelistPrepaid::where('code', $request->product_code)->first();
+
+        if (!$product) {
+            return back()->with('error', 'Produk tidak ditemukan di database.');
+        }
+
+        if ($user->balance_iak < $product->price) {
+            return back()->with('error', 'Maaf, saldo IAK Anda tidak mencukupi untuk transaksi ini.');
+        }
+        // ------------------------------------------------
+
         // --- LOGIKA PRABAYAR ---
         $refId = 'TRX-' . time() . '-' . rand(100, 999);
         $sign = md5($this->username . $this->apiKey . $refId);
@@ -111,7 +124,7 @@ class PpobIakController extends Controller
             'status'       => 'PROCESS',
         ]);
 
-        Log::info('LOG LOG - Prepaid Request', ['ref_id' => $refId, 'customer_id' => $request->customer_id, 'product' => $request->product_code]); // LOG LOG
+        Log::info('LOG LOG - Prepaid Request', ['ref_id' => $refId, 'customer_id' => $request->customer_id, 'product' => $request->product_code]);
 
         try {
             $response = Http::post($this->prepaidBaseUrl . '/api/top-up', [
@@ -125,42 +138,45 @@ class PpobIakController extends Controller
             $result = $response->json();
 
             if ($response->successful() && isset($result['data'])) {
-                // Ambil kode response dari IAK (cth: "00", "39", "204")
+                // Ambil kode response dari IAK
                 $apiCode = $result['data']['rc'] ?? ($result['data']['message'] == 'PROCESS' ? '39' : null);
-
-                // Cari pesan detail dari database
                 $codeInfo = IakPrepaidResponseCode::where('code', $apiCode)->first();
 
                 $statusMap = [0 => 'PROCESS', 1 => 'SUCCESS', 2 => 'FAILED'];
-                // Prioritaskan status dari database jika ada, jika tidak pakai mapping bawaan API
                 $finalStatus = $codeInfo ? strtoupper($codeInfo->status) : ($statusMap[$result['data']['status']] ?? 'PROCESS');
                 $finalMessage = $codeInfo ? $codeInfo->description . ' - ' . $codeInfo->solution : ($result['data']['message'] ?? 'Request Terkirim');
 
                 $transaction->update([
                     'status'  => $finalStatus,
-                    'price'   => $result['data']['price'] ?? 0,
+                    'price'   => $product->price, // Menggunakan harga dari database
                     'sn'      => $result['data']['sn'] ?? null,
                     'message' => $finalMessage
                 ]);
 
                 if ($finalStatus == 'FAILED') {
-                    Log::error('LOG LOG - Prepaid Failed Status from API', ['ref_id' => $refId, 'message' => $transaction->message]); // LOG LOG
+                    Log::error('LOG LOG - Prepaid Failed Status from API', ['ref_id' => $refId, 'message' => $transaction->message]);
                     return back()->with('error', 'Transaksi prabayar gagal: ' . $transaction->message);
                 }
 
-                Log::info('LOG LOG - Prepaid Processed', ['ref_id' => $refId, 'status' => $finalStatus]); // LOG LOG
-                // Redirect menuju halaman invoice
+                // --- TAMBAHAN BARU: Potong saldo jika transaksi Proses/Sukses ---
+                if ($finalStatus == 'PROCESS' || $finalStatus == 'SUCCESS') {
+                    $user->balance_iak -= $product->price;
+                    $user->save();
+                }
+
+                Log::info('LOG LOG - Prepaid Processed', ['ref_id' => $refId, 'status' => $finalStatus]);
+
+                // --- KODE REDIRECT KE INVOICE ---
                 return redirect()->route('ppob.invoice', ['ref_id' => $transaction->ref_id])
                                  ->with('success', 'Transaksi berhasil diproses.');
-
             }
 
-            Log::error('LOG LOG - Prepaid API Error / Invalid Response Format', ['response' => $result]); // LOG LOG
+            Log::error('LOG LOG - Prepaid API Error / Invalid Response Format', ['response' => $result]);
             $transaction->update(['status' => 'FAILED', 'message' => $result['data']['message'] ?? 'API Error']);
             return back()->with('error', 'Terjadi kesalahan sistem prabayar: ' . ($result['data']['message'] ?? 'Unknown'));
 
         } catch (\Exception $e) {
-            Log::error('LOG LOG - Prepaid Exception', ['ref_id' => $refId, 'error' => $e->getMessage()]); // LOG LOG
+            Log::error('LOG LOG - Prepaid Exception', ['ref_id' => $refId, 'error' => $e->getMessage()]);
             $transaction->update(['status' => 'FAILED', 'message' => $e->getMessage()]);
             return back()->with('error', 'Gagal menghubungi server: ' . $e->getMessage());
         }
