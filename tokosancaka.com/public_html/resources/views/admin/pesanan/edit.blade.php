@@ -246,8 +246,8 @@
                         </div>
                         <hr/>
                         <div>
-                            <label for="selected_expedition_display" class="block mb-2 text-sm font-medium text-gray-700">Pilih Ekspedisi</label>
-                            <input type="text" id="selected_expedition_display" value="{{ old('expedition_display', $pesanan->expedition) }}" class="cursor-pointer bg-red-50 border border-red-300 text-red-600 text-sm rounded-lg block w-full p-2.5 text-center font-semibold" placeholder="Lengkapi data & klik di sini" readonly required>
+                            <label for="selected_expedition_display" class="block mb-2 text-sm font-medium text-gray-700">Pilih Ekspedisi <span class="text-red-500 font-bold">(Wajib Pilih Ulang!)</span></label>
+                            <input type="text" id="selected_expedition_display" value="" class="cursor-pointer bg-red-50 border border-red-300 text-red-600 text-sm rounded-lg block w-full p-2.5 text-center font-semibold animate-pulse" placeholder="⚠️ Klik di sini untuk pilih ulang tarif" readonly required>
                         </div>
                         <div>
                             <label for="paymentMethodButton" class="block mb-2 text-sm font-medium text-gray-700">Metode Pembayaran</label>
@@ -301,7 +301,8 @@
         <input type="hidden" name="receiver_district_id" id="receiver_district_id" value="{{ old('receiver_district_id', $pesanan->receiver_district_id) }}" required>
         <input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" value="{{ old('receiver_subdistrict_id', $pesanan->receiver_subdistrict_id) }}" required>
 
-        <input type="hidden" name="expedition" id="expedition" value="{{ old('expedition', $pesanan->expedition) }}" required>
+        <input type="hidden" name="expedition" id="expedition" value="" required>
+        <!-- <input type="hidden" name="expedition" id="expedition" value="{{ old('expedition', $pesanan->expedition) }}" required> -->
         <input type="hidden" name="payment_method" id="payment_method" value="{{ old('payment_method', $pesanan->payment_method) }}" required>
     </form>
 </div>
