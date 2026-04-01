@@ -145,68 +145,81 @@ class AdminPricelistController extends Controller
     }
 
     /**
-     * Menarik data Pricelist dari API IAK dan langsung update ke Database
+     * Menarik data Pricelist dari API IAK dan langsung update ke Database (API Versi 2 Final)
      */
     public function syncPricelistApi()
     {
         $username = env('IAK_USERNAME');
         $apiKey = env('IAK_API_KEY');
+        // LOG LOG: Format Sign Pricelist = md5(username + api_key + 'pl')
         $sign = md5($username . $apiKey . 'pl');
 
-        $baseUrl = rtrim(env('IAK_URL'), '/');
-        if (!str_ends_with(strtolower($baseUrl), '/api')) $baseUrl .= '/api';
-        $url = $baseUrl . '/v1/legacy/index';
+        // Pastikan endpoint bersih menuju /api/pricelist
+        $baseUrl = str_replace('/api', '', rtrim(env('IAK_URL'), '/'));
+        $url = $baseUrl . '/api/pricelist';
 
         try {
-            // Paksa format ke JSON
             $response = Http::withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json'
             ])->post($url, [
-                'commands' => 'pricelist',
                 'username' => $username,
                 'sign'     => $sign,
                 'status'   => 'all'
+                // Command tidak perlu lagi dikirim di Versi 2
             ]);
 
             $responseData = $response->json();
 
-            // Cek apakah balasan valid dan bukan error (RC selain 00 itu biasanya error)
+            // Cek Response Code (RC) dari IAK
             if (isset($responseData['data']['rc']) && $responseData['data']['rc'] !== '00') {
                 $errorMsg = $responseData['data']['message'] ?? 'Pesan error tidak diketahui';
                 Log::error('LOG LOG - IAK API Return Error: ' . $errorMsg);
                 return back()->with('error', 'API IAK Menolak: ' . $errorMsg);
             }
 
-            // Jika sukses menarik list harga
-            if ($response->successful() && isset($responseData['data']) && is_array($responseData['data'])) {
-                $products = $responseData['data'];
+            // PERUBAHAN UTAMA V2: Array produk ada di dalam index 'pricelist'
+            if ($response->successful() && isset($responseData['data']['pricelist']) && is_array($responseData['data']['pricelist'])) {
+                $products = $responseData['data']['pricelist'];
                 $count = 0;
 
                 foreach ($products as $item) {
-                    $description = (isset($item['pulsa_details']) && $item['pulsa_details'] != '-')
-                                    ? $item['pulsa_details']
-                                    : ($item['pulsa_nominal'] ?? 'Tanpa Deskripsi');
+                    $code = $item['product_code'] ?? null;
+                    if (!$code) continue;
 
+                    // Mengacu pada Doc V2: product_description = nama operator
+                    $operator = $item['product_description'] ?? 'Unknown';
+
+                    // Logika Deskripsi: Ambil product_details, kalau kosong/strip pakai product_nominal
+                    $details = $item['product_details'] ?? '-';
+                    $nominal = $item['product_nominal'] ?? 'Tanpa Deskripsi';
+                    $description = ($details != '-' && !empty($details)) ? $details : $nominal;
+
+                    $price = $item['product_price'] ?? 0;
+                    $type = $item['product_type'] ?? 'Unknown';
+
+                    $status = (strtolower($item['status'] ?? '') === 'active') ? 'Active' : 'Offline';
+
+                    // Insert atau Update ke database
                     IakPricelistPrepaid::updateOrCreate(
-                        ['code' => $item['pulsa_code']],
+                        ['code' => $code],
                         [
-                            'operator'    => $item['pulsa_op'],
+                            'operator'    => $operator,
                             'description' => $description,
-                            'price'       => $item['pulsa_price'],
-                            'type'        => $item['pulsa_type'],
-                            'status'      => strtolower($item['status']) == 'active' ? 'Active' : 'Offline'
+                            'price'       => $price,
+                            'type'        => $type,
+                            'status'      => $status
                         ]
                     );
                     $count++;
                 }
 
-                Log::info("LOG LOG - Sinkron API IAK Berhasil: $count produk.");
-                return back()->with('success', "Sinkronisasi sukses! $count produk berhasil ditarik dari IAK.");
+                Log::info("LOG LOG - Sinkron API IAK Versi 2 Berhasil: $count produk.");
+                return back()->with('success', "Sinkronisasi sukses! $count produk berhasil ditarik dan diperbarui dari IAK API v2.");
             }
 
             Log::error('LOG LOG - IAK Pricelist Unreadable: ' . $response->body());
-            return back()->with('error', 'Gagal memproses data. Pastikan akun IAK sudah diverifikasi.');
+            return back()->with('error', 'Gagal memproses data. Struktur JSON dari IAK tidak sesuai format Versi 2.');
 
         } catch (\Exception $e) {
             Log::error('LOG LOG - IAK Pricelist Exception: ' . $e->getMessage());
