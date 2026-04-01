@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
 
 // Import Notifikasi (PENTING UNTUK NOTIFIKASI REAL-TIME)
-use Illuminate\Notifications\DatabaseNotification; 
+use Illuminate\Notifications\DatabaseNotification;
 
 // Import model lain yang direlasikan
 use App\Models\Store;
@@ -27,7 +27,7 @@ use App\Models\Order;
 use App\Models\Transaction;
 use App\Models\Marketplace;
 use App\Models\OrderMarketplace;
-use App\Models\OrderItemMarketplace; 
+use App\Models\OrderItemMarketplace;
 
 class User extends Authenticatable
 {
@@ -73,6 +73,7 @@ class User extends Authenticatable
         'profile_setup_at',
         'role',
         'saldo',
+        'balance_iak', // <-- Tambahkan ini
         'status',
         'is_verified',
         'reset_token',
@@ -82,7 +83,7 @@ class User extends Authenticatable
         'latitude',
         'longitude',
         'last_seen_at',
-        // 'created_at' DIHAPUS DARI SINI. Seharusnya tidak di-fillable, 
+        // 'created_at' DIHAPUS DARI SINI. Seharusnya tidak di-fillable,
         // karena dihandle otomatis oleh Eloquent/DB.
     ];
 
@@ -109,9 +110,9 @@ class User extends Authenticatable
             'is_verified' => 'boolean',
             'saldo' => 'decimal:2',
             'created_at' => 'datetime',
-            
+
             // DITAMBAHKAN: Cast untuk SoftDeletes
-            'deleted_at' => 'datetime', 
+            'deleted_at' => 'datetime',
         ];
     }
 
@@ -151,7 +152,7 @@ class User extends Authenticatable
      {
         return 'id_pengguna';
      }
-    
+
      /**
       * Override method getRouteKeyName() untuk Route Model Binding.
       */
@@ -176,7 +177,7 @@ class User extends Authenticatable
         // Channel akan menjadi: App.Models.User.123 (jika id_pengguna = 123)
         // Pastikan nama class 'User' di sini sesuai dengan nama file (User.php)
         //
-        // JIKA Anda ingin nama channel-nya 'App.Models.Pengguna.123', 
+        // JIKA Anda ingin nama channel-nya 'App.Models.Pengguna.123',
         // Anda harus mengganti nama file/class ini dari User menjadi Pengguna.
         // Untuk saat ini, kita ikuti nama class 'User'.
         return 'App.Models.User.' . $this->getKey();
@@ -249,7 +250,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(TopUp::class, 'customer_id', $this->getKeyName());
     }
-    
+
     /**
      * Relasi HasMany: User ini memiliki banyak Transaction.
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
@@ -298,7 +299,7 @@ class User extends Authenticatable
         return $this->hasMany(OrderMarketplace::class, 'customer_id', $this->getKeyName());
     }
 
-    // NOTE: Relasi ke OrderItemMerketplace (produk) kemungkinan besar 
+    // NOTE: Relasi ke OrderItemMerketplace (produk) kemungkinan besar
     // ada di model Marketplace (toko-nya) atau di OrderMarketplace (pesanan-nya),
     // bukan langsung di User.
 
@@ -329,8 +330,8 @@ class User extends Authenticatable
                              ->sum('amount');
 
         // Sesuaikan status pesanan yang dianggap mengurangi saldo
-        $statusesPengeluaran = ['Selesai', 'Terkirim', 'Diproses']; 
-        
+        $statusesPengeluaran = ['Selesai', 'Terkirim', 'Diproses'];
+
         $totalPengeluaran = $this->pesanans()
                                ->whereIn('status_pesanan', $statusesPengeluaran)
                                ->sum('total_harga_barang'); // Pastikan ini kolom yang benar

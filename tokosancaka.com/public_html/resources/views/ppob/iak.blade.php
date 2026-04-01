@@ -126,7 +126,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // PERBAIKAN: Ambil saldo user (pastikan kolom 'balance' sesuai dengan skema database kamu)
-        let currentBalance = {{ auth()->user()->balance ?? 0 }};
+        let currentBalance = {{ auth()->user()->balance_iak ?? 0 }};
 
         const phoneInput = document.getElementById('customer_id_pra');
         const badgeContainer = document.getElementById('operator-badge');

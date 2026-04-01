@@ -106,7 +106,7 @@ class AdminPricelistController extends Controller
     }
 
    /**
-     * Mengecek sisa saldo di akun IAK
+     * Mengecek sisa saldo di akun IAK (Manual via Tombol)
      */
     public function checkBalance()
     {
@@ -132,6 +132,14 @@ class AdminPricelistController extends Controller
 
             if ($response->successful() && $response->json('data.balance') !== null) {
                 $balance = $response->json('data.balance');
+
+                // --- TAMBAHAN BARU: Simpan saldo ke database user auth ---
+                if (auth()->check()) {
+                    $user = auth()->user();
+                    $user->balance_iak = $balance; // <-- UBAH DI SINI
+                    $user->save();
+                }
+
                 return back()->with('success', 'Saldo IAK Anda saat ini: Rp ' . number_format($balance, 0, ',', '.'));
             }
 
@@ -229,6 +237,7 @@ class AdminPricelistController extends Controller
 
     /**
      * API Internal: Tarik Saldo IAK secara Real-Time via AJAX (Widget Biru)
+     * Otomatis menyimpan ke database ketika sinkronisasi berhasil.
      */
     public function liveBalanceApi()
     {
@@ -252,9 +261,18 @@ class AdminPricelistController extends Controller
 
             // Jika sukses dan key balance tersedia
             if ($response->successful() && isset($data['data']['balance'])) {
+                $balance = $data['data']['balance'];
+
+                // --- TAMBAHAN BARU: Otomatis update saldo user auth di background ---
+                if (auth()->check()) {
+                    $user = auth()->user();
+                    $user->balance_iak = $balance; // <-- UBAH DI SINI
+                    $user->save();
+                }
+
                 return response()->json([
                     'success' => true,
-                    'balance' => $data['data']['balance']
+                    'balance' => $balance
                 ]);
             }
 
