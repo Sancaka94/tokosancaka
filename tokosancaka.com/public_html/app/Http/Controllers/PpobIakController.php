@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log; // LOG LOG: Tambahkan ini untuk mengaktifkan
 use App\Models\TransactionPpobIak;
 use App\Models\IakResponseCode; // Jangan lupa import model di atas
 use App\Models\IakPricelistPostpaid; // Import di bagian atas
+use App\Models\IakPrepaidResponseCode;
 
 class PpobIakController extends Controller
 {
@@ -83,7 +84,7 @@ class PpobIakController extends Controller
         }
     }
 
-    public function store(Request $request)
+   public function store(Request $request)
     {
         $request->validate([
             'customer_id' => 'required|string',
@@ -121,14 +122,22 @@ class PpobIakController extends Controller
             $result = $response->json();
 
             if ($response->successful() && isset($result['data'])) {
+                // Ambil kode response dari IAK (cth: "00", "39", "204")
+                $apiCode = $result['data']['rc'] ?? ($result['data']['message'] == 'PROCESS' ? '39' : null);
+
+                // Cari pesan detail dari database
+                $codeInfo = IakPrepaidResponseCode::where('code', $apiCode)->first();
+
                 $statusMap = [0 => 'PROCESS', 1 => 'SUCCESS', 2 => 'FAILED'];
-                $finalStatus = $statusMap[$result['data']['status']] ?? 'PROCESS';
+                // Prioritaskan status dari database jika ada, jika tidak pakai mapping bawaan API
+                $finalStatus = $codeInfo ? strtoupper($codeInfo->status) : ($statusMap[$result['data']['status']] ?? 'PROCESS');
+                $finalMessage = $codeInfo ? $codeInfo->description . ' - ' . $codeInfo->solution : ($result['data']['message'] ?? 'Request Terkirim');
 
                 $transaction->update([
                     'status'  => $finalStatus,
                     'price'   => $result['data']['price'] ?? 0,
                     'sn'      => $result['data']['sn'] ?? null,
-                    'message' => $result['data']['message'] ?? 'Request Terkirim'
+                    'message' => $finalMessage
                 ]);
 
                 if ($finalStatus == 'FAILED') {
@@ -137,17 +146,62 @@ class PpobIakController extends Controller
                 }
 
                 Log::info('LOG LOG - Prepaid Processed', ['ref_id' => $refId, 'status' => $finalStatus]); // LOG LOG
-                return back()->with('success', 'Transaksi prabayar diproses. Status: ' . $finalStatus);
+                return back()->with('success', 'Transaksi prabayar diproses. Status: ' . $finalStatus . ' (Sistem sedang menunggu konfirmasi operator).');
             }
 
             Log::error('LOG LOG - Prepaid API Error / Invalid Response Format', ['response' => $result]); // LOG LOG
             $transaction->update(['status' => 'FAILED', 'message' => $result['data']['message'] ?? 'API Error']);
-            return back()->with('error', 'Terjadi kesalahan sistem prabayar.');
+            return back()->with('error', 'Terjadi kesalahan sistem prabayar: ' . ($result['data']['message'] ?? 'Unknown'));
 
         } catch (\Exception $e) {
             Log::error('LOG LOG - Prepaid Exception', ['ref_id' => $refId, 'error' => $e->getMessage()]); // LOG LOG
             $transaction->update(['status' => 'FAILED', 'message' => $e->getMessage()]);
             return back()->with('error', 'Gagal menghubungi server: ' . $e->getMessage());
+        }
+    }
+
+    // --- FUNGSI BARU: CHECK STATUS PRABAYAR MANUAL ---
+    public function checkStatusPrepaid($ref_id)
+    {
+        $transaction = TransactionPpobIak::where('ref_id', $ref_id)->where('type', 'prabayar')->firstOrFail();
+        $sign = md5($this->username . $this->apiKey . $transaction->ref_id);
+
+        Log::info('LOG LOG - Check Status Prepaid Request', ['ref_id' => $ref_id]); // LOG LOG
+
+        try {
+            $response = Http::post($this->prepaidBaseUrl . '/api/check-status', [
+                'username' => $this->username,
+                'ref_id'   => $transaction->ref_id,
+                'sign'     => $sign
+            ]);
+
+            $result = $response->json();
+
+            if ($response->successful() && isset($result['data'])) {
+                $apiCode = $result['data']['rc'] ?? null;
+                $codeInfo = IakPrepaidResponseCode::where('code', $apiCode)->first();
+
+                $statusMap = [0 => 'PROCESS', 1 => 'SUCCESS', 2 => 'FAILED'];
+                $finalStatus = $codeInfo ? strtoupper($codeInfo->status) : ($statusMap[$result['data']['status']] ?? 'PROCESS');
+                $finalMessage = $codeInfo ? $codeInfo->description : ($result['data']['message'] ?? 'Status update');
+
+                $transaction->update([
+                    'status'  => $finalStatus,
+                    'sn'      => $result['data']['sn'] ?? $transaction->sn, // Simpan SN / Token jika sukses
+                    'price'   => $result['data']['price'] ?? $transaction->price,
+                    'message' => $finalMessage
+                ]);
+
+                Log::info('LOG LOG - Check Status Prepaid Result', ['ref_id' => $transaction->ref_id, 'status' => $finalStatus, 'sn' => $result['data']['sn'] ?? 'none']); // LOG LOG
+                return redirect()->back()->with('success', 'Status transaksi: ' . $finalStatus . '. Pesan: ' . $finalMessage);
+            }
+
+            Log::error('LOG LOG - Check Status Prepaid Invalid Response', ['response' => $result]); // LOG LOG
+            return redirect()->back()->with('error', 'Gagal mengecek status. API tidak mengembalikan data yang valid.');
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG - Check Status Prepaid Exception', ['error' => $e->getMessage()]); // LOG LOG
+            return redirect()->back()->with('error', 'Gagal terhubung ke API saat cek status.');
         }
     }
 
@@ -302,64 +356,52 @@ class PpobIakController extends Controller
         }
     }
 
-    /**
-     * Handle Webhook / Callback dari IAK
-     */
+    // --- UPDATE WEBHOOK UNTUK PRABAYAR ---
     public function webhook(Request $request)
     {
-        // LOG LOG - Sesuai instruksi lama
-        // IAK mengirimkan callback dalam format JSON di dalam object "data"
         $data = $request->input('data');
-
         Log::info('LOG LOG - Webhook Incoming Data', ['payload' => $data]); // LOG LOG
 
         if (!$data || !isset($data['ref_id'])) {
-            Log::error('LOG LOG - Webhook Invalid Payload Format'); // LOG LOG
             return response()->json(['message' => 'Invalid payload format'], 400);
         }
 
         $refId  = $data['ref_id'];
         $status = $data['status']; // 0 = process, 1 = success, 2 = failed
+        $apiCode = $data['rc'] ?? null; // Response Code dari IAK
         $sn     = $data['sn'] ?? null;
         $price  = $data['price'] ?? 0;
         $sign   = $data['sign'] ?? null;
 
-        // 1. Validasi Signature (Keamanan)
-        // Sign callback IAK = md5(username + api_key + ref_id)
         $expectedSign = md5($this->username . $this->apiKey . $refId);
-
         if ($sign && $sign !== $expectedSign) {
-            Log::error('LOG LOG - Webhook Invalid Signature', ['received' => $sign, 'expected' => $expectedSign]); // LOG LOG
             return response()->json(['message' => 'Invalid signature'], 403);
         }
 
-        // 2. Cari transaksi berdasarkan ref_id di database
         $transaction = TransactionPpobIak::where('ref_id', $refId)->first();
-
         if (!$transaction) {
-            Log::error('LOG LOG - Webhook Transaction Not Found', ['ref_id' => $refId]); // LOG LOG
             return response()->json(['message' => 'Transaction not found'], 404);
         }
 
-        // 3. Konversi status IAK ke format string kita
-        $statusMap = [
-            0 => 'PROCESS',
-            1 => 'SUCCESS',
-            2 => 'FAILED'
-        ];
-        $finalStatus = $statusMap[$status] ?? 'PROCESS';
+        // Cek response code berdasarkan tipe transaksi
+        if ($transaction->type === 'prabayar') {
+            $codeInfo = IakPrepaidResponseCode::where('code', $apiCode)->first();
+        } else {
+            $codeInfo = IakResponseCode::where('code', $apiCode)->first();
+        }
 
-        // 4. Update status transaksi di database
+        $statusMap = [0 => 'PROCESS', 1 => 'SUCCESS', 2 => 'FAILED'];
+        $finalStatus = $codeInfo ? strtoupper($codeInfo->status) : ($statusMap[$status] ?? 'PROCESS');
+        $finalMessage = $codeInfo ? $codeInfo->description : ($data['message'] ?? 'Status updated by Webhook');
+
         $transaction->update([
             'status'  => $finalStatus,
             'sn'      => $sn ?: $transaction->sn,
             'price'   => $price > 0 ? $price : $transaction->price,
-            'message' => $data['message'] ?? 'Status updated by Webhook'
+            'message' => $finalMessage
         ]);
 
-        Log::info('LOG LOG - Webhook Processed Successfully', ['ref_id' => $refId, 'finalStatus' => $finalStatus]); // LOG LOG
-
-        // 5. Berikan response 200 OK agar IAK tahu webhook berhasil diterima
+        Log::info('LOG LOG - Webhook Processed Successfully', ['ref_id' => $refId, 'finalStatus' => $finalStatus, 'sn' => $sn]); // LOG LOG
         return response()->json(['message' => 'Callback received successfully'], 200);
     }
 }

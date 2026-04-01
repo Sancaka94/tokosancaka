@@ -121,10 +121,24 @@
                                 <tr>
                                     <td class="ps-4">
                                         <div class="fw-bold">{{ $trx->customer_id }}</div>
-                                        <div class="small text-muted d-flex align-items-center gap-1">
+                                        <div class="small text-muted d-flex align-items-center gap-1 mb-1">
                                             <span class="badge bg-secondary rounded-pill" style="font-size: 0.65rem;">{{ strtoupper($trx->type) }}</span>
                                             {{ $trx->product_code }}
                                         </div>
+
+                                        {{-- Tampilkan SN / Token jika sudah sukses dan SN tersedia --}}
+                                        @if($trx->status == 'SUCCESS' && $trx->sn)
+                                            <div class="mt-1 p-1 bg-light border rounded text-dark small fw-bold">
+                                                SN/Token: <span class="text-primary user-select-all">{{ $trx->sn }}</span>
+                                            </div>
+                                        @endif
+
+                                        {{-- Tampilkan pesan error jika gagal --}}
+                                        @if($trx->status == 'FAILED')
+                                            <div class="small text-danger" style="font-size: 0.75rem;">
+                                                <i class="bi bi-info-circle"></i> {{ \Illuminate\Support\Str::limit($trx->message, 30) }}
+                                            </div>
+                                        @endif
                                     </td>
                                     <td>
                                         @if($trx->status == 'SUCCESS')
@@ -136,10 +150,16 @@
                                         @endif
                                     </td>
                                     <td class="text-end pe-4">
-                                        @if($trx->status == 'PROCESS' && $trx->type == 'pascabayar' && $trx->tr_id)
-                                            <a href="{{ route('ppob.check_status', $trx->tr_id) }}" class="btn btn-sm btn-outline-info" title="Cek Status Tagihan">
-                                                <i class="bi bi-arrow-clockwise"></i>
-                                            </a>
+                                        @if($trx->status == 'PROCESS')
+                                            @if($trx->type == 'pascabayar' && $trx->tr_id)
+                                                <a href="{{ route('ppob.check_status', $trx->tr_id) }}" class="btn btn-sm btn-outline-info" title="Cek Status Pascabayar">
+                                                    <i class="bi bi-arrow-clockwise"></i>
+                                                </a>
+                                            @elseif($trx->type == 'prabayar')
+                                                <a href="{{ route('ppob.check_status_prepaid', $trx->ref_id) }}" class="btn btn-sm btn-outline-info" title="Cek Status Prabayar">
+                                                    <i class="bi bi-arrow-clockwise"></i>
+                                                </a>
+                                            @endif
                                         @else
                                             <span class="text-muted small">-</span>
                                         @endif

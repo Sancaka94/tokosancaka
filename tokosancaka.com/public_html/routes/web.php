@@ -1105,3 +1105,5 @@ Route::post('/ppob/pay-postpaid', [PpobIakController::class, 'payPostpaid'])->na
 Route::get('/ppob/check-status/{tr_id}', [PpobIakController::class, 'checkStatusPostpaid'])->name('ppob.check_status');
 
 Route::post('/ppob/sync-pricelist', [PpobIakController::class, 'syncPricelist'])->name('ppob.sync_pricelist');
+
+Route::get('/ppob/check-status-prepaid/{ref_id}', [PpobIakController::class, 'checkStatusPrepaid'])->name('ppob.check_status_prepaid');
