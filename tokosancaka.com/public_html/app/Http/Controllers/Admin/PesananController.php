@@ -457,7 +457,7 @@ class PesananController extends Controller
         return view('admin.pesanan.edit', compact('pesanan', 'customers'));
     }
 
-    public function update(Request $request, $resi, App\Services\KiriminAjaService $kirimaja)
+    public function update(Request $request, $resi, KiriminAjaService $kirimaja)
     {
         // 1. Validasi Input Dasar
         $validatedData = $request->validate([
