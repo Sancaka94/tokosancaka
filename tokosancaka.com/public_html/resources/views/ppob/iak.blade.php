@@ -72,8 +72,21 @@
                                     </select>
                                 </div>
 
+                                <div class="mb-3 d-none" id="nominal-container">
+                                    <label class="form-label fw-semibold">Cari Nominal (Opsional)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-white">Rp</span>
+                                        <input type="number" class="form-control" id="nominal_pra" placeholder="Misal: 10000">
+                                    </div>
+                                    <div class="form-text text-muted">Ketik angka untuk memfilter produk dengan cepat.</div>
+                                </div>
+
                                 <div class="mb-4 d-none" id="product-list-container">
-                                    <label class="form-label fw-semibold">Pilih Nominal / Paket</label>
+                                    <div class="d-flex justify-content-between align-items-end mb-2">
+                                        <label class="form-label fw-semibold mb-0">Pilih Nominal / Paket</label>
+                                    </div>
+                                    <div id="product-message" class="alert alert-warning py-2 small d-none mb-3"></div>
+
                                     <div class="row g-3" id="product-list">
                                         </div>
                                 </div>
@@ -99,7 +112,6 @@
                 </div>
             </div>
         </div>
-
         <div class="col-lg-5">
             </div>
     </div>
@@ -108,7 +120,6 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Elemen-elemen DOM
         const phoneInput = document.getElementById('customer_id_pra');
         const badgeContainer = document.getElementById('operator-badge');
         const operatorNameSpan = document.getElementById('operator-name');
@@ -116,14 +127,20 @@
 
         const categoryContainer = document.getElementById('category-selector-container');
         const categorySelect = document.getElementById('product_category_pra');
+
+        const nominalContainer = document.getElementById('nominal-container');
+        const nominalInput = document.getElementById('nominal_pra');
+
         const productContainer = document.getElementById('product-list-container');
         const productList = document.getElementById('product-list');
+        const productMessage = document.getElementById('product-message');
         const productCodeInput = document.getElementById('product_code_pra');
         const btnSubmitPra = document.getElementById('btn-submit-pra');
 
-        let currentOperator = ''; // Menyimpan operator yang sedang terdeteksi
+        let currentOperator = '';
+        let typingTimer; // Untuk debounce input nominal
+        const doneTypingInterval = 500; // Delay 0.5 detik
 
-        // Data Prefix IAK
         const prefixes = {
             'INDOSAT': { code: ['0814','0815','0816','0855','0856','0857','0858'], color: 'bg-warning text-dark' },
             'XL': { code: ['0817','0818','0819','0859','0878','0877'], color: 'bg-primary' },
@@ -134,7 +151,6 @@
             'BY.U': { code: ['085154','085155','085156','085157','085158'], color: 'bg-primary' }
         };
 
-        // Event saat input Nomor HP diketik
         if(phoneInput) {
             phoneInput.addEventListener('input', function(e) {
                 let number = e.target.value.replace(/[^0-9]/g, '');
@@ -169,11 +185,12 @@
                         operatorMsgSpan.textContent = 'Nomor Valid';
                         operatorMsgSpan.className = 'text-success ms-2 small fw-bold';
 
-                        // JIKA OPERATOR BERBEDA DENGAN SEBELUMNYA, TARIK DATA PRODUK BARU
                         if(currentOperator !== foundOperator) {
                             currentOperator = foundOperator;
                             categoryContainer.classList.remove('d-none');
-                            fetchProducts(currentOperator, categorySelect.value);
+                            nominalContainer.classList.remove('d-none');
+                            nominalInput.value = ''; // Reset input nominal
+                            fetchProducts(currentOperator, categorySelect.value, '');
                         }
                     } else {
                         resetProductView();
@@ -190,43 +207,60 @@
             });
         }
 
-        // Event saat Pilihan "Pulsa / Paket Data" diganti
         categorySelect.addEventListener('change', function(e) {
             if(currentOperator) {
-                fetchProducts(currentOperator, e.target.value);
+                fetchProducts(currentOperator, e.target.value, nominalInput.value);
             }
         });
 
-        // Fungsi Reset Tampilan
+        // Event listener untuk Input Nominal (menggunakan teknik Debounce)
+        nominalInput.addEventListener('keyup', function () {
+            clearTimeout(typingTimer);
+            if (currentOperator) {
+                // Menunggu 0.5 detik setelah user selesai mengetik baru nembak API
+                typingTimer = setTimeout(() => {
+                    fetchProducts(currentOperator, categorySelect.value, nominalInput.value);
+                }, doneTypingInterval);
+            }
+        });
+
         function resetProductView() {
             currentOperator = '';
             categoryContainer.classList.add('d-none');
+            nominalContainer.classList.add('d-none');
             productContainer.classList.add('d-none');
+            productMessage.classList.add('d-none');
             productList.innerHTML = '';
             productCodeInput.value = '';
             btnSubmitPra.disabled = true;
         }
 
-        // FUNGSI AJAX: Menarik Produk dari Database
-        function fetchProducts(operator, type) {
+        function fetchProducts(operator, type, nominal) {
             productContainer.classList.remove('d-none');
-            productList.innerHTML = `<div class="col-12 text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div><span class="ms-2 text-muted">Mencari produk ${operator}...</span></div>`;
+            productMessage.classList.add('d-none');
+            productList.innerHTML = `<div class="col-12 text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div><span class="ms-2 text-muted">Mencari produk...</span></div>`;
 
-            // Reset pilihan sebelumnya
             productCodeInput.value = '';
             btnSubmitPra.disabled = true;
 
-            fetch(`{{ route('ppob.get_products') }}?operator=${operator}&type=${type}`, {
+            // Memasukkan parameter nominal ke dalam URL AJAX
+            fetch(`{{ route('ppob.get_products') }}?operator=${operator}&type=${type}&nominal=${nominal}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
             })
             .then(res => res.json())
             .then(data => {
                 if(data.success && data.data.length > 0) {
                     let html = '';
+
+                    // Tampilkan pesan fallback jika nominal tidak ketemu
+                    if(data.message) {
+                        productMessage.innerHTML = `<i class="bi bi-info-circle me-1"></i> ${data.message}`;
+                        productMessage.classList.remove('d-none');
+                    }
+
                     data.data.forEach(item => {
                         let rpPrice = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price);
 
-                        // Merender Grid Kartu Produk
                         html += `
                         <div class="col-6 col-md-4">
                             <div class="card h-100 border product-card cursor-pointer shadow-sm" style="cursor: pointer;" onclick="selectProduct('${item.code}', this)">
@@ -247,21 +281,16 @@
             });
         }
 
-        // Fungsi saat Kartu Produk diklik
         window.selectProduct = function(code, element) {
-            // Hapus status 'selected' dari semua kartu
             document.querySelectorAll('.product-card').forEach(el => {
                 el.classList.remove('selected');
             });
-
-            // Tambahkan efek ke kartu yang dipilih
             element.classList.add('selected');
-
-            // Masukkan kode produk ke input form dan aktifkan tombol Beli
             productCodeInput.value = code;
             btnSubmitPra.disabled = false;
         }
     });
 </script>
 @endpush
+
 @endsection

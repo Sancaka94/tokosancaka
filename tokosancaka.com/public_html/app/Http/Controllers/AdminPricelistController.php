@@ -267,52 +267,63 @@ class AdminPricelistController extends Controller
     }
 
     /**
-     * Endpoint API Internal untuk mengambil produk berdasarkan Operator & Tipe
+     * Endpoint API Internal untuk mengambil produk berdasarkan Operator, Tipe, & Nominal
      */
     public function getProductsByOperator(Request $request)
     {
-        // 1. Tangkap input dari AJAX
-        $operator = strtoupper($request->operator); // Contoh: 'INDOSAT', 'SMARTFREN'
-        $type = strtolower($request->type);         // Contoh: 'pulsa' atau 'data'
+        $operator = strtoupper($request->operator);
+        $type = strtolower($request->type);
+        $nominal = $request->nominal; // Tangkap input nominal
 
-        // 2. Mapping Nama Operator JS ke Nama IAK
         $searchOperator = strtolower($operator);
-        if ($operator === 'SMARTFREN') {
-            $searchOperator = 'smart'; // Di IAK namanya cuma "Smart"
-        } elseif ($operator === 'THREE') {
-            $searchOperator = 'tri';   // Di IAK namanya sering ditulis "Tri"
-        } elseif ($operator === 'BY.U') {
-            $searchOperator = 'by.u';
+        if ($operator === 'SMARTFREN') $searchOperator = 'smart';
+        elseif ($operator === 'THREE') $searchOperator = 'tri';
+        elseif ($operator === 'BY.U') $searchOperator = 'by.u';
+
+        // Fungsi Closure untuk narik data dasar
+        $fetchData = function($opName) use ($type) {
+            return \App\Models\IakPricelistPrepaid::whereRaw('LOWER(operator) LIKE ?', ["%{$opName}%"])
+                    ->whereRaw('LOWER(type) LIKE ?', ["%{$type}%"])
+                    ->whereIn('status', ['Active', 'active', 'ACTIVE', 'Aktif'])
+                    ->orderBy('price', 'asc')
+                    ->get(['code', 'description', 'price']);
+        };
+
+        // 1. Tarik semua produk yang cocok
+        $products = $fetchData($searchOperator);
+
+        // Fallback Khusus
+        if ($products->isEmpty() && $operator === 'BY.U') $products = $fetchData('telkomsel');
+        if ($products->isEmpty() && $operator === 'THREE') $products = $fetchData('three');
+
+        $message = '';
+        $isExactMatch = false;
+
+        // 2. Jika user mengetikkan Nominal, lakukan penyaringan (Filter)
+        if (!empty($nominal) && $products->isNotEmpty()) {
+            $filtered = $products->filter(function($item) use ($nominal) {
+                // Bersihkan titik & koma dari deskripsi untuk pencarian yang akurat
+                // Misal: "Pulsa 10.000" jadi "pulsa 10000"
+                $cleanDesc = str_replace(['.', ','], '', strtolower($item->description));
+                $cleanNominal = str_replace(['.', ','], '', strtolower($nominal));
+
+                return str_contains($cleanDesc, $cleanNominal);
+            })->values(); // Re-index array
+
+            // 3. Cek apakah ada yang cocok
+            if ($filtered->isNotEmpty()) {
+                $products = $filtered; // Timpa dengan hasil filter
+                $isExactMatch = true;
+            } else {
+                // Jika tidak ketemu (misal ketik 12345), kembalikan semua produk sebagai saran
+                $message = "Nominal <b>{$nominal}</b> tidak ditemukan. Berikut saran produk yang tersedia:";
+            }
         }
 
-        // 3. Cari menggunakan LOWER() agar kebal huruf besar/kecil
-        $products = \App\Models\IakPricelistPrepaid::whereRaw('LOWER(operator) LIKE ?', ["%{$searchOperator}%"])
-                        ->whereRaw('LOWER(type) = ?', [$type])
-                        ->whereRaw('LOWER(status) = ?', ['active']) // Pastikan cuma ambil yang aktif
-                        ->orderBy('price', 'asc') // Urutkan dari harga termurah
-                        ->get(['code', 'description', 'price']);
-
-        // 4. Fallback khusus By.U (Kadang IAK memasukkan By.U ke dalam Telkomsel)
-        if ($products->isEmpty() && $operator === 'BY.U') {
-            $products = \App\Models\IakPricelistPrepaid::whereRaw('LOWER(operator) LIKE ?', ["%telkomsel%"])
-                            ->whereRaw('LOWER(type) = ?', [$type])
-                            ->whereRaw('LOWER(status) = ?', ['active'])
-                            ->orderBy('price', 'asc')
-                            ->get(['code', 'description', 'price']);
-        }
-
-        // 5. Fallback khusus Three (Jika 'tri' kosong, cari 'three')
-        if ($products->isEmpty() && $operator === 'THREE') {
-            $products = \App\Models\IakPricelistPrepaid::whereRaw('LOWER(operator) LIKE ?', ["%three%"])
-                            ->whereRaw('LOWER(type) = ?', [$type])
-                            ->whereRaw('LOWER(status) = ?', ['active'])
-                            ->orderBy('price', 'asc')
-                            ->get(['code', 'description', 'price']);
-        }
-
-        // 6. Kembalikan data dalam format JSON
         return response()->json([
             'success' => true,
+            'is_exact' => $isExactMatch,
+            'message' => $message,
             'data' => $products
         ]);
     }
