@@ -1144,7 +1144,7 @@ Route::get('/ppob/get-products', [App\Http\Controllers\AdminPricelistController:
 
 Route::get('/ppob', [PpobIakController::class, 'index'])->name('ppob.index');
 Route::post('/ppob/store', [PpobIakController::class, 'store'])->name('ppob.iak.store');
-Route::get('/ppob/invoice/{ref_id}', [PpobIakController::class, 'invoice'])->name('ppob.iak.invoice');
+Route::get('/ppob/struk/{ref_id}', [PpobIakController::class, 'invoice'])->name('ppob.iak.invoice');
 
 // Pascabayar & Cek Status
 Route::post('/ppob/pay-postpaid', [PpobIakController::class, 'payPostpaid'])->name('ppob.pay_postpaid');
