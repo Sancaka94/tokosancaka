@@ -1,9 +1,7 @@
-{{-- resources/views/admin/pesanan/edit.blade.php --}}
-
 @extends('layouts.admin')
 
-@section('title', 'Edit Pesanan ' . ($pesanan->nomor_invoice))
-@section('page-title', 'Edit & Re-Payload Pesanan')
+@section('title', 'Tambah Pesanan Baru')
+@section('page-title', 'Buat Pesanan Baru')
 
 @push('styles')
 {{-- Font Awesome untuk ikon --}}
@@ -34,55 +32,27 @@
 </style>
 @endpush
 
+{{-- 🔥 TAMBAHAN KODE PENGAMAN (IDEMPOTENCY) 🔥 --}}
 @php
-    // Inisialisasi tampilan metode pembayaran
-    $pm = old('payment_method', $pesanan->payment_method);
-    $pmName = 'Pilih...';
-    $pmLogo = 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png';
-    if ($pm == 'Potong Saldo') {
-        $pmName = 'Potong Saldo';
-        $pmLogo = 'https://cdn-icons-png.flaticon.com/512/1086/1086060.png';
-    } elseif ($pm == 'COD') {
-        $pmName = 'COD Ongkir';
-        $pmLogo = asset('public/assets/cod.png');
-    } elseif ($pm == 'CODBARANG') {
-        $pmName = 'COD Barang + Ongkir';
-        $pmLogo = asset('public/assets/cod.png');
-    } elseif ($pm != '') {
-        $pmName = $pm; // Untuk Tripay
+    // Membuat kunci unik (UUID) untuk mencegah dobel input saat admin submit form
+    if (!isset($idempotencyKey)) {
+        $idempotencyKey = (string) \Illuminate\Support\Str::uuid();
     }
-
-    // Gabungkan string alamat untuk pre-fill search bar
-    $senderAddrSearch = implode(', ', array_filter([$pesanan->sender_village, $pesanan->sender_district, str_replace(['KABUPATEN ', 'KOTA '], '', $pesanan->sender_regency), $pesanan->sender_postal_code]));
-    $receiverAddrSearch = implode(', ', array_filter([$pesanan->receiver_village, $pesanan->receiver_district, str_replace(['KABUPATEN ', 'KOTA '], '', $pesanan->receiver_regency), $pesanan->receiver_postal_code]));
 @endphp
 
 @section('content')
 
 @include('layouts.partials.notifications')
 
-<div class="mb-4">
-    <div class="bg-blue-50 border-l-4 border-blue-500 p-4">
-        <div class="flex">
-            <div class="flex-shrink-0"><i class="fas fa-info-circle text-blue-500"></i></div>
-            <div class="ml-3">
-                <p class="text-sm text-blue-700">
-                    Anda sedang mengedit Invoice: <strong>{{ $pesanan->nomor_invoice }}</strong>. Menyimpan perubahan pada pesanan berstatus <strong>"Gagal Kirim Resi"</strong> akan otomatis melakukan request ulang (Re-Payload) ke API KiriminAja.
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="max-w-7xl mx-auto">
-    <form id="orderForm" action="{{ route('admin.pesanan.update', $pesanan->resi ?? $pesanan->nomor_invoice) }}" method="POST">
+    <form id="orderForm" action="{{ route('admin.pesanan.store') }}" method="POST">
         @csrf
-        @method('PUT')
-
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
+            <!-- Kolom Kiri: Pengirim & Penerima -->
             <div class="lg:col-span-2 space-y-8">
 
+                <!-- Informasi Pengirim -->
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <div class="flex justify-between items-center border-b pb-4 mb-6">
                         <h3 class="text-xl font-semibold text-gray-800">
@@ -93,32 +63,47 @@
 
                         <div class="relative">
                             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim </label>
-                            <input type="text" id="sender_name" name="sender_name" value="{{ old('sender_name', $pesanan->sender_name) }}"
+                            <input type="text" id="sender_name" name="sender_name"
                             class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
                             <div id="sender_contact_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="relative">
                             <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
-                            <input type="tel" id="sender_phone" name="sender_phone" value="{{ old('sender_phone', $pesanan->sender_phone) }}"
+                            <input type="tel" id="sender_phone" name="sender_phone"
                             class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
                         </div>
                         <div class="md:col-span-2 relative">
                             <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
                             <div class="relative">
-                                <input type="text" id="sender_address_search" value="{{ old('sender_address_search', $senderAddrSearch) }}"
+                                <input type="text" id="sender_address_search"
                             class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
-                                <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 {{ $pesanan->sender_district_id ? '' : 'hidden' }}"></i>
+                                <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
                             </div>
                             <div id="sender_address_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="md:col-span-2">
-                            <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700">Detail Alamat Lengkap Pengirim</label>
-                            <textarea id="sender_address" name="sender_address" rows="3" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required
-                                class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md transition duration-150 ease-in-out">{{ old('sender_address', $pesanan->sender_address) }}</textarea>
-                        </div>
+    <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700">
+        Detail Alamat Lengkap Pengirim
+    </label>
+    <textarea
+        id="sender_address"
+        name="sender_address"
+        rows="3"
+        placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)"
+        required
+        class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900
+               focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md
+               transition duration-150 ease-in-out"
+    ></textarea>
+    </div>
+
+                          <div class="md:col-span-2">
+                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data pengirim ini</label>
+                          </div>
                     </div>
                 </div>
 
+                <!-- Informasi Penerima -->
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <div class="flex justify-between items-center border-b pb-4 mb-6">
                         <h3 class="text-xl font-semibold text-gray-800">
@@ -128,33 +113,40 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="relative">
                             <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Penerima</label>
-                            <input type="text" id="receiver_name" name="receiver_name" value="{{ old('receiver_name', $pesanan->receiver_name) }}"
+                            <input type="text" id="receiver_name" name="receiver_name"
                             class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md" required autocomplete="off">
                             <div id="receiver_contact_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="relative">
                             <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
-                            <input type="tel" id="receiver_phone" name="receiver_phone" value="{{ old('receiver_phone', $pesanan->receiver_phone) }}"
+                            <input type="tel" id="receiver_phone" name="receiver_phone"
                             class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md" required autocomplete="off">
                         </div>
                         <div class="md:col-span-2 relative">
                             <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
                             <div class="relative">
-                                <input type="text" id="receiver_address_search" value="{{ old('receiver_address_search', $receiverAddrSearch) }}"
+                                <input type="text" id="receiver_address_search"
                             class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md" required autocomplete="off">
-                                <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 {{ $pesanan->receiver_district_id ? '' : 'hidden' }}"></i>
+                                <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
                             </div>
                             <div id="receiver_address_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="md:col-span-2">
                             <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700">Alamat Penerima Lengkap</label>
-                            <textarea id="receiver_address" name="receiver_address" rows="3" class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md transition duration-150 ease-in-out" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required>{{ old('receiver_address', $pesanan->receiver_address) }}</textarea>
+                            <textarea id="receiver_address" name="receiver_address" rows="3"
+                            class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900
+                            focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md
+                            transition duration-150 ease-in-out" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
                         </div>
+                          <div class="md:col-span-2">
+                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data penerima ini</label>
+                          </div>
                     </div>
                 </div>
 
             </div>
 
+            <!-- Kolom Kanan: Detail Paket & Pembayaran -->
             <div class="lg:col-span-1 space-y-8">
                 <div class="bg-white p-6 rounded-lg shadow-md sticky top-8">
                     <h3 class="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">
@@ -165,21 +157,21 @@
                         <div>
                             <label for="item_description" class="block mb-2 text-sm font-medium text-gray-700">Deskripsi Barang</label>
                             <input type="text" id="item_description" name="item_description"
-                                   value="{{ old('item_description', $pesanan->item_description) }}"
+                                   value="Barang Umum"
                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
                         </div>
 
                         <div>
                             <label for="item_price" class="block mb-2 text-sm font-medium text-gray-700">Harga Barang (Rp)</label>
                             <input type="number" name="item_price" id="item_price"
-                                   value="{{ old('item_price', $pesanan->total_harga_barang ?? $pesanan->item_price ?? 1000) }}"
+                                   value="1000"
                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required min="1">
                         </div>
 
                         <div>
                             <label for="weight" class="block mb-2 text-sm font-medium text-gray-700">Berat (gram)</label>
                             <input type="number" id="weight" name="weight"
-                                   value="{{ old('weight', $pesanan->weight) }}"
+                                   value="1000"
                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required min="1">
                         </div>
 
@@ -187,90 +179,90 @@
                             <div>
                                 <label for="length" class="block mb-2 text-sm font-medium text-gray-700">P (cm)</label>
                                 <input type="number" id="length" name="length"
-                                       value="{{ old('length', $pesanan->length ?? 1) }}"
+                                       value="1"
                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
                             </div>
                             <div>
                                 <label for="width" class="block mb-2 text-sm font-medium text-gray-700">L (cm)</label>
                                 <input type="number" id="width" name="width"
-                                       value="{{ old('width', $pesanan->width ?? 1) }}"
+                                       value="1"
                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
                             </div>
                             <div>
                                 <label for="height" class="block mb-2 text-sm font-medium text-gray-700">T (cm)</label>
                                 <input type="number" id="height" name="height"
-                                       value="{{ old('height', $pesanan->height ?? 1) }}"
+                                       value="1"
                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
                             </div>
                         </div>
 
-                        @php $itemType = old('item_type', $pesanan->item_type); @endphp
                         <div>
                             <label for="item_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Barang</label>
-                            <select name="item_type" id="item_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
+
+                            <select name="item_type" id="item_type"
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
+                                required>
                                 <option value="" disabled>Pilih...</option>
-                                <option value="1" {{ $itemType == '1' ? 'selected' : '' }}>Peralatan Elektronik & Gadget</option>
-                                <option value="2" {{ $itemType == '2' ? 'selected' : '' }}>Pakaian / Baju / Kain</option>
-                                <option value="3" {{ $itemType == '3' ? 'selected' : '' }}>Pecah Belah</option>
-                                <option value="4" {{ $itemType == '4' ? 'selected' : '' }}>Dokumen / Berkas / Buku</option>
-                                <option value="5" {{ $itemType == '5' ? 'selected' : '' }}>Peralatan Rumah Tangga</option>
-                                <option value="6" {{ $itemType == '6' ? 'selected' : '' }}>Aksesoris</option>
-                                <option value="7" {{ $itemType == '7' || empty($itemType) ? 'selected' : '' }}>Lain-Lain</option>
-                                <option value="8" {{ $itemType == '8' ? 'selected' : '' }}>Dokumen Berharga</option>
-                                <option value="9" {{ $itemType == '9' ? 'selected' : '' }}>Peralatan Kesehatan / Kecantikan / Kosmetik</option>
-                                <option value="10" {{ $itemType == '10' ? 'selected' : '' }}>Peralatan Olahraga & Hiburan</option>
-                                <option value="11" {{ $itemType == '11' ? 'selected' : '' }}>Perlengkapan Mobil & Motor</option>
+                                <option value="1">Peralatan Elektronik & Gadget</option>
+                                <option value="2">Pakaian / Baju / Kain</option>
+                                <option value="3">Pecah Belah</option>
+                                <option value="4">Dokumen / Berkas / Buku</option>
+                                <option value="5">Peralatan Rumah Tangga</option>
+                                <option value="6">Aksesoris</option>
+                                <option value="7" selected>Lain-Lain</option>
+                                <option value="8">Dokumen Berharga</option>
+                                <option value="9">Peralatan Kesehatan / Kecantikan / Kosmetik</option>
+                                <option value="10">Peralatan Olahraga & Hiburan</option>
+                                <option value="11">Perlengkapan Mobil & Motor</option>
                             </select>
                         </div>
 
-                        @php $svcType = old('service_type', $pesanan->service_type); @endphp
                         <div>
                             <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Layanan</label>
                             <select name="service_type" id="service_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-                                <option value="" disabled>Pilih...</option>
-                                <option value="regular" {{ $svcType == 'regular' ? 'selected' : '' }}>Regular</option>
-                                <option value="express" {{ $svcType == 'express' ? 'selected' : '' }}>Express</option>
-                                <option value="sameday" {{ $svcType == 'sameday' ? 'selected' : '' }}>Sameday</option>
-                                <option value="instant" {{ $svcType == 'instant' ? 'selected' : '' }}>Instant</option>
-                                <option value="cargo" {{ $svcType == 'cargo' ? 'selected' : '' }}>Cargo</option>
+                                <option value="" disabled>Pilih...</option> <option value="regular" selected>Regular</option>
+
+                                <option value="express">Express</option>
+                                <option value="sameday">Sameday</option>
+                                <option value="instant">Instant</option>
+                                <option value="cargo">Cargo</option>
                             </select>
                         </div>
 
-                        @php $asuransi = old('ansuransi', $pesanan->ansuransi); @endphp
                         <div>
                             <label for="ansuransi" class="block mb-2 text-sm font-medium text-gray-700">Asuransi</label>
                             <select name="ansuransi" id="ansuransi" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-                                <option value="tidak" {{ $asuransi == 'tidak' ? 'selected' : '' }}>Tidak</option>
-                                <option value="iya" {{ $asuransi == 'iya' ? 'selected' : '' }}>Iya</option>
+                                <option value="tidak" selected>Tidak</option><option value="iya">Iya</option>
                             </select>
                         </div>
                         <hr/>
                         <div>
                             <label for="selected_expedition_display" class="block mb-2 text-sm font-medium text-gray-700">Pilih Ekspedisi</label>
-                            <input type="text" id="selected_expedition_display" value="{{ old('expedition_display', $pesanan->expedition) }}" class="cursor-pointer bg-red-50 border border-red-300 text-red-600 text-sm rounded-lg block w-full p-2.5 text-center font-semibold" placeholder="Lengkapi data & klik di sini" readonly required>
+                            <input type="text" id="selected_expedition_display" class="cursor-pointer bg-red-50 border border-red-300 text-red-600 text-sm rounded-lg block w-full p-2.5 text-center font-semibold" placeholder="Lengkapi data & klik di sini" readonly required>
                         </div>
                         <div>
                             <label for="paymentMethodButton" class="block mb-2 text-sm font-medium text-gray-700">Metode Pembayaran</label>
                             <div id="paymentMethodButton" class="cursor-pointer bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5 flex justify-between items-center">
-                                <div class="flex items-center"><img id="selectedPaymentLogo" src="{{ $pmLogo }}" alt="Logo" class="w-6 h-6 mr-2"><span id="selectedPaymentName">{{ $pmName }}</span></div><i class="fas fa-chevron-down text-gray-400"></i>
+                                <div class="flex items-center"><img id="selectedPaymentLogo" src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" alt="Logo" class="w-6 h-6 mr-2"><span id="selectedPaymentName">Pilih...</span></div><i class="fas fa-chevron-down text-gray-400"></i>
                             </div>
                         </div>
 
-                        <div id="customer_container" class="md:col-span-2 {{ old('payment_method', $pesanan->payment_method) == 'Potong Saldo' ? '' : 'hidden' }}">
+                          <div id="customer_container" class="md:col-span-2 hidden">
                             <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib untuk Potong Saldo)</label>
-                            <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" {{ old('payment_method', $pesanan->payment_method) == 'Potong Saldo' ? 'required' : '' }}>
+                            <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
                                 <option value="">-- Pilih Pelanggan --</option>
                                 @foreach($customers as $customer)
-                                    <option value="{{ $customer->id_pengguna }}" {{ old('customer_id', $pesanan->customer_id) == $customer->id_pengguna ? 'selected' : '' }}>
+                                    <option value="{{ $customer->id_pengguna }}">
                                         {{ $customer->nama_lengkap }} (Saldo: Rp {{ number_format($customer->saldo ?? 0) }})
                                     </option>
+
                                 @endforeach
                             </select>
                         </div>
 
                         <div class="pt-4">
-                            <button type="button" id="confirmBtn" class="w-full text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-5 py-3 text-center">
-                                Simpan & Re-Payload
+                            <button type="button" id="confirmBtn" class="w-full text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-5 py-3 text-center" disabled>
+                                Buat Pesanan
                             </button>
                         </div>
                     </div>
@@ -279,33 +271,28 @@
         </div>
 
         {{-- Hidden fields untuk data API --}}
-        <input type="hidden" name="pengirim_id" id="sender_id" value="{{ old('pengirim_id', $pesanan->kontak_pengirim_id) }}">
-        <input type="hidden" name="sender_lat" id="sender_lat" value="{{ old('sender_lat', $pesanan->sender_lat) }}">
-        <input type="hidden" name="sender_lng" id="sender_lng" value="{{ old('sender_lng', $pesanan->sender_lng) }}">
-        <input type="hidden" name="sender_province" id="sender_province" value="{{ old('sender_province', $pesanan->sender_province) }}">
-        <input type="hidden" name="sender_regency" id="sender_regency" value="{{ old('sender_regency', $pesanan->sender_regency) }}">
-        <input type="hidden" name="sender_district" id="sender_district" value="{{ old('sender_district', $pesanan->sender_district) }}">
-        <input type="hidden" name="sender_village" id="sender_village" value="{{ old('sender_village', $pesanan->sender_village) }}">
-        <input type="hidden" name="sender_postal_code" id="sender_postal_code" value="{{ old('sender_postal_code', $pesanan->sender_postal_code) }}">
-        <input type="hidden" name="sender_district_id" id="sender_district_id" value="{{ old('sender_district_id', $pesanan->sender_district_id) }}" required>
-        <input type="hidden" name="sender_subdistrict_id" id="sender_subdistrict_id" value="{{ old('sender_subdistrict_id', $pesanan->sender_subdistrict_id) }}" required>
-
-        <input type="hidden" name="penerima_id" id="receiver_id" value="{{ old('penerima_id', $pesanan->kontak_penerima_id) }}">
-        <input type="hidden" name="receiver_lat" id="receiver_lat" value="{{ old('receiver_lat', $pesanan->receiver_lat) }}">
-        <input type="hidden" name="receiver_lng" id="receiver_lng" value="{{ old('receiver_lng', $pesanan->receiver_lng) }}">
-        <input type="hidden" name="receiver_province" id="receiver_province" value="{{ old('receiver_province', $pesanan->receiver_province) }}">
-        <input type="hidden" name="receiver_regency" id="receiver_regency" value="{{ old('receiver_regency', $pesanan->receiver_regency) }}">
-        <input type="hidden" name="receiver_district" id="receiver_district" value="{{ old('receiver_district', $pesanan->receiver_district) }}">
-        <input type="hidden" name="receiver_village" id="receiver_village" value="{{ old('receiver_village', $pesanan->receiver_village) }}">
-        <input type="hidden" name="receiver_postal_code" id="receiver_postal_code" value="{{ old('receiver_postal_code', $pesanan->receiver_postal_code) }}">
-        <input type="hidden" name="receiver_district_id" id="receiver_district_id" value="{{ old('receiver_district_id', $pesanan->receiver_district_id) }}" required>
-        <input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" value="{{ old('receiver_subdistrict_id', $pesanan->receiver_subdistrict_id) }}" required>
-
-        <input type="hidden" name="expedition" id="expedition" value="{{ old('expedition', $pesanan->expedition) }}" required>
-        <input type="hidden" name="payment_method" id="payment_method" value="{{ old('payment_method', $pesanan->payment_method) }}" required>
+        <input type="hidden" name="pengirim_id" id="sender_id">
+        <input type="hidden" name="sender_lat" id="sender_lat"><input type="hidden" name="sender_lng" id="sender_lng">
+        <input type="hidden" name="sender_province" id="sender_province" ><input type="hidden" name="sender_regency" id="sender_regency" >
+        <input type="hidden" name="sender_district" id="sender_district" ><input type="hidden" name="sender_village" id="sender_village" >
+        <input type="hidden" name="sender_postal_code" id="sender_postal_code" >
+        <input type="hidden" name="sender_district_id" id="sender_district_id" required>
+        <input type="hidden" name="sender_subdistrict_id" id="sender_subdistrict_id" required>
+        <input type="hidden" name="penerima_id" id="receiver_id">
+        <input type="hidden" name="receiver_lat" id="receiver_lat"><input type="hidden" name="receiver_lng" id="receiver_lng">
+        <input type="hidden" name="receiver_province" id="receiver_province" ><input type="hidden" name="receiver_regency" id="receiver_regency" >
+        <input type="hidden" name="receiver_district" id="receiver_district" ><input type="hidden" name="receiver_village" id="receiver_village" >
+        <input type="hidden" name="receiver_postal_code" id="receiver_postal_code" >
+        <input type="hidden" name="receiver_district_id" id="receiver_district_id" required>
+        <input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" required>
+        <input type="hidden" name="expedition" id="expedition" required>
+        <input type="hidden" name="payment_method" id="payment_method" required>
+        {{-- 👇 KODE PENGAMAN DITAMBAHKAN DI SINI 👇 --}}
+        <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
     </form>
 </div>
 
+<!-- Modal Pilihan Ekspedisi -->
 <div id="ongkirModal" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-50 hidden flex items-center justify-center">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
         <div class="p-4 border-b flex justify-between items-center">
@@ -319,6 +306,7 @@
     </div>
 </div>
 
+<!-- Modal Metode Pembayaran -->
 <div id="paymentMethodModal" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-50 hidden flex items-center justify-center">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         <div class="p-4 border-b flex justify-between items-center">
@@ -328,14 +316,14 @@
         <div class="modal-body-scroll">
            <ul id="paymentOptionsList" class="divide-y">
                 {{-- Opsi Potong Saldo khusus Admin --}}
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 {{ $pm == 'Potong Saldo' ? 'bg-red-50' : '' }}" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="w-8 h-8 mr-4">Potong Saldo</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="w-8 h-8 mr-4">Potong Saldo</li>
 
             {{-- Pembatas Antara Saldo dan COD --}}
             <li class="bg-red-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Bayar Ditempat</li>
 
                 {{-- Opsi dari KiriminAja --}}
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option {{ $pm == 'COD' ? 'bg-red-50' : '' }}" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option {{ $pm == 'CODBARANG' ? 'bg-red-50' : '' }}" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
 
                 {{-- 2. BAGIAN OTOMATIS TRIPAY (GANTI LIST MANUAL DENGAN INI) --}}
             <li class="bg-blue-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Transfer Bank & Minimarket (Otomatis)</li>
@@ -517,9 +505,10 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const formData = new FormData(document.getElementById('orderForm'));
             const params = new URLSearchParams(formData).toString();
+            // const response = await fetch(`{{ route('kirimaja.cekongkir') }}?${params}`);
 
             const response = await fetch(`{{ route('kirimaja.cekongkir') }}?${params}`, {
-                method: 'GET',
+                method: 'GET', // Pastikan route ini memang menggunakan metode GET
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
@@ -580,6 +569,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.classList.contains('select-ongkir-btn')) {
             document.getElementById('expedition').value = e.target.dataset.value;
             document.getElementById('selected_expedition_display').value = e.target.dataset.display;
+
+            // --- BAGIAN INI DIHAPUS/DIKOMENTARI AGAR COD TETAP MUNCUL ---
+            /* const codOptions = document.querySelectorAll('.cod-payment-option');
+            if (e.target.dataset.codSupported === 'true') {
+                codOptions.forEach(opt => opt.style.display = 'flex');
+            } else {
+                if (['COD', 'CODBARANG'].includes(document.getElementById('payment_method').value)) {
+                    document.getElementById('payment_method').value = '';
+                    document.getElementById('selectedPaymentName').textContent = 'Pilih...';
+                    document.getElementById('selectedPaymentLogo').src = 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png';
+                }
+                codOptions.forEach(opt => opt.style.display = 'none');
+            }
+            */
+            // -----------------------------------------------------------
+
             ongkirModalEl.classList.add('hidden');
             runValidityChecks();
         }
@@ -604,7 +609,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 customerContainer.classList.add('hidden');
                 customerSelect.removeAttribute('required');
-                // customerSelect.value = ''; // Disable clear for prefill persistence if editing
+                customerSelect.value = '';
             }
             paymentModalEl.classList.add('hidden');
             runValidityChecks();
@@ -618,6 +623,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
     document.addEventListener('click', function(event) {
         if (!event.target.closest('#sender_address_search, #sender_address_results')) {
             document.getElementById('sender_address_results').classList.add('hidden');
@@ -714,16 +720,31 @@ applyStrictInsurance(true);
         const paymentMethodInput = document.getElementById('payment_method');
         const customerSelect = document.getElementById('customer_id');
 
+        function debugLog(line, msg) {
+            console.log(`create:${line} - ${msg}`);
+        }
+
+        // Assign the function to the outer-scoped variable so other parts of the script can call it
         runValidityChecks = function() {
+            debugLog(1082, 'Memeriksa Validitas Form');
+
             const html5Valid = form.checkValidity();
+            debugLog(1091, `Validitas Bawaan HTML5 (form.checkValidity()): ${html5Valid}`);
+
             const expeditionChosen = expeditionInput && expeditionInput.value && expeditionInput.value.trim() !== '';
+            debugLog(1098, `Kondisi Ekspedisi: ${expeditionChosen ? 'Lolos' : 'Gagal'}`);
+
             const paymentChosen = paymentMethodInput && paymentMethodInput.value && paymentMethodInput.value.trim() !== '';
+            debugLog(1106, `Kondisi Metode Pembayaran: ${paymentChosen ? 'Lolos' : 'Gagal'}`);
 
             let potongSaldoFailsCustomer = false;
             if (paymentChosen && paymentMethodInput.value === 'Potong Saldo') {
                 const customerChosen = customerSelect && customerSelect.value && customerSelect.value.trim() !== '';
                 if (!customerChosen) {
+                    debugLog(1111, "Kondisi Gagal: 'Potong Saldo' dipilih tapi Pelanggan kosong.");
                     potongSaldoFailsCustomer = true;
+                } else {
+                    debugLog(1111, "Kondisi Lolos: 'Potong Saldo' dan Pelanggan terpilih.");
                 }
             }
 
@@ -732,14 +753,15 @@ applyStrictInsurance(true);
                 confirmBtn.disabled = true;
                 confirmBtn.classList.add('opacity-60', 'cursor-not-allowed');
                 confirmBtn.setAttribute('title', potongSaldoFailsCustomer ? 'Pilih pelanggan saat menggunakan Potong Saldo' : 'Lengkapi form terlebih dahulu');
+                debugLog(1118, 'Hasil Akhir: Tombol akan DINONAKTIFKAN');
             } else {
                 confirmBtn.disabled = false;
                 confirmBtn.classList.remove('opacity-60', 'cursor-not-allowed');
                 confirmBtn.removeAttribute('title');
+                debugLog(1118, 'Hasil Akhir: Tombol AKTIF');
             }
         };
 
-        // Panggil saat page load agar tombol langsung aktif jika datanya sudah lengkap (prefilled)
         runValidityChecks();
 
         const watchEls = Array.from(document.querySelectorAll('input, select, textarea'));
@@ -767,13 +789,13 @@ applyStrictInsurance(true);
             }
 
             Swal.fire({
-                title: 'Konfirmasi Re-Payload',
-                text: "Apakah semua data sudah benar? Pesanan ini akan dicoba kirim ulang ke API KiriminAja.",
+                title: 'Konfirmasi Pesanan',
+                text: "Apakah semua data sudah benar?",
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#ff0000ff',
                 cancelButtonColor: '#0be628ff',
-                confirmButtonText: 'Ya, Simpan & Re-Payload',
+                confirmButtonText: 'Ya, Buat Pesanan',
                 cancelButtonText: 'Batal'
             }).then((result) => {
                 if (result.isConfirmed) {
@@ -789,26 +811,26 @@ applyStrictInsurance(true);
     let tripayLoaded = false;
 
     async function loadTripayChannels() {
+        // Cek jika sudah pernah load, jangan load lagi (biar hemat kuota)
         if (tripayLoaded) return;
 
         const container = document.getElementById('tripayChannelsContainer');
 
         try {
+            // Panggil API yang sudah kita buat di Controller
             const response = await fetch("{{ route('admin.pesanan.get_channels') }}");
             const res = await response.json();
 
             if (res.success && res.data.length > 0) {
-                container.innerHTML = '';
+                container.innerHTML = ''; // Hapus loading spinner
 
                 res.data.forEach(channel => {
+                    // Hanya tampilkan channel yang AKTIF
                     if (channel.active) {
                         const li = document.createElement('li');
                         li.className = 'payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 border-b';
 
-                        // Tandai terpilih jika sama dengan DB
-                        const isSelected = (channel.code === document.getElementById('payment_method').value) ? 'bg-red-50' : '';
-                        if(isSelected) li.classList.add('bg-red-50');
-
+                        // Simpan data di atribut element
                         li.dataset.value = channel.code;
                         li.dataset.label = channel.name;
                         li.dataset.img   = channel.icon_url;
@@ -821,7 +843,9 @@ applyStrictInsurance(true);
                             </div>
                         `;
 
+                        // Tambahkan fungsi klik
                         li.addEventListener('click', () => selectPayment(li));
+
                         container.appendChild(li);
                     }
                 });
@@ -835,16 +859,21 @@ applyStrictInsurance(true);
         }
     }
 
-    // --- 2. FUNGSI KLIK PEMBAYARAN ---
+    // --- 2. FUNGSI KLIK PEMBAYARAN (GABUNGAN MANUAL & OTOMATIS) ---
     function selectPayment(element) {
         const val = element.dataset.value;
         const label = element.dataset.label;
+        // Ambil gambar dari dataset (otomatis) atau tag img (manual)
         const img = element.dataset.img || element.querySelector('img').src;
 
+        // Set ke Input Hidden
         document.getElementById('payment_method').value = val;
+
+        // Update Tampilan Tombol Utama
         document.getElementById('selectedPaymentName').textContent = label;
         document.getElementById('selectedPaymentLogo').src = img;
 
+        // Atur Logika "Potong Saldo" (Wajib pilih customer)
         const custContainer = document.getElementById('customer_container');
         const custSelect = document.getElementById('customer_id');
 
@@ -854,17 +883,26 @@ applyStrictInsurance(true);
         } else {
             custContainer.classList.add('hidden');
             custSelect.removeAttribute('required');
+            custSelect.value = '';
         }
 
+        // Tutup Modal
         document.getElementById('paymentMethodModal').classList.add('hidden');
+
+        // Jalankan Validasi Tombol Submit
         if (typeof runValidityChecks === "function") runValidityChecks();
     }
 
+    // --- 3. PASANG EVENT LISTENER ---
+
+    // Saat tombol "Pilih Metode Pembayaran" diklik -> Buka Modal & Load API
     document.getElementById('paymentMethodButton').addEventListener('click', () => {
         document.getElementById('paymentMethodModal').classList.remove('hidden');
-        loadTripayChannels();
+        loadTripayChannels(); // <--- INI PENTING
     });
 
+    // Pasang listener untuk metode MANUAL yang sudah ada di HTML (Saldo, COD, Doku)
+    // Gunakan selector khusus 'payment-option' yang ada di dalam list statis
     const manualOptions = document.querySelectorAll('#paymentOptionsList > li.payment-option');
     manualOptions.forEach(li => {
         li.addEventListener('click', () => selectPayment(li));
@@ -894,4 +932,6 @@ applyStrictInsurance(true);
     });
 </script>
 @endif
+
 @endpush
+
