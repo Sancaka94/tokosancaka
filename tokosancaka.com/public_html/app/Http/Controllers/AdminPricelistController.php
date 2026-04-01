@@ -103,4 +103,93 @@ class AdminPricelistController extends Controller
             return back()->with('error', 'Gagal mengolah file Excel: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Mengecek sisa saldo di akun IAK
+     */
+    public function checkBalance()
+    {
+        $username = env('IAK_USERNAME');
+        $apiKey = env('IAK_API_KEY');
+        // LOG LOG: Format Sign Cek Saldo = md5(username + api_key + 'bl')
+        $sign = md5($username . $apiKey . 'bl');
+        $url = env('IAK_URL') . '/v1/legacy/index';
+
+        try {
+            $response = Http::post($url, [
+                'commands' => 'balance',
+                'username' => $username,
+                'sign'     => $sign
+            ]);
+
+            if ($response->successful()) {
+                $balance = $response->json('data.balance');
+                return back()->with('success', 'Saldo IAK Anda saat ini: Rp ' . number_format($balance, 0, ',', '.'));
+            }
+
+            Log::error('LOG LOG - IAK Balance Error: ' . $response->body());
+            return back()->with('error', 'Gagal mengecek saldo. Cek koneksi atau kredensial API Anda.');
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG - IAK Balance Exception: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Menarik data Pricelist dari API IAK dan langsung update ke Database
+     */
+    public function syncPricelistApi()
+    {
+        $username = env('IAK_USERNAME');
+        $apiKey = env('IAK_API_KEY');
+        // LOG LOG: Format Sign Pricelist = md5(username + api_key + 'pl')
+        $sign = md5($username . $apiKey . 'pl');
+        $url = env('IAK_URL') . '/v1/legacy/index';
+
+        try {
+            $response = Http::post($url, [
+                'commands' => 'pricelist',
+                'username' => $username,
+                'sign'     => $sign,
+                'status'   => 'all'
+            ]);
+
+            if ($response->successful()) {
+                $products = $response->json('data');
+                $count = 0;
+
+                foreach ($products as $item) {
+                    // LOG LOG: Jika deskripsi kosong/strip, gunakan nama nominalnya
+                    $description = ($item['pulsa_details'] == '-' || empty($item['pulsa_details']))
+                                    ? $item['pulsa_nominal']
+                                    : $item['pulsa_details'];
+
+                    // Insert atau Update ke database
+                    IakPricelistPrepaid::updateOrCreate(
+                        ['code' => $item['pulsa_code']], // Patokan update
+                        [
+                            'operator'    => $item['pulsa_op'],
+                            'description' => $description,
+                            'price'       => $item['pulsa_price'],
+                            'type'        => $item['pulsa_type'],
+                            // Samakan format status dengan sistem kamu (Active/Offline)
+                            'status'      => strtolower($item['status']) == 'active' ? 'Active' : 'Offline'
+                        ]
+                    );
+                    $count++;
+                }
+
+                Log::info("LOG LOG - Sinkronisasi API IAK Berhasil. Total: $count produk.");
+                return back()->with('success', "Sinkronisasi sukses! $count produk berhasil diupdate langsung dari IAK.");
+            }
+
+            Log::error('LOG LOG - IAK Pricelist Error: ' . $response->body());
+            return back()->with('error', 'Gagal menarik data pricelist dari IAK.');
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG - IAK Pricelist Exception: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan saat sinkronisasi: ' . $e->getMessage());
+        }
+    }
 }

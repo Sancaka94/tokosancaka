@@ -1140,4 +1140,7 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
     // LOG LOG: Pastikan method di Blade adalah @method('DELETE')
     Route::delete('/produk/{id}', [ProdukController::class, 'destroy'])->name('produk.destroy');
 
+    Route::post('/iak/check-balance', [AdminPricelistController::class, 'checkBalance'])->name('iak.check_balance');
+    Route::post('/iak/sync-pricelist', [AdminPricelistController::class, 'syncPricelistApi'])->name('iak.sync_pricelist');
+
 });

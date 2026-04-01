@@ -17,6 +17,21 @@
         </div>
     @endif
 
+    @if(session('error'))
+        <div class="mb-6 rounded-lg bg-red-50 p-4 border border-red-200">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="flex flex-col md:flex-row gap-6">
         <div class="w-full md:w-1/4 lg:w-1/5">
             <div class="bg-white shadow rounded-lg p-4 sticky top-4">
@@ -63,14 +78,34 @@
         <div class="w-full md:w-3/4 lg:w-4/5">
             <div class="bg-white shadow rounded-lg p-6">
 
-                <form action="" method="GET" class="mb-6 flex flex-col lg:flex-row gap-4 justify-between items-center">
-                    <input type="hidden" name="tab" value="{{ $currentTab }}">
-
-                    <h2 class="text-xl font-bold text-gray-800 w-full lg:w-auto">
+                <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6 border-b pb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">
                         Data {{ $categories[$currentTab] ?? ucwords($currentTab) }}
                     </h2>
 
-                    <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                    <div class="flex flex-wrap gap-2">
+                        <form action="{{ route('admin.iak.check_balance') }}" method="POST" class="m-0">
+                            @csrf
+                            <button type="submit" class="flex items-center text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 focus:ring-4 focus:outline-none focus:ring-blue-100 font-medium rounded-lg text-sm px-4 py-2 transition-colors">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                                Cek Saldo IAK
+                            </button>
+                        </form>
+
+                        <form action="{{ route('admin.iak.sync_pricelist') }}" method="POST" class="m-0" onsubmit="return confirm('Tarik data harga terbaru dari server IAK? Proses ini membutuhkan waktu beberapa detik.')">
+                            @csrf
+                            <button type="submit" class="flex items-center text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2 transition-colors">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                Sinkron API IAK
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <form action="" method="GET" class="mb-6 flex flex-col lg:flex-row gap-4 justify-between items-center">
+                    <input type="hidden" name="tab" value="{{ $currentTab }}">
+
+                    <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto ms-auto">
                         <div class="relative w-full sm:w-64">
                             <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari kode atau deskripsi..."
                                    class="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
@@ -100,7 +135,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Operator</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deskripsi</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harga</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harga Dasar</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
                             </tr>
@@ -121,7 +156,7 @@
                                         Rp {{ number_format($item->price, 0, ',', '.') }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @if($item->status == 'active')
+                                        @if(strtolower($item->status) == 'active')
                                             <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Aktif</span>
                                         @else
                                             <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Nonaktif</span>
@@ -140,7 +175,7 @@
                             @empty
                                 <tr>
                                     <td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500">
-                                        Data tidak ditemukan.
+                                        Data tidak ditemukan. Silakan klik "Sinkron API IAK" untuk menarik data pricelist terbaru.
                                     </td>
                                 </tr>
                             @endforelse
