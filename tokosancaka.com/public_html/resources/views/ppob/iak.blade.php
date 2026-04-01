@@ -241,7 +241,9 @@
             productMessage.classList.add('d-none');
             productList.innerHTML = '';
             productCodeInput.value = '';
-            btnSubmitPra.disabled = true;
+            if (btnSubmitPra) {
+                btnSubmitPra.disabled = true;
+            }
         }
 
         function fetchProducts(operator, type, nominal) {
@@ -250,7 +252,10 @@
             productList.innerHTML = `<div class="col-12 text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div><span class="ms-2 text-muted">Mencari produk...</span></div>`;
 
             productCodeInput.value = '';
-            btnSubmitPra.disabled = true;
+            if (btnSubmitPra) {
+                btnSubmitPra.disabled = true;
+            }
+
 
             // Memasukkan parameter nominal ke dalam URL AJAX
             fetch(`{{ route('ppob.get_products') }}?operator=${operator}&type=${type}&nominal=${nominal}`, {
