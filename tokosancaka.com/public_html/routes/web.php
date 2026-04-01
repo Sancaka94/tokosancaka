@@ -845,7 +845,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     // 4. Tombol Action: Mediasi
     Route::get('/escrow/{id}/mediasi', [EscrowController::class, 'mediasi'])->name('escrow.mediasi');
 
-    Route::get('/produk', [ProdukController::class, 'index'])->name('produk.index');
+    //Route::get('/produk', [ProdukController::class, 'index'])->name('produk.index');
 
 
 });
@@ -1125,7 +1125,7 @@ Route::post('/admin/pricelist/upload', [AdminPricelistController::class, 'upload
 Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () {
 
     // Route Utama untuk menampilkan Tabel (Index)
-    //Route::get('/produk', [ProdukController::class, 'index'])->name('produk.index');
+    Route::get('/produk', [ProdukController::class, 'index'])->name('produk.index');
 
     // Route untuk Proses Tambah Data (Create & Store)
     Route::get('/produk/create', [ProdukController::class, 'create'])->name('produk.create');
