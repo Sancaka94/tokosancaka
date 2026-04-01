@@ -115,38 +115,40 @@ class AdminPricelistController extends Controller
         // LOG LOG: Format Sign Cek Saldo = md5(username + api_key + 'bl')
         $sign = md5($username . $apiKey . 'bl');
 
-        // Membersihkan URL dan memastikan /api selalu ada di belakangnya
-        $baseUrl = rtrim(env('IAK_URL'), '/');
-        if (!str_ends_with(strtolower($baseUrl), '/api')) {
-            $baseUrl .= '/api';
-        }
-        $url = $baseUrl . '/v1/legacy/index';
+        // Pastikan URL mengarah ke endpoint yang benar
+        $baseUrl = str_replace('/api', '', rtrim(env('IAK_URL'), '/'));
+        $url = $baseUrl . '/api/check-balance'; // <--- INI ENDPOINT YANG BENAR
 
         try {
-            // Gunakan asForm() untuk memastikan API Legacy IAK membaca input dengan benar
-            $response = Http::asForm()->post($url, [
-                'commands' => 'balance',
+            // Gunakan header JSON agar IAK merespons dengan format JSON yang rapi
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json'
+            ])->post($url, [
                 'username' => $username,
                 'sign'     => $sign
             ]);
 
-            if ($response->successful() && $response->json('data.balance') !== null) {
-                $balance = $response->json('data.balance');
+            $data = $response->json();
 
-                // --- TAMBAHAN BARU: Simpan saldo ke database user auth ---
+            // Jika sukses dan key balance tersedia
+            if ($response->successful() && isset($data['data']['balance'])) {
+                $balance = $data['data']['balance'];
+
+                // --- Simpan saldo IAK ke database user auth ---
                 if (auth()->check()) {
                     $user = auth()->user();
-                    $user->balance_iak = $balance; // <-- UBAH DI SINI
+                    $user->balance_iak = $balance;
                     $user->save();
                 }
 
                 return back()->with('success', 'Saldo IAK Anda saat ini: Rp ' . number_format($balance, 0, ',', '.'));
             }
 
-            $realError = $response->json('data.message') ?? $response->body();
-            Log::error('LOG LOG - IAK Balance Error: ' . $realError);
-            // Menampilkan respon mentah IAK ke layar agar kita tahu penyebab pastinya
-            return back()->with('error', 'Error dari IAK: ' . $realError);
+            // Jika gagal, tampilkan pesan error dari IAK
+            $errorMsg = $data['data']['message'] ?? $response->body();
+            Log::error('LOG LOG - IAK Balance Error: ' . $errorMsg);
+            return back()->with('error', 'Gagal mengecek saldo. ' . $errorMsg);
 
         } catch (\Exception $e) {
             Log::error('LOG LOG - IAK Balance Exception: ' . $e->getMessage());
