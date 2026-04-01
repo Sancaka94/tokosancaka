@@ -48,6 +48,10 @@ use App\Http\Controllers\Api\OngkirApiController; // <-- IMPORT
 use App\Http\Controllers\Customer\PesananController as CustomerPesananController; // ALIAS
 use App\Http\Controllers\TelegramPpobController;
 use App\Http\Controllers\Api\ScraperController;
+use App\Http\Controllers\PpobIakController;
+
+
+Route::post('/ppob/webhook', [PpobIakController::class, 'webhook']);
 
 // Website fontend WA Integration
 //use App\Http\Controllers\WhatsappController;

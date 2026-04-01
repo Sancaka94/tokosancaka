@@ -141,6 +141,10 @@ use App\Http\Controllers\Auth\Customer\CustomerForgotPasswordController;
 
 use App\Http\Controllers\Admin\EscrowController;
 
+use App\Http\Controllers\PpobIakController;
+
+
+
 Route::get('/cek-sistem-sancaka', function () {
     // 1. Cek Koneksi Database
     try {
@@ -1091,3 +1095,7 @@ Route::post('/customer/pesanan/kirim-retur', [\App\Http\Controllers\Customer\Pes
 
 //download pdg invoice marketplace
 Route::get('/invoice/{invoice}/pdf', [App\Http\Controllers\CheckoutController::class, 'downloadPDF'])->name('invoice.pdf');
+
+// Route untuk Halaman Web PPOB
+Route::get('/ppob', [PpobIakController::class, 'index'])->name('ppob.index');
+Route::post('/ppob/transaction', [PpobIakController::class, 'store'])->name('ppob.store');

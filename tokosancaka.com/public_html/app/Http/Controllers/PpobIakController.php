@@ -98,4 +98,58 @@ class PpobIakController extends Controller
             return back()->with('error', 'Gagal menghubungi server IAK: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Handle Webhook / Callback dari IAK
+     */
+    public function webhook(Request $request)
+    {
+        // LOG LOG
+        // IAK mengirimkan callback dalam format JSON di dalam object "data"
+        $data = $request->input('data');
+
+        if (!$data || !isset($data['ref_id'])) {
+            return response()->json(['message' => 'Invalid payload format'], 400);
+        }
+
+        $refId  = $data['ref_id'];
+        $status = $data['status']; // 0 = process, 1 = success, 2 = failed
+        $sn     = $data['sn'] ?? null;
+        $price  = $data['price'] ?? 0;
+        $sign   = $data['sign'] ?? null;
+
+        // 1. Validasi Signature (Keamanan)
+        // Sign callback IAK = md5(username + api_key + ref_id)
+        $expectedSign = md5($this->username . $this->apiKey . $refId);
+
+        if ($sign && $sign !== $expectedSign) {
+            return response()->json(['message' => 'Invalid signature'], 403);
+        }
+
+        // 2. Cari transaksi berdasarkan ref_id di database
+        $transaction = TransactionPpobIak::where('ref_id', $refId)->first();
+
+        if (!$transaction) {
+            return response()->json(['message' => 'Transaction not found'], 404);
+        }
+
+        // 3. Konversi status IAK ke format string kita
+        $statusMap = [
+            0 => 'PROCESS',
+            1 => 'SUCCESS',
+            2 => 'FAILED'
+        ];
+        $finalStatus = $statusMap[$status] ?? 'PROCESS';
+
+        // 4. Update status transaksi di database
+        $transaction->update([
+            'status'  => $finalStatus,
+            'sn'      => $sn ?: $transaction->sn,
+            'price'   => $price > 0 ? $price : $transaction->price,
+            'message' => $data['message'] ?? 'Status updated by Webhook'
+        ]);
+
+        // 5. Berikan response 200 OK agar IAK tahu webhook berhasil diterima
+        return response()->json(['message' => 'Callback received successfully'], 200);
+    }
 }

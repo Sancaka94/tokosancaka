@@ -54,6 +54,8 @@ class VerifyCsrfToken extends Middleware
 
             '/api/webhook/doku-jokul', // <--- PASTIIN INI ADA
 
+            'ppob/webhook',
+
         ];
 
 }
