@@ -99,18 +99,14 @@
                                     </div>
                                 </div>
 
-                                @if(auth()->check() && auth()->user()->role === 'seller')
-                                    <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-3" id="btn-submit-pra" disabled>
-                                        <i class="bi bi-cart-check me-1"></i> Beli Sekarang
-                                    </button>
-                                @else
-                                    <div class="alert alert-danger mt-3 mb-0 text-center border-0 shadow-sm" role="alert">
-                                        <i class="bi bi-exclamation-triangle-fill me-2"></i> Maaf, fitur pembelian saat ini hanya tersedia untuk <b>Seller</b>.
-                                    </div>
-                                    <button type="button" class="btn btn-secondary w-100 py-3 fw-bold rounded-3 mt-3" disabled>
-                                        <i class="bi bi-lock-fill me-1"></i> Beli Sekarang (Terkunci)
-                                    </button>
-                                @endif
+                                <div id="alert-saldo-kurang" class="alert alert-danger mt-3 mb-0 text-center border-0 shadow-sm d-none" role="alert">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i> Maaf, saldo Anda tidak mencukupi untuk membeli produk ini.
+                                </div>
+
+                                <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-3 mt-3" id="btn-submit-pra" disabled>
+                                    <i class="bi bi-cart-check me-1"></i> Beli Sekarang
+                                </button>
+
                             </form>
                         </div>
 
@@ -129,6 +125,9 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // PERBAIKAN: Ambil saldo user (pastikan kolom 'balance' sesuai dengan skema database kamu)
+        let currentBalance = {{ auth()->user()->balance ?? 0 }};
+
         const phoneInput = document.getElementById('customer_id_pra');
         const badgeContainer = document.getElementById('operator-badge');
         const operatorNameSpan = document.getElementById('operator-name');
@@ -145,6 +144,7 @@
         const productMessage = document.getElementById('product-message');
         const productCodeInput = document.getElementById('product_code_pra');
         const btnSubmitPra = document.getElementById('btn-submit-pra');
+        const alertSaldo = document.getElementById('alert-saldo-kurang'); // Tambahan elemen alert
 
         let currentOperator = '';
         let typingTimer; // Untuk debounce input nominal
@@ -244,6 +244,9 @@
             if (btnSubmitPra) {
                 btnSubmitPra.disabled = true;
             }
+            if (alertSaldo) {
+                alertSaldo.classList.add('d-none');
+            }
         }
 
         function fetchProducts(operator, type, nominal) {
@@ -255,7 +258,9 @@
             if (btnSubmitPra) {
                 btnSubmitPra.disabled = true;
             }
-
+            if (alertSaldo) {
+                alertSaldo.classList.add('d-none');
+            }
 
             // Memasukkan parameter nominal ke dalam URL AJAX
             fetch(`{{ route('ppob.get_products') }}?operator=${operator}&type=${type}&nominal=${nominal}`, {
@@ -275,9 +280,10 @@
                     data.data.forEach(item => {
                         let rpPrice = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price);
 
+                        // PERBAIKAN: Kirim item.price ke fungsi selectProduct saat diklik
                         html += `
                         <div class="col-6 col-md-4">
-                            <div class="card h-100 border product-card cursor-pointer shadow-sm" style="cursor: pointer;" onclick="selectProduct('${item.code}', this)">
+                            <div class="card h-100 border product-card cursor-pointer shadow-sm" style="cursor: pointer;" onclick="selectProduct('${item.code}', ${item.price}, this)">
                                 <div class="card-body p-3 d-flex flex-column justify-content-between">
                                     <div class="small fw-bold text-dark mb-2 lh-sm" title="${item.description}">${item.description}</div>
                                     <div class="text-primary fw-bolder fs-6">${rpPrice}</div>
@@ -295,14 +301,23 @@
             });
         }
 
-        window.selectProduct = function(code, element) {
+        // PERBAIKAN: Fungsi selectProduct sekarang menerima 3 parameter dan mengecek saldo
+        window.selectProduct = function(code, price, element) {
             document.querySelectorAll('.product-card').forEach(el => {
                 el.classList.remove('selected');
             });
             element.classList.add('selected');
             productCodeInput.value = code;
-            if (btnSubmitPra) {
-                btnSubmitPra.disabled = false;
+
+            // Logika pengecekan saldo
+            if (currentBalance >= price) {
+                // Saldo Cukup
+                if (btnSubmitPra) btnSubmitPra.disabled = false;
+                if (alertSaldo) alertSaldo.classList.add('d-none');
+            } else {
+                // Saldo Kurang
+                if (btnSubmitPra) btnSubmitPra.disabled = true;
+                if (alertSaldo) alertSaldo.classList.remove('d-none');
             }
         }
     });
