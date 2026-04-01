@@ -12,7 +12,7 @@
         }
 
         body {
-            font-family: 'Courier New', Courier, monospace; /* Font standar struk */
+            font-family: 'Courier New', Courier, monospace;
             width: 10cm;
             height: 15cm;
             margin: 0 auto;
@@ -97,7 +97,7 @@
             color: white;
             text-align: center;
             text-decoration: none;
-            margin-top: 20px;
+            margin-top: 10px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -110,10 +110,30 @@
             background: #0b5ed7;
         }
 
+        .btn-check {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #ffc107; /* Warna kuning peringatan */
+            color: #000;
+            text-align: center;
+            text-decoration: none;
+            margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            font-family: sans-serif;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .btn-check:hover {
+            background: #e0a800;
+        }
+
         .btn-back {
             display: block;
             text-align: center;
-            margin-top: 10px;
+            margin-top: 15px;
             color: #6c757d;
             text-decoration: none;
             font-family: sans-serif;
@@ -160,14 +180,9 @@
         <div class="divider"></div>
 
         @if($transaction->sn)
-        <div class="divider"></div>
-
         @php
             $snRaw = $transaction->sn;
-            // Deteksi apakah ini produk PLN dari kode produknya
             $isPln = str_contains(strtoupper($transaction->product_code), 'PLN') || str_contains(strtoupper($transaction->product_code), 'TOKEN');
-
-            // Pecah SN berdasarkan tanda garis miring (/)
             $snParts = explode('/', $snRaw);
         @endphp
 
@@ -179,6 +194,7 @@
                 <span style="font-size: 10px;">Daya: {{ trim($snParts[2] ?? '-') }}</span>
                 <span style="font-size: 10px;">KWH: {{ trim($snParts[4] ?? '-') }}</span>
             </div>
+            <div class="divider"></div>
         @elseif(count($snParts) > 1)
             <div class="content-row" style="flex-direction: column;">
                 <span class="label" style="margin-bottom: 5px; width: 100%;">Detail SN / Voucher:</span>
@@ -186,11 +202,13 @@
                     <span class="value" style="text-align: left; font-size: 11px; margin-bottom: 2px; font-weight: bold;">{{ trim($part) }}</span>
                 @endforeach
             </div>
+            <div class="divider"></div>
         @else
             <div class="content-row">
                 <span class="label">SN / Ref</span>
                 <span class="value" style="font-weight: bold; font-size: 13px;">{{ $snRaw }}</span>
             </div>
+            <div class="divider"></div>
         @endif
         @endif
 
@@ -217,6 +235,19 @@
     </div>
 
     <div class="no-print">
+
+        @if($transaction->status === 'PROCESS' || $transaction->status === 'PENDING')
+            @if($transaction->type === 'prabayar')
+                <a href="{{ route('ppob.check_status_prepaid', $transaction->ref_id) }}" class="btn-check">
+                    Cek Status Terbaru
+                </a>
+            @else
+                <a href="{{ route('ppob.check_status', $transaction->tr_id) }}" class="btn-check">
+                    Cek Status Tagihan
+                </a>
+            @endif
+        @endif
+
         <button class="btn-print" onclick="window.print()">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: middle; margin-right: 5px;">
                 <path d="M5 1a2 2 0 0 0-2 2v1h10V3a2 2 0 0 0-2-2H5zm6 8H5a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1z"/>
@@ -224,6 +255,7 @@
             </svg>
             Cetak Struk (Thermal 10x15)
         </button>
+
         <a href="{{ route('ppob.index') }}" class="btn-back">Kembali ke Halaman Transaksi</a>
     </div>
 
