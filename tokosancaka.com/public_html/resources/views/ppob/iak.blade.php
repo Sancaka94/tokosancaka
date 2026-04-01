@@ -49,7 +49,11 @@
                                     <label for="customer_id_pra" class="form-label fw-semibold">Nomor HP / Tujuan</label>
                                     <div class="input-group">
                                         <span class="input-group-text bg-white"><i class="bi bi-telephone text-muted"></i></span>
-                                        <input type="text" class="form-control" id="customer_id_pra" name="customer_id" placeholder="081234567890" required>
+                                        <input type="text" class="form-control" id="customer_id_pra" name="customer_id" placeholder="081234567890" autocomplete="off" required>
+                                    </div>
+                                    <div id="operator-badge" class="mt-2 d-none">
+                                        <span class="badge bg-primary px-3 py-2" id="operator-name"></span>
+                                        <small class="text-muted ms-2" id="operator-msg"></small>
                                     </div>
                                 </div>
 
@@ -117,7 +121,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($transactions as $trx)
+                                @forelse($transactions ?? [] as $trx)
                                 <tr>
                                     <td class="ps-4">
                                         <div class="fw-bold">{{ $trx->customer_id }}</div>
@@ -125,20 +129,6 @@
                                             <span class="badge bg-secondary rounded-pill" style="font-size: 0.65rem;">{{ strtoupper($trx->type) }}</span>
                                             {{ $trx->product_code }}
                                         </div>
-
-                                        {{-- Tampilkan SN / Token jika sudah sukses dan SN tersedia --}}
-                                        @if($trx->status == 'SUCCESS' && $trx->sn)
-                                            <div class="mt-1 p-1 bg-light border rounded text-dark small fw-bold">
-                                                SN/Token: <span class="text-primary user-select-all">{{ $trx->sn }}</span>
-                                            </div>
-                                        @endif
-
-                                        {{-- Tampilkan pesan error jika gagal --}}
-                                        @if($trx->status == 'FAILED')
-                                            <div class="small text-danger" style="font-size: 0.75rem;">
-                                                <i class="bi bi-info-circle"></i> {{ \Illuminate\Support\Str::limit($trx->message, 30) }}
-                                            </div>
-                                        @endif
                                     </td>
                                     <td>
                                         @if($trx->status == 'SUCCESS')
@@ -150,20 +140,7 @@
                                         @endif
                                     </td>
                                     <td class="text-end pe-4">
-                                        @if($trx->status == 'PROCESS')
-                                            @if($trx->type == 'pascabayar' && $trx->tr_id)
-                                                <a href="{{ route('ppob.check_status', $trx->tr_id) }}" class="btn btn-sm btn-outline-info" title="Cek Status Pascabayar">
-                                                    <i class="bi bi-arrow-clockwise"></i>
-                                                </a>
-                                            @elseif($trx->type == 'prabayar')
-                                                <a href="{{ route('ppob.check_status_prepaid', $trx->ref_id) }}" class="btn btn-sm btn-outline-info" title="Cek Status Prabayar">
-                                                    <i class="bi bi-arrow-clockwise"></i>
-                                                </a>
-                                            @endif
-                                        @else
-                                            <span class="text-muted small">-</span>
-                                        @endif
-                                    </td>
+                                        </td>
                                 </tr>
                                 @empty
                                 <tr>
@@ -182,93 +159,104 @@
     </div>
 
     <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white pt-4 pb-3 border-bottom d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-                    <div>
-                        <h5 class="mb-1 fw-bold"><i class="bi bi-list-stars text-success me-2"></i>Pricelist Pascabayar (Tagihan)</h5>
-                        <small class="text-muted">Gunakan kode di bawah ini untuk form Pascabayar.</small>
-                    </div>
-
-                    <div class="d-flex gap-2 align-items-center">
-                        <div class="input-group input-group-sm" style="width: 250px;">
-                            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                            <input type="text" class="form-control" id="searchPricelist" placeholder="Cari nama/kode produk...">
-                        </div>
-
-                        <form action="{{ route('ppob.sync_pricelist') }}" method="POST" class="m-0">
-                            @csrf
-                            <button type="submit" class="btn btn-sm btn-success fw-semibold">
-                                <i class="bi bi-cloud-download me-1"></i> Sinkron IAK
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="card-body p-0">
-                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                        <table class="table table-hover align-middle mb-0" id="pricelistTable">
-                            <thead class="table-light sticky-top" style="z-index: 1;">
-                                <tr>
-                                    <th class="ps-4">Kategori / Tipe</th>
-                                    <th>Nama Produk</th>
-                                    <th>Kode Produk</th>
-                                    <th>Admin (Fee)</th>
-                                    <th class="pe-4">Komisi Anda</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($pricelist as $item)
-                                <tr class="pricelist-row">
-                                    <td class="ps-4">
-                                        <span class="badge bg-dark-subtle text-dark text-uppercase border">{{ $item->type }}</span>
-                                    </td>
-                                    <td class="fw-semibold product-name">{{ $item->name }}</td>
-                                    <td>
-                                        <code class="fs-6 product-code user-select-all" role="button" title="Klik 2x untuk blok text">{{ $item->code }}</code>
-                                    </td>
-                                    <td>Rp {{ number_format($item->fee, 0, ',', '.') }}</td>
-                                    <td class="pe-4 text-success fw-bold">+ Rp {{ number_format($item->komisi, 0, ',', '.') }}</td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="5" class="text-center py-5 text-muted">
-                                        <i class="bi bi-database-exclamation fs-1 d-block mb-3 text-light"></i>
-                                        Data pricelist kosong atau belum disinkronisasi.<br>
-                                        Silakan klik tombol <strong>Sinkron IAK</strong> di atas untuk menarik data terbaru.
-                                    </td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
         </div>
-    </div>
 </div>
 
 @push('scripts')
 <script>
-    // Fitur pencarian Real-time untuk tabel Pricelist
     document.addEventListener('DOMContentLoaded', function() {
+
+        // 1. Logika Pencarian Tabel (Pricelist Pascabayar)
         const searchInput = document.getElementById('searchPricelist');
         const rows = document.querySelectorAll('.pricelist-row');
 
         if(searchInput) {
             searchInput.addEventListener('keyup', function(e) {
                 const term = e.target.value.toLowerCase();
-
                 rows.forEach(row => {
                     const name = row.querySelector('.product-name').textContent.toLowerCase();
                     const code = row.querySelector('.product-code').textContent.toLowerCase();
-
                     if(name.includes(term) || code.includes(term)) {
                         row.style.display = '';
                     } else {
                         row.style.display = 'none';
                     }
                 });
+            });
+        }
+
+        // ==========================================
+        // 2. LOGIKA DETEKSI OPERATOR IAK
+        // ==========================================
+        const phoneInput = document.getElementById('customer_id_pra');
+        const badgeContainer = document.getElementById('operator-badge');
+        const operatorNameSpan = document.getElementById('operator-name');
+        const operatorMsgSpan = document.getElementById('operator-msg');
+
+        // Data Prefix sesuai dokumentasi IAK
+        const prefixes = {
+            'INDOSAT': { code: ['0814','0815','0816','0855','0856','0857','0858'], color: 'bg-warning text-dark' },
+            'XL': { code: ['0817','0818','0819','0859','0878','0877'], color: 'bg-primary' },
+            'AXIS': { code: ['0838','0837','0831','0832'], color: 'bg-purple' }, // custom style or use primary
+            'TELKOMSEL': { code: ['0812','0813','0852','0853','0821','0823','0822','0851'], color: 'bg-danger' },
+            'SMARTFREN': { code: ['0881','0882','0883','0884','0885','0886','0887','0888'], color: 'bg-info text-dark' },
+            'THREE': { code: ['0896','0897','0898','0899','0895'], color: 'bg-dark' },
+            'BY.U': { code: ['085154','085155','085156','085157','085158'], color: 'bg-primary' }
+        };
+
+        if(phoneInput) {
+            phoneInput.addEventListener('input', function(e) {
+                let number = e.target.value;
+
+                // Hapus karakter non-angka
+                number = number.replace(/[^0-9]/g, '');
+                e.target.value = number;
+
+                // Mulai deteksi jika nomor sudah 4 digit
+                if(number.length >= 4) {
+                    let foundOperator = 'UNKNOWN';
+                    let foundColor = 'bg-secondary';
+
+                    // Cek khusus by.U yang butuh 6 digit
+                    if(number.length >= 6) {
+                        let prefix6 = number.substring(0, 6);
+                        if(prefixes['BY.U'].code.includes(prefix6)) {
+                            foundOperator = 'BY.U';
+                            foundColor = prefixes['BY.U'].color;
+                        }
+                    }
+
+                    // Jika bukan by.U, cek 4 digit pertama
+                    if(foundOperator === 'UNKNOWN') {
+                        let prefix4 = number.substring(0, 4);
+                        for (const [operator, data] of Object.entries(prefixes)) {
+                            if(operator !== 'BY.U' && data.code.includes(prefix4)) {
+                                foundOperator = operator;
+                                foundColor = data.color;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Tampilkan Badge
+                    badgeContainer.classList.remove('d-none');
+                    operatorNameSpan.className = `badge ${foundColor} px-3 py-2`;
+
+                    if(foundOperator !== 'UNKNOWN') {
+                        operatorNameSpan.textContent = foundOperator;
+                        operatorMsgSpan.textContent = 'Nomor Valid';
+                        operatorMsgSpan.className = 'text-success ms-2 small fw-bold';
+                    } else {
+                        operatorNameSpan.textContent = 'Tidak Dikenal';
+                        operatorNameSpan.className = 'badge bg-secondary px-3 py-2';
+                        operatorMsgSpan.textContent = 'Prefix tidak cocok dengan operator manapun';
+                        operatorMsgSpan.className = 'text-danger ms-2 small';
+                    }
+
+                } else {
+                    // Sembunyikan jika kurang dari 4 digit
+                    badgeContainer.classList.add('d-none');
+                }
             });
         }
     });
