@@ -301,7 +301,9 @@
             });
             element.classList.add('selected');
             productCodeInput.value = code;
-            btnSubmitPra.disabled = false;
+            if (btnSubmitPra) {
+                btnSubmitPra.disabled = false;
+            }
         }
     });
 </script>
