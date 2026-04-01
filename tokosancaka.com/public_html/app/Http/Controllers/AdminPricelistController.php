@@ -151,21 +151,18 @@ class AdminPricelistController extends Controller
     {
         $username = env('IAK_USERNAME');
         $apiKey = env('IAK_API_KEY');
-        // LOG LOG: Format Sign Pricelist = md5(username + api_key + 'pl')
         $sign = md5($username . $apiKey . 'pl');
 
-        // Membersihkan URL dan memastikan /api selalu ada
         $baseUrl = rtrim(env('IAK_URL'), '/');
-        if (!str_ends_with(strtolower($baseUrl), '/api')) {
-            $baseUrl .= '/api';
-        }
-
-        // Endpoint yang benar TANPA /all/all
+        if (!str_ends_with(strtolower($baseUrl), '/api')) $baseUrl .= '/api';
         $url = $baseUrl . '/v1/legacy/index';
 
         try {
-            // Gunakan asForm() (x-www-form-urlencoded) karena API V1 Legacy lebih stabil membacanya
-            $response = Http::asForm()->post($url, [
+            // Paksa format ke JSON
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json'
+            ])->post($url, [
                 'commands' => 'pricelist',
                 'username' => $username,
                 'sign'     => $sign,
@@ -174,50 +171,46 @@ class AdminPricelistController extends Controller
 
             $responseData = $response->json();
 
-            // Cek apakah response berisi pesan error dari IAK (misal: rc 404, rc 06, rc 14)
+            // Cek apakah balasan valid dan bukan error (RC selain 00 itu biasanya error)
             if (isset($responseData['data']['rc']) && $responseData['data']['rc'] !== '00') {
                 $errorMsg = $responseData['data']['message'] ?? 'Pesan error tidak diketahui';
                 Log::error('LOG LOG - IAK API Return Error: ' . $errorMsg);
                 return back()->with('error', 'API IAK Menolak: ' . $errorMsg);
             }
 
-            // Jika sukses dan array datanya tersedia
+            // Jika sukses menarik list harga
             if ($response->successful() && isset($responseData['data']) && is_array($responseData['data'])) {
                 $products = $responseData['data'];
                 $count = 0;
 
                 foreach ($products as $item) {
-                    // LOG LOG: Jika deskripsi kosong/strip, gunakan nama nominalnya
                     $description = (isset($item['pulsa_details']) && $item['pulsa_details'] != '-')
                                     ? $item['pulsa_details']
                                     : ($item['pulsa_nominal'] ?? 'Tanpa Deskripsi');
 
-                    // Insert atau Update ke database
                     IakPricelistPrepaid::updateOrCreate(
-                        ['code' => $item['pulsa_code']], // Patokan update
+                        ['code' => $item['pulsa_code']],
                         [
                             'operator'    => $item['pulsa_op'],
                             'description' => $description,
                             'price'       => $item['pulsa_price'],
                             'type'        => $item['pulsa_type'],
-                            // Samakan format status dengan database kamu
                             'status'      => strtolower($item['status']) == 'active' ? 'Active' : 'Offline'
                         ]
                     );
                     $count++;
                 }
 
-                Log::info("LOG LOG - Sinkronisasi API IAK Berhasil. Total: $count produk.");
-                return back()->with('success', "Sinkronisasi sukses! $count produk berhasil diupdate langsung dari IAK.");
+                Log::info("LOG LOG - Sinkron API IAK Berhasil: $count produk.");
+                return back()->with('success', "Sinkronisasi sukses! $count produk berhasil ditarik dari IAK.");
             }
 
-            // Jika respons hancur atau tidak sesuai format
             Log::error('LOG LOG - IAK Pricelist Unreadable: ' . $response->body());
-            return back()->with('error', 'Gagal memproses data dari IAK. Format response tidak sesuai.');
+            return back()->with('error', 'Gagal memproses data. Pastikan akun IAK sudah diverifikasi.');
 
         } catch (\Exception $e) {
             Log::error('LOG LOG - IAK Pricelist Exception: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan koneksi saat sinkronisasi: ' . $e->getMessage());
+            return back()->with('error', 'Koneksi ke API IAK terputus: ' . $e->getMessage());
         }
     }
 
