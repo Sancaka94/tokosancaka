@@ -143,8 +143,10 @@ class AdminPricelistController extends Controller
                 return back()->with('success', 'Saldo IAK Anda saat ini: Rp ' . number_format($balance, 0, ',', '.'));
             }
 
-            Log::error('LOG LOG - IAK Balance Error: ' . $response->body());
-            return back()->with('error', 'Gagal mengecek saldo. ' . ($response->json('data.message') ?? 'Cek kredensial Anda.'));
+            $realError = $response->json('data.message') ?? $response->body();
+            Log::error('LOG LOG - IAK Balance Error: ' . $realError);
+            // Menampilkan respon mentah IAK ke layar agar kita tahu penyebab pastinya
+            return back()->with('error', 'Error dari IAK: ' . $realError);
 
         } catch (\Exception $e) {
             Log::error('LOG LOG - IAK Balance Exception: ' . $e->getMessage());
