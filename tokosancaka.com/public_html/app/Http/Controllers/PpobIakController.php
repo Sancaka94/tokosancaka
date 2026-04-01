@@ -9,6 +9,7 @@ use App\Models\TransactionPpobIak;
 use App\Models\IakResponseCode; // Jangan lupa import model di atas
 use App\Models\IakPricelistPostpaid; // Import di bagian atas
 use App\Models\IakPrepaidResponseCode;
+use App\Models\IakPricelistPrepaid;
 
 class PpobIakController extends Controller
 {
@@ -27,13 +28,15 @@ class PpobIakController extends Controller
         $this->apiKey = env('IAK_API_KEY');
     }
 
-   public function index()
+    public function index()
     {
         $transactions = TransactionPpobIak::latest()->take(5)->get();
-        // Ambil data pricelist dari DB untuk ditampilkan di Blade
         $pricelist = IakPricelistPostpaid::where('status', 1)->orderBy('type')->get();
 
-        return view('ppob.iak', compact('transactions', 'pricelist'));
+        // Ambil data prabayar yang sudah diupload via admin
+        $pricelistPrepaid = IakPricelistPrepaid::where('status', 'Active')->orderBy('type')->orderBy('operator')->get();
+
+        return view('ppob.iak', compact('transactions', 'pricelist', 'pricelistPrepaid'));
     }
 
     /**

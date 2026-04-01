@@ -108,6 +108,8 @@ use App\Http\Controllers\InvoiceController;
 
 use App\Http\Controllers\CashflowController;
 
+use App\Http\Controllers\AdminPricelistController;
+
 // Website fontend WA Integration
 //use App\Http\Controllers\WhatsappController;
 
@@ -1107,3 +1109,8 @@ Route::get('/ppob/check-status/{tr_id}', [PpobIakController::class, 'checkStatus
 Route::post('/ppob/sync-pricelist', [PpobIakController::class, 'syncPricelist'])->name('ppob.sync_pricelist');
 
 Route::get('/ppob/check-status-prepaid/{ref_id}', [PpobIakController::class, 'checkStatusPrepaid'])->name('ppob.check_status_prepaid');
+
+
+// Pastikan route ini berada di dalam middleware admin Anda jika ada
+Route::get('/admin/pricelist/upload', [AdminPricelistController::class, 'index'])->name('admin.pricelist.index');
+Route::post('/admin/pricelist/upload', [AdminPricelistController::class, 'upload'])->name('admin.pricelist.upload');
