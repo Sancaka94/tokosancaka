@@ -1121,3 +1121,23 @@ Route::get('/admin/pricelist/upload', [AdminPricelistController::class, 'index']
 Route::post('/admin/pricelist/upload', [AdminPricelistController::class, 'upload'])->name('admin.pricelist.upload');
 
 
+// Grouping Route Admin
+Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () {
+
+    // Route Utama untuk menampilkan Tabel (Index)
+    //Route::get('/produk', [ProdukController::class, 'index'])->name('produk.index');
+
+    // Route untuk Proses Tambah Data (Create & Store)
+    Route::get('/produk/create', [ProdukController::class, 'create'])->name('produk.create');
+    Route::post('/produk', [ProdukController::class, 'store'])->name('produk.store');
+
+    // Route untuk Proses Edit Data (Edit & Update)
+    // Menggunakan {id} sebagai parameter unik produk
+    Route::get('/produk/{id}/edit', [ProdukController::class, 'edit'])->name('produk.edit');
+    Route::put('/produk/{id}', [ProdukController::class, 'update'])->name('produk.update');
+
+    // Route untuk Proses Hapus Data (Delete)
+    // LOG LOG: Pastikan method di Blade adalah @method('DELETE')
+    Route::delete('/produk/{id}', [ProdukController::class, 'destroy'])->name('produk.destroy');
+
+});
