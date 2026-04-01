@@ -9,6 +9,7 @@ class TransactionPpobIak extends Model
     protected $table = 'transactionppobiak';
 
     protected $fillable = [
+        'user_id', // <--- Tambahkan baris ini
         'ref_id',
         'tr_id',
         'type',
