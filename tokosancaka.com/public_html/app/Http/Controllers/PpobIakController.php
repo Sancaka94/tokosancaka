@@ -113,7 +113,9 @@ class PpobIakController extends Controller
         // ------------------------------------------------
 
         // --- LOGIKA PRABAYAR ---
-        $refId = 'TRX-' . time() . '-' . rand(100, 999);
+        // Format: P + Tanggal(6 digit) + Random(4 digit) = Tepat 11 Karakter
+        // Contoh hasil: P2604018392
+        $refId = 'P' . date('ymd') . rand(1000, 9999);
         $sign = md5($this->username . $this->apiKey . $refId);
 
         $transaction = TransactionPpobIak::create([
@@ -245,7 +247,9 @@ class PpobIakController extends Controller
     // --- ALUR 1: INQUIRY POSTPAID ---
     private function inquiryPostpaid(Request $request)
     {
-        $refId = 'INQ-' . time() . '-' . rand(100, 999);
+        // Format: I + Tanggal(6 digit) + Random(4 digit) = Tepat 11 Karakter
+        // Contoh hasil: I2604018392
+        $refId = 'I' . date('ymd') . rand(1000, 9999);
         $sign = md5($this->username . $this->apiKey . $refId);
 
         Log::info('LOG LOG - Inquiry Postpaid Request', ['ref_id' => $refId, 'customer_id' => $request->customer_id, 'product' => $request->product_code]); // LOG LOG
