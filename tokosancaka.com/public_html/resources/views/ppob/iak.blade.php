@@ -49,7 +49,7 @@
     @endif
 
     <div class="row g-4">
-        <div class="col-lg-7">
+        <div class="col-12">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
                     <h5 class="mb-3 fw-bold"><i class="bi bi-wallet2 text-primary me-2"></i>Transaksi PPOB IAK</h5>
@@ -263,10 +263,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        {{-- Sisi Kanan Kosong Sesuai Struktur Anda --}}
-        <div class="col-lg-5">
         </div>
     </div>
 </div>
