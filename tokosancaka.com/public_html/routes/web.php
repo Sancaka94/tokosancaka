@@ -1161,3 +1161,6 @@ Route::post('/ppob/iak/gamelist', [\App\Http\Controllers\PpobIakController::clas
 Route::post('/admin/pricelist/sync-postpaid', [\App\Http\Controllers\AdminPricelistController::class, 'syncPricelistPostpaidApi'])->name('admin.pricelist.sync_postpaid');
 
 Route::get('/ppob/riwayat', [App\Http\Controllers\PpobIakController::class, 'history'])->name('ppob.iak.history');
+
+Route::get('/check-prepaid/{ref_id}', [PpobIakController::class, 'checkStatusPrepaid'])->name('ppob.iak.check_prepaid');
+Route::get('/check-postpaid/{tr_id}', [PpobIakController::class, 'checkStatusPostpaid'])->name('ppob.iak.check_postpaid');
