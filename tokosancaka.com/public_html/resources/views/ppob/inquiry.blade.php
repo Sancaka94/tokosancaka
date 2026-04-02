@@ -39,7 +39,7 @@
                     <div class="alert alert-success border-0 shadow-sm rounded-3 py-2 px-3 mb-4 d-flex align-items-center">
                         <i class="bi bi-check-circle-fill text-success fs-4 me-3"></i>
                         <div>
-                            <strong class="d-block text-dark">Inquiry Berhasil!</strong>
+                            <strong class="d-block text-dark">Cek Data Tagihan Berhasil !</strong>
                             <small class="text-muted">Periksa kembali detail di bawah sebelum membayar.</small>
                         </div>
                     </div>
