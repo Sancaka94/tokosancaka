@@ -1140,4 +1140,72 @@ class PpobIakController extends Controller
         return view('ppob.history', compact('transactions'));
     }
 
+    // ========================================================
+    // --- FUNGSI BARU: KIRIM WA MANUAL DARI RIWAYAT ---
+    // ========================================================
+    public function sendWa(Request $request, $ref_id)
+    {
+        $request->validate([
+            'target_wa' => 'required|string'
+        ]);
+
+        $transaction = TransactionPpobIak::where('ref_id', $ref_id)->firstOrFail();
+        $target = $request->target_wa;
+
+        // Bersihkan format nomor
+        $target = preg_replace('/[^0-9]/', '', $target);
+        if (substr($target, 0, 2) === '62') {
+            $target = '0' . substr($target, 2);
+        } elseif (substr($target, 0, 1) === '8') {
+            $target = '0' . $target;
+        }
+
+        $fonnteToken = Api::getValue('FONNTE_API_KEY', 'global');
+        if (empty($fonnteToken)) {
+            return back()->with('error', 'Token Fonnte belum dikonfigurasi di Pengaturan API.');
+        }
+
+        // Setup Ikon Status
+        $icon = '⏳';
+        if ($transaction->status === 'SUCCESS') $icon = '✅';
+        elseif ($transaction->status === 'FAILED') $icon = '❌';
+
+        $pesanWa = "*RINCIAN TRANSAKSI PPOB*\n\n"
+                 . "Tgl: " . $transaction->created_at->format('d/m/Y H:i') . "\n"
+                 . "Ref ID: {$transaction->ref_id}\n"
+                 . "Layanan: {$transaction->product_code}\n"
+                 . "Tujuan: {$transaction->customer_id}\n"
+                 . "Harga: Rp " . number_format($transaction->price, 0, ',', '.') . "\n"
+                 . "Status: {$transaction->status} {$icon}\n";
+
+        if (!empty($transaction->sn)) {
+            $pesanWa .= "\n*SN / TOKEN:*\n*{$transaction->sn}*\n";
+        }
+
+        $pesanWa .= "\n_Terima kasih telah menggunakan layanan kami._";
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => $fonnteToken
+            ])->post('https://api.fonnte.com/send', [
+                'target'      => $target,
+                'message'     => $pesanWa,
+                'countryCode' => '62'
+            ]);
+
+            $resJson = $response->json();
+
+            if (isset($resJson['status']) && $resJson['status'] == true) {
+                // Simpan/Update nomor WA di transaksi agar tidak perlu input ulang nantinya
+                $transaction->update(['whatsapp_number' => $target]);
+                return back()->with('success', 'Rincian transaksi berhasil dikirim ke WhatsApp: ' . $target);
+            } else {
+                return back()->with('error', 'Fonnte menolak pengiriman: ' . ($resJson['reason'] ?? 'Unknown Error'));
+            }
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Koneksi ke server Fonnte terputus: ' . $e->getMessage());
+        }
+    }
+
 }

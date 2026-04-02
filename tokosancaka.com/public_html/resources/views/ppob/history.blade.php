@@ -29,8 +29,7 @@
             <p class="mt-1 text-sm text-gray-500">Daftar riwayat pembelian prabayar dan pembayaran pascabayar Anda.</p>
         </div>
         <div class="mt-4 md:mt-0">
-            {{-- Sesuaikan route ini dengan halaman form transaksi Anda --}}
-            <a href="{{ route('ppob.iak.index') }}" class="inline-flex items-center px-4 py-2 bg-white border border-indigo-600 rounded-md font-semibold text-xs text-indigo-600 uppercase tracking-widest hover:bg-indigo-50 active:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm">
+            <a href="{{ route('ppob.index') }}" class="inline-flex items-center px-4 py-2 bg-white border border-indigo-600 rounded-md font-semibold text-xs text-indigo-600 uppercase tracking-widest hover:bg-indigo-50 active:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm">
                 <i class="fas fa-plus-circle mr-2"></i> Transaksi Baru
             </a>
         </div>
@@ -103,13 +102,17 @@
                             </td>
 
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                {{-- Kontainer Flexbox untuk mensejajarkan tombol --}}
                                 <div class="flex items-center justify-end space-x-2">
 
                                     {{-- Tombol Struk --}}
                                     <a href="{{ route('ppob.iak.invoice', $trx->ref_id) }}" class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded shadow-sm transition-colors" title="Cetak Struk">
                                         <i class="fas fa-receipt mr-1.5"></i> Struk
                                     </a>
+
+                                    {{-- Tombol Kirim WA (Memanggil fungsi Javascript kirimWa) --}}
+                                    <button type="button" onclick="kirimWa('{{ $trx->ref_id }}', '{{ $trx->whatsapp_number ?? '' }}')" class="inline-flex items-center px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded shadow-sm transition-colors" title="Kirim Detail ke WA">
+                                        <i class="fab fa-whatsapp mr-1.5"></i> WA
+                                    </button>
 
                                     {{-- Tombol Cek Status --}}
                                     @if(in_array($trx->status, ['PROCESS', 'PENDING']))
@@ -141,12 +144,35 @@
             </table>
         </div>
 
-        {{-- Pagination --}}
         @if($transactions->hasPages())
             <div class="bg-white px-6 py-4 border-t border-gray-200">
                 {{ $transactions->links() }}
             </div>
         @endif
     </div>
+
+    {{-- Hidden Form untuk Request POST Kirim WA --}}
+    <form id="waForm" method="POST" action="" class="hidden">
+        @csrf
+        <input type="hidden" name="target_wa" id="waTargetInput">
+    </form>
 </div>
+
+{{-- Skrip Khusus WA --}}
+<script>
+    function kirimWa(refId, defaultNumber) {
+        // Tampilkan prompt input nomor WA
+        let targetNumber = prompt("Masukkan nomor WhatsApp tujuan (contoh: 0812...):", defaultNumber);
+
+        // Cek jika user mengisi dan menekan OK
+        if (targetNumber !== null && targetNumber.trim() !== "") {
+            let form = document.getElementById('waForm');
+            // Arahkan action ke route yang telah dibuat
+            form.action = "{{ url('ppob/iak/send-wa') }}/" + refId;
+            document.getElementById('waTargetInput').value = targetNumber.trim();
+            form.submit();
+        }
+    }
+</script>
+
 @endsection

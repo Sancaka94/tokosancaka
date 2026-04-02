@@ -1164,3 +1164,5 @@ Route::get('/ppob/riwayat', [App\Http\Controllers\PpobIakController::class, 'his
 
 Route::get('/check-prepaid/{ref_id}', [PpobIakController::class, 'checkStatusPrepaid'])->name('ppob.iak.check_prepaid');
 Route::get('/check-postpaid/{tr_id}', [PpobIakController::class, 'checkStatusPostpaid'])->name('ppob.iak.check_postpaid');
+
+Route::post('/ppob/iak/send-wa/{ref_id}', [\App\Http\Controllers\PpobIakController::class, 'sendWa'])->name('ppob.iak.send_wa');
