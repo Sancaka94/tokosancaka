@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Kontak;
+use App\Models\Pesanan; // <-- Pastikan ini ditambahkan
 use Illuminate\Http\Request;
 use App\Exports\KontaksExport;
 use App\Imports\KontaksImport;
@@ -11,7 +12,6 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 class KontakController extends Controller
 {
@@ -207,5 +207,34 @@ class KontakController extends Controller
         }
 
         return $phone;
+    }
+
+    /**
+     * API: Mengambil Riwayat Pesanan/Pengiriman Pelanggan (Untuk Modal Detail)
+     */
+    public function history(Request $request, $id)
+    {
+        $kontak = Kontak::findOrFail($id);
+
+        // Cari pesanan di mana nomor HP ini menjadi Pengirim atau Penerima
+        $query = Pesanan::where('sender_phone', $kontak->no_hp)
+                        ->orWhere('receiver_phone', $kontak->no_hp);
+
+        // Hitung total keseluruhan paket
+        $totalPaket = (clone $query)->count();
+
+        // Hitung total omzet (Abaikan yang statusnya Batal/Gagal)
+        $totalOmzet = (clone $query)->whereNotIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'])
+                                    ->sum('price');
+
+        // Ambil data untuk paginasi (5 data per halaman agar modal rapi)
+        $history = $query->orderBy('created_at', 'desc')->paginate(5);
+
+        return response()->json([
+            'kontak' => $kontak,
+            'total_paket' => $totalPaket,
+            'total_omzet' => $totalOmzet,
+            'history' => $history
+        ]);
     }
 }
