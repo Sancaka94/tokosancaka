@@ -184,6 +184,15 @@
                                     <i class="bi bi-exclamation-triangle-fill me-2"></i> Maaf, saldo Anda tidak mencukupi untuk membeli produk ini.
                                 </div>
 
+                                <div class="mb-4 mt-3">
+                                    <label class="form-label fw-semibold">Nomor WhatsApp (Opsional)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-white"><i class="bi bi-whatsapp text-success"></i></span>
+                                        <input type="text" class="form-control form-control-lg wa-formatter" name="whatsapp_number" placeholder="08xxxx (Untuk kirim struk)">
+                                    </div>
+                                    <div class="form-text text-muted" style="font-size: 12px;">Struk / Token akan dikirim otomatis ke WA ini.</div>
+                                </div>
+
                                 <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-3 mt-3" id="btn-submit-pra" disabled>
                                     <i class="bi bi-cart-check me-1"></i> Beli Sekarang
                                 </button>
@@ -252,6 +261,15 @@
                                         <input type="number" class="form-control form-control-lg" name="amount" id="input_amount" placeholder="Misal: 50000" min="1000">
                                     </div>
                                     <div class="form-text text-muted">Masukkan nominal yang ingin dibayarkan secara manual.</div>
+                                </div>
+
+                                <div class="mb-4 mt-3">
+                                    <label class="form-label fw-semibold">Nomor WhatsApp (Opsional)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-white"><i class="bi bi-whatsapp text-success"></i></span>
+                                        <input type="text" class="form-control form-control-lg wa-formatter" name="whatsapp_number" placeholder="08xxxx (Untuk kirim struk)">
+                                    </div>
+                                    <div class="form-text text-muted" style="font-size: 12px;">Struk lunas akan dikirim otomatis ke WA ini.</div>
                                 </div>
 
                                 <button type="submit" class="btn btn-success w-100 py-3 fw-bold rounded-3 mt-2">
@@ -723,6 +741,29 @@
         }
 
     });
+
+    // ==========================================
+        // AUTO FORMATTER NOMOR WHATSAPP
+        // ==========================================
+        document.querySelectorAll('.wa-formatter').forEach(function(input) {
+            input.addEventListener('input', function(e) {
+                // 1. Hapus semua karakter selain angka (spasi, strip, huruf, tanda plus)
+                let val = this.value.replace(/[^0-9]/g, '');
+
+                // 2. Jika nomor dimulai dengan '62', ubah menjadi '0'
+                if (val.startsWith('62')) {
+                    val = '0' + val.substring(2);
+                }
+                // 3. Jika nomor dimulai dengan '8' (lupa ketik 0), tambahkan '0' di depannya
+                else if (val.startsWith('8')) {
+                    val = '0' + val;
+                }
+
+                // 4. Kembalikan nilai yang sudah bersih ke dalam kotak input
+                this.value = val;
+            });
+        });
+
 </script>
 @endpush
 
