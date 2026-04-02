@@ -601,9 +601,9 @@
                         : `<div class="mb-2 text-primary"><i class="bi bi-box" style="font-size: 24px;"></i></div>`;
 
                     html += `
-                    <div class="col-6 col-md-4">
+                    <div class="col-6 col-md-4 col-lg-3 col-xl-2">
                         <div class="card h-100 border product-card cursor-pointer shadow-sm text-center" onclick="selectProduct('${item.code}', ${item.price}, this)">
-                            <div class="card-body p-3 d-flex flex-column align-items-center justify-content-between">
+                        <div class="card-body p-3 d-flex flex-column align-items-center justify-content-between">
                                 ${iconHtml}
                                 <div class="small fw-bold text-dark mb-1 lh-sm" title="${item.description}">${item.description}</div>
                                 <div class="text-primary fw-bolder fs-6">${rpPrice}</div>
