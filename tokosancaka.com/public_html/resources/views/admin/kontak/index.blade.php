@@ -421,7 +421,7 @@ async function openHistoryModal(id, page = 1) {
         pagination.innerHTML = '';
 
         // Panggil endpoint history
-        const response = await fetch(`/admin/kontak/${id}/history?page=${page}`);
+        const baseUrl = "{{ url('admin/kontak') }}";
         if (!response.ok) throw new Error('Error network response');
         const data = await response.json();
 
