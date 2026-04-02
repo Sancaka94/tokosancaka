@@ -11,6 +11,8 @@ use App\Models\IakPricelistPostpaid; // Import di bagian atas
 use App\Models\IakPrepaidResponseCode;
 use App\Models\IakPricelistPrepaid;
 use App\Models\Api; // <-- TAMBAHKAN IMPORT INI UNTUK BACA SETTING DATABASE
+use App\Models\User;
+use Illuminate\Support\Facades\Cache; // --- TAMBAHAN IDEMPOTENCY ---
 
 class PpobIakController extends Controller
 {
@@ -109,103 +111,126 @@ class PpobIakController extends Controller
         // LOGIKA PRABAYAR (TOP UP)
         // ========================================================
 
-        // --- Cek Saldo User di Backend ---
-        $user = auth()->user();
-        $product = IakPricelistPrepaid::where('code', $request->product_code)->first();
+        // --- TAMBAHAN IDEMPOTENCY: CEK TRANSAKSI KEMBAR 3 MENIT TERAKHIR ---
+        $isDuplicate = TransactionPpobIak::where('user_id', auth()->id())
+            ->where('customer_id', $request->customer_id)
+            ->where('product_code', $request->product_code)
+            ->where('created_at', '>=', now()->subMinutes(3))
+            ->exists();
 
-        if (!$product) {
-            return back()->with('error', 'Produk tidak ditemukan di database.');
+        if ($isDuplicate) {
+            return back()->with('error', 'Transaksi ke nomor dan produk yang sama sedang diproses/berhasil. Mohon tunggu 3 menit untuk menghindari dobel.');
         }
 
-        if ($user->balance_iak < $product->price) {
-            return back()->with('error', 'Maaf, saldo Anda tidak mencukupi untuk transaksi ini.');
+        // --- TAMBAHAN IDEMPOTENCY: ATOMIC LOCK (MENCEGAH DOUBLE CLICK) ---
+        $lockKey = 'topup_' . auth()->id() . '_' . $request->product_code . '_' . $request->customer_id;
+        $lock = Cache::lock($lockKey, 10); // Kunci eksekusi selama 10 detik
+
+        if (!$lock->get()) {
+            return back()->with('error', 'Transaksi Anda sedang diproses, mohon jangan menekan tombol berkali-kali.');
         }
-        // ------------------------------------------------
 
-        // Format Ref ID (Harus Unik)
-        $refId = 'P' . date('ymd') . rand(1000, 9999);
+        try { // --- TAMBAHAN IDEMPOTENCY: BUNGKUS TRY UNTUK LOCK ---
+            // --- Cek Saldo User di Backend ---
+            $user = auth()->user();
+            $product = IakPricelistPrepaid::where('code', $request->product_code)->first();
 
-        // Sesuai Dokumentasi: md5(username + api_key + ref_id)
-        $sign = md5($this->username . $this->apiKey . $refId);
-
-        // Buat record awal di database dengan status PROCESS
-        $transaction = TransactionPpobIak::create([
-            'user_id'      => auth()->id(),
-            'ref_id'       => $refId,
-            'type'         => 'prabayar',
-            'customer_id'  => $request->customer_id, // Sudah diformat dari frontend (hp, meter, game id + zone)
-            'product_code' => $request->product_code,
-            'status'       => 'PROCESS',
-        ]);
-
-        Log::info('LOG LOG - Prepaid Top Up Request', ['ref_id' => $refId, 'customer_id' => $request->customer_id, 'product' => $request->product_code]);
-
-        try {
-            // Hit API Top Up IAK
-            $response = Http::post($this->prepaidBaseUrl . '/api/top-up', [
-                'username'     => $this->username,
-                'customer_id'  => $request->customer_id,
-                'product_code' => $request->product_code,
-                'ref_id'       => $refId,
-                'sign'         => $sign
-            ]);
-
-            $result = $response->json();
-
-            // Jika hit API Sukses
-            if ($response->successful() && isset($result['data'])) {
-
-                // Ambil RC (Response Code)
-                $apiCode = $result['data']['rc'] ?? ($result['data']['message'] == 'PROCESS' ? '39' : null);
-                $codeInfo = IakPrepaidResponseCode::where('code', $apiCode)->first();
-
-                // Mapping Status Sesuai Dokumentasi: 0 = PROCESS, 1 = SUCCESS, 2 = FAILED
-                $statusMap = [0 => 'PROCESS', 1 => 'SUCCESS', 2 => 'FAILED'];
-                $apiStatus = $result['data']['status'] ?? 0;
-
-                $finalStatus = $codeInfo ? strtoupper($codeInfo->status) : ($statusMap[$apiStatus] ?? 'PROCESS');
-                $finalMessage = $codeInfo ? $codeInfo->description . ' - ' . $codeInfo->solution : ($result['data']['message'] ?? 'Request Terkirim');
-
-                // Update database dengan response dari IAK
-                $transaction->update([
-                    'status'  => $finalStatus,
-                    'price'   => $product->price, // Menggunakan harga modal dari database Anda
-                    'tr_id'   => $result['data']['tr_id'] ?? null, // Simpan Transaction ID dari IAK
-                    'sn'      => $result['data']['sn'] ?? null,
-                    'message' => $finalMessage
-                ]);
-
-                // Jika status langsung gagal (FAILED)
-                if ($finalStatus == 'FAILED') {
-                    Log::error('LOG LOG - Prepaid Top Up Failed Status from API', ['ref_id' => $refId, 'message' => $transaction->message]);
-                    return back()->with('error', 'Transaksi prabayar gagal: ' . $transaction->message);
-                }
-
-                // --- Potong saldo user jika status Proses / Sukses ---
-                // (Jika nanti failed via Webhook, saldo akan direfund di fungsi webhook)
-                if ($finalStatus == 'PROCESS' || $finalStatus == 'SUCCESS') {
-                    $user->balance_iak -= $product->price;
-                    $user->save();
-                    Log::info('LOG LOG - Saldo User Terpotong (Top Up)', ['user_id' => $user->id, 'potongan' => $product->price, 'sisa' => $user->balance_iak]);
-                }
-
-                Log::info('LOG LOG - Prepaid Top Up Processed', ['ref_id' => $refId, 'tr_id' => $transaction->tr_id, 'status' => $finalStatus]);
-
-                // Redirect menuju halaman Invoice
-                return redirect()->route('ppob.iak.invoice', ['ref_id' => $transaction->ref_id])
-                                 ->with('success', 'Transaksi sedang diproses. Mohon tunggu.');
+            if (!$product) {
+                return back()->with('error', 'Produk tidak ditemukan di database.');
             }
 
-            // Jika API IAK error atau format response salah
-            Log::error('LOG LOG - Prepaid Top Up API Error / Invalid Response Format', ['response' => $result]);
-            $transaction->update(['status' => 'FAILED', 'message' => $result['data']['message'] ?? 'API Error']);
-            return back()->with('error', 'Terjadi kesalahan pada sistem provider: ' . ($result['data']['message'] ?? 'Unknown'));
+            if ($user->balance_iak < $product->price) {
+                return back()->with('error', 'Maaf, saldo Anda tidak mencukupi untuk transaksi ini.');
+            }
+            // ------------------------------------------------
 
-        } catch (\Exception $e) {
-            // Jika koneksi putus / timeout
-            Log::error('LOG LOG - Prepaid Top Up Exception', ['ref_id' => $refId, 'error' => $e->getMessage()]);
-            $transaction->update(['status' => 'FAILED', 'message' => 'Timeout / Connection Error']);
-            return back()->with('error', 'Gagal menghubungi server IAK: ' . $e->getMessage());
+            // Format Ref ID (Harus Unik)
+            $refId = 'P' . date('ymd') . rand(1000, 9999);
+
+            // Sesuai Dokumentasi: md5(username + api_key + ref_id)
+            $sign = md5($this->username . $this->apiKey . $refId);
+
+            // Buat record awal di database dengan status PROCESS
+            $transaction = TransactionPpobIak::create([
+                'user_id'      => auth()->id(),
+                'ref_id'       => $refId,
+                'type'         => 'prabayar',
+                'customer_id'  => $request->customer_id, // Sudah diformat dari frontend (hp, meter, game id + zone)
+                'product_code' => $request->product_code,
+                'status'       => 'PROCESS',
+            ]);
+
+            Log::info('LOG LOG - Prepaid Top Up Request', ['ref_id' => $refId, 'customer_id' => $request->customer_id, 'product' => $request->product_code]);
+
+            try {
+                // Hit API Top Up IAK
+                $response = Http::post($this->prepaidBaseUrl . '/api/top-up', [
+                    'username'     => $this->username,
+                    'customer_id'  => $request->customer_id,
+                    'product_code' => $request->product_code,
+                    'ref_id'       => $refId,
+                    'sign'         => $sign
+                ]);
+
+                $result = $response->json();
+
+                // Jika hit API Sukses
+                if ($response->successful() && isset($result['data'])) {
+
+                    // Ambil RC (Response Code)
+                    $apiCode = $result['data']['rc'] ?? ($result['data']['message'] == 'PROCESS' ? '39' : null);
+                    $codeInfo = IakPrepaidResponseCode::where('code', $apiCode)->first();
+
+                    // Mapping Status Sesuai Dokumentasi: 0 = PROCESS, 1 = SUCCESS, 2 = FAILED
+                    $statusMap = [0 => 'PROCESS', 1 => 'SUCCESS', 2 => 'FAILED'];
+                    $apiStatus = $result['data']['status'] ?? 0;
+
+                    $finalStatus = $codeInfo ? strtoupper($codeInfo->status) : ($statusMap[$apiStatus] ?? 'PROCESS');
+                    $finalMessage = $codeInfo ? $codeInfo->description . ' - ' . $codeInfo->solution : ($result['data']['message'] ?? 'Request Terkirim');
+
+                    // Update database dengan response dari IAK
+                    $transaction->update([
+                        'status'  => $finalStatus,
+                        'price'   => $product->price, // Menggunakan harga modal dari database Anda
+                        'tr_id'   => $result['data']['tr_id'] ?? null, // Simpan Transaction ID dari IAK
+                        'sn'      => $result['data']['sn'] ?? null,
+                        'message' => $finalMessage
+                    ]);
+
+                    // Jika status langsung gagal (FAILED)
+                    if ($finalStatus == 'FAILED') {
+                        Log::error('LOG LOG - Prepaid Top Up Failed Status from API', ['ref_id' => $refId, 'message' => $transaction->message]);
+                        return back()->with('error', 'Transaksi prabayar gagal: ' . $transaction->message);
+                    }
+
+                    // --- Potong saldo user jika status Proses / Sukses ---
+                    // (Jika nanti failed via Webhook, saldo akan direfund di fungsi webhook)
+                    if ($finalStatus == 'PROCESS' || $finalStatus == 'SUCCESS') {
+                        $user->balance_iak -= $product->price;
+                        $user->save();
+                        Log::info('LOG LOG - Saldo User Terpotong (Top Up)', ['user_id' => $user->id, 'potongan' => $product->price, 'sisa' => $user->balance_iak]);
+                    }
+
+                    Log::info('LOG LOG - Prepaid Top Up Processed', ['ref_id' => $refId, 'tr_id' => $transaction->tr_id, 'status' => $finalStatus]);
+
+                    // Redirect menuju halaman Invoice
+                    return redirect()->route('ppob.iak.invoice', ['ref_id' => $transaction->ref_id])
+                                     ->with('success', 'Transaksi sedang diproses. Mohon tunggu.');
+                }
+
+                // Jika API IAK error atau format response salah
+                Log::error('LOG LOG - Prepaid Top Up API Error / Invalid Response Format', ['response' => $result]);
+                $transaction->update(['status' => 'FAILED', 'message' => $result['data']['message'] ?? 'API Error']);
+                return back()->with('error', 'Terjadi kesalahan pada sistem provider: ' . ($result['data']['message'] ?? 'Unknown'));
+
+            } catch (\Exception $e) {
+                // Jika koneksi putus / timeout
+                Log::error('LOG LOG - Prepaid Top Up Exception', ['ref_id' => $refId, 'error' => $e->getMessage()]);
+                $transaction->update(['status' => 'FAILED', 'message' => 'Timeout / Connection Error']);
+                return back()->with('error', 'Gagal menghubungi server IAK: ' . $e->getMessage());
+            }
+        } finally { // --- TAMBAHAN IDEMPOTENCY: LEPASKAN KUNCI ---
+            optional($lock)->release();
         }
     }
 
@@ -238,7 +263,7 @@ class PpobIakController extends Controller
                 if (in_array($transaction->status, ['PROCESS', 'PENDING']) && $finalStatus === 'FAILED') {
                     if ($transaction->user_id) {
                         // Sesuaikan \App\Models\User jika model kamu bernama lain (misal: \App\Models\Pengguna)
-                        $userRefund = \App\Models\User::find($transaction->user_id);
+                        $userRefund = User::find($transaction->user_id);
                         if ($userRefund) {
                             $userRefund->balance_iak += $transaction->price; // Kembalikan saldo
                             $userRefund->save();
@@ -458,84 +483,94 @@ class PpobIakController extends Controller
         // Cari transaksi berdasarkan tr_id yang dikirim dari halaman konfirmasi
         $transaction = TransactionPpobIak::where('tr_id', $request->tr_id)->firstOrFail();
 
-        // 1. Pengecekan Saldo User di Backend
-        $user = auth()->user();
-        if ($user->balance_iak < $transaction->price) {
-            return redirect()->back()->with('error', 'Maaf, saldo Anda tidak mencukupi untuk membayar tagihan ini.');
+        // --- TAMBAHAN IDEMPOTENCY: ATOMIC LOCK ---
+        $lock = Cache::lock('pay_pasca_' . $transaction->tr_id, 10); // Cegah klik beruntun
+        if (!$lock->get()) {
+            return redirect()->back()->with('error', 'Pembayaran sedang diproses, mohon tidak menekan tombol berkali-kali.');
         }
 
-        // 2. Sign untuk payment pascabayar menggunakan tr_id
-        // Sesuai Dokumentasi: md5(username + api_key + tr_id)
-        $sign = md5($this->username . $this->apiKey . $transaction->tr_id);
-
-        Log::info('LOG LOG - Payment Postpaid Request', ['tr_id' => $transaction->tr_id]); // LOG LOG
-
-        try {
-            // 3. Hit API Pembayaran IAK
-            $response = Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', [
-                'commands' => 'pay-pasca',
-                'username' => $this->username,
-                'tr_id'    => $transaction->tr_id,
-                'sign'     => $sign
-            ]);
-
-            $result = $response->json();
-
-            if ($response->successful() && isset($result['data'])) {
-
-                $rc = $result['data']['response_code'] ?? '';
-
-                // Menentukan status berdasarkan Response Code (RC)
-                // 00 = SUCCESS, 39 = PENDING / PROCESS, selain itu FAILED
-                if ($rc === '00') {
-                    $status = 'SUCCESS';
-                } elseif ($rc === '39') {
-                    $status = 'PROCESS';
-                } else {
-                    $status = 'FAILED';
-                }
-
-                $finalMessage = $result['data']['message'] ?? 'Payment response received';
-
-                // Update data transaksi
-                $transaction->update([
-                    'status'  => $status,
-                    'sn'      => $result['data']['noref'] ?? null, // noref adalah bukti bayar / SN biller
-                    'message' => $finalMessage
-                ]);
-
-                // Jika Gagal
-                if ($status == 'FAILED') {
-                    Log::error('LOG LOG - Payment Postpaid Failed Status', ['tr_id' => $transaction->tr_id, 'message' => $transaction->message]); // LOG LOG
-                    return redirect()->route('ppob.index')->with('error', 'Pembayaran gagal: ' . $transaction->message);
-                }
-
-                // --- Potong Saldo User (Hanya jika PROCESS atau SUCCESS) ---
-                if ($status == 'PROCESS' || $status == 'SUCCESS') {
-                    $user->balance_iak -= $transaction->price;
-                    $user->save();
-                    Log::info('LOG LOG - Saldo User Terpotong (Pay Pasca)', ['user_id' => $user->id, 'potongan' => $transaction->price, 'sisa' => $user->balance_iak]);
-                }
-
-                Log::info('LOG LOG - Payment Postpaid Success/Process', ['tr_id' => $transaction->tr_id, 'status' => $status]); // LOG LOG
-
-                // Redirect menuju halaman invoice
-                return redirect()->route('ppob.iak.invoice', ['ref_id' => $transaction->ref_id])
-                                 ->with('success', 'Pembayaran Tagihan Berhasil diproses!');
+        try { // --- TAMBAHAN IDEMPOTENCY: BUNGKUS TRY UNTUK LOCK ---
+            // 1. Pengecekan Saldo User di Backend
+            $user = auth()->user();
+            if ($user->balance_iak < $transaction->price) {
+                return redirect()->back()->with('error', 'Maaf, saldo Anda tidak mencukupi untuk membayar tagihan ini.');
             }
 
-            // Jika format response salah / tidak ada index 'data'
-            Log::error('LOG LOG - Payment Postpaid Invalid Response', ['response' => $result]); // LOG LOG
-            $transaction->update(['status' => 'FAILED', 'message' => 'Invalid API Response Format']);
-            return redirect()->route('ppob.index')->with('error', 'Gagal memproses pembayaran. Response API tidak sesuai.');
+            // 2. Sign untuk payment pascabayar menggunakan tr_id
+            // Sesuai Dokumentasi: md5(username + api_key + tr_id)
+            $sign = md5($this->username . $this->apiKey . $transaction->tr_id);
 
-        } catch (\Exception $e) {
-            // ALUR 3: REQUEST PAYMENT NOT RECEIVED / TIMEOUT
-            // Biarkan status tetap PROCESS, agar uang masih di-hold. Sistem harus cek status kemudian.
-            Log::error('LOG LOG - Payment Postpaid Exception (Timeout/Connection)', ['tr_id' => $transaction->tr_id, 'error' => $e->getMessage()]); // LOG LOG
+            Log::info('LOG LOG - Payment Postpaid Request', ['tr_id' => $transaction->tr_id]); // LOG LOG
 
-            $transaction->update(['message' => 'Timeout: ' . $e->getMessage()]);
-            return redirect()->route('ppob.index')->with('error', 'Koneksi terputus. Sistem akan melakukan pengecekan status otomatis.');
+            try {
+                // 3. Hit API Pembayaran IAK
+                $response = Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', [
+                    'commands' => 'pay-pasca',
+                    'username' => $this->username,
+                    'tr_id'    => $transaction->tr_id,
+                    'sign'     => $sign
+                ]);
+
+                $result = $response->json();
+
+                if ($response->successful() && isset($result['data'])) {
+
+                    $rc = $result['data']['response_code'] ?? '';
+
+                    // Menentukan status berdasarkan Response Code (RC)
+                    // 00 = SUCCESS, 39 = PENDING / PROCESS, selain itu FAILED
+                    if ($rc === '00') {
+                        $status = 'SUCCESS';
+                    } elseif ($rc === '39') {
+                        $status = 'PROCESS';
+                    } else {
+                        $status = 'FAILED';
+                    }
+
+                    $finalMessage = $result['data']['message'] ?? 'Payment response received';
+
+                    // Update data transaksi
+                    $transaction->update([
+                        'status'  => $status,
+                        'sn'      => $result['data']['noref'] ?? null, // noref adalah bukti bayar / SN biller
+                        'message' => $finalMessage
+                    ]);
+
+                    // Jika Gagal
+                    if ($status == 'FAILED') {
+                        Log::error('LOG LOG - Payment Postpaid Failed Status', ['tr_id' => $transaction->tr_id, 'message' => $transaction->message]); // LOG LOG
+                        return redirect()->route('ppob.index')->with('error', 'Pembayaran gagal: ' . $transaction->message);
+                    }
+
+                    // --- Potong Saldo User (Hanya jika PROCESS atau SUCCESS) ---
+                    if ($status == 'PROCESS' || $status == 'SUCCESS') {
+                        $user->balance_iak -= $transaction->price;
+                        $user->save();
+                        Log::info('LOG LOG - Saldo User Terpotong (Pay Pasca)', ['user_id' => $user->id, 'potongan' => $transaction->price, 'sisa' => $user->balance_iak]);
+                    }
+
+                    Log::info('LOG LOG - Payment Postpaid Success/Process', ['tr_id' => $transaction->tr_id, 'status' => $status]); // LOG LOG
+
+                    // Redirect menuju halaman invoice
+                    return redirect()->route('ppob.iak.invoice', ['ref_id' => $transaction->ref_id])
+                                     ->with('success', 'Pembayaran Tagihan Berhasil diproses!');
+                }
+
+                // Jika format response salah / tidak ada index 'data'
+                Log::error('LOG LOG - Payment Postpaid Invalid Response', ['response' => $result]); // LOG LOG
+                $transaction->update(['status' => 'FAILED', 'message' => 'Invalid API Response Format']);
+                return redirect()->route('ppob.index')->with('error', 'Gagal memproses pembayaran. Response API tidak sesuai.');
+
+            } catch (\Exception $e) {
+                // ALUR 3: REQUEST PAYMENT NOT RECEIVED / TIMEOUT
+                // Biarkan status tetap PROCESS, agar uang masih di-hold. Sistem harus cek status kemudian.
+                Log::error('LOG LOG - Payment Postpaid Exception (Timeout/Connection)', ['tr_id' => $transaction->tr_id, 'error' => $e->getMessage()]); // LOG LOG
+
+                $transaction->update(['message' => 'Timeout: ' . $e->getMessage()]);
+                return redirect()->route('ppob.index')->with('error', 'Koneksi terputus. Sistem akan melakukan pengecekan status otomatis.');
+            }
+        } finally { // --- TAMBAHAN IDEMPOTENCY: LEPASKAN KUNCI ---
+            optional($lock)->release();
         }
     }
 
@@ -579,7 +614,7 @@ class PpobIakController extends Controller
                 if (in_array($transaction->status, ['PROCESS', 'PENDING']) && $finalStatus === 'FAILED') {
                     if ($transaction->user_id) {
                         // Sesuaikan \App\Models\User jika model kamu bernama lain
-                        $userRefund = \App\Models\User::find($transaction->user_id);
+                        $userRefund = User::find($transaction->user_id);
                         if ($userRefund) {
                             $userRefund->balance_iak += $transaction->price; // Kembalikan saldo
                             $userRefund->save();
@@ -645,6 +680,31 @@ class PpobIakController extends Controller
             return response()->json(['message' => 'Invalid signature'], 403);
         }
 
+        // ========================================================
+        // --- TAMBAHAN IDEMPOTENCY WEBHOOK ---
+        // ========================================================
+        // 1. ATOMIC LOCK: Cegah Race Condition jika ada 2 webhook datang di milidetik yang sama
+        $lockKey = 'webhook_lock_' . $refId;
+        $lock = Cache::lock($lockKey, 10); // Kunci selama 10 detik
+
+        if (!$lock->get()) {
+            // Return 200 agar IAK mengira sudah sukses dan tidak nge-hit ulang terus-terusan
+            Log::info('LOG LOG - Webhook Duplicate Hit Blocked by Lock', ['ref_id' => $refId]);
+            return response()->json(['message' => 'Webhook is already being processed'], 200);
+        }
+
+        try {
+            $transaction = TransactionPpobIak::where('ref_id', $refId)->first();
+            if (!$transaction) {
+                return response()->json(['message' => 'Transaction not found'], 404);
+            }
+
+            // 2. CEK STATUS FINAL: Cegah proses ulang jika webhook telat datang dan trx sudah sukses/gagal duluan
+            if (in_array($transaction->status, ['SUCCESS', 'FAILED'])) {
+                Log::info('LOG LOG - Webhook Ignored (Already Finalized)', ['ref_id' => $refId, 'current_status' => $transaction->status]);
+                return response()->json(['message' => 'Transaction already finalized previously'], 200);
+            }
+
         $transaction = TransactionPpobIak::where('ref_id', $refId)->first();
         if (!$transaction) {
             return response()->json(['message' => 'Transaction not found'], 404);
@@ -665,9 +725,9 @@ class PpobIakController extends Controller
         if (in_array($transaction->status, ['PROCESS', 'PENDING']) && $finalStatus === 'FAILED') {
             if ($transaction->user_id) {
                 // Sesuaikan \App\Models\User jika model kamu bernama lain (misal: \App\Models\Pengguna)
-                $userRefund = \App\Models\User::find($transaction->user_id);
+                $userRefund = User::find($transaction->user_id);
                 if ($userRefund) {
-                    $userRefund->balance_iak += $transaction->price;
+                    $userRefund->increment('balance_iak', $transaction->price);
                     $userRefund->save();
                     Log::info('LOG LOG - Saldo Refunded (Webhook)', ['ref_id' => $refId, 'amount' => $transaction->price]);
                 }
@@ -676,15 +736,20 @@ class PpobIakController extends Controller
         // --------------------------------------------------------------------
 
         $transaction->update([
-            'status'  => $finalStatus,
-            'sn'      => $sn ?: $transaction->sn,
-            'price'   => $price > 0 ? $price : $transaction->price,
-            'message' => $finalMessage
-        ]);
+                'status'  => $finalStatus,
+                'sn'      => $sn ?: $transaction->sn,
+                'price'   => $price > 0 ? $price : $transaction->price,
+                'message' => $finalMessage
+            ]);
 
-        Log::info('LOG LOG - Webhook Processed Successfully', ['ref_id' => $refId, 'finalStatus' => $finalStatus, 'sn' => $sn]); // LOG LOG
-        return response()->json(['message' => 'Callback received successfully'], 200);
-    }
+            Log::info('LOG LOG - Webhook Processed Successfully', ['ref_id' => $refId, 'finalStatus' => $finalStatus, 'sn' => $sn]);
+            return response()->json(['message' => 'Callback received successfully'], 200);
+
+        } finally {
+            // Lepaskan lock agar antrean memori bersih
+            optional($lock)->release();
+        }
+    } // <--- Ini adalah kurung kurawal penutup fungsi webhook()
 
     // --- FUNGSI UNTUK MENAMPILKAN INVOICE ---
     public function invoice($ref_id)
@@ -979,8 +1044,5 @@ class PpobIakController extends Controller
             ]);
         }
     }
-
-
-
 
 }
