@@ -38,7 +38,7 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-    
+
 
     'kiriminaja' => [
         'base_url' => env('KIRIMINAJA_BASE_URL', 'https://client.kiriminaja.com'),
@@ -68,9 +68,18 @@ return [
     'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
     ],
 
-'gemini' => [
-    'key' => env('GEMINI_API_KEY'),
-    'model' => env('GEMINI_MODEL', 'gemini-1.5-flash-latest'),
-],
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-1.5-flash-latest'),
+    ],
+
+    // --- Konfigurasi IAK PPOB ---
+    'iak' => [
+        'mode'              => env('IAK_MODE', 'development'),
+        'user_hp'           => env('IAK_USER_HP'),
+        'api_key'           => env('IAK_API_KEY'),
+        'prepaid_base_url'  => env('IAK_PREPAID_BASE_URL', 'https://prepaid.iak.dev'),
+        'postpaid_base_url' => env('IAK_POSTPAID_BASE_URL', 'https://testpostpaid.mobilepulsa.net'),
+    ],
 
 ];

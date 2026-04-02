@@ -61,6 +61,10 @@
                 <button @click="activeTab = 'doku'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'doku', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'doku' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
                     <i class="fas fa-credit-card mr-2"></i> DOKU
                 </button>
+                {{-- TAMBAHAN TAB IAK --}}
+                <button @click="activeTab = 'iak'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'iak', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'iak' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    <i class="fas fa-mobile-alt mr-2"></i> IAK PPOB
+                </button>
                 <button @click="activeTab = 'fonnte'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'fonnte', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'fonnte' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
                     <i class="fab fa-whatsapp mr-2"></i> Fonnte
                 </button>
@@ -336,7 +340,93 @@
                 </form>
             </div>
 
-            {{-- 4. TAB FONNTE --}}
+            {{-- 4. TAB IAK (BARU) --}}
+            <div x-show="activeTab === 'iak'" style="display: none;">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">IAK PPOB Configuration</h3>
+                        <p class="text-xs text-gray-500 mt-1">Status Aktif:
+                            <span class="px-2 py-0.5 rounded text-xs font-bold transition-colors duration-300"
+                                  :class="iakData.mode === 'production' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'"
+                                  x-text="iakData.mode === 'production' ? 'PRODUCTION (LIVE)' : 'DEVELOPMENT (TEST)'">
+                            </span>
+                        </p>
+                    </div>
+
+                    {{-- Toggle Switch IAK --}}
+                    <div class="flex items-center">
+                        <span class="mr-3 text-sm font-medium" :class="iakData.mode === 'development' ? 'text-indigo-600 font-bold' : 'text-gray-500'">DEVELOPMENT</span>
+
+                        <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" id="iak_toggle"
+                                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
+                                   :class="{'translate-x-full border-red-500': iakData.mode === 'production', 'border-indigo-500': iakData.mode === 'development'}"
+                                   @click="iakData.mode = (iakData.mode === 'production' ? 'development' : 'production')"
+                                   :checked="iakData.mode === 'production'"/>
+                            <label for="iak_toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
+                                   :class="{'bg-red-500': iakData.mode === 'production', 'bg-indigo-500': iakData.mode === 'development'}"></label>
+                        </div>
+
+                        <span class="ml-1 text-sm font-medium" :class="iakData.mode === 'production' ? 'text-red-600 font-bold' : 'text-gray-500'">PRODUCTION</span>
+                    </div>
+                </div>
+
+                <form action="{{ route('admin.settings.api.update') }}" method="POST">
+                    @csrf @method('PUT')
+                    <input type="hidden" name="type" value="iak">
+                    <input type="hidden" name="iak_mode" x-model="iakData.mode">
+
+                    <div class="space-y-6">
+                        {{-- Visual Warning --}}
+                        <div class="p-4 rounded-lg border flex items-start"
+                             :class="iakData.mode === 'production' ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'">
+                            <div class="flex-shrink-0 mt-0.5">
+                                <i class="fas" :class="iakData.mode === 'production' ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle text-indigo-500'"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium" :class="iakData.mode === 'production' ? 'text-red-800' : 'text-indigo-800'" x-text="iakData.mode === 'production' ? 'Mode Produksi Aktif' : 'Mode Development Aktif'"></h3>
+                                <div class="mt-1 text-sm" :class="iakData.mode === 'production' ? 'text-red-700' : 'text-indigo-700'">
+                                    <p x-text="iakData.mode === 'production' ? 'Transaksi asli. Pastikan saldo deposit Anda mencukupi.' : 'Mode testing (Development). Transaksi tidak memotong saldo.'"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div x-show="iakData.mode" x-transition.opacity>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">User HP (No. WhatsApp)</label>
+                                    <input type="text" name="iak_user_hp" x-model="iakData[iakData.mode].user_hp" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Contoh: 08123456789">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">API Key</label>
+                                    <input type="text" name="iak_api_key" x-model="iakData[iakData.mode].api_key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Masukkan API Key IAK">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Prepaid Base URL</label>
+                                    <input type="url" name="iak_prepaid_base_url" x-model="iakData[iakData.mode].prepaid_base_url" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Biarkan kosong untuk otomatis (Default disediakan)">
+                                    <p class="text-xs text-gray-500 mt-1" x-text="iakData.mode === 'production' ? 'Default: https://prepaid.iak.id' : 'Default: https://prepaid.iak.dev'"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Postpaid Base URL</label>
+                                    <input type="url" name="iak_postpaid_base_url" x-model="iakData[iakData.mode].postpaid_base_url" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Biarkan kosong untuk otomatis (Default disediakan)">
+                                    <p class="text-xs text-gray-500 mt-1" x-text="iakData.mode === 'production' ? 'Default: https://mobilepulsa.net' : 'Default: https://testpostpaid.mobilepulsa.net'"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors">
+                            Simpan IAK
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {{-- 5. TAB FONNTE --}}
             <div x-show="activeTab === 'fonnte'" style="display: none;">
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <div>
@@ -380,13 +470,14 @@
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('apiSettings', () => ({
-            activeTab: 'kiriminaja',
+            activeTab: 'kiriminaja', // Tab default yang terbuka saat load pertama kali
 
             // Mengambil Data Langsung dari PHP Variable yang dilempar Controller
             // Tanpa perlu merinci satu per satu jika struktur di Controller sudah benar
             kaData: @json($kiriminaja),
             tpData: @json($tripay),
             dokuData: @json($doku),
+            iakData: @json($iak), // Tambahan varibel untuk IAK
         }))
     })
 </script>

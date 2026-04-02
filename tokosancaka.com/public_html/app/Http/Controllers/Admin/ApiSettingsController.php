@@ -16,6 +16,7 @@ class ApiSettingsController extends Controller
         $kaMode     = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
         $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
         $dokuEnv    = Api::getValue('DOKU_ENV', 'global', 'sandbox');
+        $iakMode    = Api::getValue('IAK_MODE', 'global', 'development'); // Tambahan IAK
 
         // 2. Siapkan Struktur Data Lengkap (Active Mode + Data per Environment)
         // Kita kirim 'staging' DAN 'production' sekaligus agar frontend bisa switch real-time.
@@ -65,11 +66,29 @@ class ApiSettingsController extends Controller
 
         ];
 
+        // --- TAMBAHAN IAK PPOB ---
+        $iak = [
+            'mode' => $iakMode,
+            'development' => [
+                'user_hp'           => Api::getValue('IAK_USER_HP', 'development'),
+                'api_key'           => Api::getValue('IAK_API_KEY', 'development'),
+                'prepaid_base_url'  => Api::getValue('IAK_PREPAID_BASE_URL', 'development'),
+                'postpaid_base_url' => Api::getValue('IAK_POSTPAID_BASE_URL', 'development'),
+            ],
+            'production' => [
+                'user_hp'           => Api::getValue('IAK_USER_HP', 'production'),
+                'api_key'           => Api::getValue('IAK_API_KEY', 'production'),
+                'prepaid_base_url'  => Api::getValue('IAK_PREPAID_BASE_URL', 'production'),
+                'postpaid_base_url' => Api::getValue('IAK_POSTPAID_BASE_URL', 'production'),
+            ]
+        ];
+
         $fonnte = [
             'api_key' => Api::getValue('FONNTE_API_KEY', 'global'),
         ];
 
-        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'fonnte'));
+        // Tambahkan variable $iak ke compact
+        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte'));
     }
 
     public function update(Request $request)
@@ -118,6 +137,28 @@ class ApiSettingsController extends Controller
                     Api::setValue('DOKU_MAIN_SAC_ID', $request->doku_main_sac_id, 'doku', 'global');
                 }
 
+            // --- TAMBAHAN IAK PPOB ---
+            } elseif ($type === 'iak') {
+                $env = $request->iak_mode; // development atau production
+
+                Api::setValue('IAK_MODE', $env, 'iak', 'global');
+
+                // Logic Base URL Auto jika kosong (sesuai dokumentasi resmi)
+                $prepaidUrl = $request->iak_prepaid_base_url;
+                if (empty($prepaidUrl)) {
+                    $prepaidUrl = ($env === 'production') ? 'https://prepaid.iak.id' : 'https://prepaid.iak.dev';
+                }
+
+                $postpaidUrl = $request->iak_postpaid_base_url;
+                if (empty($postpaidUrl)) {
+                    $postpaidUrl = ($env === 'production') ? 'https://mobilepulsa.net' : 'https://testpostpaid.mobilepulsa.net';
+                }
+
+                Api::setValue('IAK_USER_HP', $request->iak_user_hp, 'iak', $env);
+                Api::setValue('IAK_API_KEY', $request->iak_api_key, 'iak', $env);
+                Api::setValue('IAK_PREPAID_BASE_URL', $prepaidUrl, 'iak', $env);
+                Api::setValue('IAK_POSTPAID_BASE_URL', $postpaidUrl, 'iak', $env);
+
             } elseif ($type === 'fonnte') {
                 Api::setValue('FONNTE_API_KEY', $request->fonnte_api_key, 'fonnte', 'global');
             }
@@ -141,17 +182,19 @@ class ApiSettingsController extends Controller
             $currentMode = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
 
             // 2. Tentukan Target Mode (Switch)
-            // Jika sekarang Production, ubah semua ke Staging/Sandbox.
+            // Jika sekarang Production, ubah semua ke Staging/Sandbox/Development.
             // Jika sekarang Staging, ubah semua ke Production.
             if ($currentMode === 'production') {
                 $targetKA     = 'staging';
                 $targetTripay = 'sandbox';
                 $targetDoku   = 'sandbox';
-                $label        = 'SANDBOX / STAGING';
+                $targetIAK    = 'development'; // IAK menggunakan environment development
+                $label        = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
                 $targetKA     = 'production';
                 $targetTripay = 'production';
                 $targetDoku   = 'production';
+                $targetIAK    = 'production';
                 $label        = 'PRODUCTION (LIVE)';
             }
 
@@ -159,6 +202,7 @@ class ApiSettingsController extends Controller
             Api::setValue('KIRIMINAJA_MODE', $targetKA, 'kiriminaja', 'global');
             Api::setValue('TRIPAY_MODE', $targetTripay, 'tripay', 'global');
             Api::setValue('DOKU_ENV', $targetDoku, 'doku', 'global');
+            Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global'); // Tambahan update global mode IAK
 
 
             // ✅ 4. SIARKAN EVENT REAL-TIME KE SEMUA USER
