@@ -98,11 +98,34 @@ class PpobIakController extends Controller
 
    public function store(Request $request)
     {
+        // 1. Validasi Input
         $request->validate([
             'customer_id' => 'required|string',
             'product_code' => 'required|string',
-            'type' => 'required|in:prabayar,pascabayar'
+            'type' => 'required|in:prabayar,pascabayar',
+            'whatsapp_number' => 'nullable|string' // Nomor WA bersifat opsional
         ]);
+
+        // ========================================================
+        // --- FORMAT NOMOR WA (Pembersihan Karakter Aneh) ---
+        // ========================================================
+        if ($request->filled('whatsapp_number')) {
+            // Hapus semua karakter selain angka (seperti spasi, +, -, kurung)
+            $wa = preg_replace('/[^0-9]/', '', $request->whatsapp_number);
+
+            // Jika diawali '62', ubah menjadi '0'
+            if (substr($wa, 0, 2) === '62') {
+                $wa = '0' . substr($wa, 2);
+            }
+            // Jika diawali '8' (tanpa 0), tambahkan '0' di depannya
+            elseif (substr($wa, 0, 1) === '8') {
+                $wa = '0' . $wa;
+            }
+
+            // Timpa inputan lama dengan nomor yang sudah rapi
+            $request->merge(['whatsapp_number' => $wa]);
+        }
+        // ========================================================
 
         // Jika Pascabayar, lempar ke fungsi inquiry
         if ($request->type === 'pascabayar') {
