@@ -10,6 +10,7 @@ use App\Models\IakResponseCode; // Jangan lupa import model di atas
 use App\Models\IakPricelistPostpaid; // Import di bagian atas
 use App\Models\IakPrepaidResponseCode;
 use App\Models\IakPricelistPrepaid;
+use App\Models\Api; // <-- TAMBAHKAN IMPORT INI UNTUK BACA SETTING DATABASE
 
 class PpobIakController extends Controller
 {
@@ -20,16 +21,16 @@ class PpobIakController extends Controller
 
     public function __construct()
     {
-        // Mengambil environment aktif dari config
-        $env = config('iak.env', 'development');
+        // Mengambil environment aktif dari DATABASE (Global Mode)
+        $env = Api::getValue('IAK_MODE', 'global', 'development');
 
-        // Setup Base URL sesuai environment secara otomatis
-        $this->prepaidBaseUrl = config('iak.base_url.prepaid.' . $env);
-        $this->postpaidBaseUrl = config('iak.base_url.postpaid.' . $env);
+        // Setup Base URL sesuai environment dari database (dengan fallback default jika kosong)
+        $this->prepaidBaseUrl = Api::getValue('IAK_PREPAID_BASE_URL', $env) ?: ($env === 'production' ? 'https://prepaid.iak.id' : 'https://prepaid.iak.dev');
+        $this->postpaidBaseUrl = Api::getValue('IAK_POSTPAID_BASE_URL', $env) ?: ($env === 'production' ? 'https://mobilepulsa.net' : 'https://testpostpaid.mobilepulsa.net');
 
-        // Kredensial (IAK menggunakan nomor HP sebagai username)
-        $this->username = config('iak.credentials.user_hp');
-        $this->apiKey = config('iak.credentials.api_key');
+        // Kredensial sesuai environment dari database
+        $this->username = Api::getValue('IAK_USER_HP', $env);
+        $this->apiKey = Api::getValue('IAK_API_KEY', $env);
     }
 
     public function index()

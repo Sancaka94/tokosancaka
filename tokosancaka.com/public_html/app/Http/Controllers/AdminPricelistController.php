@@ -7,6 +7,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Log; // LOG LOG
 use App\Models\IakPricelistPrepaid;
 use Illuminate\Support\Facades\Http;
+use App\Models\Api; // <-- TAMBAHKAN IMPORT INI
 
 class AdminPricelistController extends Controller
 {
@@ -110,14 +111,17 @@ class AdminPricelistController extends Controller
      */
     public function checkBalance()
     {
-        $username = config('iak.credentials.user_hp');
-        $apiKey = config('iak.credentials.api_key');
+        // Mengambil environment aktif dari DATABASE
+        $env = Api::getValue('IAK_MODE', 'global', 'development');
+
+        $username = Api::getValue('IAK_USER_HP', $env);
+        $apiKey = Api::getValue('IAK_API_KEY', $env);
         // LOG LOG: Format Sign Cek Saldo = md5(username + api_key + 'bl')
         $sign = md5($username . $apiKey . 'bl');
 
-        // Pastikan URL mengarah ke endpoint yang benar melalui config
-        $env = config('iak.env', 'development');
-        $baseUrl = rtrim(config('iak.base_url.prepaid.' . $env), '/');
+        // Pastikan URL mengarah ke endpoint yang benar dari database
+        $baseApiUrl = Api::getValue('IAK_PREPAID_BASE_URL', $env) ?: ($env === 'production' ? 'https://prepaid.iak.id' : 'https://prepaid.iak.dev');
+        $baseUrl = rtrim($baseApiUrl, '/');
         $url = $baseUrl . '/api/check-balance'; // <--- INI ENDPOINT YANG BENAR
 
         try {
@@ -162,14 +166,17 @@ class AdminPricelistController extends Controller
      */
     public function syncPricelistApi()
     {
-        $username = config('iak.credentials.user_hp');
-        $apiKey = config('iak.credentials.api_key');
+        // Mengambil environment aktif dari DATABASE
+        $env = Api::getValue('IAK_MODE', 'global', 'development');
+
+        $username = Api::getValue('IAK_USER_HP', $env);
+        $apiKey = Api::getValue('IAK_API_KEY', $env);
         // LOG LOG: Format Sign Pricelist = md5(username + api_key + 'pl')
         $sign = md5($username . $apiKey . 'pl');
 
-        // Pastikan endpoint bersih menuju /api/pricelist melalui config
-        $env = config('iak.env', 'development');
-        $baseUrl = rtrim(config('iak.base_url.prepaid.' . $env), '/');
+        // Pastikan endpoint bersih menuju /api/pricelist dari database
+        $baseApiUrl = Api::getValue('IAK_PREPAID_BASE_URL', $env) ?: ($env === 'production' ? 'https://prepaid.iak.id' : 'https://prepaid.iak.dev');
+        $baseUrl = rtrim($baseApiUrl, '/');
         $url = $baseUrl . '/api/pricelist';
 
         try {
@@ -241,18 +248,22 @@ class AdminPricelistController extends Controller
         }
     }
 
-   /**
+    /**
      * API Internal: Tarik Saldo IAK secara Real-Time via AJAX (Widget Biru)
      * Otomatis menyimpan ke database ketika sinkronisasi berhasil.
      */
     public function liveBalanceApi()
     {
-        $username = config('iak.credentials.user_hp');
-        $apiKey = config('iak.credentials.api_key');
+        // Mengambil environment aktif dari DATABASE
+        $env = Api::getValue('IAK_MODE', 'global', 'development');
+
+        $username = Api::getValue('IAK_USER_HP', $env);
+        $apiKey = Api::getValue('IAK_API_KEY', $env);
         $sign = md5($username . $apiKey . 'bl');
 
-        $env = config('iak.env', 'development');
-        $baseUrl = rtrim(config('iak.base_url.prepaid.' . $env), '/');
+        // Pastikan endpoint bersih menuju /api/check-balance dari database
+        $baseApiUrl = Api::getValue('IAK_PREPAID_BASE_URL', $env) ?: ($env === 'production' ? 'https://prepaid.iak.id' : 'https://prepaid.iak.dev');
+        $baseUrl = rtrim($baseApiUrl, '/');
         $url = $baseUrl . '/api/check-balance';
 
         try {
