@@ -769,44 +769,46 @@ class PpobIakController extends Controller
                 'message' => $finalMessage
             ]);
 
-        // ========================================================
-        // --- LOGIKA KIRIM WA VIA FONNTE ---
-        // ========================================================
-        if ($finalStatus === 'SUCCESS' && !empty($sn)) {
-            // Ambil nomor WA yang tersimpan saat transaksi pertama kali dibuat
-            $phone = $transaction->whatsapp_number;
+            // ========================================================
+            // --- LOGIKA KIRIM WA VIA FONNTE (DI DALAM WEBHOOK) ---
+            // ========================================================
+            if ($finalStatus === 'SUCCESS' && !empty($sn)) {
+                $phone = $transaction->whatsapp_number;
+                if (!empty($phone)) {
+                    $fonnteToken = Api::getValue('FONNTE_API_KEY', 'global');
+                    if (!empty($fonnteToken)) {
+                        $pesanWa = "*TRANSAKSI PPOB BERHASIL* ✅\n\n"
+                                 . "Ref ID: {$transaction->ref_id}\n"
+                                 . "Layanan: {$transaction->product_code}\n"
+                                 . "Tujuan: {$transaction->customer_id}\n"
+                                 . "Harga: Rp " . number_format($transaction->price, 0, ',', '.') . "\n"
+                                 . "Status: {$finalStatus}\n\n"
+                                 . "*SN / TOKEN:*\n{$sn}\n\n"
+                                 . "_Terima kasih telah menggunakan layanan Sancaka._";
 
-            if (!empty($phone)) {
-                // Ambil Token Fonnte dari settings database
-                $fonnteToken = Api::getValue('FONNTE_API_KEY', 'global');
+                        try {
+                            // Hit API Fonnte tanpa parameter countryCode agar tidak bentrok dengan nomor 08xxx
+                            $responseFonnte = Http::withHeaders([
+                                'Authorization' => $fonnteToken
+                            ])->post('https://api.fonnte.com/send', [
+                                'target' => $phone,
+                                'message' => $pesanWa
+                            ]);
 
-                if (!empty($fonnteToken)) {
-                    $pesanWa = "*TRANSAKSI BERHASIL* ✅\n\n"
-                            . "Ref ID: {$transaction->ref_id}\n"
-                            . "Layanan: {$transaction->product_code}\n"
-                            . "Tujuan: {$transaction->customer_id}\n"
-                            . "Status: {$finalStatus}\n\n"
-                            . "SN / TOKEN:\n"
-                            . "*{$sn}*\n\n"
-                            . "Terima kasih telah menggunakan SancakaPOS.";
-
-                    try {
-                        Http::withHeaders([
-                            'Authorization' => $fonnteToken
-                        ])->post('https://api.fonnte.com/send', [
-                            'target' => $phone,
-                            'message' => $pesanWa,
-                            'countryCode' => '62'
-                        ]);
-                        Log::info('LOG LOG - Fonnte WA Sent', ['target' => $phone, 'ref_id' => $refId]);
-                    } catch (\Exception $e) {
-                        Log::error('LOG LOG - Fonnte WA Error', ['error' => $e->getMessage()]);
+                            Log::info('LOG LOG - Fonnte WA (Webhook) Sent', [
+                                'target' => $phone,
+                                'response' => $responseFonnte->json()
+                            ]);
+                        } catch (\Exception $e) {
+                            Log::error('LOG LOG - Fonnte WA (Webhook) Error', ['error' => $e->getMessage()]);
+                        }
+                    } else {
+                        Log::warning('LOG LOG - Fonnte Skipped (Webhook): Token belum diatur.');
                     }
                 } else {
-                    Log::warning('LOG LOG - Fonnte Skipped: Token API belum disetting.');
+                    Log::warning('LOG LOG - Fonnte Skipped (Webhook): Nomor WA pembeli kosong di database.');
                 }
             }
-        }
 
             Log::info('LOG LOG - Webhook Processed Successfully', ['ref_id' => $refId, 'finalStatus' => $finalStatus, 'sn' => $sn]);
             return response()->json(['message' => 'Callback received successfully'], 200);
