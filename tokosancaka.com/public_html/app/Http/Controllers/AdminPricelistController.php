@@ -110,13 +110,14 @@ class AdminPricelistController extends Controller
      */
     public function checkBalance()
     {
-        $username = env('IAK_USERNAME');
-        $apiKey = env('IAK_API_KEY');
+        $username = config('iak.credentials.user_hp');
+        $apiKey = config('iak.credentials.api_key');
         // LOG LOG: Format Sign Cek Saldo = md5(username + api_key + 'bl')
         $sign = md5($username . $apiKey . 'bl');
 
-        // Pastikan URL mengarah ke endpoint yang benar
-        $baseUrl = str_replace('/api', '', rtrim(env('IAK_URL'), '/'));
+        // Pastikan URL mengarah ke endpoint yang benar melalui config
+        $env = config('iak.env', 'development');
+        $baseUrl = rtrim(config('iak.base_url.prepaid.' . $env), '/');
         $url = $baseUrl . '/api/check-balance'; // <--- INI ENDPOINT YANG BENAR
 
         try {
@@ -161,13 +162,14 @@ class AdminPricelistController extends Controller
      */
     public function syncPricelistApi()
     {
-        $username = env('IAK_USERNAME');
-        $apiKey = env('IAK_API_KEY');
+        $username = config('iak.credentials.user_hp');
+        $apiKey = config('iak.credentials.api_key');
         // LOG LOG: Format Sign Pricelist = md5(username + api_key + 'pl')
         $sign = md5($username . $apiKey . 'pl');
 
-        // Pastikan endpoint bersih menuju /api/pricelist
-        $baseUrl = str_replace('/api', '', rtrim(env('IAK_URL'), '/'));
+        // Pastikan endpoint bersih menuju /api/pricelist melalui config
+        $env = config('iak.env', 'development');
+        $baseUrl = rtrim(config('iak.base_url.prepaid.' . $env), '/');
         $url = $baseUrl . '/api/pricelist';
 
         try {
@@ -239,17 +241,18 @@ class AdminPricelistController extends Controller
         }
     }
 
-    /**
+   /**
      * API Internal: Tarik Saldo IAK secara Real-Time via AJAX (Widget Biru)
      * Otomatis menyimpan ke database ketika sinkronisasi berhasil.
      */
     public function liveBalanceApi()
     {
-        $username = env('IAK_USERNAME');
-        $apiKey = env('IAK_API_KEY');
+        $username = config('iak.credentials.user_hp');
+        $apiKey = config('iak.credentials.api_key');
         $sign = md5($username . $apiKey . 'bl');
 
-        $baseUrl = str_replace('/api', '', rtrim(env('IAK_URL'), '/'));
+        $env = config('iak.env', 'development');
+        $baseUrl = rtrim(config('iak.base_url.prepaid.' . $env), '/');
         $url = $baseUrl . '/api/check-balance';
 
         try {

@@ -20,12 +20,16 @@ class PpobIakController extends Controller
 
     public function __construct()
     {
-        $this->prepaidBaseUrl = 'https://prepaid.iak.dev';
-        // Base URL Postpaid Development sesuai dokumentasi awal
-        $this->postpaidBaseUrl = 'https://testpostpaid.mobilepulsa.net';
+        // Mengambil environment aktif dari config
+        $env = config('iak.env', 'development');
 
-        $this->username = env('IAK_USERNAME');
-        $this->apiKey = env('IAK_API_KEY');
+        // Setup Base URL sesuai environment secara otomatis
+        $this->prepaidBaseUrl = config('iak.base_url.prepaid.' . $env);
+        $this->postpaidBaseUrl = config('iak.base_url.postpaid.' . $env);
+
+        // Kredensial (IAK menggunakan nomor HP sebagai username)
+        $this->username = config('iak.credentials.user_hp');
+        $this->apiKey = config('iak.credentials.api_key');
     }
 
     public function index()
