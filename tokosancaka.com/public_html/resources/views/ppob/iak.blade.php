@@ -1,12 +1,23 @@
 @extends('layouts.app')
 
 @section('content')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
 <style>
     /* Efek hover dan klik untuk kartu produk */
     .product-card { transition: all 0.2s ease-in-out; }
     .product-card:hover { transform: translateY(-2px); border-color: #0d6efd !important; }
     .product-card.selected { border-color: #0d6efd !important; background-color: #e7f1ff !important; box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25); }
     .cursor-pointer { cursor: pointer; }
+
+    /* Penyesuaian tinggi Select2 agar sejajar dengan form-control-lg bawaan Bootstrap */
+    .select2-container--bootstrap-5 .select2-selection {
+        min-height: calc(1.5em + 1rem + 2px);
+        padding: .5rem 1rem;
+        font-size: 1.25rem;
+        border-radius: .3rem;
+    }
 </style>
 
 <div class="container mt-4 mb-5">
@@ -189,8 +200,8 @@
 
                                 <div class="mb-4">
                                     <label class="form-label fw-semibold">Pilih Layanan Tagihan</label>
-                                    <select class="form-select form-select-lg" name="product_code" id="pasca_product_code" required>
-                                        <option value="">-- Pilih Jenis Tagihan --</option>
+                                    <select class="form-select form-select-lg select2-enable" name="product_code" id="pasca_product_code" required>
+                                        <option value="">-- Ketik Nama Tagihan / Produk --</option>
                                         @foreach($pricelist as $item)
                                             <option value="{{ $item->code }}">{{ $item->name }}</option>
                                         @endforeach
@@ -261,7 +272,26 @@
 </div>
 
 @push('scripts')
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script>
+    // INISIALISASI SELECT2 UNTUK PASCABAYAR
+    $(document).ready(function() {
+        $('#pasca_product_code').select2({
+            theme: 'bootstrap-5',
+            placeholder: "-- Ketik Nama Tagihan / Produk --",
+            width: '100%',
+            allowClear: true
+        });
+
+        // Bridge: Karena Select2 menimpa event bawaan, kita harus trigger event 'change'
+        // manual agar Vanilla JS kamu di bawah tetap berjalan saat opsi dipilih
+        $('#pasca_product_code').on('select2:select select2:clear', function (e) {
+            this.dispatchEvent(new Event('change'));
+        });
+    });
+
     document.addEventListener('DOMContentLoaded', function() {
         // Saldo User
         let currentBalance = parseFloat("{{ auth()->user()->balance_iak ?? 0 }}") || 0;
