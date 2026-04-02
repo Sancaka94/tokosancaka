@@ -111,7 +111,7 @@
     <div class="overflow-hidden border border-gray-200 rounded-xl shadow-sm">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-[#f0e6f7]">
+                <thead class="bg-[#ff0000]">
                     <tr>
                         <th scope="col" class="px-5 py-4 text-left text-[11px] font-bold text-gray-700 uppercase tracking-wider">NO</th>
                         <th scope="col" class="px-5 py-4 text-left text-[11px] font-bold text-gray-700 uppercase tracking-wider">PELANGGAN</th>
@@ -332,7 +332,7 @@
 
             <div class="border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-[#f0e6f7]">
+                    <thead class="bg-[#ff0000]">
                         <tr>
                             <th class="px-5 py-3.5 text-left text-[11px] font-extrabold text-red-900 uppercase tracking-wider w-16">NO</th>
                             <th class="px-5 py-3.5 text-left text-[11px] font-extrabold text-red-900 uppercase tracking-wider">RESI & STATUS</th>
