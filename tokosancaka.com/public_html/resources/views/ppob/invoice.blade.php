@@ -89,21 +89,35 @@
             font-size: 10px;
         }
 
-        .btn-print {
-            display: block;
-            width: 100%;
-            padding: 12px;
-            background: #0d6efd;
-            color: white;
+        /* PERBAIKAN: Kontainer untuk tombol agar sejajar/responsive */
+        .action-buttons {
+            display: flex;
+            gap: 10px; /* Jarak antar tombol */
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn-print, .btn-check {
+            flex: 1; /* Akan membagi ruang sama rata, jika 1 tombol maka full width */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
             text-align: center;
             text-decoration: none;
-            margin-top: 10px;
             border: none;
             border-radius: 5px;
-            cursor: pointer;
             font-family: sans-serif;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 12px;
+            cursor: pointer;
+            box-sizing: border-box;
+            min-width: 130px; /* Memastikan tombol tidak terlalu sempit di layar kecil */
+        }
+
+        .btn-print {
+            background: #0d6efd;
+            color: white;
         }
 
         .btn-print:hover {
@@ -111,19 +125,8 @@
         }
 
         .btn-check {
-            display: block;
-            width: 100%;
-            padding: 10px;
             background: #ffc107; /* Warna kuning peringatan */
             color: #000;
-            text-align: center;
-            text-decoration: none;
-            margin-top: 10px;
-            border: none;
-            border-radius: 5px;
-            font-family: sans-serif;
-            font-weight: bold;
-            font-size: 13px;
         }
 
         .btn-check:hover {
@@ -235,26 +238,28 @@
     </div>
 
     <div class="no-print">
-
-        @if($transaction->status === 'PROCESS' || $transaction->status === 'PENDING')
-            @if($transaction->type === 'prabayar')
-                <a href="{{ route('ppob.check_status_prepaid', $transaction->ref_id) }}" class="btn-check">
-                    Cek Status Terbaru
-                </a>
-            @else
-                <a href="{{ route('ppob.check_status', $transaction->tr_id) }}" class="btn-check">
-                    Cek Status Tagihan
-                </a>
+        {{-- Kontainer Flexbox untuk tombol --}}
+        <div class="action-buttons">
+            @if($transaction->status === 'PROCESS' || $transaction->status === 'PENDING')
+                @if($transaction->type === 'prabayar')
+                    <a href="{{ route('ppob.check_status_prepaid', $transaction->ref_id) }}" class="btn-check">
+                        Cek Status
+                    </a>
+                @else
+                    <a href="{{ route('ppob.check_status', $transaction->tr_id) }}" class="btn-check">
+                        Cek Tagihan
+                    </a>
+                @endif
             @endif
-        @endif
 
-        <button class="btn-print" onclick="window.print()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: middle; margin-right: 5px;">
-                <path d="M5 1a2 2 0 0 0-2 2v1h10V3a2 2 0 0 0-2-2H5zm6 8H5a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1z"/>
-                <path d="M0 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-1v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2H2a2 2 0 0 1-2-2V7zm2.5 1a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
-            </svg>
-            Cetak Struk (Thermal 10x15)
-        </button>
+            <button class="btn-print" onclick="window.print()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: middle; margin-right: 5px;">
+                    <path d="M5 1a2 2 0 0 0-2 2v1h10V3a2 2 0 0 0-2-2H5zm6 8H5a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1z"/>
+                    <path d="M0 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-1v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2H2a2 2 0 0 1-2-2V7zm2.5 1a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
+                </svg>
+                Cetak Struk
+            </button>
+        </div>
 
         <a href="{{ route('ppob.index') }}" class="btn-back">Kembali ke Halaman Transaksi</a>
     </div>
