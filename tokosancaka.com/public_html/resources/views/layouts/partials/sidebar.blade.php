@@ -312,6 +312,16 @@
                                 Riwayat Transaksi
                             </a>
                         </li>
+
+                        {{-- ================= MENU BARU: KELOLA PRODUK ================= --}}
+                        <li>
+                            <a href="{{ url('admin/produk') }}" wire:navigate
+                               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                               class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->is('admin/produk*') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                Kelola Produk
+                            </a>
+                        </li>
+
                     </ul>
                 </div>
             </div>
