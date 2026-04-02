@@ -13,6 +13,8 @@ use App\Models\IakPricelistPrepaid;
 use App\Models\Api; // <-- TAMBAHKAN IMPORT INI UNTUK BACA SETTING DATABASE
 use App\Models\User;
 use Illuminate\Support\Facades\Cache; // --- TAMBAHAN IDEMPOTENCY ---
+use App\Services\FonnteService;
+
 
 class PpobIakController extends Controller
 {
@@ -745,42 +747,43 @@ class PpobIakController extends Controller
             ]);
 
         // ========================================================
-        // --- TAMBAHAN FONNTE: KIRIM NOTIF WA JIKA SUKSES ---
+        // --- LOGIKA KIRIM WA VIA FONNTE ---
         // ========================================================
         if ($finalStatus === 'SUCCESS' && !empty($sn)) {
-            $userWa = \App\Models\User::find($transaction->user_id);
+            // Ambil nomor WA yang tersimpan saat transaksi pertama kali dibuat
+            $phone = $transaction->whatsapp_number;
 
-            // Sesuaikan 'no_hp' dengan nama kolom nomor WhatsApp di tabel users kamu
-            $phone = $userWa->no_hp ?? $userWa->phone ?? null;
+            if (!empty($phone)) {
+                // Ambil Token Fonnte dari settings database
+                $fonnteToken = Api::getValue('FONNTE_API_KEY', 'global');
 
-            if ($phone) {
-                // Ambil token Fonnte (Bisa dari tabel Api atau dari file .env)
-                $fonnteToken = Api::getValue('FONNTE_TOKEN', 'global') ?? env('FONNTE_TOKEN', 'TOKEN_FONNTE_KAMU_DISINI');
+                if (!empty($fonnteToken)) {
+                    $pesanWa = "*TRANSAKSI BERHASIL* ✅\n\n"
+                            . "Ref ID: {$transaction->ref_id}\n"
+                            . "Layanan: {$transaction->product_code}\n"
+                            . "Tujuan: {$transaction->customer_id}\n"
+                            . "Status: {$finalStatus}\n\n"
+                            . "SN / TOKEN:\n"
+                            . "*{$sn}*\n\n"
+                            . "Terima kasih telah menggunakan SancakaPOS.";
 
-                $pesanWa = "*TRANSAKSI BERHASIL* ✅\n\n"
-                         . "Ref ID: {$transaction->ref_id}\n"
-                         . "Layanan: {$transaction->product_code}\n"
-                         . "Tujuan: {$transaction->customer_id}\n"
-                         . "Status: {$finalStatus}\n\n"
-                         . "SN / TOKEN:\n"
-                         . "*{$sn}*\n\n"
-                         . "Terima kasih telah menggunakan SancakaPOS.";
-
-                try {
-                    Http::withHeaders([
-                        'Authorization' => $fonnteToken
-                    ])->post('https://api.fonnte.com/send', [
-                        'target' => $phone,
-                        'message' => $pesanWa,
-                        'countryCode' => '62' // Standar Indonesia
-                    ]);
-                    Log::info('LOG LOG - Fonnte WA Sent', ['target' => $phone, 'ref_id' => $refId]);
-                } catch (\Exception $e) {
-                    Log::error('LOG LOG - Fonnte WA Error', ['error' => $e->getMessage()]);
+                    try {
+                        Http::withHeaders([
+                            'Authorization' => $fonnteToken
+                        ])->post('https://api.fonnte.com/send', [
+                            'target' => $phone,
+                            'message' => $pesanWa,
+                            'countryCode' => '62'
+                        ]);
+                        Log::info('LOG LOG - Fonnte WA Sent', ['target' => $phone, 'ref_id' => $refId]);
+                    } catch (\Exception $e) {
+                        Log::error('LOG LOG - Fonnte WA Error', ['error' => $e->getMessage()]);
+                    }
+                } else {
+                    Log::warning('LOG LOG - Fonnte Skipped: Token API belum disetting.');
                 }
             }
         }
-        // ========================================================
 
             Log::info('LOG LOG - Webhook Processed Successfully', ['ref_id' => $refId, 'finalStatus' => $finalStatus, 'sn' => $sn]);
             return response()->json(['message' => 'Callback received successfully'], 200);

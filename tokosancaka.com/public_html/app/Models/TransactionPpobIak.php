@@ -15,6 +15,7 @@ class TransactionPpobIak extends Model
         'type',
         'customer_id',
         'product_code',
+        'whatsapp_number', // <--- Tambahkan ini
         'price',
         'status',
         'sn',
