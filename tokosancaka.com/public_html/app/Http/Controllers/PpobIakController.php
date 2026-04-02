@@ -197,6 +197,8 @@ class PpobIakController extends Controller
                         'message' => $finalMessage
                     ]);
 
+
+
                     // Jika status langsung gagal (FAILED)
                     if ($finalStatus == 'FAILED') {
                         Log::error('LOG LOG - Prepaid Top Up Failed Status from API', ['ref_id' => $refId, 'message' => $transaction->message]);
@@ -742,6 +744,44 @@ class PpobIakController extends Controller
                 'message' => $finalMessage
             ]);
 
+        // ========================================================
+        // --- TAMBAHAN FONNTE: KIRIM NOTIF WA JIKA SUKSES ---
+        // ========================================================
+        if ($finalStatus === 'SUCCESS' && !empty($sn)) {
+            $userWa = \App\Models\User::find($transaction->user_id);
+
+            // Sesuaikan 'no_hp' dengan nama kolom nomor WhatsApp di tabel users kamu
+            $phone = $userWa->no_hp ?? $userWa->phone ?? null;
+
+            if ($phone) {
+                // Ambil token Fonnte (Bisa dari tabel Api atau dari file .env)
+                $fonnteToken = Api::getValue('FONNTE_TOKEN', 'global') ?? env('FONNTE_TOKEN', 'TOKEN_FONNTE_KAMU_DISINI');
+
+                $pesanWa = "*TRANSAKSI BERHASIL* ✅\n\n"
+                         . "Ref ID: {$transaction->ref_id}\n"
+                         . "Layanan: {$transaction->product_code}\n"
+                         . "Tujuan: {$transaction->customer_id}\n"
+                         . "Status: {$finalStatus}\n\n"
+                         . "SN / TOKEN:\n"
+                         . "*{$sn}*\n\n"
+                         . "Terima kasih telah menggunakan SancakaPOS.";
+
+                try {
+                    Http::withHeaders([
+                        'Authorization' => $fonnteToken
+                    ])->post('https://api.fonnte.com/send', [
+                        'target' => $phone,
+                        'message' => $pesanWa,
+                        'countryCode' => '62' // Standar Indonesia
+                    ]);
+                    Log::info('LOG LOG - Fonnte WA Sent', ['target' => $phone, 'ref_id' => $refId]);
+                } catch (\Exception $e) {
+                    Log::error('LOG LOG - Fonnte WA Error', ['error' => $e->getMessage()]);
+                }
+            }
+        }
+        // ========================================================
+
             Log::info('LOG LOG - Webhook Processed Successfully', ['ref_id' => $refId, 'finalStatus' => $finalStatus, 'sn' => $sn]);
             return response()->json(['message' => 'Callback received successfully'], 200);
 
@@ -1062,6 +1102,16 @@ class PpobIakController extends Controller
                 'message' => 'Koneksi ke server terputus: ' . $e->getMessage()
             ]);
         }
+    }
+
+    public function history()
+    {
+        // Ambil riwayat transaksi user yang sedang login, urutkan dari yang terbaru
+        $transactions = TransactionPpobIak::where('user_id', auth()->id())
+                            ->orderBy('created_at', 'desc')
+                            ->paginate(15);
+
+        return view('ppob.history', compact('transactions'));
     }
 
 }
