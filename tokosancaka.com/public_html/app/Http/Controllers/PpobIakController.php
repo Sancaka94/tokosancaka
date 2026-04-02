@@ -760,7 +760,7 @@ class PpobIakController extends Controller
         return view('ppob.invoice', compact('transaction'));
     }
 
-    // --- FUNGSI BARU: INQUIRY PLN PRABAYAR ---
+    // --- FUNGSI BARU: INQUIRY PLN PRABAYAR (DENGAN LOG DETAIL) ---
     public function inquiryPln(Request $request)
     {
         $request->validate([
@@ -772,7 +772,13 @@ class PpobIakController extends Controller
         // Sesuai dokumentasi: md5(username+api_key+customer_id)
         $sign = md5($this->username . $this->apiKey . $customerId);
 
-        Log::info('LOG LOG - Inquiry PLN Request', ['customer_id' => $customerId]);
+        Log::info('========== START INQUIRY PLN ==========');
+        Log::info('1. Request Payload to IAK:', [
+            'endpoint'    => $this->prepaidBaseUrl . '/api/inquiry-pln',
+            'username'    => $this->username,
+            'customer_id' => $customerId,
+            'sign'        => $sign
+        ]);
 
         try {
             $response = Http::post($this->prepaidBaseUrl . '/api/inquiry-pln', [
@@ -783,11 +789,15 @@ class PpobIakController extends Controller
 
             $result = $response->json();
 
+            // Log mentah hasil balasan dari IAK
+            Log::info('2. Raw Response from IAK:', $result ?? ['raw_body' => $response->body()]);
+
             // Cek jika response sukses dan ada blok data
             if ($response->successful() && isset($result['data'])) {
                 // Status 1 = SUCCESS
-                if ($result['data']['status'] == '1') {
-                    Log::info('LOG LOG - Inquiry PLN Success', ['data' => $result['data']]);
+                if ($result['data']['status'] == '1' || $result['data']['status'] == 1) {
+                    Log::info('3. Hasil: INQUIRY SUKSES');
+                    Log::info('=======================================');
                     return response()->json([
                         'success' => true,
                         'data' => [
@@ -800,22 +810,26 @@ class PpobIakController extends Controller
                     ]);
                 } else {
                     // Jika Status 2 = FAILED (misal: INCORRECT DESTINATION NUMBER)
-                    Log::error('LOG LOG - Inquiry PLN Failed Status', ['response' => $result]);
+                    Log::warning('3. Hasil: INQUIRY DITOLAK IAK (Nomor Salah/Gangguan)');
+                    Log::info('=======================================');
                     return response()->json([
                         'success' => false,
+                        // Ambil pesan asli dari IAK dan tampilkan ke layar
                         'message' => $result['data']['message'] ?? 'Nomor Pelanggan PLN Tidak Valid / Tidak Ditemukan'
                     ]);
                 }
             }
 
-            Log::error('LOG LOG - Inquiry PLN Invalid Response', ['response' => $result]);
+            Log::error('3. Hasil: FORMAT RESPONSE IAK TIDAK DIKENAL', ['status_code' => $response->status()]);
+            Log::info('=======================================');
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal terhubung atau Respon API IAK tidak valid.'
             ]);
 
         } catch (\Exception $e) {
-            Log::error('LOG LOG - Inquiry PLN Exception', ['error' => $e->getMessage()]);
+            Log::error('3. Hasil: KONEKSI TIMEOUT / EXCEPTION', ['error' => $e->getMessage()]);
+            Log::info('=======================================');
             return response()->json([
                 'success' => false,
                 'message' => 'Koneksi ke server terputus: ' . $e->getMessage()
