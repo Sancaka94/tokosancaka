@@ -635,9 +635,15 @@ class PpobIakController extends Controller
         ]);
         // ---------------------------
 
-        //if ($sign && $sign !== $expectedSign) {
-        //    return response()->json(['message' => 'Invalid signature'], 403);
-        //}
+        // Pastikan $sign ada dan cocok dengan expectedSign
+        if (!$sign || $sign !== $expectedSign) {
+            Log::warning('LOG LOG - Webhook ALERT: Invalid Signature detected!', [
+                'received' => $sign,
+                'expected' => $expectedSign,
+                'ip' => $request->ip()
+            ]);
+            return response()->json(['message' => 'Invalid signature'], 403);
+        }
 
         $transaction = TransactionPpobIak::where('ref_id', $refId)->first();
         if (!$transaction) {
