@@ -229,7 +229,8 @@ class AdminPricelistController extends Controller
                             'description' => $description,
                             'price'       => $price,
                             'type'        => $type,
-                            'status'      => $status
+                            'status'      => $status,
+                            'icon_url'    => $item['icon_url'] ?? null // <--- TAMBAHAN UNTUK ICON
                         ]
                     );
                     $count++;
@@ -322,7 +323,8 @@ class AdminPricelistController extends Controller
                     ->whereRaw('LOWER(type) LIKE ?', ["%{$type}%"])
                     ->whereIn('status', ['Active', 'active', 'ACTIVE', 'Aktif'])
                     ->orderBy('price', 'asc')
-                    ->get(['code', 'description', 'price']);
+                    // ---> TAMBAHKAN KOLOM icon_url DI SINI AGAR DIKIRIM KE JAVASCRIPT
+                    ->get(['code', 'description', 'price', 'icon_url']);
         };
 
         // 1. Tarik semua produk yang cocok
