@@ -760,7 +760,7 @@ class PpobIakController extends Controller
         return view('ppob.invoice', compact('transaction'));
     }
 
-    // --- FUNGSI BARU: INQUIRY PLN PRABAYAR (DENGAN LOG DETAIL) ---
+    // --- FUNGSI BARU: INQUIRY PLN PRABAYAR (DENGAN LOG & RESPONSE LENGKAP) ---
     public function inquiryPln(Request $request)
     {
         $request->validate([
@@ -798,13 +798,19 @@ class PpobIakController extends Controller
                 if ($result['data']['status'] == '1' || $result['data']['status'] == 1) {
                     Log::info('3. Hasil: INQUIRY SUKSES');
                     Log::info('=======================================');
+
+                    // RESPONSE LENGKAP SESUAI DOKUMENTASI IAK
                     return response()->json([
                         'success' => true,
                         'data' => [
-                            'name'          => $result['data']['name'] ?? 'Tidak diketahui',
-                            'segment_power' => $result['data']['segment_power'] ?? '-',
+                            'status'        => $result['data']['status'],
+                            'customer_id'   => $result['data']['customer_id'] ?? $customerId,
                             'meter_no'      => $result['data']['meter_no'] ?? '-',
-                            'subscriber_id' => $result['data']['subscriber_id'] ?? $customerId
+                            'subscriber_id' => $result['data']['subscriber_id'] ?? '-',
+                            'name'          => trim($result['data']['name'] ?? 'Tidak diketahui'),
+                            'segment_power' => trim($result['data']['segment_power'] ?? '-'),
+                            'message'       => $result['data']['message'] ?? 'SUCCESS',
+                            'rc'            => $result['data']['rc'] ?? '00'
                         ],
                         'message' => 'Inquiry Berhasil'
                     ]);
@@ -814,7 +820,6 @@ class PpobIakController extends Controller
                     Log::info('=======================================');
                     return response()->json([
                         'success' => false,
-                        // Ambil pesan asli dari IAK dan tampilkan ke layar
                         'message' => $result['data']['message'] ?? 'Nomor Pelanggan PLN Tidak Valid / Tidak Ditemukan'
                     ]);
                 }
