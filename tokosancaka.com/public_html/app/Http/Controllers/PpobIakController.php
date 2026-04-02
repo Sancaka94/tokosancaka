@@ -100,11 +100,16 @@ class PpobIakController extends Controller
             'type' => 'required|in:prabayar,pascabayar'
         ]);
 
+        // Jika Pascabayar, lempar ke fungsi inquiry
         if ($request->type === 'pascabayar') {
             return $this->inquiryPostpaid($request);
         }
 
-        // --- Cek Saldo IAK di Backend ---
+        // ========================================================
+        // LOGIKA PRABAYAR (TOP UP)
+        // ========================================================
+
+        // --- Cek Saldo User di Backend ---
         $user = auth()->user();
         $product = IakPricelistPrepaid::where('code', $request->product_code)->first();
 
@@ -113,28 +118,30 @@ class PpobIakController extends Controller
         }
 
         if ($user->balance_iak < $product->price) {
-            return back()->with('error', 'Maaf, saldo IAK Anda tidak mencukupi untuk transaksi ini.');
+            return back()->with('error', 'Maaf, saldo Anda tidak mencukupi untuk transaksi ini.');
         }
         // ------------------------------------------------
 
-        // --- LOGIKA PRABAYAR ---
-        // Format: P + Tanggal(6 digit) + Random(4 digit) = Tepat 11 Karakter
-        // Contoh hasil: P2604018392
+        // Format Ref ID (Harus Unik)
         $refId = 'P' . date('ymd') . rand(1000, 9999);
+
+        // Sesuai Dokumentasi: md5(username + api_key + ref_id)
         $sign = md5($this->username . $this->apiKey . $refId);
 
+        // Buat record awal di database dengan status PROCESS
         $transaction = TransactionPpobIak::create([
-            'user_id'      => auth()->id(), // <--- SISIPKAN INI (PENTING)
+            'user_id'      => auth()->id(),
             'ref_id'       => $refId,
             'type'         => 'prabayar',
-            'customer_id'  => $request->customer_id,
+            'customer_id'  => $request->customer_id, // Sudah diformat dari frontend (hp, meter, game id + zone)
             'product_code' => $request->product_code,
             'status'       => 'PROCESS',
         ]);
 
-        Log::info('LOG LOG - Prepaid Request', ['ref_id' => $refId, 'customer_id' => $request->customer_id, 'product' => $request->product_code]);
+        Log::info('LOG LOG - Prepaid Top Up Request', ['ref_id' => $refId, 'customer_id' => $request->customer_id, 'product' => $request->product_code]);
 
         try {
+            // Hit API Top Up IAK
             $response = Http::post($this->prepaidBaseUrl . '/api/top-up', [
                 'username'     => $this->username,
                 'customer_id'  => $request->customer_id,
@@ -145,48 +152,60 @@ class PpobIakController extends Controller
 
             $result = $response->json();
 
+            // Jika hit API Sukses
             if ($response->successful() && isset($result['data'])) {
-                // Ambil kode response dari IAK
+
+                // Ambil RC (Response Code)
                 $apiCode = $result['data']['rc'] ?? ($result['data']['message'] == 'PROCESS' ? '39' : null);
                 $codeInfo = IakPrepaidResponseCode::where('code', $apiCode)->first();
 
+                // Mapping Status Sesuai Dokumentasi: 0 = PROCESS, 1 = SUCCESS, 2 = FAILED
                 $statusMap = [0 => 'PROCESS', 1 => 'SUCCESS', 2 => 'FAILED'];
-                $finalStatus = $codeInfo ? strtoupper($codeInfo->status) : ($statusMap[$result['data']['status']] ?? 'PROCESS');
+                $apiStatus = $result['data']['status'] ?? 0;
+
+                $finalStatus = $codeInfo ? strtoupper($codeInfo->status) : ($statusMap[$apiStatus] ?? 'PROCESS');
                 $finalMessage = $codeInfo ? $codeInfo->description . ' - ' . $codeInfo->solution : ($result['data']['message'] ?? 'Request Terkirim');
 
+                // Update database dengan response dari IAK
                 $transaction->update([
                     'status'  => $finalStatus,
-                    'price'   => $product->price, // Menggunakan harga dari database
+                    'price'   => $product->price, // Menggunakan harga modal dari database Anda
+                    'tr_id'   => $result['data']['tr_id'] ?? null, // Simpan Transaction ID dari IAK
                     'sn'      => $result['data']['sn'] ?? null,
                     'message' => $finalMessage
                 ]);
 
+                // Jika status langsung gagal (FAILED)
                 if ($finalStatus == 'FAILED') {
-                    Log::error('LOG LOG - Prepaid Failed Status from API', ['ref_id' => $refId, 'message' => $transaction->message]);
+                    Log::error('LOG LOG - Prepaid Top Up Failed Status from API', ['ref_id' => $refId, 'message' => $transaction->message]);
                     return back()->with('error', 'Transaksi prabayar gagal: ' . $transaction->message);
                 }
 
-                // --- Potong saldo jika transaksi Proses/Sukses ---
+                // --- Potong saldo user jika status Proses / Sukses ---
+                // (Jika nanti failed via Webhook, saldo akan direfund di fungsi webhook)
                 if ($finalStatus == 'PROCESS' || $finalStatus == 'SUCCESS') {
                     $user->balance_iak -= $product->price;
                     $user->save();
+                    Log::info('LOG LOG - Saldo User Terpotong (Top Up)', ['user_id' => $user->id, 'potongan' => $product->price, 'sisa' => $user->balance_iak]);
                 }
 
-                Log::info('LOG LOG - Prepaid Processed', ['ref_id' => $refId, 'status' => $finalStatus]);
+                Log::info('LOG LOG - Prepaid Top Up Processed', ['ref_id' => $refId, 'tr_id' => $transaction->tr_id, 'status' => $finalStatus]);
 
-                // --- KODE REDIRECT KE INVOICE ---
+                // Redirect menuju halaman Invoice
                 return redirect()->route('ppob.iak.invoice', ['ref_id' => $transaction->ref_id])
-                                 ->with('success', 'Transaksi berhasil diproses.');
+                                 ->with('success', 'Transaksi sedang diproses. Mohon tunggu.');
             }
 
-            Log::error('LOG LOG - Prepaid API Error / Invalid Response Format', ['response' => $result]);
+            // Jika API IAK error atau format response salah
+            Log::error('LOG LOG - Prepaid Top Up API Error / Invalid Response Format', ['response' => $result]);
             $transaction->update(['status' => 'FAILED', 'message' => $result['data']['message'] ?? 'API Error']);
-            return back()->with('error', 'Terjadi kesalahan sistem prabayar: ' . ($result['data']['message'] ?? 'Unknown'));
+            return back()->with('error', 'Terjadi kesalahan pada sistem provider: ' . ($result['data']['message'] ?? 'Unknown'));
 
         } catch (\Exception $e) {
-            Log::error('LOG LOG - Prepaid Exception', ['ref_id' => $refId, 'error' => $e->getMessage()]);
-            $transaction->update(['status' => 'FAILED', 'message' => $e->getMessage()]);
-            return back()->with('error', 'Gagal menghubungi server: ' . $e->getMessage());
+            // Jika koneksi putus / timeout
+            Log::error('LOG LOG - Prepaid Top Up Exception', ['ref_id' => $refId, 'error' => $e->getMessage()]);
+            $transaction->update(['status' => 'FAILED', 'message' => 'Timeout / Connection Error']);
+            return back()->with('error', 'Gagal menghubungi server IAK: ' . $e->getMessage());
         }
     }
 
@@ -249,56 +268,187 @@ class PpobIakController extends Controller
         }
     }
 
-    // --- ALUR 1: INQUIRY POSTPAID ---
+   // --- ALUR 1: INQUIRY POSTPAID (Mendukung Semua Jenis Tagihan IAK Secara Lengkap) ---
     private function inquiryPostpaid(Request $request)
     {
         // Format: I + Tanggal(6 digit) + Random(4 digit) = Tepat 11 Karakter
-        // Contoh hasil: I2604018392
         $refId = 'I' . date('ymd') . rand(1000, 9999);
         $sign = md5($this->username . $this->apiKey . $refId);
+        $productCode = strtoupper($request->product_code);
 
-        Log::info('LOG LOG - Inquiry Postpaid Request', ['ref_id' => $refId, 'customer_id' => $request->customer_id, 'product' => $request->product_code]); // LOG LOG
+        Log::info('LOG LOG - Inquiry Postpaid Request', [
+            'ref_id'      => $refId,
+            'customer_id' => $request->customer_id,
+            'product'     => $productCode,
+            'month'       => $request->month,
+            'amount'      => $request->amount,
+            'identitas'   => $request->nomor_identitas,
+            'year'        => $request->year
+        ]);
+
+        // 1. Siapkan Payload Default
+        $payload = [
+            'commands' => 'inq-pasca',
+            'username' => $this->username,
+            'code'     => $productCode,
+            'hp'       => $request->customer_id,
+            'ref_id'   => $refId,
+            'sign'     => $sign
+        ];
+
+        // 2. Parameter Khusus BPJS (Bulan)
+        if (in_array($productCode, ['BPJS', 'BPJSTK', 'BPJSTKPU'])) {
+            $payload['month'] = $request->month ?? 1;
+        }
+
+        // 3. Parameter Khusus E-Samsat (NIK)
+        if (str_starts_with($productCode, 'ESAMSAT.')) {
+            $payload['nomor_identitas'] = $request->nomor_identitas ?? '';
+        }
+
+        // 4. Parameter Khusus Custom Denom / Donasi (Nominal)
+        if ($request->filled('amount')) {
+            $payload['desc'] = [
+                'amount' => (int) $request->amount
+            ];
+        }
+
+        // 5. Parameter Khusus PBB (Tahun Pajak)
+        if (str_starts_with($productCode, 'PBB')) {
+            $payload['year'] = $request->year ?? date('Y');
+        }
 
         try {
-            $response = Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', [
-                'commands' => 'inq-pasca',
-                'username' => $this->username,
-                'code'     => $request->product_code,
-                'hp'       => $request->customer_id,
-                'ref_id'   => $refId,
-                'sign'     => $sign
-            ]);
-
+            // Hit API IAK
+            $response = Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', $payload);
             $result = $response->json();
 
-            // Jika Inquiry Sukses (Biasanya response code 00 untuk IAK Postpaid)
+            // Jika Inquiry Sukses (Response code '00')
             if ($response->successful() && isset($result['data']) && $result['data']['response_code'] === '00') {
 
-                Log::info('LOG LOG - Inquiry Postpaid Success', ['tr_id' => $result['data']['tr_id']]); // LOG LOG
+                Log::info('LOG LOG - Inquiry Postpaid Success', ['tr_id' => $result['data']['tr_id']]);
 
-                // Simpan data inquiry ke DB dengan status PENDING INQUIRY
+                $data = $result['data'];
+                $desc = $data['desc'] ?? [];
+
+                // Format Keterangan Dasar
+                $detailMessage = "Nama: " . ($data['tr_name'] ?? '-') . " | Periode: " . ($data['period'] ?? '-');
+
+                // --- Parsing Rincian Sesuai Tipe Produk ---
+                if (is_array($desc)) {
+                    // A. BPJS Kesehatan
+                    if ($productCode === 'BPJS') {
+                        $cabang = $desc['nama_cabang'] ?? '-';
+                        $peserta = $desc['jumlah_peserta'] ?? '-';
+                        $detailMessage .= " | Cabang: {$cabang} | Peserta: {$peserta} Orang";
+                    }
+                    // B. BPJS Ketenagakerjaan BPU
+                    elseif ($productCode === 'BPJSTK') {
+                        $program = $desc['kode_program'] ?? '-';
+                        $jkk = number_format($desc['jkk'] ?? 0, 0, ',', '.');
+                        $jkm = number_format($desc['jkm'] ?? 0, 0, ',', '.');
+                        $jht = number_format($desc['jht'] ?? 0, 0, ',', '.');
+                        $detailMessage .= " | Program: {$program} (JKK: Rp{$jkk}, JKM: Rp{$jkm}, JHT: Rp{$jht})";
+                    }
+                    // C. BPJS Ketenagakerjaan PU
+                    elseif ($productCode === 'BPJSTKPU') {
+                        $npp = $desc['npp'] ?? '-';
+                        $jpk = number_format($desc['jpk'] ?? 0, 0, ',', '.');
+                        $jpn = number_format($desc['jpn'] ?? 0, 0, ',', '.');
+                        $detailMessage .= " | NPP: {$npp} | JPK: Rp{$jpk} | JPN: Rp{$jpn}";
+                    }
+                    // D. E-Samsat
+                    elseif (str_starts_with($productCode, 'ESAMSAT.')) {
+                        $nopol = $desc['nomor_polisi'] ?? '-';
+                        $kendaraan = $desc['merek_kb'] ?? '-';
+                        $pkb = number_format($desc['biaya_pokok']['PKB'] ?? 0, 0, ',', '.');
+                        $detailMessage .= " | Nopol: {$nopol} | Unit: {$kendaraan} | PKB Pokok: Rp{$pkb}";
+                    }
+                    // E. PBB (Pajak Bumi & Bangunan)
+                    elseif (str_starts_with($productCode, 'PBB')) {
+                        $lokasi = $desc['lokasi'] ?? '-';
+                        $lt = $desc['luas_tanah'] ?? '-';
+                        $lb = $desc['luas_gedung'] ?? '-';
+                        $thn = $desc['tahun_pajak'] ?? '-';
+                        $detailMessage .= " | Lokasi: {$lokasi} | LT/LB: {$lt}/{$lb} | Tahun: {$thn}";
+                    }
+                    // F. PLN Pascabayar
+                    elseif ($productCode === 'PLNPOSTPAID') {
+                        $tarif = $desc['tarif'] ?? '-';
+                        $daya = $desc['daya'] ?? '-';
+                        $lembar = $desc['lembar_tagihan'] ?? 1;
+                        $detailMessage .= " | Tarif/Daya: {$tarif} / {$daya}VA | Tagihan: {$lembar} Bulan";
+                    }
+                    // G. PLN Non Taglist
+                    elseif ($productCode === 'PLNNONTAG') {
+                        $transaksi = $desc['transaksi'] ?? '-';
+                        $noReg = $desc['no_registrasi'] ?? '-';
+                        $detailMessage .= " | Trans: {$transaksi} | No. Reg: {$noReg}";
+                    }
+                    // H. PDAM, Telkom, HP Pascabayar (Telco)
+                    elseif (isset($desc['jumlah_tagihan']) || isset($desc['bill_quantity'])) {
+                        // Telkom/HP pakai 'jumlah_tagihan', PDAM/TV pakai 'bill_quantity'
+                        $jmlTagihan = $desc['jumlah_tagihan'] ?? $desc['bill_quantity'] ?? 1;
+
+                        // Menangkap nama PDAM khusus jika ada
+                        if (isset($desc['pdam_name'])) {
+                            $detailMessage .= " | PDAM: " . $desc['pdam_name'];
+                        }
+                        $detailMessage .= " | Total Tagihan: {$jmlTagihan} Bulan";
+                    }
+                    // I. Gas Negara (PGAS)
+                    elseif ($productCode === 'PGAS') {
+                        if (isset($desc[0])) { // Multi-bill
+                            $usage = $desc[0]['usage'] ?? '-';
+                            $detailMessage .= " | Pemakaian: {$usage} (Multi-bill)";
+                        } else {
+                            $usage = $desc['usage'] ?? '-';
+                            $fm = $desc['first_meter'] ?? '-';
+                            $lm = $desc['last_meter'] ?? '-';
+                            $detailMessage .= " | Pemakaian: {$usage} ({$fm} - {$lm})";
+                        }
+                    }
+                    // J. Multifinance / Asuransi
+                    elseif (isset($desc['item_name']) && isset($desc['installment'])) {
+                        $item = $desc['item_name'];
+                        $tenor = $desc['tenor'] ?? '-';
+                        $cicilan = number_format($desc['installment'] ?? 0, 0, ',', '.');
+                        $detailMessage .= " | Item: {$item} | Tenor: {$tenor} | Cicilan: Rp{$cicilan}";
+                    }
+                    // K. Fallback Umum
+                    else {
+                        if (isset($desc['product_desc'])) {
+                            $detailMessage .= " | Produk: " . $desc['product_desc'];
+                        } elseif (isset($desc['detail']) && is_string($desc['detail'])) {
+                            $detailMessage .= " | Ket: " . $desc['detail'];
+                        }
+                    }
+                } elseif (is_string($desc) && !empty(trim($desc))) {
+                    $detailMessage .= " | Ket: " . $desc;
+                }
+
+                // Simpan data inquiry ke DB dengan status PROCESS
                 $transaction = TransactionPpobIak::create([
-                    'user_id'      => auth()->id(), // <--- SISIPKAN INI
+                    'user_id'      => auth()->id(),
                     'ref_id'       => $refId,
-                    'tr_id'        => $result['data']['tr_id'], // Penting untuk payment
+                    'tr_id'        => $data['tr_id'],
                     'type'         => 'pascabayar',
                     'customer_id'  => $request->customer_id,
-                    'product_code' => $request->product_code,
-                    'price'        => $result['data']['price'], // Total tagihan
+                    'product_code' => $productCode,
+                    'price'        => $data['price'],
                     'status'       => 'PROCESS',
-                    'message'      => $result['data']['desc']['detail'] ?? 'Inquiry Sukses'
+                    'message'      => $detailMessage
                 ]);
 
-                // Lempar ke view dengan membawa data tagihan untuk dikonfirmasi
                 return view('ppob.inquiry', compact('transaction', 'result'));
             }
 
-            Log::error('LOG LOG - Inquiry Postpaid Failed Response', ['response' => $result]); // LOG LOG
-            return back()->with('error', 'Inquiry Gagal: ' . ($result['data']['message'] ?? 'Tagihan tidak ditemukan/sudah lunas.'));
+            Log::error('LOG LOG - Inquiry Postpaid Failed Response', ['response' => $result]);
+            return back()->with('error', 'Inquiry Gagal: ' . ($result['data']['message'] ?? 'Tagihan tidak ditemukan atau sudah lunas.'));
 
         } catch (\Exception $e) {
-            Log::error('LOG LOG - Inquiry Postpaid Exception', ['error' => $e->getMessage()]); // LOG LOG
-            return back()->with('error', 'Gagal melakukan inquiry: ' . $e->getMessage());
+            Log::error('LOG LOG - Inquiry Postpaid Exception', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Gagal melakukan inquiry: Koneksi ke server terputus.');
         }
     }
 
@@ -359,17 +509,19 @@ class PpobIakController extends Controller
         }
     }
 
-    // --- ALUR 3 & 4: CHECK STATUS POSTPAID (Jika Timeout) ---
+    // --- ALUR 3 & 4: CHECK STATUS POSTPAID ---
     public function checkStatusPostpaid($tr_id)
     {
         $transaction = TransactionPpobIak::where('tr_id', $tr_id)->firstOrFail();
-        $sign = md5($this->username . $this->apiKey . $transaction->ref_id);
 
-        Log::info('LOG LOG - Check Status Request', ['tr_id' => $tr_id, 'ref_id' => $transaction->ref_id]); // LOG LOG
+        // Sesuai dokumentasi baru: signature = md5(username + api_key + 'cs')
+        $sign = md5($this->username . $this->apiKey . 'cs');
+
+        Log::info('LOG LOG - Check Status Postpaid Request', ['tr_id' => $tr_id, 'ref_id' => $transaction->ref_id]);
 
         try {
             $response = Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', [
-                'commands' => 'cs-pasca',
+                'commands' => 'checkstatus', // Sesuai docs: commands = checkstatus
                 'username' => $this->username,
                 'ref_id'   => $transaction->ref_id,
                 'sign'     => $sign
@@ -378,30 +530,50 @@ class PpobIakController extends Controller
             $result = $response->json();
 
             if ($response->successful() && isset($result['data'])) {
-                $apiCode = $result['data']['response_code']; // Ambil kode dari IAK (misal: "00", "39", "106")
+                // Mapping status khusus untuk Pascabayar
+                // 0: PENDING (Request belum diterima/masih ngantri)
+                // 1: SUCCESS
+                // 2: FAILED
+                // 3: PROCESS (Sedang diproses)
+                $apiStatus = $result['data']['status'] ?? 3;
+                $statusMap = [
+                    0 => 'PENDING',
+                    1 => 'SUCCESS',
+                    2 => 'FAILED',
+                    3 => 'PROCESS'
+                ];
+                $finalStatus = $statusMap[$apiStatus] ?? 'PROCESS';
+                $finalMessage = $result['data']['message'] ?? 'Status di-refresh.';
 
-                // Cek ke tabel response code yang baru kita buat
-                $codeInfo = IakResponseCode::where('code', $apiCode)->first();
-
-                // Jika kode ditemukan di database, gunakan status dan pesannya. Jika tidak, gunakan default.
-                $finalStatus  = $codeInfo ? strtoupper($codeInfo->status) : 'PROCESS';
-                $finalMessage = $codeInfo ? $codeInfo->description . ' - ' . $codeInfo->solution : ($result['data']['message'] ?? 'Status update');
+                // --- LOGIKA REFUND JIKA TRANSAKSI BERUBAH JADI FAILED ---
+                if (in_array($transaction->status, ['PROCESS', 'PENDING']) && $finalStatus === 'FAILED') {
+                    if ($transaction->user_id) {
+                        // Sesuaikan \App\Models\User jika model kamu bernama lain
+                        $userRefund = \App\Models\User::find($transaction->user_id);
+                        if ($userRefund) {
+                            $userRefund->balance_iak += $transaction->price; // Kembalikan saldo
+                            $userRefund->save();
+                            Log::info('LOG LOG - Saldo Refunded (Check Status Pasca)', ['ref_id' => $transaction->ref_id, 'amount' => $transaction->price]);
+                        }
+                    }
+                }
+                // --------------------------------------------------------
 
                 $transaction->update([
                     'status'  => $finalStatus,
+                    'sn'      => $result['data']['noref'] ?? $transaction->sn, // Jika sukses biasanya dapat noref (SN)
                     'message' => $finalMessage
                 ]);
 
-                Log::info('LOG LOG - Check Status Result', ['ref_id' => $transaction->ref_id, 'apiCode' => $apiCode, 'finalStatus' => $finalStatus]); // LOG LOG
-                return redirect()->back()->with('success', 'Status tagihan berhasil di-refresh: ' . ($codeInfo->description ?? $finalMessage));
+                Log::info('LOG LOG - Check Status Postpaid Result', ['ref_id' => $transaction->ref_id, 'status' => $finalStatus]);
+                return redirect()->back()->with('success', 'Status tagihan berhasil di-refresh: ' . $finalMessage);
             }
 
-            // PERBAIKAN: Tangkap respon aneh
-            Log::error('LOG LOG - Check Status Invalid Response', ['response' => $result]); // LOG LOG
-            return redirect()->back()->with('error', 'Gagal mengecek status. Response API tidak sesuai.');
+            Log::error('LOG LOG - Check Status Postpaid Invalid Response', ['response' => $result]);
+            return redirect()->back()->with('error', 'Gagal mengecek status. Response API tidak valid.');
 
         } catch (\Exception $e) {
-            Log::error('LOG LOG - Check Status Exception', ['error' => $e->getMessage()]); // LOG LOG
+            Log::error('LOG LOG - Check Status Postpaid Exception', ['error' => $e->getMessage()]);
             return redirect()->back()->with('error', 'Gagal terhubung ke API saat cek status.');
         }
     }
@@ -771,4 +943,8 @@ class PpobIakController extends Controller
             ]);
         }
     }
+
+
+
+
 }

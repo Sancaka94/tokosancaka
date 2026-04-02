@@ -364,4 +364,78 @@ class AdminPricelistController extends Controller
         ]);
     }
 
+    /**
+     * Menarik data Pricelist Pascabayar (Postpaid) dari API IAK dan update ke Database
+     */
+    public function syncPricelistPostpaidApi()
+    {
+        // Mengambil environment aktif dari DATABASE
+        $env = Api::getValue('IAK_MODE', 'global', 'development');
+
+        $username = Api::getValue('IAK_USER_HP', $env);
+        $apiKey = Api::getValue('IAK_API_KEY', $env);
+
+        // LOG LOG: Format Sign Pricelist Pasca = md5(username + api_key + 'pl')
+        $sign = md5($username . $apiKey . 'pl');
+
+        // Pastikan endpoint mengarah ke URL Postpaid dari database
+        $baseApiUrl = Api::getValue('IAK_POSTPAID_BASE_URL', $env) ?: ($env === 'production' ? 'https://mobilepulsa.net' : 'https://testpostpaid.mobilepulsa.net');
+        $baseUrl = rtrim($baseApiUrl, '/');
+        $url = $baseUrl . '/api/v1/bill/check';
+
+        Log::info('LOG LOG - Sync Pricelist Postpaid Request initiated.'); // LOG LOG
+
+        try {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json'
+            ])->post($url, [
+                'commands' => 'pricelist-pasca',
+                'username' => $username,
+                'sign'     => $sign,
+                'status'   => 'all'
+            ]);
+
+            $responseData = $response->json();
+
+            // Cek jika response sukses dan ada data 'pasca'
+            if ($response->successful() && isset($responseData['data']['pasca']) && is_array($responseData['data']['pasca'])) {
+                $products = $responseData['data']['pasca'];
+                $count = 0;
+
+                foreach ($products as $item) {
+                    $code = $item['code'] ?? null;
+                    if (!$code) continue;
+
+                    // Menggunakan model IakPricelistPostpaid (pastikan sudah di-import di atas: use App\Models\IakPricelistPostpaid;)
+                    \App\Models\IakPricelistPostpaid::updateOrCreate(
+                        ['code' => $code],
+                        [
+                            'name'     => $item['name'] ?? 'Unknown',
+                            'status'   => $item['status'] ?? 1,
+                            'fee'      => $item['fee'] ?? 0,
+                            'komisi'   => $item['komisi'] ?? 0,
+                            'type'     => $item['type'] ?? 'Unknown',
+                            'category' => $item['category'] ?? 'postpaid',
+                            'province' => $item['province'] ?? null,
+                        ]
+                    );
+                    $count++;
+                }
+
+                Log::info("LOG LOG - Sinkron API IAK Pascabayar Berhasil: $count produk."); // LOG LOG
+                return back()->with('success', "Sinkronisasi sukses! $count produk pascabayar berhasil ditarik dan diperbarui dari API IAK.");
+            }
+
+            // Jika terjadi error dari API IAK
+            $errorMsg = $responseData['data']['message'] ?? 'Format response tidak sesuai / API Error';
+            Log::error('LOG LOG - IAK Pricelist Postpaid Failed: ' . $errorMsg); // LOG LOG
+            return back()->with('error', 'Gagal memproses data pascabayar: ' . $errorMsg);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG - IAK Pricelist Postpaid Exception: ' . $e->getMessage()); // LOG LOG
+            return back()->with('error', 'Koneksi ke API IAK terputus: ' . $e->getMessage());
+        }
+    }
+
 }

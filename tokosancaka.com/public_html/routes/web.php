@@ -1158,3 +1158,4 @@ Route::post('/ppob/iak/inquiry-game-format', [\App\Http\Controllers\PpobIakContr
 Route::post('/ppob/iak/inquiry-game-server', [\App\Http\Controllers\PpobIakController::class, 'inquiryGameServer'])->name('ppob.iak.inquiry_game_server');
 Route::post('/ppob/iak/gamelist', [\App\Http\Controllers\PpobIakController::class, 'getGameList'])->name('ppob.iak.gamelist');
 // Jika Anda ingin ini bisa diakses via GET (misal untuk fetch awal saat halaman load), Anda juga bisa mendefinisikannya sebagai Route::match(['get', 'post'], ... ) atau Route::get(...) sesuai kebutuhan frontend Anda.
+Route::post('/admin/pricelist/sync-postpaid', [\App\Http\Controllers\AdminPricelistController::class, 'syncPricelistPostpaidApi'])->name('admin.pricelist.sync_postpaid');
