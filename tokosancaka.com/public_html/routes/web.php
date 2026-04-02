@@ -1151,3 +1151,10 @@ Route::post('/ppob/pay-postpaid', [PpobIakController::class, 'payPostpaid'])->na
 Route::get('/ppob/check-status/{tr_id}', [PpobIakController::class, 'checkStatusPostpaid'])->name('ppob.check_status');
 Route::post('/ppob/sync-pricelist', [PpobIakController::class, 'syncPricelist'])->name('ppob.sync_pricelist');
 Route::get('/ppob/check-status-prepaid/{ref_id}', [PpobIakController::class, 'checkStatusPrepaid'])->name('ppob.check_status_prepaid');
+
+Route::post('/ppob/iak/inquiry-pln', [\App\Http\Controllers\PpobIakController::class, 'inquiryPln'])->name('ppob.iak.inquiry_pln');
+Route::post('/ppob/iak/inquiry-ovo', [\App\Http\Controllers\PpobIakController::class, 'inquiryOvo'])->name('ppob.iak.inquiry_ovo');
+Route::post('/ppob/iak/inquiry-game-format', [\App\Http\Controllers\PpobIakController::class, 'inquiryGameFormat'])->name('ppob.iak.inquiry_game_format');
+Route::post('/ppob/iak/inquiry-game-server', [\App\Http\Controllers\PpobIakController::class, 'inquiryGameServer'])->name('ppob.iak.inquiry_game_server');
+Route::post('/ppob/iak/gamelist', [\App\Http\Controllers\PpobIakController::class, 'getGameList'])->name('ppob.iak.gamelist');
+// Jika Anda ingin ini bisa diakses via GET (misal untuk fetch awal saat halaman load), Anda juga bisa mendefinisikannya sebagai Route::match(['get', 'post'], ... ) atau Route::get(...) sesuai kebutuhan frontend Anda.

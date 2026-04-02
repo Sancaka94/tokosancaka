@@ -486,4 +486,289 @@ class PpobIakController extends Controller
 
         return view('ppob.invoice', compact('transaction'));
     }
+
+    // --- FUNGSI BARU: INQUIRY PLN PRABAYAR ---
+    public function inquiryPln(Request $request)
+    {
+        $request->validate([
+            'customer_id' => 'required|string'
+        ]);
+
+        $customerId = $request->customer_id;
+
+        // Sesuai dokumentasi: md5(username+api_key+customer_id)
+        $sign = md5($this->username . $this->apiKey . $customerId);
+
+        Log::info('LOG LOG - Inquiry PLN Request', ['customer_id' => $customerId]);
+
+        try {
+            $response = Http::post($this->prepaidBaseUrl . '/api/inquiry-pln', [
+                'username'    => $this->username,
+                'customer_id' => $customerId,
+                'sign'        => $sign
+            ]);
+
+            $result = $response->json();
+
+            // Cek jika response sukses dan ada blok data
+            if ($response->successful() && isset($result['data'])) {
+                // Status 1 = SUCCESS
+                if ($result['data']['status'] == '1') {
+                    Log::info('LOG LOG - Inquiry PLN Success', ['data' => $result['data']]);
+                    return response()->json([
+                        'success' => true,
+                        'data' => [
+                            'name'          => $result['data']['name'] ?? 'Tidak diketahui',
+                            'segment_power' => $result['data']['segment_power'] ?? '-',
+                            'meter_no'      => $result['data']['meter_no'] ?? '-',
+                            'subscriber_id' => $result['data']['subscriber_id'] ?? $customerId
+                        ],
+                        'message' => 'Inquiry Berhasil'
+                    ]);
+                } else {
+                    // Jika Status 2 = FAILED (misal: INCORRECT DESTINATION NUMBER)
+                    Log::error('LOG LOG - Inquiry PLN Failed Status', ['response' => $result]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => $result['data']['message'] ?? 'Nomor Pelanggan PLN Tidak Valid / Tidak Ditemukan'
+                    ]);
+                }
+            }
+
+            Log::error('LOG LOG - Inquiry PLN Invalid Response', ['response' => $result]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal terhubung atau Respon API IAK tidak valid.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG - Inquiry PLN Exception', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi ke server terputus: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // --- FUNGSI BARU: INQUIRY OVO ---
+    public function inquiryOvo(Request $request)
+    {
+        $request->validate([
+            'customer_id' => 'required|string'
+        ]);
+
+        $customerId = $request->customer_id;
+
+        // Sesuai dokumentasi: md5(username+api_key+customer_id)
+        $sign = md5($this->username . $this->apiKey . $customerId);
+
+        Log::info('LOG LOG - Inquiry OVO Request', ['customer_id' => $customerId]);
+
+        try {
+            $response = Http::post($this->prepaidBaseUrl . '/api/inquiry-ovo', [
+                'username'    => $this->username,
+                'customer_id' => $customerId,
+                'sign'        => $sign
+            ]);
+
+            $result = $response->json();
+
+            if ($response->successful() && isset($result['data'])) {
+                if ($result['data']['status'] == '1') {
+                    Log::info('LOG LOG - Inquiry OVO Success', ['data' => $result['data']]);
+                    return response()->json([
+                        'success' => true,
+                        'data' => [
+                            'name'          => $result['data']['name'] ?? 'Tidak diketahui',
+                            'customer_id'   => $result['data']['customer_id'] ?? $customerId
+                        ],
+                        'message' => 'Inquiry OVO Berhasil'
+                    ]);
+                } else {
+                    Log::error('LOG LOG - Inquiry OVO Failed Status', ['response' => $result]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => $result['data']['message'] ?? 'Nomor OVO Tidak Valid / Tidak Ditemukan'
+                    ]);
+                }
+            }
+
+            Log::error('LOG LOG - Inquiry OVO Invalid Response', ['response' => $result]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal terhubung atau Respon API IAK tidak valid.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG - Inquiry OVO Exception', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi ke server terputus: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // --- FUNGSI BARU: INQUIRY GAME FORMAT (Cek format inputan ID Player) ---
+    public function inquiryGameFormat(Request $request)
+    {
+        $request->validate([
+            'game_code' => 'required|string'
+        ]);
+
+        $gameCode = $request->game_code;
+
+        // Sesuai dokumentasi: md5(username+api_key+game_code)
+        $sign = md5($this->username . $this->apiKey . $gameCode);
+
+        Log::info('LOG LOG - Inquiry Game Format Request', ['game_code' => $gameCode]);
+
+        try {
+            $response = Http::post($this->prepaidBaseUrl . '/api/game/format', [
+                'username'  => $this->username,
+                'game_code' => $gameCode,
+                'sign'      => $sign
+            ]);
+
+            $result = $response->json();
+
+            if ($response->successful() && isset($result['data'])) {
+                if ($result['data']['status'] == 1 || $result['data']['status'] == '1') {
+                    Log::info('LOG LOG - Inquiry Game Format Success', ['data' => $result['data']]);
+                    return response()->json([
+                        'success' => true,
+                        'data' => [
+                            'formatGameId' => $result['data']['formatGameId'] ?? ''
+                        ],
+                        'message' => $result['data']['message'] ?? 'Inquiry Format Berhasil'
+                    ]);
+                } else {
+                    Log::error('LOG LOG - Inquiry Game Format Failed', ['response' => $result]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => $result['data']['message'] ?? 'Format Game tidak ditemukan (Mungkin tidak butuh inquiry)'
+                    ]);
+                }
+            }
+
+            Log::error('LOG LOG - Inquiry Game Format Invalid Response', ['response' => $result]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal terhubung atau Respon API IAK tidak valid.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG - Inquiry Game Format Exception', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi ke server terputus: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // --- FUNGSI BARU: INQUIRY GAME SERVER (Tarik list Server ID Game) ---
+    public function inquiryGameServer(Request $request)
+    {
+        $request->validate([
+            'game_code' => 'required|string'
+        ]);
+
+        $gameCode = $request->game_code;
+
+        // Sesuai dokumentasi: md5(username+api_key+game_code)
+        $sign = md5($this->username . $this->apiKey . $gameCode);
+
+        Log::info('LOG LOG - Inquiry Game Server Request', ['game_code' => $gameCode]);
+
+        try {
+            $response = Http::post($this->prepaidBaseUrl . '/api/inquiry-game-server', [
+                'username'  => $this->username,
+                'game_code' => $gameCode,
+                'sign'      => $sign
+            ]);
+
+            $result = $response->json();
+
+            if ($response->successful() && isset($result['data'])) {
+                if ($result['data']['status'] == 1 || $result['data']['status'] == '1') {
+                    Log::info('LOG LOG - Inquiry Game Server Success', ['data' => $result['data']]);
+                    return response()->json([
+                        'success' => true,
+                        'data' => [
+                            // Mengembalikan array of object berisi {name, value}
+                            'servers' => $result['data']['servers'] ?? []
+                        ],
+                        'message' => $result['data']['message'] ?? 'Inquiry Server Berhasil'
+                    ]);
+                } else {
+                    Log::error('LOG LOG - Inquiry Game Server Failed', ['response' => $result]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => $result['data']['message'] ?? 'Game tidak memiliki list server otomatis'
+                    ]);
+                }
+            }
+
+            Log::error('LOG LOG - Inquiry Game Server Invalid Response', ['response' => $result]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal terhubung atau Respon API IAK tidak valid.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG - Inquiry Game Server Exception', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi ke server terputus: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // --- FUNGSI BARU: GET GAME CODE LIST (Daftar Game) ---
+    public function getGameList(Request $request)
+    {
+        // Sesuai dokumentasi: md5(username+api_key+'gc')
+        $sign = md5($this->username . $this->apiKey . 'gc');
+
+        Log::info('LOG LOG - Get Game List Request initiated.');
+
+        try {
+            $response = Http::post($this->prepaidBaseUrl . '/api/gamelist', [
+                'username' => $this->username,
+                'sign'     => $sign
+            ]);
+
+            $result = $response->json();
+
+            if ($response->successful() && isset($result['data'])) {
+                // rc "00" berarti sukses mengambil data
+                if (isset($result['data']['rc']) && $result['data']['rc'] == '00') {
+                    Log::info('LOG LOG - Get Game List Success', ['total_games' => count($result['data']['gamelist'] ?? [])]);
+                    return response()->json([
+                        'success' => true,
+                        'data'    => $result['data']['gamelist'] ?? [],
+                        'message' => $result['data']['message'] ?? 'Berhasil mengambil daftar game'
+                    ]);
+                } else {
+                    Log::error('LOG LOG - Get Game List Failed Status', ['response' => $result]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => $result['data']['message'] ?? 'Gagal mengambil daftar game dari API'
+                    ]);
+                }
+            }
+
+            Log::error('LOG LOG - Get Game List Invalid Response', ['response' => $result]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal terhubung atau Respon API IAK tidak valid.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG - Get Game List Exception', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi ke server terputus: ' . $e->getMessage()
+            ]);
+        }
+    }
 }
