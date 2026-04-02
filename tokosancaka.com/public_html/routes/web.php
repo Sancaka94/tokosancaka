@@ -1168,4 +1168,4 @@ Route::get('/check-postpaid/{tr_id}', [PpobIakController::class, 'checkStatusPos
 Route::post('/ppob/iak/send-wa/{ref_id}', [\App\Http\Controllers\PpobIakController::class, 'sendWa'])->name('ppob.iak.send_wa');
 
 // Tambahkan baris ini di dalam group route admin Anda
-Route::get('/kontak/{id}/history', [\App\Http\Controllers\KontakController::class, 'history'])->name('admin.kontak.history');
+Route::get('/admin/kontak/{id}/history', [\App\Http\Controllers\KontakController::class, 'history'])->name('admin.kontak.history');
