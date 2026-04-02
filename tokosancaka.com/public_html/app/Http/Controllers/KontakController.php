@@ -1,366 +1,211 @@
 <?php
 
-
-
 namespace App\Http\Controllers;
 
-
-
 use App\Models\Kontak;
-
 use Illuminate\Http\Request;
-
 use App\Exports\KontaksExport;
-
 use App\Imports\KontaksImport;
-
 use Maatwebsite\Excel\Facades\Excel;
-
 use Barryvdh\DomPDF\Facade\Pdf;
-
-
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class KontakController extends Controller
-
 {
-
     /**
-
-     * Menampilkan daftar kontak dengan fitur pencarian dan filter.
-
+     * Menampilkan daftar kontak dengan logika pencarian dan statistik card
+     * Mengadopsi logic "Step-by-Step" dari PesananController
      */
-
     public function index(Request $request)
-
     {
+        // =================================================================
+        // STEP 1: QUERY GLOBAL (Berlaku untuk Tabel & Monitoring Bar)
+        // =================================================================
+        $query = Kontak::withCount('pengiriman as total_pengiriman');
 
-        $query = Kontak::query();
-
-
-
-        // Logika Pencarian
-
+        // A. LOGIC SEARCH (Nama, NoHP, Alamat)
         if ($request->filled('search')) {
-
             $search = $request->input('search');
-
             $query->where(function($q) use ($search) {
-
                 $q->where('nama', 'like', "%{$search}%")
-
-                  ->orWhere('no_hp', 'like', "%{$search}%");
-
+                  ->orWhere('no_hp', 'like', "%{$search}%")
+                  ->orWhere('alamat', 'like', "%{$search}%");
             });
-
         }
 
-
-
-        // Logika Filter
-
+        // B. LOGIC FILTER TIPE (Pengirim, Penerima, Keduanya)
         if ($request->filled('filter') && $request->input('filter') !== 'Semua') {
-
             $query->where('tipe', $request->input('filter'));
-
         }
 
+        // =================================================================
+        // STEP 2: CLONE QUERY UNTUK STATISTIK (Monitoring Bar)
+        // =================================================================
+        $statsQuery = clone $query;
 
+        // Hitung Data Monitoring (Repeat Order)
+        $totalAll = (clone $statsQuery)->count();
+        $countBaru = (clone $statsQuery)->has('pengiriman', '=', 1)->count();
+        $countRepeat = (clone $statsQuery)->has('pengiriman', '=', 2)->count();
+        $countLoyal = (clone $statsQuery)->has('pengiriman', '>', 2)->count();
 
-        $kontaks = $query->latest()->paginate(10);
+        $stats = [
+            'count_baru'   => $countBaru,
+            'count_repeat' => $countRepeat,
+            'count_loyal'  => $countLoyal,
+            'persen_baru'  => $totalAll > 0 ? round(($countBaru / $totalAll) * 100, 1) : 0,
+            'persen_repeat'=> $totalAll > 0 ? round(($countRepeat / $totalAll) * 100, 1) : 0,
+            'persen_loyal' => $totalAll > 0 ? round(($countLoyal / $totalAll) * 100, 1) : 0,
+        ];
 
+        // =================================================================
+        // STEP 3: EXECUTE TABLE QUERY
+        // =================================================================
+        // Filter status khusus tabel (Baru/Repeat/Loyal)
+        if ($request->filled('status')) {
+            $status = $request->input('status');
+            if ($status == 'baru') $query->has('pengiriman', '=', 1);
+            elseif ($status == 'repeat') $query->has('pengiriman', '=', 2);
+            elseif ($status == 'loyal') $query->has('pengiriman', '>', 2);
+        }
 
+        $kontaks = $query->latest()->paginate(15);
+        $kontaks->appends($request->all());
 
-        return view('admin.kontak.index', compact('kontaks'));
-
+        return view('admin.kontak.index', compact('kontaks', 'stats'));
     }
 
-
-
     /**
-
-     * Menyimpan kontak baru dari modal.
-
+     * Menyimpan kontak baru dengan Sanitasi HP & Nama
      */
-
     public function store(Request $request)
-
     {
-
-        $validatedData = $request->validate([
-
-            'nama' => 'required|string|max:255',
-
-            'no_hp' => 'required|string|max:20|unique:kontaks,no_hp',
-
-            'alamat' => 'required|string',
-
-            'tipe' => 'required|string',
-
-        ]);
-
-
-
-        Kontak::create($validatedData);
-
-
-
-        return redirect()->route('admin.kontak.index')->with('success', 'Kontak baru berhasil disimpan.');
-
-    }
-
-
-
-    /**
-
-     * Menampilkan data kontak untuk diedit (biasanya dalam format JSON untuk modal).
-
-     */
-
-    public function show(Kontak $kontak)
-
-    {
-
-        return response()->json($kontak);
-
-    }
-
-    
-
-    /**
-
-     * Fungsi untuk mencari kontak secara live (AJAX).
-
-     */
-
-    public function search(Request $request)
-
-    {
-
-        $query = $request->input('query');
-
-        
-
-        if(empty($query)) {
-
-            return response()->json([]);
-
-        }
-
-
-
-        $kontaks = Kontak::where('nama', 'LIKE', "%{$query}%")
-
-                         ->orWhere('no_hp', 'LIKE', "%{$query}%")
-
-                         ->limit(10)
-
-                         ->get(['id', 'nama', 'no_hp', 'alamat', 'province', 'regency', 'district', 'village', 'postal_code']);
-
-
-
-        return response()->json($kontaks);
-
-    }
-
-
-
-    /**
-
-     * ✅ FUNGSI BARU: Mendaftarkan kontak dari halaman scan publik.
-
-     * Fungsi ini dipanggil oleh JavaScript dari halaman scan SPX.
-
-     */
-
-    public function registerFromScan(Request $request)
-
-    {
-
-        // 1. Validasi data yang masuk dari form pendaftaran
-
-        $validatedData = $request->validate([
-
-            'nama' => 'required|string|max:255',
-
-            'no_hp' => 'required|string|max:20|unique:kontaks,no_hp',
-
-            'alamat' => 'required|string',
-
-        ]);
-
-
-
-        // 2. Tetapkan tipe default karena form ini khusus untuk pelanggan/pengirim
-
-        $validatedData['tipe'] = 'Pelanggan';
-
-
-
         try {
-
-            // 3. Buat kontak baru di database
-
-            $kontak = Kontak::create($validatedData);
-
-
-
-            // 4. Kirim respons JSON yang sukses beserta data kontak yang baru dibuat
-
-            return response()->json([
-
-                'success' => true,
-
-                'message' => 'Pendaftaran berhasil!',
-
-                'data' => $kontak // JavaScript akan menggunakan data ini untuk melanjutkan proses
-
+            $validatedData = $request->validate([
+                'nama' => 'required|string|max:255',
+                'no_hp' => 'required|string|max:20|unique:kontaks,no_hp',
+                'alamat' => 'required|string',
+                'tipe' => 'required|string|in:Pengirim,Penerima,Keduanya',
             ]);
 
+            // Sanitasi (Sama seperti PesananController)
+            $validatedData['no_hp'] = $this->_sanitizePhoneNumber($validatedData['no_hp']);
+            $validatedData['nama'] = trim(preg_replace('/[^a-zA-Z0-9\s]/', '', $validatedData['nama']));
 
+            Kontak::create($validatedData);
 
+            return redirect()->route('admin.kontak.index')->with('success', 'Kontak ' . $validatedData['nama'] . ' berhasil disimpan.');
         } catch (\Exception $e) {
-
-            // 5. Jika ada error saat menyimpan, kirim respons JSON yang berisi pesan error
-
-            return response()->json([
-
-                'success' => false,
-
-                'message' => 'Terjadi kesalahan saat menyimpan data. Silakan coba lagi.'
-
-            ], 500); // Kode status 500 untuk Internal Server Error
-
+            Log::error('Gagal simpan kontak: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menyimpan: ' . $e->getMessage())->withInput();
         }
-
     }
 
-    
+    /**
+     * Menampilkan data kontak via AJAX (JSON)
+     */
+    public function show(Kontak $kontak)
+    {
+        // Muat info tambahan jika perlu (seperti riwayat kirim terakhir)
+        return response()->json($kontak);
+    }
 
     /**
-
-     * Memperbarui data kontak.
-
+     * AJAX Live Search untuk Form Pesanan (Integrasi dengan PesananController)
      */
-
-    public function update(Request $request, Kontak $kontak)
-
+    public function search(Request $request)
     {
+        $queryText = $request->input('query') ?? $request->input('search');
 
+        if(empty($queryText)) return response()->json([]);
+
+        $kontaks = Kontak::where(function($q) use ($queryText) {
+                    $q->where('nama', 'LIKE', "%{$queryText}%")
+                      ->orWhere('no_hp', 'LIKE', "%{$queryText}%");
+                })
+                ->limit(10)
+                ->get(['id', 'nama', 'no_hp', 'alamat', 'province', 'regency', 'district', 'village', 'postal_code']);
+
+        return response()->json($kontaks);
+    }
+
+    /**
+     * Update data kontak dengan logic penggabungan Tipe
+     */
+    public function update(Request $request, Kontak $kontak)
+    {
         $validatedData = $request->validate([
-
             'nama' => 'required|string|max:255',
-
             'no_hp' => 'required|string|max:20|unique:kontaks,no_hp,' . $kontak->id,
-
             'alamat' => 'required|string',
-
             'tipe' => 'required|string',
-
         ]);
 
-
+        // Sanitasi
+        $validatedData['no_hp'] = $this->_sanitizePhoneNumber($validatedData['no_hp']);
 
         $kontak->update($validatedData);
 
-
-
         return redirect()->route('admin.kontak.index')->with('success', 'Kontak berhasil diperbarui.');
-
     }
 
-
-
     /**
-
-     * Menghapus kontak.
-
+     * Hapus Kontak
      */
-
     public function destroy(Kontak $kontak)
-
     {
-
+        $nama = $kontak->nama;
         $kontak->delete();
-
-
-
-        return redirect()->route('admin.kontak.index')->with('success', 'Kontak berhasil dihapus.');
-
+        return redirect()->route('admin.kontak.index')->with('success', "Kontak $nama berhasil dihapus.");
     }
 
-    
+    // --- LOGIC EXPORT (Sesuai PesananController) ---
 
-    // --- FUNGSI UNTUK EXPORT & IMPORT ---
-
-
-
-    /**
-
-     * Menangani export data ke Excel.
-
-     */
-
-    public function exportExcel() 
-
+    public function exportExcel()
     {
-
-        return Excel::download(new KontaksExport, 'data-kontak.xlsx');
-
+        return Excel::download(new KontaksExport, 'data-kontak-' . date('Ymd') . '.xlsx');
     }
 
-
-
-    /**
-
-     * Menangani export data ke PDF.
-
-     */
-
-    public function exportPdf() 
-
+    public function exportPdf()
     {
-
         $kontaks = Kontak::all();
-
-        $pdf = PDF::loadView('admin.kontak.pdf', compact('kontaks'));
-
-        return $pdf->download('data-kontak.pdf');
-
+        $pdf = Pdf::loadView('admin.kontak.pdf', compact('kontaks'))->setPaper('a4', 'portrait');
+        return $pdf->download('data-kontak-' . date('Ymd') . '.pdf');
     }
 
-
-
-    /**
-
-     * Menangani import data dari Excel.
-
-     */
-
-    public function importExcel(Request $request) 
-
+    public function importExcel(Request $request)
     {
-
-        $request->validate([
-
-            'file' => 'required|mimes:xlsx,xls'
-
-        ]);
-
-        
+        $request->validate(['file' => 'required|mimes:xlsx,xls']);
 
         try {
-
             Excel::import(new KontaksImport, $request->file('file'));
-
-            return redirect()->route('admin.kontak.index')->with('success', 'Data kontak berhasil diimport.');
-
+            return redirect()->back()->with('success', 'Import data berhasil.');
         } catch (\Exception $e) {
-
-            return redirect()->route('admin.kontak.index')->with('error', 'Gagal mengimport data. Pastikan format file Excel sudah benar.');
-
+            return redirect()->back()->with('error', 'Gagal import: ' . $e->getMessage());
         }
-
     }
 
-}
+    /**
+     * PRIVATE HELPER: Sanitasi Nomor HP (Identik dengan PesananController)
+     */
+    private function _sanitizePhoneNumber(string $phone): string
+    {
+        $phone = preg_replace('/[^0-9]/', '', $phone);
 
+        if (Str::startsWith($phone, '62')) {
+            if (Str::startsWith(substr($phone, 2), '0')) {
+                return '0' . substr($phone, 3);
+            }
+            return '0' . substr($phone, 2);
+        }
+
+        if (!Str::startsWith($phone, '0') && Str::startsWith($phone, '8')) {
+            return '0' . $phone;
+        }
+
+        return $phone;
+    }
+}
