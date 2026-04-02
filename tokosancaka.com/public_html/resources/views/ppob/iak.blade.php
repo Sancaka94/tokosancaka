@@ -597,17 +597,24 @@
                         productMessage.classList.remove('d-none');
                     }
                     data.data.forEach(item => {
-                        let rpPrice = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price);
-                        html += `
-                        <div class="col-6 col-md-4">
-                            <div class="card h-100 border product-card cursor-pointer shadow-sm" onclick="selectProduct('${item.code}', ${item.price}, this)">
-                                <div class="card-body p-3 d-flex flex-column justify-content-between">
-                                    <div class="small fw-bold text-dark mb-2 lh-sm" title="${item.description}">${item.description}</div>
-                                    <div class="text-primary fw-bolder fs-6">${rpPrice}</div>
-                                </div>
+                    let rpPrice = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price);
+
+                    // Logika untuk menampilkan icon atau placeholder jika icon kosong
+                    let iconHtml = (item.icon_url && item.icon_url !== '-')
+                        ? `<img src="${item.icon_url}" class="img-fluid mb-2" style="height: 40px; object-fit: contain;" alt="icon">`
+                        : `<div class="mb-2 text-primary"><i class="bi bi-box" style="font-size: 24px;"></i></div>`;
+
+                    html += `
+                    <div class="col-6 col-md-4">
+                        <div class="card h-100 border product-card cursor-pointer shadow-sm text-center" onclick="selectProduct('${item.code}', ${item.price}, this)">
+                            <div class="card-body p-3 d-flex flex-column align-items-center justify-content-between">
+                                ${iconHtml}
+                                <div class="small fw-bold text-dark mb-1 lh-sm" title="${item.description}">${item.description}</div>
+                                <div class="text-primary fw-bolder fs-6">${rpPrice}</div>
                             </div>
-                        </div>`;
-                    });
+                        </div>
+                    </div>`;
+                });
                     productList.innerHTML = html;
                 } else {
                     productList.innerHTML = `<div class="col-12 text-center py-3"><div class="text-muted small">Belum ada produk aktif untuk kategori ini.</div></div>`;

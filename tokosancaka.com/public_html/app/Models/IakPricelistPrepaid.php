@@ -9,7 +9,7 @@ class IakPricelistPrepaid extends Model
     protected $table = 'iak_pricelist_prepaid';
 
     protected $fillable = [
-        'operator', 'code', 'description', 'price', 'status', 'type'
+        'operator', 'code', 'description', 'price', 'status', 'type', 'icon_url'
     ];
     // LOG LOG
 }
