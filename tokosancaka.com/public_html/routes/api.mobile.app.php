@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\Mobile\KontakController;
 
 /*
 |--------------------------------------------------------------------------
@@ -118,3 +119,6 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 Route::post('/pesanan/store-single', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'storeSingle']);
+
+// Rute Pencarian Kontak Mobile
+Route::get('/customer/kontak', [KontakController::class, 'index']);
