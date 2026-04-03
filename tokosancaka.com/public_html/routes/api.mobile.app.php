@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Mobile\KontakController;
+use App\Http\Controllers\Api\Mobile\ScanSpxController; // <-- Tambahkan ini untuk kerapian
 
 /*
 |--------------------------------------------------------------------------
@@ -16,17 +17,8 @@ use App\Http\Controllers\Api\Mobile\KontakController;
 // 1. PUBLIC ROUTES (TIDAK BUTUH LOGIN / TOKEN)
 // =========================================================================
 
-// ---> BAGIAN INI YANG DIUBAH (Dikeluarkan dari prefix 'auth') <---
 Route::post('/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'login']);
 Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
-
-// =========================================================================
-// 1. PUBLIC ROUTES (TIDAK BUTUH LOGIN / TOKEN)
-// =========================================================================
-// Route::prefix('auth')->group(function () {
-//    Route::post('/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'login']);
-//    Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
-// });
 
 Route::prefix('public')->group(function () {
     // Tracking & Ekspedisi
@@ -41,15 +33,22 @@ Route::prefix('public')->group(function () {
     Route::get('/ppob/pricelist', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'pricelist']);
 });
 
+// -------------------------------------------------------------------------
+// ROUTE DOWNLOAD PDF SURAT JALAN
+// (Ditaruh di luar auth agar bisa dibuka oleh Chrome/Safari di HP)
+// -------------------------------------------------------------------------
+Route::get('/suratjalan/download/{kode_surat_jalan}', [ScanSpxController::class, 'downloadSuratJalan'])->name('api.suratjalan.download');
+
+
 // =========================================================================
 // 2. PROTECTED ROUTES (WAJIB BAWA TOKEN DARI HP - SANCTUM)
 // =========================================================================
 Route::middleware('auth:sanctum')->group(function () {
 
-Route::get('/customer/pesanan/riwayat', [App\Http\Controllers\Api\Mobile\PesananController::class, 'riwayat']);
+    Route::get('/customer/pesanan/riwayat', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'riwayat']);
 
-// Rute Pencarian Kontak Mobile
-Route::get('/customer/kontak', [KontakController::class, 'index']);
+    // Rute Pencarian Kontak Mobile
+    Route::get('/customer/kontak', [KontakController::class, 'index']);
 
     // --- A. GENERAL AUTH & USER ---
     Route::get('/user/profile', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'user']);
@@ -62,14 +61,25 @@ Route::get('/customer/kontak', [KontakController::class, 'index']);
     // --- C. CUSTOMER ROUTES (PELANGGAN) ---
     Route::prefix('customer')->group(function () {
 
+        // ==========================================
+        // SCAN SPX & SURAT JALAN (FITUR BARU)
+        // ==========================================
+        Route::get('/scan-spx/init', [ScanSpxController::class, 'initMobile']);
+        Route::get('/scan-spx/history', [ScanSpxController::class, 'index']); // Paginasi data riwayat
+        Route::get('/scan-spx/filter', [ScanSpxController::class, 'getHistory']); // Filter by periode
+        Route::post('/scan-spx/store', [ScanSpxController::class, 'storeSpxScan']); // Proses scan & potong saldo
+        Route::put('/scan-spx/{resi}', [ScanSpxController::class, 'update']); // Edit status
+        Route::delete('/scan-spx/{resi}', [ScanSpxController::class, 'destroy']); // Hapus resi
+
+        Route::post('/suratjalan/create', [ScanSpxController::class, 'createSuratJalan']); // Cetak SJ
+        // ==========================================
+
         // Manajemen Pengiriman (Kirim Satuan & Massal/Koli)
         Route::post('/pesanan/store-single', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'storeSingle']);
         Route::post('/pesanan/store-multi', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'storeMulti']);
-        Route::get('/pesanan/riwayat', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'riwayat']);
 
         // Buku Alamat / Kontak
-        Route::get('/kontak', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'index']);
-        Route::post('/kontak', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'store']);
+        Route::post('/kontak', [KontakController::class, 'store']);
 
         // Top Up & Saldo
         Route::get('/wallet/balance', [\App\Http\Controllers\Api\Mobile\WalletController::class, 'balance']);
@@ -122,7 +132,3 @@ Route::get('/customer/kontak', [KontakController::class, 'index']);
     });
 
 });
-
-Route::post('/pesanan/store-single', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'storeSingle']);
-
-
