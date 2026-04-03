@@ -50,3 +50,41 @@ Thumbs.db
 
 Data Backup/
 data_backup/
+
+# =========================================
+# Folder berat dan hasil build (Jangan di-push)
+# =========================================
+node_modules/
+.expo/
+dist/
+web-build/
+
+# =========================================
+# File Log dan Debugging
+# =========================================
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# =========================================
+# File OS (Mac/Windows)
+# =========================================
+.DS_Store
+Thumbs.db
+
+# =========================================
+# KREDENSIAL & ENVIRONMENT (SANGAT PENTING!)
+# =========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.jks
+*.p8
+*.p12
+*.key
+*.keystore
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist
