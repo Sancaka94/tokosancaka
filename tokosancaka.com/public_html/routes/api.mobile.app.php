@@ -46,6 +46,9 @@ Route::prefix('public')->group(function () {
 // =========================================================================
 Route::middleware('auth:sanctum')->group(function () {
 
+// Rute Pencarian Kontak Mobile
+Route::get('/customer/kontak', [KontakController::class, 'index']);
+
     // --- A. GENERAL AUTH & USER ---
     Route::get('/user/profile', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'user']);
     Route::post('/user/profile/update', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'update']);
@@ -120,5 +123,4 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::post('/pesanan/store-single', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'storeSingle']);
 
-// Rute Pencarian Kontak Mobile
-Route::get('/customer/kontak', [KontakController::class, 'index']);
+
