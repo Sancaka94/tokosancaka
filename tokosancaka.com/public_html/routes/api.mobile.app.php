@@ -51,6 +51,14 @@ Route::get('/suratjalan/download/{kode_surat_jalan}', [ScanSpxController::class,
 // =========================================================================
 Route::middleware('auth:sanctum')->group(function () {
 
+    // ==========================================
+    // RUTE MANAJEMEN KONTAK MOBILE
+    // ==========================================
+    Route::get('/customer/kontak', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'index']);
+    Route::post('/customer/kontak', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'store']);
+    Route::delete('/customer/kontak/{id}', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'destroy']);
+    Route::get('/customer/kontak/{id}/history', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'history']);
+
     Route::get('/customer/pesanan/riwayat', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'riwayat']);
 
     // Rute Pencarian Kontak Mobile
