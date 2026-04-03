@@ -222,8 +222,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 });
 
-// Mengarahkan Laravel ke dalam folder web/
-if(file_exists(__DIR__.'/web/api.mobile.app.php')) {
-    require __DIR__.'/web/api.mobile.app.php';
+if(file_exists(__DIR__.'/api.mobile.app.php')) {
+    require __DIR__.'/api.mobile.app.php';
 }
 
