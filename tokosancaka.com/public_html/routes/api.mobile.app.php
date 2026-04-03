@@ -14,10 +14,18 @@ use Illuminate\Support\Facades\Route;
 // =========================================================================
 // 1. PUBLIC ROUTES (TIDAK BUTUH LOGIN / TOKEN)
 // =========================================================================
-Route::prefix('auth')->group(function () {
-    Route::post('/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'login']);
-    Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
-});
+
+// ---> BAGIAN INI YANG DIUBAH (Dikeluarkan dari prefix 'auth') <---
+Route::post('/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'login']);
+Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
+
+// =========================================================================
+// 1. PUBLIC ROUTES (TIDAK BUTUH LOGIN / TOKEN)
+// =========================================================================
+// Route::prefix('auth')->group(function () {
+//    Route::post('/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'login']);
+//    Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
+// });
 
 Route::prefix('public')->group(function () {
     // Tracking & Ekspedisi
