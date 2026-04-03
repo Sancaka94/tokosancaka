@@ -224,6 +224,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Memanggil rute khusus aplikasi Mobile Sancaka
 if(file_exists(__DIR__.'/api.mobile.app.php')) {
-    require __DIR__.'/api.mobile.app.php';
+    Route::prefix('mobile')->group(function () {
+        require __DIR__.'/api.mobile.app.php';
+    });
 }
 
