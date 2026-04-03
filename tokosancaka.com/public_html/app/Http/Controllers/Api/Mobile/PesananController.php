@@ -32,27 +32,30 @@ class PesananController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. VALIDASI INPUT DARI REACT NATIVE
+            // 1. VALIDASI INPUT DARI REACT NATIVE (Diperbarui untuk menerima full_region dan expedition_name)
             $validatedData = $request->validate([
                 'sender_name'           => 'required|string|max:100',
                 'sender_phone'          => 'required|string|max:20',
                 'sender_address'        => 'required|string|min:10|max:500',
-                'sender_province'       => 'required|string|max:100',
-                'sender_regency'        => 'required|string|max:100',
-                'sender_district'       => 'required|string|max:100',
-                'sender_postal_code'    => 'required|string|max:10',
+                // Kolom-kolom wilayah lama (kita buat nullable karena tergantikan oleh full_region)
+                'sender_province'       => 'nullable|string|max:100',
+                'sender_regency'        => 'nullable|string|max:100',
+                'sender_district'       => 'nullable|string|max:100',
+                'sender_postal_code'    => 'nullable|string|max:10',
                 'sender_district_id'    => 'required|numeric',
                 'sender_subdistrict_id' => 'required|numeric',
+                'sender_full_region'    => 'nullable|string|max:255', // <-- TAMBAHAN BARU
 
                 'receiver_name'         => 'required|string|max:100',
                 'receiver_phone'        => 'required|string|max:20',
                 'receiver_address'      => 'required|string|min:10|max:500',
-                'receiver_province'     => 'required|string|max:100',
-                'receiver_regency'      => 'required|string|max:100',
-                'receiver_district'     => 'required|string|max:100',
-                'receiver_postal_code'  => 'required|string|max:10',
+                'receiver_province'     => 'nullable|string|max:100',
+                'receiver_regency'      => 'nullable|string|max:100',
+                'receiver_district'     => 'nullable|string|max:100',
+                'receiver_postal_code'  => 'nullable|string|max:10',
                 'receiver_district_id'  => 'required|numeric',
                 'receiver_subdistrict_id'=> 'required|numeric',
+                'receiver_full_region'  => 'nullable|string|max:255', // <-- TAMBAHAN BARU
 
                 'item_description'      => 'required|string|max:255',
                 'item_price'            => 'required|numeric|min:100',
@@ -64,8 +67,12 @@ class PesananController extends Controller
                 'item_type'             => 'required|integer',
 
                 'service_type'          => 'required|string|in:regular,express,sameday,instant,cargo',
-                'expedition'            => 'required|string|max:255',
+                'expedition'            => 'required|string|max:255', // Kode asli kurir
+                'expedition_name'       => 'nullable|string|max:255', // <-- TAMBAHAN BARU (Nama Manusiawi)
                 'payment_method'        => 'required|string|max:50',
+
+                'save_sender'           => 'nullable',
+                'save_receiver'         => 'nullable',
             ]);
 
             $user = Auth::user();
@@ -76,7 +83,7 @@ class PesananController extends Controller
             $validatedData['sender_phone'] = $this->_sanitizePhoneNumber($validatedData['sender_phone_original']);
             $validatedData['receiver_phone'] = $this->_sanitizePhoneNumber($validatedData['receiver_phone_original']);
 
-            // 3. KALKULASI BIAYA BERDASARKAN STRING EKSPEDISI (Cth: regular-jne-reg-10000)
+            // 3. KALKULASI BIAYA BERDASARKAN STRING EKSPEDISI
             $calculation = $this->_calculateTotalPaid($validatedData);
             $total_paid_ongkir = $calculation['total_paid_ongkir'];
             $cod_value         = $calculation['cod_value'];
@@ -92,11 +99,15 @@ class PesananController extends Controller
             $pesananData['id_pengguna_pembeli'] = $user->id_pengguna;
             $pesananData['customer_id'] = $user->id_pengguna;
 
+            // Pastikan data string tidak null
+            $pesananData['receiver_district'] = $pesananData['receiver_district'] ?? 'Tidak Diketahui';
+            $pesananData['receiver_regency'] = $pesananData['receiver_regency'] ?? 'Tidak Diketahui';
+
             // 5. BUAT RECORD PESANAN
             $order = Pesanan::create($pesananData);
 
             // 6. PROSES METODE PEMBAYARAN (POTONG SALDO DARI MOBILE)
-            if ($validatedData['payment_method'] === 'Potong Saldo') {
+            if ($validatedData['payment_method'] === 'Potong Saldo' || $validatedData['payment_method'] === 'Saldo') {
                 if ($user->saldo < $total_paid_ongkir) {
                     throw new Exception('Saldo Anda tidak mencukupi. Sisa saldo: Rp ' . number_format($user->saldo, 0, ',', '.'));
                 }
@@ -127,7 +138,10 @@ class PesananController extends Controller
 
             // 9. REKAM KEUANGAN (Memanggil fungsi dari Web Controller Bapak)
             try {
-                \App\Http\Controllers\Customer\PesananController::simpanKeKeuangan($order);
+                // Pastikan class PesananController di Customer web ada dan fungsinya static
+                if (method_exists(\App\Http\Controllers\Customer\PesananController::class, 'simpanKeKeuangan')) {
+                    \App\Http\Controllers\Customer\PesananController::simpanKeKeuangan($order);
+                }
             } catch (Exception $e) {
                 Log::error("[API MOBILE] Gagal rekam keuangan: " . $e->getMessage());
             }
@@ -165,7 +179,7 @@ class PesananController extends Controller
 
     /**
      * =========================================================================
-     * HELPER FUNCTIONS (Diadaptasi dari Web Controller Bapak)
+     * HELPER FUNCTIONS
      * =========================================================================
      */
 
@@ -223,7 +237,8 @@ class PesananController extends Controller
         } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
 
         $fieldsToSave = array_keys($validatedData);
-        $fieldsToExclude = ['sender_phone_original', 'receiver_phone_original'];
+        // Jangan simpan field tambahan ini ke database jika tidak ada kolomnya
+        $fieldsToExclude = ['sender_phone_original', 'receiver_phone_original', 'sender_full_region', 'receiver_full_region', 'expedition_name'];
         $fieldsToSave = array_diff($fieldsToSave, $fieldsToExclude);
 
         $pesananCoreData = collect($validatedData)->only($fieldsToSave)->all();
@@ -276,7 +291,7 @@ class PesananController extends Controller
         $payload = [
             'address' => $data['sender_address'], 'phone' => $data['sender_phone'], 'name' => $data['sender_name'],
             'kecamatan_id' => $data['sender_district_id'], 'kelurahan_id' => $data['sender_subdistrict_id'],
-            'zipcode' => $data['sender_postal_code'], 'schedule' => $scheduleClock,
+            'zipcode' => $data['sender_postal_code'] ?? '00000', 'schedule' => $scheduleClock,
             'platform_name' => 'tokosancaka.com', 'category' => $category,
             'packages' => [[
                 'order_id' => $order->nomor_invoice, 'item_name' => $data['item_description'],
@@ -284,7 +299,7 @@ class PesananController extends Controller
                 'destination_name' => $data['receiver_name'], 'destination_phone' => $data['receiver_phone'],
                 'destination_address' => $data['receiver_address'],
                 'destination_kecamatan_id' => $data['receiver_district_id'], 'destination_kelurahan_id' => $data['receiver_subdistrict_id'],
-                'destination_zipcode' => $data['receiver_postal_code'],
+                'destination_zipcode' => $data['receiver_postal_code'] ?? '00000',
                 'weight' => (int) ceil($finalWeight),
                 'width' => $widthInput, 'height' => $heightInput, 'length' => $lengthInput,
                 'item_value' => (int)$apiItemPrice,
@@ -306,17 +321,19 @@ class PesananController extends Controller
             $adminNumbers = ['085745808809', '08819435180'];
             $fmt = function($val) { return number_format($val, 0, ',', '.'); };
 
-            $paymentMethod = strtoupper($data['payment_method']);
+            // PERBAIKAN: Gunakan label dari API jika ada, atau fallback ke data lama
+            $lokasiTujuan = $data['receiver_full_region'] ?? ($data['receiver_district'] . ', ' . $data['receiver_regency']);
+            $namaEkspedisi = $data['expedition_name'] ?? $data['expedition'];
 
             $message = "*🔔 PESANAN BARU MASUK (DARI APLIKASI MOBILE)*\n";
             $message .= "----------------------------------\n";
             $message .= "🆔 Invoice: *{$order->nomor_invoice}*\n";
             $message .= "📦 Resi: *{$order->resi}*\n";
             $message .= "👤 Customer: {$data['sender_name']} ({$data['sender_phone']})\n";
-            $message .= "📍 Tujuan: {$data['receiver_district']}, {$data['receiver_regency']}\n\n";
+            $message .= "📍 Tujuan: {$lokasiTujuan}\n\n";
 
             $message .= "📦 *Item:* {$data['item_description']}\n";
-            $message .= "🚛 *Ekspedisi:* {$data['expedition']} ({$data['service_type']})\n\n";
+            $message .= "🚛 *Ekspedisi:* {$namaEkspedisi}\n\n";
 
             $message .= "💰 *RINCIAN KEUANGAN*\n";
             $message .= "Metode: *{$data['payment_method']}*\n";
@@ -327,7 +344,11 @@ class PesananController extends Controller
 
             foreach ($adminNumbers as $number) {
                 $waTarget = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $number));
-                \App\Services\FonnteService::sendMessage($waTarget, $message);
+                if (class_exists(\App\Services\FonnteService::class)) {
+                    \App\Services\FonnteService::sendMessage($waTarget, $message);
+                } else {
+                     Log::warning("[API MOBILE] FonnteService class not found!");
+                }
             }
         } catch (\Exception $e) {
             Log::error('[API MOBILE] WA Notification Error: ' . $e->getMessage());
