@@ -168,20 +168,25 @@ class ScanSpxController extends Controller
         ]);
     }
 
-    /**
+   /**
      * 5. Mengunduh Surat Jalan dalam format PDF.
-     * Endpoint ini tetap mengembalikan file PDF utuh agar bisa di-download via browser di HP
+     * Endpoint ini ditaruh di luar auth agar bisa dibuka langsung via browser HP.
      */
     public function downloadSuratJalan($kode_surat_jalan)
     {
-        $suratJalan = SuratJalan::where('kode_surat_jalan', $kode_surat_jalan)
-                                ->where('user_id', Auth::user()->id_pengguna)
-                                ->firstOrFail();
+        // 1. Cari surat jalan HANYA berdasarkan kode uniknya (Tanpa Auth::user())
+        $suratJalan = SuratJalan::where('kode_surat_jalan', $kode_surat_jalan)->firstOrFail();
 
+        // 2. Ambil daftar resi/paket yang terhubung
         $scans = ScannedPackage::where('surat_jalan_id', $suratJalan->id)->get();
-        $customer = Auth::user();
 
+        // 3. Ambil data customer (Pengguna) secara manual dari database berdasarkan user_id di surat jalan
+        // (Pastikan namespace \App\Models\User sudah benar sesuai model Anda)
+        $customer = \App\Models\User::where('id_pengguna', $suratJalan->user_id)->first();
+
+        // 4. Generate dan download PDF
         $pdf = Pdf::loadView('customer.scan.surat-jalan-pdf', compact('suratJalan', 'scans', 'customer'));
+
         return $pdf->download('surat-jalan-' . $kode_surat_jalan . '.pdf');
     }
 
