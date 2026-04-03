@@ -30,7 +30,8 @@ class KontakController extends Controller
         // [CATATAN UNTUK BAPAK]:
         // Jika kolom 'id_Pengguna' di database Bapak sudah terisi ID user (bukan NULL lagi),
         // hapus tanda '//' di bawah ini agar pelanggan hanya bisa melihat kontaknya sendiri:
-        $query->where('id_Pengguna', $user->id_pengguna);
+        $query->where('user_id', $user->id_pengguna)
+              ->orWhere('id_Pengguna', $user->id_pengguna);
 
         // A. Filter Pencarian (Search)
         $search = $request->query('search', '');
