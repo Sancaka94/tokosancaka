@@ -60,9 +60,9 @@ class KontakController extends Controller
         ], 200);
     }
 
-    /**
+   /**
      * ==========================================================
-     * 2. MENYIMPAN KONTAK BARU (STORE)
+     * 2. MENYIMPAN KONTAK BARU (STORE) - DENGAN USER_ID
      * ==========================================================
      */
     public function store(Request $request)
@@ -72,7 +72,7 @@ class KontakController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
         }
 
-        // Validasi input dari aplikasi Mobile
+        // Validasi input dari aplikasi Mobile (Tanpa rule 'unique')
         $validatedData = $request->validate([
             'nama'   => 'required|string|max:255',
             'no_hp'  => 'required|string|max:20',
@@ -80,15 +80,18 @@ class KontakController extends Controller
             'tipe'   => 'required|string|in:Pengirim,Penerima,Keduanya',
         ]);
 
-        // Merapikan nomor HP (cth: +6281... atau 81... diubah jadi 081...)
+        // Merapikan nomor HP (cth: +6281... diubah jadi 081...)
         $validatedData['no_hp'] = $this->_sanitizePhoneNumber($validatedData['no_hp']);
 
-        // Membersihkan nama dari simbol aneh/emoji (mencegah error di database)
+        // Membersihkan nama dari simbol aneh/emoji
         $validatedData['nama'] = trim(preg_replace('/[^a-zA-Z0-9\s]/', '', $validatedData['nama']));
 
-        // [CATATAN UNTUK BAPAK]:
-        // Jika database sudah siap untuk menampung ID Pengguna, aktifkan baris ini:
-        // $validatedData['id_Pengguna'] = $user->id_pengguna;
+        // =========================================================
+        // INI TAMBAHANNYA: MENYIMPAN USER ID OTOMATIS
+        // =========================================================
+        // Kita isi kolom user_id dan id_Pengguna (jika ada) sesuai dengan ID yang login
+        $validatedData['user_id'] = $user->id_pengguna;
+        $validatedData['id_Pengguna'] = $user->id_pengguna;
 
         try {
             $kontak = Kontak::create($validatedData);
