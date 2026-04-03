@@ -116,3 +116,5 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
 });
+
+Route::post('/pesanan/store-single', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'storeSingle']);
