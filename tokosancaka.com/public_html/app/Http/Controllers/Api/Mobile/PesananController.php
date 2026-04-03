@@ -354,4 +354,59 @@ class PesananController extends Controller
             Log::error('[API MOBILE] WA Notification Error: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Mengambil daftar riwayat pesanan & statistik untuk Mobile
+     */
+    public function riwayat(Request $request)
+    {
+        $user = auth('sanctum')->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $query = Pesanan::where('id_pengguna_pembeli', $user->id_pengguna);
+
+        // 1. Logika Pencarian
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nomor_invoice', 'LIKE', "%{$search}%")
+                  ->orWhere('resi', 'LIKE', "%{$search}%")
+                  ->orWhere('receiver_name', 'LIKE', "%{$search}%")
+                  ->orWhere('receiver_phone', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // 2. Logika Filter Status
+        if ($request->filled('status') && $request->status !== 'Semua') {
+            if ($request->status === 'Gagal Resi') {
+                $query->where('status_pesanan', 'LIKE', '%Gagal Auto-Resi%');
+            } else {
+                $query->where('status_pesanan', $request->status);
+            }
+        }
+
+        // 3. Logika Statistik (Berdasarkan user yang login)
+        $baseQuery = Pesanan::where('id_pengguna_pembeli', $user->id_pengguna);
+
+        $stats = [
+            'countSelesai' => (clone $baseQuery)->whereIn('status_pesanan', ['Selesai', 'Terkirim'])->count(),
+            'countPickup'  => (clone $baseQuery)->where('status_pesanan', 'Menunggu Pickup')->count(),
+            'countDikirim' => (clone $baseQuery)->where('status_pesanan', 'Diproses')->count(),
+            'countGagal'   => (clone $baseQuery)->whereIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'])->orWhere('status_pesanan', 'LIKE', '%Gagal Auto-Resi%')->count(),
+        ];
+
+        // 4. Ambil Data dengan Paginasi
+        $orders = $query->latest()->paginate(10);
+
+        return response()->json([
+            'success' => true,
+            'data' => $orders->items(),
+            'stats' => $stats,
+            'current_page' => $orders->currentPage(),
+            'last_page' => $orders->lastPage()
+        ]);
+    }
+
 }

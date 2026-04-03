@@ -46,6 +46,8 @@ Route::prefix('public')->group(function () {
 // =========================================================================
 Route::middleware('auth:sanctum')->group(function () {
 
+Route::get('/customer/pesanan/riwayat', [App\Http\Controllers\Api\Mobile\PesananController::class, 'riwayat']);
+
 // Rute Pencarian Kontak Mobile
 Route::get('/customer/kontak', [KontakController::class, 'index']);
 
