@@ -290,4 +290,22 @@ class ScanSpxController extends Controller
                              ->latest()
                              ->get();
     }
+
+    /**
+     * Mengambil daftar Riwayat Surat Jalan beserta resi di dalamnya.
+     */
+    public function historySuratJalan()
+    {
+        // Ambil data surat jalan milik user beserta relasi paket yang di-scan
+        // (Pastikan di model SuratJalan.php Mas Amal memiliki fungsi relasi 'scannedPackages' atau 'scans')
+        $history = SuratJalan::with('scannedPackages')
+                             ->where('user_id', Auth::user()->id_pengguna)
+                             ->latest()
+                             ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $history
+        ]);
+    }
 }

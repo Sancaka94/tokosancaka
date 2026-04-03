@@ -72,6 +72,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/scan-spx/{resi}', [ScanSpxController::class, 'destroy']); // Hapus resi
 
         Route::post('/suratjalan/create', [ScanSpxController::class, 'createSuratJalan']); // Cetak SJ
+
+        Route::get('/suratjalan/history', [ScanSpxController::class, 'historySuratJalan']);
+
         // ==========================================
 
         // Manajemen Pengiriman (Kirim Satuan & Massal/Koli)
