@@ -34,7 +34,7 @@ class KontakController extends Controller
         // saya MATIKAN (comment) filter id_Pengguna ini agar pencarian bisa memunculkan semua kontak.
         // Jika nanti database Bapak sudah rapi (ada id_Pengguna-nya), hapus tanda '//' di bawah ini:
 
-        $query->where('id_Pengguna', $user->id_pengguna);
+        // $query->where('id_Pengguna', $user->id_pengguna);
 
         // 3. Logika pencarian berdasarkan nama, no_hp, atau alamat
         if (!empty($search)) {
