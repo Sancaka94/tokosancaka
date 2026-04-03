@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Mobile\KontakController;
 use App\Http\Controllers\Api\Mobile\ScanSpxController; // <-- Tambahkan ini untuk kerapian
+use App\Http\Controllers\Api\Mobile\OngkirController; // 1. Pastikan Import ini ada
 
 /*
 |--------------------------------------------------------------------------
@@ -24,6 +25,11 @@ Route::prefix('public')->group(function () {
     // Tracking & Ekspedisi
     Route::get('/tracking/{resi}', [\App\Http\Controllers\Api\Mobile\TrackingController::class, 'track']);
     Route::post('/cek-ongkir', [\App\Http\Controllers\Api\Mobile\OngkirController::class, 'checkCost']);
+
+    // --- UBAH/PASTIKAN DUA BARIS INI MENGARAH KE ONGKIRCONTROLLER ---
+    Route::post('/cek-ongkir', [OngkirController::class, 'checkCost']);
+    Route::get('/search-address', [OngkirController::class, 'searchAddress']);
+    // ----------------------------------------------------------------
 
     // KiriminAja & Helper Alamat
     Route::get('/search-address', [\App\Http\Controllers\Api\Mobile\AddressController::class, 'search']);
