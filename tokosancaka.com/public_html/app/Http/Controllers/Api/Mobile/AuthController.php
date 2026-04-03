@@ -21,7 +21,7 @@ class AuthController extends Controller
                     ->orWhere('no_wa', $request->login)
                     ->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !Hash::check($request->password, $user->password_hash)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Kredensial tidak valid.',
