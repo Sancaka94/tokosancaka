@@ -48,7 +48,7 @@ class ApiTopUpController extends Controller
                 'group' => 'Payment Gateway',
                 'code' => 'DOKU_JOKUL', // Kode ini akan dibaca oleh fungsi store() Mas Amal
                 'name' => 'DOKU Payment Gateway',
-                'icon_url' => 'https://v2.doku.com/wp-content/uploads/2020/06/Logo-DOKU-2020-01.png'
+                'icon_url' => 'https://logowik.com/doku-logo-vector-svg-pdf-ai-eps-cdr-free-download-18195.html'
             ]
         ];
 
@@ -58,7 +58,7 @@ class ApiTopUpController extends Controller
                 'group' => 'E-Wallet',
                 'code' => 'DANA', // Kode ini akan dibaca oleh DANA Direct Mas Amal
                 'name' => 'DANA (Direct)',
-                'icon_url' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png'
+                'icon_url' => 'https://img.antaranews.com/cache/1200x800/2022/04/25/dana.jpg.webp'
             ]
         ];
 
@@ -68,7 +68,7 @@ class ApiTopUpController extends Controller
                 'group' => 'Transfer Manual',
                 'code' => 'TRANSFER_MANUAL',
                 'name' => 'Transfer Bank Manual (BCA/Mandiri)',
-                'icon_url' => 'https://ui-avatars.com/api/?name=TF&background=dc2626&color=fff'
+                'icon_url' => 'https://tokosancaka.com/public/assets/doku.png'
             ]
         ];
 
