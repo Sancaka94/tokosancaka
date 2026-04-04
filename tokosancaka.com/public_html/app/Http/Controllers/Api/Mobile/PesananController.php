@@ -417,7 +417,7 @@ class PesananController extends Controller
         }
     }
 
-    /**
+   /**
      * Mengambil daftar riwayat pesanan & statistik untuk Mobile
      */
     public function riwayat(Request $request)
@@ -427,7 +427,19 @@ class PesananController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
         }
 
-        $query = Pesanan::where('id_pengguna_pembeli', $user->id_pengguna);
+        // ==========================================
+        // LOGIKA BARU: CEK ADMIN (Bisa Lihat Semua)
+        // ==========================================
+        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
+
+        // Jika bukan admin, kunci query hanya untuk user tersebut
+        $query = Pesanan::query();
+        $baseQuery = Pesanan::query();
+
+        if (!$isAdmin) {
+            $query->where('id_pengguna_pembeli', $user->id_pengguna);
+            $baseQuery->where('id_pengguna_pembeli', $user->id_pengguna);
+        }
 
         // 1. Logika Pencarian
         if ($request->filled('search')) {
@@ -449,14 +461,14 @@ class PesananController extends Controller
             }
         }
 
-        // 3. Logika Statistik (Berdasarkan user yang login)
-        $baseQuery = Pesanan::where('id_pengguna_pembeli', $user->id_pengguna);
-
+        // 3. Logika Statistik (Admin liat stat semua, User liat stat sendiri)
         $stats = [
             'countSelesai' => (clone $baseQuery)->whereIn('status_pesanan', ['Selesai', 'Terkirim'])->count(),
             'countPickup'  => (clone $baseQuery)->where('status_pesanan', 'Menunggu Pickup')->count(),
             'countDikirim' => (clone $baseQuery)->where('status_pesanan', 'Diproses')->count(),
-            'countGagal'   => (clone $baseQuery)->whereIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'])->orWhere('status_pesanan', 'LIKE', '%Gagal Auto-Resi%')->count(),
+            'countGagal'   => (clone $baseQuery)->whereIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'])
+                                                ->orWhere('status_pesanan', 'LIKE', '%Gagal Auto-Resi%')
+                                                ->count(),
         ];
 
         // 4. Ambil Data dengan Paginasi
