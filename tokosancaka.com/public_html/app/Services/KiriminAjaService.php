@@ -280,17 +280,24 @@ class KiriminAjaService
             'reason' => $reason
         ];
 
-        // Memanggil private method request() yang sudah ada di class ini
-        $response = $this->request('POST', '/api/mitra/v3/cancel_shipment', $payload);
+        // Kita gunakan Http Facade langsung di sini agar bisa menangkap
+        // pesan error spesifik (seperti 404 Paket tidak ditemukan) dari API
+        $response = \Illuminate\Support\Facades\Http::withToken($this->token)
+            ->acceptJson()
+            ->post($this->baseUrl . '/api/mitra/v3/cancel_shipment', $payload);
 
-        // Jika fungsi request mengembalikan null (karena error koneksi/API)
-        if ($response === null) {
+        // Jika request tidak sukses (misal: 400 atau 404)
+        if (!$response->successful()) {
+            $errorData = $response->json();
+
+            // Tampilkan pesan error asli dari KiriminAja ke layar
             return [
                 'status' => false,
-                'text' => 'Gagal terhubung ke API KiriminAja untuk membatalkan pesanan.'
+                'text' => $errorData['text'] ?? 'Gagal membatalkan pesanan. API merespons dengan error HTTP ' . $response->status()
             ];
         }
 
-        return $response;
+        // Jika sukses 200 OK
+        return $response->json();
     }
 }
