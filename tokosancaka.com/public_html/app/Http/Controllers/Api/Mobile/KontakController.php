@@ -27,11 +27,19 @@ class KontakController extends Controller
 
         $query = Kontak::query();
 
-        // [CATATAN UNTUK BAPAK]:
-        // Jika kolom 'id_Pengguna' di database Bapak sudah terisi ID user (bukan NULL lagi),
-        // hapus tanda '//' di bawah ini agar pelanggan hanya bisa melihat kontaknya sendiri:
-        $query->where('user_id', $user->id_pengguna)
-              ->orWhere('id_Pengguna', $user->id_pengguna);
+        // ==========================================
+        // LOGIKA BARU: CEK ADMIN (Bisa Lihat Semua)
+        // ==========================================
+        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
+
+        if (!$isAdmin) {
+            // FIX BUG SQL: Harus dibungkus function($q) agar 'orWhere' tidak merusak
+            // query pencarian dan filter di bawahnya!
+            $query->where(function($q) use ($user) {
+                $q->where('user_id', $user->id_pengguna)
+                  ->orWhere('id_Pengguna', $user->id_pengguna);
+            });
+        }
 
         // A. Filter Pencarian (Search)
         $search = $request->query('search', '');
@@ -128,6 +136,19 @@ class KontakController extends Controller
                 'success' => false,
                 'message' => 'Kontak tidak ditemukan.'
             ], 404);
+        }
+
+        // ==========================================
+        // SECURITY FIX: Pastikan yang menghapus adalah pemiliknya ATAU Admin
+        // ==========================================
+        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
+        $isOwner = ($kontak->user_id == $user->id_pengguna || $kontak->id_Pengguna == $user->id_pengguna);
+
+        if (!$isAdmin && !$isOwner) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk menghapus kontak ini.'
+            ], 403);
         }
 
         try {
