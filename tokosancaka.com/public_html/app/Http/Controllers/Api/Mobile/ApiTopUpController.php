@@ -84,10 +84,15 @@ class ApiTopUpController extends Controller
         ]);
     }
 
+    // PASTIKAN BARIS INI ADA DI PALING ATAS FILE (di bawah namespace)
+// use App\Services\DokuJokulService;
+
     /**
+     * ==========================================================
      * 2. API: REQUEST TOP UP (GENERATE INVOICE & URL)
+     * ==========================================================
      */
-    public function requestTopUp(Request $request)
+    public function requestTopUp(Request $request, \App\Services\DokuJokulService $dokuJokulService)
     {
         $request->validate([
             'amount'         => 'required|numeric|min:10000',
@@ -111,7 +116,9 @@ class ApiTopUpController extends Controller
                 'reference_id'       => $invoiceNumber,
             ]);
 
-            // Jika Manual
+            // ===========================================
+            // LOGIKA 1: TRANSFER MANUAL
+            // ===========================================
             if ($request->payment_method === 'TRANSFER_MANUAL') {
                 DB::commit();
                 return response()->json([
@@ -121,7 +128,6 @@ class ApiTopUpController extends Controller
                         'reference_id' => $invoiceNumber,
                         'amount' => $amount,
                         'is_manual' => true,
-                        // Berikan detail rekening admin di sini agar bisa ditampilkan di aplikasi
                         'bank_name' => 'BCA',
                         'account_number' => '1234567890',
                         'account_name' => 'CV. Sancaka Karya Hutama'
@@ -129,58 +135,108 @@ class ApiTopUpController extends Controller
                 ]);
             }
 
-            // Jika Tripay
-            $apiKey       = config('tripay.api_key');
-            $privateKey   = config('tripay.private_key');
-            $merchantCode = config('tripay.merchant_code');
-            $mode         = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+            // ===========================================
+            // LOGIKA 2: DOKU JOKUL
+            // ===========================================
+            elseif ($request->payment_method === 'DOKU_JOKUL') {
+                Log::info('Memulai Top Up DOKU (Jokul) Mobile: ' . $invoiceNumber);
 
-            $payload = [
-                'method'         => $request->payment_method,
-                'merchant_ref'   => $invoiceNumber,
-                'amount'         => $amount,
-                'customer_name'  => $user->nama_lengkap,
-                'customer_email' => $user->email ?? 'no-email@sancaka.com',
-                'customer_phone' => $user->no_wa ?? '080000000000',
-                'order_items'    => [
-                    ['sku' => 'TOPUP', 'name' => 'Top Up Saldo', 'price' => $amount, 'quantity' => 1],
-                ],
-                'expired_time'   => time() + (1 * 60 * 60),
-                'signature'      => hash_hmac('sha256', $merchantCode.$invoiceNumber.$amount, $privateKey),
-            ];
+                $customerData = [
+                    'name'  => $user->nama_lengkap,
+                    'email' => $user->email ?? 'no-email@sancaka.com',
+                    'phone' => $user->no_wa ?? '080000000000'
+                ];
+                $lineItems = [
+                    ['name' => 'Top Up Saldo', 'price' => $amount, 'quantity' => 1]
+                ];
 
-            $baseUrl = $mode === 'production'
-                ? 'https://tripay.co.id/api/transaction/create'
-                : 'https://tripay.co.id/api-sandbox/transaction/create';
+                // URL ini cuma fallback, di mobile akan di-handle Expo Browser
+                $successRedirectUrl = config('app.url');
 
-            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->post($baseUrl, $payload);
+                $paymentUrl = $dokuJokulService->createPayment(
+                    $invoiceNumber,
+                    $amount,
+                    $customerData,
+                    $lineItems,
+                    [],
+                    $successRedirectUrl
+                );
 
-            if ($response->successful() && isset($response->json()['success']) && $response->json()['success'] === true) {
-                $tripayData = $response->json()['data'];
-                $paymentUrl = $tripayData['checkout_url'] ?? null;
+                if (empty($paymentUrl)) {
+                    throw new \Exception('Gagal membuat transaksi DOKU.');
+                }
 
                 $transaction->payment_url = $paymentUrl;
                 $transaction->save();
-
                 DB::commit();
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Transaksi berhasil dibuat.',
+                    'message' => 'Transaksi DOKU berhasil dibuat.',
                     'data' => [
                         'reference_id' => $invoiceNumber,
                         'amount' => $amount,
-                        'payment_url' => $paymentUrl, // Aplikasi mobile akan membuka URL ini di WebBrowser
+                        'payment_url' => $paymentUrl, // <--- Expo Browser akan baca ini
                         'is_manual' => false
                     ]
                 ]);
-            } else {
-                throw new \Exception('Gagal dari server Tripay: ' . ($response->json()['message'] ?? 'Unknown Error'));
+            }
+
+            // ===========================================
+            // LOGIKA 3: TRIPAY (Default)
+            // ===========================================
+            else {
+                $apiKey       = config('tripay.api_key');
+                $privateKey   = config('tripay.private_key');
+                $merchantCode = config('tripay.merchant_code');
+                $mode         = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+                $payload = [
+                    'method'         => $request->payment_method,
+                    'merchant_ref'   => $invoiceNumber,
+                    'amount'         => $amount,
+                    'customer_name'  => $user->nama_lengkap,
+                    'customer_email' => $user->email ?? 'no-email@sancaka.com',
+                    'customer_phone' => $user->no_wa ?? '080000000000',
+                    'order_items'    => [
+                        ['sku' => 'TOPUP', 'name' => 'Top Up Saldo', 'price' => $amount, 'quantity' => 1],
+                    ],
+                    'expired_time'   => time() + (1 * 60 * 60),
+                    'signature'      => hash_hmac('sha256', $merchantCode.$invoiceNumber.$amount, $privateKey),
+                ];
+
+                $baseUrl = $mode === 'production'
+                    ? 'https://tripay.co.id/api/transaction/create'
+                    : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+                $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->post($baseUrl, $payload);
+
+                if ($response->successful() && isset($response->json()['success']) && $response->json()['success'] === true) {
+                    $tripayData = $response->json()['data'];
+                    $paymentUrl = $tripayData['checkout_url'] ?? null;
+
+                    $transaction->payment_url = $paymentUrl;
+                    $transaction->save();
+                    DB::commit();
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Transaksi Tripay berhasil dibuat.',
+                        'data' => [
+                            'reference_id' => $invoiceNumber,
+                            'amount' => $amount,
+                            'payment_url' => $paymentUrl,
+                            'is_manual' => false
+                        ]
+                    ]);
+                } else {
+                    throw new \Exception('Gagal dari server Tripay: ' . ($response->json()['message'] ?? 'Unknown Error'));
+                }
             }
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('API TopUp Error: ' . $e->getMessage());
+            Log::error('API TopUp Request Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
