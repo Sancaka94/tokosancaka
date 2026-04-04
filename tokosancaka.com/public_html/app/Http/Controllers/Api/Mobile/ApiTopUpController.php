@@ -244,32 +244,65 @@ class ApiTopUpController extends Controller
         }
     }
 
-  /**
-     * ==========================================================
-     * 3. API: MENGAMBIL RIWAYAT TOP UP (FIX BACA TABEL top_ups)
-     * ==========================================================
-     */
-    public function history(Request $request)
+  public function history(Request $request)
     {
         try {
             $user = Auth::user();
+            $search = $request->query('search');
 
-            // KITA LANGSUNG TEMBAK TABEL `top_ups` MENGGUNAKAN DB QUERY BUILDER
-            // Agar persis sesuai dengan struktur database phpMyAdmin yang Mas Amal kirim
-            $topUps = DB::table('top_ups')
-                ->where('customer_id', $user->id_pengguna) // Sesuaikan jika primary key user berbeda
+            // 1. QUERY DARI TRANSACTIONS (Isi Saldo User)
+            $queryTransactions = DB::table('transactions')
+                ->select(
+                    'id',
+                    'reference_id',
+                    'amount',
+                    'status',
+                    'description',
+                    'payment_method',
+                    'created_at',
+                    DB::raw("'ISI_SALDO' as kategori_sumber") // Label pembeda
+                )
+                ->where('user_id', $user->id_pengguna)
+                ->where('type', 'topup');
+
+            if (!empty($search)) {
+                $queryTransactions->where('reference_id', 'LIKE', "%{$search}%");
+            }
+
+            // 2. QUERY DARI TOP_UPS (Pencairan Marketplace / Admin)
+            $queryTopUps = DB::table('top_ups')
+                ->select(
+                    'id',
+                    'transaction_id as reference_id',
+                    'amount',
+                    'status',
+                    'payment_method as description', // Biasanya di top_ups metodenya deskriptif
+                    'payment_method',
+                    'created_at',
+                    DB::raw("'PENCAIRAN_ADMIN' as kategori_sumber") // Label pembeda
+                )
+                ->where('customer_id', $user->id_pengguna);
+
+            if (!empty($search)) {
+                $queryTopUps->where('transaction_id', 'LIKE', "%{$search}%");
+            }
+
+            // 3. GABUNGKAN & URUTKAN TERBARU (DESC)
+            $mergedResults = $queryTransactions->unionAll($queryTopUps)
                 ->orderBy('created_at', 'desc')
-                ->paginate(15);
+                ->paginate(20);
 
-            $formattedData = collect($topUps->items())->map(function ($trx) {
+            $formattedData = collect($mergedResults->items())->map(function ($trx) {
+                // Bersihkan nama metode dari deskripsi
+                $metode = str_ireplace('Top up saldo via ', '', $trx->description);
+
                 return [
                     'id' => $trx->id,
-                    'reference_id' => $trx->transaction_id, // Di tabel namanya transaction_id
-                    'amount' => $trx->amount,
+                    'reference_id' => $trx->reference_id,
+                    'amount' => (float)$trx->amount,
                     'status' => strtolower($trx->status),
-                    // INI DIA DATANYA! (BCAVA, QRIS, marketplace_revenue, dll)
-                    'payment_method' => $trx->payment_method,
-                    'payment_url' => $trx->payment_url,
+                    'payment_method' => strtoupper($metode ?: 'Sistem'),
+                    'kategori' => $trx->kategori_sumber, // ISI_SALDO atau PENCAIRAN_ADMIN
                     'created_at' => date('d M Y, H:i', strtotime($trx->created_at)),
                 ];
             });
@@ -277,15 +310,11 @@ class ApiTopUpController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $formattedData,
-                'message' => 'Berhasil mengambil riwayat top up.'
             ]);
 
         } catch (\Exception $e) {
-            Log::error('API TopUp History Error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan pada server saat mengambil riwayat.'
-            ], 500);
+            Log::error('History Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal tarik data'], 500);
         }
     }
 }
