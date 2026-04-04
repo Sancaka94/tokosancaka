@@ -23,6 +23,17 @@ Route::post('/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, '
 Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
 Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendResetLinkApi']);
 
+// --- ENDPOINT UPDATE APLIKASI (SELF-HOSTED PLAYSTORE) ---
+Route::get('/check-update', function() {
+    return response()->json([
+        'success' => true,
+        'latest_version' => '1.0.1', // Ubah manual setiap ada rilis baru
+        'download_url'   => 'https://tokosancaka.com/storage/updates/sancaka-latest.apk',
+        'force_update'   => true,
+        'notes'          => 'Pembaruan sistem keamanan dan fitur Lupa Password via WhatsApp.'
+    ]);
+});
+
 Route::prefix('public')->group(function () {
     // Tracking & Ekspedisi
     Route::get('/tracking/{resi}', [\App\Http\Controllers\Api\Mobile\TrackingController::class, 'track']);
