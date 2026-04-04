@@ -246,7 +246,7 @@ class ApiTopUpController extends Controller
 
   /**
      * ==========================================================
-     * 3. API: MENGAMBIL RIWAYAT TOP UP (FIX BUG UNION PAGINATE)
+     * 3. API: MENGAMBIL RIWAYAT TOP UP (FIX BUG KOLOM UNION)
      * ==========================================================
      */
     public function history(Request $request)
@@ -256,14 +256,15 @@ class ApiTopUpController extends Controller
             $search = $request->query('search');
 
             // 1. QUERY DARI TRANSACTIONS
+            // (Tabel ini tidak punya payment_method, punyanya description)
             $q1 = DB::table('transactions')
                 ->select(
                     'id',
                     'reference_id',
                     'amount',
                     'status',
-                    'description',
-                    'payment_method',
+                    'description', // Diambil dari description
+                    'payment_url',
                     'created_at',
                     DB::raw("'ISI_SALDO' as kategori_sumber")
                 )
@@ -275,14 +276,15 @@ class ApiTopUpController extends Controller
             }
 
             // 2. QUERY DARI TOP_UPS
+            // (Tabel ini punya payment_method, kita samarkan jadi 'description' agar kembar dengan Q1)
             $q2 = DB::table('top_ups')
                 ->select(
                     'id',
                     'transaction_id as reference_id',
                     'amount',
                     'status',
-                    'payment_method as description',
-                    'payment_method',
+                    'payment_method as description', // KUNCI FIX: Alias disamakan
+                    'payment_url',
                     'created_at',
                     DB::raw("'PENCAIRAN_ADMIN' as kategori_sumber")
                 )
@@ -295,18 +297,17 @@ class ApiTopUpController extends Controller
             // 3. GABUNGKAN KEDUANYA (UNION)
             $unioned = $q1->unionAll($q2);
 
-            // =======================================================
-            // KUNCI FIX BUG: Bungkus Query Union ke dalam Subquery!
-            // =======================================================
+            // 4. BUNGKUS KE SUBQUERY AGAR BISA DI-PAGINATE
             $results = DB::table(DB::raw("({$unioned->toSql()}) as combined_table"))
-                ->mergeBindings($unioned) // Wajib membawa binding parameternya
+                ->mergeBindings($unioned)
                 ->orderBy('created_at', 'desc')
                 ->paginate(20);
 
-            // 4. FORMAT DATA
+            // 5. FORMAT DATA SEBELUM DIKIRIM KE HP
             $formattedData = collect($results->items())->map(function ($trx) {
-                // Antisipasi jika deskripsi null
+                // Tarik nama metode dari 'description' yang sudah kita seragamkan tadi
                 $deskripsi = $trx->description ?? '';
+                // Bersihkan tulisan bawaan
                 $metode = str_ireplace('Top up saldo via ', '', $deskripsi);
 
                 return [
@@ -315,6 +316,7 @@ class ApiTopUpController extends Controller
                     'amount' => (float)$trx->amount,
                     'status' => strtolower($trx->status),
                     'payment_method' => strtoupper($metode ?: 'SISTEM'),
+                    'payment_url' => $trx->payment_url,
                     'kategori' => $trx->kategori_sumber,
                     'created_at' => date('d M Y, H:i', strtotime($trx->created_at)),
                 ];
@@ -327,7 +329,6 @@ class ApiTopUpController extends Controller
 
         } catch (\Exception $e) {
             Log::error('History Error: ' . $e->getMessage());
-            // Berikan respon error berbentuk JSON, agar HP tidak crash
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
