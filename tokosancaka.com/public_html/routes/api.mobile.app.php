@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Mobile\KontakController;
 use App\Http\Controllers\Api\Mobile\ScanSpxController; // <-- Tambahkan ini untuk kerapian
 use App\Http\Controllers\Api\Mobile\OngkirController; // 1. Pastikan Import ini ada
+use App\Http\Controllers\Api\Mobile\CustomerForgotPasswordController; // <-- TAMBAHAN UNTUK FORGOT PASSWORD
 
 /*
 |--------------------------------------------------------------------------
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\Mobile\OngkirController; // 1. Pastikan Import ini 
 
 Route::post('/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'login']);
 Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
+Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendResetLinkApi']);
 
 Route::prefix('public')->group(function () {
     // Tracking & Ekspedisi
