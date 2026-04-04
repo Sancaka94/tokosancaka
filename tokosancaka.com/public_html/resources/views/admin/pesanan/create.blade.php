@@ -318,6 +318,9 @@
                 {{-- Opsi Potong Saldo khusus Admin --}}
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="w-8 h-8 mr-4">Potong Saldo</li>
 
+                {{-- Opsi Cash khusus Admin --}}
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Cash" data-label="Cash (Tanpa Saldo)"><img src="https://cdn-icons-png.flaticon.com/512/2489/2489756.png" class="w-8 h-8 mr-4">Cash (Tanpa Saldo)</li>
+
             {{-- Pembatas Antara Saldo dan COD --}}
             <li class="bg-red-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Bayar Ditempat</li>
 
@@ -907,6 +910,26 @@ applyStrictInsurance(true);
     manualOptions.forEach(li => {
         li.addEventListener('click', () => selectPayment(li));
     });
+
+    // --- 4. AUTO FILL ALAMAT PENGIRIM SAAT HALAMAN DIBUKA ---
+    setTimeout(() => {
+        const defaultSearchInput = document.getElementById('sender_address_search');
+        const defaultAddressInput = document.getElementById('sender_address');
+
+        if (defaultSearchInput && defaultAddressInput) {
+            // 1. Isi Alamat Lengkap
+            defaultAddressInput.value = 'JL.DR.WAHIDIN NO.18A RT.22 RW.05';
+
+            // 2. Isi Pencarian (Kodepos)
+            defaultSearchInput.value = '63211';
+
+            // 3. Trigger event 'input' agar sistem otomatis melakukan pencarian API
+            defaultSearchInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+            // Opsional: Jalankan validasi tombol
+            if (typeof runValidityChecks === "function") runValidityChecks();
+        }
+    }, 500); // Delay 500ms agar memastikan semua event listener pencarian sudah siap
 
 });
 </script>

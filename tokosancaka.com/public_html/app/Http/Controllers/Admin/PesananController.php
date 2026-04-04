@@ -220,7 +220,8 @@ class PesananController extends Controller
                 $customer->decrement('saldo', $total_paid_ongkir);
                 $pesanan->customer_id = $customer->id_pengguna;
             }
-            elseif (in_array($validatedData['payment_method'], ['COD', 'CODBARANG'])) {
+            elseif (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'Cash'])) {
+                 // Ini adalah logika COD & Cash Admin, biarkan kosong agar tidak lari ke Tripay/Doku
                  // Ini adalah logika COD, biarkan kosong
                  // Akan ditangani oleh Langkah 6
             }
@@ -302,8 +303,8 @@ class PesananController extends Controller
             // ======================================================
 
 
-            // 6. Proses KiriminAja HANYA jika COD/Saldo
-            if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'Potong Saldo'])) {
+            // 6. Proses KiriminAja HANYA jika COD/Saldo/Cash
+            if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'Potong Saldo', 'Cash'])) {
 
                 // --- MULAI BLOK YANG HILANG ---
 
@@ -1779,6 +1780,8 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
             $statusBayar = "⏳ Bayar di Tempat (COD)";
         } elseif ($pesanan->payment_method === 'Potong Saldo') {
             $statusBayar = "✅ Lunas via Saldo";
+        } elseif ($pesanan->payment_method === 'Cash') {
+            $statusBayar = "✅ Lunas (Cash / Tanpa Saldo)";
         } elseif ($pesanan->status_pesanan === 'PAID' || in_array($pesanan->status, ['Menunggu Pickup', 'Diproses', 'Terkirim', 'Pembayaran Lunas (Gagal Auto-Resi)', 'Pembayaran Lunas (Error Kirim API)'])) {
             $statusBayar = "✅ Lunas";
         } elseif (in_array($pesanan->status, ['Gagal Bayar', 'Kadaluarsa'])) {
