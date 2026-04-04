@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Mobile\KontakController;
 use App\Http\Controllers\Api\Mobile\ScanSpxController; // <-- Tambahkan ini untuk kerapian
 use App\Http\Controllers\Api\Mobile\OngkirController; // 1. Pastikan Import ini ada
 use App\Http\Controllers\Api\Mobile\CustomerForgotPasswordController; // <-- TAMBAHAN UNTUK FORGOT PASSWORD
+use App\Http\Controllers\Api\Mobile\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -63,6 +64,9 @@ Route::get('/suratjalan/download/{kode_surat_jalan}', [ScanSpxController::class,
 // 2. PROTECTED ROUTES (WAJIB BAWA TOKEN DARI HP - SANCTUM)
 // =========================================================================
 Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::post('/profile/update', [ProfileController::class, 'update']);
 
     // ==========================================
     // RUTE MANAJEMEN KONTAK MOBILE
