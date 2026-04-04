@@ -459,10 +459,10 @@
                                 };
                                 if (Str::contains($statusText, 'Gagal Auto-Resi')) $statusText = 'Gagal Resi';
                             @endphp
-                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $bgClass }}">
-                                {{ $statusText }}
-                            </span>
-                        </td>
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded whitespace-nowrap {{ $bgClass }}">
+                                    {{ $statusText }}
+                                </span>
+                            </td>
 
                         {{-- 7. AKSI --}}
                         <td class="hidden md:table-cell px-4 py-4 align-middle whitespace-nowrap text-sm font-medium sticky-col bg-gray-50 md:bg-white border-t md:border-none toggle-target-{{$index}}">
