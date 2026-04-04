@@ -48,7 +48,7 @@ class ApiTopUpController extends Controller
                 'group' => 'Payment Gateway',
                 'code' => 'DOKU_JOKUL', // Kode ini akan dibaca oleh fungsi store() Mas Amal
                 'name' => 'DOKU Payment Gateway',
-                'icon_url' => 'https://logowik.com/doku-logo-vector-svg-pdf-ai-eps-cdr-free-download-18195.html'
+                'icon_url' => 'https://dashboard.doku.com/bo/assets/images/logodoku.png'
             ]
         ];
 
