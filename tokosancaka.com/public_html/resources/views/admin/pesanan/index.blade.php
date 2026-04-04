@@ -498,7 +498,7 @@
                                 </form>
 
                                 {{-- Cancel Order Trigger Button --}}
-                                @if(in_array($order->status_pesanan, ['Menunggu Pickup', 'Pesanan Dibuat']) && !empty($order->resi) && !Str::startsWith($order->resi, 'REF-'))
+                                @if(in_array($order->status_pesanan, ['Menunggu Pickup', 'Pesanan Dibuat']) && !empty($order->resi) && !Str::startsWith($order->resi, 'REF-') && !Str::contains($order->resi, 'MOCK'))
                                     <button type="button" onclick="openModal('cancelModal_{{ $index }}')" class="text-gray-500 hover:text-yellow-500 transform hover:scale-110 transition" title="Batalkan via API">
                                         <i class="fas fa-times-circle fa-lg"></i>
                                     </button>
@@ -530,8 +530,9 @@
     {{-- KUMPULAN MODAL CANCEL (DITARUH DI LUAR TABEL AGAR BISA DIKLIK NORMAL)   --}}
     {{-- ======================================================================= --}}
     @foreach ($orders as $index => $order)
-        @if(in_array($order->status_pesanan, ['Menunggu Pickup', 'Pesanan Dibuat']) && !empty($order->resi))
-        <div id="cancelModal_{{ $index }}" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-[9999] hidden flex items-center justify-center">
+    {{-- MODAL CANCEL ORDER (DIPINDAH KE DALAM TD AGAR HTML VALID) --}}
+        @if(in_array($order->status_pesanan, ['Menunggu Pickup', 'Pesanan Dibuat']) && !empty($order->resi) && !Str::startsWith($order->resi, 'REF-') && !Str::contains($order->resi, 'MOCK'))
+        <div id="cancelModal_{{ $index }}" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-[9999] hidden flex items-center justify-center" style="margin: 0; white-space: normal;">
             <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
                 <div class="p-4 border-b flex justify-between items-center bg-red-50">
                     <h5 class="text-lg font-semibold text-red-700"><i class="fas fa-exclamation-triangle mr-2"></i>Batalkan Pesanan</h5>
