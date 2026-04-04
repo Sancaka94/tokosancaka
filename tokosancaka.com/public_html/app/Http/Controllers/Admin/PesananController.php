@@ -573,6 +573,59 @@ class PesananController extends Controller
         return redirect()->route('admin.pesanan.index')->with('success', 'Pesanan ' . $invoice . ' berhasil dihapus.');
     }
 
+    /**
+     * =========================================================================
+     * FUNGSI CANCEL ORDER API KIRIMINAJA
+     * =========================================================================
+     */
+    public function cancelOrder(Request $request, $resi, KiriminAjaService $kirimaja)
+    {
+        // Validasi Alasan Batal (Sesuai dokumentasi: min 5, max 200 karakter)
+        $request->validate([
+            'reason' => 'required|string|min:5|max:200'
+        ]);
+
+        $pesanan = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->firstOrFail();
+
+        // 1. Pastikan pesanan belum diproses jauh (Hanya yang Menunggu Pickup / Dibuat)
+        $allowedStatuses = ['Menunggu Pickup', 'Pesanan Dibuat'];
+        if (!in_array($pesanan->status_pesanan, $allowedStatuses)) {
+            return redirect()->back()->with('error', 'Hanya pesanan yang Menunggu Pickup yang bisa dibatalkan.');
+        }
+
+        // 2. Pastikan Resi / AWB valid (Bukan REF- / kode internal)
+        $awb = $pesanan->resi;
+        if (empty($awb) || Str::startsWith($awb, 'REF-')) {
+             return redirect()->back()->with('error', 'Nomor AWB belum tersedia untuk dibatalkan di API.');
+        }
+
+        try {
+            // 3. Tembak API
+            Log::info("Meminta pembatalan pesanan $awb ke KiriminAja. Alasan: " . $request->input('reason'));
+            $response = $kirimaja->cancelOrder($awb, $request->input('reason'));
+
+            // 4. Handle Response
+            if (isset($response['status']) && $response['status'] === true) {
+
+                // Berhasil diproses (Bisa instan atau antre 48 jam)
+                $pesanan->status = 'Batal';
+                $pesanan->status_pesanan = 'Batal';
+                $pesanan->save();
+
+                // Opsional: Jika ada logika refund saldo pelanggan, tambahkan di sini.
+
+                return redirect()->back()->with('success', 'Berhasil: ' . ($response['text'] ?? 'Pesanan berhasil dibatalkan dari sistem KiriminAja.'));
+            } else {
+                Log::error("Gagal batal API KiriminAja: ", $response);
+                return redirect()->back()->with('error', 'Gagal membatalkan di API: ' . ($response['text'] ?? 'Terjadi kesalahan tidak diketahui.'));
+            }
+
+        } catch (Exception $e) {
+            Log::error("Cancel Order Exception: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi error sistem saat membatalkan pesanan.');
+        }
+    }
+
     public function updateStatus(Request $request, $resi)
     {
         $request->validate(['status' => 'required|string|in:Terkirim,Batal,Diproses,Menunggu Pickup, Kadaluarsa, Gagal Bayar, Selesai']); // Tambahkan status lain jika perlu
