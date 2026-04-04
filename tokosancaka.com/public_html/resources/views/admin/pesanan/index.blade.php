@@ -524,7 +524,7 @@
 
                                 {{-- Cancel Order Trigger Button --}}
                                 @if(in_array($order->status_pesanan, ['Menunggu Pickup', 'Pesanan Dibuat']) && !empty($order->resi) && !Str::startsWith($order->resi, 'REF-') && !Str::contains($order->resi, 'MOCK'))
-                                    <button type="button" onclick="openModal('cancelModal_{{ $index }}')" class="text-gray-500 hover:text-yellow-500 transform hover:scale-110 transition" title="Batalkan via API">
+                                    <button type="button" onclick="openModal('cancelModal_{{ $index }}')" class="text-gray-500 hover:text-yellow-500 transform hover:scale-110 transition cursor-pointer" style="position: relative; z-index: 50;" title="Batalkan via API">
                                         <i class="fas fa-times-circle fa-lg"></i>
                                     </button>
                                 @endif
@@ -552,26 +552,34 @@
     </div>
 
     {{-- ======================================================================= --}}
-    {{-- KUMPULAN MODAL CANCEL (DITARUH DI LUAR TABEL AGAR BISA DIKLIK NORMAL)   --}}
+    {{-- KUMPULAN MODAL CANCEL (Z-INDEX SUPER TINGGI AGAR TEMBUS MOBILE LAYER) --}}
     {{-- ======================================================================= --}}
     @foreach ($orders as $index => $order)
-    {{-- MODAL CANCEL ORDER (DIPINDAH KE DALAM TD AGAR HTML VALID) --}}
         @if(in_array($order->status_pesanan, ['Menunggu Pickup', 'Pesanan Dibuat']) && !empty($order->resi) && !Str::startsWith($order->resi, 'REF-') && !Str::contains($order->resi, 'MOCK'))
-        <div id="cancelModal_{{ $index }}" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-[9999] hidden flex items-center justify-center" style="margin: 0; white-space: normal;">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
+
+        {{-- PENGAMAN: Tambahkan pointer-events-auto dan pastikan z-index menembus semua elemen --}}
+        <div id="cancelModal_{{ $index }}" class="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 hidden pointer-events-auto" style="z-index: 999999; position: fixed;">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden relative">
+
+                {{-- Header --}}
                 <div class="p-4 border-b flex justify-between items-center bg-red-50">
-                    <h5 class="text-lg font-semibold text-red-700"><i class="fas fa-exclamation-triangle mr-2"></i>Batalkan Pesanan</h5>
-                    <button type="button" onclick="closeModal('cancelModal_{{ $index }}')" class="text-gray-500 hover:text-gray-800">&times;</button>
+                    <h5 class="text-lg font-bold text-red-700"><i class="fas fa-exclamation-triangle mr-2"></i>Batalkan Pesanan</h5>
+                    <button type="button" onclick="closeModal('cancelModal_{{ $index }}')" class="text-red-400 hover:text-red-700 bg-transparent border-0 text-2xl font-bold cursor-pointer px-2">&times;</button>
                 </div>
+
+                {{-- Form --}}
                 <form action="{{ route('admin.pesanan.cancel', $order->resi) }}" method="POST">
                     @csrf
-                    <div class="p-6 whitespace-normal text-left">
-                        <p class="text-sm text-gray-600 mb-4">Anda akan membatalkan resi <strong>{{ $order->resi }}</strong> di sistem KiriminAja. Masukkan alasan pembatalan (minimal 5 karakter).</p>
-                        <textarea name="reason" rows="3" class="w-full border border-gray-300 rounded p-2 focus:ring-red-500 focus:border-red-500 text-sm" required minlength="5" maxlength="200" placeholder="Misal: Kesalahan input data, user minta batal, dll."></textarea>
+                    <div class="p-6 whitespace-normal text-left bg-white">
+                        <p class="text-sm text-gray-700 mb-4 font-medium">Anda akan membatalkan resi <strong class="text-red-600 bg-red-50 px-2 py-1 rounded">{{ $order->resi }}</strong> di sistem KiriminAja.</p>
+                        <label class="block text-xs font-bold text-gray-600 mb-2 uppercase">Alasan Pembatalan</label>
+                        <textarea name="reason" rows="3" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm shadow-inner" required minlength="5" maxlength="200" placeholder="Ketik alasan pembatalan di sini (min. 5 karakter)..."></textarea>
                     </div>
-                    <div class="p-4 border-t flex justify-end gap-2 bg-gray-50">
-                        <button type="button" onclick="closeModal('cancelModal_{{ $index }}')" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm font-medium">Tutup</button>
-                        <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium">Kirim Pembatalan</button>
+
+                    {{-- Footer/Aksi --}}
+                    <div class="p-4 border-t flex justify-end gap-3 bg-gray-50">
+                        <button type="button" onclick="closeModal('cancelModal_{{ $index }}')" class="px-5 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-bold transition-colors cursor-pointer">Tutup</button>
+                        <button type="submit" onclick="this.innerHTML='<i class=\'fas fa-spinner fa-spin mr-2\'></i>Memproses...'; this.classList.add('opacity-75','cursor-not-allowed');" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-bold shadow-md transition-colors cursor-pointer">Ya, Batalkan</button>
                     </div>
                 </form>
             </div>
