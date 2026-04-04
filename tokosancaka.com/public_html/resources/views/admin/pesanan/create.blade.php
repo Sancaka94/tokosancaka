@@ -98,8 +98,8 @@
     </div>
 
                           <div class="md:col-span-2">
-                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data pengirim ini</label>
-                          </div>
+                            <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" checked class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data pengirim ini</label>
+                        </div>
                     </div>
                 </div>
 
@@ -139,7 +139,7 @@
                             transition duration-150 ease-in-out" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
                         </div>
                           <div class="md:col-span-2">
-                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data penerima ini</label>
+                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" checked class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data penerima ini</label>
                           </div>
                     </div>
                 </div>
