@@ -244,9 +244,9 @@ class ApiTopUpController extends Controller
         }
     }
 
-    /**
+  /**
      * ==========================================================
-     * 3. API: MENGAMBIL RIWAYAT TOP UP
+     * 3. API: MENGAMBIL RIWAYAT TOP UP (FIX BACA TABEL top_ups)
      * ==========================================================
      */
     public function history(Request $request)
@@ -254,20 +254,23 @@ class ApiTopUpController extends Controller
         try {
             $user = Auth::user();
 
-            $transactions = Transaction::where('user_id', $user->id_pengguna)
-                ->where('type', 'topup')
+            // KITA LANGSUNG TEMBAK TABEL `top_ups` MENGGUNAKAN DB QUERY BUILDER
+            // Agar persis sesuai dengan struktur database phpMyAdmin yang Mas Amal kirim
+            $topUps = DB::table('top_ups')
+                ->where('customer_id', $user->id_pengguna) // Sesuaikan jika primary key user berbeda
                 ->orderBy('created_at', 'desc')
                 ->paginate(15);
 
-            $formattedData = collect($transactions->items())->map(function ($trx) {
+            $formattedData = collect($topUps->items())->map(function ($trx) {
                 return [
                     'id' => $trx->id,
-                    'reference_id' => $trx->reference_id,
+                    'reference_id' => $trx->transaction_id, // Di tabel namanya transaction_id
                     'amount' => $trx->amount,
                     'status' => strtolower($trx->status),
+                    // INI DIA DATANYA! (BCAVA, QRIS, marketplace_revenue, dll)
                     'payment_method' => $trx->payment_method,
                     'payment_url' => $trx->payment_url,
-                    'created_at' => $trx->created_at->format('d M Y, H:i'),
+                    'created_at' => date('d M Y, H:i', strtotime($trx->created_at)),
                 ];
             });
 
