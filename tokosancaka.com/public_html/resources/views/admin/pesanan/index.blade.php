@@ -372,43 +372,68 @@
                         {{-- 3. ALAMAT --}}
                         <td class="hidden md:table-cell px-4 py-4 align-top text-sm bg-gray-50 md:bg-white toggle-target-{{$index}}">
                              <span class="md:hidden block font-bold text-gray-500 text-xs mb-1 uppercase tracking-wider border-b pb-1 mt-2">📍 Alamat Pengiriman</span>
+
+                            {{-- NAMA PENGIRIM (Selalu Tampil) --}}
                             <div class="mb-2">
                                 <div class="text-xs text-gray-500">Dari:</div>
                                 <div class="font-semibold text-blue-700 space-y-1">
                                     <div class="flex items-center gap-2">
                                         <i class="fas fa-user w-4 text-center"></i> {{ $order->sender_name }}
                                     </div>
-                                    <div class="flex items-center gap-2">
-                                        <i class="fas fa-phone-alt w-4 text-center"></i> {{ $order->sender_phone }}
-                                    </div>
-                                </div>
-                                <div class="text-xs text-gray-600 leading-tight flex items-start gap-2 mt-1">
-                                    <i class="fas fa-map-marker-alt mt-1 text-red-500 w-4 text-center"></i>
-                                    <div>
-                                        {{ $order->sender_address }}<br>
-                                        {{ $order->sender_village }}, {{ $order->sender_district }}<br>
-                                        {{ $order->sender_regency }}, {{ $order->sender_province }}<br>
-                                        <span class="font-semibold">Kode Pos: {{ $order->sender_postal_code }}</span>
-                                    </div>
                                 </div>
                             </div>
+
+                            {{-- NAMA PENERIMA (Selalu Tampil) --}}
                             <div class="border-t border-dashed my-2 pt-2 md:border-none md:my-0 md:pt-0">
                                 <div class="text-xs text-gray-500 flex items-center gap-1"><i class="fas fa-arrow-right text-gray-400"></i> Ke:</div>
                                 <div class="font-semibold text-red-700 space-y-1 mt-1">
                                     <div class="flex items-center gap-2">
                                         <i class="fas fa-user w-4 text-center"></i> {{ $order->receiver_name ?? $order->nama_pembeli }}
                                     </div>
-                                    <div class="flex items-center gap-2">
-                                        <i class="fas fa-phone-alt w-4 text-center"></i> {{ $order->receiver_phone }}
+                                </div>
+                            </div>
+
+                            {{-- TOMBOL BUKA/TUTUP DETAIL --}}
+                            <button type="button" onclick="toggleAddressDetail({{$index}}, this)" class="mt-3 w-full text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 border border-gray-200 py-1.5 px-2 rounded flex items-center justify-center gap-1 transition-colors">
+                                <span>Lihat Detail Alamat</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+
+                            {{-- BLOK DETAIL ALAMAT (Tersembunyi) --}}
+                            <div id="addressDetail-{{$index}}" class="hidden mt-3 pt-3 border-t border-gray-200">
+                                {{-- Detail Pengirim Lengkap --}}
+                                <div class="mb-3">
+                                    <div class="font-semibold text-blue-700 space-y-1">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fas fa-phone-alt w-4 text-center"></i> {{ $order->sender_phone }}
+                                        </div>
+                                    </div>
+                                    <div class="text-xs text-gray-600 leading-tight flex items-start gap-2 mt-1">
+                                        <i class="fas fa-map-marker-alt mt-1 text-red-500 w-4 text-center"></i>
+                                        <div>
+                                            {{ $order->sender_address }}<br>
+                                            {{ $order->sender_village }}, {{ $order->sender_district }}<br>
+                                            {{ $order->sender_regency }}, {{ $order->sender_province }}<br>
+                                            <span class="font-semibold">Kode Pos: {{ $order->sender_postal_code }}</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="text-xs text-gray-600 leading-tight flex items-start gap-2 mt-1">
-                                    <i class="fas fa-map-marker-alt mt-1 text-red-500 w-4 text-center"></i>
-                                    <div>
-                                        {{ $order->receiver_address }}<br>
-                                        {{ $order->receiver_village }}, {{ $order->receiver_district }}<br>
-                                        {{ $order->receiver_regency }}, {{ $order->receiver_province }}<br>
-                                        <span class="font-semibold">Kode Pos: {{ $order->receiver_postal_code }}</span>
+
+                                {{-- Detail Penerima Lengkap --}}
+                                <div class="border-t border-dashed pt-3 mt-3">
+                                    <div class="font-semibold text-red-700 space-y-1">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fas fa-phone-alt w-4 text-center"></i> {{ $order->receiver_phone }}
+                                        </div>
+                                    </div>
+                                    <div class="text-xs text-gray-600 leading-tight flex items-start gap-2 mt-1">
+                                        <i class="fas fa-map-marker-alt mt-1 text-red-500 w-4 text-center"></i>
+                                        <div>
+                                            {{ $order->receiver_address }}<br>
+                                            {{ $order->receiver_village }}, {{ $order->receiver_district }}<br>
+                                            {{ $order->receiver_regency }}, {{ $order->receiver_province }}<br>
+                                            <span class="font-semibold">Kode Pos: {{ $order->receiver_postal_code }}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -628,6 +653,27 @@
                 textSpan.innerText = "Lihat Detail Lengkap";
                 btn.classList.remove('bg-red-50', 'text-red-600');
                 btn.classList.add('bg-gray-100', 'text-gray-600');
+            }
+        }
+
+        // === LOGIC READ MORE ALAMAT ===
+        function toggleAddressDetail(index, btn) {
+            const detailDiv = document.getElementById('addressDetail-' + index);
+            const icon = btn.querySelector('i');
+            const textSpan = btn.querySelector('span');
+
+            if (detailDiv.classList.contains('hidden')) {
+                // Buka detail
+                detailDiv.classList.remove('hidden');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+                textSpan.innerText = "Tutup Detail Alamat";
+            } else {
+                // Tutup detail
+                detailDiv.classList.add('hidden');
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+                textSpan.innerText = "Lihat Detail Alamat";
             }
         }
 
