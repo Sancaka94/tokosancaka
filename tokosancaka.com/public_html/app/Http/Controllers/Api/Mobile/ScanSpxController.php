@@ -291,17 +291,22 @@ class ScanSpxController extends Controller
                              ->get();
     }
 
-    /**
+   /**
      * Mengambil daftar Riwayat Surat Jalan beserta resi di dalamnya.
      */
     public function historySuratJalan()
     {
-        // Ambil data surat jalan milik user beserta relasi paket yang di-scan
-        // (Pastikan di model SuratJalan.php Mas Amal memiliki fungsi relasi 'scannedPackages' atau 'scans')
-        $history = SuratJalan::with('scannedPackages')
-                             ->where('user_id', Auth::user()->id_pengguna)
-                             ->latest()
-                             ->get();
+        // 1. Ambil data surat jalan milik user tanpa relasi 'with()' agar tidak error
+        $suratJalans = SuratJalan::where('user_id', Auth::user()->id_pengguna)
+                                 ->latest()
+                                 ->get();
+
+        // 2. Kita jahit/gabungkan data resinya secara manual
+        $history = $suratJalans->map(function ($sj) {
+            // Inject properti 'scanned_packages' agar React Native bisa membacanya di dalam Modal
+            $sj->scanned_packages = ScannedPackage::where('surat_jalan_id', $sj->id)->get();
+            return $sj;
+        });
 
         return response()->json([
             'success' => true,
