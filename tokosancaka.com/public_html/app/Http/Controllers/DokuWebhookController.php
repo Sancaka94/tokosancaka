@@ -448,16 +448,24 @@ class DokuWebhookController extends Controller
                     }
                 }
 
-                // -------------------------------------------------------------
-                // A.4B DELEGASI KE CONTROLLER LAIN (TOPUP, INV, CHECKOUT)
+               // -------------------------------------------------------------
+                // A.4B DELEGASI KE CONTROLLER LAIN (TOPUP, INV, CHECKOUT, SCK)
                 // -------------------------------------------------------------
                 else {
                     if (Str::startsWith($orderId, 'TOPUP-')) {
                         return App::make(\App\Http\Controllers\Customer\TopUpController::class)->handleDokuCallback($data);
-                    } else if (Str::startsWith($orderId, 'INV-')) {
+                    }
+                    else if (Str::startsWith($orderId, 'INV-')) {
                         return App::make(\App\Http\Controllers\CustomerOrderController::class)->handleDokuCallback($data);
-                    } else if (Str::startsWith($orderId, 'SCK-') || Str::startsWith($orderId, 'CVSANCAK-') || Str::startsWith($orderId, 'ORD-')) {
+                    }
+                    else if (Str::startsWith($orderId, 'CVSANCAK-') || Str::startsWith($orderId, 'ORD-')) {
                         return App::make(\App\Http\Controllers\CheckoutController::class)->handleDokuCallback($data);
+                    }
+                    // 👇 INI YANG HILANG! LOGIKA UNTUK PESANAN MOBILE (SCK-) 👇
+                    else if (Str::startsWith($orderId, 'SCK-')) {
+                        Log::info("🛍️ LOG TRX (SCK-): Webhook DOKU Masuk untuk Order: $orderId");
+                        // Teruskan data Webhook ke AdminPesananController agar dicarikan Resi KiriminAja
+                        return App::make(\App\Http\Controllers\Admin\PesananController::class)->handleDokuCallback($data);
                     }
                 }
             } else {
