@@ -52,7 +52,7 @@
             <p class="text-sm text-gray-500 mt-1">Catatan: {{ $order->sender_note }}</p>
             @endif
         </div>
-        
+
         <div>
             <h3 class="font-semibold text-lg text-gray-700 mb-3">Penerima</h3>
             {{-- Menggunakan kolom baru dan fallback ke kolom lama jika ada --}}
@@ -88,13 +88,13 @@
     <div class="mt-8 border-t pt-6">
         <h3 class="font-semibold text-lg text-gray-700 mb-3">Rincian Biaya</h3>
         <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            
+
             {{-- Menggunakan 'item_price' dan fallback ke 'total_harga_barang' --}}
             <div><dt class="text-gray-500">Harga Barang</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($order->item_price ?? $order->total_harga_barang ?? 0) }}</dd></div>
-            
+
             {{-- Menggunakan 'shipping_cost' --}}
             <div><dt class="text-gray-500">Ongkos Kirim</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($order->shipping_cost ?? 0) }}</dd></div>
-            
+
             {{-- Menggunakan 'insurance_cost' --}}
             @if($order->insurance_cost > 0)
                 <div><dt class="text-gray-500">Biaya Asuransi</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($order->insurance_cost) }}</dd></div>
@@ -104,7 +104,7 @@
             @if($order->cod_fee > 0)
                     <div><dt class="text-gray-500">Biaya COD</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($order->cod_fee) }}</dd></div>
             @endif
-            
+
             <div class="col-span-2 border-t mt-2 pt-2"></div>
             <div><dt class="text-gray-500 font-bold">Total</dt><dd class="text-gray-800 font-bold text-base">Rp {{ number_format($order->price) }}</dd></div>
         </dl>
@@ -120,23 +120,67 @@
     </div>
     @endif
 
-    <div class="mt-8 text-center border-t pt-6">
+    <div class="mt-8 text-center border-t pt-6 flex flex-wrap justify-center gap-3">
         <a href="{{ route('admin.pesanan.index') }}" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300">
             Kembali ke Data Pesanan
         </a>
-        
-        {{-- Perbaikan: Tombol Cetak Resi --}}
+
+        {{-- Tombol Cetak Resi --}}
         @if(!empty($order->resi))
             <a href="{{ route('admin.pesanan.cetak_thermal', $order->resi) }}" target="_blank" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
                 Cetak Resi Thermal
             </a>
         @else
-            <a href="#" class="bg-gray-400 text-white px-6 py-2 rounded-lg cursor-not-allowed" aria-disabled="true" 
-               onclick="alert('Resi belum tersedia. Silakan refresh halaman ini dalam beberapa detik.'); return false;">
+            <a href="#" class="bg-gray-400 text-white px-6 py-2 rounded-lg cursor-not-allowed" aria-disabled="true"
+                onclick="alert('Resi belum tersedia. Silakan refresh halaman ini dalam beberapa detik.'); return false;">
                 Cetak Resi (Menunggu Resi)
             </a>
         @endif
+
+        {{-- TAMBAHAN: Tombol Cancel Order (Muncul sebelum dikirim) --}}
+        @if(in_array($order->status_pesanan, ['Menunggu Pickup', 'Pesanan Dibuat', 'Diproses']) && !empty($order->resi) && !Str::startsWith($order->resi, 'REF-') && !Str::contains($order->resi, 'MOCK'))
+            <button type="button" onclick="openModal('cancelModal')" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700">
+                Batalkan Pesanan
+            </button>
+        @endif
     </div>
+
+    {{-- MODAL CANCEL ORDER --}}
+    @if(in_array($order->status_pesanan, ['Menunggu Pickup', 'Pesanan Dibuat', 'Diproses']) && !empty($order->resi) && !Str::startsWith($order->resi, 'REF-') && !Str::contains($order->resi, 'MOCK'))
+    <div id="cancelModal" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-[9999] hidden flex items-center justify-center text-left">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
+            <div class="p-4 border-b flex justify-between items-center bg-red-50">
+                <h5 class="text-lg font-semibold text-red-700"><i class="fas fa-exclamation-triangle mr-2"></i>Batalkan Pesanan</h5>
+                <button type="button" onclick="closeModal('cancelModal')" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <form action="{{ route('admin.pesanan.cancel', $order->resi) }}" method="POST">
+                @csrf
+                <div class="p-6 whitespace-normal text-left">
+                    <p class="text-sm text-gray-600 mb-4">Anda akan membatalkan resi <strong>{{ $order->resi }}</strong> di sistem KiriminAja. Masukkan alasan pembatalan (minimal 5 karakter).</p>
+                    <textarea name="reason" rows="3" class="w-full border border-gray-300 rounded p-2 focus:ring-red-500 focus:border-red-500 text-sm" required minlength="5" maxlength="200" placeholder="Misal: Kesalahan input data, user minta batal, dll."></textarea>
+                </div>
+                <div class="p-4 border-t flex justify-end gap-2 bg-gray-50">
+                    <button type="button" onclick="closeModal('cancelModal')" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm font-medium">Tutup</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium">Kirim Pembatalan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
 
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    // Fungsi untuk membuka dan menutup Modal
+    function openModal(id) {
+        const el = document.getElementById(id);
+        if(el) el.classList.remove('hidden');
+    }
+    function closeModal(id) {
+        const el = document.getElementById(id);
+        if(el) el.classList.add('hidden');
+    }
+</script>
+@endpush
