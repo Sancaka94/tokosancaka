@@ -28,10 +28,10 @@ Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendR
 Route::get('/check-update', function() {
     return response()->json([
         'success' => true,
-        'latest_version' => '1.0.0', // Ubah manual setiap ada rilis baru
-        'download_url'   => 'https://tokosancaka.com/storage/updates/sancaka-latest.apk',
+        'latest_version' => '1.0.1', // Ubah manual setiap ada rilis baru
+        'download_url'   => 'https://tokosancaka.com/public/assets/app/SancakaExpress.apk',
         'force_update'   => true,
-        'notes'          => 'Pembaruan sistem keamanan dan fitur Lupa Password via WhatsApp.'
+        'notes'          => 'Fix bug dan peningkatan performa. Segera update untuk pengalaman terbaik!'
     ]);
 });
 
