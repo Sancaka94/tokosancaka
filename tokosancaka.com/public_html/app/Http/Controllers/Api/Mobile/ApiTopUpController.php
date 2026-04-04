@@ -244,14 +244,19 @@ class ApiTopUpController extends Controller
         }
     }
 
-  public function history(Request $request)
+  /**
+     * ==========================================================
+     * 3. API: MENGAMBIL RIWAYAT TOP UP (FIX BUG UNION PAGINATE)
+     * ==========================================================
+     */
+    public function history(Request $request)
     {
         try {
             $user = Auth::user();
             $search = $request->query('search');
 
-            // 1. QUERY DARI TRANSACTIONS (Isi Saldo User)
-            $queryTransactions = DB::table('transactions')
+            // 1. QUERY DARI TRANSACTIONS
+            $q1 = DB::table('transactions')
                 ->select(
                     'id',
                     'reference_id',
@@ -260,49 +265,57 @@ class ApiTopUpController extends Controller
                     'description',
                     'payment_method',
                     'created_at',
-                    DB::raw("'ISI_SALDO' as kategori_sumber") // Label pembeda
+                    DB::raw("'ISI_SALDO' as kategori_sumber")
                 )
                 ->where('user_id', $user->id_pengguna)
                 ->where('type', 'topup');
 
             if (!empty($search)) {
-                $queryTransactions->where('reference_id', 'LIKE', "%{$search}%");
+                $q1->where('reference_id', 'LIKE', "%{$search}%");
             }
 
-            // 2. QUERY DARI TOP_UPS (Pencairan Marketplace / Admin)
-            $queryTopUps = DB::table('top_ups')
+            // 2. QUERY DARI TOP_UPS
+            $q2 = DB::table('top_ups')
                 ->select(
                     'id',
                     'transaction_id as reference_id',
                     'amount',
                     'status',
-                    'payment_method as description', // Biasanya di top_ups metodenya deskriptif
+                    'payment_method as description',
                     'payment_method',
                     'created_at',
-                    DB::raw("'PENCAIRAN_ADMIN' as kategori_sumber") // Label pembeda
+                    DB::raw("'PENCAIRAN_ADMIN' as kategori_sumber")
                 )
                 ->where('customer_id', $user->id_pengguna);
 
             if (!empty($search)) {
-                $queryTopUps->where('transaction_id', 'LIKE', "%{$search}%");
+                $q2->where('transaction_id', 'LIKE', "%{$search}%");
             }
 
-            // 3. GABUNGKAN & URUTKAN TERBARU (DESC)
-            $mergedResults = $queryTransactions->unionAll($queryTopUps)
+            // 3. GABUNGKAN KEDUANYA (UNION)
+            $unioned = $q1->unionAll($q2);
+
+            // =======================================================
+            // KUNCI FIX BUG: Bungkus Query Union ke dalam Subquery!
+            // =======================================================
+            $results = DB::table(DB::raw("({$unioned->toSql()}) as combined_table"))
+                ->mergeBindings($unioned) // Wajib membawa binding parameternya
                 ->orderBy('created_at', 'desc')
                 ->paginate(20);
 
-            $formattedData = collect($mergedResults->items())->map(function ($trx) {
-                // Bersihkan nama metode dari deskripsi
-                $metode = str_ireplace('Top up saldo via ', '', $trx->description);
+            // 4. FORMAT DATA
+            $formattedData = collect($results->items())->map(function ($trx) {
+                // Antisipasi jika deskripsi null
+                $deskripsi = $trx->description ?? '';
+                $metode = str_ireplace('Top up saldo via ', '', $deskripsi);
 
                 return [
                     'id' => $trx->id,
                     'reference_id' => $trx->reference_id,
                     'amount' => (float)$trx->amount,
                     'status' => strtolower($trx->status),
-                    'payment_method' => strtoupper($metode ?: 'Sistem'),
-                    'kategori' => $trx->kategori_sumber, // ISI_SALDO atau PENCAIRAN_ADMIN
+                    'payment_method' => strtoupper($metode ?: 'SISTEM'),
+                    'kategori' => $trx->kategori_sumber,
                     'created_at' => date('d M Y, H:i', strtotime($trx->created_at)),
                 ];
             });
@@ -314,7 +327,11 @@ class ApiTopUpController extends Controller
 
         } catch (\Exception $e) {
             Log::error('History Error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Gagal tarik data'], 500);
+            // Berikan respon error berbentuk JSON, agar HP tidak crash
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 }
