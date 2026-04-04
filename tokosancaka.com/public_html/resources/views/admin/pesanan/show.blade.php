@@ -137,8 +137,20 @@
             </a>
         @endif
 
-        {{-- TAMBAHAN: Tombol Cancel Order (Muncul sebelum dikirim) --}}
-        @if(in_array($order->status_pesanan, ['Menunggu Pickup', 'Pesanan Dibuat', 'Diproses']) && !empty($order->resi) && !Str::startsWith($order->resi, 'REF-') && !Str::contains($order->resi, 'MOCK'))
+        {{-- TAMBAHAN: Tombol Cancel Order (Anti Gagal) --}}
+        @php
+            // Bersihkan spasi tersembunyi di status & resi
+            $statusBersih = trim($order->status_pesanan);
+            $resiBersih = trim($order->resi ?? '');
+
+            // Cek apakah status sesuai dan resi bukan MOCK / REF-
+            $bisaBatal = in_array($statusBersih, ['Menunggu Pickup', 'Pesanan Dibuat', 'Diproses'])
+                         && !empty($resiBersih)
+                         && !str_starts_with($resiBersih, 'REF-')
+                         && !str_contains($resiBersih, 'MOCK');
+        @endphp
+
+        @if($bisaBatal)
             <button type="button" onclick="openModal('cancelModal')" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700">
                 Batalkan Pesanan
             </button>
