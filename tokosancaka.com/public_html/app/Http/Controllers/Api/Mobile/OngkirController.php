@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Api\Mobile; // Pastikan namespace ini sesuai dengan folder Anda
+namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
-use App\Services\KiriminAjaService; // Pastikan Anda sudah membuat service ini
+use App\Services\KiriminAjaService;
 use Exception;
 use Illuminate\Support\Facades\Http;
 
@@ -58,6 +58,25 @@ class OngkirController extends Controller
         }
     }
 
+    /**
+     * [FUNGSI BARU] Menghitung Jarak dalam Kilometer (Rumus Haversine)
+     */
+    private function calculateDistance($lat1, $lon1, $lat2, $lon2)
+    {
+        $earthRadius = 6371; // Radius bumi dalam kilometer
+
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+             sin($dLon / 2) * sin($dLon / 2);
+
+        $c = 2 * asin(sqrt($a));
+        $distance = $earthRadius * $c;
+
+        return $distance; // Hasil dalam KM
+    }
 
     /**
      * Menangani pengecekan ongkos kirim (Menggabungkan Layanan Express/Cargo & Instant)
@@ -69,7 +88,6 @@ class OngkirController extends Controller
 
         // 1. Validasi Input dari Mobile App
         $validator = Validator::make($request->all(), [
-            // Fields untuk Express/Cargo
             'origin_id' => 'required',
             'origin_subdistrict_id' => 'required',
             'destination_id' => 'required',
@@ -79,10 +97,11 @@ class OngkirController extends Controller
             'width' => 'nullable|numeric|min:1',
             'height' => 'nullable|numeric|min:1',
             'item_value' => 'nullable|numeric',
-            'insurance' => 'nullable',
+
+            'courier' => 'nullable|array',
+            'ansuransi' => 'nullable|string',
             'service_type' => 'nullable|string',
 
-            // Fields untuk Instant (Geocode)
             'origin_text' => 'required|string',
             'destination_text' => 'required|string',
         ]);
@@ -97,8 +116,8 @@ class OngkirController extends Controller
             $instantServices = [];
             $expressCargoServices = [];
 
-            // Ambil nilai barang asli (Default 0 jika tidak diisi)
             $itemValue = (int)($payload['item_value'] ?? 0);
+            $isInsurance = (isset($payload['ansuransi']) && strtolower($payload['ansuransi']) === 'iya') ? 1 : 0;
 
             // =========================================================================
             // A. PANGGIL LAYANAN EXPRESS & CARGO (KiriminAja v6.1)
@@ -115,9 +134,9 @@ class OngkirController extends Controller
                     $payload['width'] ?? 1,
                     $payload['height'] ?? 1,
                     $itemValue,
-                    null,
-                    'regular', // atau 'trucking' jika cargo
-                    $request->has('insurance') ? 1 : 0
+                    $payload['courier'] ?? [],
+                    $payload['service_type'] ?? null,
+                    $isInsurance
                 );
 
                 if (isset($expressCargoResponse['status']) && $expressCargoResponse['status'] === true && isset($expressCargoResponse['results'])) {
@@ -133,9 +152,9 @@ class OngkirController extends Controller
             }
 
             // =========================================================================
-            // B. PANGGIL LAYANAN INSTANT (Membutuhkan Konversi Alamat ke Koordinat)
+            // B. PANGGIL LAYANAN INSTANT (DENGAN BATAS 40 KM)
             // =========================================================================
-            $instantItemValue = ($itemValue < 1) ? 1 : $itemValue; // Minimal 1 untuk Instant
+            $instantItemValue = ($itemValue < 1) ? 1 : $itemValue;
 
             Log::info('Mencoba Geocode Asal: ' . $payload['origin_text']);
             $originCoords = $this->geocode($payload['origin_text']);
@@ -144,32 +163,47 @@ class OngkirController extends Controller
             $destinationCoords = $this->geocode($payload['destination_text']);
 
             if ($originCoords && $destinationCoords) {
-                Log::info('Geocode BERHASIL.');
+                Log::info('Geocode BERHASIL. Menghitung Jarak...');
 
-                try {
-                    $instantResponse = $this->kiriminAjaService->getInstantPricing(
-                        $originCoords['lat'],
-                        $originCoords['lon'],
-                        $payload['origin_text'],
-                        $destinationCoords['lat'],
-                        $destinationCoords['lon'],
-                        $payload['destination_text'],
-                        $payload['weight'],
-                        $instantItemValue
-                    );
+                // FITUR BARU: Hitung jarak antara titik asal dan tujuan
+                $jarakKm = $this->calculateDistance(
+                    $originCoords['lat'], $originCoords['lon'],
+                    $destinationCoords['lat'], $destinationCoords['lon']
+                );
 
-                    if (isset($instantResponse['status']) && $instantResponse['status'] === true) {
-                        $rawInstantData = $instantResponse['result'] ?? [];
-                        // Format hasil agar siap dikonsumsi React Native
-                        $instantServices = $this->formatInstantResponse($rawInstantData);
-                        Log::info('Hasil FORMAT API Instant berhasil dibuat.');
-                    } else {
-                        Log::warning('API Instant Gagal atau Status False.', $instantResponse ?? []);
+                Log::info("Jarak Ditemukan: " . round($jarakKm, 2) . " KM");
+
+                // JIKA JARAK MAKSIMAL 40 KM, BARU PANGGIL INSTANT
+                if ($jarakKm <= 40) {
+                    Log::info('Jarak valid (<= 40 KM). Memanggil API Instant...');
+                    try {
+                        $instantResponse = $this->kiriminAjaService->getInstantPricing(
+                            $originCoords['lat'],
+                            $originCoords['lon'],
+                            $payload['origin_text'],
+                            $destinationCoords['lat'],
+                            $destinationCoords['lon'],
+                            $payload['destination_text'],
+                            $payload['weight'],
+                            $instantItemValue
+                        );
+
+                        if (isset($instantResponse['status']) && $instantResponse['status'] === true) {
+                            $rawInstantData = $instantResponse['result'] ?? [];
+                            $instantServices = $this->formatInstantResponse($rawInstantData);
+                            Log::info('Hasil FORMAT API Instant berhasil dibuat.');
+                        } else {
+                            Log::warning('API Instant Gagal atau Status False.', $instantResponse ?? []);
+                        }
+
+                    } catch (Exception $e) {
+                        Log::error('KiriminAja Instant Cost Error: ' . $e->getMessage(), $payload);
                     }
-
-                } catch (Exception $e) {
-                    Log::error('KiriminAja Instant Cost Error: ' . $e->getMessage(), $payload);
+                } else {
+                    // JIKA LEBIH DARI 40 KM, SKIP!
+                    Log::info('Jarak TERLALU JAUH (' . round($jarakKm, 2) . ' KM). Melewati pencarian kurir Instant.');
                 }
+
             } else {
                 Log::error('Geocode GAGAL, melewatkan pencarian harga instant.');
             }
@@ -202,6 +236,7 @@ class OngkirController extends Controller
             return response()->json([
                 'success' => true,
                 'final_weight' => ceil($finalWeight),
+                'jarak_km' => isset($jarakKm) ? round($jarakKm, 2) : null, // (Opsional) Kirim info jarak ke HP
                 'data' => [
                     'instant' => $instantServices,
                     'express_cargo' => $expressCargoServices
