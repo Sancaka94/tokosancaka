@@ -335,9 +335,9 @@
                             @endphp
 
                             @if($isResiReady)
-                                <div class="bg-red-200 border border-red-500 text-gray-800 font-bold mt-1 p-2 rounded flex items-center justify-between">
+                                <div class="bg-red-200 border border-red-500 text-gray-800 font-bold mt-1 p-2 rounded flex items-center justify-between whitespace-nowrap">
                                     <span>RESI: <span id="resiNumber-{{$index}}">{{ $resiValue }}</span></span>
-                                    <button onclick="copyResiNumber('resiNumber-{{$index}}')" class="text-gray-700 hover:text-gray-900 ml-2" title="Copy">
+                                    <button onclick="copyResiNumber('resiNumber-{{$index}}')" class="text-gray-700 hover:text-gray-900 ml-3" title="Copy">
                                         <i class="fas fa-copy"></i>
                                     </button>
                                 </div>
