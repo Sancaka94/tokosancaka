@@ -17,6 +17,7 @@ use App\Models\User;
 
 // --- SERVICES ---
 use App\Services\KiriminAjaService;
+use App\Services\DokuJokulService; // <--- DITAMBAHKAN
 
 class PesananController extends Controller
 {
@@ -32,19 +33,18 @@ class PesananController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. VALIDASI INPUT DARI REACT NATIVE (Diperbarui untuk menerima full_region dan expedition_name)
+            // 1. VALIDASI INPUT DARI REACT NATIVE
             $validatedData = $request->validate([
                 'sender_name'           => 'required|string|max:100',
                 'sender_phone'          => 'required|string|max:20',
                 'sender_address'        => 'required|string|min:10|max:500',
-                // Kolom-kolom wilayah lama (kita buat nullable karena tergantikan oleh full_region)
                 'sender_province'       => 'nullable|string|max:100',
                 'sender_regency'        => 'nullable|string|max:100',
                 'sender_district'       => 'nullable|string|max:100',
                 'sender_postal_code'    => 'nullable|string|max:10',
                 'sender_district_id'    => 'required|numeric',
                 'sender_subdistrict_id' => 'required|numeric',
-                'sender_full_region'    => 'nullable|string|max:255', // <-- TAMBAHAN BARU
+                'sender_full_region'    => 'nullable|string|max:255',
 
                 'receiver_name'         => 'required|string|max:100',
                 'receiver_phone'        => 'required|string|max:20',
@@ -55,7 +55,7 @@ class PesananController extends Controller
                 'receiver_postal_code'  => 'nullable|string|max:10',
                 'receiver_district_id'  => 'required|numeric',
                 'receiver_subdistrict_id'=> 'required|numeric',
-                'receiver_full_region'  => 'nullable|string|max:255', // <-- TAMBAHAN BARU
+                'receiver_full_region'  => 'nullable|string|max:255',
 
                 'item_description'      => 'required|string|max:255',
                 'item_price'            => 'required|numeric|min:100',
@@ -67,13 +67,19 @@ class PesananController extends Controller
                 'item_type'             => 'required|integer',
 
                 'service_type'          => 'required|string|in:regular,express,sameday,instant,cargo',
-                'expedition'            => 'required|string|max:255', // Kode asli kurir
-                'expedition_name'       => 'nullable|string|max:255', // <-- TAMBAHAN BARU (Nama Manusiawi)
+                'expedition'            => 'required|string|max:255',
+                'expedition_name'       => 'nullable|string|max:255',
                 'payment_method'        => 'required|string|max:50',
 
                 'save_sender'           => 'nullable',
                 'save_receiver'         => 'nullable',
+                'idempotency_key'       => 'nullable|string', // Pastikan diterima jika dikirim dari frontend
             ]);
+
+            // Cek pencegahan klik double
+            if (!empty($validatedData['idempotency_key']) && Pesanan::where('idempotency_key', $validatedData['idempotency_key'])->exists()) {
+                 throw new Exception('Pesanan ini sudah berhasil dibuat sebelumnya (Dobel Input).');
+            }
 
             $user = Auth::user();
 
@@ -98,6 +104,7 @@ class PesananController extends Controller
             $pesananData['cod_fee'] = ($cod_value > 0) ? $cod_fee : 0;
             $pesananData['id_pengguna_pembeli'] = $user->id_pengguna;
             $pesananData['customer_id'] = $user->id_pengguna;
+            $pesananData['idempotency_key'] = $validatedData['idempotency_key'] ?? null;
 
             // Pastikan data string tidak null
             $pesananData['receiver_district'] = $pesananData['receiver_district'] ?? 'Tidak Diketahui';
@@ -105,58 +112,114 @@ class PesananController extends Controller
 
             // 5. BUAT RECORD PESANAN
             $order = Pesanan::create($pesananData);
+            $paymentUrl = null;
 
-            // 6. PROSES METODE PEMBAYARAN (POTONG SALDO DARI MOBILE)
-            if ($validatedData['payment_method'] === 'Potong Saldo' || $validatedData['payment_method'] === 'Saldo') {
+            // 6. PROSES LOGIKA BERDASARKAN METODE PEMBAYARAN
+            // ==============================================================
+
+            // JIKA MENGGUNAKAN SALDO
+            if ($validatedData['payment_method'] === '#SALDO' || $validatedData['payment_method'] === 'Potong Saldo' || $validatedData['payment_method'] === 'Saldo') {
                 if ($user->saldo < $total_paid_ongkir) {
                     throw new Exception('Saldo Anda tidak mencukupi. Sisa saldo: Rp ' . number_format($user->saldo, 0, ',', '.'));
                 }
                 $user->decrement('saldo', $total_paid_ongkir);
                 Log::info("[API MOBILE] Saldo user {$user->id_pengguna} dipotong sebesar {$total_paid_ongkir}");
+
+                // Lanjut Tembak API KiriminAja Langsung Karena Sudah Dibayar
+                $kiriminResponse = $this->_createKiriminAjaOrder($validatedData, $order, $kirimaja, $cod_value, $shipping_cost, $insurance_cost);
+
+                if (($kiriminResponse['status'] ?? false) !== true) {
+                    throw new Exception($kiriminResponse['text'] ?? ($kiriminResponse['errors'][0]['text'] ?? 'Gagal membuat order di sistem ekspedisi KiriminAja.'));
+                }
+
+                $bookingId = $kiriminResponse['id'] ?? $kiriminResponse['data']['id'] ?? $kiriminResponse['payment_ref'] ?? null;
+                $awbAsli = $kiriminResponse['awb'] ?? $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+
+                $order->shipping_ref = $bookingId;
+                $order->status = 'Pesanan Dibuat';
+                $order->status_pesanan = 'Pesanan Dibuat';
+                $order->resi = !empty($awbAsli) ? $awbAsli : ($bookingId ?? 'REF-'.$order->nomor_invoice);
+
+                // Rekam Keuangan
+                try {
+                    if (method_exists(\App\Http\Controllers\Customer\PesananController::class, 'simpanKeKeuangan')) {
+                        \App\Http\Controllers\Customer\PesananController::simpanKeKeuangan($order);
+                    }
+                } catch (Exception $e) {
+                    Log::error("[API MOBILE] Gagal rekam keuangan: " . $e->getMessage());
+                }
             }
 
-            // 7. TEMBAK API KIRIMINAJA
-            $kiriminResponse = $this->_createKiriminAjaOrder($validatedData, $order, $kirimaja, $cod_value, $shipping_cost, $insurance_cost);
+            // JIKA MENGGUNAKAN COD
+            elseif (in_array($validatedData['payment_method'], ['#COD_ONGKIR', '#COD_BARANG', 'COD', 'CODBARANG'])) {
+                // Tembak API KiriminAja langsung tanpa potong saldo
+                $kiriminResponse = $this->_createKiriminAjaOrder($validatedData, $order, $kirimaja, $cod_value, $shipping_cost, $insurance_cost);
 
-            if (($kiriminResponse['status'] ?? false) !== true) {
-                $errorMessage = $kiriminResponse['text'] ?? ($kiriminResponse['errors'][0]['text'] ?? 'Gagal membuat order di sistem ekspedisi KiriminAja.');
-                throw new Exception($errorMessage);
+                if (($kiriminResponse['status'] ?? false) !== true) {
+                    throw new Exception($kiriminResponse['text'] ?? ($kiriminResponse['errors'][0]['text'] ?? 'Gagal membuat order COD di sistem ekspedisi KiriminAja.'));
+                }
+
+                $bookingId = $kiriminResponse['id'] ?? $kiriminResponse['data']['id'] ?? $kiriminResponse['payment_ref'] ?? null;
+                $awbAsli = $kiriminResponse['awb'] ?? $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+
+                $order->shipping_ref = $bookingId;
+                $order->status = 'Pesanan Dibuat';
+                $order->status_pesanan = 'Pesanan Dibuat';
+                $order->resi = !empty($awbAsli) ? $awbAsli : ($bookingId ?? 'REF-'.$order->nomor_invoice);
             }
 
-            // 8. SIMPAN RESI DAN SHIPPING REF
-            $bookingId = $kiriminResponse['id'] ?? $kiriminResponse['data']['id'] ?? $kiriminResponse['payment_ref'] ?? null;
-            $awbAsli = $kiriminResponse['awb'] ?? $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+            // JIKA MENGGUNAKAN DOKU JOKUL
+            elseif ($validatedData['payment_method'] === '#DOKU' || $validatedData['payment_method'] === 'DOKU_JOKUL') {
+                Log::info('[API MOBILE] Memulai proses DOKU (Jokul) untuk ' . $order->nomor_invoice);
+                try {
+                    $dokuService = new DokuJokulService();
 
-            $order->shipping_ref = $bookingId;
-            $order->status = 'Pesanan Dibuat';
-            $order->status_pesanan = 'Pesanan Dibuat';
-            $order->resi = !empty($awbAsli) ? $awbAsli : ($bookingId ?? 'REF-'.$order->nomor_invoice);
+                    // Kita pakai total_paid_ongkir untuk ditagihkan via DOKU
+                    $tagihanDoku = $total_paid_ongkir;
+                    $paymentUrl = $dokuService->createPayment($order->nomor_invoice, $tagihanDoku);
+
+                    if (empty($paymentUrl)) {
+                        throw new Exception('Gagal membuat transaksi pembayaran DOKU.');
+                    }
+
+                    // Simpan URL dan biarkan status "Menunggu Pembayaran"
+                    // KiriminAja JANGAN ditembak sekarang. Nanti nembaknya di DokuWebhookController (Callback)
+                    $order->payment_url = $paymentUrl;
+
+                } catch (Exception $e) {
+                    Log::error('[API MOBILE] DOKU Exception: ' . $e->getMessage());
+                    throw new Exception('Gagal menghubungi DOKU Payment Gateway.');
+                }
+            }
+
+            // JIKA MENGGUNAKAN TRIPAY / DANA DLL (Tambahkan jika butuh)
+            else {
+                // Untuk selain saldo, DOKU, dan COD, beri status menunggu (Sama seperti DOKU, nunggu callback)
+                // Jika ingin integrasikan logika tripay, buat $paymentUrl via TripayService di sini
+                $order->status = 'Menunggu Pembayaran';
+                $order->status_pesanan = 'Menunggu Pembayaran';
+            }
+
+            // ==============================================================
+
+            // 7. Simpan Harga Final
             $order->price = ($cod_value > 0) ? $cod_value : $total_paid_ongkir;
             $order->save();
 
             DB::commit();
 
-            // 9. REKAM KEUANGAN (Memanggil fungsi dari Web Controller Bapak)
-            try {
-                // Pastikan class PesananController di Customer web ada dan fungsinya static
-                if (method_exists(\App\Http\Controllers\Customer\PesananController::class, 'simpanKeKeuangan')) {
-                    \App\Http\Controllers\Customer\PesananController::simpanKeKeuangan($order);
-                }
-            } catch (Exception $e) {
-                Log::error("[API MOBILE] Gagal rekam keuangan: " . $e->getMessage());
-            }
-
-            // 10. KIRIM NOTIFIKASI WA KE ADMIN
+            // 8. KIRIM NOTIFIKASI WA KE ADMIN
             $this->_sendWhatsappNotification($order, $validatedData, $shipping_cost, (int) $order->insurance_cost, (int) $order->cod_fee, $order->price);
 
-            // 11. KEMBALIKAN RESPON SUKSES KE REACT NATIVE
+            // 9. KEMBALIKAN RESPON SUKSES KE REACT NATIVE
             return response()->json([
                 'success' => true,
-                'message' => 'Pesanan berhasil dibuat dengan Resi: ' . $order->resi,
+                'message' => 'Pesanan berhasil dibuat.',
                 'data' => [
                     'invoice' => $order->nomor_invoice,
-                    'resi' => $order->resi,
-                    'total_potongan' => $total_paid_ongkir
+                    'resi' => $order->resi ?? 'Menunggu Pembayaran',
+                    'total_potongan' => $total_paid_ongkir,
+                    'payment_url' => $paymentUrl // TSX akan menangkap ini dan membuka WebBrowser
                 ]
             ], 200);
 
@@ -218,10 +281,10 @@ class PesananController extends Controller
         }
 
         $cod_value = 0;
-        if ($validatedData['payment_method'] === 'CODBARANG') {
+        if (in_array($validatedData['payment_method'], ['#COD_BARANG', 'CODBARANG'])) {
             $cod_value = $item_price + $shipping_cost + $cod_fee;
             if ($use_insurance) $cod_value += $ansuransi_fee;
-        } elseif ($validatedData['payment_method'] === 'COD') {
+        } elseif (in_array($validatedData['payment_method'], ['#COD_ONGKIR', 'COD'])) {
             $total_paid = $shipping_cost + $cod_fee;
             if ($use_insurance) $total_paid += $ansuransi_fee;
             $cod_value = $total_paid;
@@ -321,7 +384,6 @@ class PesananController extends Controller
             $adminNumbers = ['085745808809', '08819435180'];
             $fmt = function($val) { return number_format($val, 0, ',', '.'); };
 
-            // PERBAIKAN: Gunakan label dari API jika ada, atau fallback ke data lama
             $lokasiTujuan = $data['receiver_full_region'] ?? ($data['receiver_district'] . ', ' . $data['receiver_regency']);
             $namaEkspedisi = $data['expedition_name'] ?? $data['expedition'];
 
@@ -408,5 +470,4 @@ class PesananController extends Controller
             'last_page' => $orders->lastPage()
         ]);
     }
-
 }
