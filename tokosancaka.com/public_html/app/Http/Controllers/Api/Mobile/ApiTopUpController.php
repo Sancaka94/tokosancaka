@@ -16,10 +16,13 @@ use Illuminate\Support\Facades\Cache;
 class ApiTopUpController extends Controller
 {
     /**
-     * 1. API: AMBIL DAFTAR METODE PEMBAYARAN
+     * ==========================================================
+     * 1. API: AMBIL DAFTAR METODE PEMBAYARAN (SUDAH FIX 4 METODE)
+     * ==========================================================
      */
     public function getMethods()
     {
+        // 1. AMBIL METODE TRIPAY DARI API
         $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
 
         $tripayChannels = Cache::remember('tripay_channels_' . $mode, 60 * 24, function () use ($mode) {
@@ -39,20 +42,43 @@ class ApiTopUpController extends Controller
             return [];
         });
 
-        // Tambahkan metode manual secara hardcode
-        $manualMethods = [
+        // 2. METODE DOKU JOKUL
+        $dokuMethods = [
             [
-                'group' => 'Transfer Bank Manual',
-                'code' => 'TRANSFER_MANUAL',
-                'name' => 'Transfer Bank Manual (BCA/Mandiri)',
-                'icon_url' => asset('images/bank-transfer.png') // Sesuaikan path logo Anda
+                'group' => 'Payment Gateway',
+                'code' => 'DOKU_JOKUL', // Kode ini akan dibaca oleh fungsi store() Mas Amal
+                'name' => 'DOKU Payment Gateway',
+                'icon_url' => 'https://v2.doku.com/wp-content/uploads/2020/06/Logo-DOKU-2020-01.png'
             ]
         ];
 
+        // 3. METODE DANA DIRECT
+        $danaMethods = [
+            [
+                'group' => 'E-Wallet',
+                'code' => 'DANA', // Kode ini akan dibaca oleh DANA Direct Mas Amal
+                'name' => 'DANA (Direct)',
+                'icon_url' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png'
+            ]
+        ];
+
+        // 4. METODE TRANSFER MANUAL
+        $manualMethods = [
+            [
+                'group' => 'Transfer Manual',
+                'code' => 'TRANSFER_MANUAL',
+                'name' => 'Transfer Bank Manual (BCA/Mandiri)',
+                'icon_url' => 'https://ui-avatars.com/api/?name=TF&background=dc2626&color=fff'
+            ]
+        ];
+
+        // GABUNGKAN KE-4 METODE KE DALAM JSON
         return response()->json([
             'success' => true,
             'data' => [
                 'tripay' => collect($tripayChannels)->groupBy('group'),
+                'doku'   => $dokuMethods,
+                'dana'   => $danaMethods,
                 'manual' => $manualMethods
             ]
         ]);
