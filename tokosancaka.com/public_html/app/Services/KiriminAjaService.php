@@ -105,7 +105,7 @@ class KiriminAjaService
             "vehicle" => $vehicle,
             "timezone" => "WIB"
         ];
-        
+
         $response = Http::withToken($this->token)
             ->acceptJson()
             ->post($this->baseUrl . '/api/mitra/v4/instant/pricing', $payload);
@@ -220,7 +220,7 @@ class KiriminAjaService
 
         return null; // Kembalikan null jika tidak ada jadwal
     }
-    
+
      /**
      * Melacak paket berdasarkan Nomor Resi atau Order ID
      * (Fungsi ini yang sebelumnya hilang)
@@ -234,7 +234,7 @@ class KiriminAjaService
         try {
             // Endpoint Tracking Mitra KiriminAja
             $endpoint = '/api/mitra/tracking';
-            
+
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->token,
                 'Content-Type' => 'application/json',
@@ -247,10 +247,10 @@ class KiriminAjaService
                 Log::error('KiriminAja Track Error:', ['body' => $response->body()]);
                 return ['status' => false, 'text' => 'Gagal mengambil data tracking.'];
             }
-            
+
             // Bungkus dalam format standar
             $responseData = $response->json();
-            
+
             return [
                 'status' => $responseData['status'] ?? false,
                 'text' => $responseData['text'] ?? '',
@@ -267,5 +267,30 @@ class KiriminAjaService
                 'text' => 'Gagal koneksi ke server tracking.'
             ];
         }
+    }
+
+    /**
+     * Membatalkan pesanan (Cancel Order Express)
+     * Hanya bisa dilakukan jika paket belum di-pickup.
+     */
+    public function cancelOrder(string $awb, string $reason): array
+    {
+        $payload = [
+            'awb' => $awb,
+            'reason' => $reason
+        ];
+
+        // Memanggil private method request() yang sudah ada di class ini
+        $response = $this->request('POST', '/api/mitra/v3/cancel_shipment', $payload);
+
+        // Jika fungsi request mengembalikan null (karena error koneksi/API)
+        if ($response === null) {
+            return [
+                'status' => false,
+                'text' => 'Gagal terhubung ke API KiriminAja untuk membatalkan pesanan.'
+            ];
+        }
+
+        return $response;
     }
 }
