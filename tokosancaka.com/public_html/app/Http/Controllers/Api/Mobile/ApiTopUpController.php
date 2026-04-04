@@ -161,4 +161,46 @@ class ApiTopUpController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * ==========================================================
+     * 3. API: MENGAMBIL RIWAYAT TOP UP
+     * ==========================================================
+     */
+    public function history(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            $transactions = Transaction::where('user_id', $user->id_pengguna)
+                ->where('type', 'topup')
+                ->orderBy('created_at', 'desc')
+                ->paginate(15);
+
+            $formattedData = collect($transactions->items())->map(function ($trx) {
+                return [
+                    'id' => $trx->id,
+                    'reference_id' => $trx->reference_id,
+                    'amount' => $trx->amount,
+                    'status' => strtolower($trx->status),
+                    'payment_method' => $trx->payment_method,
+                    'payment_url' => $trx->payment_url,
+                    'created_at' => $trx->created_at->format('d M Y, H:i'),
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $formattedData,
+                'message' => 'Berhasil mengambil riwayat top up.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('API TopUp History Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan pada server saat mengambil riwayat.'
+            ], 500);
+        }
+    }
 }
