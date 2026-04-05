@@ -64,7 +64,6 @@ class PpobMobileController extends Controller
                           ->select('code', 'operator', 'description as name', 'description', 'price', 'icon_url', 'type')
                           ->get();
 
-
         if ($products->count() > 0) {
             return response()->json([
                 'success' => true,
