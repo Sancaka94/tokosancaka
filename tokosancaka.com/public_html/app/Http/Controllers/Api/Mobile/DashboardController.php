@@ -16,7 +16,9 @@ class DashboardController extends Controller
         $user = $request->user();
         $customerId = $user->id_pengguna ?? $user->id;
         $saldo = $user->saldo ?? 0;
-        $saldoIak = $user->balance_iak ?? 0; // <--- INI TAMBAHANNYA COK
+        $saldoIak = \Illuminate\Support\Facades\DB::table('Pengguna')
+                        ->where('id_pengguna', $customerId)
+                        ->value('balance_iak') ?? 0;
 
         // LOGIKA CEK ADMIN (Mata Dewa)
         $isAdmin = ($customerId == 4 && strtolower($user->role) === 'admin');
