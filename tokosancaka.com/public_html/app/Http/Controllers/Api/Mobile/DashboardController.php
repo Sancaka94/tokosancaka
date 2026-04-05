@@ -72,7 +72,8 @@ class DashboardController extends Controller
         // 3. REKAPITULASI PENGELUARAN EKSPEDISI (Cache dipisah)
         $cacheKey = $isAdmin ? 'api_mobile_rekap_exp_admin_all' : 'api_mobile_rekap_exp_' . $customerId;
 
-        $rekapEkspedisi = Cache::remember($cacheKey, 600, function () use ($customerId, $isAdmin) {
+        // KODE BARU: Masukkan $filterWaktu dan $now ke dalam fungsi use()
+        $rekapEkspedisi = Cache::remember($cacheKey, 600, function () use ($customerId, $isAdmin, $filterWaktu, $now) {
             $courierMap = [
                 'jne' => ['name' => 'JNE', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
                 'tiki' => ['name' => 'TIKI', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png'],
@@ -110,6 +111,20 @@ class DashboardController extends Controller
 
             if (!$isAdmin) {
                 $ordersQuery->where('id_pengguna_pembeli', $customerId);
+            }
+
+            // ==========================================
+            // KODE BARU: FILTER WAKTU UNTUK EKSPEDISI
+            // ==========================================
+            if ($filterWaktu === 'Hari Ini') {
+                $ordersQuery->whereDate('tanggal_pesanan', $now->toDateString());
+            } elseif ($filterWaktu === 'Bulan Ini') {
+                $ordersQuery->whereYear('tanggal_pesanan', $now->year)->whereMonth('tanggal_pesanan', $now->month);
+            } elseif ($filterWaktu === 'Bulan Kemarin') {
+                $lastMonth = $now->copy()->subMonth();
+                $ordersQuery->whereYear('tanggal_pesanan', $lastMonth->year)->whereMonth('tanggal_pesanan', $lastMonth->month);
+            } elseif ($filterWaktu === 'Tahun Ini') {
+                $ordersQuery->whereYear('tanggal_pesanan', $now->year);
             }
 
             $orders = $ordersQuery->get();
