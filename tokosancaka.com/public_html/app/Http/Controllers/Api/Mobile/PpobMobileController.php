@@ -439,6 +439,21 @@ class PpobMobileController extends Controller
 
             $transactions = $query->orderBy('created_at', 'desc')->paginate(20);
 
+            // =======================================================
+            // FITUR BARU: TEMPELKAN ICON_URL KE DALAM JSON RESPONSE
+            // =======================================================
+            $prepaidCodes = $transactions->where('type', 'prabayar')->pluck('product_code')->unique();
+
+            // Ambil semua logo yang cocok dari tabel produk prabayar
+            $icons = \App\Models\IakPricelistPrepaid::whereIn('code', $prepaidCodes)->pluck('icon_url', 'code');
+
+            // Sisipkan URL logo ke masing-masing transaksi
+            $transactions->getCollection()->transform(function ($trx) use ($icons) {
+                $trx->icon_url = $trx->type == 'prabayar' ? ($icons[$trx->product_code] ?? null) : null;
+                return $trx;
+            });
+            // =======================================================
+
             return response()->json([
                 'success'  => true,
                 'data'     => $transactions,
