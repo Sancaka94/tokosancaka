@@ -22,7 +22,15 @@ class ScanSpxController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ScannedPackage::where('user_id', Auth::user()->id_pengguna);
+        $user = Auth::user();
+        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
+
+        $query = ScannedPackage::query();
+
+        // JIKA BUKAN ADMIN, KUNCI HANYA UNTUK USER TERSEBUT
+        if (!$isAdmin) {
+            $query->where('user_id', $user->id_pengguna);
+        }
 
         // Logika untuk pencarian
         if ($request->has('search')) {
@@ -85,7 +93,6 @@ class ScanSpxController extends Controller
         // 2. GUNAKAN DATABASE TRANSACTION
         try {
             DB::transaction(function () use ($customer, $resi, $biayaScan, &$package) {
-
                 // Potong Saldo
                 $customer->decrement('saldo', $biayaScan);
 
@@ -159,7 +166,6 @@ class ScanSpxController extends Controller
             'success' => true,
             'message' => 'Surat Jalan berhasil dibuat!',
             'data' => [
-                // Mengembalikan URL endpoint download PDF agar mobile bisa membuka via browser/Linking
                 'pdf_url' => url('/api/mobile/suratjalan/download/' . $kodeUnik),
                 'customer_name' => $customer->nama_lengkap,
                 'package_count' => $suratJalan->jumlah_paket,
@@ -170,56 +176,67 @@ class ScanSpxController extends Controller
 
    /**
      * 5. Mengunduh Surat Jalan dalam format PDF.
-     * Endpoint ini ditaruh di luar auth agar bisa dibuka langsung via browser HP.
      */
     public function downloadSuratJalan($kode_surat_jalan)
     {
-        // 1. Cari surat jalan HANYA berdasarkan kode uniknya (Tanpa Auth::user())
         $suratJalan = SuratJalan::where('kode_surat_jalan', $kode_surat_jalan)->firstOrFail();
-
-        // 2. Ambil daftar resi/paket yang terhubung
         $scans = ScannedPackage::where('surat_jalan_id', $suratJalan->id)->get();
-
-        // 3. Ambil data customer (Pengguna) secara manual dari database berdasarkan user_id di surat jalan
-        // (Pastikan namespace \App\Models\User sudah benar sesuai model Anda)
         $customer = \App\Models\User::where('id_pengguna', $suratJalan->user_id)->first();
 
-        // 4. Generate dan download PDF
         $pdf = Pdf::loadView('customer.scan.surat-jalan-pdf', compact('suratJalan', 'scans', 'customer'));
-
         return $pdf->download('surat-jalan-' . $kode_surat_jalan . '.pdf');
     }
 
     /**
-     * 6. Mengambil data riwayat scan untuk filter periodik.
+     * 6. Mengambil data riwayat scan untuk filter periodik (Dipakai di Kartu Dashboard).
      */
     public function getHistory(Request $request)
     {
-        $request->validate(['period' => 'required|string|in:today,7days,14days,30days,lastmonth']);
+        $user = Auth::user();
+        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
 
-        $query = ScannedPackage::where('user_id', Auth::user()->id_pengguna);
+        $query = ScannedPackage::query();
 
-        switch ($request->input('period')) {
-            case 'today':
-                $query->whereDate('created_at', Carbon::today());
-                break;
-            case '7days':
-                $query->where('created_at', '>=', Carbon::now()->subDays(7));
-                break;
-            case '14days':
-                $query->where('created_at', '>=', Carbon::now()->subDays(14));
-                break;
-            case '30days':
-                $query->where('created_at', '>=', Carbon::now()->subDays(30));
-                break;
-            case 'lastmonth':
-                $query->whereMonth('created_at', Carbon::now()->subMonth()->month);
-                break;
+        // Kunci Data Jika Bukan Admin
+        if (!$isAdmin) {
+            $query->where('user_id', $user->id_pengguna);
         }
+
+        $now = Carbon::now();
+
+        // LOGIKA FILTER DARI DASHBOARD (REACT NATIVE)
+        if ($request->has('filter_waktu')) {
+            $filterWaktu = $request->query('filter_waktu');
+
+            if ($filterWaktu === 'Hari Ini') {
+                $query->whereDate('created_at', $now->toDateString());
+            } elseif ($filterWaktu === 'Bulan Ini') {
+                $query->whereYear('created_at', $now->year)->whereMonth('created_at', $now->month);
+            } elseif ($filterWaktu === 'Bulan Kemarin') {
+                $lastMonth = $now->copy()->subMonth();
+                $query->whereYear('created_at', $lastMonth->year)->whereMonth('created_at', $lastMonth->month);
+            } elseif ($filterWaktu === 'Tahun Ini') {
+                $query->whereYear('created_at', $now->year);
+            }
+            // Jika 'Semua', abaikan penambahan kondisi where
+        }
+        // LOGIKA FALLBACK (Bawaan Website Lama)
+        elseif ($request->has('period')) {
+            switch ($request->input('period')) {
+                case 'today': $query->whereDate('created_at', Carbon::today()); break;
+                case '7days': $query->where('created_at', '>=', Carbon::now()->subDays(7)); break;
+                case '14days': $query->where('created_at', '>=', Carbon::now()->subDays(14)); break;
+                case '30days': $query->where('created_at', '>=', Carbon::now()->subDays(30)); break;
+                case 'lastmonth': $query->whereMonth('created_at', Carbon::now()->subMonth()->month); break;
+            }
+        }
+
+        // PENTING COK: Gunakan paginate() agar response punya data 'total' yang ditangkap Dashboard
+        $scans = $query->latest()->paginate(50);
 
         return response()->json([
             'success' => true,
-            'data' => $query->latest()->get()
+            'data' => $scans
         ]);
     }
 
@@ -228,12 +245,17 @@ class ScanSpxController extends Controller
      */
     public function update(Request $request, $resi_number)
     {
+        $user = Auth::user();
+        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
+
         $validated = $request->validate(['status' => 'required|string|max:255']);
 
-        $scan = ScannedPackage::where('resi_number', $resi_number)
-                              ->where('user_id', Auth::user()->id_pengguna)
-                              ->firstOrFail();
+        $query = ScannedPackage::where('resi_number', $resi_number);
+        if (!$isAdmin) {
+            $query->where('user_id', $user->id_pengguna);
+        }
 
+        $scan = $query->firstOrFail();
         $scan->update($validated);
 
         return response()->json([
@@ -248,10 +270,15 @@ class ScanSpxController extends Controller
      */
     public function destroy($resi_number)
     {
-        $scan = ScannedPackage::where('resi_number', $resi_number)
-                              ->where('user_id', Auth::user()->id_pengguna)
-                              ->firstOrFail();
+        $user = Auth::user();
+        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
 
+        $query = ScannedPackage::where('resi_number', $resi_number);
+        if (!$isAdmin) {
+            $query->where('user_id', $user->id_pengguna);
+        }
+
+        $scan = $query->firstOrFail();
         $scan->delete();
 
         return response()->json([
@@ -265,7 +292,15 @@ class ScanSpxController extends Controller
      */
     public function exportPdf()
     {
-        $scans = ScannedPackage::where('user_id', Auth::user()->id_pengguna)->latest()->get();
+        $user = Auth::user();
+        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
+
+        $query = ScannedPackage::query();
+        if (!$isAdmin) {
+            $query->where('user_id', $user->id_pengguna);
+        }
+
+        $scans = $query->latest()->get();
         $pdf = Pdf::loadView('customer.scan.pdf', compact('scans'));
         return $pdf->download('riwayat-scan.pdf');
     }
@@ -275,7 +310,9 @@ class ScanSpxController extends Controller
      */
     public function exportExcel()
     {
-        return Excel::download(new ScansExport(Auth::user()->id_pengguna), 'riwayat-scan.xlsx');
+        // Catatan: Pastikan class ScansExport Anda disesuaikan untuk menerima parameter id null jika dia admin.
+        $userId = (Auth::user()->id_pengguna == 4 && strtolower(Auth::user()->role) === 'admin') ? null : Auth::user()->id_pengguna;
+        return Excel::download(new ScansExport($userId), 'riwayat-scan.xlsx');
     }
 
     /**
@@ -296,14 +333,19 @@ class ScanSpxController extends Controller
      */
     public function historySuratJalan()
     {
-        // 1. Ambil data surat jalan milik user tanpa relasi 'with()' agar tidak error
-        $suratJalans = SuratJalan::where('user_id', Auth::user()->id_pengguna)
-                                 ->latest()
-                                 ->get();
+        $user = Auth::user();
+        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
+
+        $query = SuratJalan::query();
+        if (!$isAdmin) {
+            $query->where('user_id', $user->id_pengguna);
+        }
+
+        // 1. Ambil data surat jalan
+        $suratJalans = $query->latest()->get();
 
         // 2. Kita jahit/gabungkan data resinya secara manual
         $history = $suratJalans->map(function ($sj) {
-            // Inject properti 'scanned_packages' agar React Native bisa membacanya di dalam Modal
             $sj->scanned_packages = ScannedPackage::where('surat_jalan_id', $sj->id)->get();
             return $sj;
         });
