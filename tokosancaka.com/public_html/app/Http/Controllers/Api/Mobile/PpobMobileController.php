@@ -482,17 +482,38 @@ class PpobMobileController extends Controller
         $transaction = TransactionPpobIak::where('tr_id', $request->tr_id)->first();
         if (!$transaction) return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan']);
 
+        // =======================================================
+        // 🚨 IDEMPOTENCY 1: CEK STATUS TRANSAKSI
+        // Cegah user bayar tagihan yang sama berkali-kali!
+        // =======================================================
+        if ($transaction->status === 'SUCCESS') {
+            return response()->json(['success' => false, 'message' => 'Tagihan ini sudah berhasil dibayar sebelumnya.']);
+        }
+        if ($transaction->status === 'PROCESS') {
+            return response()->json(['success' => false, 'message' => 'Pembayaran tagihan ini sedang diproses oleh sistem, mohon tunggu.']);
+        }
+
         $user = auth()->user();
         if ($user->balance_iak < $transaction->price) {
             return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi untuk membayar tagihan ini.']);
         }
 
+        // =======================================================
+        // 🚨 IDEMPOTENCY 2: ATOMIC LOCK MEMORY (Cegah Klik Beruntun/Milidetik)
+        // Kunci proses ini selama 10 detik untuk tr_id yang sama
+        // =======================================================
         $lock = Cache::lock('pay_pasca_' . $transaction->tr_id, 10);
-        if (!$lock->get()) return response()->json(['success' => false, 'message' => 'Pembayaran sedang diproses sistem.']);
+        if (!$lock->get()) {
+            Log::warning('LOG LOG - [API Mobile] Atomic Lock Bekerja untuk tr_id: ' . $transaction->tr_id);
+            return response()->json(['success' => false, 'message' => 'Permintaan sedang diproses, jangan klik berkali-kali.']);
+        }
 
         try {
+            // Ubah status jadi PROCESS dulu biar aman kalau tiba-tiba server mati di tengah jalan
+            $transaction->update(['status' => 'PROCESS', 'message' => 'Sedang mengirim pembayaran ke pusat...']);
+
             $sign = md5($this->username . $this->apiKey . $transaction->tr_id);
-            $response = Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', [
+            $response = Http::timeout(45)->post($this->postpaidBaseUrl . '/api/v1/bill/check', [
                 'commands' => 'pay-pasca',
                 'username' => $this->username,
                 'tr_id'    => $transaction->tr_id,
@@ -506,6 +527,14 @@ class PpobMobileController extends Controller
                 // 00 = SUCCESS, 39 = PROCESS
                 $status = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
 
+                // Potong saldo HANYA JIKA statusnya SUCCESS atau PROCESS
+                // (Kalau gagal, jangan potong saldo!)
+                if (in_array($status, ['PROCESS', 'SUCCESS'])) {
+                    $user->balance_iak -= $transaction->price;
+                    $user->save();
+                    Log::info('LOG LOG - Saldo Berhasil Dipotong: Rp ' . $transaction->price);
+                }
+
                 $transaction->update([
                     'status'  => $status,
                     'sn'      => $result['data']['noref'] ?? null,
@@ -516,19 +545,18 @@ class PpobMobileController extends Controller
                     return response()->json(['success' => false, 'message' => 'Pembayaran gagal dari pusat: ' . $transaction->message]);
                 }
 
-                // Potong saldo
-                if (in_array($status, ['PROCESS', 'SUCCESS'])) {
-                    $user->balance_iak -= $transaction->price;
-                    $user->save();
-                }
-
                 return response()->json(['success' => true, 'message' => 'Pembayaran Tagihan Berhasil Diproses!']);
             }
 
-            $transaction->update(['status' => 'FAILED', 'message' => 'Invalid API Response']);
-            return response()->json(['success' => false, 'message' => 'Gagal memproses pembayaran ke IAK.']);
+            // JIKA API IAK ERROR / KEMBALIKAN HTML BUKAN JSON
+            $transaction->update(['status' => 'FAILED', 'message' => 'Invalid API Response dari Pusat']);
+            return response()->json(['success' => false, 'message' => 'Gagal memproses pembayaran ke server pusat.']);
+
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error Server: ' . $e->getMessage()]);
+            // JIKA TIMEOUT / KONEKSI PUTUS (BIARKAN STATUS TETAP 'PROCESS', JANGAN FAILED!)
+            // Nanti admin bisa cek status manual, atau webhook yang menyelesaikan. Saldo sudah aman terkunci.
+            Log::error('LOG LOG - [API Mobile] Timeout / Error Pay Pasca: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Koneksi lambat. Pembayaran sedang diproses di latar belakang. Cek riwayat berkala.']);
         } finally {
             optional($lock)->release();
         }
