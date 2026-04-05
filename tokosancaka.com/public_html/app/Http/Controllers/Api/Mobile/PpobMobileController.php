@@ -175,7 +175,7 @@ class PpobMobileController extends Controller
             $sign = md5($this->username . $this->apiKey . $refId);
 
             $transaction = TransactionPpobIak::create([
-                'user_id'         => $user->id,
+                'user_id'         => auth()->id(),
                 'ref_id'          => $refId,
                 'type'            => 'prabayar',
                 'customer_id'     => $request->customer_id,
