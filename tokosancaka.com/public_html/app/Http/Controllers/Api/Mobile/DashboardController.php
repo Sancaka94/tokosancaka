@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache; // Wajib import Cache
+use Illuminate\Support\Facades\Cache;
+use Carbon\Carbon; // <--- WAJIB TAMBAH INI COK!
 
 class DashboardController extends Controller
 {
@@ -16,12 +17,10 @@ class DashboardController extends Controller
         $customerId = $user->id_pengguna ?? $user->id;
         $saldo = $user->saldo ?? 0;
 
-        // ==========================================
-        // LOGIKA BARU: CEK ADMIN (Mata Dewa)
-        // ==========================================
+        // LOGIKA CEK ADMIN (Mata Dewa)
         $isAdmin = ($customerId == 4 && strtolower($user->role) === 'admin');
 
-        // 2. Hitung Statistik Utama (Admin lihat semua, User lihat miliknya)
+        // 2. Siapkan Base Query Statistik Utama
         $queryTotal = DB::table('Pesanan');
         $querySelesai = DB::table('Pesanan')->whereIn('status_pesanan', ['Selesai', 'Tiba di Tujuan']);
         $queryPending = DB::table('Pesanan')->whereIn('status_pesanan', ['pending', 'Menunggu Pembayaran', 'Belum Bayar', 'Diproses']);
@@ -35,17 +34,45 @@ class DashboardController extends Controller
             $queryBatal->where('id_pengguna_pembeli', $customerId);
         }
 
+        // ==========================================
+        // FITUR BARU: FILTER WAKTU DARI REACT NATIVE
+        // ==========================================
+        $filterWaktu = $request->query('filter_waktu', 'Bulan Ini'); // Defaultnya Bulan Ini
+        $now = Carbon::now();
+
+        if ($filterWaktu === 'Hari Ini') {
+            $queryTotal->whereDate('tanggal_pesanan', $now->toDateString());
+            $querySelesai->whereDate('tanggal_pesanan', $now->toDateString());
+            $queryPending->whereDate('tanggal_pesanan', $now->toDateString());
+            $queryBatal->whereDate('tanggal_pesanan', $now->toDateString());
+        } elseif ($filterWaktu === 'Bulan Ini') {
+            $queryTotal->whereYear('tanggal_pesanan', $now->year)->whereMonth('tanggal_pesanan', $now->month);
+            $querySelesai->whereYear('tanggal_pesanan', $now->year)->whereMonth('tanggal_pesanan', $now->month);
+            $queryPending->whereYear('tanggal_pesanan', $now->year)->whereMonth('tanggal_pesanan', $now->month);
+            $queryBatal->whereYear('tanggal_pesanan', $now->year)->whereMonth('tanggal_pesanan', $now->month);
+        } elseif ($filterWaktu === 'Bulan Kemarin') {
+            $lastMonth = $now->copy()->subMonth();
+            $queryTotal->whereYear('tanggal_pesanan', $lastMonth->year)->whereMonth('tanggal_pesanan', $lastMonth->month);
+            $querySelesai->whereYear('tanggal_pesanan', $lastMonth->year)->whereMonth('tanggal_pesanan', $lastMonth->month);
+            $queryPending->whereYear('tanggal_pesanan', $lastMonth->year)->whereMonth('tanggal_pesanan', $lastMonth->month);
+            $queryBatal->whereYear('tanggal_pesanan', $lastMonth->year)->whereMonth('tanggal_pesanan', $lastMonth->month);
+        } elseif ($filterWaktu === 'Tahun Ini') {
+            $queryTotal->whereYear('tanggal_pesanan', $now->year);
+            $querySelesai->whereYear('tanggal_pesanan', $now->year);
+            $queryPending->whereYear('tanggal_pesanan', $now->year);
+            $queryBatal->whereYear('tanggal_pesanan', $now->year);
+        }
+
+        // Eksekusi Hitungan
         $totalPesanan = $queryTotal->count();
         $pesananSelesai = $querySelesai->count();
         $pesananPending = $queryPending->count();
         $pesananBatal = $queryBatal->count();
 
-        // 3. REKAPITULASI PENGELUARAN EKSPEDISI (Cache dipisah untuk Admin dan User)
+        // 3. REKAPITULASI PENGELUARAN EKSPEDISI (Cache dipisah)
         $cacheKey = $isAdmin ? 'api_mobile_rekap_exp_admin_all' : 'api_mobile_rekap_exp_' . $customerId;
 
         $rekapEkspedisi = Cache::remember($cacheKey, 600, function () use ($customerId, $isAdmin) {
-
-            // Master List Ekspedisi (Sesuai Web)
             $courierMap = [
                 'jne' => ['name' => 'JNE', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
                 'tiki' => ['name' => 'TIKI', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png'],
@@ -77,7 +104,6 @@ class DashboardController extends Controller
                 ];
             }
 
-            // Ambil data pesanan (Lepas kunci untuk Admin)
             $ordersQuery = DB::table('Pesanan')
                         ->select('expedition', 'shipping_cost', 'insurance_cost', 'cod_fee', 'ansuransi')
                         ->whereNotNull('expedition');
@@ -88,7 +114,6 @@ class DashboardController extends Controller
 
             $orders = $ordersQuery->get();
 
-            // Hitung Data
             foreach ($orders as $order) {
                 $parts = explode('-', $order->expedition);
                 if (count($parts) >= 2) {
@@ -106,7 +131,6 @@ class DashboardController extends Controller
                 }
             }
 
-            // Filter agar HANYA mengirim ekspedisi yang memiliki order (> 0) ke HP
             return collect($stats)->filter(function ($item) {
                 return $item['total_order'] > 0;
             })->sortByDesc('total_order')->values()->all();
@@ -125,7 +149,7 @@ class DashboardController extends Controller
                     'pesananPending' => $pesananPending,
                     'pesananBatal' => $pesananBatal,
                 ],
-                'rekapEkspedisi' => $rekapEkspedisi // Tambahan Data Baru
+                'rekapEkspedisi' => $rekapEkspedisi
             ]
         ], 200);
     }
