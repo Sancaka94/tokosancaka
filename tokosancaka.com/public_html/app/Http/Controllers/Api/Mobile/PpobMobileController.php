@@ -44,12 +44,14 @@ class PpobMobileController extends Controller
 
         $query = IakPricelistPrepaid::where('status', 'Active');
 
+        // PERBAIKAN 1: Bikin pencarian operator lebih luwes (pakai raw query LOWER)
         if (!empty($operator)) {
-            $query->where('operator', 'LIKE', "%{$operator}%");
+            $query->whereRaw('LOWER(operator) LIKE ?', ['%' . strtolower($operator) . '%']);
         }
 
+        // PERBAIKAN 2: Bikin pencarian type lebih luwes
         if (!empty($type)) {
-            $query->where('type', $type);
+            $query->whereRaw('LOWER(type) = ?', [strtolower($type)]);
         }
 
         if (!empty($nominal)) {
@@ -59,7 +61,6 @@ class PpobMobileController extends Controller
             });
         }
 
-        // Menggunakan select() agar 'description as name' bisa dibaca Laravel
         $products = $query->orderBy('price', 'asc')
                           ->select('code', 'operator', 'description as name', 'description', 'price', 'icon_url', 'type')
                           ->get();
@@ -72,10 +73,13 @@ class PpobMobileController extends Controller
             ]);
         }
 
+        // Debugging Message: Biar tahu nilai apa yang sebenarnya dicari
+        $debugMsg = "Operator: " . ($operator ?: 'Semua') . ", Type: " . ($type ?: 'Semua');
+
         return response()->json([
-            'success' => true,
+            'success' => false, // Ganti jadi false biar di React Native ke-trigger error handler
             'data'    => [],
-            'message' => 'Belum ada produk aktif untuk kategori ini.'
+            'message' => 'Produk kosong. (' . $debugMsg . ')'
         ]);
     }
 
