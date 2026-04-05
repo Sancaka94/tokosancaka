@@ -29,7 +29,7 @@ Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendR
 Route::get('/check-update', function() {
     return response()->json([
         'success' => true,
-        'latest_version' => '1.0.3', // Ubah manual setiap ada rilis baru
+        'latest_version' => '1.0.4', // Ubah manual setiap ada rilis baru
         'download_url'   => 'https://tokosancaka.com/public/assets/app/SancakaExpress.apk',
         'force_update'   => true,
         'notes'          => 'Fix bug dan peningkatan performa. Segera update untuk pengalaman terbaik!'
