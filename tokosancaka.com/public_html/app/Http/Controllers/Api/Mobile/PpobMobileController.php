@@ -44,6 +44,21 @@ class PpobMobileController extends Controller
         $type = $request->query('type'); // pulsa / data
         $nominal = $request->query('nominal');
 
+        // ========================================================
+        // FITUR BARU: TRANSLATOR NAMA OPERATOR (HP -> Database)
+        // ========================================================
+        if (!empty($operator)) {
+            $opUpper = strtoupper($operator);
+            if ($opUpper === 'SMARTFREN') {
+                $operator = 'Smart';
+            } elseif ($opUpper === 'THREE') {
+                $operator = 'Tri'; // Jaga-jaga kalau di database nulisnya Tri
+            } elseif ($opUpper === 'TELKOMSEL') {
+                $operator = 'Telkomsel';
+            }
+        }
+        // ========================================================
+
         $query = IakPricelistPrepaid::whereIn('status', ['Active', 'active', '1', 1]);
 
         // PERBAIKAN 1: Bikin pencarian operator lebih luwes (pakai raw query LOWER)
