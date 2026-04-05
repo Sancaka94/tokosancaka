@@ -389,27 +389,26 @@ class PpobMobileController extends Controller
     // ========================================================
     public function history(Request $request)
     {
-        Log::info('LOG LOG - [API Mobile] history Payload Masuk:', $request->all());
-
         try {
-            // Pastikan user terdeteksi
             $user = auth()->user();
 
             if (!$user) {
-                Log::error('LOG LOG - [API Mobile] Error: User Auth bernilai null (Cek Middleware Sanctum)');
+                \Illuminate\Support\Facades\Log::error('LOG LOG - [API Mobile] Error: User Auth bernilai null');
                 return response()->json(['success' => false, 'message' => 'Sesi login tidak valid / Token Kadaluarsa.']);
             }
 
-            // KITA MATIKAN SEMENTARA 'with(user)' BIAR NGGAK CRASH KALAU RELASI BELUM ADA
+            // 1. TENTUKAN STATUS ADMIN
+            // (Asumsi ID 4 adalah Admin, atau jika kamu punya kolom role: $user->role == 'admin')
+            $isAdmin = ($user->id == 4);
+
             $query = TransactionPpobIak::query();
 
-            // LOGIKA ROLE AKSES
-            // Jika BUKAN Admin (Misal Admin itu ID 4), HANYA tampilkan data miliknya sendiri
-            if ($user->id != 4) {
+            // 2. KUNCI UTAMA: JIKA BUKAN ADMIN, HANYA TAMPILKAN MILIKNYA SENDIRI!
+            if (!$isAdmin) {
                 $query->where('user_id', $user->id);
             }
 
-            // 1. FILTER PENCARIAN (Search Input)
+            // 3. FILTER PENCARIAN
             if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function($q) use ($search) {
@@ -420,7 +419,7 @@ class PpobMobileController extends Controller
                 });
             }
 
-            // 2. FILTER WAKTU
+            // 4. FILTER WAKTU
             $filterWaktu = $request->query('filter_waktu', 'Bulan Ini');
             $now = \Carbon\Carbon::now();
 
@@ -437,37 +436,62 @@ class PpobMobileController extends Controller
                 $query->whereYear('created_at', $now->year);
             }
 
+            // Ambil data (20 per halaman)
             $transactions = $query->orderBy('created_at', 'desc')->paginate(20);
 
             // =======================================================
-            // FITUR BARU: TEMPELKAN ICON_URL KE DALAM JSON RESPONSE
+            // 5. EKSTRAK DATA TAMBAHAN (LOGO & NAMA PEMBELI) DENGAN AMAN
             // =======================================================
-            $prepaidCodes = $transactions->where('type', 'prabayar')->pluck('product_code')->unique();
+            try {
+                $collection = $transactions->getCollection();
 
-            // Ambil semua logo yang cocok dari tabel produk prabayar
-            $icons = \App\Models\IakPricelistPrepaid::whereIn('code', $prepaidCodes)->pluck('icon_url', 'code');
+                // A. AMBIL LOGO PRODUK (Biar Estetik)
+                $prepaidCodes = $collection->where('type', 'prabayar')->pluck('product_code')->filter()->unique()->toArray();
+                $icons = [];
+                if (!empty($prepaidCodes)) {
+                    $icons = \Illuminate\Support\Facades\DB::table('iak_pricelist_prepaids')
+                                ->whereIn('code', $prepaidCodes)->pluck('icon_url', 'code');
+                }
 
-            // Sisipkan URL logo ke masing-masing transaksi
-            $transactions->getCollection()->transform(function ($trx) use ($icons) {
-                $trx->icon_url = $trx->type == 'prabayar' ? ($icons[$trx->product_code] ?? null) : null;
-                return $trx;
-            });
+                // B. AMBIL NAMA PEMBELI (KHUSUS TAMPILAN ADMIN)
+                $usersData = [];
+                if ($isAdmin) {
+                    $userIds = $collection->pluck('user_id')->filter()->unique()->toArray();
+                    if (!empty($userIds)) {
+                        // Tarik nama dari tabel users (Ganti 'name' jadi 'nama_lengkap' jika kolom di DB-mu begitu)
+                        $usersData = \Illuminate\Support\Facades\DB::table('users')
+                                        ->whereIn('id', $userIds)->pluck('name', 'id');
+                    }
+                }
+
+                // C. GABUNGKAN DATA KE RESPONSE
+                $collection->transform(function ($trx) use ($icons, $usersData, $isAdmin) {
+                    // Masukkan Logo
+                    $trx->icon_url = $trx->type == 'prabayar' ? ($icons[$trx->product_code] ?? null) : null;
+
+                    // Masukkan Data User (Jika Admin yang lihat)
+                    if ($isAdmin) {
+                        $namaUser = $trx->user_id ? ($usersData[$trx->user_id] ?? 'User ' . $trx->user_id) : 'Guest / Web';
+                        $trx->user = ['nama_lengkap' => $namaUser];
+                    }
+
+                    return $trx;
+                });
+
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('LOG LOG - Gagal ekstrak data riwayat: ' . $e->getMessage());
+            }
             // =======================================================
 
             return response()->json([
                 'success'  => true,
                 'data'     => $transactions,
-                'is_admin' => ($user->id == 4)
+                'is_admin' => $isAdmin
             ]);
 
         } catch (\Exception $e) {
-            // TANGKAP ERROR DAN CATAT KE LOG
-            Log::error('LOG LOG - [API Mobile] Error History Backend: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error Server Sancaka: ' . $e->getMessage()
-            ], 500);
+            \Illuminate\Support\Facades\Log::error('LOG LOG - [API Mobile] Error History Backend: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error Server Sancaka: ' . $e->getMessage()], 500);
         }
     }
 
