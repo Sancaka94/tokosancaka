@@ -276,7 +276,7 @@ class PpobMobileController extends Controller
                     'product_code'    => $productCode,
                     'price'           => $data['price'],
                     'whatsapp_number' => $request->whatsapp_number,
-                    'status'          => 'PROCESS',
+                    'status'          => 'PENDING',
                     'message'         => 'Inquiry Sukses (Menunggu Pembayaran)'
                 ]);
 
