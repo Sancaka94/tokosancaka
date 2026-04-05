@@ -391,64 +391,69 @@ class PpobMobileController extends Controller
     {
         Log::info('LOG LOG - [API Mobile] history Payload Masuk:', $request->all());
 
-        $user = auth()->user();
+        try {
+            // Pastikan user terdeteksi
+            $user = auth()->user();
 
-        // Kita menggunakan eager loading untuk menarik data user (berguna untuk admin)
-        $query = TransactionPpobIak::with('user:id,nama_lengkap'); // Sesuaikan kolom nama di model User Mas Amal
+            if (!$user) {
+                Log::error('LOG LOG - [API Mobile] Error: User Auth bernilai null (Cek Middleware Sanctum)');
+                return response()->json(['success' => false, 'message' => 'Sesi login tidak valid / Token Kadaluarsa.']);
+            }
 
-        // LOGIKA ROLE AKSES
-        // Jika BUKAN User ID 4 (Bukan Admin), maka HANYA tampilkan data miliknya sendiri
-        if ($user->id != 4) {
-            $query->where('user_id', $user->id);
-        }
+            // KITA MATIKAN SEMENTARA 'with(user)' BIAR NGGAK CRASH KALAU RELASI BELUM ADA
+            $query = TransactionPpobIak::query();
 
-        // 1. FILTER PENCARIAN (Search Input)
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('ref_id', 'LIKE', "%{$search}%")
-                  ->orWhere('customer_id', 'LIKE', "%{$search}%")
-                  ->orWhere('product_code', 'LIKE', "%{$search}%")
-                  ->orWhere('sn', 'LIKE', "%{$search}%");
-            });
-        }
+            // LOGIKA ROLE AKSES
+            // Jika BUKAN Admin (Misal Admin itu ID 4), HANYA tampilkan data miliknya sendiri
+            if ($user->id != 4) {
+                $query->where('user_id', $user->id);
+            }
 
-        // 2. FILTER WAKTU (Hari Ini, Bulan Ini, dll)
-        $filterWaktu = $request->query('filter_waktu', 'Bulan Ini');
-        $now = \Carbon\Carbon::now();
+            // 1. FILTER PENCARIAN (Search Input)
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('ref_id', 'LIKE', "%{$search}%")
+                      ->orWhere('customer_id', 'LIKE', "%{$search}%")
+                      ->orWhere('product_code', 'LIKE', "%{$search}%")
+                      ->orWhere('sn', 'LIKE', "%{$search}%");
+                });
+            }
 
-        switch ($filterWaktu) {
-            case 'Hari Ini':
+            // 2. FILTER WAKTU
+            $filterWaktu = $request->query('filter_waktu', 'Bulan Ini');
+            $now = \Carbon\Carbon::now();
+
+            if ($filterWaktu == 'Hari Ini') {
                 $query->whereDate('created_at', $now->toDateString());
-                break;
-            case 'Kemarin':
+            } elseif ($filterWaktu == 'Kemarin') {
                 $query->whereDate('created_at', $now->subDay()->toDateString());
-                break;
-            case 'Bulan Ini':
-                $query->whereMonth('created_at', $now->month)
-                      ->whereYear('created_at', $now->year);
-                break;
-            case 'Bulan Kemarin':
-                $lastMonth = $now->copy()->subMonth(); // Gunakan copy() agar $now tidak berubah
-                $query->whereMonth('created_at', $lastMonth->month)
-                      ->whereYear('created_at', $lastMonth->year);
-                break;
-            case 'Tahun Ini':
+            } elseif ($filterWaktu == 'Bulan Ini') {
+                $query->whereMonth('created_at', $now->month)->whereYear('created_at', $now->year);
+            } elseif ($filterWaktu == 'Bulan Kemarin') {
+                $lastMonth = $now->copy()->subMonth();
+                $query->whereMonth('created_at', $lastMonth->month)->whereYear('created_at', $lastMonth->year);
+            } elseif ($filterWaktu == 'Tahun Ini') {
                 $query->whereYear('created_at', $now->year);
-                break;
-            case 'Semua':
-                // Tidak ada filter tanggal
-                break;
+            }
+
+            $transactions = $query->orderBy('created_at', 'desc')->paginate(20);
+
+            return response()->json([
+                'success'  => true,
+                'data'     => $transactions,
+                'is_admin' => ($user->id == 4)
+            ]);
+
+        } catch (\Exception $e) {
+            // TANGKAP ERROR DAN CATAT KE LOG
+            Log::error('LOG LOG - [API Mobile] Error History Backend: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error Server Sancaka: ' . $e->getMessage()
+            ], 500);
         }
-
-        // Ambil data dengan pagination (20 data per halaman)
-        $transactions = $query->orderBy('created_at', 'desc')->paginate(20);
-
-        return response()->json([
-            'success'  => true,
-            'data'     => $transactions,
-            'is_admin' => ($user->id == 4) // Memberi tahu aplikasi HP bahwa ini adalah Admin
-        ]);
     }
 
     // ========================================================
