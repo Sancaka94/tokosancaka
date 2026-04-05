@@ -38,6 +38,8 @@ class PpobMobileController extends Controller
     // ========================================================
     public function getProductsPra(Request $request)
     {
+        Log::info('LOG LOG - [API Mobile] getProductsPra Payload Masuk:', $request->all());
+
         $operator = $request->query('operator');
         $type = $request->query('type'); // pulsa / data
         $nominal = $request->query('nominal');
@@ -86,8 +88,10 @@ class PpobMobileController extends Controller
     // ========================================================
     // 2. AMBIL PRICELIST PASCABAYAR (TAGIHAN)
     // ========================================================
-    public function getPricelistPasca()
+    public function getPricelistPasca(Request $request)
     {
+        Log::info('LOG LOG - [API Mobile] getPricelistPasca Hit');
+
         $pricelist = IakPricelistPostpaid::where('status', 1)->orderBy('name', 'asc')->get(['code', 'name', 'type']);
         return response()->json([
             'success' => true,
@@ -101,6 +105,8 @@ class PpobMobileController extends Controller
     // ========================================================
     public function store(Request $request)
     {
+        Log::info('LOG LOG - [API Mobile] store (Transaksi PPOB) Payload Masuk:', $request->all());
+
         $request->validate([
             'customer_id' => 'required|string',
             'product_code' => 'required|string',
@@ -132,6 +138,7 @@ class PpobMobileController extends Controller
             ->exists();
 
         if ($isDuplicate) {
+            Log::warning('LOG LOG - [API Mobile] Trx Prabayar Ditolak: Duplikat dalam 3 menit', $request->all());
             return response()->json(['success' => false, 'message' => 'Transaksi ke nomor & produk yang sama sedang diproses. Tunggu 3 menit.']);
         }
 
@@ -140,6 +147,7 @@ class PpobMobileController extends Controller
         $lock = Cache::lock($lockKey, 10);
 
         if (!$lock->get()) {
+            Log::warning('LOG LOG - [API Mobile] Trx Prabayar Ditolak: Atomic Lock Active', $request->all());
             return response()->json(['success' => false, 'message' => 'Transaksi sedang diproses, jangan klik berkali-kali.']);
         }
 
@@ -217,6 +225,8 @@ class PpobMobileController extends Controller
     // ========================================================
     private function inquiryPostpaid(Request $request)
     {
+        Log::info('LOG LOG - [API Mobile] inquiryPostpaid (Private) Executed:', $request->all());
+
         $refId = 'I' . date('ymd') . rand(1000, 9999);
         $sign = md5($this->username . $this->apiKey . $refId);
         $productCode = strtoupper($request->product_code);
@@ -273,6 +283,8 @@ class PpobMobileController extends Controller
     // ========================================================
     public function inquiryPln(Request $request)
     {
+        Log::info('LOG LOG - [API Mobile] inquiryPln Payload Masuk:', $request->all());
+
         $sign = md5($this->username . $this->apiKey . $request->customer_id);
         try {
             $response = Http::post($this->prepaidBaseUrl . '/api/inquiry-pln', [
@@ -289,6 +301,8 @@ class PpobMobileController extends Controller
 
     public function inquiryOvo(Request $request)
     {
+        Log::info('LOG LOG - [API Mobile] inquiryOvo Payload Masuk:', $request->all());
+
         $sign = md5($this->username . $this->apiKey . $request->customer_id);
         try {
             $response = Http::post($this->prepaidBaseUrl . '/api/inquiry-ovo', [
@@ -303,8 +317,10 @@ class PpobMobileController extends Controller
         } catch (\Exception $e) { return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()]); }
     }
 
-    public function getGameList()
+    public function getGameList(Request $request)
     {
+        Log::info('LOG LOG - [API Mobile] getGameList Hit');
+
         $sign = md5($this->username . $this->apiKey . 'gc');
         try {
             $response = Http::post($this->prepaidBaseUrl . '/api/gamelist', [
@@ -321,6 +337,8 @@ class PpobMobileController extends Controller
 
     public function inquiryGameFormat(Request $request)
     {
+        Log::info('LOG LOG - [API Mobile] inquiryGameFormat Payload Masuk:', $request->all());
+
         $sign = md5($this->username . $this->apiKey . $request->game_code);
         try {
             $response = Http::post($this->prepaidBaseUrl . '/api/game/format', [
@@ -336,6 +354,8 @@ class PpobMobileController extends Controller
 
     public function inquiryGameServer(Request $request)
     {
+        Log::info('LOG LOG - [API Mobile] inquiryGameServer Payload Masuk:', $request->all());
+
         $sign = md5($this->username . $this->apiKey . $request->game_code);
         try {
             $response = Http::post($this->prepaidBaseUrl . '/api/inquiry-game-server', [
@@ -354,6 +374,8 @@ class PpobMobileController extends Controller
     // ========================================================
     public function history(Request $request)
     {
+        Log::info('LOG LOG - [API Mobile] history Payload Masuk:', $request->all());
+
         $user = auth()->user();
 
         // Kita menggunakan eager loading untuk menarik data user (berguna untuk admin)
