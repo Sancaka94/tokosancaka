@@ -70,6 +70,16 @@ class DashboardController extends Controller
         $pesananPending = $queryPending->count();
         $pesananBatal = $queryBatal->count();
 
+        // ==========================================
+        // MENGHITUNG JUMLAH UANG (SUM)
+        // Catatan: Saya pakai kolom 'shipping_cost' (Ongkir).
+        // Kalau di databasemu ada kolom total lain (misal 'total_pembayaran'), tinggal ganti kata 'shipping_cost' di bawah ini ya!
+        // ==========================================
+        $uangTotal = $queryTotal->sum('shipping_cost');
+        $uangSelesai = $querySelesai->sum('shipping_cost');
+        $uangPending = $queryPending->sum('shipping_cost');
+        $uangBatal = $queryBatal->sum('shipping_cost');
+
         // 3. REKAPITULASI PENGELUARAN EKSPEDISI
         // Bikin nama cache unik berdasarkan filter biar datanya nggak nyangkut
         $namaFilterCache = str_replace(' ', '_', strtolower($filterWaktu));
@@ -152,6 +162,9 @@ class DashboardController extends Controller
             })->sortByDesc('total_order')->values()->all();
         });
 
+        // ==========================================
+        // UPDATE RESPONSE JSON-NYA (Tambahkan uang)
+        // ==========================================
         return response()->json([
             'success' => true,
             'data' => [
@@ -159,10 +172,14 @@ class DashboardController extends Controller
                 'role' => $user->role,
                 'saldo_format' => number_format($saldo, 0, ',', '.'),
                 'statistik' => [
-                    'totalPesanan' => $totalPesanan,
+                    'totalPesanan'   => $totalPesanan,
+                    'uangTotal'      => 'Rp ' . number_format($uangTotal, 0, ',', '.'), // <-- Uang Total
                     'pesananSelesai' => $pesananSelesai,
+                    'uangSelesai'    => 'Rp ' . number_format($uangSelesai, 0, ',', '.'), // <-- Uang Selesai
                     'pesananPending' => $pesananPending,
-                    'pesananBatal' => $pesananBatal,
+                    'uangPending'    => 'Rp ' . number_format($uangPending, 0, ',', '.'), // <-- Uang Pending
+                    'pesananBatal'   => $pesananBatal,
+                    'uangBatal'      => 'Rp ' . number_format($uangBatal, 0, ',', '.'), // <-- Uang Batal
                 ],
                 'rekapEkspedisi' => $rekapEkspedisi
             ]
