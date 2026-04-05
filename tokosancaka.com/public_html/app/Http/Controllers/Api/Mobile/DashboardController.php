@@ -16,29 +16,34 @@ class DashboardController extends Controller
         $customerId = $user->id_pengguna ?? $user->id;
         $saldo = $user->saldo ?? 0;
 
-        // 2. Hitung Statistik Utama (Sesuai dengan Web Controller)
-        $totalPesanan = DB::table('Pesanan')
-            ->where('id_pengguna_pembeli', $customerId)
-            ->count();
+        // ==========================================
+        // LOGIKA BARU: CEK ADMIN (Mata Dewa)
+        // ==========================================
+        $isAdmin = ($customerId == 4 && strtolower($user->role) === 'admin');
 
-        $pesananSelesai = DB::table('Pesanan')
-            ->where('id_pengguna_pembeli', $customerId)
-            ->whereIn('status_pesanan', ['Selesai', 'Tiba di Tujuan'])
-            ->count();
+        // 2. Hitung Statistik Utama (Admin lihat semua, User lihat miliknya)
+        $queryTotal = DB::table('Pesanan');
+        $querySelesai = DB::table('Pesanan')->whereIn('status_pesanan', ['Selesai', 'Tiba di Tujuan']);
+        $queryPending = DB::table('Pesanan')->whereIn('status_pesanan', ['pending', 'Menunggu Pembayaran', 'Belum Bayar', 'Diproses']);
+        $queryBatal = DB::table('Pesanan')->whereIn('status_pesanan', ['Dibatalkan', 'Batal', 'Retur']);
 
-        // Menggunakan array status pending dari versi Web Bapak
-        $pesananPending = DB::table('Pesanan')
-            ->where('id_pengguna_pembeli', $customerId)
-            ->whereIn('status_pesanan', ['pending', 'Menunggu Pembayaran', 'Belum Bayar', 'Diproses'])
-            ->count();
+        // Kunci query jika BUKAN Admin
+        if (!$isAdmin) {
+            $queryTotal->where('id_pengguna_pembeli', $customerId);
+            $querySelesai->where('id_pengguna_pembeli', $customerId);
+            $queryPending->where('id_pengguna_pembeli', $customerId);
+            $queryBatal->where('id_pengguna_pembeli', $customerId);
+        }
 
-        $pesananBatal = DB::table('Pesanan')
-            ->where('id_pengguna_pembeli', $customerId)
-            ->whereIn('status_pesanan', ['Dibatalkan', 'Batal', 'Retur'])
-            ->count();
+        $totalPesanan = $queryTotal->count();
+        $pesananSelesai = $querySelesai->count();
+        $pesananPending = $queryPending->count();
+        $pesananBatal = $queryBatal->count();
 
-        // 3. REKAPITULASI PENGELUARAN EKSPEDISI (Di-cache agar API secepat kilat)
-        $rekapEkspedisi = Cache::remember('api_mobile_rekap_exp_' . $customerId, 600, function () use ($customerId) {
+        // 3. REKAPITULASI PENGELUARAN EKSPEDISI (Cache dipisah untuk Admin dan User)
+        $cacheKey = $isAdmin ? 'api_mobile_rekap_exp_admin_all' : 'api_mobile_rekap_exp_' . $customerId;
+
+        $rekapEkspedisi = Cache::remember($cacheKey, 600, function () use ($customerId, $isAdmin) {
 
             // Master List Ekspedisi (Sesuai Web)
             $courierMap = [
@@ -72,11 +77,16 @@ class DashboardController extends Controller
                 ];
             }
 
-            // Ambil data pesanan
-            $orders = DB::table('Pesanan')->where('id_pengguna_pembeli', $customerId)
+            // Ambil data pesanan (Lepas kunci untuk Admin)
+            $ordersQuery = DB::table('Pesanan')
                         ->select('expedition', 'shipping_cost', 'insurance_cost', 'cod_fee', 'ansuransi')
-                        ->whereNotNull('expedition')
-                        ->get();
+                        ->whereNotNull('expedition');
+
+            if (!$isAdmin) {
+                $ordersQuery->where('id_pengguna_pembeli', $customerId);
+            }
+
+            $orders = $ordersQuery->get();
 
             // Hitung Data
             foreach ($orders as $order) {
