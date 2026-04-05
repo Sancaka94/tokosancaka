@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Mobile\ScanSpxController; // <-- Tambahkan ini untu
 use App\Http\Controllers\Api\Mobile\OngkirController; // 1. Pastikan Import ini ada
 use App\Http\Controllers\Api\Mobile\CustomerForgotPasswordController; // <-- TAMBAHAN UNTUK FORGOT PASSWORD
 use App\Http\Controllers\Api\Mobile\ProfileController;
+use App\Http\Controllers\Api\Mobile\PpobMobileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -64,6 +65,26 @@ Route::get('/suratjalan/download/{kode_surat_jalan}', [ScanSpxController::class,
 // 2. PROTECTED ROUTES (WAJIB BAWA TOKEN DARI HP - SANCTUM)
 // =========================================================================
 Route::middleware('auth:sanctum')->group(function () {
+
+
+
+/// ========================================== RUTE MOBILE UNTUK PELANGGAN (CUSTOMER) ==========================================
+
+    Route::prefix('ppob')->group(function () {
+        Route::get('/get_products', [PpobMobileController::class, 'getProductsPra']);
+        Route::get('/pasca-pricelist', [PpobMobileController::class, 'getPricelistPasca']);
+        Route::get('/history', [PpobMobileController::class, 'history']);
+
+        Route::post('/inquiry_pln', [PpobMobileController::class, 'inquiryPln']);
+        Route::post('/inquiry_ovo', [PpobMobileController::class, 'inquiryOvo']);
+        Route::post('/gamelist', [PpobMobileController::class, 'getGameList']);
+        Route::post('/inquiry_game_format', [PpobMobileController::class, 'inquiryGameFormat']);
+        Route::post('/inquiry_game_server', [PpobMobileController::class, 'inquiryGameServer']);
+
+        Route::post('/store', [PpobMobileController::class, 'store']); // Buat beli prabayar atau inquiry pasca
+    });
+
+// AKHIR DARI RUTE MOBILE UNTUK PELANGGAN (CUSTOMER)
 
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile/update', [ProfileController::class, 'update']);
