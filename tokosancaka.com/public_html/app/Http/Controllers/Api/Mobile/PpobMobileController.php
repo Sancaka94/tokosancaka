@@ -44,7 +44,7 @@ class PpobMobileController extends Controller
         $type = $request->query('type'); // pulsa / data
         $nominal = $request->query('nominal');
 
-        $query = IakPricelistPrepaid::where('status', 'Active');
+        $query = IakPricelistPrepaid::whereIn('status', ['Active', 'active', '1', 1]);
 
         // PERBAIKAN 1: Bikin pencarian operator lebih luwes (pakai raw query LOWER)
         if (!empty($operator)) {
