@@ -59,9 +59,11 @@ class PpobMobileController extends Controller
             });
         }
 
-        // PENTING: Ambil icon_url untuk dikirim ke aplikasi mobile
+        // Menggunakan select() agar 'description as name' bisa dibaca Laravel
         $products = $query->orderBy('price', 'asc')
-                          ->get(['code', 'operator', 'description as name', 'description', 'price', 'icon_url', 'type']);
+                          ->select('code', 'operator', 'description as name', 'description', 'price', 'icon_url', 'type')
+                          ->get();
+
 
         if ($products->count() > 0) {
             return response()->json([
