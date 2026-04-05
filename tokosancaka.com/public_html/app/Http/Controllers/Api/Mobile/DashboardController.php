@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
-use Carbon\Carbon; // <--- WAJIB TAMBAH INI COK!
+use Carbon\Carbon; // <--- WAJIB ADA
 
 class DashboardController extends Controller
 {
@@ -26,7 +26,6 @@ class DashboardController extends Controller
         $queryPending = DB::table('Pesanan')->whereIn('status_pesanan', ['pending', 'Menunggu Pembayaran', 'Belum Bayar', 'Diproses']);
         $queryBatal = DB::table('Pesanan')->whereIn('status_pesanan', ['Dibatalkan', 'Batal', 'Retur']);
 
-        // Kunci query jika BUKAN Admin
         if (!$isAdmin) {
             $queryTotal->where('id_pengguna_pembeli', $customerId);
             $querySelesai->where('id_pengguna_pembeli', $customerId);
@@ -37,7 +36,7 @@ class DashboardController extends Controller
         // ==========================================
         // FITUR BARU: FILTER WAKTU DARI REACT NATIVE
         // ==========================================
-        $filterWaktu = $request->query('filter_waktu', 'Bulan Ini'); // Defaultnya Bulan Ini
+        $filterWaktu = $request->query('filter_waktu', 'Bulan Ini');
         $now = Carbon::now();
 
         if ($filterWaktu === 'Hari Ini') {
@@ -63,16 +62,16 @@ class DashboardController extends Controller
             $queryBatal->whereYear('tanggal_pesanan', $now->year);
         }
 
-        // Eksekusi Hitungan
         $totalPesanan = $queryTotal->count();
         $pesananSelesai = $querySelesai->count();
         $pesananPending = $queryPending->count();
         $pesananBatal = $queryBatal->count();
 
-        // 3. REKAPITULASI PENGELUARAN EKSPEDISI (Cache dipisah)
-        $cacheKey = $isAdmin ? 'api_mobile_rekap_exp_admin_all' : 'api_mobile_rekap_exp_' . $customerId;
+        // 3. REKAPITULASI PENGELUARAN EKSPEDISI
+        // Bikin nama cache unik berdasarkan filter biar datanya nggak nyangkut
+        $namaFilterCache = str_replace(' ', '_', strtolower($filterWaktu));
+        $cacheKey = $isAdmin ? 'api_mobile_rekap_exp_admin_all_' . $namaFilterCache : 'api_mobile_rekap_exp_' . $customerId . '_' . $namaFilterCache;
 
-        // KODE BARU: Masukkan $filterWaktu dan $now ke dalam fungsi use()
         $rekapEkspedisi = Cache::remember($cacheKey, 600, function () use ($customerId, $isAdmin, $filterWaktu, $now) {
             $courierMap = [
                 'jne' => ['name' => 'JNE', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
@@ -80,12 +79,12 @@ class DashboardController extends Controller
                 'posindonesia' => ['name' => 'POS Indonesia', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png'],
                 'sicepat' => ['name' => 'SiCepat', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png'],
                 'sap' => ['name' => 'SAP Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png'],
-                'ncs' => ['name' => 'NCS Kurir', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLfUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg'],
+                'ncs' => ['name' => 'NCS Kurir', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ncs.jpg'],
                 'idx' => ['name' => 'ID Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png'],
                 'gojek' => ['name' => 'GoSend', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png'],
                 'grab' => ['name' => 'GrabExpress', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png'],
                 'jnt' => ['name' => 'J&T Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png'],
-                'indah' => ['name' => 'Indah Logistik', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEicOAaLoH2eElQ93_gbkzhvk4dRhWVlk5wQsGgilihIB58321aHchlJLdjyz1ToS25P_nWrHJ_E4QBiW_OVlI7tQt7cZ5I0HZqk6StS7jZltLVvDXp2d5ZDLB9yklhV4x6z2iXyURURDv_unhf-U6vyiD_8to9OC4PBwMwyU_5wAqOiCl6tKiaTA-ri1Q/s851/Logo%20Indah%20Logistik%20Cargo@0.5x.png'],
+                'indah' => ['name' => 'Indah Logistik', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/indah.png'],
                 'jtcargo' => ['name' => 'J&T Cargo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png'],
                 'lion' => ['name' => 'Lion Parcel', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png'],
                 'spx' => ['name' => 'SPX Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png'],
@@ -113,9 +112,7 @@ class DashboardController extends Controller
                 $ordersQuery->where('id_pengguna_pembeli', $customerId);
             }
 
-            // ==========================================
-            // KODE BARU: FILTER WAKTU UNTUK EKSPEDISI
-            // ==========================================
+            // FILTER WAKTU UNTUK EKSPEDISI
             if ($filterWaktu === 'Hari Ini') {
                 $ordersQuery->whereDate('tanggal_pesanan', $now->toDateString());
             } elseif ($filterWaktu === 'Bulan Ini') {
@@ -151,9 +148,6 @@ class DashboardController extends Controller
             })->sortByDesc('total_order')->values()->all();
         });
 
-
-
-        // 4. Kembalikan Response JSON Lengkap
         return response()->json([
             'success' => true,
             'data' => [
