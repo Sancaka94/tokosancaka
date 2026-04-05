@@ -17,9 +17,6 @@ use App\Exports\ScansExport;
 
 class ScanSpxController extends Controller
 {
-    /**
-     * 1. Menampilkan halaman utama Riwayat Scan dengan paginasi.
-     */
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -35,6 +32,25 @@ class ScanSpxController extends Controller
         // Logika untuk pencarian
         if ($request->has('search')) {
             $query->where('resi_number', 'like', '%' . $request->search . '%');
+        }
+
+        // ==========================================
+        // KODE BARU: LOGIKA FILTER WAKTU DITAMBAHKAN KESINI!
+        // ==========================================
+        $now = Carbon::now();
+        if ($request->has('filter_waktu')) {
+            $filterWaktu = $request->query('filter_waktu');
+
+            if ($filterWaktu === 'Hari Ini') {
+                $query->whereDate('created_at', $now->toDateString());
+            } elseif ($filterWaktu === 'Bulan Ini') {
+                $query->whereYear('created_at', $now->year)->whereMonth('created_at', $now->month);
+            } elseif ($filterWaktu === 'Bulan Kemarin') {
+                $lastMonth = $now->copy()->subMonth();
+                $query->whereYear('created_at', $lastMonth->year)->whereMonth('created_at', $lastMonth->month);
+            } elseif ($filterWaktu === 'Tahun Ini') {
+                $query->whereYear('created_at', $now->year);
+            }
         }
 
         $scans = $query->latest()->paginate(20);
