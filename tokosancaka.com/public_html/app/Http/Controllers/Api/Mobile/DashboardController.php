@@ -20,6 +20,14 @@ class DashboardController extends Controller
                         ->where('id_pengguna', $customerId)
                         ->value('balance_iak') ?? 0;
 
+        $storeData = \Illuminate\Support\Facades\DB::table('stores')
+                        ->where('user_id', $customerId)
+                        ->select('doku_sac_id', 'doku_balance_available')
+                        ->first();
+
+        $dokuSacId = $storeData ? $storeData->doku_sac_id : null;
+        $dokuBalance = $storeData ? $storeData->doku_balance_available : 0;
+
         // LOGIKA CEK ADMIN (Mata Dewa)
         $isAdmin = ($customerId == 4 && strtolower($user->role) === 'admin');
 
@@ -165,24 +173,30 @@ class DashboardController extends Controller
             })->sortByDesc('total_order')->values()->all();
         });
 
-        // ==========================================
-        // UPDATE RESPONSE JSON-NYA (Tambahkan uang)
+       // ==========================================
+        // UPDATE RESPONSE JSON-NYA (Paket Komplit)
         // ==========================================
         return response()->json([
             'success' => true,
             'data' => [
-                'namaLengkap' => $user->nama_lengkap,
-                'role' => $user->role,
-                'saldo_format' => number_format($saldo, 0, ',', '.'),
+                'namaLengkap'         => $user->nama_lengkap,
+                'role'                => $user->role,
+                'saldo_format'        => number_format($saldo, 0, ',', '.'),
+
+                // 🚨 INI BARANG BAWAAN YANG KETINGGALAN DI STASIUN COK!
+                'saldo_iak_format'    => number_format($saldoIak ?? 0, 0, ',', '.'),
+                'doku_sac_id'         => $dokuSacId ?? null,
+                'doku_balance_format' => number_format($dokuBalance ?? 0, 0, ',', '.'),
+
                 'statistik' => [
                     'totalPesanan'   => $totalPesanan,
-                    'uangTotal'      => 'Rp ' . number_format($uangTotal, 0, ',', '.'), // <-- Uang Total
+                    'uangTotal'      => 'Rp ' . number_format($uangTotal, 0, ',', '.'),
                     'pesananSelesai' => $pesananSelesai,
-                    'uangSelesai'    => 'Rp ' . number_format($uangSelesai, 0, ',', '.'), // <-- Uang Selesai
+                    'uangSelesai'    => 'Rp ' . number_format($uangSelesai, 0, ',', '.'),
                     'pesananPending' => $pesananPending,
-                    'uangPending'    => 'Rp ' . number_format($uangPending, 0, ',', '.'), // <-- Uang Pending
+                    'uangPending'    => 'Rp ' . number_format($uangPending, 0, ',', '.'),
                     'pesananBatal'   => $pesananBatal,
-                    'uangBatal'      => 'Rp ' . number_format($uangBatal, 0, ',', '.'), // <-- Uang Batal
+                    'uangBatal'      => 'Rp ' . number_format($uangBatal, 0, ',', '.'),
                 ],
                 'rekapEkspedisi' => $rekapEkspedisi
             ]
