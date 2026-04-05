@@ -70,10 +70,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
 /// ========================================== RUTE MOBILE UNTUK PELANGGAN (CUSTOMER) ==========================================
 
+    // BUNGKUS KHUSUS UNTUK PPOB
     Route::prefix('ppob')->group(function () {
+        // INI DIA TERSANGKANYA! Pastikan rute ini tertulis BENAR.
         Route::get('/get_products', [PpobMobileController::class, 'getProductsPra']);
+
         Route::get('/pasca-pricelist', [PpobMobileController::class, 'getPricelistPasca']);
-        Route::get('/history', [PpobMobileController::class, 'history']);
 
         Route::post('/inquiry_pln', [PpobMobileController::class, 'inquiryPln']);
         Route::post('/inquiry_ovo', [PpobMobileController::class, 'inquiryOvo']);
@@ -81,7 +83,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/inquiry_game_format', [PpobMobileController::class, 'inquiryGameFormat']);
         Route::post('/inquiry_game_server', [PpobMobileController::class, 'inquiryGameServer']);
 
-        Route::post('/store', [PpobMobileController::class, 'store']); // Buat beli prabayar atau inquiry pasca
+        Route::post('/store', [PpobMobileController::class, 'store']);
+
+        // Rute History
+        Route::get('/history', [PpobMobileController::class, 'history']);
     });
 
 // AKHIR DARI RUTE MOBILE UNTUK PELANGGAN (CUSTOMER)
