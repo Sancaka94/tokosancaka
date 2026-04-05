@@ -76,6 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/get_products', [PpobMobileController::class, 'getProductsPra']);
 
         Route::get('/pasca-pricelist', [PpobMobileController::class, 'getPricelistPasca']);
+        Route::post('/pay-pasca', [PpobMobileController::class, 'payPostpaid']);
 
         Route::post('/inquiry_pln', [PpobMobileController::class, 'inquiryPln']);
         Route::post('/inquiry_ovo', [PpobMobileController::class, 'inquiryOvo']);

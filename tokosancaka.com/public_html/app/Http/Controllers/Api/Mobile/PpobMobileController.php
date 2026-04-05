@@ -450,4 +450,68 @@ class PpobMobileController extends Controller
             'is_admin' => ($user->id == 4) // Memberi tahu aplikasi HP bahwa ini adalah Admin
         ]);
     }
+
+    // ========================================================
+    // 6. EKSEKUSI PEMBAYARAN PASCABAYAR (SETELAH INQUIRY)
+    // ========================================================
+    public function payPostpaid(Request $request)
+    {
+        Log::info('LOG LOG - [API Mobile] payPostpaid Payload Masuk:', $request->all());
+        $request->validate(['tr_id' => 'required|string']);
+
+        $transaction = TransactionPpobIak::where('tr_id', $request->tr_id)->first();
+        if (!$transaction) return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan']);
+
+        $user = auth()->user();
+        if ($user->balance_iak < $transaction->price) {
+            return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi untuk membayar tagihan ini.']);
+        }
+
+        $lock = Cache::lock('pay_pasca_' . $transaction->tr_id, 10);
+        if (!$lock->get()) return response()->json(['success' => false, 'message' => 'Pembayaran sedang diproses sistem.']);
+
+        try {
+            $sign = md5($this->username . $this->apiKey . $transaction->tr_id);
+            $response = Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', [
+                'commands' => 'pay-pasca',
+                'username' => $this->username,
+                'tr_id'    => $transaction->tr_id,
+                'sign'     => $sign
+            ]);
+
+            $result = $response->json();
+
+            if ($response->successful() && isset($result['data'])) {
+                $rc = $result['data']['response_code'] ?? '';
+                // 00 = SUCCESS, 39 = PROCESS
+                $status = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
+
+                $transaction->update([
+                    'status'  => $status,
+                    'sn'      => $result['data']['noref'] ?? null,
+                    'message' => $result['data']['message'] ?? 'Payment response received'
+                ]);
+
+                if ($status == 'FAILED') {
+                    return response()->json(['success' => false, 'message' => 'Pembayaran gagal dari pusat: ' . $transaction->message]);
+                }
+
+                // Potong saldo
+                if (in_array($status, ['PROCESS', 'SUCCESS'])) {
+                    $user->balance_iak -= $transaction->price;
+                    $user->save();
+                }
+
+                return response()->json(['success' => true, 'message' => 'Pembayaran Tagihan Berhasil Diproses!']);
+            }
+
+            $transaction->update(['status' => 'FAILED', 'message' => 'Invalid API Response']);
+            return response()->json(['success' => false, 'message' => 'Gagal memproses pembayaran ke IAK.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error Server: ' . $e->getMessage()]);
+        } finally {
+            optional($lock)->release();
+        }
+    }
+
 }
