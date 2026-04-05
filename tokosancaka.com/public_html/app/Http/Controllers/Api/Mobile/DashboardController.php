@@ -34,7 +34,7 @@ class DashboardController extends Controller
         }
 
         // ==========================================
-        // FITUR BARU: FILTER WAKTU DARI REACT NATIVE
+        // FITUR FILTER WAKTU (DITAMBAH OPSI SEMUA)
         // ==========================================
         $filterWaktu = $request->query('filter_waktu', 'Bulan Ini');
         $now = Carbon::now();
@@ -60,6 +60,9 @@ class DashboardController extends Controller
             $querySelesai->whereYear('tanggal_pesanan', $now->year);
             $queryPending->whereYear('tanggal_pesanan', $now->year);
             $queryBatal->whereYear('tanggal_pesanan', $now->year);
+        } elseif ($filterWaktu === 'Semua') {
+            // JIKA SEMUA: Jangan tambahkan filter tanggal apapun ke query
+            // Biarkan query mengambil seluruh data yang ada di database
         }
 
         $totalPesanan = $queryTotal->count();
