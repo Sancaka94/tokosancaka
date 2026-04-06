@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\Mobile; // Namespace sudah disesuaikan dengan folder Mobile
+namespace App\Http\Controllers\Api\Mobile;
 
 use App\Events\AdminNotificationEvent;
 use App\Http\Controllers\Controller;
@@ -18,18 +18,32 @@ use App\Exports\ScansExport;
 class ApiScanController extends Controller
 {
     /**
+     * Helper Method: Mengecek apakah user saat ini adalah Admin (ID 4 atau Role 'Admin')
+     */
+    private function isAdmin()
+    {
+        $user = Auth::user();
+        return ($user && ($user->id_pengguna == 4 || strtolower($user->role) === 'admin'));
+    }
+
+    /**
      * 1. Menampilkan halaman utama Riwayat Scan dengan paginasi.
      */
     public function index(Request $request)
     {
-        $query = ScannedPackage::where('user_id', Auth::user()->id_pengguna);
+        $query = ScannedPackage::query();
+
+        // Jika BUKAN Admin, batasi data hanya milik user tersebut
+        if (!$this->isAdmin()) {
+            $query->where('user_id', Auth::user()->id_pengguna);
+        }
 
         // Logika untuk pencarian
         if ($request->has('search')) {
             $query->where('resi_number', 'like', '%' . $request->search . '%');
         }
 
-        $scans = $query->latest()->paginate(20); // API otomatis mengubah paginasi ini menjadi JSON
+        $scans = $query->latest()->paginate(20);
 
         return response()->json([
             'success' => true,
@@ -53,7 +67,8 @@ class ApiScanController extends Controller
                 'saldo' => $customer->saldo,
                 'saldo_format' => number_format($customer->saldo, 0, ',', '.'),
                 'todays_count' => $todays_scans->count(),
-                'recent_scans' => $todays_scans
+                'recent_scans' => $todays_scans,
+                'is_admin' => $this->isAdmin() // Mengirim flag ke frontend jika butuh
             ]
         ]);
     }
@@ -68,7 +83,7 @@ class ApiScanController extends Controller
         $customer = Auth::user();
         $biayaScan = 1000; // Biaya per scan
 
-        // 1. CEK SALDO DULU
+        // 1. CEK SALDO DULU (Bahkan Admin pun tetap di cek saldonya jika sistem mengharuskan, atau Bapak bisa by-pass Admin di sini)
         if ($customer->saldo < $biayaScan) {
             return response()->json([
                 'success' => false,
@@ -111,7 +126,7 @@ class ApiScanController extends Controller
                     'current_saldo' => number_format($customer->fresh()->saldo, 0, ',', '.'),
                     'package' => $package,
                     'todays_count' => $todays_scans->count(),
-                    'recent_scans' => $todays_scans // Mengembalikan JSON object array
+                    'recent_scans' => $todays_scans
                 ]
             ]);
 
@@ -141,9 +156,15 @@ class ApiScanController extends Controller
             'jumlah_paket' => count($resiList),
         ]);
 
-        ScannedPackage::whereIn('resi_number', $resiList)
-                      ->where('user_id', $customer->id_pengguna)
-                      ->update(['surat_jalan_id' => $suratJalan->id]);
+        $queryUpdate = ScannedPackage::whereIn('resi_number', $resiList);
+
+        // Admin bisa membuat Surat Jalan dari paket siapa saja yang di-scan,
+        // selain Admin hanya bisa memaketkan resi miliknya.
+        if (!$this->isAdmin()) {
+            $queryUpdate->where('user_id', $customer->id_pengguna);
+        }
+
+        $queryUpdate->update(['surat_jalan_id' => $suratJalan->id]);
 
         $message = $customer->nama_lengkap . ' telah membuat Surat Jalan baru.';
         $url = route('admin.spx_scans.index', ['search' => $kodeUnik]);
@@ -153,7 +174,6 @@ class ApiScanController extends Controller
             'success' => true,
             'message' => 'Surat Jalan berhasil dibuat!',
             'data' => [
-                // Pastikan route ini sesuai dengan konfigurasi route di web/api.php Mas Amal
                 'pdf_url' => route('api.suratjalan.download', ['kode_surat_jalan' => $kodeUnik]),
                 'customer_name' => $customer->nama_lengkap,
                 'package_count' => $suratJalan->jumlah_paket,
@@ -164,14 +184,16 @@ class ApiScanController extends Controller
 
     /**
      * 5. Mengunduh Surat Jalan dalam format PDF.
-     * (Biarkan return PDF agar React Native bisa langsung open URL di browser)
      */
     public function downloadSuratJalan($kode_surat_jalan)
     {
-        $suratJalan = SuratJalan::where('kode_surat_jalan', $kode_surat_jalan)
-                                ->where('user_id', Auth::user()->id_pengguna)
-                                ->firstOrFail();
+        $querySJ = SuratJalan::where('kode_surat_jalan', $kode_surat_jalan);
 
+        if (!$this->isAdmin()) {
+            $querySJ->where('user_id', Auth::user()->id_pengguna);
+        }
+
+        $suratJalan = $querySJ->firstOrFail();
         $scans = ScannedPackage::where('surat_jalan_id', $suratJalan->id)->get();
         $customer = Auth::user();
 
@@ -186,7 +208,11 @@ class ApiScanController extends Controller
     {
         $request->validate(['period' => 'required|string|in:today,7days,14days,30days,lastmonth']);
 
-        $query = ScannedPackage::where('user_id', Auth::user()->id_pengguna);
+        $query = ScannedPackage::query();
+
+        if (!$this->isAdmin()) {
+            $query->where('user_id', Auth::user()->id_pengguna);
+        }
 
         switch ($request->input('period')) {
             case 'today': $query->whereDate('created_at', Carbon::today()); break;
@@ -209,10 +235,13 @@ class ApiScanController extends Controller
     {
         $validated = $request->validate(['status' => 'required|string|max:255']);
 
-        $scan = ScannedPackage::where('resi_number', $resi_number)
-                              ->where('user_id', Auth::user()->id_pengguna)
-                              ->firstOrFail();
+        $query = ScannedPackage::where('resi_number', $resi_number);
 
+        if (!$this->isAdmin()) {
+            $query->where('user_id', Auth::user()->id_pengguna);
+        }
+
+        $scan = $query->firstOrFail();
         $scan->update($validated);
 
         return response()->json([
@@ -227,10 +256,13 @@ class ApiScanController extends Controller
      */
     public function destroy($resi_number)
     {
-        $scan = ScannedPackage::where('resi_number', $resi_number)
-                              ->where('user_id', Auth::user()->id_pengguna)
-                              ->firstOrFail();
+        $query = ScannedPackage::where('resi_number', $resi_number);
 
+        if (!$this->isAdmin()) {
+            $query->where('user_id', Auth::user()->id_pengguna);
+        }
+
+        $scan = $query->firstOrFail();
         $scan->delete();
 
         return response()->json([
@@ -244,7 +276,13 @@ class ApiScanController extends Controller
      */
     public function exportPdf()
     {
-        $scans = ScannedPackage::where('user_id', Auth::user()->id_pengguna)->latest()->get();
+        $query = ScannedPackage::query();
+
+        if (!$this->isAdmin()) {
+            $query->where('user_id', Auth::user()->id_pengguna);
+        }
+
+        $scans = $query->latest()->get();
         $pdf = Pdf::loadView('customer.scan.pdf', compact('scans'));
         return $pdf->download('riwayat-scan.pdf');
     }
@@ -254,7 +292,11 @@ class ApiScanController extends Controller
      */
     public function exportExcel()
     {
-        return Excel::download(new ScansExport(Auth::user()->id_pengguna), 'riwayat-scan.xlsx');
+        // Jika export logic bergantung pada ID, pastikan Anda juga menyesuaikan logic di dalam class ScansExport
+        $userId = $this->isAdmin() ? null : Auth::user()->id_pengguna;
+
+        // Kita kirim $userId (Bisa null jika admin). Jangan lupa ubah constructor di app/Exports/ScansExport.php agar menerima null
+        return Excel::download(new ScansExport($userId), 'riwayat-scan.xlsx');
     }
 
     /**
@@ -263,10 +305,14 @@ class ApiScanController extends Controller
      */
     private function getTodaysScans()
     {
-        return ScannedPackage::where('user_id', Auth::user()->id_pengguna)
-                             ->whereDate('created_at', today())
-                             ->whereNull('surat_jalan_id')
-                             ->latest()
-                             ->get();
+        $query = ScannedPackage::whereDate('created_at', today())
+                               ->whereNull('surat_jalan_id');
+
+        // Batasi untuk non-admin
+        if (!$this->isAdmin()) {
+            $query->where('user_id', Auth::user()->id_pengguna);
+        }
+
+        return $query->latest()->get();
     }
 }
