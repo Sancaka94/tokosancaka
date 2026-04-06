@@ -432,7 +432,6 @@ class KoliController extends Controller
                     $nomorInvoice = 'SCK-' . date('ymd') . '-'. strtoupper(Str::random(3)) . '-' . ($index + 1);
                 } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
 
-                // --- HITUNG VOLUME DAN BERAT AKTUAL (P x L x T) ---
                 $beratFisik = (int) $pkg['weight'];
                 $p = (int) ($pkg['length'] ?? 10);
                 $l = (int) ($pkg['width'] ?? 10);
@@ -523,22 +522,39 @@ class KoliController extends Controller
 
             $masterOrder = $createdOrders[0];
             $paymentUrl = null;
-            $user = User::find(Auth::id());
+
+            // INI KUNCI JAWABANNYA: Mengambil user dengan akurat dari Auth
+            $user = User::where('id_pengguna', Auth::id())->first();
 
             // --- PEMBAYARAN ---
             if ($request->payment_method === 'CASH') {
-                if ($user->id != 4) {
+                // Mengecek ke kolom id_pengguna secara akurat
+                if (!$user || $user->id_pengguna != 4) {
                     throw new Exception("Metode pembayaran Cash hanya tersedia untuk Admin.");
                 }
-                foreach ($createdOrders as $o) { $o->status = 'Menunggu Pickup'; $o->status_pesanan = 'Menunggu Pickup'; $o->save(); }
+                foreach ($createdOrders as $o) {
+                    $o->status = 'Menunggu Pickup';
+                    $o->status_pesanan = 'Menunggu Pickup';
+                    $o->save();
+                }
             }
             elseif ($request->payment_method === 'Potong Saldo') {
-                if ($user->saldo < $grandTotalTagihan) throw new Exception("Saldo Anda tidak mencukupi.");
+                if (!$user || $user->saldo < $grandTotalTagihan) {
+                    throw new Exception("Saldo Anda tidak mencukupi.");
+                }
                 $user->decrement('saldo', $grandTotalTagihan);
-                foreach ($createdOrders as $o) { $o->status = 'Menunggu Pickup'; $o->status_pesanan = 'Menunggu Pickup'; $o->save(); }
+                foreach ($createdOrders as $o) {
+                    $o->status = 'Menunggu Pickup';
+                    $o->status_pesanan = 'Menunggu Pickup';
+                    $o->save();
+                }
             }
             elseif (in_array($request->payment_method, ['COD', 'CODBARANG'])) {
-                 foreach ($createdOrders as $o) { $o->status = 'Menunggu Pickup'; $o->status_pesanan = 'Menunggu Pickup'; $o->save(); }
+                 foreach ($createdOrders as $o) {
+                     $o->status = 'Menunggu Pickup';
+                     $o->status_pesanan = 'Menunggu Pickup';
+                     $o->save();
+                }
             }
             else {
                 $paymentGateway = 'tripay';
@@ -579,10 +595,14 @@ class KoliController extends Controller
                     if (($kiriminResponse['status'] ?? false) === true) {
                         $resi = $kiriminResponse['details']['awb'] ?? $kiriminResponse['awb'] ?? $kiriminResponse['order_id'] ?? null;
                         if($resi) {
-                            $order->resi = $resi; $order->status = 'Dikemas'; $order->status_pesanan = 'Dikemas'; $order->save();
+                            $order->resi = $resi;
+                            $order->status = 'Pesanan Dibuat';
+                            $order->status_pesanan = 'Pesanan Dibuat';
+                            $order->save();
                         }
                     } else {
-                        $order->status = 'Gagal Kirim Resi'; $order->save();
+                        $order->status = 'Gagal Kirim Resi';
+                        $order->save();
                     }
                 }
             }
