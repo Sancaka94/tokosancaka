@@ -262,7 +262,7 @@ class KoliController extends Controller
             $pesanan->save();
 
             $paymentUrl = null;
-            $user = User::find(Auth::id());
+            $user = User::where('id_pengguna', Auth::id())->first();
 
 
             // --- PEMBAYARAN ---
