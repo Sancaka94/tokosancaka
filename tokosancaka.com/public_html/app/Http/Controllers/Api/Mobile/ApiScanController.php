@@ -31,7 +31,8 @@ class ApiScanController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ScannedPackage::query();
+        // PERBAIKAN: Tambahkan with() agar data Kontak dan Surat Jalan ikut terkirim ke Frontend untuk keperluan Desain UI
+        $query = ScannedPackage::with(['kontak', 'suratJalan']);
 
         // Jika BUKAN Admin, batasi data hanya milik user tersebut
         if (!$this->isAdmin()) {
@@ -68,7 +69,7 @@ class ApiScanController extends Controller
                 'saldo_format' => number_format($customer->saldo, 0, ',', '.'),
                 'todays_count' => $todays_scans->count(),
                 'recent_scans' => $todays_scans,
-                'is_admin' => $this->isAdmin() // Mengirim flag ke frontend jika butuh
+                'is_admin' => $this->isAdmin()
             ]
         ]);
     }
@@ -81,9 +82,8 @@ class ApiScanController extends Controller
         $request->validate(['resi_number' => 'required|string|unique:scanned_packages,resi_number|max:255']);
 
         $customer = Auth::user();
-        $biayaScan = 1000; // Biaya per scan
+        $biayaScan = 1000;
 
-        // 1. CEK SALDO DULU (Bahkan Admin pun tetap di cek saldonya jika sistem mengharuskan, atau Bapak bisa by-pass Admin di sini)
         if ($customer->saldo < $biayaScan) {
             return response()->json([
                 'success' => false,
@@ -95,14 +95,9 @@ class ApiScanController extends Controller
         $resi = $request->input('resi_number');
         $package = null;
 
-        // 2. GUNAKAN DATABASE TRANSACTION
         try {
             DB::transaction(function () use ($customer, $resi, $biayaScan, &$package) {
-
-                // Potong Saldo
                 $customer->decrement('saldo', $biayaScan);
-
-                // Simpan Resi
                 $package = ScannedPackage::create([
                     'user_id' => $customer->id_pengguna,
                     'resi_number' => $resi,
@@ -110,11 +105,8 @@ class ApiScanController extends Controller
                 ]);
             });
 
-            // Jika transaksi berhasil, lanjut kirim notif & response
             $message = $customer->nama_lengkap . ' telah scan resi baru: ' . $resi;
             $url = route('admin.spx_scans.index', ['search' => $resi]);
-
-            // Trigger Event Notifikasi
             event(new AdminNotificationEvent('Paket SPX Baru Di-scan!', $message, $url));
 
             $todays_scans = $this->getTodaysScans();
@@ -158,8 +150,6 @@ class ApiScanController extends Controller
 
         $queryUpdate = ScannedPackage::whereIn('resi_number', $resiList);
 
-        // Admin bisa membuat Surat Jalan dari paket siapa saja yang di-scan,
-        // selain Admin hanya bisa memaketkan resi miliknya.
         if (!$this->isAdmin()) {
             $queryUpdate->where('user_id', $customer->id_pengguna);
         }
@@ -208,7 +198,8 @@ class ApiScanController extends Controller
     {
         $request->validate(['period' => 'required|string|in:today,7days,14days,30days,lastmonth']);
 
-        $query = ScannedPackage::query();
+        // PERBAIKAN: Eager Load Relasi
+        $query = ScannedPackage::with(['kontak', 'suratJalan']);
 
         if (!$this->isAdmin()) {
             $query->where('user_id', Auth::user()->id_pengguna);
@@ -229,7 +220,7 @@ class ApiScanController extends Controller
     }
 
     /**
-     * 7. Memperbarui data scan di database (Edit -> Update jadi 1 API).
+     * 7. Memperbarui data scan di database
      */
     public function update(Request $request, $resi_number)
     {
@@ -292,23 +283,20 @@ class ApiScanController extends Controller
      */
     public function exportExcel()
     {
-        // Jika export logic bergantung pada ID, pastikan Anda juga menyesuaikan logic di dalam class ScansExport
         $userId = $this->isAdmin() ? null : Auth::user()->id_pengguna;
-
-        // Kita kirim $userId (Bisa null jika admin). Jangan lupa ubah constructor di app/Exports/ScansExport.php agar menerima null
         return Excel::download(new ScansExport($userId), 'riwayat-scan.xlsx');
     }
 
     /**
      * Helper method untuk mengambil data scan hari ini
-     * HANYA YANG BELUM DICETAK SURAT JALANNYA.
      */
     private function getTodaysScans()
     {
-        $query = ScannedPackage::whereDate('created_at', today())
+        // PERBAIKAN: Eager load
+        $query = ScannedPackage::with(['kontak', 'suratJalan'])
+                               ->whereDate('created_at', today())
                                ->whereNull('surat_jalan_id');
 
-        // Batasi untuk non-admin
         if (!$this->isAdmin()) {
             $query->where('user_id', Auth::user()->id_pengguna);
         }

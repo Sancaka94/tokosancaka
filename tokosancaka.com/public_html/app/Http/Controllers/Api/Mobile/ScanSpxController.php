@@ -14,19 +14,30 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ScansExport;
+use App\Models\User; // Ditambahkan untuk meload data Pengguna
 
 class ScanSpxController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Helper Method: Cek apakah user adalah Admin (ID Pengguna = 4 atau Role = Admin)
+     */
+    private function isAdmin()
     {
         $user = Auth::user();
-        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
+        return ($user && ($user->id_pengguna == 4 || strtolower($user->role) === 'admin'));
+    }
 
+    /**
+     * 1. Menampilkan halaman utama Riwayat Scan dengan paginasi.
+     */
+    public function index(Request $request)
+    {
+        // Gunakan with('suratJalan') jika ada relasi, agar data lebih lengkap
         $query = ScannedPackage::query();
 
         // JIKA BUKAN ADMIN, KUNCI HANYA UNTUK USER TERSEBUT
-        if (!$isAdmin) {
-            $query->where('user_id', $user->id_pengguna);
+        if (!$this->isAdmin()) {
+            $query->where('user_id', Auth::user()->id_pengguna);
         }
 
         // Logika untuk pencarian
@@ -35,7 +46,7 @@ class ScanSpxController extends Controller
         }
 
         // ==========================================
-        // KODE BARU: LOGIKA FILTER WAKTU DITAMBAHKAN KESINI!
+        // LOGIKA FILTER WAKTU
         // ==========================================
         $now = Carbon::now();
         if ($request->has('filter_waktu')) {
@@ -73,11 +84,12 @@ class ScanSpxController extends Controller
             'success' => true,
             'data' => [
                 'customer_name' => $customer->nama_lengkap,
-                'customer_phone' => $customer->no_hp ?? '',
+                'customer_phone' => $customer->no_wa ?? $customer->no_hp ?? '',
                 'saldo' => $customer->saldo,
                 'saldo_format' => number_format($customer->saldo, 0, ',', '.'),
                 'todays_count' => $todays_scans->count(),
-                'recent_scans' => $todays_scans
+                'recent_scans' => $todays_scans,
+                'is_admin' => $this->isAdmin()
             ]
         ]);
     }
@@ -94,7 +106,7 @@ class ScanSpxController extends Controller
         $customer = Auth::user();
         $biayaScan = 1000; // Biaya per scan
 
-        // 1. CEK SALDO DULU
+        // 1. CEK SALDO DULU (Opsional: Jika Admin ingin by-pass, bisa tambahkan kondisi && !$this->isAdmin())
         if ($customer->saldo < $biayaScan) {
             return response()->json([
                 'success' => false,
@@ -169,9 +181,14 @@ class ScanSpxController extends Controller
         ]);
 
         // Update semua resi yang masuk ke dalam list dengan ID surat jalan
-        ScannedPackage::whereIn('resi_number', $resiList)
-                      ->where('user_id', $customer->id_pengguna)
-                      ->update(['surat_jalan_id' => $suratJalan->id]);
+        $queryUpdate = ScannedPackage::whereIn('resi_number', $resiList);
+
+        // Batasi hanya milik user, KECUALI dia admin
+        if (!$this->isAdmin()) {
+            $queryUpdate->where('user_id', $customer->id_pengguna);
+        }
+
+        $queryUpdate->update(['surat_jalan_id' => $suratJalan->id]);
 
         $message = $customer->nama_lengkap . ' telah membuat Surat Jalan baru.';
         $url = route('admin.spx_scans.index', ['search' => $kodeUnik]);
@@ -195,9 +212,15 @@ class ScanSpxController extends Controller
      */
     public function downloadSuratJalan($kode_surat_jalan)
     {
-        $suratJalan = SuratJalan::where('kode_surat_jalan', $kode_surat_jalan)->firstOrFail();
+        $querySJ = SuratJalan::where('kode_surat_jalan', $kode_surat_jalan);
+
+        if (!$this->isAdmin()) {
+            $querySJ->where('user_id', Auth::user()->id_pengguna);
+        }
+
+        $suratJalan = $querySJ->firstOrFail();
         $scans = ScannedPackage::where('surat_jalan_id', $suratJalan->id)->get();
-        $customer = \App\Models\User::where('id_pengguna', $suratJalan->user_id)->first();
+        $customer = User::where('id_pengguna', $suratJalan->user_id)->first();
 
         $pdf = Pdf::loadView('customer.scan.surat-jalan-pdf', compact('suratJalan', 'scans', 'customer'));
         return $pdf->download('surat-jalan-' . $kode_surat_jalan . '.pdf');
@@ -208,14 +231,11 @@ class ScanSpxController extends Controller
      */
     public function getHistory(Request $request)
     {
-        $user = Auth::user();
-        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
-
         $query = ScannedPackage::query();
 
         // Kunci Data Jika Bukan Admin
-        if (!$isAdmin) {
-            $query->where('user_id', $user->id_pengguna);
+        if (!$this->isAdmin()) {
+            $query->where('user_id', Auth::user()->id_pengguna);
         }
 
         $now = Carbon::now();
@@ -247,7 +267,7 @@ class ScanSpxController extends Controller
             }
         }
 
-        // PENTING COK: Gunakan paginate() agar response punya data 'total' yang ditangkap Dashboard
+        // PENTING: Gunakan paginate() agar response punya data 'total' yang ditangkap Dashboard
         $scans = $query->latest()->paginate(50);
 
         return response()->json([
@@ -261,14 +281,12 @@ class ScanSpxController extends Controller
      */
     public function update(Request $request, $resi_number)
     {
-        $user = Auth::user();
-        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
-
         $validated = $request->validate(['status' => 'required|string|max:255']);
 
         $query = ScannedPackage::where('resi_number', $resi_number);
-        if (!$isAdmin) {
-            $query->where('user_id', $user->id_pengguna);
+
+        if (!$this->isAdmin()) {
+            $query->where('user_id', Auth::user()->id_pengguna);
         }
 
         $scan = $query->firstOrFail();
@@ -286,12 +304,10 @@ class ScanSpxController extends Controller
      */
     public function destroy($resi_number)
     {
-        $user = Auth::user();
-        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
-
         $query = ScannedPackage::where('resi_number', $resi_number);
-        if (!$isAdmin) {
-            $query->where('user_id', $user->id_pengguna);
+
+        if (!$this->isAdmin()) {
+            $query->where('user_id', Auth::user()->id_pengguna);
         }
 
         $scan = $query->firstOrFail();
@@ -308,12 +324,10 @@ class ScanSpxController extends Controller
      */
     public function exportPdf()
     {
-        $user = Auth::user();
-        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
-
         $query = ScannedPackage::query();
-        if (!$isAdmin) {
-            $query->where('user_id', $user->id_pengguna);
+
+        if (!$this->isAdmin()) {
+            $query->where('user_id', Auth::user()->id_pengguna);
         }
 
         $scans = $query->latest()->get();
@@ -326,8 +340,8 @@ class ScanSpxController extends Controller
      */
     public function exportExcel()
     {
-        // Catatan: Pastikan class ScansExport Anda disesuaikan untuk menerima parameter id null jika dia admin.
-        $userId = (Auth::user()->id_pengguna == 4 && strtolower(Auth::user()->role) === 'admin') ? null : Auth::user()->id_pengguna;
+        // Pastikan class ScansExport Anda disesuaikan untuk menerima parameter id null jika dia admin.
+        $userId = $this->isAdmin() ? null : Auth::user()->id_pengguna;
         return Excel::download(new ScansExport($userId), 'riwayat-scan.xlsx');
     }
 
@@ -337,32 +351,45 @@ class ScanSpxController extends Controller
      */
     private function getTodaysScans()
     {
-        return ScannedPackage::where('user_id', Auth::user()->id_pengguna)
-                             ->whereDate('created_at', today())
-                             ->whereNull('surat_jalan_id')
-                             ->latest()
-                             ->get();
+        $query = ScannedPackage::whereDate('created_at', today())
+                               ->whereNull('surat_jalan_id');
+
+        if (!$this->isAdmin()) {
+            $query->where('user_id', Auth::user()->id_pengguna);
+        }
+
+        return $query->latest()->get();
     }
 
    /**
-     * Mengambil daftar Riwayat Surat Jalan beserta resi di dalamnya.
+     * 11. Mengambil daftar Riwayat Surat Jalan beserta resi di dalamnya.
      */
     public function historySuratJalan()
     {
-        $user = Auth::user();
-        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
-
         $query = SuratJalan::query();
-        if (!$isAdmin) {
-            $query->where('user_id', $user->id_pengguna);
+
+        if (!$this->isAdmin()) {
+            $query->where('user_id', Auth::user()->id_pengguna);
         }
 
         // 1. Ambil data surat jalan
         $suratJalans = $query->latest()->get();
 
-        // 2. Kita jahit/gabungkan data resinya secara manual
+        // 2. Kita jahit/gabungkan data resinya dan data PENGIRIM secara manual
         $history = $suratJalans->map(function ($sj) {
             $sj->scanned_packages = ScannedPackage::where('surat_jalan_id', $sj->id)->get();
+
+            // Mencari tahu siapa pemilik (pembuat) Surat Jalan ini
+            $pengirim = User::where('id_pengguna', $sj->user_id)->first();
+
+            // Injeksi data kontak buatan agar React Native langsung bisa baca
+            // tanpa perlu mengubah UI di HP (selectedSJ.kontak.nama, dll)
+            $sj->kontak = [
+                'nama'   => $pengirim->nama_lengkap ?? 'Sancaka Express',
+                'no_hp'  => $pengirim->no_wa ?? $pengirim->no_hp ?? '085745808809',
+                'alamat' => $pengirim->address_detail ?? $pengirim->alamat ?? 'Toko Sancaka Express'
+            ];
+
             return $sj;
         });
 
