@@ -903,102 +903,63 @@
         }
 
         // ========================================================
-        // DEBUGGING FOKUS DI SINI (TOMBOL HAPUS TERPILIH)
+        // HAPUS MASSAL VIA NATIVE BROWSER CONFIRM
         // ========================================================
         function showBulkDeleteModal() {
-            console.log("--- DEBUG: Memulai showBulkDeleteModal() ---");
-            try {
-                const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
-                console.log("1. Jumlah data yang diceklist:", checkedBoxes.length);
+            const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+            const count = checkedBoxes.length;
 
-                if (checkedBoxes.length === 0) {
-                    alert("Pilih minimal satu pesanan untuk dihapus.");
-                    return;
-                }
-
-                const countEl = document.getElementById('modalSelectedCount');
-                if (!countEl) {
-                    console.error("❌ ERROR: Elemen dengan ID 'modalSelectedCount' tidak ditemukan di HTML!");
-                } else {
-                    countEl.innerText = checkedBoxes.length;
-                    console.log("2. Angka di modal berhasil diupdate.");
-                }
-
-                const listContainer = document.getElementById('deleteItemsList');
-                if (!listContainer) {
-                    console.error("❌ ERROR: Elemen dengan ID 'deleteItemsList' tidak ditemukan di HTML!");
-                } else {
-                    listContainer.innerHTML = '';
-                    console.log("3. Mempersiapkan list HTML...");
-
-                    checkedBoxes.forEach((cb, index) => {
-                        const invoice = cb.getAttribute('data-invoice') || 'N/A';
-                        const resi = cb.getAttribute('data-resi') || 'N/A';
-
-                        console.log(`   -> Data ke-${index+1}: Invoice: ${invoice} | Resi: ${resi}`);
-
-                        const li = document.createElement('li');
-                        li.className = "py-2 flex justify-between items-center";
-                        li.innerHTML = `
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-bold text-gray-400 w-5">${index + 1}.</span>
-                                <span class="font-bold text-gray-800">${invoice}</span>
-                            </div>
-                            <span class="text-xs px-2 py-1 bg-white border border-gray-200 rounded text-gray-600">${resi}</span>
-                        `;
-                        listContainer.appendChild(li);
-                    });
-                    console.log("4. List HTML berhasil di-generate.");
-                }
-
-                const modal = document.getElementById('bulkDeleteModal');
-                if (!modal) {
-                    console.error("❌ ERROR: Elemen Modal dengan ID 'bulkDeleteModal' tidak ditemukan!");
-                    alert("Sistem gagal menemukan jendela konfirmasi (Modal tidak ditemukan).");
-                } else {
-                    console.log("5. Membuka Modal...");
-                    // Panggil fungsi bawaan Bapak
-                    if (typeof openModal === "function") {
-                        openModal('bulkDeleteModal');
-                        console.log("✅ Modal berhasil dibuka via openModal()");
-                    } else {
-                        console.warn("⚠️ Peringatan: Fungsi openModal() tidak terdeteksi, mencoba membuka manual...");
-                        modal.classList.remove('hidden');
-                    }
-                }
-            } catch (error) {
-                console.error("❌ ERROR FATAL JS:", error);
-                alert("Terjadi error di Javascript: " + error.message);
+            // 1. Cek apakah ada yang dipilih
+            if (count === 0) {
+                alert("Pilih minimal satu pesanan untuk dihapus.");
+                return;
             }
-            console.log("--- DEBUG: Selesai showBulkDeleteModal() ---");
+
+            // 2. Susun pesan yang akan muncul di pop-up
+            let pesanConfirm = `⚠️ PERINGATAN ⚠️\n\nAnda yakin ingin menghapus ${count} pesanan berikut secara permanen?\nData yang dihapus tidak dapat dikembalikan.\n\nDaftar Invoice:\n`;
+
+            // Tampilkan maksimal 10 invoice di pop-up agar layar tidak penuh jika hapus banyak
+            let displayCount = 0;
+            checkedBoxes.forEach((cb, index) => {
+                if (displayCount < 10) {
+                    pesanConfirm += `${index + 1}. ${cb.getAttribute('data-invoice')}\n`;
+                    displayCount++;
+                }
+            });
+
+            if (count > 10) {
+                pesanConfirm += `...dan ${count - 10} pesanan lainnya.\n`;
+            }
+
+            // 3. Tampilkan Pop-Up Konfirmasi Bawaan Browser
+            const yakinHapus = confirm(pesanConfirm);
+
+            // 4. Jika user klik "OK/Yes", jalankan proses submit
+            if (yakinHapus) {
+                submitBulkDelete();
+            }
         }
 
         // Submit Form
         function submitBulkDelete() {
-            console.log("--- DEBUG: Memulai submitBulkDelete() ---");
-            try {
-                const btn = document.getElementById('btnConfirmDelete');
-                if(btn) {
-                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
-                    btn.classList.add('opacity-70', 'cursor-wait');
-                    btn.disabled = true;
-                }
+            const btn = document.getElementById('btnConfirmDelete');
+            // Karena kita tidak pakai modal lagi, kita cari tombol "Hapus Terpilih" yang di atas tabel
+            const btnAtas = document.querySelector('button[onclick="showBulkDeleteModal()"]');
 
-                const form = document.getElementById('bulkDeleteForm');
-                if(!form) {
-                    console.error("❌ ERROR: Form 'bulkDeleteForm' tidak ditemukan!");
-                    alert("Gagal menghapus: Form tidak ditemukan.");
-                    return;
-                }
+            if(btnAtas) {
+                btnAtas.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
+                btnAtas.classList.add('opacity-70', 'cursor-wait');
+                btnAtas.disabled = true;
+            }
 
-                console.log("✅ Form ditemukan, submit dijalankan.");
+            const form = document.getElementById('bulkDeleteForm');
+            if(form) {
                 form.submit();
-
-            } catch (error) {
-                console.error("❌ ERROR FATAL JS:", error);
-                alert("Gagal mensubmit form: " + error.message);
+            } else {
+                alert("Gagal menghapus: Form tidak ditemukan.");
             }
         }
+
 
         document.addEventListener('DOMContentLoaded', function() {
             updateBulkActionUI();
