@@ -33,7 +33,6 @@ class KoliController extends Controller
         elseif ($pm === 'COD_ONGKIR') $pm = 'COD';
         elseif ($pm === 'COD_BARANG') $pm = 'CODBARANG';
         elseif ($pm === '#DOKU') $pm = 'DOKU_JOKUL';
-        // Jika kode lain (misal #DANA atau BRIVA), biarkan saja untuk diproses Tripay
 
         $request->merge(['payment_method' => $pm]);
     }
@@ -133,7 +132,6 @@ class KoliController extends Controller
             $itemPrice = (int) str_replace(['Rp', '.', ',', ' '], '', $request->item_price);
             $useInsurance = ($request->ansuransi == 'iya' || $request->ansuransi == 1 || $request->ansuransi == 'true') ? 1 : 0;
 
-            // Pastikan jika ada service_type trucking/cargo disesuaikan (Default mix)
             $cat = $request->input('service_type', 'regular');
 
             $options = $kirimaja->getExpressPricing(
@@ -179,17 +177,25 @@ class KoliController extends Controller
                 'item_description' => 'required'
             ]);
 
-            // Simpan kontak jika dicentang
             $this->_saveKontak($request, 'sender', 'Pengirim');
             $this->_saveKontak($request, 'receiver', 'Penerima');
 
             $senderAddressData = $this->_getAddressData($request, 'sender');
             $receiverAddressData = $this->_getAddressData($request, 'receiver');
 
+            // --- HITUNG VOLUME DAN BERAT AKTUAL (P x L x T) ---
+            $beratFisik = (int) $request->weight;
+            $p = (int) ($request->length ?? 10);
+            $l = (int) ($request->width ?? 10);
+            $t = (int) ($request->height ?? 10);
+
+            $divisor = (strpos(strtolower($request->service_code), 'cargo') !== false || strpos(strtolower($request->service_code), 'trucking') !== false) ? 4000 : 6000;
+            $volumeWeight = ($p * $l * $t) / $divisor * 1000;
+            $chargeableWeight = (int) ceil(max($beratFisik, $volumeWeight));
+
             $realCostData = $this->_getRealShippingCost(
                 $kirimaja, $senderAddressData['kirimaja_data'], $receiverAddressData['kirimaja_data'],
-                (int)$request->weight, (int)$request->length, (int)$request->width, (int)$request->height,
-                $request->courier_code, $request->service_code, $itemPrice, $request->ansuransi
+                $beratFisik, $p, $l, $t, $request->courier_code, $request->service_code, $itemPrice, $request->ansuransi
             );
 
             $shippingCost = (int) $realCostData['cost'];
@@ -219,42 +225,24 @@ class KoliController extends Controller
             $pesanan->customer_id = Auth::id();
             $pesanan->id_pengguna_pembeli = Auth::id();
 
-            // SENDER
-            $pesanan->sender_name = $request->sender_name;
-            $pesanan->sender_phone = $this->_sanitizePhone($request->sender_phone);
-            $pesanan->sender_address = $request->sender_address;
-            $pesanan->sender_district_id = $request->sender_district_id;
-            $pesanan->sender_subdistrict_id = $request->sender_subdistrict_id;
-            $pesanan->sender_province = $request->sender_province;
-            $pesanan->sender_regency = $request->sender_regency;
-            $pesanan->sender_district = $request->sender_district;
-            $pesanan->sender_village = $request->sender_village;
-            $pesanan->sender_postal_code = $request->sender_postal_code;
-            $pesanan->sender_lat = $senderAddressData['lat'] ?? 0;
-            $pesanan->sender_lng = $senderAddressData['lng'] ?? 0;
+            // SENDER & RECEIVER
+            $pesanan->sender_name = $request->sender_name; $pesanan->sender_phone = $this->_sanitizePhone($request->sender_phone);
+            $pesanan->sender_address = $request->sender_address; $pesanan->sender_district_id = $request->sender_district_id;
+            $pesanan->sender_subdistrict_id = $request->sender_subdistrict_id; $pesanan->sender_province = $request->sender_province;
+            $pesanan->sender_regency = $request->sender_regency; $pesanan->sender_district = $request->sender_district;
+            $pesanan->sender_village = $request->sender_village; $pesanan->sender_postal_code = $request->sender_postal_code;
+            $pesanan->sender_lat = $senderAddressData['lat'] ?? 0; $pesanan->sender_lng = $senderAddressData['lng'] ?? 0;
 
-            // RECEIVER
-            $pesanan->receiver_name = $request->receiver_name;
-            $pesanan->receiver_phone = $this->_sanitizePhone($request->receiver_phone);
-            $pesanan->receiver_address = $request->receiver_address;
-            $pesanan->receiver_district_id = $request->receiver_district_id;
-            $pesanan->receiver_subdistrict_id = $request->receiver_subdistrict_id;
-            $pesanan->receiver_province = $request->receiver_province;
-            $pesanan->receiver_regency = $request->receiver_regency;
-            $pesanan->receiver_district = $request->receiver_district;
-            $pesanan->receiver_village = $request->receiver_village;
-            $pesanan->receiver_postal_code = $request->receiver_postal_code;
-            $pesanan->receiver_lat = $receiverAddressData['lat'] ?? 0;
-            $pesanan->receiver_lng = $receiverAddressData['lng'] ?? 0;
+            $pesanan->receiver_name = $request->receiver_name; $pesanan->receiver_phone = $this->_sanitizePhone($request->receiver_phone);
+            $pesanan->receiver_address = $request->receiver_address; $pesanan->receiver_district_id = $request->receiver_district_id;
+            $pesanan->receiver_subdistrict_id = $request->receiver_subdistrict_id; $pesanan->receiver_province = $request->receiver_province;
+            $pesanan->receiver_regency = $request->receiver_regency; $pesanan->receiver_district = $request->receiver_district;
+            $pesanan->receiver_village = $request->receiver_village; $pesanan->receiver_postal_code = $request->receiver_postal_code;
+            $pesanan->receiver_lat = $receiverAddressData['lat'] ?? 0; $pesanan->receiver_lng = $receiverAddressData['lng'] ?? 0;
 
-            // PARCEL DATA
             $pesanan->item_description = $request->item_description;
-            $pesanan->weight = $request->weight;
-            $pesanan->length = $request->length;
-            $pesanan->width = $request->width;
-            $pesanan->height = $request->height;
-            $pesanan->item_type = $request->item_type ?? 7;
-            $pesanan->item_price = $itemPrice;
+            $pesanan->weight = $beratFisik; $pesanan->length = $p; $pesanan->width = $l; $pesanan->height = $t;
+            $pesanan->item_type = $request->item_type ?? 7; $pesanan->item_price = $itemPrice;
 
             $pesanan->payment_method = $request->payment_method;
             $pesanan->ansuransi = $request->ansuransi;
@@ -274,10 +262,18 @@ class KoliController extends Controller
             $pesanan->save();
 
             $paymentUrl = null;
+            $user = User::find(Auth::id());
 
-            // PEMBAYARAN
-            if ($request->payment_method === 'Potong Saldo') {
-                $user = User::find(Auth::id());
+            // --- PEMBAYARAN ---
+            // LOGIKA KHUSUS VIP ADMIN ID 4 (BAYAR CASH TANPA POTONG SALDO)
+            if ($request->payment_method === 'CASH') {
+                if ($user->id != 4) {
+                    throw new Exception("Metode pembayaran Cash hanya tersedia untuk Admin.");
+                }
+                $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
+                $pesanan->save();
+            }
+            elseif ($request->payment_method === 'Potong Saldo') {
                 if ($user->saldo < $pesanan->price) throw new Exception("Saldo Anda tidak mencukupi.");
                 $user->decrement('saldo', $pesanan->price);
 
@@ -306,12 +302,12 @@ class KoliController extends Controller
                 $pesanan->save();
             }
 
-            // HIT API KIRIMINAJA JIKA LUNAS / COD
+            // HIT API KIRIMINAJA JIKA LUNAS / COD / CASH
             $resi = "DIPROSES";
-            if (in_array($request->payment_method, ['COD', 'CODBARANG', 'Potong Saldo'])) {
+            if (in_array($request->payment_method, ['COD', 'CODBARANG', 'Potong Saldo', 'CASH'])) {
                 $apiPayload = [
                     'item_description' => $pesanan->item_description, 'item_price' => $itemPrice,
-                    'weight' => (int)$pesanan->weight, 'length' => (int)$pesanan->length, 'width' => (int)$pesanan->width, 'height' => (int)$pesanan->height,
+                    'weight' => $chargeableWeight, 'length' => $p, 'width' => $l, 'height' => $t,
                     'courier_code' => $request->courier_code, 'service_code' => $request->service_code, 'ansuransi' => $request->ansuransi
                 ];
 
@@ -334,7 +330,6 @@ class KoliController extends Controller
                 }
             }
 
-            // NOTIFIKASI WA
             try {
                 $this->_sendWhatsappNotification($pesanan, ['payment_method' => $request->payment_method, 'item_price' => $itemPrice], $shippingCost, $insuranceCost, $codFee, $totalPrice, $request, 1);
             } catch (Exception $e) { Log::error('WA Error: ' . $e->getMessage()); }
@@ -402,11 +397,18 @@ class KoliController extends Controller
                     $nomorInvoice = 'SCK-' . date('ymd') . '-'. strtoupper(Str::random(3)) . '-' . ($index + 1);
                 } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
 
+                // --- HITUNG VOLUME DAN BERAT AKTUAL (P x L x T) ---
                 $beratFisik = (int) $pkg['weight'];
-                $p = (int) ($pkg['length'] ?? 10); $l = (int) ($pkg['width'] ?? 10); $t = (int) ($pkg['height'] ?? 10);
+                $p = (int) ($pkg['length'] ?? 10);
+                $l = (int) ($pkg['width'] ?? 10);
+                $t = (int) ($pkg['height'] ?? 10);
 
                 $targetCourier = $pkg['courier_code'];
                 $targetService = $pkg['service_code'];
+
+                $divisor = (strpos(strtolower($targetService), 'cargo') !== false || strpos(strtolower($targetService), 'trucking') !== false) ? 4000 : 6000;
+                $volumeWeight = ($p * $l * $t) / $divisor * 1000;
+                $finalBookingWeight = (int) ceil(max($beratFisik, $volumeWeight));
 
                 $realCostData = $this->_getRealShippingCost(
                     $kirimaja, $senderAddressData['kirimaja_data'], $receiverAddressData['kirimaja_data'],
@@ -477,7 +479,7 @@ class KoliController extends Controller
                 $tempDataPerOrder[$pesanan->id] = [
                     'cod_value_api' => $finalCodValueAPI, 'shipping_cost' => $ongkirFix, 'insurance_cost' => $asuransiFix,
                     'item_value_api' => $hargaBarangPerPaket, 'courier_code' => $targetCourier, 'service_code' => $targetService,
-                    'booking_weight' => max($beratFisik, (($p*$l*$t)/((strpos(strtolower($targetService),'cargo')!==false)?4000:6000)*1000))
+                    'booking_weight' => $finalBookingWeight
                 ];
 
                 if (!in_array($request->payment_method, ['COD', 'CODBARANG'])) $grandTotalTagihan += $finalPriceDB;
@@ -486,15 +488,24 @@ class KoliController extends Controller
 
             $masterOrder = $createdOrders[0];
             $paymentUrl = null;
+            $user = User::find(Auth::id());
 
-            if ($request->payment_method === 'Potong Saldo') {
-                $user = User::find(Auth::id());
+            // --- PEMBAYARAN ---
+            if ($request->payment_method === 'CASH') {
+                if ($user->id != 4) {
+                    throw new Exception("Metode pembayaran Cash hanya tersedia untuk Admin.");
+                }
+                foreach ($createdOrders as $o) { $o->status = 'Menunggu Pickup'; $o->status_pesanan = 'Menunggu Pickup'; $o->save(); }
+            }
+            elseif ($request->payment_method === 'Potong Saldo') {
                 if ($user->saldo < $grandTotalTagihan) throw new Exception("Saldo Anda tidak mencukupi.");
                 $user->decrement('saldo', $grandTotalTagihan);
                 foreach ($createdOrders as $o) { $o->status = 'Menunggu Pickup'; $o->status_pesanan = 'Menunggu Pickup'; $o->save(); }
-            } elseif (in_array($request->payment_method, ['COD', 'CODBARANG'])) {
+            }
+            elseif (in_array($request->payment_method, ['COD', 'CODBARANG'])) {
                  foreach ($createdOrders as $o) { $o->status = 'Menunggu Pickup'; $o->status_pesanan = 'Menunggu Pickup'; $o->save(); }
-            } else {
+            }
+            else {
                 $paymentGateway = 'tripay';
                 if ($request->payment_method === 'DOKU_JOKUL') $paymentGateway = 'doku';
 
@@ -515,8 +526,8 @@ class KoliController extends Controller
                 }
             }
 
-            // HIT API KIRIMINAJA JIKA LUNAS / COD
-            if (in_array($request->payment_method, ['COD', 'CODBARANG', 'Potong Saldo'])) {
+            // HIT API KIRIMINAJA JIKA LUNAS / COD / CASH
+            if (in_array($request->payment_method, ['COD', 'CODBARANG', 'Potong Saldo', 'CASH'])) {
                 foreach ($createdOrders as $order) {
                     $temp = $tempDataPerOrder[$order->id];
                     $apiPayload = [
@@ -541,7 +552,6 @@ class KoliController extends Controller
                 }
             }
 
-            // NOTIF WA
             try {
                 $waTotalFee = collect($createdOrders)->sum('cod_fee');
                 $waTotalIns = collect($createdOrders)->sum('insurance_cost');
@@ -567,7 +577,6 @@ class KoliController extends Controller
         }
     }
 
-
     // ==========================================
     // INNER HELPERS: COST, KIRIMINAJA & TRIPAY
     // ==========================================
@@ -581,10 +590,15 @@ class KoliController extends Controller
             $category = 'trucking';
         }
 
+        // --- HITUNG VOLUME DAN BERAT AKTUAL (P x L x T) UNTUK API CEK ONGKIR ---
+        $divisor = ($category === 'trucking') ? 4000 : 6000;
+        $volumeWeight = ($length * $width * $height) / $divisor * 1000;
+        $chargeableWeight = (int) ceil(max($weight, $volumeWeight));
+
         $options = $kirimaja->getExpressPricing(
             $senderData['district_id'], $senderData['subdistrict_id'],
             $receiverData['district_id'], $receiverData['subdistrict_id'],
-            $weight, $length, $width, $height, $itemValue, null, $category, $useInsurance
+            $chargeableWeight, $length, $width, $height, $itemValue, null, $category, $useInsurance
         );
 
         $foundCost = 0; $foundInsurance = 0;
@@ -623,8 +637,6 @@ class KoliController extends Controller
         $pickupSchedule = $schedules['clock'] ?? 'now';
         $useInsuranceFlag = ($data['ansuransi'] == 'iya') ? 1 : 0;
 
-        // FIXED: Memetakan courier_code menjadi 'service' dan service_code menjadi 'service_type'
-        // Sesuai standar Payload API KiriminAja
         $payload = [
             'address' => $order->sender_address, 'phone' => $order->sender_phone, 'name' => $order->sender_name,
             'kecamatan_id' => $senderData['kirimaja_data']['district_id'], 'kelurahan_id' => $senderData['kirimaja_data']['subdistrict_id'],
@@ -643,8 +655,8 @@ class KoliController extends Controller
                 'item_value' => (int)$data['item_price'],
                 'insurance' => $useInsuranceFlag, 'insurance_amount' => ($useInsuranceFlag === 1) ? (int)$insurance_cost : 0,
                 'cod' => (int)$cod_value,
-                'service' => $data['courier_code'],       // Fix Map
-                'service_type' => $data['service_code'],  // Fix Map
+                'service' => $data['courier_code'],
+                'service_type' => $data['service_code'],
                 'shipping_cost' => (int)$shipping_cost
             ]]
         ];
@@ -662,7 +674,7 @@ class KoliController extends Controller
             'method' => $data['payment_method'], 'merchant_ref' => $order->nomor_invoice, 'amount' => $total,
             'customer_name' => $data['receiver_name'], 'customer_email' => $customerEmail, 'customer_phone' => $data['receiver_phone'],
             'order_items' => $orderItems,
-            'return_url' => 'https://tokosancaka.com', // Bebas, API mobile akan otomatis buka App
+            'return_url' => 'https://tokosancaka.com',
             'expired_time' => time() + (1 * 60 * 60),
             'signature' => hash_hmac('sha256', $merchantCode . $order->nomor_invoice . $total, $privateKey),
         ];
