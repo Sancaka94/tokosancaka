@@ -262,18 +262,31 @@ class KoliController extends Controller
             $pesanan->save();
 
             $paymentUrl = null;
-            $user = User::where('id_pengguna', Auth::id())->first();
+            $masterOrder = $createdOrders[0];
+            $paymentUrl = null;
 
+            // 1. CARI USER DENGAN LEBIH AMAN (Cek id_pengguna ATAU id)
+            $user = User::where('id_pengguna', Auth::id())->orWhere('id', Auth::id())->first();
 
             // --- PEMBAYARAN ---
-            // LOGIKA KHUSUS VIP ADMIN ID 4 (BAYAR CASH TANPA POTONG SALDO)
             if ($request->payment_method === 'CASH') {
-                // UBAH 'id' MENJADI 'id_pengguna'
-                if ($user->id_pengguna != 4) {
-                    throw new Exception("Metode pembayaran Cash hanya untuk Admin.");
+
+                // 2. TANGKAP ID YANG SEBENARNYA DIKIRIM KE SERVER
+                $authId = Auth::id();
+                $dbId = $user ? $user->id_pengguna : 'Null';
+
+                // 3. PENGECEKAN GANDA (Kalau Auth ID ATAU DB ID nya 4, loloskan!)
+                if ($authId != 4 && $dbId != 4) {
+                    // JIKA GAGAL, TAMPILKAN ID-NYA DI LOG/LAYAR AGAR KITA TAHU SIAPA PENYUSUPNYA
+                    throw new Exception("Metode Cash khusus Admin. (Sistem mendeteksi Auth ID Anda: $authId, DB ID: $dbId)");
                 }
-                $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
-                $pesanan->save();
+
+                // Jika lolos, update status
+                foreach ($createdOrders as $o) {
+                    $o->status = 'Menunggu Pickup';
+                    $o->status_pesanan = 'Menunggu Pickup';
+                    $o->save();
+                }
             }
             elseif ($request->payment_method === 'Potong Saldo') {
                 if ($user->saldo < $pesanan->price) throw new Exception("Saldo Anda tidak mencukupi.");
