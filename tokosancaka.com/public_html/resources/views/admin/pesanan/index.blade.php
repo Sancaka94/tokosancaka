@@ -77,6 +77,19 @@
             }
         }
 
+        /* Animasi untuk tombol Bulk Delete */
+        .bulk-action-bar {
+            transition: all 0.3s ease-in-out;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+        }
+        .bulk-action-bar.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
         /* Custom Style untuk Date Picker */
         .flatpickr-calendar { z-index: 9999 !important; }
         .flatpickr-input { background-color: white !important; cursor: pointer !important; }
@@ -289,33 +302,66 @@
 
         </div>
 
-        {{-- TABEL DATA --}}
-        <div class="table-container">
-            <table class="w-full divide-y divide-gray-200">
-                <thead class="bg-red-100">
-                    <tr>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">No</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Transaksi</strong></th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Alamat</strong></th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Ekspedisi & Ongkir</strong></th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Isi Paket</strong></th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Status</strong></th>
-                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider sticky-col"><strong>Aksi</strong></th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    @forelse ($orders as $index => $order)
-                    <tr class="group hover:bg-gray-50">
+        {{-- === TOMBOL AKSI MASSAL (MUNCUL SAAT ADA YANG DICEKLIST) === --}}
+        <div id="bulkActionBar" class="bulk-action-bar bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="text-sm text-red-800 font-semibold flex items-center gap-2">
+                <i class="fas fa-check-square text-red-500 text-lg"></i>
+                <span id="selectedCount">0</span> Pesanan Terpilih
+            </div>
+            <div class="flex gap-2 w-full sm:w-auto">
+                <button type="button" id="btnSelectAll" onclick="toggleSelectAll()" class="flex-1 sm:flex-none bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition">
+                    Pilih Semua
+                </button>
+                <button type="button" onclick="showBulkDeleteModal()" class="flex-1 sm:flex-none bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-700 shadow-sm transition flex items-center justify-center gap-2">
+                    <i class="fas fa-trash-alt"></i> Hapus Terpilih
+                </button>
+            </div>
+        </div>
 
-                        {{-- 1. NO --}}
-                        <td class="px-4 py-4 align-top text-sm text-gray-500 md:w-12 border-b-0 pb-0 md:pb-4 md:border-b">
-                            <div class="flex items-center justify-between md:block">
-                                <div>
-                                    <span class="md:hidden font-bold text-gray-400 text-xs mr-2">NO:</span>
-                                    {{ $orders->firstItem() + $index }}
+        {{-- FORM UNTUK HAPUS MASSAL --}}
+        <form id="bulkDeleteForm" action="{{ route('admin.pesanan.bulk_destroy') }}" method="POST">
+            @csrf
+            @method('DELETE')
+
+            {{-- TABEL DATA --}}
+            <div class="table-container">
+                <table class="w-full divide-y divide-gray-200">
+                    <thead class="bg-red-100">
+                        <tr>
+                            {{-- TH Checkbox Header --}}
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 w-10">
+                                <input type="checkbox" id="checkAllHeader" onclick="toggleSelectAllHeader(this)" class="w-4 h-4 text-red-600 bg-white border-gray-300 rounded focus:ring-red-500 cursor-pointer">
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">No</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Transaksi</strong></th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Alamat</strong></th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Ekspedisi & Ongkir</strong></th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Isi Paket</strong></th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Status</strong></th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider sticky-col"><strong>Aksi</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @forelse ($orders as $index => $order)
+                        <tr class="group hover:bg-gray-50 row-order">
+
+                            {{-- TD Checkbox --}}
+                            <td class="px-4 py-4 align-top border-b-0 pb-0 md:pb-4 md:border-b bg-gray-50 md:bg-transparent">
+                                <div class="flex items-center md:block">
+                                    <span class="md:hidden font-bold text-gray-400 text-xs mr-2">PILIH:</span>
+                                    <input type="checkbox" name="selected_ids[]" value="{{ $order->nomor_invoice }}" data-invoice="{{ $order->nomor_invoice }}" data-resi="{{ $order->resi ?? 'Belum ada resi' }}" onchange="updateBulkActionUI()" class="row-checkbox w-4 h-4 text-red-600 bg-white border-gray-300 rounded focus:ring-red-500 cursor-pointer shadow-sm">
                                 </div>
-                            </div>
-                        </td>
+                            </td>
+
+                            {{-- 1. NO --}}
+                            <td class="px-4 py-4 align-top text-sm text-gray-500 md:w-12 border-b-0 pb-0 md:pb-4 md:border-b">
+                                <div class="flex items-center justify-between md:block">
+                                    <div>
+                                        <span class="md:hidden font-bold text-gray-400 text-xs mr-2">NO:</span>
+                                        {{ $orders->firstItem() + $index }}
+                                    </div>
+                                </div>
+                            </td>
 
                         {{-- 2. TRANSAKSI --}}
                         <td class="px-4 py-4 align-top text-sm relative">
@@ -532,17 +578,18 @@
                             </div>
                         </td>
                     </tr>
-                    @empty
-                    <tr>
-                        <td colspan="7" class="text-center py-8 text-gray-500">
-                            <i class="fas fa-box-open text-4xl mb-3 text-gray-300"></i><br>
-                            Data pesanan tidak ditemukan.
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                        @empty
+                        <tr>
+                            <td colspan="8" class="text-center py-8 text-gray-500">
+                                <i class="fas fa-box-open text-4xl mb-3 text-gray-300"></i><br>
+                                Data pesanan tidak ditemukan.
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </form>
 
         {{-- Pagination --}}
         @if ($orders->hasPages())
