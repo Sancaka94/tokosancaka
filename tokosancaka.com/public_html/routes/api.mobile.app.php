@@ -30,7 +30,7 @@ Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendR
 // --- ENDPOINT UPDATE APLIKASI (SELF-HOSTED PLAYSTORE) ---
 Route::get('/check-update', function(Request $request) {
     // 1. Tentukan versi rilis terbaru di server
-    $latestVersion = '1.0.4'; // Ubah ini setiap kali ada update baru, bisa juga diambil dari database jika ingin lebih dinamis
+    $latestVersion = '1.0.3'; // Ubah ini setiap kali ada update baru, bisa juga diambil dari database jika ingin lebih dinamis
 
     // 2. Tangkap versi aplikasi yang sedang dipakai user dari parameter URL
     $appVersion = $request->query('app_version');
