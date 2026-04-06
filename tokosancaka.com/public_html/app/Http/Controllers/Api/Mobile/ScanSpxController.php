@@ -226,19 +226,15 @@ class ScanSpxController extends Controller
         ]);
     }
 
-  /**
+ /**
      * 5. Mengunduh Surat Jalan dalam format PDF.
      */
     public function downloadSuratJalan($kode_surat_jalan)
     {
-        // 1. Langsung cari berdasarkan kode uniknya
         $suratJalan = SuratJalan::where('kode_surat_jalan', $kode_surat_jalan)->firstOrFail();
-
-        // 2. Ambil paket/resi yang terikat
         $scans = ScannedPackage::where('surat_jalan_id', $suratJalan->id)->get();
 
-        // 3. NORMALISASI DATA PENGIRIM
-        // Kita siapkan data bawaan (fallback) jika kosong
+        // 1. KUMPULKAN DATA PENGIRIM
         $nama = 'Sancaka Express';
         $no_hp = '085745808809';
         $alamat = 'Toko Sancaka Express';
@@ -259,18 +255,29 @@ class ScanSpxController extends Controller
             }
         }
 
-        // KUNCI JAWABAN: Kita bungkus menjadi Object dengan semua kemungkinan nama variabel
-        $customer = (object) [
+        // 2. BUNGKUS KE DALAM OBJECT MULTI-NAMA
+        $customerObj = (object) [
             'nama' => $nama,
-            'nama_lengkap' => $nama,           // Jaga-jaga kalau file Blade PDF pakai ini
+            'nama_lengkap' => $nama,
             'no_hp' => $no_hp,
-            'no_wa' => $no_hp,                 // Jaga-jaga kalau file Blade PDF pakai ini
+            'no_wa' => $no_hp,
             'alamat' => $alamat,
-            'address_detail' => $alamat        // Jaga-jaga kalau file Blade PDF pakai ini
+            'address_detail' => $alamat
         ];
 
-        // 4. Generate PDF
-        $pdf = Pdf::loadView('customer.scan.surat-jalan-pdf', compact('suratJalan', 'scans', 'customer'));
+        // 3. INJEKSI PAKSA KE DALAM OBJECT SURAT JALAN
+        // Apapun cara file Blade memanggil datanya, pasti akan terjawab!
+        $suratJalan->kontak = $customerObj; // Jaga-jaga jika Blade pakai $suratJalan->kontak->nama
+        $suratJalan->user = $customerObj;   // Jaga-jaga jika Blade pakai $suratJalan->user->nama_lengkap
+        $suratJalan->pengirim_nama = $nama; // Jaga-jaga jika pakai $suratJalan->pengirim_nama
+
+        // 4. GENERATE PDF
+        $pdf = Pdf::loadView('customer.scan.surat-jalan-pdf', [
+            'suratJalan' => $suratJalan,
+            'scans' => $scans,
+            'customer' => $customerObj // Jaga-jaga jika Blade murni memanggil $customer->nama
+        ]);
+
         return $pdf->download('surat-jalan-' . $kode_surat_jalan . '.pdf');
     }
 
