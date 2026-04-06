@@ -219,24 +219,25 @@ class ScanSpxController extends Controller
         ]);
     }
 
-    /**
+   /**
      * 5. Mengunduh Surat Jalan dalam format PDF.
      */
     public function downloadSuratJalan($kode_surat_jalan)
     {
-        $querySJ = SuratJalan::where('kode_surat_jalan', $kode_surat_jalan);
-        $this->applyUserFilter($querySJ);
+        // 1. Langsung cari berdasarkan kode uniknya (Tanpa filter Auth/Login karena dibuka via Browser)
+        $suratJalan = SuratJalan::where('kode_surat_jalan', $kode_surat_jalan)->firstOrFail();
 
-        $suratJalan = $querySJ->firstOrFail();
+        // 2. Ambil paket/resi yang terikat
         $scans = ScannedPackage::where('surat_jalan_id', $suratJalan->id)->get();
 
-        // Cek Kontak Dulu, baru ke User
+        // 3. Prioritas Data Pengirim (Kontak -> User)
         if ($suratJalan->kontak_id) {
             $customer = Kontak::find($suratJalan->kontak_id);
         } else {
             $customer = User::where('id_pengguna', $suratJalan->user_id)->first();
         }
 
+        // 4. Generate PDF
         $pdf = Pdf::loadView('customer.scan.surat-jalan-pdf', compact('suratJalan', 'scans', 'customer'));
         return $pdf->download('surat-jalan-' . $kode_surat_jalan . '.pdf');
     }
