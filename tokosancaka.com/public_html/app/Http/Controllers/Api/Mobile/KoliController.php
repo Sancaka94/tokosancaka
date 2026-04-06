@@ -623,6 +623,8 @@ class KoliController extends Controller
         $pickupSchedule = $schedules['clock'] ?? 'now';
         $useInsuranceFlag = ($data['ansuransi'] == 'iya') ? 1 : 0;
 
+        // FIXED: Memetakan courier_code menjadi 'service' dan service_code menjadi 'service_type'
+        // Sesuai standar Payload API KiriminAja
         $payload = [
             'address' => $order->sender_address, 'phone' => $order->sender_phone, 'name' => $order->sender_name,
             'kecamatan_id' => $senderData['kirimaja_data']['district_id'], 'kelurahan_id' => $senderData['kirimaja_data']['subdistrict_id'],
@@ -640,7 +642,9 @@ class KoliController extends Controller
                 'weight' => (int)$data['weight'], 'width' => (int)$data['width'], 'height' => (int)$data['height'], 'length' => (int)$data['length'],
                 'item_value' => (int)$data['item_price'],
                 'insurance' => $useInsuranceFlag, 'insurance_amount' => ($useInsuranceFlag === 1) ? (int)$insurance_cost : 0,
-                'cod' => (int)$cod_value, 'courier' => $data['courier_code'], 'service' => $data['service_code'],
+                'cod' => (int)$cod_value,
+                'service' => $data['courier_code'],       // Fix Map
+                'service_type' => $data['service_code'],  // Fix Map
                 'shipping_cost' => (int)$shipping_cost
             ]]
         ];
