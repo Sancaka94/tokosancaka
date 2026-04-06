@@ -262,41 +262,29 @@ class KoliController extends Controller
             $pesanan->save();
 
             $paymentUrl = null;
+            $user = User::where('id_pengguna', Auth::id())->first();
+
+
             // --- PEMBAYARAN ---
-
-            // 1. Ambil data user yang sedang login dengan cara yang paling aman
-            $user = Auth::user();
-
+            // LOGIKA KHUSUS VIP ADMIN ID 4 (BAYAR CASH TANPA POTONG SALDO)
             if ($request->payment_method === 'CASH') {
-                // 2. Cek ID langsung dari token (DIJAMIN TEMBUS KARENA BACA TOKEN LANGSUNG)
-                if (Auth::id() != 4 && $user->id_pengguna != 4) {
-                    throw new Exception("Metode pembayaran Cash hanya untuk Admin. ID Anda: " . Auth::id());
+                // UBAH 'id' MENJADI 'id_pengguna'
+                if ($user->id_pengguna != 4) {
+                    throw new Exception("Metode pembayaran Cash hanya untuk Admin.");
                 }
-                foreach ($createdOrders as $o) {
-                    $o->status = 'Menunggu Pickup';
-                    $o->status_pesanan = 'Menunggu Pickup';
-                    $o->save();
-                }
+                $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
+                $pesanan->save();
             }
             elseif ($request->payment_method === 'Potong Saldo') {
-                // 3. Pastikan user ada dan saldonya cukup
-                if (!$user || $user->saldo < $grandTotalTagihan) {
-                    throw new Exception("Saldo Anda tidak mencukupi.");
-                }
-                $user->decrement('saldo', $grandTotalTagihan);
+                if ($user->saldo < $pesanan->price) throw new Exception("Saldo Anda tidak mencukupi.");
+                $user->decrement('saldo', $pesanan->price);
 
-                foreach ($createdOrders as $o) {
-                    $o->status = 'Menunggu Pickup';
-                    $o->status_pesanan = 'Menunggu Pickup';
-                    $o->save();
-                }
+                $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
+                $pesanan->save();
             }
             elseif (in_array($request->payment_method, ['COD', 'CODBARANG'])) {
-                 foreach ($createdOrders as $o) {
-                     $o->status = 'Menunggu Pickup';
-                     $o->status_pesanan = 'Menunggu Pickup';
-                     $o->save();
-                 }
+                $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
+                $pesanan->save();
             }
             else {
                 $paymentGateway = 'tripay';
@@ -304,19 +292,16 @@ class KoliController extends Controller
 
                 if ($paymentGateway === 'doku') {
                     $dokuService = new DokuJokulService();
-                    $paymentUrl = $dokuService->createPayment($masterOrder->nomor_invoice, $grandTotalTagihan);
-                    if (empty($paymentUrl)) throw new Exception('Gagal generate URL DOKU.');
-                    foreach ($createdOrders as $o) { $o->payment_url = $paymentUrl; $o->save(); }
+                    $paymentUrl = $dokuService->createPayment($pesanan->nomor_invoice, $pesanan->price);
+                    if (empty($paymentUrl)) throw new Exception('Gagal generate DOKU URL.');
                 } else {
-                    $orderItems = [];
-                    foreach ($createdOrders as $o) {
-                        $orderItems[] = ['sku' => 'SHIP-'.$o->nomor_invoice, 'name' => 'Ongkir Koli', 'price' => (int)$o->price, 'quantity' => 1];
-                    }
-                    $tripayResponse = $this->_createTripayTransactionInternal($request->all(), $masterOrder, $grandTotalTagihan, $orderItems);
+                    $orderItems = [[ 'sku' => 'SHIPPING', 'name' => 'Ongkir Pesanan', 'price' => (int)$pesanan->price, 'quantity' => 1 ]];
+                    $tripayResponse = $this->_createTripayTransactionInternal($request->all(), $pesanan, $pesanan->price, $orderItems);
                     if (empty($tripayResponse['success'])) throw new Exception('Tripay Error: ' . ($tripayResponse['message'] ?? 'Unknown'));
-                    $paymentUrl = $tripayResponse['data']['checkout_url'] ?? null;
-                    foreach ($createdOrders as $o) { $o->payment_url = $paymentUrl; $o->save(); }
+                    $paymentUrl = $tripayResponse['data']['checkout_url'];
                 }
+                $pesanan->payment_url = $paymentUrl;
+                $pesanan->save();
             }
 
             // HIT API KIRIMINAJA JIKA LUNAS / COD / CASH

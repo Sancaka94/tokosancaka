@@ -1375,6 +1375,9 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                     return ['status' => false, 'text' => 'ID alamat KiriminAja tidak lengkap.'];
             }
 
+            $senderData['kirimaja_data']['postal_code'] = $senderData['kirimaja_data']['postal_code'] ?? '00000';
+            $receiverData['kirimaja_data']['postal_code'] = $receiverData['kirimaja_data']['postal_code'] ?? '00000';
+
             $payload = [
                 'address' => $data['sender_address'], 'phone' => $data['sender_phone'], 'name' => $data['sender_name'],
                 'kecamatan_id' => $senderData['kirimaja_data']['district_id'], 'kelurahan_id' => $senderData['kirimaja_data']['subdistrict_id'],
@@ -1648,11 +1651,11 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
 
                 $senderAddressData = [
                     'lat' => $pesanan->sender_lat, 'lng' => $pesanan->sender_lng,
-                    'kirimaja_data' => ['district_id' => $pesanan->sender_district_id, 'subdistrict_id' => $pesanan->sender_subdistrict_id, 'postal_code' => $pesanan->sender_postal_code]
+                    'kirimaja_data' => ['district_id' => $pesanan->sender_district_id, 'subdistrict_id' => $pesanan->sender_subdistrict_id, 'postal_code' => $pesanan->sender_postal_code ?? '00000']
                 ];
                 $receiverAddressData = [
                     'lat' => $pesanan->receiver_lat, 'lng' => $pesanan->receiver_lng,
-                    'kirimaja_data' => ['district_id' => $pesanan->receiver_district_id, 'subdistrict_id' => $pesanan->receiver_subdistrict_id, 'postal_code' => $pesanan->receiver_postal_code]
+                    'kirimaja_data' => ['district_id' => $pesanan->receiver_district_id, 'subdistrict_id' => $pesanan->receiver_subdistrict_id, 'postal_code' => $pesanan->receiver_postal_code ?? '00000']
                 ];
 
                 $cod_value = 0; // Pasti 0 karena ini pembayaran online
