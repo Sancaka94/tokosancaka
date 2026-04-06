@@ -654,6 +654,50 @@
         @endif
     @endforeach
 
+    {{-- ======================================================================= --}}
+    {{-- MODAL KONFIRMASI HAPUS MASSAL                                           --}}
+    {{-- ======================================================================= --}}
+    <div id="bulkDeleteModal" class="relative z-[99999] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" onclick="closeModal('bulkDeleteModal')"></div>
+
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl border border-gray-200">
+
+                    <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <i class="fas fa-trash-alt text-red-600 text-lg"></i>
+                            </div>
+                            <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                                <h3 class="text-xl font-bold leading-6 text-gray-900" id="modal-title">Konfirmasi Hapus Pesanan</h3>
+                                <div class="mt-3">
+                                    <p class="text-sm text-gray-600 mb-4">Anda yakin ingin menghapus <strong id="modalSelectedCount" class="text-red-600 text-lg">0</strong> pesanan berikut secara permanen? Data yang dihapus tidak dapat dikembalikan.</p>
+
+                                    {{-- Daftar List Data yang Akan Dihapus --}}
+                                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 max-h-64 overflow-y-auto">
+                                        <ul id="deleteItemsList" class="divide-y divide-gray-200 text-sm text-gray-700">
+                                            {{-- List akan di-inject via JavaScript --}}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-gray-200">
+                        <button type="button" onclick="submitBulkDelete()" id="btnConfirmDelete" class="inline-flex w-full justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-red-700 sm:ml-3 sm:w-auto transition items-center gap-2">
+                            <i class="fas fa-trash"></i> Ya, Hapus Semua
+                        </button>
+                        <button type="button" onclick="closeModal('bulkDeleteModal')" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-4 py-2 text-sm font-bold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-100 sm:mt-0 sm:w-auto transition">
+                            Batal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @include('layouts.partials.modals.export', ['excel_route' => route('admin.pesanan.export.excel'), 'pdf_route' => route('admin.pesanan.export.pdf')])
 
 </div>
@@ -666,6 +710,8 @@
     {{-- Flatpickr JS --}}
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script>
+
+
 
     <script>
         // Modal Logic
@@ -787,5 +833,110 @@
                 }
             }
         })();
+
+        // ==========================================
+        // LOGIKA BULK DELETE (HAPUS MASSAL)
+        // ==========================================
+        const bulkActionBar = document.getElementById('bulkActionBar');
+        const selectedCountText = document.getElementById('selectedCount');
+        const btnSelectAll = document.getElementById('btnSelectAll');
+        const checkAllHeader = document.getElementById('checkAllHeader');
+
+        // Fungsi ketika checkbox di header tabel di klik
+        function toggleSelectAllHeader(source) {
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+            updateBulkActionUI();
+        }
+
+        // Fungsi ketika tombol "Pilih Semua" di atas tabel di klik
+        function toggleSelectAll() {
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+            if(checkAllHeader) checkAllHeader.checked = !allChecked;
+
+            updateBulkActionUI();
+        }
+
+        // Memperbarui tampilan UI berdasarkan jumlah yang dipilih
+        function updateBulkActionUI() {
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+            const count = checkedBoxes.length;
+
+            selectedCountText.innerText = count;
+
+            // Sinkronisasi checkbox header
+            if(checkAllHeader) {
+                checkAllHeader.checked = (count === checkboxes.length && count > 0);
+            }
+
+            // Ubah text tombol Pilih Semua
+            if (count === checkboxes.length && count > 0) {
+                btnSelectAll.innerText = "Batal Pilih Semua";
+                btnSelectAll.classList.replace('bg-white', 'bg-gray-200');
+            } else {
+                btnSelectAll.innerText = "Pilih Semua";
+                btnSelectAll.classList.replace('bg-gray-200', 'bg-white');
+            }
+
+            // Tampilkan/Sembunyikan Action Bar
+            if (count > 0) {
+                bulkActionBar.classList.add('active');
+                bulkActionBar.style.display = 'flex'; // Pastikan terlihat saat inisiasi awal jika di mobile
+            } else {
+                bulkActionBar.classList.remove('active');
+            }
+        }
+
+        // Fungsi Menampilkan Modal Konfirmasi beserta List Data
+        function showBulkDeleteModal() {
+            const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+            if (checkedBoxes.length === 0) return;
+
+            // Update Jumlah di Modal
+            document.getElementById('modalSelectedCount').innerText = checkedBoxes.length;
+
+            // Generate List HTML
+            const listContainer = document.getElementById('deleteItemsList');
+            listContainer.innerHTML = ''; // Kosongkan list sebelumnya
+
+            checkedBoxes.forEach((cb, index) => {
+                const invoice = cb.getAttribute('data-invoice');
+                const resi = cb.getAttribute('data-resi');
+
+                const li = document.createElement('li');
+                li.className = "py-2 flex justify-between items-center";
+                li.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-gray-400 w-5">${index + 1}.</span>
+                        <span class="font-bold text-gray-800">${invoice}</span>
+                    </div>
+                    <span class="text-xs px-2 py-1 bg-white border border-gray-200 rounded text-gray-600">${resi}</span>
+                `;
+                listContainer.appendChild(li);
+            });
+
+            // Buka Modal
+            openModal('bulkDeleteModal');
+        }
+
+        // Submit Form
+        function submitBulkDelete() {
+            const btn = document.getElementById('btnConfirmDelete');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
+            btn.classList.add('opacity-70', 'cursor-wait');
+            btn.disabled = true;
+
+            document.getElementById('bulkDeleteForm').submit();
+        }
+
+        // Inisiasi awal UI saat load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateBulkActionUI();
+        });
+
     </script>
 @endpush
