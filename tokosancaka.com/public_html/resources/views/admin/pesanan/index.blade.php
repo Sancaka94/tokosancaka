@@ -834,23 +834,23 @@
             }
         })();
 
-        // ==========================================
-        // LOGIKA BULK DELETE (HAPUS MASSAL)
+       // ==========================================
+        // LOGIKA BULK DELETE (DENGAN DEBUGGING F12)
         // ==========================================
         const bulkActionBar = document.getElementById('bulkActionBar');
         const selectedCountText = document.getElementById('selectedCount');
         const btnSelectAll = document.getElementById('btnSelectAll');
         const checkAllHeader = document.getElementById('checkAllHeader');
 
-        // Fungsi ketika checkbox di header tabel di klik
         function toggleSelectAllHeader(source) {
+            console.log("-> Checkbox Header diklik. Status:", source.checked);
             const checkboxes = document.querySelectorAll('.row-checkbox');
             checkboxes.forEach(cb => cb.checked = source.checked);
             updateBulkActionUI();
         }
 
-        // Fungsi ketika tombol "Pilih Semua" di atas tabel di klik
         function toggleSelectAll() {
+            console.log("-> Tombol 'Pilih Semua' diklik.");
             const checkboxes = document.querySelectorAll('.row-checkbox');
             const allChecked = Array.from(checkboxes).every(cb => cb.checked);
 
@@ -860,80 +860,137 @@
             updateBulkActionUI();
         }
 
-        // Memperbarui tampilan UI berdasarkan jumlah yang dipilih
         function updateBulkActionUI() {
             const checkboxes = document.querySelectorAll('.row-checkbox');
             const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
             const count = checkedBoxes.length;
 
-            selectedCountText.innerText = count;
+            if(selectedCountText) selectedCountText.innerText = count;
 
-            // Sinkronisasi checkbox header
             if(checkAllHeader) {
                 checkAllHeader.checked = (count === checkboxes.length && count > 0);
             }
 
-            // Ubah text tombol Pilih Semua
-            if (count === checkboxes.length && count > 0) {
-                btnSelectAll.innerText = "Batal Pilih Semua";
-                btnSelectAll.classList.replace('bg-white', 'bg-gray-200');
-            } else {
-                btnSelectAll.innerText = "Pilih Semua";
-                btnSelectAll.classList.replace('bg-gray-200', 'bg-white');
+            if(btnSelectAll) {
+                if (count === checkboxes.length && count > 0) {
+                    btnSelectAll.innerText = "Batal Pilih Semua";
+                    btnSelectAll.classList.replace('bg-white', 'bg-gray-200');
+                } else {
+                    btnSelectAll.innerText = "Pilih Semua";
+                    btnSelectAll.classList.replace('bg-gray-200', 'bg-white');
+                }
             }
 
-            // Tampilkan/Sembunyikan Action Bar
-            if (count > 0) {
-                bulkActionBar.classList.add('active');
-                bulkActionBar.style.display = 'flex'; // Pastikan terlihat saat inisiasi awal jika di mobile
-            } else {
-                bulkActionBar.classList.remove('active');
+            if(bulkActionBar) {
+                if (count > 0) {
+                    bulkActionBar.classList.add('active');
+                    bulkActionBar.style.display = 'flex';
+                } else {
+                    bulkActionBar.classList.remove('active');
+                    // Jika butuh disembunyikan total saat kosong:
+                    // bulkActionBar.style.display = 'none';
+                }
             }
         }
 
-        // Fungsi Menampilkan Modal Konfirmasi beserta List Data
+        // ========================================================
+        // DEBUGGING FOKUS DI SINI (TOMBOL HAPUS TERPILIH)
+        // ========================================================
         function showBulkDeleteModal() {
-            const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
-            if (checkedBoxes.length === 0) return;
+            console.log("--- DEBUG: Memulai showBulkDeleteModal() ---");
+            try {
+                const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+                console.log("1. Jumlah data yang diceklist:", checkedBoxes.length);
 
-            // Update Jumlah di Modal
-            document.getElementById('modalSelectedCount').innerText = checkedBoxes.length;
+                if (checkedBoxes.length === 0) {
+                    alert("Pilih minimal satu pesanan untuk dihapus.");
+                    return;
+                }
 
-            // Generate List HTML
-            const listContainer = document.getElementById('deleteItemsList');
-            listContainer.innerHTML = ''; // Kosongkan list sebelumnya
+                const countEl = document.getElementById('modalSelectedCount');
+                if (!countEl) {
+                    console.error("❌ ERROR: Elemen dengan ID 'modalSelectedCount' tidak ditemukan di HTML!");
+                } else {
+                    countEl.innerText = checkedBoxes.length;
+                    console.log("2. Angka di modal berhasil diupdate.");
+                }
 
-            checkedBoxes.forEach((cb, index) => {
-                const invoice = cb.getAttribute('data-invoice');
-                const resi = cb.getAttribute('data-resi');
+                const listContainer = document.getElementById('deleteItemsList');
+                if (!listContainer) {
+                    console.error("❌ ERROR: Elemen dengan ID 'deleteItemsList' tidak ditemukan di HTML!");
+                } else {
+                    listContainer.innerHTML = '';
+                    console.log("3. Mempersiapkan list HTML...");
 
-                const li = document.createElement('li');
-                li.className = "py-2 flex justify-between items-center";
-                li.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs font-bold text-gray-400 w-5">${index + 1}.</span>
-                        <span class="font-bold text-gray-800">${invoice}</span>
-                    </div>
-                    <span class="text-xs px-2 py-1 bg-white border border-gray-200 rounded text-gray-600">${resi}</span>
-                `;
-                listContainer.appendChild(li);
-            });
+                    checkedBoxes.forEach((cb, index) => {
+                        const invoice = cb.getAttribute('data-invoice') || 'N/A';
+                        const resi = cb.getAttribute('data-resi') || 'N/A';
 
-            // Buka Modal
-            openModal('bulkDeleteModal');
+                        console.log(`   -> Data ke-${index+1}: Invoice: ${invoice} | Resi: ${resi}`);
+
+                        const li = document.createElement('li');
+                        li.className = "py-2 flex justify-between items-center";
+                        li.innerHTML = `
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-gray-400 w-5">${index + 1}.</span>
+                                <span class="font-bold text-gray-800">${invoice}</span>
+                            </div>
+                            <span class="text-xs px-2 py-1 bg-white border border-gray-200 rounded text-gray-600">${resi}</span>
+                        `;
+                        listContainer.appendChild(li);
+                    });
+                    console.log("4. List HTML berhasil di-generate.");
+                }
+
+                const modal = document.getElementById('bulkDeleteModal');
+                if (!modal) {
+                    console.error("❌ ERROR: Elemen Modal dengan ID 'bulkDeleteModal' tidak ditemukan!");
+                    alert("Sistem gagal menemukan jendela konfirmasi (Modal tidak ditemukan).");
+                } else {
+                    console.log("5. Membuka Modal...");
+                    // Panggil fungsi bawaan Bapak
+                    if (typeof openModal === "function") {
+                        openModal('bulkDeleteModal');
+                        console.log("✅ Modal berhasil dibuka via openModal()");
+                    } else {
+                        console.warn("⚠️ Peringatan: Fungsi openModal() tidak terdeteksi, mencoba membuka manual...");
+                        modal.classList.remove('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error("❌ ERROR FATAL JS:", error);
+                alert("Terjadi error di Javascript: " + error.message);
+            }
+            console.log("--- DEBUG: Selesai showBulkDeleteModal() ---");
         }
 
         // Submit Form
         function submitBulkDelete() {
-            const btn = document.getElementById('btnConfirmDelete');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
-            btn.classList.add('opacity-70', 'cursor-wait');
-            btn.disabled = true;
+            console.log("--- DEBUG: Memulai submitBulkDelete() ---");
+            try {
+                const btn = document.getElementById('btnConfirmDelete');
+                if(btn) {
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
+                    btn.classList.add('opacity-70', 'cursor-wait');
+                    btn.disabled = true;
+                }
 
-            document.getElementById('bulkDeleteForm').submit();
+                const form = document.getElementById('bulkDeleteForm');
+                if(!form) {
+                    console.error("❌ ERROR: Form 'bulkDeleteForm' tidak ditemukan!");
+                    alert("Gagal menghapus: Form tidak ditemukan.");
+                    return;
+                }
+
+                console.log("✅ Form ditemukan, submit dijalankan.");
+                form.submit();
+
+            } catch (error) {
+                console.error("❌ ERROR FATAL JS:", error);
+                alert("Gagal mensubmit form: " + error.message);
+            }
         }
 
-        // Inisiasi awal UI saat load
         document.addEventListener('DOMContentLoaded', function() {
             updateBulkActionUI();
         });
