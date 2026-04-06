@@ -267,8 +267,9 @@ class KoliController extends Controller
             // --- PEMBAYARAN ---
             // LOGIKA KHUSUS VIP ADMIN ID 4 (BAYAR CASH TANPA POTONG SALDO)
             if ($request->payment_method === 'CASH') {
-                if ($user->id != 4) {
-                    throw new Exception("Metode pembayaran Cash hanya tersedia untuk Admin.");
+                // UBAH 'id' MENJADI 'id_pengguna'
+                if ($user->id_pengguna != 4) {
+                    throw new Exception("Metode pembayaran Cash hanya untuk Admin.");
                 }
                 $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
                 $pesanan->save();
