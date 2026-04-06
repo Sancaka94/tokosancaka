@@ -264,12 +264,12 @@ class KoliController extends Controller
             $paymentUrl = null;
             $masterOrder = $createdOrders[0];
             $paymentUrl = null;
-            $user = User::find(Auth::id());
+            // MENJADI SEPERTI INI:
+            $user = User::where('id_pengguna', Auth::id())->first();
 
             // --- PEMBAYARAN ---
             if ($request->payment_method === 'CASH') {
-                // LANGSUNG CEK PAKE Auth::id() - Dijamin Ampuh!
-                if (Auth::id() != 4) {
+                if ($user->id_pengguna != 4) {
                     throw new Exception("Metode pembayaran Cash hanya tersedia untuk Admin.");
                 }
 
