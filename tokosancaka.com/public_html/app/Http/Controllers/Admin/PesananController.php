@@ -2248,6 +2248,17 @@ public function cetakThermal($resi)
             return ['status' => false, 'error' => $e->getMessage()];
         }
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        $ids = $request->input('selected_ids');
+        if (!empty($ids)) {
+            Pesanan::whereIn('nomor_invoice', $ids)->delete();
+            return redirect()->back()->with('success', count($ids) . ' pesanan berhasil dihapus secara massal.');
+        }
+        return redirect()->back()->with('error', 'Tidak ada data yang dipilih.');
+    }
+
 } // Akhir Class PesananController
 
 
