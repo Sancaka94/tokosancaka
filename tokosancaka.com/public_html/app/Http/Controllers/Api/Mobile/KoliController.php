@@ -264,27 +264,26 @@ class KoliController extends Controller
             $paymentUrl = null;
             $masterOrder = $createdOrders[0];
             $paymentUrl = null;
-
-            // 1. GUNAKAN $request->user() (Lebih akurat untuk API Mobile daripada Auth::user())
-            $user = $request->user();
+            $user = User::find(Auth::id());
 
             // --- PEMBAYARAN ---
-            if (strtoupper($request->payment_method) === 'CASH') {
-
-                // Alarm 1: Jika sistem sama sekali tidak mengenali user yang login
-                if (!$user) {
-                    throw new Exception("Sistem gagal membaca Token Login Anda. Silakan Logout dan Login kembali di aplikasi HP.");
+            if ($request->payment_method === 'CASH') {
+                // LANGSUNG CEK PAKE Auth::id() - Dijamin Ampuh!
+                if (Auth::id() != 4) {
+                    throw new Exception("Metode pembayaran Cash hanya tersedia untuk Admin.");
                 }
 
-                // Alarm 2: Jika sistem mengenali user, tapi datanya bukan Admin
-                $dbId = $user->id_pengguna ?? $user->id ?? 'Kosong';
-                $dbRole = $user->role ?? 'Kosong';
-
-                if ($dbId != 4 && strtolower($dbRole) !== 'admin') {
-                    throw new Exception("Akses Ditolak! Server mendeteksi Anda sebagai -> ID: {$dbId} | Role: {$dbRole}. Sistem hanya mengizinkan ID: 4 / Admin.");
+                foreach ($createdOrders as $o) {
+                    $o->status = 'Menunggu Pickup';
+                    $o->status_pesanan = 'Menunggu Pickup';
+                    $o->save();
                 }
+            }
+            elseif ($request->payment_method === 'Potong Saldo') {
+                if ($user->saldo < $grandTotalTagihan) throw new Exception("Saldo Anda tidak mencukupi.");
 
-                // Jika lolos dari semua alarm, proses pesanan
+                $user->decrement('saldo', $grandTotalTagihan);
+
                 foreach ($createdOrders as $o) {
                     $o->status = 'Menunggu Pickup';
                     $o->status_pesanan = 'Menunggu Pickup';
