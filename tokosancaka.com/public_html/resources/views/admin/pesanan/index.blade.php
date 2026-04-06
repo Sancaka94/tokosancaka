@@ -655,14 +655,19 @@
     @endforeach
 
     {{-- ======================================================================= --}}
-    {{-- MODAL KONFIRMASI HAPUS MASSAL                                           --}}
+    {{-- MODAL KONFIRMASI HAPUS MASSAL (FIXED VISIBILITY)                        --}}
     {{-- ======================================================================= --}}
-    <div id="bulkDeleteModal" class="relative z-[99999] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div id="bulkDeleteModal" class="hidden" style="position: fixed; inset: 0px; z-index: 99999;">
+
+        {{-- Backdrop Gelap --}}
         <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" onclick="closeModal('bulkDeleteModal')"></div>
 
-        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+        {{-- Scrollable Container --}}
+        <div class="fixed inset-0 overflow-y-auto">
             <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
-                <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl border border-gray-200">
+
+                {{-- Kotak Modal Utama --}}
+                <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-2xl transition-all w-full sm:max-w-2xl border border-gray-200">
 
                     <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                         <div class="sm:flex sm:items-start">
@@ -672,12 +677,14 @@
                             <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
                                 <h3 class="text-xl font-bold leading-6 text-gray-900" id="modal-title">Konfirmasi Hapus Pesanan</h3>
                                 <div class="mt-3">
-                                    <p class="text-sm text-gray-600 mb-4">Anda yakin ingin menghapus <strong id="modalSelectedCount" class="text-red-600 text-lg">0</strong> pesanan berikut secara permanen? Data yang dihapus tidak dapat dikembalikan.</p>
+                                    <p class="text-sm text-gray-600 mb-4">
+                                        Anda yakin ingin menghapus <strong id="modalSelectedCount" class="text-red-600 text-lg">0</strong> pesanan berikut secara permanen? Data yang dihapus tidak dapat dikembalikan.
+                                    </p>
 
                                     {{-- Daftar List Data yang Akan Dihapus --}}
                                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 max-h-64 overflow-y-auto">
                                         <ul id="deleteItemsList" class="divide-y divide-gray-200 text-sm text-gray-700">
-                                            {{-- List akan di-inject via JavaScript --}}
+                                            {{-- List akan di-inject via JavaScript (Terbukti sudah berhasil di Log) --}}
                                         </ul>
                                     </div>
                                 </div>
@@ -685,6 +692,7 @@
                         </div>
                     </div>
 
+                    {{-- Tombol Bawah --}}
                     <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-gray-200">
                         <button type="button" onclick="submitBulkDelete()" id="btnConfirmDelete" class="inline-flex w-full justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-red-700 sm:ml-3 sm:w-auto transition items-center gap-2">
                             <i class="fas fa-trash"></i> Ya, Hapus Semua
@@ -694,6 +702,7 @@
                         </button>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
