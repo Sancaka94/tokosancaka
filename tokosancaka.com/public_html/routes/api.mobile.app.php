@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Mobile\OngkirController; // 1. Pastikan Import ini 
 use App\Http\Controllers\Api\Mobile\CustomerForgotPasswordController; // <-- TAMBAHAN UNTUK FORGOT PASSWORD
 use App\Http\Controllers\Api\Mobile\ProfileController;
 use App\Http\Controllers\Api\Mobile\PpobMobileController;
+use App\Http\Controllers\Api\Mobile\KoliController;
 
 /*
 |--------------------------------------------------------------------------
@@ -91,6 +92,24 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
 // AKHIR DARI RUTE MOBILE UNTUK PELANGGAN (CUSTOMER)
+
+    // ==========================================
+    // MODULE: MANAJEMEN PESANAN & KOLI
+    // ==========================================
+    Route::prefix('pesanan')->group(function () {
+
+        // 1. Endpoint untuk Cek Ongkir (Meneruskan ke KiriminAja)
+        Route::post('/koli/cek-ongkir', [KoliController::class, 'cek_Ongkir']);
+
+        // 2. Endpoint untuk Simpan Pesanan Satuan
+        // (Dipanggil ketika user klik tombol "SIMPAN & BAYAR PAKET #1" di React Native)
+        Route::post('/store-single', [KoliController::class, 'storeSingle']);
+
+        // 3. Endpoint untuk Simpan Pesanan Massal
+        // (Dipanggil ketika user klik tombol "Buat Pesanan" di akhir step jika ingin menyimpan semuanya sekaligus)
+        Route::post('/store-multi', [KoliController::class, 'store']);
+
+    });
 
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile/update', [ProfileController::class, 'update']);
@@ -197,5 +216,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/escrow/pending', [\App\Http\Controllers\Api\Mobile\AdminEscrowController::class, 'pending']);
         Route::post('/escrow/{id}/cairkan', [\App\Http\Controllers\Api\Mobile\AdminEscrowController::class, 'cairkan']);
     });
+
 
 });
