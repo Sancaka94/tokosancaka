@@ -265,19 +265,26 @@ class KoliController extends Controller
             $masterOrder = $createdOrders[0];
             $paymentUrl = null;
 
-            // 1. CARA PALING AMAN MENGAMBIL USER SAAT INI (TIDAK PERLU QUERY KE DB LAGI)
-            $user = Auth::user();
+            // 1. GUNAKAN $request->user() (Lebih akurat untuk API Mobile daripada Auth::user())
+            $user = $request->user();
 
             // --- PEMBAYARAN ---
-            if ($request->payment_method === 'CASH') {
+            if (strtoupper($request->payment_method) === 'CASH') {
 
-                // 2. CEK ROLE LANGSUNG DARI SESSION USER!
-                // Jika Role BUKAN 'Admin' DAN id_pengguna BUKAN 4, maka tolak.
-                if ($user->role !== 'Admin' && $user->id_pengguna != 4) {
-                    throw new Exception("Metode Cash khusus Admin. (Terdeteksi Anda login sebagai: " . ($user->role ?? 'Guest') . ", ID: " . ($user->id_pengguna ?? 'Null') . ")");
+                // Alarm 1: Jika sistem sama sekali tidak mengenali user yang login
+                if (!$user) {
+                    throw new Exception("Sistem gagal membaca Token Login Anda. Silakan Logout dan Login kembali di aplikasi HP.");
                 }
 
-                // Jika lolos, update status semua koli
+                // Alarm 2: Jika sistem mengenali user, tapi datanya bukan Admin
+                $dbId = $user->id_pengguna ?? $user->id ?? 'Kosong';
+                $dbRole = $user->role ?? 'Kosong';
+
+                if ($dbId != 4 && strtolower($dbRole) !== 'admin') {
+                    throw new Exception("Akses Ditolak! Server mendeteksi Anda sebagai -> ID: {$dbId} | Role: {$dbRole}. Sistem hanya mengizinkan ID: 4 / Admin.");
+                }
+
+                // Jika lolos dari semua alarm, proses pesanan
                 foreach ($createdOrders as $o) {
                     $o->status = 'Menunggu Pickup';
                     $o->status_pesanan = 'Menunggu Pickup';
@@ -285,10 +292,16 @@ class KoliController extends Controller
                 }
             }
             elseif ($request->payment_method === 'Potong Saldo') {
-                if ($user->saldo < $grandTotalTagihan) throw new Exception("Saldo Anda tidak mencukupi.");
+                if (!$user) throw new Exception("Sistem gagal membaca Token Login Anda.");
 
-                // UPDATE SALDO MENGGUNAKAN QUERY BUILDER AGAR LEBIH AMAN DI TABEL CUSTOM
-                DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $grandTotalTagihan);
+                $dbId = $user->id_pengguna ?? $user->id;
+                $userSaldo = DB::table('Pengguna')->where('id_pengguna', $dbId)->value('saldo');
+
+                if ($userSaldo < $grandTotalTagihan) {
+                    throw new Exception("Saldo Anda tidak mencukupi. (Sisa: Rp " . number_format($userSaldo, 0, ',', '.') . ")");
+                }
+
+                DB::table('Pengguna')->where('id_pengguna', $dbId)->decrement('saldo', $grandTotalTagihan);
 
                 foreach ($createdOrders as $o) {
                     $o->status = 'Menunggu Pickup';
