@@ -640,7 +640,7 @@ class KoliController extends Controller
                 'weight' => (int)$data['weight'], 'width' => (int)$data['width'], 'height' => (int)$data['height'], 'length' => (int)$data['length'],
                 'item_value' => (int)$data['item_price'],
                 'insurance' => $useInsuranceFlag, 'insurance_amount' => ($useInsuranceFlag === 1) ? (int)$insurance_cost : 0,
-                'cod' => (int)$cod_value, 'service' => $data['courier_code'], 'service_type' => $data['service_code'],
+                'cod' => (int)$cod_value, 'courier' => $data['courier_code'], 'service' => $data['service_code'],
                 'shipping_cost' => (int)$shipping_cost
             ]]
         ];
