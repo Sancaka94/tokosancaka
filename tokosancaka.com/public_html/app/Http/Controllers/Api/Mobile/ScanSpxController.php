@@ -375,4 +375,39 @@ class ScanSpxController extends Controller
             'data' => $history
         ]);
     }
+
+    /**
+     * Helper Method: Menerapkan Filter "JOIN" Otomatis
+     */
+    private function applyUserFilter($query)
+    {
+        if ($this->isAdmin()) {
+            return $query; // Admin bebas melihat semua
+        }
+
+        $user = Auth::user();
+
+        // PENCEGAH ERROR: Jika dibuka via browser eksternal (tanpa login app), tolak aksesnya
+        if (!$user) {
+            $query->where('id', -1);
+            return $query;
+        }
+
+        $userId = $user->id_pengguna;
+
+        // Ambil semua ID Kontak yang user_id-nya adalah milik user ini
+        $kontakIds = Kontak::where('user_id', $userId)->pluck('id')->toArray();
+
+        // Filter: Ambil yang user_id-nya cocok, ATAU kontak_id-nya ada di dalam daftar kontak miliknya
+        $query->where(function($q) use ($userId, $kontakIds) {
+            $q->where('user_id', $userId);
+
+            if (!empty($kontakIds)) {
+                $q->orWhereIn('kontak_id', $kontakIds);
+            }
+        });
+
+        return $query;
+    }
+
 }
