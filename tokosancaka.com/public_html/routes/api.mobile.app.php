@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request; // Pastikan ini ada di bagian atas file jika belum ada
 use App\Http\Controllers\Api\Mobile\KontakController;
 use App\Http\Controllers\Api\Mobile\ScanSpxController; // <-- Tambahkan ini untuk kerapian
 use App\Http\Controllers\Api\Mobile\OngkirController; // 1. Pastikan Import ini ada
@@ -27,13 +28,30 @@ Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class
 Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendResetLinkApi']);
 
 // --- ENDPOINT UPDATE APLIKASI (SELF-HOSTED PLAYSTORE) ---
-Route::get('/check-update', function() {
+Route::get('/check-update', function(Request $request) {
+    // 1. Tentukan versi rilis terbaru di server
+    $latestVersion = '1.0.5';
+
+    // 2. Tangkap versi aplikasi yang sedang dipakai user dari parameter URL
+    $appVersion = $request->query('app_version');
+
+    // 3. Logika perbandingan versi (PHP otomatis tahu 1.0.5 itu lebih besar dari 1.0.3)
+    $needsUpdate = false;
+    if ($appVersion) {
+        // Jika versi HP (<) lebih kecil dari versi Server, maka butuh update
+        $needsUpdate = version_compare($appVersion, $latestVersion, '<');
+    } else {
+        // Jika HP tidak mengirim versi (misal versi lama), paksa suruh cek update
+        $needsUpdate = true;
+    }
+
     return response()->json([
-        'success' => true,
-        'latest_version' => '1.0.5', // Ubah manual setiap ada rilis baru
+        'success'        => true,
+        'needs_update'   => $needsUpdate, // <-- Kunci utamanya di sini
+        'latest_version' => $latestVersion,
         'download_url'   => 'https://tokosancaka.com/public/assets/app/SancakaExpress.apk',
         'force_update'   => true,
-        'notes'          => 'Fix bug dan peningkatan performa. Segera update untuk pengalaman terbaik!'
+        'notes'          => 'Fix bug dan peningkatan performa. Tambah Fitur Kirim Paket Banyak!'
     ]);
 });
 
