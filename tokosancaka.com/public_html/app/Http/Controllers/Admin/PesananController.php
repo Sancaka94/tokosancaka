@@ -1592,16 +1592,10 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         return view('admin.pesanan.riwayat-scan', compact('scannedOrders'));
     }
 
-    /**
+   /**
      * =========================================================================
-     * HANDLER WEBHOOK DOKU (JOKUL)
+     * HANDLER WEBHOOK DOKU (JOKUL) - MENDUKUNG MULTI ORDER
      * =========================================================================
-     *
-     * Method ini dipanggil oleh DokuWebhookController
-     * saat notifikasi 'SUCCESS' diterima.
-     *
-     * @param array $data Data lengkap dari DOKU
-     * @return \Illuminate\Http\JsonResponse
      */
     public function handleDokuCallback(array $data)
     {
@@ -1613,107 +1607,158 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
             'status' => $status
         ]);
 
-        // Dapatkan service KiriminAja (sama seperti logika Tripay Anda)
         $kirimaja = app(KiriminAjaService::class);
 
-        // Gunakan DB::transaction untuk keamanan, atau minimal lockForUpdate
         DB::beginTransaction();
         try {
-            $pesanan = Pesanan::where('nomor_invoice', $merchantRef)->lockForUpdate()->first();
+            // 1. CARI PESANAN UTAMA SEBAGAI PATOKAN
+            $pesananUtama = Pesanan::where('nomor_invoice', $merchantRef)->lockForUpdate()->first();
 
-            if (!$pesanan) {
+            if (!$pesananUtama) {
                 Log::error('DOKU Callback (Admin): Pesanan Not found.', ['merchant_ref' => $merchantRef]);
                 DB::rollBack();
-                // Kirim 200 OK agar DOKU tidak kirim ulang
                 return response()->json(['message' => 'Order not found, webhook ignored.'], 200);
             }
 
-            if ($pesanan->status !== 'Menunggu Pembayaran') {
-                Log::info('DOKU Callback (Admin): Already processed.', ['invoice' => $merchantRef, 'current_status' => $pesanan->status]);
-                DB::rollBack();
-                return response()->json(['message' => 'Already processed.'], 200);
+            // 2. KELOMPOKKAN SEMUA PESANAN (MULTI-ORDER)
+            // Semua pesanan dalam 1 kali bayar pasti punya payment_url yang sama
+            if (!empty($pesananUtama->payment_url)) {
+                $pesananGroup = Pesanan::where('payment_url', $pesananUtama->payment_url)->lockForUpdate()->get();
+            } else {
+                $pesananGroup = collect([$pesananUtama]); // Fallback jika anomali
             }
 
-            // Status 'SUCCESS' dari DOKU sama dengan 'PAID' dari Tripay
             if ($status === 'SUCCESS') {
-                Log::info('DOKU Callback (Admin): PAID. Preparing KiriminAja call...', ['invoice' => $merchantRef]);
+                Log::info('DOKU Callback: LUNAS. Memproses ' . $pesananGroup->count() . ' paket sekaligus...');
 
-                // Update status internal dulu
-                $pesanan->status = 'paid';
-                $pesanan->status_pesanan = 'paid';
-                $pesanan->save(); // Simpan status 'paid'
+                // 3. LOOPING UNTUK HIT API KIRIMINAJA SATU-PERSATU
+                foreach ($pesananGroup as $pesanan) {
 
-                // Siapkan data untuk KiriminAja (ambil dari method private controller ini)
-                // Kita asumsikan AdminPesananController punya method _createKiriminAjaOrder
-                // yang sama dengan CustomerOrderController Anda
+                    // Lewati jika paket ini kebetulan sudah sukses diproses sebelumnya
+                    if ($pesanan->status !== 'Menunggu Pembayaran') {
+                        Log::info('DOKU Callback: Paket sudah diproses sebelumnya.', ['invoice' => $pesanan->nomor_invoice]);
+                        continue;
+                    }
 
-                $validatedData = $pesanan->toArray(); // Ambil data dari model
+                    Log::info('DOKU Callback: Preparing KiriminAja call...', ['invoice' => $pesanan->nomor_invoice]);
 
-                $senderAddressData = [
-                    'lat' => $pesanan->sender_lat, 'lng' => $pesanan->sender_lng,
-                    'kirimaja_data' => ['district_id' => $pesanan->sender_district_id, 'subdistrict_id' => $pesanan->sender_subdistrict_id, 'postal_code' => $pesanan->sender_postal_code ?? '00000']
-                ];
-                $receiverAddressData = [
-                    'lat' => $pesanan->receiver_lat, 'lng' => $pesanan->receiver_lng,
-                    'kirimaja_data' => ['district_id' => $pesanan->receiver_district_id, 'subdistrict_id' => $pesanan->receiver_subdistrict_id, 'postal_code' => $pesanan->receiver_postal_code ?? '00000']
-                ];
+                    // Update status internal dulu
+                    $pesanan->status = 'paid';
+                    $pesanan->status_pesanan = 'paid';
+                    $pesanan->save();
 
-                $cod_value = 0; // Pasti 0 karena ini pembayaran online
-                $shipping_cost = (int) $pesanan->shipping_cost;
-                $insurance_cost = (int) $pesanan->insurance_cost;
+                    $validatedData = $pesanan->toArray();
 
-                // Panggil method private _createKiriminAjaOrder
-                // PERHATIKAN: Ini berasumsi method _createKiriminAjaOrder ada di AdminPesananController
-                $kiriminResponse = $this->_createKiriminAjaOrder(
-                    $validatedData, $pesanan, $kirimaja, $senderAddressData, $receiverAddressData,
-                    $cod_value, $shipping_cost, $insurance_cost
-                );
+                    // Data Alamat (Sudah termasuk Fallback kode pos '00000' agar tidak error)
+                    $senderAddressData = [
+                        'lat' => $pesanan->sender_lat, 'lng' => $pesanan->sender_lng,
+                        'kirimaja_data' => [
+                            'district_id' => $pesanan->sender_district_id,
+                            'subdistrict_id' => $pesanan->sender_subdistrict_id,
+                            'postal_code' => $pesanan->sender_postal_code ?? '00000'
+                        ]
+                    ];
+                    $receiverAddressData = [
+                        'lat' => $pesanan->receiver_lat, 'lng' => $pesanan->receiver_lng,
+                        'kirimaja_data' => [
+                            'district_id' => $pesanan->receiver_district_id,
+                            'subdistrict_id' => $pesanan->receiver_subdistrict_id,
+                            'postal_code' => $pesanan->receiver_postal_code ?? '00000'
+                        ]
+                    ];
 
-                if (($kiriminResponse['status'] ?? false) !== true) {
-                    Log::critical('DOKU Callback (Admin): KiriminAja Order FAILED!', ['invoice' => $merchantRef, 'response' => $kiriminResponse]);
-                    $pesanan->status = 'Pembayaran Lunas (Gagal Auto-Resi)';
-                    $pesanan->status_pesanan = 'Pembayaran Lunas (Gagal Auto-Resi)';
-                } else {
+                    $cod_value = 0;
+                    $shipping_cost = (int) $pesanan->shipping_cost;
+                    $insurance_cost = (int) $pesanan->insurance_cost;
 
-                    // ==========================================================
-                    // 🔥 LOGIKA "SUKSES BAYAR = DAPAT REF/RESI" 🔥
-                    // ==========================================================
+                    // Hit API KiriminAja
+                    $kiriminResponse = $this->_createKiriminAjaOrder(
+                        $validatedData, $pesanan, $kirimaja, $senderAddressData, $receiverAddressData,
+                        $cod_value, $shipping_cost, $insurance_cost
+                    );
 
-                    // A. Ambil SHIPPING REF (Kode Booking)
-                    $bookingId = $kiriminResponse['id']
-                              ?? $kiriminResponse['data']['id']
-                              ?? $kiriminResponse['payment_ref']
-                              ?? null;
+                    if (($kiriminResponse['status'] ?? false) !== true) {
+                        Log::critical('DOKU Callback (Admin): KiriminAja Order FAILED!', ['invoice' => $pesanan->nomor_invoice, 'response' => $kiriminResponse]);
+                        $pesanan->status = 'Pembayaran Lunas (Gagal Auto-Resi)';
+                        $pesanan->status_pesanan = 'Pembayaran Lunas (Gagal Auto-Resi)';
+                    } else {
+                        // LOGIKA DAPAT RESI SUKSES
+                        $bookingId = $kiriminResponse['id'] ?? $kiriminResponse['data']['id'] ?? $kiriminResponse['payment_ref'] ?? null;
+                        $awbAsli = $kiriminResponse['awb'] ?? $kiriminResponse['data']['awb'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
 
-                    // B. Ambil AWB
-                    $awbAsli = $kiriminResponse['awb']
-                            ?? $kiriminResponse['data']['awb']
-                            ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+                        $finalResi = !empty($awbAsli) ? $awbAsli : $bookingId;
+                        if (empty($finalResi)) $finalResi = 'REF-' . $pesanan->nomor_invoice;
 
-                    // C. Tentukan Nilai Kolom RESI
-                    $finalResi = !empty($awbAsli) ? $awbAsli : $bookingId;
-                    if (empty($finalResi)) $finalResi = 'REF-' . $pesanan->nomor_invoice;
+                        $pesanan->resi = $finalResi;
+                        $pesanan->shipping_ref = $bookingId;
+                        $pesanan->status = 'Pesanan Dibuat';
+                        $pesanan->status_pesanan = 'Pesanan Dibuat';
 
-                    // D. UPDATE DATABASE
-                    $pesanan->resi = $finalResi; // Berikan Kode Ref/Booking
+                        $pesanan->save();
+                        self::simpanKeuangan($pesanan);
+                    }
+                    $pesanan->save();
+                } // --- Akhir dari Loop Paket ---
 
-                    // 3. RUBAH STATUS MENJADI 'PESANAN DIBUAT' (Atau Menunggu Pickup)
-                    $pesanan->status = 'Pesanan Dibuat';
-                    $pesanan->status_pesanan = 'Pesanan Dibuat';
+                DB::commit(); // Commit SEMUA perubahan ke database
 
-                    $pesanan->save(); // Simpan
+                // =========================================================================
+                // 4. NOTIFIKASI WA FONNTE (MULTIPLE ORDERS / KOLI)
+                // =========================================================================
+                try {
+                    // Ambil data pengirim dari pesanan pertama (karena multi-order pengirimnya pasti sama)
+                    $pesananUtama = $pesananGroup->first();
+                    $senderPhone = $this->_sanitizePhoneNumber($pesananUtama->sender_phone);
+                    $senderName = $pesananUtama->sender_name;
 
-                    // 4. CATAT KEUANGAN
-                    self::simpanKeuangan($pesanan);
+                    // Hitung total keseluruhan pembayaran dari semua paket
+                    $totalSemua = $pesananGroup->sum('price');
+                    $formattedTotal = 'Rp ' . number_format($totalSemua, 0, ',', '.');
+
+                    // Susun Rincian Paket secara dinamis
+                    $rincianPaket = "";
+                    $no = 1;
+                    foreach ($pesananGroup as $p) {
+                        $resiText = $p->resi ? $p->resi : 'Sedang diproses';
+
+                        // Mempercantik nama ekspedisi (misal: "mix-spx-1-..." menjadi "SPX (1)")
+                        $expParts = explode('-', $p->expedition ?? '');
+                        $kurirNama = strtoupper($expParts[1] ?? 'KURIR');
+                        $layananNama = strtoupper($p->service_type ?? 'REG');
+
+                        $rincianPaket .= "*Paket $no*\n";
+                        $rincianPaket .= "📦 Invoice: {$p->nomor_invoice}\n";
+                        $rincianPaket .= "📝 Isi: {$p->item_description}\n";
+                        $rincianPaket .= "🚚 Ekspedisi: {$kurirNama} - {$layananNama}\n";
+                        $rincianPaket .= "👤 Penerima: {$p->receiver_name}\n";
+                        $rincianPaket .= "🏷️ Resi: *$resiText*\n";
+                        $rincianPaket .= "----------------------------------------\n";
+                        $no++;
+                    }
+
+                    // Susun Template Pesan WhatsApp
+                    $waMessage = "Halo *{$senderName}* 👋,\n\n";
+                    $waMessage .= "Pembayaran Anda via *DOKU* telah berhasil kami terima (*LUNAS*). Pesanan Anda sedang diproses oleh tim Sancaka Express! 🚀\n\n";
+                    $waMessage .= "💰 *Total Dibayar:* {$formattedTotal}\n";
+                    $waMessage .= "📦 *Jumlah Koli/Paket:* " . $pesananGroup->count() . " Paket\n\n";
+                    $waMessage .= "*=== RINCIAN PAKET ===*\n";
+                    $waMessage .= $rincianPaket;
+                    $waMessage .= "\nCek status perjalanan paket Anda secara berkala melalui link berikut:\n";
+                    $waMessage .= "https://tokosancaka.com/tracking\n\n";
+                    $waMessage .= "Terima kasih telah mempercayakan pengiriman Anda kepada Sancaka Express! 🙏";
+
+                    // Kirim menggunakan metode Fonnte yang sudah ada di AdminPesananController
+                    if (!empty($senderPhone)) {
+                        $this->_sendFonnteMessage($senderPhone, $waMessage);
+                        Log::info("Notifikasi WA Lunas (Multi-Order) berhasil dikirim ke $senderPhone");
+                    }
+
+                } catch (\Exception $e) {
+                    Log::error('Gagal mengirim notifikasi WA Lunas (Multi-Order): ' . $e->getMessage());
                 }
-                $pesanan->save();
-                DB::commit(); // Commit semua perubahan
-
-                // TODO: Panggil notifikasi WA "Lunas" Anda di sini
-                // $this->_sendWhatsappNotification(...)
+                // =========================================================================
 
             } else {
-                // Handle status lain jika perlu (misal FAILED, EXPIRED)
                 Log::warning('DOKU Callback (Admin): Received non-success status.', ['ref' => $merchantRef, 'status' => $status]);
                 DB::rollBack();
             }
@@ -1723,7 +1768,6 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         } catch (Exception $e) {
             DB::rollBack();
             Log::error("DOKU Callback (Admin): Exception during process.", [ 'ref' => $merchantRef, 'error' => $e->getMessage()]);
-            // Kirim 500 agar DOKU mencoba lagi
             return response()->json(['message' => 'Internal server error during processing.'], 500);
         }
     }
