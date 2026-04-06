@@ -2249,14 +2249,21 @@ public function cetakThermal($resi)
         }
     }
 
+    /**
+     * FUNGSI HAPUS MASSAL (BULK DELETE)
+     */
     public function bulkDestroy(Request $request)
     {
-        $ids = $request->input('selected_ids');
+        $ids = $request->input('selected_ids'); // Array dari checkbox
+
         if (!empty($ids)) {
-            Pesanan::whereIn('nomor_invoice', $ids)->delete();
+            // Hapus semua data yang nomor_invoicenya ada di dalam array $ids
+            \App\Models\Pesanan::whereIn('nomor_invoice', $ids)->delete();
+
             return redirect()->back()->with('success', count($ids) . ' pesanan berhasil dihapus secara massal.');
         }
-        return redirect()->back()->with('error', 'Tidak ada data yang dipilih.');
+
+        return redirect()->back()->with('error', 'Tidak ada data yang dipilih untuk dihapus.');
     }
 
 } // Akhir Class PesananController

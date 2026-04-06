@@ -1173,4 +1173,4 @@ Route::get('/admin/kontak/{id}/history', [\App\Http\Controllers\KontakController
 //Tombol cencel order pesanan API KIRIMINAJA
 Route::post('pesanan/{resi}/cancel', [PesananController::class, 'cancelOrder'])->name('admin.pesanan.cancel');
 
-Route::delete('/admin/pesanan/bulk-destroy', [PesananController::class, 'bulkDestroy'])->name('admin.pesanan.bulk_destroy');
+Route::delete('/admin/pesanan-massal/destroy', [\App\Http\Controllers\Admin\PesananController::class, 'bulkDestroy'])->name('admin.pesanan.bulk_destroy');
