@@ -265,23 +265,31 @@ class KoliController extends Controller
             $masterOrder = $createdOrders[0];
             $paymentUrl = null;
 
-            // 1. CARI USER DENGAN LEBIH AMAN (Cek id_pengguna ATAU id)
-            $user = User::where('id_pengguna', Auth::id())->orWhere('id', Auth::id())->first();
+            // 1. CARA PALING AMAN MENGAMBIL USER SAAT INI (TIDAK PERLU QUERY KE DB LAGI)
+            $user = Auth::user();
 
             // --- PEMBAYARAN ---
             if ($request->payment_method === 'CASH') {
 
-                // 2. TANGKAP ID YANG SEBENARNYA DIKIRIM KE SERVER
-                $authId = Auth::id();
-                $dbId = $user ? $user->id_pengguna : 'Null';
-
-                // 3. PENGECEKAN GANDA (Kalau Auth ID ATAU DB ID nya 4, loloskan!)
-                if ($authId != 4 && $dbId != 4) {
-                    // JIKA GAGAL, TAMPILKAN ID-NYA DI LOG/LAYAR AGAR KITA TAHU SIAPA PENYUSUPNYA
-                    throw new Exception("Metode Cash khusus Admin. (Sistem mendeteksi Auth ID Anda: $authId, DB ID: $dbId)");
+                // 2. CEK ROLE LANGSUNG DARI SESSION USER!
+                // Jika Role BUKAN 'Admin' DAN id_pengguna BUKAN 4, maka tolak.
+                if ($user->role !== 'Admin' && $user->id_pengguna != 4) {
+                    throw new Exception("Metode Cash khusus Admin. (Terdeteksi Anda login sebagai: " . ($user->role ?? 'Guest') . ", ID: " . ($user->id_pengguna ?? 'Null') . ")");
                 }
 
-                // Jika lolos, update status
+                // Jika lolos, update status semua koli
+                foreach ($createdOrders as $o) {
+                    $o->status = 'Menunggu Pickup';
+                    $o->status_pesanan = 'Menunggu Pickup';
+                    $o->save();
+                }
+            }
+            elseif ($request->payment_method === 'Potong Saldo') {
+                if ($user->saldo < $grandTotalTagihan) throw new Exception("Saldo Anda tidak mencukupi.");
+
+                // UPDATE SALDO MENGGUNAKAN QUERY BUILDER AGAR LEBIH AMAN DI TABEL CUSTOM
+                DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $grandTotalTagihan);
+
                 foreach ($createdOrders as $o) {
                     $o->status = 'Menunggu Pickup';
                     $o->status_pesanan = 'Menunggu Pickup';
