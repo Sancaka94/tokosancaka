@@ -485,6 +485,16 @@
                                 Data Riwayat Invoice
                             </a>
                         </li>
+
+                        {{-- KODE BARU DITAMBAHKAN DI SINI --}}
+                        <li>
+                            <a href="https://tokosancaka.com/cek-invoice" wire:navigate
+                               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                               class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('invoice.tracking') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                Tracking Invoice
+                            </a>
+                        </li>
+                        {{-- AKHIR KODE BARU --}}
                     </ul>
                 </div>
             </div>
