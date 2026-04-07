@@ -429,17 +429,16 @@ class PpobMobileController extends Controller
                 $query->whereYear('created_at', $now->year);
             }
 
-            // Ambil data (20 per halaman)
+           // Ambil data (20 per halaman)
             $transactions = $query->orderBy('created_at', 'desc')->paginate(20);
 
             // =======================================================
-            // 5. EKSTRAK DATA TAMBAHAN (LOGO & NAMA PEMBELI) DENGAN AMAN
+            // 5. EKSTRAK DATA TAMBAHAN & PAKSA MASUK KE DALAM ARRAY
             // =======================================================
+            $mappedItems = [];
             try {
-                $collection = $transactions->getCollection();
-
-                // A. AMBIL LOGO PRODUK (Biar Estetik)
-                $prepaidCodes = $collection->where('type', 'prabayar')->pluck('product_code')->filter()->unique()->toArray();
+                // A. AMBIL LOGO PRODUK
+                $prepaidCodes = $transactions->where('type', 'prabayar')->pluck('product_code')->filter()->unique()->toArray();
                 $icons = [];
                 if (!empty($prepaidCodes)) {
                     $icons = \Illuminate\Support\Facades\DB::table('iak_pricelist_prepaids')
@@ -449,37 +448,45 @@ class PpobMobileController extends Controller
                 // B. AMBIL NAMA PEMBELI (KHUSUS TAMPILAN ADMIN)
                 $usersData = [];
                 if ($isAdmin) {
-                    $userIds = $collection->pluck('user_id')->filter()->unique()->toArray();
+                    $userIds = $transactions->pluck('user_id')->filter()->unique()->toArray();
                     if (!empty($userIds)) {
                         $usersData = \Illuminate\Support\Facades\DB::table('Pengguna')
                                         ->whereIn('id_pengguna', $userIds)->pluck('nama_lengkap', 'id_pengguna');
                     }
                 }
 
-               // C. GABUNGKAN DATA KE RESPONSE DENGAN AMAN (Gunakan setAttribute)
-                $collection->transform(function ($trx) use ($icons, $usersData, $isAdmin) {
-                    // Masukkan Logo
-                    $icon = $trx->type == 'prabayar' ? ($icons[$trx->product_code] ?? null) : null;
-                    $trx->setAttribute('icon_url', $icon);
+                // C. REKA ULANG ARRAY AGAR SEMUA ATRIBUT MASUK KE JSON
+                foreach ($transactions->items() as $trx) {
+                    $item = $trx->toArray(); // Ubah baris database jadi array biasa
 
-                    // Masukkan Data User (Jika Admin yang lihat)
+                    // Sisipkan logo
+                    $item['icon_url'] = ($item['type'] == 'prabayar') ? ($icons[$item['product_code']] ?? null) : null;
+
+                    // Sisipkan nama pembeli khusus Admin
                     if ($isAdmin) {
-                        $namaUser = $trx->user_id ? ($usersData[$trx->user_id] ?? 'User ' . $trx->user_id) : 'Guest / Web';
-                        // Gunakan nama atribut flat 'nama_pembeli' agar 100% masuk ke JSON
-                        $trx->setAttribute('nama_pembeli', $namaUser);
+                        $namaUser = $item['user_id'] ? ($usersData[$item['user_id']] ?? 'User ID ' . $item['user_id']) : 'Guest / Web';
+                        $item['nama_pembeli'] = $namaUser;
                     }
 
-                    return $trx;
-                });
+                    $mappedItems[] = $item;
+                }
 
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::warning('LOG LOG - Gagal ekstrak data riwayat: ' . $e->getMessage());
+                // Jika error ekstrak, fallback gunakan item mentah
+                $mappedItems = $transactions->items();
             }
             // =======================================================
 
+            // Kita bentuk struktur Pagination JSON secara manual agar tidak ditimpa Laravel
             return response()->json([
                 'success'  => true,
-                'data'     => $transactions,
+                'data'     => [
+                    'current_page' => $transactions->currentPage(),
+                    'data'         => $mappedItems, // <-- Data yang sudah disisipkan atribut
+                    'last_page'    => $transactions->lastPage(),
+                    'total'        => $transactions->total(),
+                ],
                 'is_admin' => $isAdmin
             ]);
 
