@@ -145,7 +145,7 @@ class PpobMobileController extends Controller
         // --- LOGIKA PRABAYAR (TOP UP) ---
         $user = auth()->user();
 
-        // Idempotency (Cegah Dobel)
+        // Idempotency (Cegah Dobel) - Mengecek Transaksi User Tersebut
         $isDuplicate = TransactionPpobIak::where('user_id', $user->id)
             ->where('customer_id', $request->customer_id)
             ->where('product_code', $request->product_code)
@@ -157,7 +157,7 @@ class PpobMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Transaksi ke nomor & produk yang sama sedang diproses. Tunggu 3 menit.']);
         }
 
-        // Atomic Lock
+        // Atomic Lock - Kunci per User
         $lockKey = 'topup_' . $user->id . '_' . $request->product_code . '_' . $request->customer_id;
         $lock = Cache::lock($lockKey, 10);
 
@@ -175,7 +175,7 @@ class PpobMobileController extends Controller
             $sign = md5($this->username . $this->apiKey . $refId);
 
             $transaction = TransactionPpobIak::create([
-                'user_id'         => auth()->id(),
+                'user_id'         => auth()->id(), // Mencatat Id User Auth
                 'ref_id'          => $refId,
                 'type'            => 'prabayar',
                 'customer_id'     => $request->customer_id,
@@ -268,7 +268,7 @@ class PpobMobileController extends Controller
             if ($response->successful() && isset($result['data']) && $result['data']['response_code'] === '00') {
                 $data = $result['data'];
                 $transaction = TransactionPpobIak::create([
-                    'user_id'         => auth()->id(),
+                    'user_id'         => auth()->id(), // Mencatat Id User Auth
                     'ref_id'          => $refId,
                     'tr_id'           => $data['tr_id'],
                     'type'            => 'pascabayar',
@@ -398,8 +398,7 @@ class PpobMobileController extends Controller
             }
 
             // 1. TENTUKAN STATUS ADMIN
-            // (Asumsi ID 4 adalah Admin, atau jika kamu punya kolom role: $user->role == 'admin')
-            $isAdmin = ($user->id == 4);
+            $isAdmin = ($user->id == 4 || $user->role === 'Admin'); // Mengecek berdasarkan ID atau Role
 
             $query = TransactionPpobIak::query();
 
@@ -458,9 +457,9 @@ class PpobMobileController extends Controller
                 if ($isAdmin) {
                     $userIds = $collection->pluck('user_id')->filter()->unique()->toArray();
                     if (!empty($userIds)) {
-                        // Tarik nama dari tabel users (Ganti 'name' jadi 'nama_lengkap' jika kolom di DB-mu begitu)
-                        $usersData = \Illuminate\Support\Facades\DB::table('users')
-                                        ->whereIn('id', $userIds)->pluck('name', 'id');
+                        // Sesuaikan dengan nama kolom yang benar di tabel users
+                        $usersData = \Illuminate\Support\Facades\DB::table('Pengguna')
+                                        ->whereIn('id_pengguna', $userIds)->pluck('nama_lengkap', 'id_pengguna');
                     }
                 }
 
@@ -506,6 +505,13 @@ class PpobMobileController extends Controller
         $transaction = TransactionPpobIak::where('tr_id', $request->tr_id)->first();
         if (!$transaction) return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan']);
 
+        // Mengecek Akses User untuk Membayar Tagihan
+        $user = auth()->user();
+        if ($transaction->user_id !== $user->id) {
+           return response()->json(['success' => false, 'message' => 'Akses ditolak. Transaksi ini bukan milik Anda.']);
+        }
+
+
         // =======================================================
         // 🚨 IDEMPOTENCY 1: CEK STATUS TRANSAKSI
         // Cegah user bayar tagihan yang sama berkali-kali!
@@ -517,7 +523,6 @@ class PpobMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Pembayaran tagihan ini sedang diproses oleh sistem, mohon tunggu.']);
         }
 
-        $user = auth()->user();
         if ($user->balance_iak < $transaction->price) {
             return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi untuk membayar tagihan ini.']);
         }
