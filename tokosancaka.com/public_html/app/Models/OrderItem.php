@@ -88,4 +88,12 @@ class OrderItem extends Model
     //     }
     //     return $productName . $variantName;
     // }
+
+    /**
+     * ✅ BARU: Mendefinisikan relasi bahwa item pesanan INI (mungkin) terkait dengan satu ProductVariant.
+     */
+    public function productVariant(): BelongsTo // <-- UBAH NAMANYA DI SINI
+    {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id', 'id');
+    }
 }
