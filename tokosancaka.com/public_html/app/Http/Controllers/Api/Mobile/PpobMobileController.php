@@ -61,12 +61,10 @@ class PpobMobileController extends Controller
 
         $query = IakPricelistPrepaid::whereIn('status', ['Active', 'active', '1', 1]);
 
-        // PERBAIKAN 1: Bikin pencarian operator lebih luwes (pakai raw query LOWER)
         if (!empty($operator)) {
             $query->whereRaw('LOWER(operator) LIKE ?', ['%' . strtolower($operator) . '%']);
         }
 
-        // PERBAIKAN 2: Bikin pencarian type lebih luwes
         if (!empty($type)) {
             $query->whereRaw('LOWER(type) = ?', [strtolower($type)]);
         }
@@ -90,11 +88,10 @@ class PpobMobileController extends Controller
             ]);
         }
 
-        // Debugging Message: Biar tahu nilai apa yang sebenarnya dicari
         $debugMsg = "Operator: " . ($operator ?: 'Semua') . ", Type: " . ($type ?: 'Semua');
 
         return response()->json([
-            'success' => false, // Ganti jadi false biar di React Native ke-trigger error handler
+            'success' => false,
             'data'    => [],
             'message' => 'Produk kosong. (' . $debugMsg . ')'
         ]);
@@ -129,7 +126,6 @@ class PpobMobileController extends Controller
             'whatsapp_number' => 'nullable|string'
         ]);
 
-        // Format WA
         if ($request->filled('whatsapp_number')) {
             $wa = preg_replace('/[^0-9]/', '', $request->whatsapp_number);
             if (substr($wa, 0, 2) === '62') $wa = '0' . substr($wa, 2);
@@ -137,16 +133,14 @@ class PpobMobileController extends Controller
             $request->merge(['whatsapp_number' => $wa]);
         }
 
-        // Lempar ke fungsi Inquiry jika Pascabayar
         if ($request->type === 'pascabayar') {
             return $this->inquiryPostpaid($request);
         }
 
-        // --- LOGIKA PRABAYAR (TOP UP) ---
         $user = auth()->user();
 
-        // Idempotency (Cegah Dobel) - Mengecek Transaksi User Tersebut
-        $isDuplicate = TransactionPpobIak::where('user_id', $user->id)
+        // Idempotency (Cegah Dobel) - PERBAIKAN: Gunakan id_pengguna
+        $isDuplicate = TransactionPpobIak::where('user_id', $user->id_pengguna)
             ->where('customer_id', $request->customer_id)
             ->where('product_code', $request->product_code)
             ->where('created_at', '>=', now()->subMinutes(3))
@@ -157,8 +151,8 @@ class PpobMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Transaksi ke nomor & produk yang sama sedang diproses. Tunggu 3 menit.']);
         }
 
-        // Atomic Lock - Kunci per User
-        $lockKey = 'topup_' . $user->id . '_' . $request->product_code . '_' . $request->customer_id;
+        // Atomic Lock - PERBAIKAN: Gunakan id_pengguna
+        $lockKey = 'topup_' . $user->id_pengguna . '_' . $request->product_code . '_' . $request->customer_id;
         $lock = Cache::lock($lockKey, 10);
 
         if (!$lock->get()) {
@@ -175,7 +169,7 @@ class PpobMobileController extends Controller
             $sign = md5($this->username . $this->apiKey . $refId);
 
             $transaction = TransactionPpobIak::create([
-                'user_id'         => auth()->id(), // Mencatat Id User Auth
+                'user_id'         => $user->id_pengguna, // PERBAIKAN: Gunakan id_pengguna secara eksplisit
                 'ref_id'          => $refId,
                 'type'            => 'prabayar',
                 'customer_id'     => $request->customer_id,
@@ -184,7 +178,6 @@ class PpobMobileController extends Controller
                 'status'          => 'PROCESS',
             ]);
 
-            // Hit API IAK
             $response = Http::post($this->prepaidBaseUrl . '/api/top-up', [
                 'username'     => $this->username,
                 'customer_id'  => $request->customer_id,
@@ -216,7 +209,6 @@ class PpobMobileController extends Controller
                     return response()->json(['success' => false, 'message' => 'Gagal: ' . $transaction->message]);
                 }
 
-                // Potong Saldo
                 if (in_array($finalStatus, ['PROCESS', 'SUCCESS'])) {
                     $user->balance_iak -= $product->price;
                     $user->save();
@@ -255,20 +247,21 @@ class PpobMobileController extends Controller
             'sign'     => $sign
         ];
 
-        // Parameter Khusus (Sesuai web)
         if (in_array($productCode, ['BPJS', 'BPJSTK', 'BPJSTKPU'])) $payload['month'] = $request->month ?? 1;
         if (str_starts_with($productCode, 'ESAMSAT.')) $payload['nomor_identitas'] = $request->nomor_identitas ?? '';
         if ($request->filled('amount')) $payload['desc'] = ['amount' => (int) $request->amount];
         if (str_starts_with($productCode, 'PBB')) $payload['year'] = $request->year ?? date('Y');
 
         try {
+            $user = auth()->user();
+
             $response = Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', $payload);
             $result = $response->json();
 
             if ($response->successful() && isset($result['data']) && $result['data']['response_code'] === '00') {
                 $data = $result['data'];
                 $transaction = TransactionPpobIak::create([
-                    'user_id'         => auth()->id(), // Mencatat Id User Auth
+                    'user_id'         => $user->id_pengguna, // PERBAIKAN: Gunakan id_pengguna eksplisit
                     'ref_id'          => $refId,
                     'tr_id'           => $data['tr_id'],
                     'type'            => 'pascabayar',
@@ -398,13 +391,14 @@ class PpobMobileController extends Controller
             }
 
             // 1. TENTUKAN STATUS ADMIN
-            $isAdmin = ($user->id == 4 || $user->role === 'Admin'); // Mengecek berdasarkan ID atau Role
+            // PERBAIKAN: Gunakan id_pengguna dan amankan role huruf besar/kecil
+            $isAdmin = ($user->id_pengguna == 4 || strtolower($user->role) === 'admin');
 
             $query = TransactionPpobIak::query();
 
             // 2. KUNCI UTAMA: JIKA BUKAN ADMIN, HANYA TAMPILKAN MILIKNYA SENDIRI!
             if (!$isAdmin) {
-                $query->where('user_id', $user->id);
+                $query->where('user_id', $user->id_pengguna); // PERBAIKAN: Harus id_pengguna
             }
 
             // 3. FILTER PENCARIAN
@@ -457,7 +451,6 @@ class PpobMobileController extends Controller
                 if ($isAdmin) {
                     $userIds = $collection->pluck('user_id')->filter()->unique()->toArray();
                     if (!empty($userIds)) {
-                        // Sesuaikan dengan nama kolom yang benar di tabel users
                         $usersData = \Illuminate\Support\Facades\DB::table('Pengguna')
                                         ->whereIn('id_pengguna', $userIds)->pluck('nama_lengkap', 'id_pengguna');
                     }
@@ -507,10 +500,11 @@ class PpobMobileController extends Controller
 
         // Mengecek Akses User untuk Membayar Tagihan
         $user = auth()->user();
-        if ($transaction->user_id !== $user->id) {
+
+        // PERBAIKAN: Gunakan id_pengguna untuk mencocokkan kepemilikan tagihan (menggunakan != agar tipe datanya luwes)
+        if ($transaction->user_id != $user->id_pengguna) {
            return response()->json(['success' => false, 'message' => 'Akses ditolak. Transaksi ini bukan milik Anda.']);
         }
-
 
         // =======================================================
         // 🚨 IDEMPOTENCY 1: CEK STATUS TRANSAKSI
@@ -590,5 +584,4 @@ class PpobMobileController extends Controller
             optional($lock)->release();
         }
     }
-
 }
