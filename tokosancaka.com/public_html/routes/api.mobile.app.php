@@ -27,6 +27,9 @@ use App\Http\Controllers\Api\Mobile\AuthController; // 2. Pastikan Import ini ad
 Route::post('/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'login']);
 Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
 Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendResetLinkApi']);
+// PERUBAHAN DI SINI: Pindahkan dua route ini ke luar dari auth:sanctum
+Route::post('/mobile/verify-token', [AuthController::class, 'verifyToken']);
+Route::post('/mobile/resend-token', [AuthController::class, 'resendToken']);
 
 // --- ENDPOINT UPDATE APLIKASI (SELF-HOSTED PLAYSTORE) ---
 Route::get('/check-update', function(Request $request) {
@@ -129,13 +132,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/store-multi', [KoliController::class, 'store']);
 
     });
-
-    // ========================================== Input Token untuk HP (Login API) ==========================================
-    // Route untuk memverifikasi token 6 karakter
-    Route::post('/mobile/verify-token', [AuthController::class, 'verifyToken']);
-
-    // Route untuk mengirim ulang token jika user belum menerimanya
-    Route::post('/mobile/resend-token', [AuthController::class, 'resendToken']);
 
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile/update', [ProfileController::class, 'update']);
