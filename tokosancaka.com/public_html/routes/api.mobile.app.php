@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Mobile\ProfileController;
 use App\Http\Controllers\Api\Mobile\PpobMobileController;
 use App\Http\Controllers\Api\Mobile\KoliController;
 use App\Http\Controllers\Api\Mobile\AuthController; // 2. Pastikan Import ini ada
+use App\Http\Controllers\Api\Mobile\MarketplaceMobileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,6 +24,16 @@ use App\Http\Controllers\Api\Mobile\AuthController; // 2. Pastikan Import ini ad
 // =========================================================================
 // 1. PUBLIC ROUTES (TIDAK BUTUH LOGIN / TOKEN)
 // =========================================================================
+
+// ==========================================
+// A. ROUTE MARKETPLACE PUBLIK (TIDAK BUTUH LOGIN)
+// ==========================================
+Route::prefix('marketplace')->group(function () {
+    Route::get('/home', [MarketplaceMobileController::class, 'home']);
+    Route::get('/category/{id}', [MarketplaceMobileController::class, 'showCategory']);
+    Route::get('/product/{id}', [MarketplaceMobileController::class, 'showProduct']);
+    Route::get('/store/{slug}', [MarketplaceMobileController::class, 'showStore']);
+});
 
 Route::post('/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'login']);
 Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
@@ -240,4 +251,22 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
 
+});
+
+
+// ==========================================
+// B. ROUTE MARKETPLACE PROTECTED (WAJIB LOGIN)
+// ==========================================
+Route::middleware('auth:sanctum')->prefix('marketplace')->group(function () {
+
+    // --- Keranjang (Cart) ---
+    Route::get('/cart', [MarketplaceMobileController::class, 'getCart']);
+    Route::post('/cart/add', [MarketplaceMobileController::class, 'addToCart']);
+    Route::post('/cart/update', [MarketplaceMobileController::class, 'updateCart']);
+    Route::post('/cart/remove', [MarketplaceMobileController::class, 'removeFromCart']);
+    Route::post('/cart/clear', [MarketplaceMobileController::class, 'clearCart']);
+
+    // --- Checkout ---
+    Route::get('/checkout/prepare', [MarketplaceMobileController::class, 'prepareCheckout']);
+    Route::post('/checkout/process', [MarketplaceMobileController::class, 'processCheckout']);
 });
