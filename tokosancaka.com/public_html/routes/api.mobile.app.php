@@ -27,9 +27,10 @@ use App\Http\Controllers\Api\Mobile\AuthController; // 2. Pastikan Import ini ad
 Route::post('/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'login']);
 Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
 Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendResetLinkApi']);
-// PERUBAHAN DI SINI: Pindahkan dua route ini ke luar dari auth:sanctum
-Route::post('/mobile/verify-token', [AuthController::class, 'verifyToken']);
-Route::post('/mobile/resend-token', [AuthController::class, 'resendToken']);
+
+// PERBAIKAN: Hilangkan kata /mobile di depannya
+Route::post('/verify-token', [AuthController::class, 'verifyToken']);
+Route::post('/resend-token', [AuthController::class, 'resendToken']);
 
 // --- ENDPOINT UPDATE APLIKASI (SELF-HOSTED PLAYSTORE) ---
 Route::get('/check-update', function(Request $request) {
