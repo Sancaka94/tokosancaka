@@ -565,4 +565,24 @@ class MarketplaceMobileController extends Controller
             return ['success' => false, 'message' => 'Koneksi Gateway bermasalah.'];
         }
     }
+
+    // =========================================================================
+    // BAGIAN 4: RIWAYAT PESANAN
+    // =========================================================================
+
+    public function myOrders()
+    {
+        $user = Auth::user();
+
+        // Ambil data order beserta relasi toko dan item produknya
+        $orders = Order::with(['store', 'items.product', 'items.productVariant'])
+            ->where('user_id', $user->id_pengguna ?? $user->id)
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $orders
+        ]);
+    }
 }
