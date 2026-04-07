@@ -270,5 +270,6 @@ Route::middleware('auth:sanctum')->prefix('marketplace')->group(function () {
     Route::get('/checkout/prepare', [MarketplaceMobileController::class, 'prepareCheckout']);
     Route::post('/checkout/process', [MarketplaceMobileController::class, 'processCheckout']);
 
-    Route::get('/marketplace/orders', [MarketplaceMobileController::class, 'myOrders']);
+    Route::get('/orders', [MarketplaceMobileController::class, 'myOrders']);
+
 });
