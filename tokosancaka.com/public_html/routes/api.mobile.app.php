@@ -28,9 +28,8 @@ Route::post('/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, '
 Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
 Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendResetLinkApi']);
 
-// PERBAIKAN: Hilangkan kata /mobile di depannya
-Route::post('/verify-token', [AuthController::class, 'verifyToken']);
-Route::post('/resend-token', [AuthController::class, 'resendToken']);
+Route::post('/verify-token', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'verifyToken']);
+Route::post('/resend-token', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'resendToken']);
 
 // --- ENDPOINT UPDATE APLIKASI (SELF-HOSTED PLAYSTORE) ---
 Route::get('/check-update', function(Request $request) {
