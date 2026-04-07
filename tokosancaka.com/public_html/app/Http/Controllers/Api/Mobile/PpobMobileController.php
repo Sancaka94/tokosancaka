@@ -456,15 +456,17 @@ class PpobMobileController extends Controller
                     }
                 }
 
-                // C. GABUNGKAN DATA KE RESPONSE
+               // C. GABUNGKAN DATA KE RESPONSE DENGAN AMAN (Gunakan setAttribute)
                 $collection->transform(function ($trx) use ($icons, $usersData, $isAdmin) {
                     // Masukkan Logo
-                    $trx->icon_url = $trx->type == 'prabayar' ? ($icons[$trx->product_code] ?? null) : null;
+                    $icon = $trx->type == 'prabayar' ? ($icons[$trx->product_code] ?? null) : null;
+                    $trx->setAttribute('icon_url', $icon);
 
                     // Masukkan Data User (Jika Admin yang lihat)
                     if ($isAdmin) {
                         $namaUser = $trx->user_id ? ($usersData[$trx->user_id] ?? 'User ' . $trx->user_id) : 'Guest / Web';
-                        $trx->user = ['nama_lengkap' => $namaUser];
+                        // Gunakan nama atribut flat 'nama_pembeli' agar 100% masuk ke JSON
+                        $trx->setAttribute('nama_pembeli', $namaUser);
                     }
 
                     return $trx;
