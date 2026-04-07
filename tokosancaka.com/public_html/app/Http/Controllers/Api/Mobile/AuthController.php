@@ -167,4 +167,87 @@ TEXT;
             'data'    => $user
         ], 201);
     }
+
+    // LOG LOG: Fungsi Verifikasi Token (Mobile)
+    public function verifyToken(Request $request)
+    {
+        $request->validate([
+            'identifier' => 'required', // Ini adalah no_wa yang dikirim dari HP
+            'token' => 'required|string|size:6'
+        ]);
+
+        // Cari user berdasarkan no_wa
+        $user = User::where('no_wa', $request->identifier)->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengguna tidak ditemukan.'
+            ], 404);
+        }
+
+        // Cek token (memastikan tidak sensitif terhadap huruf besar/kecil)
+        if ($user->setup_token && strtoupper($user->setup_token) === strtoupper($request->token)) {
+
+            // LOG LOG: Token Valid, Aktifkan User
+            $user->status = 'Aktif';
+            $user->setup_token = null; // Kosongkan token agar tidak bisa dipakai lagi
+            $user->save();
+
+            // Buat token otentikasi (Sanctum) agar user langsung login di aplikasi
+            $authToken = $user->createToken('sancaka-mobile')->plainTextToken;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Verifikasi berhasil.',
+                'data' => [
+                    'token' => $authToken,
+                    'user' => $user
+                ]
+            ], 200);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Token tidak valid atau salah.'
+        ], 400);
+    }
+
+    // LOG LOG: Fungsi Kirim Ulang Token (Mobile)
+    public function resendToken(Request $request)
+    {
+        $request->validate([
+            'identifier' => 'required'
+        ]);
+
+        $user = User::where('no_wa', $request->identifier)->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengguna tidak ditemukan.'
+            ], 404);
+        }
+
+        // Generate ulang token 6 karakter
+        $newToken = strtoupper(Str::random(6));
+        $user->setup_token = $newToken;
+        $user->save();
+
+        // Pesan WA yang baru
+        $message = "*Sancaka Express*\n\nHalo Kak {$user->nama_lengkap},\nIni adalah KODE VERIFIKASI baru Anda:\n\n*{$newToken}*\n\nKode ini bersifat rahasia.";
+
+        $noWa = preg_replace('/^0/', '62', $user->no_wa);
+
+        try {
+            FonnteService::sendMessage($noWa, $message);
+        } catch (\Exception $e) {
+            Log::error('Gagal mengirim ulang WA via API: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kode verifikasi baru telah dikirim ulang ke WhatsApp Anda.'
+        ], 200);
+    }
 }

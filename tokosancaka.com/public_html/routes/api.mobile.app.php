@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Mobile\CustomerForgotPasswordController; // <-- TAM
 use App\Http\Controllers\Api\Mobile\ProfileController;
 use App\Http\Controllers\Api\Mobile\PpobMobileController;
 use App\Http\Controllers\Api\Mobile\KoliController;
+use App\Http\Controllers\Api\Mobile\AuthController; // 2. Pastikan Import ini ada
 
 /*
 |--------------------------------------------------------------------------
@@ -130,8 +131,11 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ========================================== Input Token untuk HP (Login API) ==========================================
-    Route::post('/mobile/verify-token', [App\Http\Controllers\Api\MobileAuthController::class, 'verifyToken']);
-    Route::post('/mobile/resend-token', [App\Http\Controllers\Api\MobileAuthController::class, 'resendToken']);
+    // Route untuk memverifikasi token 6 karakter
+    Route::post('/mobile/verify-token', [AuthController::class, 'verifyToken']);
+
+    // Route untuk mengirim ulang token jika user belum menerimanya
+    Route::post('/mobile/resend-token', [AuthController::class, 'resendToken']);
 
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile/update', [ProfileController::class, 'update']);
