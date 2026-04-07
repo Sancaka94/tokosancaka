@@ -129,6 +129,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     });
 
+    // ========================================== Input Token untuk HP (Login API) ==========================================
+    Route::post('/mobile/verify-token', [App\Http\Controllers\Api\MobileAuthController::class, 'verifyToken']);
+    Route::post('/mobile/resend-token', [App\Http\Controllers\Api\MobileAuthController::class, 'resendToken']);
+
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile/update', [ProfileController::class, 'update']);
 

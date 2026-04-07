@@ -105,8 +105,8 @@ class AuthController extends Controller
             'status'       => 'Tidak Aktif',
         ]);
 
-        // 3. Generate token setup
-        $token = Str::random(40);
+        // 3. Generate token setup (6 Karakter Huruf Besar dan Angka)
+        $token = strtoupper(Str::random(6)); // PERUBAHAN DI SINI
         $user->setup_token = $token;
         $user->save();
 
@@ -137,11 +137,11 @@ class AuthController extends Controller
 
 Apabila Anda mengalami kendala atau memiliki pertanyaan, silakan hubungi Admin Sancaka melalui nomor +628819435180.
 
-Berikut adalah *TOKEN RAHASIA* dan Link Pendaftaran Kakak {$user->nama_lengkap}:
+Berikut adalah *KODE VERIFIKASI* dan Link Pendaftaran Kakak {$user->nama_lengkap}:
 
-TOKEN RAHASIA ANDA: *{$token}*
+KODE VERIFIKASI APLIKASI: *{$token}*
 
-Lanjutkan Pendaftaran Dengan Klik Link Dibawah ini:
+Atau Lanjutkan Pendaftaran Web Dengan Klik Link Dibawah ini:
 
 Link Setup Profile: {$setup_url}
 
