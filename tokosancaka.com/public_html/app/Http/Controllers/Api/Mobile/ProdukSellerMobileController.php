@@ -118,6 +118,9 @@ class ProdukSellerMobileController extends Controller
 
             $dataToCreate['is_new'] = filter_var($request->is_new, FILTER_VALIDATE_BOOLEAN);
             $dataToCreate['is_bestseller'] = filter_var($request->is_bestseller, FILTER_VALIDATE_BOOLEAN);
+            $dataToCreate['is_promo'] = filter_var($request->is_promo, FILTER_VALIDATE_BOOLEAN);
+            $dataToCreate['is_shipping_discount'] = filter_var($request->is_shipping_discount, FILTER_VALIDATE_BOOLEAN);
+            $dataToCreate['is_free_shipping'] = filter_var($request->is_free_shipping, FILTER_VALIDATE_BOOLEAN);
 
             if ($hasVariantsRequest) $dataToCreate['stock'] = 0;
 
@@ -194,6 +197,10 @@ class ProdukSellerMobileController extends Controller
 
             $dataToUpdate['is_new'] = filter_var($request->is_new, FILTER_VALIDATE_BOOLEAN);
             $dataToUpdate['is_bestseller'] = filter_var($request->is_bestseller, FILTER_VALIDATE_BOOLEAN);
+            $dataToUpdate['is_promo'] = filter_var($request->is_promo, FILTER_VALIDATE_BOOLEAN);
+            $dataToUpdate['is_shipping_discount'] = filter_var($request->is_shipping_discount, FILTER_VALIDATE_BOOLEAN);
+            $dataToUpdate['is_free_shipping'] = filter_var($request->is_free_shipping, FILTER_VALIDATE_BOOLEAN);
+
 
             if ($hasVariantsRequest) $dataToUpdate['stock'] = 0;
 
