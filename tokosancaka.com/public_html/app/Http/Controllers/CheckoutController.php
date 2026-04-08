@@ -1249,34 +1249,40 @@ class CheckoutController extends Controller
                 // ========================================================
                 // SKENARIO 2: DATA BARU (TABEL ORDERS)
                 // ========================================================
+                // ========================================================
+                // SKENARIO 2: DATA BARU (TABEL ORDERS)
+                // ========================================================
                 else {
                     $store = $order->store;
                     $user = $order->user;
                     if (!$store || !$user) goto skip_kiriminaja;
 
-                    $storeSearch = $store->village . ', ' . $store->regency . ', ' . $store->province;
-                    $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
-                    $storeData = $storeAddrRes['data'][0] ?? null;
+                    // 🔥 PERBAIKAN 1: Baca langsung ID Kecamatan dari Database!
+                    $originDistId = $order->sender_district_id ?? 4354;
+                    $originSubId  = $order->sender_subdistrict_id ?? 40343;
+                    $destDistId   = $order->receiver_district_id;
+                    $destSubId    = $order->receiver_subdistrict_id;
 
-                    $userSearch = $user->village . ', ' . $user->regency . ', ' . $user->province;
-                    $userAddrRes = $kiriminAja->searchAddress($userSearch);
-                    $userData = $userAddrRes['data'][0] ?? null;
-
-                    if (!$storeData || !$userData) goto skip_kiriminaja;
+                    if (!$destDistId || !$destSubId) {
+                        Log::error("Wilayah tujuan kosong! Tidak bisa booking KiriminAja.");
+                        goto skip_kiriminaja;
+                    }
 
                     $packagesPayload = [];
                     $totalWeight = 0;
-                    $jenisBarang = $item->product->jenis_barang ?? 1;
+
                     foreach($order->items as $item) {
                         $w = $item->product->weight ?? 1000;
+                        $jenisBarang = $item->product->jenis_barang ?? 1;
                         $totalWeight += ($w * $item->quantity);
+
                         $packagesPayload[] = [
                             'order_id' => $order->invoice_number,
                             'destination_name' => $user->nama_lengkap,
                             'destination_phone' => $user->no_wa,
                             'destination_address' => $order->shipping_address,
-                            'destination_kecamatan_id' => $userData['district_id'],
-                            'destination_kelurahan_id' => $userData['subdistrict_id'],
+                            'destination_kecamatan_id' => $destDistId,
+                            'destination_kelurahan_id' => $destSubId,
                             'weight' => $w * $item->quantity,
                             'width' => 10, 'height' => 10, 'length' => 10,
                             'item_value' => $item->price * $item->quantity,
@@ -1306,28 +1312,24 @@ class CheckoutController extends Controller
                         $kiriminResponse = $kiriminAja->createInstantOrder($payload);
                     } else {
                         $payload = [
-                            'kecamatan_id' => $storeData['district_id'],
-                            'kelurahan_id' => $storeData['subdistrict_id'],
+                            'kecamatan_id' => $originDistId,
+                            'kelurahan_id' => $originSubId,
                             'address' => $store->address_detail,
                             'phone' => $store->user->no_wa,
                             'name' => $store->name,
-                            'zipcode' => $store->postal_code,
-                            'latitude' => $store->latitude,
-                            'longitude' => $store->longitude,
+                            'zipcode' => $store->postal_code ?? '00000',
+                            'latitude' => $store->latitude ?? 0,
+                            'longitude' => $store->longitude ?? 0,
                             'packages' => $packagesPayload,
                             'category' => ($type == 'cargo') ? 'trucking' : 'regular',
-
-                            // FIX: Tambahkan Schedule (Wajib)
                             'schedule' => \Carbon\Carbon::now()->format('Y-m-d H:i:s'),
                             'platform_name' => 'TOKOSANCAKA.COM'
                         ];
                         $kiriminResponse = $kiriminAja->createExpressOrder($payload);
 
-                        // AUTO RETRY LOGIC (Order Baru)
                         if (isset($kiriminResponse['status']) && $kiriminResponse['status'] === false) {
                             $pesanError = strtolower($kiriminResponse['text'] ?? '');
                             if (str_contains($pesanError, 'jadwal') || str_contains($pesanError, 'schedule')) {
-                                Log::info("Booking Order Baru hari ini gagal. Mencoba besok...");
                                 $payload['schedule'] = \Carbon\Carbon::now()->addDay()->format('Y-m-d 09:00:00');
                                 $kiriminResponse = $kiriminAja->createExpressOrder($payload);
                             }
@@ -1345,7 +1347,7 @@ class CheckoutController extends Controller
                             ($kiriminResponse['results'][0]['awb'] ?? null));
 
                     if ($resi) {
-                        $order->shipping_resi = $resi;
+                        $order->shipping_reference = $resi;
                         if ($isLegacy) $order->resi = $resi;
                         $order->status = 'processing';
                         $order->save();
