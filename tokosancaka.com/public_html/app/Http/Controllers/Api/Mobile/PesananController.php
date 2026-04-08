@@ -450,7 +450,7 @@ class PesananController extends Controller
         $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
 
         // Jika bukan admin, kunci query hanya untuk user tersebut
-        $query = Pesanan::with(['items.product', 'items.productVariant']);
+        $query = Pesanan::with(['items.product', 'items.productVariant', 'store']);
         $baseQuery = Pesanan::query();
 
         if (!$isAdmin) {
