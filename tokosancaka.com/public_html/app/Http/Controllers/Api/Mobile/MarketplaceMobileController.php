@@ -445,7 +445,7 @@ class MarketplaceMobileController extends Controller
         ]);
 
         $user = Auth::user();
-        $$cart = $request->cart_items;
+        $cart = $request->cart_items;
 
 
         if (empty($cart)) return response()->json(['success' => false, 'message' => 'Keranjang kosong.'], 400);
