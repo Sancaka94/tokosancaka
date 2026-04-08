@@ -142,7 +142,7 @@ class Pesanan extends Model
 
     }
 
-    
+
 
     /**
 
@@ -189,13 +189,21 @@ class Pesanan extends Model
         return $this->belongsTo(Kontak::class, 'kontak_penerima_id');
 
     }
-    
+
     public function kolis(): HasMany
     {
         return $this->hasMany(Koli::class, 'pesanan_id', 'id_pesanan');
     }
 
-
+    /**
+     * Relasi ke OrderItem (Detail Produk yang dibeli)
+     */
+    public function items()
+    {
+        // Sesuaikan 'order_id' dengan nama foreign key yang ada di tabel order_items Anda.
+        // Jika di tabel order_items kolomnya bernama 'pesanan_id', ganti 'order_id' menjadi 'pesanan_id'.
+        return $this->hasMany(\App\Models\OrderItem::class, 'order_id', 'id');
+    }
 
 }
 
