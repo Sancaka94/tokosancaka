@@ -512,7 +512,7 @@ class MarketplaceMobileController extends Controller
                  'total_amount'  => $grand_total,
                  'shipping_method'=> $request->shipping_method,
                  'payment_method'=> $request->payment_method,
-                 'status'        => (in_array($request->payment_method, ['cod', 'cash', 'CODBARANG'])) ? 'processing' : 'pending',
+                 'status'        => 'pending',
 
                  // 👇 PERBAIKAN: Tangkap Nama, No WA, dan Gabung Alamat Lengkap
                  'receiver_name'    => $request->receiver_name ?? $user->nama_lengkap,
@@ -558,7 +558,7 @@ class MarketplaceMobileController extends Controller
 
                 // Panggil logika otomatis dari web controller untuk booking kurir & notif WA
                 // Asumsi: Method processOrderCallback dibuat/diambil dari CheckoutController web
-                $webController = new \App\Http\Controllers\CheckoutController(new DanaSignatureService());
+                $webController = new \App\Http\Controllers\CheckoutController(app(\App\Services\DanaSignatureService::class));
                 $webController->processOrderCallback($invoiceNumber, 'PAID', []);
 
             } elseif (in_array(strtolower($request->payment_method), ['cod', 'cash', 'codbarang'])) {
@@ -567,7 +567,7 @@ class MarketplaceMobileController extends Controller
                 $order->save();
 
                 // Hit Web Controller supaya dibooking kurir KiriminAja otomatis
-                $webController = new \App\Http\Controllers\CheckoutController(new DanaSignatureService());
+                $webController = new \App\Http\Controllers\CheckoutController(app(\App\Services\DanaSignatureService::class));
                 // Simulasikan success webhook untuk mentrigger booking
                 $webController->processOrderCallback($invoiceNumber, 'PAID', []);
 
