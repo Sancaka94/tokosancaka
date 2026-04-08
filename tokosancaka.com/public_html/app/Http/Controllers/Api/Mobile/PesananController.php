@@ -73,7 +73,8 @@ class PesananController extends Controller
 
                 'save_sender'           => 'nullable',
                 'save_receiver'         => 'nullable',
-                'idempotency_key'       => 'nullable|string', // Pastikan diterima jika dikirim dari frontend
+                'idempotency_key'       => 'nullable|string',
+                'cart_items'            => 'nullable|array', // <-- TAMBAHKAN BARIS INI
             ]);
 
             // Cek pencegahan klik double
@@ -114,18 +115,39 @@ class PesananController extends Controller
             $order = Pesanan::create($pesananData);
             $paymentUrl = null;
 
+            // --- SIMPAN ITEM PRODUK ---
+            if (!empty($validatedData['cart_items']) && is_array($validatedData['cart_items'])) {
+                foreach ($validatedData['cart_items'] as $item) {
+                    \App\Models\OrderItem::create([
+                        'order_id' => $order->id, // Ganti ke 'pesanan_id' jika foreign key Anda pesanan_id
+                        'product_id' => $item['product_id'] ?? null,
+                        'product_variant_id' => $item['variant_id'] ?? null,
+                        'quantity' => $item['qty'] ?? 1,
+                        'price' => $item['price'] ?? 0,
+                    ]);
+                }
+            }
+
             // 6. PROSES LOGIKA BERDASARKAN METODE PEMBAYARAN
             // ==============================================================
 
-            // JIKA MENGGUNAKAN SALDO
-            if ($validatedData['payment_method'] === '#SALDO' || $validatedData['payment_method'] === 'Potong Saldo' || $validatedData['payment_method'] === 'Saldo') {
-                if ($user->saldo < $total_paid_ongkir) {
-                    throw new Exception('Saldo Anda tidak mencukupi. Sisa saldo: Rp ' . number_format($user->saldo, 0, ',', '.'));
-                }
-                $user->decrement('saldo', $total_paid_ongkir);
-                Log::info("[API MOBILE] Saldo user {$user->id_pengguna} dipotong sebesar {$total_paid_ongkir}");
+            // 6. PROSES LOGIKA BERDASARKAN METODE PEMBAYARAN
+            // ==============================================================
 
-                // Lanjut Tembak API KiriminAja Langsung Karena Sudah Dibayar
+            // A. PEMBAYARAN LUNAS (POTONG SALDO / CASH) -> Langsung Booking Resi
+            if (in_array($validatedData['payment_method'], ['#SALDO', 'Potong Saldo', 'Saldo', 'CASH'])) {
+
+                // Jika pakai saldo (bukan CASH), cek dan potong saldo user
+                if ($validatedData['payment_method'] !== 'CASH') {
+                    $totalTagihanFinal = $validatedData['item_price'] + $total_paid_ongkir;
+                    if ($user->saldo < $totalTagihanFinal) {
+                        throw new Exception('Saldo Anda tidak mencukupi. Tagihan: Rp ' . number_format($totalTagihanFinal, 0, ',', '.'));
+                    }
+                    $user->decrement('saldo', $totalTagihanFinal);
+                    Log::info("[API MOBILE] Saldo user {$user->id_pengguna} dipotong sebesar {$totalTagihanFinal}");
+                }
+
+                // Tembak API KiriminAja
                 $kiriminResponse = $this->_createKiriminAjaOrder($validatedData, $order, $kirimaja, $cod_value, $shipping_cost, $insurance_cost);
 
                 if (($kiriminResponse['status'] ?? false) !== true) {
@@ -148,6 +170,44 @@ class PesananController extends Controller
                 } catch (Exception $e) {
                     Log::error("[API MOBILE] Gagal rekam keuangan: " . $e->getMessage());
                 }
+            }
+
+            // B. PEMBAYARAN COD -> Langsung Booking Resi (Bayar Nanti)
+            elseif (in_array($validatedData['payment_method'], ['#COD_ONGKIR', '#COD_BARANG', 'COD', 'CODBARANG'])) {
+
+                $kiriminResponse = $this->_createKiriminAjaOrder($validatedData, $order, $kirimaja, $cod_value, $shipping_cost, $insurance_cost);
+
+                if (($kiriminResponse['status'] ?? false) !== true) {
+                    throw new Exception($kiriminResponse['text'] ?? ($kiriminResponse['errors'][0]['text'] ?? 'Gagal membuat order COD di KiriminAja.'));
+                }
+
+                $bookingId = $kiriminResponse['id'] ?? $kiriminResponse['data']['id'] ?? $kiriminResponse['payment_ref'] ?? null;
+                $awbAsli = $kiriminResponse['awb'] ?? $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+
+                $order->shipping_ref = $bookingId;
+                $order->status = 'Pesanan Dibuat';
+                $order->status_pesanan = 'Pesanan Dibuat';
+                $order->resi = !empty($awbAsli) ? $awbAsli : ($bookingId ?? 'REF-'.$order->nomor_invoice);
+            }
+
+            // C. PAYMENT GATEWAY (DOKU dll) -> Tunda Resi (Menunggu Pembayaran)
+            else {
+                if (in_array($validatedData['payment_method'], ['#DOKU', 'DOKU_JOKUL'])) {
+                    try {
+                        $dokuService = new DokuJokulService();
+                        $tagihanDoku = $validatedData['item_price'] + $total_paid_ongkir; // Harga Barang + Ongkir
+                        $paymentUrl = $dokuService->createPayment($order->nomor_invoice, $tagihanDoku);
+
+                        if (empty($paymentUrl)) throw new Exception('Gagal membuat transaksi DOKU.');
+
+                        $order->payment_url = $paymentUrl;
+                    } catch (Exception $e) {
+                        Log::error('[API MOBILE] DOKU Exception: ' . $e->getMessage());
+                        throw new Exception('Gagal menghubungi DOKU Payment Gateway.');
+                    }
+                }
+                $order->status = 'Menunggu Pembayaran';
+                $order->status_pesanan = 'Menunggu Pembayaran';
             }
 
             // JIKA MENGGUNAKAN COD
@@ -202,8 +262,9 @@ class PesananController extends Controller
 
             // ==============================================================
 
-            // 7. Simpan Harga Final
-            $order->price = ($cod_value > 0) ? $cod_value : $total_paid_ongkir;
+            // ==============================================================
+            // 7. Simpan Harga Final (Harga Barang + Ongkir)
+            $order->price = ($cod_value > 0) ? $cod_value : ($validatedData['item_price'] + $total_paid_ongkir);
             $order->save();
 
             DB::commit();
