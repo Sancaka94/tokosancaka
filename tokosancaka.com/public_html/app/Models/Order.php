@@ -71,6 +71,12 @@ class Order extends Model
         // === TAMBAHKAN DUA BARIS INI ===
         'pay_code', // Untuk Nomor VA / Kode Bayar
         'qr_url',   // Untuk Link Gambar QRIS
+        'receiver_name',
+        'receiver_phone',
+        'receiver_address',
+        'receiver_district_id',
+        'receiver_subdistrict_id', // Tambahkan saja walau mungkin di DB belum ada
+        'receiver_village',
         // ===============================
 
     ];
