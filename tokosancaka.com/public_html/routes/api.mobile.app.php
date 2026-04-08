@@ -185,6 +185,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/suratjalan/history', [ScanSpxController::class, 'historySuratJalan']);
 
+        Route::get('/laporan-keuangan', [LaporanKeuanganMobileController::class, 'index']);
+
         // ==========================================
 
         // Manajemen Pengiriman (Kirim Satuan & Massal/Koli)
