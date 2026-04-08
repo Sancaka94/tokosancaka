@@ -12,7 +12,7 @@ use App\Http\Controllers\Api\Mobile\KoliController;
 use App\Http\Controllers\Api\Mobile\AuthController; // 2. Pastikan Import ini ada
 use App\Http\Controllers\Api\Mobile\MarketplaceMobileController;
 use App\Http\Controllers\Api\Mobile\LaporanKeuanganMobileController;
-
+use App\Http\Controllers\Api\Mobile\ProdukSellerMobileController;
 /*
 |--------------------------------------------------------------------------
 | API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)
