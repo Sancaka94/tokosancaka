@@ -328,14 +328,27 @@ class PesananController extends Controller
         $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0;
         $finalCodValue = $cod_value;
 
-        // Jadwal Logika Sama dengan Web
-        $dayOfWeek = (int)date('N');
-        $currentHour = (int)date('H');
+       // ---------------------------------------------------------
+        // LOGIKA PENJADWALAN PICKUP KIRIMINAJA BARU
+        // ---------------------------------------------------------
+        $now = \Carbon\Carbon::now('Asia/Jakarta');
 
-        if ($dayOfWeek == 7 || $currentHour >= 15) {
-            $scheduleClock = date('Y-m-d 09:00:00', strtotime('+1 day'));
+        // Jika hari ini adalah hari Minggu ATAU sudah lewat jam 17:00 (5 Sore)
+        if ($now->isSunday() || $now->hour >= 17) {
+
+            $pickupDate = $now->copy()->addDay(); // Jadwalkan ke Besok
+
+            // Opsional (Sangat Disarankan): Jika "besok" ternyata hari Minggu (kurir libur pickup), lompat ke hari Senin
+            if ($pickupDate->isSunday()) {
+                $pickupDate->addDay();
+            }
+
+            // Set ke jam 09:00 Pagi
+            $scheduleClock = $pickupDate->setTime(9, 0, 0)->format('Y-m-d H:i:s');
+
         } else {
-            $scheduleClock = date('Y-m-d H:i:s');
+            // Jika masih di bawah jam 17:00, jadwalkan pickup HARI INI jam 17:00
+            $scheduleClock = $now->setTime(17, 0, 0)->format('Y-m-d H:i:s');
         }
 
         $category = ($data['service_type'] ?? $serviceGroup) === 'cargo' ? 'trucking' : 'regular';
@@ -433,7 +446,7 @@ class PesananController extends Controller
         $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
 
         // Jika bukan admin, kunci query hanya untuk user tersebut
-        $query = Pesanan::query();
+        $query = Pesanan::with(['items.product', 'items.productVariant']);
         $baseQuery = Pesanan::query();
 
         if (!$isAdmin) {
