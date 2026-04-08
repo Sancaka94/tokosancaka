@@ -131,9 +131,6 @@ class PesananController extends Controller
             // 6. PROSES LOGIKA BERDASARKAN METODE PEMBAYARAN
             // ==============================================================
 
-            // 6. PROSES LOGIKA BERDASARKAN METODE PEMBAYARAN
-            // ==============================================================
-
             // A. PEMBAYARAN LUNAS (POTONG SALDO / CASH) -> Langsung Booking Resi
             if (in_array($validatedData['payment_method'], ['#SALDO', 'Potong Saldo', 'Saldo', 'CASH'])) {
 
@@ -171,7 +168,6 @@ class PesananController extends Controller
                     Log::error("[API MOBILE] Gagal rekam keuangan: " . $e->getMessage());
                 }
             }
-
             // B. PEMBAYARAN COD -> Langsung Booking Resi (Bayar Nanti)
             elseif (in_array($validatedData['payment_method'], ['#COD_ONGKIR', '#COD_BARANG', 'COD', 'CODBARANG'])) {
 
@@ -189,7 +185,6 @@ class PesananController extends Controller
                 $order->status_pesanan = 'Pesanan Dibuat';
                 $order->resi = !empty($awbAsli) ? $awbAsli : ($bookingId ?? 'REF-'.$order->nomor_invoice);
             }
-
             // C. PAYMENT GATEWAY (DOKU dll) -> Tunda Resi (Menunggu Pembayaran)
             else {
                 if (in_array($validatedData['payment_method'], ['#DOKU', 'DOKU_JOKUL'])) {
@@ -209,58 +204,6 @@ class PesananController extends Controller
                 $order->status = 'Menunggu Pembayaran';
                 $order->status_pesanan = 'Menunggu Pembayaran';
             }
-
-            // JIKA MENGGUNAKAN COD
-            elseif (in_array($validatedData['payment_method'], ['#COD_ONGKIR', '#COD_BARANG', 'COD', 'CODBARANG'])) {
-                // Tembak API KiriminAja langsung tanpa potong saldo
-                $kiriminResponse = $this->_createKiriminAjaOrder($validatedData, $order, $kirimaja, $cod_value, $shipping_cost, $insurance_cost);
-
-                if (($kiriminResponse['status'] ?? false) !== true) {
-                    throw new Exception($kiriminResponse['text'] ?? ($kiriminResponse['errors'][0]['text'] ?? 'Gagal membuat order COD di sistem ekspedisi KiriminAja.'));
-                }
-
-                $bookingId = $kiriminResponse['id'] ?? $kiriminResponse['data']['id'] ?? $kiriminResponse['payment_ref'] ?? null;
-                $awbAsli = $kiriminResponse['awb'] ?? $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
-
-                $order->shipping_ref = $bookingId;
-                $order->status = 'Pesanan Dibuat';
-                $order->status_pesanan = 'Pesanan Dibuat';
-                $order->resi = !empty($awbAsli) ? $awbAsli : ($bookingId ?? 'REF-'.$order->nomor_invoice);
-            }
-
-            // JIKA MENGGUNAKAN DOKU JOKUL
-            elseif ($validatedData['payment_method'] === '#DOKU' || $validatedData['payment_method'] === 'DOKU_JOKUL') {
-                Log::info('[API MOBILE] Memulai proses DOKU (Jokul) untuk ' . $order->nomor_invoice);
-                try {
-                    $dokuService = new DokuJokulService();
-
-                    // Kita pakai total_paid_ongkir untuk ditagihkan via DOKU
-                    $tagihanDoku = $total_paid_ongkir;
-                    $paymentUrl = $dokuService->createPayment($order->nomor_invoice, $tagihanDoku);
-
-                    if (empty($paymentUrl)) {
-                        throw new Exception('Gagal membuat transaksi pembayaran DOKU.');
-                    }
-
-                    // Simpan URL dan biarkan status "Menunggu Pembayaran"
-                    // KiriminAja JANGAN ditembak sekarang. Nanti nembaknya di DokuWebhookController (Callback)
-                    $order->payment_url = $paymentUrl;
-
-                } catch (Exception $e) {
-                    Log::error('[API MOBILE] DOKU Exception: ' . $e->getMessage());
-                    throw new Exception('Gagal menghubungi DOKU Payment Gateway.');
-                }
-            }
-
-            // JIKA MENGGUNAKAN TRIPAY / DANA DLL (Tambahkan jika butuh)
-            else {
-                // Untuk selain saldo, DOKU, dan COD, beri status menunggu (Sama seperti DOKU, nunggu callback)
-                // Jika ingin integrasikan logika tripay, buat $paymentUrl via TripayService di sini
-                $order->status = 'Menunggu Pembayaran';
-                $order->status_pesanan = 'Menunggu Pembayaran';
-            }
-
-            // ==============================================================
 
             // ==============================================================
             // 7. Simpan Harga Final (Harga Barang + Ongkir)
