@@ -250,6 +250,7 @@ Route::prefix('seller')->group(function () {
         Route::get('/produk/{slug}', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'show']);
         Route::post('/produk/{slug}/update', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'update']);
         Route::delete('/produk/{slug}', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'destroy']);
+        Route::get('/produk/attributes/{categoryId}', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'getAttributes']);
         // 👆 ---------------------------- 👆
 
     });

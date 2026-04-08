@@ -376,4 +376,11 @@ class ProdukSellerMobileController extends Controller
         $product->productVariants()->whereNotIn('id', $currentVariantIds)->delete();
         return $totalStock;
     }
+
+    public function getAttributes($categoryId)
+    {
+        // Ambil atribut berdasarkan kategori
+        $attributes = \App\Models\Attribute::where('category_id', $categoryId)->get();
+        return response()->json(['success' => true, 'data' => $attributes]);
+    }
 }
