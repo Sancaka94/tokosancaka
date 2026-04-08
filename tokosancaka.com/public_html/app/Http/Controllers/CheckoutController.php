@@ -523,6 +523,9 @@ class CheckoutController extends Controller
                         'schedule' => $schedule['clock'] ?? null,
                         'category' => $category,
                     ];
+
+                    Log::info('PAYLOAD KE KIRIMINAJA:', $payload);
+
                     $kiriminResponse = $kiriminAja->createExpressOrder($payload);
 
                     // ======================================================
