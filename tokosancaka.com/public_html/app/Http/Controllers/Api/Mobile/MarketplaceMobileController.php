@@ -667,4 +667,66 @@ class MarketplaceMobileController extends Controller
             'data' => $orders
         ]);
     }
+
+    public function cancelOrder(Request $request, $invoice)
+    {
+        $user = Auth::user();
+        $order = Order::with('items')->where('invoice_number', $invoice)
+            ->where('user_id', $user->id_pengguna ?? $user->id)
+            ->first();
+
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
+        }
+
+        // Pastikan hanya bisa dibatalkan jika status masih dikemas/diproses
+        if (!in_array(strtolower($order->status), ['pending', 'unpaid', 'processing'])) {
+            return response()->json(['success' => false, 'message' => 'Pesanan sudah dikirim atau tidak dapat dibatalkan.'], 400);
+        }
+
+        $reason = $request->input('reason', 'Kesalahan data paket');
+
+        // 🔥 JIKA ORDER SUDAH PUNYA RESI, TEMBAK API KIRIMINAJA
+        if (!empty($order->shipping_reference) && !Str::contains($order->shipping_reference, 'MOCK')) {
+            $mode = \App\Models\Api::getValue('KIRIMINAJA_MODE', 'global', 'sandbox');
+            // Menyesuaikan versi API KiriminAja yang kamu pakai (v3 atau v6)
+            $baseUrl = $mode === 'production' ? 'https://api.kiriminaja.com/api/mitra' : 'https://tdi.kiriminaja.com/api/mitra';
+            $apiKey = \App\Models\Api::getValue('KIRIMINAJA_API_KEY', $mode);
+
+            try {
+                // Tembak API Cancel Shipment KiriminAja
+                $response = Http::withToken($apiKey)->post($baseUrl . '/cancel_shipment', [
+                    'awb' => $order->shipping_reference,
+                    'reason' => $reason
+                ]);
+
+                $result = $response->json();
+
+                // Jika ditolak oleh KiriminAja
+                if (!$response->successful() || empty($result['status']) || $result['status'] === false) {
+                    $errorMessage = $result['text'] ?? 'Gagal membatalkan di sistem ekspedisi.';
+                    return response()->json(['success' => false, 'message' => $errorMessage], 400);
+                }
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'message' => 'Gagal terhubung ke API Ekspedisi.'], 500);
+            }
+        }
+
+        // 🔥 BATALKAN LOKAL & KEMBALIKAN STOK
+        $order->status = 'cancelled';
+        $order->save();
+
+        foreach ($order->items as $item) {
+            if ($item->product_variant_id) {
+                ProductVariant::where('id', $item->product_variant_id)->increment('stock', $item->quantity);
+            } else {
+                Product::where('id', $item->product_id)->increment('stock', $item->quantity);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pesanan berhasil dibatalkan.'
+        ]);
+    }
 }

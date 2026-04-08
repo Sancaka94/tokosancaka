@@ -272,4 +272,6 @@ Route::middleware('auth:sanctum')->prefix('marketplace')->group(function () {
 
     Route::get('/orders', [MarketplaceMobileController::class, 'myOrders']);
 
+    Route::post('/orders/{invoice}/cancel', [MarketplaceMobileController::class, 'cancelOrder']);
+
 });
