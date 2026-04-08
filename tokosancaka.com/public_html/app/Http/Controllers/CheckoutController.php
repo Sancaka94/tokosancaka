@@ -401,12 +401,15 @@ class CheckoutController extends Controller
             $itemTypeFirstProduct = (int) $firstProduct->jenis_barang;
             $mandatoryTypes = [1, 3, 4, 8];
             $isMandatoryInsurance = in_array($itemTypeFirstProduct, $mandatoryTypes);
+
             // ======================================================
-            // ==== PERBAIKAN 3: Logika $useInsurance yang benar ====
-            // Cek apakah user mencentang box 'use_insurance' ATAU apakah asuransi wajib, DAN pastikan biaya asuransi ada.
-            $userWantsInsurance = $request->has('use_insurance') && $request->use_insurance == 'on';
-            $useInsurance = ($userWantsInsurance || $isMandatoryInsurance) && $insurance_cost > 0;
+            // ==== LOGIKA ASURANSI FIX UNTUK REACT NATIVE ====
             // ======================================================
+            // Tangkap boolean (true/false) dari JSON API React Native
+            $userWantsInsurance = filter_var($request->use_insurance, FILTER_VALIDATE_BOOLEAN);
+            $useInsurance = ($userWantsInsurance || $isMandatoryInsurance);
+            // ======================================================
+
             $base_total = $subtotal + $shipping_cost;
             $applied_insurance_cost = 0;
             if ($useInsurance) {
@@ -1305,7 +1308,8 @@ class CheckoutController extends Controller
                             'service' => $courier, 'service_type' => $service,
                             'shipping_cost' => (int) $order->shipping_cost,
                             'package_type_id' => (int) $jenisBarang,
-                            'cod' => 0
+                            'cod' => 0,
+                            'insurance_amount' => ($order->insurance_cost > 0) ? ($item->price * $item->quantity) : 0,
                         ];
                     }
 
