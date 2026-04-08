@@ -637,8 +637,8 @@ class MarketplaceMobileController extends Controller
     {
         $user = Auth::user();
 
-        // Ambil data order beserta relasi toko dan item produknya
-        $orders = Order::with(['store', 'items.product', 'items.productVariant'])
+        // ✅ PERBAIKAN: Ubah 'items.productVariant' menjadi 'items.variant'
+        $orders = Order::with(['store', 'items.product', 'items.variant'])
             ->where('user_id', $user->id_pengguna ?? $user->id)
             ->latest()
             ->get();
