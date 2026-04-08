@@ -102,6 +102,18 @@ Route::get('/suratjalan/download/{kode_surat_jalan}', [ScanSpxController::class,
 Route::middleware('auth:sanctum')->group(function () {
 
 
+Route::prefix('seller')->group(function () {
+
+// CRUD Produk Seller Mobile
+        Route::get('/produk', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'index']);
+        Route::get('/produk/categories', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'getCategories']); // Untuk dropdown form
+        Route::post('/produk', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'store']);
+        Route::get('/produk/{slug}', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'show']);
+        Route::post('/produk/{slug}/update', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'update']); // Pakai POST karena bawa file gambar (multipart/form-data)
+        Route::delete('/produk/{slug}', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'destroy']);
+    });
+
+
 
 /// ========================================== RUTE MOBILE UNTUK PELANGGAN (CUSTOMER) ==========================================
 
