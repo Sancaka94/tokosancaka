@@ -128,6 +128,15 @@ class ProdukSellerMobileController extends Controller
 
             $product = Product::create($dataToCreate);
 
+            // 👇 TAMBAHKAN BLOK KODE INI JUGA 👇
+            $product->length = $request->input('length', 0);
+            $product->width = $request->input('width', 0);
+            $product->height = $request->input('height', 0);
+            $product->is_promo = filter_var($request->input('is_promo'), FILTER_VALIDATE_BOOLEAN);
+            $product->is_shipping_discount = filter_var($request->input('is_shipping_discount'), FILTER_VALIDATE_BOOLEAN);
+            $product->save();
+            // 👆 ============================= 👆
+
             // Decode Attributes dari React Native
             $attributes = $request->input('attributes') ? json_decode($request->input('attributes'), true) : [];
             if (!empty($attributes)) $this->syncAttributes($product, $attributes);
@@ -220,6 +229,14 @@ class ProdukSellerMobileController extends Controller
             }
 
             $product->stock = $totalStock;
+            // 👇 TAMBAHKAN BLOK KODE INI (PAKSA SIMPAN) 👇
+            $product->length = $request->input('length', 0);
+            $product->width = $request->input('width', 0);
+            $product->height = $request->input('height', 0);
+            $product->is_promo = filter_var($request->input('is_promo'), FILTER_VALIDATE_BOOLEAN);
+            $product->is_shipping_discount = filter_var($request->input('is_shipping_discount'), FILTER_VALIDATE_BOOLEAN);
+            // 👆 ====================================== 👆
+
             $product->save();
 
             DB::commit();
