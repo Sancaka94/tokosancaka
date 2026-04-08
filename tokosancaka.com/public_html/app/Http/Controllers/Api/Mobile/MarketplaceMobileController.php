@@ -444,6 +444,7 @@ class MarketplaceMobileController extends Controller
         ]);
 
         $user = Auth::user();
+        $cart = $request->input('cart_items', []);
         $cartKeyName = $this->getCartKey();
         $cart = Cache::get($cartKeyName, []);
 
@@ -459,15 +460,24 @@ class MarketplaceMobileController extends Controller
             $totalWeight = 0;
 
             foreach ($cart as $key => $details) {
-                $subtotal += ($details['price'] * $details['quantity']);
-                $totalWeight += ($details['weight'] * $details['quantity']);
-                if (!$firstProduct) $firstProduct = Product::with('store.user')->find($details['product_id']);
+                // 👇 PERBAIKAN 2: React Native menggunakan key 'qty', bukan 'quantity'
+                $qty = isset($details['qty']) ? (int) $details['qty'] : ((int) ($details['quantity'] ?? 1));
+                $price = (int) ($details['price'] ?? 0);
+                $weight = (int) ($details['weight'] ?? 1000);
+                $productId = $details['product_id'] ?? $details['id']; // Jaga-jaga format id
+
+                $subtotal += ($price * $qty);
+                $totalWeight += ($weight * $qty);
+
+                if (!$firstProduct) {
+                    $firstProduct = Product::with('store.user')->find($productId);
+                }
 
                 $orderItemsPayload[] = [
                     'sku' => $key,
-                    'name' => $details['name'],
-                    'price' => (int) $details['price'],
-                    'quantity' => $details['quantity']
+                    'name' => $details['name'] ?? 'Produk',
+                    'price' => $price,
+                    'quantity' => $qty
                 ];
             }
 
@@ -513,18 +523,22 @@ class MarketplaceMobileController extends Controller
             ]);
             $order->save();
 
-            // Insert Items
             foreach ($cart as $key => $details) {
+                 $qty = isset($details['qty']) ? (int) $details['qty'] : ((int) ($details['quantity'] ?? 1));
+                 $price = (int) ($details['price'] ?? 0);
+                 $variantId = $details['variant_id'] ?? null;
+                 $productId = $details['product_id'] ?? $details['id'];
+
                  OrderItem::create([
                      'order_id' => $order->id,
-                     'product_id' => $details['product_id'],
-                     'product_variant_id' => $details['variant_id'],
-                     'quantity' => $details['quantity'],
-                     'price' => $details['price']
+                     'product_id' => $productId,
+                     'product_variant_id' => $variantId,
+                     'quantity' => $qty,
+                     'price' => $price
                  ]);
                  // Kurangi Stok
-                 if ($details['variant_id']) { ProductVariant::where('id', $details['variant_id'])->decrement('stock', $details['quantity']); }
-                 else { Product::where('id', $details['product_id'])->decrement('stock', $details['quantity']); }
+                 if ($variantId) { ProductVariant::where('id', $variantId)->decrement('stock', $qty); }
+                 else { Product::where('id', $productId)->decrement('stock', $qty); }
             }
 
             $paymentUrl = null;
