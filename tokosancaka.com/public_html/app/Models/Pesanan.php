@@ -207,7 +207,7 @@ class Pesanan extends Model
 
     public function store()
     {
-        return $this->belongsTo(Store::class, 'id_toko', 'id_toko');
+        return $this->belongsTo(Store::class, 'store_id');
     }
 
 }
