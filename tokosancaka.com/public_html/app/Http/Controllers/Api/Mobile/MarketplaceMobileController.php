@@ -305,8 +305,8 @@ class MarketplaceMobileController extends Controller
     }
 
 
-    // =========================================================================
-    // BAGIAN 3: CHECKOUT (PERSIAPAN & PROSES)
+  // =========================================================================
+    // BAGIAN 3: CHECKOUT (PERSIAPAN & PROSES) - REVISI
     // =========================================================================
 
     public function prepareCheckout(KiriminAjaService $kiriminAja)
@@ -332,7 +332,7 @@ class MarketplaceMobileController extends Controller
 
         $store = $firstProduct->store;
 
-        // Proses API Ekspedisi (Sama seperti web, diubah ke JSON Return)
+        // Ambil data alamat untuk KiriminAja
         $storeSearch = $store->village . ', ' . $store->district . ', ' . $store->regency . ', ' . $store->province;
         $userSearch  = $user->village . ', ' . $user->district . ', ' . $user->regency . ', ' . $user->province;
 
@@ -352,12 +352,51 @@ class MarketplaceMobileController extends Controller
 
         $category = $finalWeight >= 30000 ? 'trucking' : 'regular';
 
-        // Ambil Ongkir
+        // Ambil dimensi dari produk pertama (fallback 5)
+        $length = $firstProduct->length ?? 5;
+        $width  = $firstProduct->width ?? 5;
+        $height = $firstProduct->height ?? 5;
+
+        // 1. Ambil Ongkir Express
         $expressOptions = $kiriminAja->getExpressPricing(
             $storeAddr['district_id'], $storeAddr['subdistrict_id'],
             $userAddr['district_id'], $userAddr['subdistrict_id'],
-            $finalWeight, 5, 5, 5, $itemValue, null, $category, 1
+            $finalWeight, $length, $width, $height, $itemValue, null, $category, 1
         );
+
+        // 2. Ambil Ongkir Instant (TAMBAHAN PERBAIKAN)
+        $instantOptions = ['results' => []];
+        if ($store->latitude && $store->longitude && $user->latitude && $user->longitude) {
+            try {
+                $instantRes = $kiriminAja->getInstantPricing(
+                    $store->latitude, $store->longitude, $store->address_detail ?? $storeSearch,
+                    $user->latitude, $user->longitude, $user->address_detail ?? $userSearch,
+                    $finalWeight, $itemValue, 'motor'
+                );
+
+                // Format hasil instant agar sesuai dengan frontend
+                if(isset($instantRes['status']) && $instantRes['status'] === true && isset($instantRes['result'])) {
+                    foreach ($instantRes['result'] as $provider) {
+                        if (isset($provider['costs'])) {
+                            foreach ($provider['costs'] as $cost) {
+                                $price = $cost['price']['total_price'] ?? 0;
+                                if ($price > 0) {
+                                    $instantOptions['results'][] = [
+                                        'service' => $provider['name'],
+                                        'service_name' => ucfirst($provider['name']) . ' ' . ucfirst($cost['service_type']),
+                                        'service_type' => $cost['service_type'],
+                                        'cost' => $price,
+                                        'group' => 'instant'
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception $e) {
+                Log::error('Mobile: Gagal mendapatkan ongkir Instant');
+            }
+        }
 
         // Ambil Channel Tripay
         $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
@@ -371,17 +410,22 @@ class MarketplaceMobileController extends Controller
             return [];
         });
 
+        // Gabungkan shipping options
+        $allShippingOptions = array_merge($expressOptions['results'] ?? [], $instantOptions['results'] ?? []);
+
         return response()->json([
             'success' => true,
             'data' => [
                 'cart_items' => array_values($cart),
                 'total_weight' => $finalWeight,
                 'subtotal' => $itemValue,
-                'shipping_options' => $expressOptions['results'] ?? [], // Array list JNE, J&T, dll
+                'shipping_options' => $allShippingOptions,
                 'payment_channels' => $tripayChannels,
                 'user_address' => $userSearch,
                 'store_address' => $storeSearch,
-                'user_balance' => $user->saldo ?? 0
+                'user_balance' => $user->saldo ?? 0,
+                'dest_district_id' => $userAddr['district_id'] ?? null,
+                'dest_subdistrict_id' => $userAddr['subdistrict_id'] ?? null
             ]
         ]);
     }
@@ -393,7 +437,10 @@ class MarketplaceMobileController extends Controller
             'payment_method' => 'required|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
-            'use_insurance' => 'boolean'
+            'use_insurance' => 'boolean',
+            // Pastikan frontend mengirim ID wilayah hasil prepareCheckout
+            'destination_district_id' => 'required',
+            'destination_subdistrict_id' => 'required'
         ]);
 
         $user = Auth::user();
@@ -405,7 +452,7 @@ class MarketplaceMobileController extends Controller
         DB::beginTransaction();
 
         try {
-            // 1. Kalkulasi Data dari Cart (Bukan dari Payload Request agar aman)
+            // 1. Kalkulasi Data dari Cart
             $subtotal = 0;
             $orderItemsPayload = [];
             $firstProduct = null;
@@ -459,6 +506,10 @@ class MarketplaceMobileController extends Controller
                  'shipping_address'=> $user->address_detail ?? 'Alamat tidak diatur',
                  'customer_latitude' => $request->latitude ?? null,
                  'customer_longitude' => $request->longitude ?? null,
+                 // TAMBAHAN PERBAIKAN: Masukkan ID Wilayah
+                 'receiver_district_id' => $request->destination_district_id,
+                 'receiver_subdistrict_id' => $request->destination_subdistrict_id,
+                 'receiver_village' => $user->village ?? 'Tidak Diketahui',
             ]);
             $order->save();
 
@@ -478,31 +529,43 @@ class MarketplaceMobileController extends Controller
 
             $paymentUrl = null;
 
-            // --- PROSES PEMBAYARAN (POTONG SALDO) ---
+            // --- PROSES PEMBAYARAN & EKSPEDISI ---
             if ($isPayWithSaldo) {
+                // POTONG SALDO
                 $user->saldo -= $grand_total;
                 $user->save();
+                $order->status = 'paid';
+                $order->save();
 
-                $order->status = 'paid'; // Langsung lunas
-                // Idealnya panggil logika hit API Kirimin Aja di sini (Booking Ekspedisi)
-                // (Anda bisa pindahkan fungsi booking KiriminAja dari Controller Web Anda ke sini)
-            }
-            // --- PROSES TRIPAY ---
-            elseif (!in_array(strtolower($request->payment_method), ['cod', 'dana', 'doku_jokul'])) {
+                // Panggil logika otomatis dari web controller untuk booking kurir & notif WA
+                // Asumsi: Method processOrderCallback dibuat/diambil dari CheckoutController web
+                $webController = new \App\Http\Controllers\CheckoutController(new DanaSignatureService());
+                $webController->processOrderCallback($invoiceNumber, 'PAID', []);
 
+            } elseif (in_array(strtolower($request->payment_method), ['cod', 'cash', 'codbarang'])) {
+                // LOGIKA COD / CASH
+                $order->status = 'processing';
+                $order->save();
+
+                // Hit Web Controller supaya dibooking kurir KiriminAja otomatis
+                $webController = new \App\Http\Controllers\CheckoutController(new DanaSignatureService());
+                // Simulasikan success webhook untuk mentrigger booking
+                $webController->processOrderCallback($invoiceNumber, 'PAID', []);
+
+            } elseif (!in_array(strtolower($request->payment_method), ['dana', 'doku_jokul'])) {
+                // TRIPAY
                 $tripayResult = $this->_createTripayTransaction($order, $request->payment_method, $grand_total, $user, $orderItemsPayload);
                 if ($tripayResult['success']) {
                     $paymentUrl = $tripayResult['data']['checkout_url'] ?? $tripayResult['data']['pay_url'];
                     $order->payment_url = $paymentUrl;
                     $order->pay_code = $tripayResult['data']['pay_code'] ?? null;
                     $order->qr_url = $tripayResult['data']['qr_url'] ?? null;
+                    $order->save();
                 } else {
                     throw new Exception($tripayResult['message']);
                 }
             }
-            // (Note: Logika DANA & Doku bisa disesuaikan sama seperti Tripay di atas, memanggil Service lalu save URL)
 
-            $order->save();
             DB::commit();
 
             // Clear Cart Cache
@@ -519,7 +582,7 @@ class MarketplaceMobileController extends Controller
                     'total_amount' => $grand_total,
                     'payment_method' => $order->payment_method,
                     'status' => $order->status,
-                    'payment_url' => $paymentUrl // <-- Dibuka oleh React Native menggunakan WebView / Linking
+                    'payment_url' => $paymentUrl
                 ]
             ]);
 
