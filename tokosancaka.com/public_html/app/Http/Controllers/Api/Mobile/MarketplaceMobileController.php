@@ -502,7 +502,7 @@ class MarketplaceMobileController extends Controller
                  $invoiceNumber = 'SCK-ORD-' . strtoupper(Str::random(8));
             } while (Order::where('invoice_number', $invoiceNumber)->exists());
 
-            $order = new Order([
+           $order = new Order([
                  'store_id'      => $firstProduct->store->id,
                  'user_id'       => $user->id_pengguna ?? $user->id,
                  'invoice_number'=> $invoiceNumber,
@@ -513,10 +513,15 @@ class MarketplaceMobileController extends Controller
                  'shipping_method'=> $request->shipping_method,
                  'payment_method'=> $request->payment_method,
                  'status'        => (in_array($request->payment_method, ['cod', 'cash', 'CODBARANG'])) ? 'processing' : 'pending',
-                 'shipping_address'=> $user->address_detail ?? 'Alamat tidak diatur',
+
+                 // 👇 PERBAIKAN: Tangkap Nama, No WA, dan Gabung Alamat Lengkap
+                 'receiver_name'    => $request->receiver_name ?? $user->nama_lengkap,
+                 'receiver_phone'   => $request->receiver_phone ?? $user->no_wa,
+                 'receiver_address' => $request->receiver_address ?? $user->address_detail,
+                 'shipping_address' => ($request->receiver_address ?? $user->address_detail) . ', ' . ($request->receiver_full_region ?? ''),
+
                  'customer_latitude' => $request->latitude ?? null,
                  'customer_longitude' => $request->longitude ?? null,
-                 // TAMBAHAN PERBAIKAN: Masukkan ID Wilayah
                  'receiver_district_id' => $request->destination_district_id,
                  'receiver_subdistrict_id' => $request->destination_subdistrict_id,
                  'receiver_village' => $user->village ?? 'Tidak Diketahui',
@@ -651,8 +656,8 @@ class MarketplaceMobileController extends Controller
     {
         $user = Auth::user();
 
-        // ✅ PERBAIKAN: Ubah 'items.productVariant' menjadi 'items.variant'
-        $orders = Order::with(['store', 'items.product', 'items.variant'])
+        // 👇 PERBAIKAN: Tambahkan 'user' ke dalam array with()
+        $orders = Order::with(['store', 'items.product', 'items.variant', 'user'])
             ->where('user_id', $user->id_pengguna ?? $user->id)
             ->latest()
             ->get();
