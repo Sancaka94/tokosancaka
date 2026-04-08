@@ -1187,6 +1187,20 @@ class CheckoutController extends Controller
                 $kiriminResponse = null;
 
                 // ========================================================
+                // LOGIKA PENENTUAN JAM PICKUP KIRIMINAJA
+                // ========================================================
+                $now = \Carbon\Carbon::now('Asia/Jakarta');
+
+                if ($now->hour >= 17) {
+                    // Jika pesanan masuk jam 17:00 (5 Sore) ke atas, jadwalkan besok jam 09:00 Pagi
+                    $finalSchedule = $now->copy()->addDay()->format('Y-m-d 09:00:00');
+                } else {
+                    // Jika pesanan masuk sebelum jam 5 sore, jadwalkan hari ini (+1 jam dari sekarang untuk persiapan toko)
+                    $finalSchedule = $now->copy()->addHour()->format('Y-m-d H:i:s');
+                }
+                // ========================================================
+
+                // ========================================================
                 // SKENARIO 1: DATA LAMA (TABEL PESANAN)
                 // ========================================================
                 if ($isLegacy) {
@@ -1229,7 +1243,7 @@ class CheckoutController extends Controller
                         'longitude' => $order->sender_lng ?? 0,
                         'packages' => [$packageData],
                         'category' => ($type == 'cargo') ? 'trucking' : 'regular',
-                        'schedule' => \Carbon\Carbon::now()->format('Y-m-d H:i:s'),
+                        'schedule' => $finalSchedule,
                         'platform_name' => 'TOKOSANCAKA.COM'
                     ];
 
@@ -1246,9 +1260,7 @@ class CheckoutController extends Controller
                         }
                     }
                 }
-                // ========================================================
-                // SKENARIO 2: DATA BARU (TABEL ORDERS)
-                // ========================================================
+
                 // ========================================================
                 // SKENARIO 2: DATA BARU (TABEL ORDERS)
                 // ========================================================
@@ -1322,7 +1334,7 @@ class CheckoutController extends Controller
                             'longitude' => $store->longitude ?? 0,
                             'packages' => $packagesPayload,
                             'category' => ($type == 'cargo') ? 'trucking' : 'regular',
-                            'schedule' => \Carbon\Carbon::now()->format('Y-m-d H:i:s'),
+                            'schedule' => $finalSchedule,
                             'platform_name' => 'TOKOSANCAKA.COM'
                         ];
                         $kiriminResponse = $kiriminAja->createExpressOrder($payload);
