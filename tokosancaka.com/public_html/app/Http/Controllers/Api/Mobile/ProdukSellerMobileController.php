@@ -31,7 +31,10 @@ class ProdukSellerMobileController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $store = $user->store;
+
+        // 🔥 PERBAIKAN: Gunakan Query Manual yang lebih aman
+        $userId = $user->id_pengguna ?? $user->id;
+        $store = \App\Models\Store::where('user_id', $userId)->first();
 
         if (!$store) {
             return response()->json(['success' => false, 'message' => 'Anda perlu membuat toko terlebih dahulu.'], 403);
