@@ -205,5 +205,10 @@ class Pesanan extends Model
         return $this->hasMany(\App\Models\OrderItem::class, 'order_id', 'id');
     }
 
+    public function store()
+    {
+        return $this->belongsTo(Store::class, 'id_toko', 'id_toko');
+    }
+
 }
 
