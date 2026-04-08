@@ -1110,14 +1110,14 @@ class CheckoutController extends Controller
         // -----------------------------------------------------------
         // 2. VALIDASI STATUS
         // -----------------------------------------------------------
-        $statusBoleh = ['pending', 'menunggu pembayaran', 'unpaid', 'menunggu_pembayaran'];
+        // TAMBAHKAN 'paid' dan 'processing' ke dalam array $statusBoleh
+        $statusBoleh = ['pending', 'menunggu pembayaran', 'unpaid', 'menunggu_pembayaran', 'paid', 'processing'];
+
         if (!in_array(strtolower($order->status), $statusBoleh)) {
+            Log::warning("Callback Ditolak! Status order saat ini adalah: " . $order->status);
             return; // Order sudah diproses sebelumnya
         }
 
-        // -----------------------------------------------------------
-        // 3. PROSES UTAMA (LUNAS)
-        // -----------------------------------------------------------
         // -----------------------------------------------------------
         // 3. PROSES UTAMA (LUNAS)
         // -----------------------------------------------------------
