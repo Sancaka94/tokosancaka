@@ -435,18 +435,18 @@ class MarketplaceMobileController extends Controller
         $request->validate([
             'shipping_method' => 'required|string',
             'payment_method' => 'required|string',
+            // 👇 1. Tambahkan validasi ini agar Laravel bersiap menerima array
+            'cart_items' => 'required|array',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'use_insurance' => 'boolean',
-            // Pastikan frontend mengirim ID wilayah hasil prepareCheckout
             'destination_district_id' => 'required',
             'destination_subdistrict_id' => 'required'
         ]);
 
         $user = Auth::user();
-        $cart = $request->input('cart_items', []);
-        $cartKeyName = $this->getCartKey();
-        $cart = Cache::get($cartKeyName, []);
+        $$cart = $request->cart_items;
+
 
         if (empty($cart)) return response()->json(['success' => false, 'message' => 'Keranjang kosong.'], 400);
 
