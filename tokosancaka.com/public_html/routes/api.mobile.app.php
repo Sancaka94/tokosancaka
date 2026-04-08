@@ -239,13 +239,19 @@ Route::prefix('seller')->group(function () {
     });
 
     // --- D. SELLER ROUTES (TOKO) ---
-    // Pastikan middleware Role berjalan jika role = Seller
     Route::prefix('seller')->group(function () {
-        Route::get('/toko/info', [\App\Http\Controllers\Api\Mobile\SellerController::class, 'info']);
-        Route::get('/produk', [\App\Http\Controllers\Api\Mobile\SellerProductController::class, 'index']);
-        Route::post('/produk', [\App\Http\Controllers\Api\Mobile\SellerProductController::class, 'store']);
-        Route::get('/pesanan-masuk', [\App\Http\Controllers\Api\Mobile\SellerOrderController::class, 'incoming']);
-        Route::post('/pesanan/{id}/terima', [\App\Http\Controllers\Api\Mobile\SellerOrderController::class, 'accept']);
+
+        // (Kalau ada rute /toko/info atau /pesanan-masuk, biarkan saja)
+
+        // 👇 INI RUTE PRODUK YANG BENAR 👇
+        Route::get('/produk', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'index']);
+        Route::get('/produk/categories', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'getCategories']);
+        Route::post('/produk', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'store']);
+        Route::get('/produk/{slug}', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'show']);
+        Route::post('/produk/{slug}/update', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'update']);
+        Route::delete('/produk/{slug}', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'destroy']);
+        // 👆 ---------------------------- 👆
+
     });
 
     // --- E. ADMIN ROUTES (KHUSUS ADMIN) ---
