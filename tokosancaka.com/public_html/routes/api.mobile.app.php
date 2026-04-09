@@ -101,6 +101,8 @@ Route::get('/suratjalan/download/{kode_surat_jalan}', [ScanSpxController::class,
 // =========================================================================
 Route::middleware('auth:sanctum')->group(function () {
 
+Route::get('/seller/dashboard', [\App\Http\Controllers\Api\Mobile\DashboardSellerController::class, 'index']);
+
 
 Route::prefix('seller')->group(function () {
 
