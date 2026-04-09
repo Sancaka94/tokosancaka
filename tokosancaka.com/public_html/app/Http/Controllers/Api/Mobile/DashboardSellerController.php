@@ -115,7 +115,7 @@ class DashboardSellerController extends Controller
     // ==============================================================
 
     // 1. Definisikan kategori status sesuai yang ada di DB kamu ("paid")
-    $statusCompleted = ['completed', 'Selesai', 'SELESAI'];
+    $statusCompleted = ['completed', 'Selesai', 'SELESAI', 'paid']; // Tambahkan 'paid' di sini
     $statusPending   = ['pending', 'Menunggu Pembayaran'];
     $statusProcessing = ['processing', 'paid', 'PAID', 'Diproses']; // <--- "paid" masuk sini
     $statusShipment   = ['shipment', 'Dikirim'];
