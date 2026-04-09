@@ -91,137 +91,91 @@ class DashboardSellerController extends Controller
         ], 200);
     }
 
-    /**
-     * Helper function untuk mengambil data statistik
-     */
     private function getDashboardStats($storeId, $userId)
-    {
-        $thirtyDaysAgo = Carbon::now()->subDays(30);
-        $today = Carbon::today();
+{
+    $thirtyDaysAgo = Carbon::now()->subDays(30);
+    $today = Carbon::today();
 
-        // ==============================================================
-        // 🛠️ LOG LOG - DEBUGGING UNTUK DIKIRIM KE HP
-        // ==============================================================
-        $totalSemuaOrder = Order::where('store_id', $storeId)->count();
+    // === LOG LOG DEBUGGING (Tetap biarkan agar kamu bisa pantau) ===
+    $totalSemuaOrder = Order::where('store_id', $storeId)->count();
+    $statusDiDatabase = Order::where('store_id', $storeId)
+                             ->select('status', DB::raw('count(*) as total'))
+                             ->groupBy('status')
+                             ->pluck('total', 'status')
+                             ->toArray();
 
-        $statusDiDatabase = Order::where('store_id', $storeId)
-                                 ->select('status', DB::raw('count(*) as total'))
-                                 ->groupBy('status')
-                                 ->pluck('total', 'status')
-                                 ->toArray();
+    $logUntukHp = [
+        'total_semua_order_di_db' => $totalSemuaOrder,
+        'status_yang_terdeteksi' => $statusDiDatabase,
+        'catatan' => 'Status PAID sekarang dimasukkan ke kategori PROSES'
+    ];
 
-        $contohSelesai = Order::where('store_id', $storeId)
-                              ->whereIn('status', ['completed', 'Completed', 'Selesai', 'COMPLETED', 'SELESAI'])
-                              ->first();
+    // ==============================================================
+    // PERBAIKAN QUERY BERDASARKAN HASIL DEBUG TADI
+    // ==============================================================
 
-        $cekFinishedAt = $contohSelesai ? ($contohSelesai->finished_at ?? 'KOSONG / NULL') : 'Belum ada order Selesai';
+    // 1. Definisikan kategori status sesuai yang ada di DB kamu ("paid")
+    $statusCompleted = ['completed', 'Selesai', 'SELESAI'];
+    $statusPending   = ['pending', 'Menunggu Pembayaran'];
+    $statusProcessing = ['processing', 'paid', 'PAID', 'Diproses']; // <--- "paid" masuk sini
+    $statusShipment   = ['shipment', 'Dikirim'];
 
-        // Simpan LOG ke terminal server juga
-        Log::info("=== LOG LOG DASHBOARD SELLER (Toko ID: $storeId) ===");
-        Log::info("Total Semua Order: " . $totalSemuaOrder);
-        Log::info("Status yang ada di DB: ", $statusDiDatabase);
-        Log::info("Cek kolom finished_at: " . $cekFinishedAt);
+    // Gunakan updated_at karena finished_at kamu NULL
+    $kolomTanggal = 'updated_at';
 
-        // Siapkan LOG LOG untuk dikirim ke JSON HP
-        $logUntukHp = [
-            'total_semua_order_di_db' => $totalSemuaOrder,
-            'status_yang_terdeteksi' => $statusDiDatabase,
-            'isi_kolom_finished_at' => $cekFinishedAt,
-            'solusi_diterapkan' => 'Menggunakan whereIn untuk toleransi huruf & updated_at untuk tanggal'
-        ];
-        // ==============================================================
+    // HITUNG DATA DINAMIS
+    $revenueToday = Order::where('store_id', $storeId)
+                            ->whereIn('status', $statusCompleted)
+                            ->whereDate($kolomTanggal, $today)
+                            ->sum('subtotal');
 
+    $ordersToday = Order::where('store_id', $storeId)
+                            ->whereDate('created_at', $today)
+                            ->count();
 
-        // ==============================================================
-        // PERBAIKAN QUERY AGAR TIDAK NOL (0)
-        // ==============================================================
-        // 1. Toleransi Status (huruf besar/kecil/bahasa)
-        $statusCompleted = ['completed', 'Completed', 'Selesai', 'COMPLETED', 'SELESAI'];
-        $statusPending = ['pending', 'Pending', 'Menunggu Pembayaran', 'PENDING'];
-        $statusProcessing = ['processing', 'Processing', 'Diproses', 'PROCESSING'];
-        $statusShipment = ['shipment', 'Shipment', 'Dikirim', 'SHIPMENT'];
-
-        // 2. Ganti acuan tanggal dari finished_at menjadi updated_at (karena finished_at sering NULL)
-        $kolomTanggalSelesai = 'updated_at';
-
-        // 1. Pendapatan HARI INI
-        $revenueToday = Order::where('store_id', $storeId)
+    $revenueThisMonth = Order::where('store_id', $storeId)
                                 ->whereIn('status', $statusCompleted)
-                                ->whereDate($kolomTanggalSelesai, $today)
+                                ->where($kolomTanggal, '>=', $thirtyDaysAgo)
                                 ->sum('subtotal');
 
-        // 2. Pesanan HARI INI
-        $ordersToday = Order::where('store_id', $storeId)
-                                ->whereDate('created_at', $today)
+    // Stats Grid
+    $ordersPending = Order::where('store_id', $storeId)
+                            ->whereIn('status', $statusPending)
+                            ->count();
+
+    $ordersProcessing = Order::where('store_id', $storeId)
+                            ->whereIn('status', $statusProcessing)
+                            ->count();
+
+    $ordersShipment = Order::where('store_id', $storeId)
+                            ->whereIn('status', $statusShipment)
+                            ->count();
+
+    $ordersCompletedMonth = Order::where('store_id', $storeId)
+                                ->whereIn('status', $statusCompleted)
+                                ->where($kolomTanggal, '>=', $thirtyDaysAgo)
                                 ->count();
 
-        // 3. Pendapatan BULAN INI
-        $revenueThisMonth = Order::where('store_id', $storeId)
-                                    ->whereIn('status', $statusCompleted)
-                                    ->where($kolomTanggalSelesai, '>=', $thirtyDaysAgo)
-                                    ->sum('subtotal');
-
-        // 4. Pesanan Menunggu Pembayaran
-        $ordersPending = Order::where('store_id', $storeId)
-                                ->whereIn('status', $statusPending)
+    // Data Manual & Produk
+    $newManualOrders = Pesanan::where('id_toko', $storeId)
+                                ->whereIn('status', ['Menunggu Pickup', 'menunggu pickup'])
                                 ->count();
 
-        // 5. Pesanan Perlu Diproses
-        $ordersProcessing = Order::where('store_id', $storeId)
-                                ->whereIn('status', $statusProcessing)
-                                ->count();
+    $totalActiveProducts = Product::where('store_id', $storeId)
+                                  ->whereIn('status', ['active', 'Aktif', 'ACTIVE'])
+                                  ->count();
 
-        // 6. Pesanan Dalam Pengiriman
-        $ordersShipment = Order::where('store_id', $storeId)
-                                ->whereIn('status', $statusShipment)
-                                ->count();
-
-        // 7. Pesanan Selesai (30 Hari)
-        $ordersCompletedMonth = Order::where('store_id', $storeId)
-                                    ->whereIn('status', $statusCompleted)
-                                    ->where($kolomTanggalSelesai, '>=', $thirtyDaysAgo)
-                                    ->count();
-
-        // 8. Pesanan Manual Baru
-        $newManualOrders = Pesanan::where('id_toko', $storeId)
-                                    ->whereIn('status', ['Menunggu Pickup', 'menunggu pickup'])
-                                    ->count();
-
-        // 9. Total Produk Aktif
-        $totalActiveProducts = Product::where('store_id', $storeId)
-                                      ->whereIn('status', ['active', 'Active', 'Aktif', 'ACTIVE'])
-                                      ->count();
-
-        // Data Grafik
-        $dailyRevenue = Order::where('store_id', $storeId)
-            ->whereIn('status', $statusCompleted)
-            ->where($kolomTanggalSelesai, '>=', $thirtyDaysAgo)
-            ->select(DB::raw("DATE($kolomTanggalSelesai) as date"), DB::raw('SUM(subtotal) as total'))
-            ->groupBy('date')
-            ->orderBy('date', 'asc')
-            ->get();
-
-        $orderStatusSummary = Order::where('store_id', $storeId)
-            ->where('created_at', '>=', $thirtyDaysAgo)
-            ->select('status', DB::raw('count(*) as count'))
-            ->groupBy('status')
-            ->get();
-
-        return [
-            'revenueToday' => (int) $revenueToday,
-            'ordersToday' => $ordersToday,
-            'revenueThisMonth' => (int) $revenueThisMonth,
-            'ordersPending' => $ordersPending,
-            'ordersProcessing' => $ordersProcessing,
-            'ordersShipment' => $ordersShipment,
-            'ordersCompletedMonth' => $ordersCompletedMonth,
-            'newManualOrders' => $newManualOrders,
-            'totalActiveProducts' => $totalActiveProducts,
-            'dailyRevenue' => $dailyRevenue,
-            'orderStatusSummary' => $orderStatusSummary,
-
-            // INI DIA! Data LOG LOG dikirim ke HP di dalam json "stats"
-            'LOG_LOG' => $logUntukHp
-        ];
-    }
+    return [
+        'revenueToday' => (int) $revenueToday,
+        'ordersToday' => $ordersToday,
+        'revenueThisMonth' => (int) $revenueThisMonth,
+        'ordersPending' => $ordersPending,
+        'ordersProcessing' => $ordersProcessing,
+        'ordersShipment' => $ordersShipment,
+        'ordersCompletedMonth' => $ordersCompletedMonth,
+        'newManualOrders' => $newManualOrders,
+        'totalActiveProducts' => $totalActiveProducts,
+        'LOG_LOG' => $logUntukHp
+    ];
+}
 }
