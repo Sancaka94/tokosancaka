@@ -43,6 +43,12 @@ class MarketplaceMobileController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
+        // --- TAMBAHKAN INI: Filter Kategori ---
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+        // --------------------------------------
+
         $products = $query->latest()->paginate(10);
 
         $flashSaleProducts = Product::with(['category', 'store'])->where('status', 'active')
@@ -483,6 +489,11 @@ class MarketplaceMobileController extends Controller
 
             // 2. Parsing Shipping
             $shippingParts = explode('-', $request->shipping_method); // format: regular-jne-REG-15000-0
+
+            if (count($shippingParts) < 4) {
+                throw new Exception("Format metode pengiriman tidak valid.");
+            }
+
             $shipping_cost = (int) ($shippingParts[3] ?? 0);
             $insurance_cost = (int) ($shippingParts[count($shippingParts) - 2] ?? 0);
 
@@ -631,7 +642,7 @@ class MarketplaceMobileController extends Controller
             'customer_email' => $user->email,
             'customer_phone' => $user->no_wa,
             'order_items'    => $items,
-            'return_url'     => 'https://tokosancaka.com/mobile-payment-success', // URL tujuan setelah bayar
+            'return_url'     => url('/mobile-payment-success'), // URL tujuan setelah bayar
             'expired_time'   => (time() + (24 * 60 * 60)),
             'signature'      => $signature
         ];
