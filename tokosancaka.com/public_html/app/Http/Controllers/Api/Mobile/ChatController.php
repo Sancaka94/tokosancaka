@@ -52,7 +52,45 @@ class ChatController extends Controller
             ];
         });
 
-        return response()->json(['success' => true, 'data' => ['messages' => $formattedMessages]]);
+        // ==================================================
+        // KODE BARU: MENGAMBIL STATUS ONLINE LAWAN CHAT
+        // ==================================================
+        $contactUser = \App\Models\User::find($contactId);
+
+        $isOnline = false;
+        $lastSeen = null;
+
+        if ($contactUser && $contactUser->last_seen) {
+            // Cek apakah last_seen kurang dari 3 menit yang lalu (aktif)
+            $lastSeenTime = \Carbon\Carbon::parse($contactUser->last_seen);
+            if ($lastSeenTime->diffInMinutes(\Carbon\Carbon::now()) < 3) {
+                $isOnline = true;
+            } else {
+                // Format tanggal terakhir dilihat (Contoh: "10:30" atau "Kemarin 15:00")
+                if ($lastSeenTime->isToday()) {
+                    $lastSeen = "Hari ini " . $lastSeenTime->format('H:i');
+                } elseif ($lastSeenTime->isYesterday()) {
+                    $lastSeen = "Kemarin " . $lastSeenTime->format('H:i');
+                } else {
+                    $lastSeen = $lastSeenTime->format('d M H:i');
+                }
+            }
+        } else {
+            // Jika kolom last_seen kosong atau null
+            $isOnline = false;
+            $lastSeen = "Beberapa waktu lalu";
+        }
+
+        // Kembalikan Response beserta status Online
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'messages' => $formattedMessages,
+                'store_is_online' => $isOnline,
+                'store_last_seen' => $lastSeen,
+                'store_is_typing' => false // Bisa dikembangkan nanti dengan WebSockets jika mau
+            ]
+        ]);
     }
 
     /**
