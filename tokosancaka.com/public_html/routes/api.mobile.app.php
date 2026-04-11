@@ -239,6 +239,10 @@ Route::prefix('seller')->group(function () {
         Route::get('/notifications', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'index']);
         Route::post('/notifications/read-all', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'markAllRead']);
 
+        // Rute untuk List Chat & Badge Count
+        Route::get('/chat/conversations', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'getConversations']);
+        Route::get('/chat/unread-count', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'getUnreadCount']);
+
     });
 
     // --- D. SELLER ROUTES (TOKO) ---

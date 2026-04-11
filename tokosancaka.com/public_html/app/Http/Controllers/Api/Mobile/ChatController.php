@@ -131,4 +131,77 @@ class ChatController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Mengambil daftar riwayat percakapan (List Chat)
+     */
+    public function getConversations(Request $request)
+    {
+        $userId = Auth::user()->id_pengguna ?? Auth::id();
+
+        // 1. Ambil semua kontak yang pernah chat dengan user ini
+        $contacts = \App\Models\Message::where('from_id', $userId)
+            ->orWhere('to_id', $userId)
+            ->selectRaw('IF(from_id = ?, to_id, from_id) as contact_id, MAX(created_at) as last_msg_time', [$userId])
+            ->groupBy('contact_id')
+            ->orderBy('last_msg_time', 'desc')
+            ->get();
+
+        $conversations = [];
+
+        foreach ($contacts as $c) {
+            $contactId = $c->contact_id;
+            $contactUser = \App\Models\User::find($contactId);
+
+            if (!$contactUser) continue;
+
+            // 2. Ambil pesan terakhir dari percakapan ini
+            $lastMsg = \App\Models\Message::where(function($q) use ($userId, $contactId) {
+                $q->where('from_id', $userId)->where('to_id', $contactId);
+            })->orWhere(function($q) use ($userId, $contactId) {
+                $q->where('from_id', $contactId)->where('to_id', $userId);
+            })->orderBy('created_at', 'desc')->first();
+
+            // 3. Hitung jumlah pesan yang belum dibaca (dikirim oleh contact ke user)
+            $unreadCount = \App\Models\Message::where('from_id', $contactId)
+                ->where('to_id', $userId)
+                ->whereNull('read_at')
+                ->count();
+
+            // 4. Cek apakah kontak ini adalah toko
+            $store = \App\Models\Store::where('user_id', $contactId)->first();
+
+            $conversations[] = [
+                'contact_id'   => $contactId,
+                'name'         => $store ? $store->name : $contactUser->nama_lengkap, // Prioritas nama toko
+                'logo'         => $contactUser->store_logo_path,
+                'store_id'     => $store ? $store->id : $contactId,
+                'last_message' => $lastMsg->message ?: ($lastMsg->image_url ? '📷 Mengirim Gambar' : ''),
+                'last_time'    => $lastMsg->created_at,
+                'unread_count' => $unreadCount,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data'    => $conversations
+        ]);
+    }
+
+    /**
+     * Mengambil total angka pesan yang belum dibaca untuk Badge Dashboard
+     */
+    public function getUnreadCount(Request $request)
+    {
+        $userId = Auth::user()->id_pengguna ?? Auth::id();
+
+        $count = \App\Models\Message::where('to_id', $userId)
+            ->whereNull('read_at')
+            ->count();
+
+        return response()->json([
+            'success'      => true,
+            'unread_count' => $count
+        ]);
+    }
 }
