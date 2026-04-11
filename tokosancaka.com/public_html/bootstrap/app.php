@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // ✅ DIPERBAIKI: Daftarkan middleware di sini
         $middleware->web(append: [
             \App\Http\Middleware\UpdateUserLastSeenAt::class,
+            \App\Http\Middleware\UpdateLastSeen::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [

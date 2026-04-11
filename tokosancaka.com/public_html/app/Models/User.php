@@ -83,6 +83,7 @@ class User extends Authenticatable
         'latitude',
         'longitude',
         'last_seen_at',
+        'last_seen',
         // 'created_at' DIHAPUS DARI SINI. Seharusnya tidak di-fillable,
         // karena dihandle otomatis oleh Eloquent/DB.
     ];
@@ -107,6 +108,7 @@ class User extends Authenticatable
             'profile_setup_at' => 'datetime',
             'token_expiry' => 'datetime',
             'last_seen_at' => 'datetime',
+            'last_seen' => 'datetime',
             'is_verified' => 'boolean',
             'saldo' => 'decimal:2',
             'created_at' => 'datetime',
