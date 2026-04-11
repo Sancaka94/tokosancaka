@@ -158,22 +158,28 @@ class ChatController extends Controller
         $userId = $user->id_pengguna ?? $user->id;
         $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'superadmin']);
 
+        // ==================================================
+        // 1. UPDATE STATUS KITA SENDIRI SAAT BUKA DAFTAR CHAT
+        // Supaya saat kita buka halaman ini, orang lain melihat kita Hijau (Online)
+        // ==================================================
+        \DB::table('Pengguna')->where('id_pengguna', $userId)->update([
+            // Kita update dua-duanya jaga-jaga kalau ada sisa kolom lama
+            'last_seen' => \Carbon\Carbon::now(),
+            'last_seen_at' => \Carbon\Carbon::now(),
+        ]);
+
         $messagesQuery = Message::orderBy('created_at', 'desc');
 
-        // PRIVASI: Jika bukan admin, hanya ambil pesan miliknya sendiri
         if (!$isAdmin) {
             $messagesQuery->where(function($q) use ($userId) {
                 $q->where('from_id', $userId)->orWhere('to_id', $userId);
             });
         }
 
-        // Ambil data untuk diproses
         $allMessages = $messagesQuery->limit(2000)->get();
-
         $conversationsMap = [];
 
         foreach ($allMessages as $msg) {
-            // Tentukan siapa lawan bicaranya
             $contactId = ($msg->from_id == $userId) ? $msg->to_id : $msg->from_id;
 
             if (!isset($conversationsMap[$contactId])) {
@@ -185,7 +191,6 @@ class ChatController extends Controller
                 ];
             }
 
-            // Hitung Unread Count (Pesan dari lawan chat yang belum kita baca)
             if ($msg->from_id == $contactId && $msg->to_id == $userId && $msg->read_at == null) {
                 $conversationsMap[$contactId]['unread_count'] += 1;
             }
@@ -193,38 +198,37 @@ class ChatController extends Controller
 
         $finalConversations = [];
         foreach ($conversationsMap as $conv) {
-            // Ambil data user menggunakan Query Builder langsung ke tabel Pengguna
             $contactUser = \DB::table('Pengguna')->where('id_pengguna', $conv['contact_id'])->first();
-
             if (!$contactUser) continue;
 
             $store = Store::where('user_id', $conv['contact_id'])->first();
-
             $conv['name'] = $store ? $store->name : ($contactUser->nama_lengkap ?? 'Pengguna');
             $conv['logo'] = $contactUser->store_logo_path;
             $conv['store_id'] = $store ? $store->id : $conv['contact_id'];
 
             // ==========================================
-            // KODE PERBAIKAN: DEKLARASI $isOnline
+            // 2. LOGIKA BACA STATUS ONLINE ANTI-GAGAL
             // ==========================================
-            $isOnline = false; // Harus dideklarasikan dulu sebagai false
+            $isOnline = false;
 
-            if ($contactUser->last_seen) {
-                $lastSeenTime = \Carbon\Carbon::parse($contactUser->last_seen);
-                // Jika kurang dari 3 menit, dia online!
-                if ($lastSeenTime->diffInMinutes(\Carbon\Carbon::now()) < 3) {
+            // Baca dari last_seen, kalau kosong cari last_seen_at
+            $waktu_terakhir = $contactUser->last_seen ?? $contactUser->last_seen_at ?? null;
+
+            if ($waktu_terakhir) {
+                $lastSeenTime = \Carbon\Carbon::parse($waktu_terakhir);
+
+                // Gunakan abs() agar tidak error jika jam server lebih lambat dari DB
+                // Jika selisih kurang dari 3 menit = Online (Hijau)
+                if (abs($lastSeenTime->diffInMinutes(\Carbon\Carbon::now())) < 3) {
                     $isOnline = true;
                 }
             }
 
-            // Masukkan status online ke dalam response
+            // Masukkan true/false ke respon JSON
             $conv['is_online'] = $isOnline;
-            // ==========================================
-
             $finalConversations[] = $conv;
         }
 
-        // Sortir ulang agar yang ada chat terbaru naik ke atas
         usort($finalConversations, function($a, $b) {
             return strtotime($b['last_time']) - strtotime($a['last_time']);
         });
