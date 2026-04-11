@@ -196,4 +196,22 @@ class ChatController extends Controller
             'unread_count' => $count
         ]);
     }
+
+    public function deleteChat(Request $request)
+    {
+        $userId = Auth::user()->id_pengguna ?? Auth::id();
+        $contactId = $request->contact_id;
+        if (!$contactId) {
+            $store = Store::find($request->store_id);
+            $contactId = $store ? $store->user_id : $request->store_id;
+        }
+
+        \App\Models\Message::where(function($q) use ($userId, $contactId) {
+            $q->where('from_id', $userId)->where('to_id', $contactId);
+        })->orWhere(function($q) use ($userId, $contactId) {
+            $q->where('from_id', $contactId)->where('to_id', $userId);
+        })->delete();
+
+        return response()->json(['success' => true]);
+    }
 }

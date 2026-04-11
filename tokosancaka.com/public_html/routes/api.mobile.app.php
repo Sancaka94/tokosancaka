@@ -243,6 +243,9 @@ Route::prefix('seller')->group(function () {
         Route::get('/chat/conversations', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'getConversations']);
         Route::get('/chat/unread-count', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'getUnreadCount']);
 
+        //Delete Chat
+        Route::post('/chat/delete', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'deleteChat']);
+
     });
 
     // --- D. SELLER ROUTES (TOKO) ---
