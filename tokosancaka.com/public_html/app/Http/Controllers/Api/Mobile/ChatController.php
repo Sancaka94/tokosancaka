@@ -16,42 +16,31 @@ class ChatController extends Controller
      */
     public function fetchMessages(Request $request)
     {
-        $request->validate([
-            'store_id' => 'required'
-        ]);
-
         $user = Auth::user();
         $userId = $user->id_pengguna ?? $user->id;
-        $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'superadmin']);
 
-        // Tentukan ID Lawan Chat (bisa berupa ID Toko atau langsung ID User)
-        $contactId = $request->store_id;
-        $store = Store::find($request->store_id);
-        if ($store) {
-            $contactId = $store->user_id;
+        // ✅ PERBAIKAN LOGIKA ID: Prioritaskan contact_id jika ada
+        $contactId = $request->contact_id;
+        if (!$contactId) {
+            $store = Store::find($request->store_id);
+            $contactId = $store ? $store->user_id : $request->store_id;
         }
 
-        // ========================================================
-        // FITUR CENTANG 2 MERAH:
-        // Saat user membuka chat, otomatis ubah status pesan yang MASUK
-        // (dari lawan chat ke user ini) menjadi SUDAH DIBACA.
-        // ========================================================
-        Message::where('from_id', $contactId)
+        // ✅ EKSEKUSI UPDATE: Hapus Notifikasi / Ubah jadi Centang 2
+        \App\Models\Message::where('from_id', $contactId)
             ->where('to_id', $userId)
             ->whereNull('read_at')
-            ->update(['read_at' => now()]);
+            ->update(['read_at' => \Carbon\Carbon::now()]);
 
-        // AMBIL PESAN (Hanya yang melibatkan user ini dan kontak tersebut)
-        $query = Message::where(function($q) use ($userId, $contactId) {
+        // AMBIL PESAN
+        $query = \App\Models\Message::where(function($q) use ($userId, $contactId) {
                 $q->where('from_id', $userId)->where('to_id', $contactId);
             })->orWhere(function($q) use ($userId, $contactId) {
                 $q->where('from_id', $contactId)->where('to_id', $userId);
             });
 
-        // Kunci Data: Ambil maksimal 150 chat terbaru
         $rawMessages = $query->orderBy('created_at', 'desc')->limit(150)->get();
 
-        // Format data agar dipahami oleh React Native
         $formattedMessages = $rawMessages->map(function($msg) use ($userId) {
             return [
                 'id'         => $msg->id,
@@ -59,17 +48,11 @@ class ChatController extends Controller
                 'message'    => $msg->message,
                 'image_url'  => $msg->image_url,
                 'created_at' => $msg->created_at,
-                // Jika read_at ada isinya = true (Centang 2), jika null = false (Centang 1)
                 'is_read'    => $msg->read_at ? true : false,
             ];
         });
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'messages' => $formattedMessages
-            ]
-        ]);
+        return response()->json(['success' => true, 'data' => ['messages' => $formattedMessages]]);
     }
 
     /**
@@ -85,10 +68,11 @@ class ChatController extends Controller
 
         $userId = Auth::user()->id_pengguna ?? Auth::id();
 
-        $contactId = $request->store_id;
-        $store = Store::find($request->store_id);
-        if ($store) {
-            $contactId = $store->user_id;
+        // ✅ PERBAIKAN LOGIKA ID
+        $contactId = $request->contact_id;
+        if (!$contactId) {
+            $store = Store::find($request->store_id);
+            $contactId = $store ? $store->user_id : $request->store_id;
         }
 
         try {
@@ -103,7 +87,7 @@ class ChatController extends Controller
                 return response()->json(['success' => false, 'message' => 'Pesan tidak boleh kosong.'], 400);
             }
 
-            $message = Message::create([
+            $message = \App\Models\Message::create([
                 'from_id'   => $userId,
                 'to_id'     => $contactId,
                 'message'   => $request->message ?? '',
@@ -112,14 +96,13 @@ class ChatController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Pesan terkirim',
                 'data' => [
                     'id'         => $message->id,
                     'sender'     => 'user',
                     'message'    => $message->message,
                     'image_url'  => $message->image_url,
                     'created_at' => $message->created_at,
-                    'is_read'    => false // Baru dikirim, pasti false
+                    'is_read'    => false
                 ]
             ]);
 
