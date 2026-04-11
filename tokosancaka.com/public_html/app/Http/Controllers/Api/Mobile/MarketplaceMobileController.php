@@ -117,24 +117,24 @@ class MarketplaceMobileController extends Controller
         ]);
     }
 
-    // 👇 PERBAIKAN DI SINI: Menggunakan $id dan findOrFail($id) 👇
     public function showStore($id)
-    {
-        $store = Store::with('user')->findOrFail($id);
+{
+    $store = Store::with('user')->findOrFail($id);
 
-        $products = Product::where('store_id', $store->id)
-            ->where('status', 'active')
-            ->where('stock', '>', 0)
-            ->paginate(12);
+    // Ubah paginate(12) menjadi get() agar mengirim array bersih
+    $products = Product::where('store_id', $store->id)
+        ->where('status', 'active')
+        ->where('stock', '>', 0)
+        ->get(); // <--- Pakai get()
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'store' => $store,
-                'products' => $products
-            ]
-        ]);
-    }
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'store' => $store,
+            'products' => $products
+        ]
+    ]);
+}
 
 
     // =========================================================================
