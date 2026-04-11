@@ -245,7 +245,6 @@ Route::prefix('seller')->group(function () {
 
         //Delete Chat
         Route::post('/chat/delete', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'deleteChat']);
-
     });
 
     // --- D. SELLER ROUTES (TOKO) ---
