@@ -193,25 +193,33 @@ class ChatController extends Controller
 
         $finalConversations = [];
         foreach ($conversationsMap as $conv) {
-            $contactUser = User::find($conv['contact_id']);
+            // Ambil data user menggunakan Query Builder langsung ke tabel Pengguna
+            $contactUser = \DB::table('Pengguna')->where('id_pengguna', $conv['contact_id'])->first();
+
             if (!$contactUser) continue;
-
-            if ($contactUser && $contactUser->last_seen) {
-                $lastSeenTime = \Carbon\Carbon::parse($contactUser->last_seen);
-                if ($lastSeenTime->diffInMinutes(\Carbon\Carbon::now()) < 3) {
-                    $isOnline = true; // Jika kurang dari 3 menit, dia online!
-                }
-            }
-
-            $conv['is_online'] = $isOnline; // Masukkan ke dalam array yang dikirim ke React Native
 
             $store = Store::where('user_id', $conv['contact_id'])->first();
 
             $conv['name'] = $store ? $store->name : ($contactUser->nama_lengkap ?? 'Pengguna');
             $conv['logo'] = $contactUser->store_logo_path;
-
-            // Kita kirimkan ID ini agar ketika diklik di React Native, langsung terhubung
             $conv['store_id'] = $store ? $store->id : $conv['contact_id'];
+
+            // ==========================================
+            // KODE PERBAIKAN: DEKLARASI $isOnline
+            // ==========================================
+            $isOnline = false; // Harus dideklarasikan dulu sebagai false
+
+            if ($contactUser->last_seen) {
+                $lastSeenTime = \Carbon\Carbon::parse($contactUser->last_seen);
+                // Jika kurang dari 3 menit, dia online!
+                if ($lastSeenTime->diffInMinutes(\Carbon\Carbon::now()) < 3) {
+                    $isOnline = true;
+                }
+            }
+
+            // Masukkan status online ke dalam response
+            $conv['is_online'] = $isOnline;
+            // ==========================================
 
             $finalConversations[] = $conv;
         }
