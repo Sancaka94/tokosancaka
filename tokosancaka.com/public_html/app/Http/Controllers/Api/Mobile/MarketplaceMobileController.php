@@ -117,12 +117,10 @@ class MarketplaceMobileController extends Controller
         ]);
     }
 
-    public function showStore($slugOrName)
+    // 👇 PERBAIKAN DI SINI: Menggunakan $id dan findOrFail($id) 👇
+    public function showStore($id)
     {
-        $store = Store::with('user')
-            ->where('slug', $slugOrName)
-            ->orWhere('name', $slugOrName)
-            ->firstOrFail();
+        $store = Store::with('user')->findOrFail($id);
 
         $products = Product::where('store_id', $store->id)
             ->where('status', 'active')
