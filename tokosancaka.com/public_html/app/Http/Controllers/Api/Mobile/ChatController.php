@@ -7,53 +7,62 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Message;
 use App\Models\Store;
+use App\Models\User;
 
 class ChatController extends Controller
 {
     /**
-     * Mengambil riwayat pesan antara Pelanggan (Aplikasi) dengan Pemilik Toko
+     * 1. MENGAMBIL RIWAYAT CHAT & UPDATE CENTANG 2 (read_at)
      */
     public function fetchMessages(Request $request)
     {
         $request->validate([
-            'store_id' => 'required|exists:stores,id'
+            'store_id' => 'required'
         ]);
 
-        $userId = Auth::user()->id_pengguna ?? Auth::id();
+        $user = Auth::user();
+        $userId = $user->id_pengguna ?? $user->id;
+        $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'superadmin']);
 
-        // 1. Cari tahu siapa ID User dari pemilik toko ini
+        // Tentukan ID Lawan Chat (bisa berupa ID Toko atau langsung ID User)
+        $contactId = $request->store_id;
         $store = Store::find($request->store_id);
-        if (!$store) {
-            return response()->json(['success' => false, 'message' => 'Toko tidak ditemukan'], 404);
+        if ($store) {
+            $contactId = $store->user_id;
         }
 
-        $storeOwnerId = $store->user_id;
+        // ========================================================
+        // FITUR CENTANG 2 MERAH:
+        // Saat user membuka chat, otomatis ubah status pesan yang MASUK
+        // (dari lawan chat ke user ini) menjadi SUDAH DIBACA.
+        // ========================================================
+        Message::where('from_id', $contactId)
+            ->where('to_id', $userId)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
 
-        // 2. Ambil pesan antara Pelanggan dan Pemilik Toko
-        $rawMessages = Message::where(function($query) use ($userId, $storeOwnerId) {
-                // Pesan dari Pelanggan ke Toko
-                $query->where('from_id', $userId)->where('to_id', $storeOwnerId);
-            })->orWhere(function($query) use ($userId, $storeOwnerId) {
-                // Pesan balasan dari Toko ke Pelanggan
-                $query->where('from_id', $storeOwnerId)->where('to_id', $userId);
-            })
-            ->orderBy('created_at', 'desc') // Wajib DESC untuk React Native Inverted FlatList
-            ->limit(100)
-            ->get();
+        // AMBIL PESAN (Hanya yang melibatkan user ini dan kontak tersebut)
+        $query = Message::where(function($q) use ($userId, $contactId) {
+                $q->where('from_id', $userId)->where('to_id', $contactId);
+            })->orWhere(function($q) use ($userId, $contactId) {
+                $q->where('from_id', $contactId)->where('to_id', $userId);
+            });
 
-        // 3. Format ulang (Map) agar sesuai dengan struktur React Native (sender: 'user' atau 'store')
+        // Kunci Data: Ambil maksimal 150 chat terbaru
+        $rawMessages = $query->orderBy('created_at', 'desc')->limit(150)->get();
+
+        // Format data agar dipahami oleh React Native
         $formattedMessages = $rawMessages->map(function($msg) use ($userId) {
             return [
-                'id' => $msg->id,
-                // Jika from_id sama dengan ID Pelanggan, berarti 'user'. Jika tidak, berarti dari 'store'
-                'sender' => ($msg->from_id == $userId) ? 'user' : 'store',
-                'message' => $msg->message,
-                'created_at' => $msg->created_at
+                'id'         => $msg->id,
+                'sender'     => ($msg->from_id == $userId) ? 'user' : 'store',
+                'message'    => $msg->message,
+                'image_url'  => $msg->image_url,
+                'created_at' => $msg->created_at,
+                // Jika read_at ada isinya = true (Centang 2), jika null = false (Centang 1)
+                'is_read'    => $msg->read_at ? true : false,
             ];
         });
-
-        // 4. (Opsional) Tandai pesan dari toko sudah dibaca
-        // Message::where('from_id', $storeOwnerId)->where('to_id', $userId)->update(['read_at' => now()]);
 
         return response()->json([
             'success' => true,
@@ -63,52 +72,42 @@ class ChatController extends Controller
         ]);
     }
 
-   /**
-     * Menyimpan pesan baru dari Pelanggan ke Toko
+    /**
+     * 2. MENGIRIM PESAN BARU
      */
     public function sendMessage(Request $request)
     {
-        // 1. UBAH VALIDASI DI SINI (message jadi nullable)
         $request->validate([
-            'store_id' => 'required|exists:stores,id',
-            'message'  => 'nullable|string|max:1000', // <-- Ubah 'required' jadi 'nullable'
-            'image'    => 'nullable|image|max:5120'   // <-- Opsional: Batasi ukuran gambar max 5MB
+            'store_id' => 'required',
+            'message'  => 'nullable|string|max:1000',
+            'image'    => 'nullable|image|max:5120'
         ]);
 
         $userId = Auth::user()->id_pengguna ?? Auth::id();
 
-        // Cari ID pemilik toko
+        $contactId = $request->store_id;
         $store = Store::find($request->store_id);
-
-        if (!$store) {
-            return response()->json(['success' => false, 'message' => 'Toko tidak valid'], 404);
+        if ($store) {
+            $contactId = $store->user_id;
         }
 
         try {
-            // 2. PROSES UPLOAD GAMBAR KE SERVER
             $imageUrl = null;
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
-                // Simpan ke storage/app/public/uploads/chat
                 $path = $file->store('uploads/chat', 'public');
                 $imageUrl = asset('storage/' . $path);
             }
 
-            // 3. CEK PENGAMAN: Pastikan minimal ada Teks ATAU Gambar
             if (empty($request->message) && empty($imageUrl)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Pesan teks atau gambar harus diisi.'
-                ], 400);
+                return response()->json(['success' => false, 'message' => 'Pesan tidak boleh kosong.'], 400);
             }
 
-            // 4. SIMPAN KE DATABASE
             $message = Message::create([
                 'from_id'   => $userId,
-                'to_id'     => $store->user_id,
-                'message'   => $request->message ?? '', // Jika null, jadikan string kosong
-                'image_url' => $imageUrl, // Pastikan kolom ini sudah ada di tabel messages kamu
-                // 'read_at' => null
+                'to_id'     => $contactId,
+                'message'   => $request->message ?? '',
+                'image_url' => $imageUrl,
             ]);
 
             return response()->json([
@@ -120,87 +119,97 @@ class ChatController extends Controller
                     'message'    => $message->message,
                     'image_url'  => $message->image_url,
                     'created_at' => $message->created_at,
-                    'is_read'    => false
+                    'is_read'    => false // Baru dikirim, pasti false
                 ]
             ]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengirim pesan: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
 
     /**
-     * Mengambil daftar riwayat percakapan (List Chat)
+     * 3. MENGAMBIL DAFTAR RIWAYAT CHAT (LIST INBOX)
      */
     public function getConversations(Request $request)
     {
-        $userId = Auth::user()->id_pengguna ?? Auth::id();
+        $user = Auth::user();
+        $userId = $user->id_pengguna ?? $user->id;
+        $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'superadmin']);
 
-        // 1. Ambil semua kontak yang pernah chat dengan user ini
-        $contacts = \App\Models\Message::where('from_id', $userId)
-            ->orWhere('to_id', $userId)
-            ->selectRaw('IF(from_id = ?, to_id, from_id) as contact_id, MAX(created_at) as last_msg_time', [$userId])
-            ->groupBy('contact_id')
-            ->orderBy('last_msg_time', 'desc')
-            ->get();
+        $messagesQuery = Message::orderBy('created_at', 'desc');
 
-        $conversations = [];
+        // PRIVASI: Jika bukan admin, hanya ambil pesan miliknya sendiri
+        if (!$isAdmin) {
+            $messagesQuery->where(function($q) use ($userId) {
+                $q->where('from_id', $userId)->orWhere('to_id', $userId);
+            });
+        }
 
-        foreach ($contacts as $c) {
-            $contactId = $c->contact_id;
-            $contactUser = \App\Models\User::find($contactId);
+        // Ambil data untuk diproses
+        $allMessages = $messagesQuery->limit(2000)->get();
 
+        $conversationsMap = [];
+
+        foreach ($allMessages as $msg) {
+            // Tentukan siapa lawan bicaranya
+            $contactId = ($msg->from_id == $userId) ? $msg->to_id : $msg->from_id;
+
+            if (!isset($conversationsMap[$contactId])) {
+                $conversationsMap[$contactId] = [
+                    'contact_id'   => $contactId,
+                    'last_message' => $msg->message ?: ($msg->image_url ? '📷 Mengirim Gambar' : ''),
+                    'last_time'    => $msg->created_at,
+                    'unread_count' => 0
+                ];
+            }
+
+            // Hitung Unread Count (Pesan dari lawan chat yang belum kita baca)
+            if ($msg->from_id == $contactId && $msg->to_id == $userId && $msg->read_at == null) {
+                $conversationsMap[$contactId]['unread_count'] += 1;
+            }
+        }
+
+        $finalConversations = [];
+        foreach ($conversationsMap as $conv) {
+            $contactUser = User::find($conv['contact_id']);
             if (!$contactUser) continue;
 
-            // 2. Ambil pesan terakhir dari percakapan ini
-            $lastMsg = \App\Models\Message::where(function($q) use ($userId, $contactId) {
-                $q->where('from_id', $userId)->where('to_id', $contactId);
-            })->orWhere(function($q) use ($userId, $contactId) {
-                $q->where('from_id', $contactId)->where('to_id', $userId);
-            })->orderBy('created_at', 'desc')->first();
+            $store = Store::where('user_id', $conv['contact_id'])->first();
 
-            // 3. Hitung jumlah pesan yang belum dibaca (dikirim oleh contact ke user)
-            $unreadCount = \App\Models\Message::where('from_id', $contactId)
-                ->where('to_id', $userId)
-                ->whereNull('read_at')
-                ->count();
+            $conv['name'] = $store ? $store->name : ($contactUser->nama_lengkap ?? 'Pengguna');
+            $conv['logo'] = $contactUser->store_logo_path;
 
-            // 4. Cek apakah kontak ini adalah toko
-            $store = \App\Models\Store::where('user_id', $contactId)->first();
+            // Kita kirimkan ID ini agar ketika diklik di React Native, langsung terhubung
+            $conv['store_id'] = $store ? $store->id : $conv['contact_id'];
 
-            $conversations[] = [
-                'contact_id'   => $contactId,
-                'name'         => $store ? $store->name : $contactUser->nama_lengkap, // Prioritas nama toko
-                'logo'         => $contactUser->store_logo_path,
-                'store_id'     => $store ? $store->id : $contactId,
-                'last_message' => $lastMsg->message ?: ($lastMsg->image_url ? '📷 Mengirim Gambar' : ''),
-                'last_time'    => $lastMsg->created_at,
-                'unread_count' => $unreadCount,
-            ];
+            $finalConversations[] = $conv;
         }
+
+        // Sortir ulang agar yang ada chat terbaru naik ke atas
+        usort($finalConversations, function($a, $b) {
+            return strtotime($b['last_time']) - strtotime($a['last_time']);
+        });
 
         return response()->json([
             'success' => true,
-            'data'    => $conversations
+            'data' => $finalConversations
         ]);
     }
 
     /**
-     * Mengambil total angka pesan yang belum dibaca untuk Badge Dashboard
+     * 4. MENGHITUNG TOTAL PESAN BELUM DIBACA UNTUK DASHBOARD BADGE
      */
     public function getUnreadCount(Request $request)
     {
         $userId = Auth::user()->id_pengguna ?? Auth::id();
 
-        $count = \App\Models\Message::where('to_id', $userId)
+        $count = Message::where('to_id', $userId)
             ->whereNull('read_at')
             ->count();
 
         return response()->json([
-            'success'      => true,
+            'success' => true,
             'unread_count' => $count
         ]);
     }
