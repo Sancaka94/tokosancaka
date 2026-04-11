@@ -238,6 +238,7 @@ Route::prefix('seller')->group(function () {
         // Notifikasi
         Route::get('/notifications', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'index']);
         Route::post('/notifications/read-all', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'markAllRead']);
+
     });
 
     // --- D. SELLER ROUTES (TOKO) ---
