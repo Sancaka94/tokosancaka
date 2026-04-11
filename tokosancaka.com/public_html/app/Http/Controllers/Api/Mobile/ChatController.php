@@ -63,19 +63,21 @@ class ChatController extends Controller
         ]);
     }
 
-    /**
+   /**
      * Menyimpan pesan baru dari Pelanggan ke Toko
      */
     public function sendMessage(Request $request)
     {
+        // 1. UBAH VALIDASI DI SINI (message jadi nullable)
         $request->validate([
             'store_id' => 'required|exists:stores,id',
-            'message'  => 'required|string|max:1000'
+            'message'  => 'nullable|string|max:1000', // <-- Ubah 'required' jadi 'nullable'
+            'image'    => 'nullable|image|max:5120'   // <-- Opsional: Batasi ukuran gambar max 5MB
         ]);
 
         $userId = Auth::user()->id_pengguna ?? Auth::id();
 
-        // Cari ID pemilik toko sebagai penerima pesan (to_id)
+        // Cari ID pemilik toko
         $store = Store::find($request->store_id);
 
         if (!$store) {
@@ -83,21 +85,42 @@ class ChatController extends Controller
         }
 
         try {
+            // 2. PROSES UPLOAD GAMBAR KE SERVER
+            $imageUrl = null;
+            if ($request->hasFile('image')) {
+                $file = $request->file('image');
+                // Simpan ke storage/app/public/uploads/chat
+                $path = $file->store('uploads/chat', 'public');
+                $imageUrl = asset('storage/' . $path);
+            }
+
+            // 3. CEK PENGAMAN: Pastikan minimal ada Teks ATAU Gambar
+            if (empty($request->message) && empty($imageUrl)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pesan teks atau gambar harus diisi.'
+                ], 400);
+            }
+
+            // 4. SIMPAN KE DATABASE
             $message = Message::create([
-                'from_id' => $userId,
-                'to_id'   => $store->user_id,
-                'message' => $request->message,
-                // 'read_at' => null // Buka komentar ini jika tabelmu wajib mengisi read_at
+                'from_id'   => $userId,
+                'to_id'     => $store->user_id,
+                'message'   => $request->message ?? '', // Jika null, jadikan string kosong
+                'image_url' => $imageUrl, // Pastikan kolom ini sudah ada di tabel messages kamu
+                // 'read_at' => null
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Pesan terkirim',
                 'data' => [
-                    'id' => $message->id,
-                    'sender' => 'user',
-                    'message' => $message->message,
-                    'created_at' => $message->created_at
+                    'id'         => $message->id,
+                    'sender'     => 'user',
+                    'message'    => $message->message,
+                    'image_url'  => $message->image_url,
+                    'created_at' => $message->created_at,
+                    'is_read'    => false
                 ]
             ]);
 
