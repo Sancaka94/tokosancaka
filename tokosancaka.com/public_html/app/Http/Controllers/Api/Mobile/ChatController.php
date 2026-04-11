@@ -196,6 +196,15 @@ class ChatController extends Controller
             $contactUser = User::find($conv['contact_id']);
             if (!$contactUser) continue;
 
+            if ($contactUser && $contactUser->last_seen) {
+                $lastSeenTime = \Carbon\Carbon::parse($contactUser->last_seen);
+                if ($lastSeenTime->diffInMinutes(\Carbon\Carbon::now()) < 3) {
+                    $isOnline = true; // Jika kurang dari 3 menit, dia online!
+                }
+            }
+
+            $conv['is_online'] = $isOnline; // Masukkan ke dalam array yang dikirim ke React Native
+
             $store = Store::where('user_id', $conv['contact_id'])->first();
 
             $conv['name'] = $store ? $store->name : ($contactUser->nama_lengkap ?? 'Pengguna');
