@@ -273,4 +273,25 @@ class ChatController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    /**
+     * 5. MENGHAPUS PESAN SPESIFIK YANG DIPILIH
+     */
+    public function deleteSelectedMessages(Request $request)
+    {
+        $request->validate([
+            'message_ids' => 'required|array'
+        ]);
+
+        $userId = Auth::user()->id_pengguna ?? Auth::id();
+
+        // Pastikan hanya bisa menghapus pesan di mana User adalah pengirim atau penerimanya
+        \App\Models\Message::whereIn('id', $request->message_ids)
+            ->where(function($q) use ($userId) {
+                $q->where('from_id', $userId)->orWhere('to_id', $userId);
+            })
+            ->delete();
+
+        return response()->json(['success' => true, 'message' => 'Pesan berhasil dihapus']);
+    }
 }
