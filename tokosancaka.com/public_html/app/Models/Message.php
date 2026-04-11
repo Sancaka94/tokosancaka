@@ -17,6 +17,7 @@ class Message extends Model
         'to_id',
         'message',
         'read_at',
+        'product_id',
     ];
 
     /**

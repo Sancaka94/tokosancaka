@@ -101,7 +101,8 @@ class ChatController extends Controller
         $request->validate([
             'store_id' => 'required',
             'message'  => 'nullable|string|max:1000',
-            'image'    => 'nullable|image|max:5120'
+            'image'    => 'nullable|image|max:5120',
+            'product_id' => 'nullable|integer'
         ]);
 
         $userId = Auth::user()->id_pengguna ?? Auth::id();
@@ -130,6 +131,7 @@ class ChatController extends Controller
                 'to_id'     => $contactId,
                 'message'   => $request->message ?? '',
                 'image_url' => $imageUrl,
+                'product_id' => $request->product_id,
             ]);
 
             return response()->json([
