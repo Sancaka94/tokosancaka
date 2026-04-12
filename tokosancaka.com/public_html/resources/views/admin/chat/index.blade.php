@@ -635,4 +635,5 @@ $(document).ready(function() {
     toastr.options = { "positionClass": "toast-top-right", "timeOut": "4000" };
 });
 </script>
+
 @endpush
