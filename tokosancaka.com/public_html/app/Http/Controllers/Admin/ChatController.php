@@ -14,15 +14,38 @@ use Carbon\Carbon;
 
 class ChatController extends Controller
 {
-    /**
-     * Menampilkan halaman utama chat admin.
-     */
     public function index()
     {
-        // Ambil semua user KECUALI admin yang sedang login
-        $users = User::where((new User)->getKeyName(), '!=', Auth::id())
-                     ->orderBy('nama_lengkap', 'asc')
-                     ->get();
+        $adminId = Auth::id();
+
+        // 1. Ambil semua user KECUALI admin
+        $users = User::where((new User)->getKeyName(), '!=', $adminId)->get();
+
+        // 2. Loop untuk mencari pesan terakhir setiap user
+        $users = $users->map(function ($user) use ($adminId) {
+            $lastMessage = Message::where(function($q) use ($adminId, $user) {
+                    $q->where('from_id', $adminId)->where('to_id', $user->getKey());
+                })
+                ->orWhere(function($q) use ($adminId, $user) {
+                    $q->where('from_id', $user->getKey())->where('to_id', $adminId);
+                })
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            $user->last_message_data = $lastMessage;
+
+            // Hitung jumlah pesan belum dibaca (Unread)
+            $user->unread_count = Message::where('from_id', $user->getKey())
+                                         ->where('to_id', $adminId)
+                                         ->whereNull('read_at')
+                                         ->count();
+
+            return $user;
+        })
+        // 3. Urutkan berdasarkan chat terbaru (yang baru chat ada di paling atas)
+        ->sortByDesc(function($user) {
+            return $user->last_message_data ? $user->last_message_data->created_at : '2000-01-01 00:00:00';
+        });
 
         return view('admin.chat.index', compact('users'));
     }
