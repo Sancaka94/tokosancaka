@@ -11,176 +11,113 @@ use Carbon\Carbon;
 
 class ChatController extends Controller
 {
-    // Menampilkan halaman chat untuk ADMIN
+    // =================================================================
+    // 1. HALAMAN CHAT UNTUK ADMIN
+    // =================================================================
     public function adminIndex()
     {
         $user = Auth::user();
-        $userId = $user->id_pengguna ?? $user->id;
+        $userId = $user->getKey(); // Jauh lebih aman dari $user->id_pengguna
+        $keyName = (new User)->getKeyName(); // Dinamis mengambil primary key (id atau id_pengguna)
 
         $contactIds = Message::where('from_id', $userId)->pluck('to_id')
             ->merge(Message::where('to_id', $userId)->pluck('from_id'))
-            ->unique()->toArray();
+            ->unique()->values()->toArray();
 
-        $users = User::whereIn('id_pengguna', $contactIds)->get()->map(function($u) use ($userId) {
-            $uId = $u->id_pengguna;
+        $users = User::whereIn($keyName, $contactIds)
+            ->where($keyName, '!=', $userId) // Jangan tampilkan diri sendiri
+            ->get()
+            ->map(function($u) use ($userId) {
+                $uId = $u->getKey();
 
-            $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
-                $q->where('from_id', $userId)->where('to_id', $uId);
-            })->orWhere(function($q) use ($userId, $uId) {
-                $q->where('from_id', $uId)->where('to_id', $userId);
-            })->orderBy('created_at', 'desc')->first();
+                $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
+                    $q->where('from_id', $userId)->where('to_id', $uId);
+                })->orWhere(function($q) use ($userId, $uId) {
+                    $q->where('from_id', $uId)->where('to_id', $userId);
+                })->orderBy('created_at', 'desc')->first();
 
-            $u->unread_count = Message::where('from_id', $uId)
-                ->where('to_id', $userId)
-                ->whereNull('read_at')
-                ->count();
+                $u->unread_count = Message::where('from_id', $uId)
+                    ->where('to_id', $userId)
+                    ->whereNull('read_at')
+                    ->count();
 
-            return $u;
-        })->sortByDesc(function($u) {
-            // 🟢 PERBAIKAN: Gunakan ternary operator agar tidak error jika null
-            return $u->last_message_data ? $u->last_message_data->created_at : '2000-01-01 00:00:00';
-        });
+                return $u;
+            })->sortByDesc(function($u) {
+                return $u->last_message_data ? $u->last_message_data->created_at : '2000-01-01 00:00:00';
+            });
 
         return view('admin.chat', compact('users'));
     }
 
-    // Menampilkan halaman chat untuk CUSTOMER
+    // =================================================================
+    // 2. HALAMAN CHAT UNTUK CUSTOMER
+    // =================================================================
     public function customerIndex()
     {
         $user = Auth::user();
-        $userId = $user->id_pengguna ?? $user->id;
+        $userId = $user->getKey();
+        $keyName = (new User)->getKeyName();
 
+        // 1. Cari riwayat kontak
         $contactIds = Message::where('from_id', $userId)->pluck('to_id')
             ->merge(Message::where('to_id', $userId)->pluck('from_id'))
-            ->unique()->toArray();
+            ->unique()->values()->toArray();
 
-        // WAJIB: Masukkan ID Admin Pusat (Admin = 4) agar CS selalu muncul
+        // 2. WAJIB: Masukkan ID Admin Pusat (Admin = 4) agar CS selalu muncul
         $adminId = 4;
         if (!in_array($adminId, $contactIds)) {
             $contactIds[] = $adminId;
         }
 
-        $users = User::whereIn('id_pengguna', $contactIds)->get()->map(function($u) use ($userId) {
-            $uId = $u->id_pengguna;
+        // 3. Tarik data dari database dengan aman
+        $users = User::whereIn($keyName, $contactIds)
+            ->where($keyName, '!=', $userId) // Jangan tampilkan diri sendiri
+            ->get()
+            ->map(function($u) use ($userId) {
+                $uId = $u->getKey();
 
-            $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
-                $q->where('from_id', $userId)->where('to_id', $uId);
-            })->orWhere(function($q) use ($userId, $uId) {
-                $q->where('from_id', $uId)->where('to_id', $userId);
-            })->orderBy('created_at', 'desc')->first();
+                $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
+                    $q->where('from_id', $userId)->where('to_id', $uId);
+                })->orWhere(function($q) use ($userId, $uId) {
+                    $q->where('from_id', $uId)->where('to_id', $userId);
+                })->orderBy('created_at', 'desc')->first();
 
-            $u->unread_count = Message::where('from_id', $uId)
-                ->where('to_id', $userId)
-                ->whereNull('read_at')
-                ->count();
+                $u->unread_count = Message::where('from_id', $uId)
+                    ->where('to_id', $userId)
+                    ->whereNull('read_at')
+                    ->count();
 
-            $store = Store::where('user_id', $uId)->first();
-            if ($store) {
-                $u->nama_lengkap = $store->name;
-                $u->store_logo_path = $store->logo ?? null;
-            } elseif (in_array(strtolower($u->role ?? ''), ['admin', 'superadmin']) || $uId == 4) {
-                $u->nama_lengkap = "Admin Sancaka";
-            }
+                // Ganti nama dengan nama Toko jika punya toko
+                if (class_exists(Store::class)) {
+                    $store = Store::where('user_id', $uId)->first();
+                    if ($store) {
+                        $u->nama_lengkap = $store->name;
+                        $u->store_logo_path = $store->logo ?? null;
+                    }
+                }
 
-            return $u;
-        })->sortByDesc(function($u) {
-            // 🟢 PERBAIKAN: Cegah error Attempt to read property on null
-            return $u->last_message_data ? $u->last_message_data->created_at : '2000-01-01 00:00:00';
-        });
+                // Pastikan ID 4 selalu bernama Admin
+                if (in_array(strtolower($u->role ?? ''), ['admin', 'superadmin']) || $uId == 4) {
+                    $u->nama_lengkap = "Admin Sancaka";
+                }
+
+                return $u;
+            })->sortByDesc(function($u) {
+                return $u->last_message_data ? $u->last_message_data->created_at : '2000-01-01 00:00:00';
+            });
 
         return view('customer.chat', compact('users'));
     }
 
-
-    /**
-     * API: Mendapatkan daftar percakapan (List Inbox untuk dipanggil JS AJAX)
-     */
-    public function getConversations()
-    {
-        $user = Auth::user();
-        $userId = $user->id_pengguna ?? $user->id;
-        $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'superadmin']);
-
-        $messagesQuery = Message::orderBy('created_at', 'desc');
-
-        if (!$isAdmin) {
-            $messagesQuery->where(function($q) use ($userId) {
-                $q->where('from_id', $userId)->orWhere('to_id', $userId);
-            });
-        }
-
-        $allMessages = $messagesQuery->limit(2000)->get();
-        $conversationsMap = [];
-
-        foreach ($allMessages as $msg) {
-            $contactId = ($msg->from_id == $userId) ? $msg->to_id : $msg->from_id;
-
-            // Hindari user chat dengan dirinya sendiri
-            if ($contactId == $userId) continue;
-
-            if (!isset($conversationsMap[$contactId])) {
-                $conversationsMap[$contactId] = [
-                    'contact_id'   => $contactId,
-                    'last_message' => $msg->message ?: ($msg->image_url ? '📷 Mengirim Gambar' : ''),
-                    'last_time'    => $msg->created_at,
-                    'unread_count' => 0
-                ];
-            }
-
-            if ($msg->from_id == $contactId && $msg->to_id == $userId && $msg->read_at == null) {
-                $conversationsMap[$contactId]['unread_count'] += 1;
-            }
-        }
-
-        // 🟢 PERBAIKAN KRUSIAL: Memaksa Admin Sancaka (ID 4) SELALU ADA di API Customer
-        // Walaupun mereka belum pernah chat sekalipun.
-        if (!$isAdmin && !isset($conversationsMap[4])) {
-            $conversationsMap[4] = [
-                'contact_id'   => 4,
-                'last_message' => 'Klik untuk mulai percakapan',
-                'last_time'    => now()->toDateTimeString(),
-                'unread_count' => 0
-            ];
-        }
-
-        $finalConversations = [];
-        foreach ($conversationsMap as $conv) {
-            // 🟢 PERBAIKAN: Gunakan where('id_pengguna') untuk mencegah User::find gagal
-            $contactUser = User::where('id_pengguna', $conv['contact_id'])->first();
-            if (!$contactUser) continue;
-
-            $store = Store::where('user_id', $conv['contact_id'])->first();
-
-            if ($store) {
-                $conv['name'] = $store->name;
-            } elseif (in_array(strtolower($contactUser->role ?? ''), ['admin', 'superadmin']) || $conv['contact_id'] == 4) {
-                $conv['name'] = "Admin Sancaka";
-            } else {
-                $conv['name'] = $contactUser->nama_lengkap ?? $contactUser->name ?? 'Pengguna';
-            }
-
-            $conv['logo'] = $contactUser->store_logo_path ?? null;
-            $conv['store_id'] = $store ? $store->id : $conv['contact_id'];
-            $conv['is_online'] = $contactUser->last_seen && Carbon::parse($contactUser->last_seen)->diffInMinutes(now()) < 5;
-
-            $finalConversations[] = $conv;
-        }
-
-        usort($finalConversations, function($a, $b) {
-            return strtotime($b['last_time']) - strtotime($a['last_time']);
-        });
-
-        return response()->json($finalConversations);
-    }
-
-    /**
-     * API: Mendapatkan pesan dari sebuah percakapan
-     */
+    // =================================================================
+    // 3. API GET MESSAGES (Dipanggil oleh Javascript)
+    // =================================================================
     public function getMessages($contactId)
     {
         $user = Auth::user();
-        $userId = $user->id_pengguna ?? $user->id;
+        $userId = $user->getKey();
 
+        // Tandai sudah dibaca
         Message::where('from_id', $contactId)
             ->where('to_id', $userId)
             ->whereNull('read_at')
@@ -210,25 +147,21 @@ class ChatController extends Controller
             ];
         });
 
-        $targetUser = User::where('id_pengguna', $contactId)->first();
+        // Cek Online
+        $keyName = (new User)->getKeyName();
+        $targetUser = User::where($keyName, $contactId)->first();
         $isTargetOnline = $targetUser && $targetUser->last_seen && Carbon::parse($targetUser->last_seen)->diffInMinutes(now()) < 5;
-
-        $isAdminOnline = false;
-        if ($targetUser && in_array(strtolower($targetUser->role ?? ''), ['admin', 'superadmin'])) {
-            $isAdminOnline = $isTargetOnline;
-        }
 
         return response()->json([
             'success'       => true,
             'messages'      => $formattedMessages,
-            'target_online' => $isTargetOnline,
-            'admin_online'  => $isAdminOnline
+            'target_online' => $isTargetOnline
         ]);
     }
 
-    /**
-     * API: Mengirim pesan baru
-     */
+    // =================================================================
+    // 4. API SEND MESSAGE (Kirim Pesan Baru)
+    // =================================================================
     public function sendMessage(Request $request, $contactId)
     {
         $request->validate([
@@ -237,7 +170,7 @@ class ChatController extends Controller
         ]);
 
         $user = Auth::user();
-        $userId = $user->id_pengguna ?? $user->id;
+        $userId = $user->getKey();
         $messageText = $request->message ?? $request->content ?? '';
 
         try {
@@ -262,17 +195,7 @@ class ChatController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Terkirim',
-                'data' => [
-                    'id'         => $message->id,
-                    'from_id'    => $message->from_id,
-                    'is_me'      => true,
-                    'message'    => $message->message,
-                    'image_url'  => $message->image_url,
-                    'product_id' => $message->product_id,
-                    'created_at' => $message->created_at,
-                    'is_read'    => false
-                ]
+                'message' => 'Terkirim'
             ]);
 
         } catch (\Exception $e) {
@@ -280,14 +203,13 @@ class ChatController extends Controller
         }
     }
 
-    /**
-     * API: Hapus seluruh riwayat pesan dengan satu user
-     */
+    // =================================================================
+    // 5. API DELETE MESSAGES
+    // =================================================================
     public function deleteAllMessages(Request $request)
     {
         $user = Auth::user();
-        $userId = $user->id_pengguna ?? $user->id;
-
+        $userId = $user->getKey();
         $contactId = $request->user_id ?? $request->contact_id;
 
         if (!$contactId) {
