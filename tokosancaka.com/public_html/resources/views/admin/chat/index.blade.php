@@ -660,6 +660,48 @@ $(document).ready(function() {
         }
     });
 
+    // === 11. FITUR PENCARIAN (SEARCH BAR) ===
+    $('#search-chat').on('keyup', function() {
+        const searchValue = $(this).val().toLowerCase();
+        $('.user-item').each(function() {
+            // Ambil nama dari atribut data-name yang sudah kita buat huruf kecil semua
+            const name = $(this).data('name');
+            if (name.includes(searchValue)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+
+    // === 12. FITUR FILTER (ALL / UNREAD) ===
+    $('.filter-btn').on('click', function() {
+        // Ganti styling tombol aktif
+        $('.filter-btn').css({ 'background': 'var(--header-background)', 'color': '#54656f' }).removeClass('active');
+        $(this).css({ 'background': '#e2e8f0', 'color': '#111b21' }).addClass('active');
+
+        const filterType = $(this).data('filter');
+
+        $('.user-item').each(function() {
+            if (filterType === 'all') {
+                $(this).show();
+            } else if (filterType === 'unread') {
+                const isUnread = $(this).data('unread') === true || $(this).data('unread') === 'true';
+                if (isUnread) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            } else {
+                // Untuk tombol Groups, bisa disembunyikan semua dulu jika belum ada fitur grup
+                $(this).hide();
+            }
+        });
+
+        // Bersihkan kotak pencarian jika filter diklik
+        $('#search-chat').val('');
+    });
+
     const urlParams = new URLSearchParams(window.location.search);
     const chatWithUserId = urlParams.get('chat_with');
 
