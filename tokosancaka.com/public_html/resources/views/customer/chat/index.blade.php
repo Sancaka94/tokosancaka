@@ -221,7 +221,7 @@
                 @endphp
 
                 <div class="user-item"
-                     data-id="{{ $user->id }}"
+                     data-id="{{ $user->getKey() }}"
                      data-name="{{ strtolower($user->nama_lengkap ?? $user->name ?? '') }}"
                      data-unread="{{ $unreadCount > 0 ? 'true' : 'false' }}"
                      data-avatar="{{ $finalAvatarUrl }}"
