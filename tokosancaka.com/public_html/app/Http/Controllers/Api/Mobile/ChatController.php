@@ -52,6 +52,7 @@ class ChatController extends Controller
                 'id'         => $msg->id,
                 'sender'     => ($msg->from_id == $userId) ? 'user' : 'store',
                 'message'    => $msg->message,
+                'product_id' => $msg->product_id,
                 'image_url'  => $finalImageUrl, // <-- Terapkan URL yang sudah aman
                 'created_at' => $msg->created_at,
                 'is_read'    => $msg->read_at ? true : false,
@@ -141,7 +142,7 @@ class ChatController extends Controller
                     'id'         => $message->id,
                     'sender'     => 'user',
                     'message'    => $message->message,
-                    // ✅ PANTULKAN URL LENGKAP agar langsung muncul seketika di layar HP setelah terkirim
+                    'product_id' => $message->product_id,
                     'image_url'  => $message->image_url ? 'https://tokosancaka.com/storage/' . $message->image_url : null,
                     'created_at' => $message->created_at,
                     'is_read'    => false
