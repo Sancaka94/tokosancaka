@@ -19,20 +19,17 @@ class ChatController extends Controller
         $user = Auth::user();
         $userId = $user->id_pengguna ?? $user->id;
 
-        // ✅ PERBAIKAN LOGIKA ID: Prioritaskan contact_id jika ada
         $contactId = $request->contact_id;
         if (!$contactId) {
             $store = Store::find($request->store_id);
             $contactId = $store ? $store->user_id : $request->store_id;
         }
 
-        // ✅ EKSEKUSI UPDATE: Hapus Notifikasi / Ubah jadi Centang 2
         \App\Models\Message::where('from_id', $contactId)
             ->where('to_id', $userId)
             ->whereNull('read_at')
             ->update(['read_at' => \Carbon\Carbon::now()]);
 
-        // AMBIL PESAN
         $query = \App\Models\Message::where(function($q) use ($userId, $contactId) {
                 $q->where('from_id', $userId)->where('to_id', $contactId);
             })->orWhere(function($q) use ($userId, $contactId) {
@@ -42,31 +39,35 @@ class ChatController extends Controller
         $rawMessages = $query->orderBy('created_at', 'desc')->limit(150)->get();
 
         $formattedMessages = $rawMessages->map(function($msg) use ($userId) {
+
+            // ✅ PERBAIKAN URL GAMBAR: Tangani URL lama (http) maupun data path baru
+            $finalImageUrl = null;
+            if ($msg->image_url) {
+                $finalImageUrl = str_starts_with($msg->image_url, 'http')
+                    ? $msg->image_url
+                    : 'https://tokosancaka.com/storage/' . $msg->image_url;
+            }
+
             return [
                 'id'         => $msg->id,
                 'sender'     => ($msg->from_id == $userId) ? 'user' : 'store',
                 'message'    => $msg->message,
-                'image_url'  => $msg->image_url,
+                'image_url'  => $finalImageUrl, // <-- Terapkan URL yang sudah aman
                 'created_at' => $msg->created_at,
                 'is_read'    => $msg->read_at ? true : false,
             ];
         });
 
-        // ==================================================
-        // KODE BARU: MENGAMBIL STATUS ONLINE LAWAN CHAT
-        // ==================================================
+        // ... (Kode Status Online di bawahnya biarkan sama persis seperti milik Anda)
         $contactUser = \App\Models\User::find($contactId);
-
         $isOnline = false;
         $lastSeen = null;
 
         if ($contactUser && $contactUser->last_seen) {
-            // Cek apakah last_seen kurang dari 3 menit yang lalu (aktif)
             $lastSeenTime = \Carbon\Carbon::parse($contactUser->last_seen);
             if ($lastSeenTime->diffInMinutes(\Carbon\Carbon::now()) < 3) {
                 $isOnline = true;
             } else {
-                // Format tanggal terakhir dilihat (Contoh: "10:30" atau "Kemarin 15:00")
                 if ($lastSeenTime->isToday()) {
                     $lastSeen = "Hari ini " . $lastSeenTime->format('H:i');
                 } elseif ($lastSeenTime->isYesterday()) {
@@ -76,19 +77,17 @@ class ChatController extends Controller
                 }
             }
         } else {
-            // Jika kolom last_seen kosong atau null
             $isOnline = false;
             $lastSeen = "Beberapa waktu lalu";
         }
 
-        // Kembalikan Response beserta status Online
         return response()->json([
             'success' => true,
             'data' => [
                 'messages' => $formattedMessages,
                 'store_is_online' => $isOnline,
                 'store_last_seen' => $lastSeen,
-                'store_is_typing' => false // Bisa dikembangkan nanti dengan WebSockets jika mau
+                'store_is_typing' => false
             ]
         ]);
     }
@@ -98,16 +97,16 @@ class ChatController extends Controller
      */
     public function sendMessage(Request $request)
     {
+        // ✅ PERBAIKAN VALIDASI: Gunakan file|mimes agar ramah dengan React Native
         $request->validate([
-            'store_id' => 'required',
-            'message'  => 'nullable|string|max:1000',
-            'image'    => 'nullable|image|max:5120',
+            'store_id'   => 'required',
+            'message'    => 'nullable|string|max:1000',
+            'image'      => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120',
             'product_id' => 'nullable|integer'
         ]);
 
         $userId = Auth::user()->id_pengguna ?? Auth::id();
 
-        // ✅ PERBAIKAN LOGIKA ID
         $contactId = $request->contact_id;
         if (!$contactId) {
             $store = Store::find($request->store_id);
@@ -119,7 +118,9 @@ class ChatController extends Controller
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
                 $path = $file->store('uploads/chat', 'public');
-                $imageUrl = asset('storage/' . $path);
+
+                // ✅ PERBAIKAN PATH: Simpan direktori path-nya saja, jangan dibungkus asset()
+                $imageUrl = $path;
             }
 
             if (empty($request->message) && empty($imageUrl)) {
@@ -127,10 +128,10 @@ class ChatController extends Controller
             }
 
             $message = \App\Models\Message::create([
-                'from_id'   => $userId,
-                'to_id'     => $contactId,
-                'message'   => $request->message ?? '',
-                'image_url' => $imageUrl,
+                'from_id'    => $userId,
+                'to_id'      => $contactId,
+                'message'    => $request->message ?? '',
+                'image_url'  => $imageUrl,
                 'product_id' => $request->product_id,
             ]);
 
@@ -140,7 +141,8 @@ class ChatController extends Controller
                     'id'         => $message->id,
                     'sender'     => 'user',
                     'message'    => $message->message,
-                    'image_url'  => $message->image_url,
+                    // ✅ PANTULKAN URL LENGKAP agar langsung muncul seketika di layar HP setelah terkirim
+                    'image_url'  => $message->image_url ? 'https://tokosancaka.com/storage/' . $message->image_url : null,
                     'created_at' => $message->created_at,
                     'is_read'    => false
                 ]
