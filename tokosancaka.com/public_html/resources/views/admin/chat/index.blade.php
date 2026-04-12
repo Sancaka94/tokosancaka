@@ -187,44 +187,120 @@
 @section('content')
 <div class="chat-container">
 
-    <div class="user-list" id="user-list">
-        @forelse ($users as $user)
-            @php
-                $avatarUrl = $user->store_logo_path ?? '';
-                $initial = strtoupper(substr($user->nama_lengkap ?? 'U', 0, 1));
-                $finalAvatarUrl = $avatarUrl ? (str_starts_with($avatarUrl, 'http') ? $avatarUrl : asset('storage/' . $avatarUrl)) : '';
+    <div class="sidebar" style="width: 30%; min-width: 320px; max-width: 420px; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; background-color: white; z-index: 10;">
 
-                // LOGIKA ONLINE: Anggap online jika last_seen di bawah 5 menit yang lalu
-                $isOnline = false;
-                if ($user->last_seen) {
-                    $isOnline = \Carbon\Carbon::parse($user->last_seen)->diffInMinutes(now()) < 5;
-                }
-            @endphp
-
-            <div class="user-item"
-                 data-id="{{ $user->getKey() }}"
-                 data-name="{{ $user->nama_lengkap }}"
-                 data-phone="{{ $user->no_wa ?? '' }}"
-                 data-avatar="{{ $finalAvatarUrl }}"
-                 data-online="{{ $isOnline ? 'true' : 'false' }}">
-
-                <div class="avatar-wrapper" style="margin-right: 12px;">
-                    <div class="avatar" style="margin-right: 0; {{ $finalAvatarUrl ? 'background-image: url(' . $finalAvatarUrl . '); color: transparent;' : '' }}">
-                        @if(!$finalAvatarUrl) {{ $initial }} @endif
-                    </div>
-                    @if($isOnline)
-                        <div class="online-badge"></div>
-                    @endif
-                </div>
-
-                <div class="user-details">
-                    <p class="font-semibold">{{ $user->nama_lengkap }}</p>
-                    <p class="last-message" id="last-message-{{ $user->getKey() }}">Klik untuk chat...</p>
-                </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background-color: var(--header-background); border-bottom: 1px solid var(--border-color);">
+            <h1 style="font-size: 20px; font-weight: bold; color: var(--text-primary); margin: 0;">Chats</h1>
+            <div style="display: flex; gap: 20px; color: #54656f; font-size: 1.2rem;">
+                <button title="New Chat" style="background:none; border:none; cursor:pointer; color:inherit;"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button title="Menu" style="background:none; border:none; cursor:pointer; color:inherit;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
             </div>
-        @empty
-            <div style="text-align: center; padding: 20px; color: var(--text-secondary);">Tidak ada pelanggan ditemukan.</div>
-        @endforelse
+        </div>
+
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; background-color: var(--header-background); border-radius: 8px; padding: 6px 12px;">
+                <i class="fa-solid fa-magnifying-glass" style="color: #8696a0; font-size: 14px; margin-right: 15px;"></i>
+                <input type="text" id="search-chat" placeholder="Search or start a new chat" style="border: none; background: transparent; width: 100%; outline: none; font-size: 14px; color: var(--text-primary);">
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 12px; overflow-x: auto;">
+                <button class="filter-btn active" data-filter="all" style="background: #e2e8f0; border: none; padding: 6px 14px; border-radius: 20px; font-size: 13px; color: #111b21; cursor: pointer;">All</button>
+                <button class="filter-btn" data-filter="unread" style="background: var(--header-background); border: none; padding: 6px 14px; border-radius: 20px; font-size: 13px; color: #54656f; cursor: pointer;">Unread</button>
+                <button class="filter-btn" data-filter="groups" style="background: var(--header-background); border: none; padding: 6px 14px; border-radius: 20px; font-size: 13px; color: #54656f; cursor: pointer;">Groups</button>
+            </div>
+        </div>
+
+        <div class="user-list" id="user-list" style="flex-grow: 1; overflow-y: auto;">
+            @forelse ($users as $user)
+                @php
+                    $avatarUrl = $user->store_logo_path ?? '';
+                    $initial = strtoupper(substr($user->nama_lengkap ?? 'U', 0, 1));
+                    $finalAvatarUrl = $avatarUrl ? (str_starts_with($avatarUrl, 'http') ? $avatarUrl : asset('storage/' . $avatarUrl)) : '';
+
+                    // Logika Online
+                    $isOnline = $user->last_seen && \Carbon\Carbon::parse($user->last_seen)->diffInMinutes(now()) < 5;
+
+                    // Logika Pesan Terakhir
+                    $lastMsg = $user->last_message_data;
+                    $msgText = 'Belum ada pesan...';
+                    $timeText = '';
+                    $tickHtml = '';
+                    $unreadCount = $user->unread_count ?? 0;
+
+                    if ($lastMsg) {
+                        // Teks Pesan (Jika format produk, ubah jadi teks singkat)
+                        if (str_starts_with($lastMsg->message, '[TANYA PRODUK]')) {
+                            $msgText = '📦 Bertanya tentang produk';
+                        } elseif ($lastMsg->image_url && !$lastMsg->message) {
+                            $msgText = '📷 Mengirim gambar';
+                        } else {
+                            $msgText = $lastMsg->message;
+                        }
+
+                        // Format Waktu (Hari ini = Jam, Kemarin = Yesterday, Lebih Lama = Tanggal)
+                        $msgDate = \Carbon\Carbon::parse($lastMsg->created_at);
+                        if ($msgDate->isToday()) {
+                            $timeText = $msgDate->format('H:i');
+                        } elseif ($msgDate->isYesterday()) {
+                            $timeText = 'Yesterday';
+                        } else {
+                            $timeText = $msgDate->format('d/m/Y');
+                        }
+
+                        // Logika Centang jika pengirim adalah Admin
+                        if ($lastMsg->from_id == auth()->id()) {
+                            if ($lastMsg->read_at) {
+                                // Centang Biru/Merah (Sudah dibaca)
+                                $tickHtml = '<i class="fa-solid fa-check-double" style="color: #3b82f6; font-size: 11px; margin-right: 4px;"></i>';
+                            } else {
+                                // Centang Abu-abu
+                                $tickHtml = '<i class="fa-solid fa-check-double" style="color: #8696a0; font-size: 11px; margin-right: 4px;"></i>';
+                            }
+                        }
+                    }
+                @endphp
+
+                <div class="user-item"
+                     data-id="{{ $user->getKey() }}"
+                     data-name="{{ strtolower($user->nama_lengkap) }}"
+                     data-unread="{{ $unreadCount > 0 ? 'true' : 'false' }}"
+                     data-phone="{{ $user->no_wa ?? '' }}"
+                     data-avatar="{{ $finalAvatarUrl }}"
+                     data-online="{{ $isOnline ? 'true' : 'false' }}"
+                     style="display: flex; align-items: center; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--border-color);">
+
+                    <div class="avatar-wrapper" style="margin-right: 15px; position: relative;">
+                        <div class="avatar" style="width: 48px; height: 48px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #64748b; background-size: cover; background-position: center; {{ $finalAvatarUrl ? 'background-image: url(' . $finalAvatarUrl . '); color: transparent;' : '' }}">
+                            @if(!$finalAvatarUrl) {{ $initial }} @endif
+                        </div>
+                        @if($isOnline)
+                            <div class="online-badge" style="position: absolute; bottom: 2px; right: 0; width: 12px; height: 12px; background: #25D366; border: 2px solid white; border-radius: 50%;"></div>
+                        @endif
+                    </div>
+
+                    <div class="user-details" style="flex: 1; min-width: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                            <p class="font-semibold" style="font-size: 16px; color: #111b21; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $user->nama_lengkap }}</p>
+                            <span style="font-size: 12px; color: {{ $unreadCount > 0 ? '#25D366' : '#667781' }}; font-weight: {{ $unreadCount > 0 ? 'bold' : 'normal' }};">{{ $timeText }}</span>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; flex: 1; min-width: 0; padding-right: 10px;">
+                                {!! $tickHtml !!}
+                                <p class="last-message" style="margin: 0; font-size: 13px; color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $msgText }}</p>
+                            </div>
+
+                            @if($unreadCount > 0)
+                                <div style="background-color: #25D366; color: white; font-size: 11px; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    {{ $unreadCount }}
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @empty
+                <div style="text-align: center; padding: 20px; color: var(--text-secondary);">Tidak ada pelanggan.</div>
+            @endforelse
+        </div>
     </div>
 
     <div class="chat-area">
