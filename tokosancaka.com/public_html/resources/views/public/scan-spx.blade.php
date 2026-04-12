@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    
+
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -30,28 +30,28 @@
         /* === UPDATE BAGIAN INI === */
     .spx-alert-box {
         position: sticky; /* Agar tetap nempel saat scroll */
-        top: 20px; 
+        top: 20px;
         z-index: 99;
-        
+
         display: flex;
         align-items: flex-start;
         gap: 15px;
-        
+
         background-color: #FEF2F2;
         border-left: 5px solid #DC2626;
         color: #991B1B;
-        
+
         /* UPDATE: Tambah padding kanan biar teks tidak nabrak tombol X */
-        padding: 16px 40px 16px 20px; 
-        
+        padding: 16px 40px 16px 20px;
+
         margin-bottom: 20px;
         border-radius: 4px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
         line-height: 1.5;
-        
+
         /* Penting untuk posisi tombol X */
-        position: relative; 
+        position: relative;
     }
 
     .spx-alert-icon {
@@ -105,24 +105,24 @@
     position: sticky;
     top: 20px;
     z-index: 99;
-    
+
     display: flex;
     flex-direction: column; /* Agar isi vertikal */
     gap: 10px;
-    
+
     background-color: #eff6ff; /* Biru sangat muda */
     border-left: 5px solid #2563eb; /* Garis Biru Utama */
     color: #1e40af; /* Teks Biru Gelap */
-    
+
     padding: 16px 40px 16px 20px;
     margin-bottom: 20px;
     border-radius: 4px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    
+
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     line-height: 1.5;
     position: relative;
-    
+
     /* Animasi muncul */
     animation: slideIn 0.4s ease-out;
 }
@@ -169,7 +169,7 @@
     background-color: #1d4ed8;
     color: white;
 }
-    
+
     </style>
 </head>
 <body>
@@ -184,10 +184,10 @@
                 <div class="row g-4">
 
                     <div class="col-lg-7">
-    
+
     <div id="alert-container"></div>
-    
-    <div id="gps-status-container" class="mb-3"></div> 
+
+    <div id="gps-status-container" class="mb-3"></div>
 
     <div class="spx-alert-box" id="scan-warning">
         <div class="spx-alert-icon">
@@ -195,7 +195,7 @@
                 <path d="M12 2L1 21h22L12 2zm0 3.516L20.297 19H3.703L12 5.516zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
             </svg>
         </div>
-        
+
         <div class="spx-alert-content">
             <strong>INFORMASI PENTING:</strong>
             <p style="margin-top: 5px;">
@@ -221,37 +221,37 @@
             <div>
                 <strong style="font-size: 16px;">MAU FITUR LEBIH LENGKAP? GABUNG MITRA SANCAKA! GRATISSSS...</strong>
                 <p style="font-size: 13px; margin-bottom: 8px; opacity: 0.8;">Dapatkan akses eksklusif dengan menjadi member/agen kami:</p>
-                
+
                 <ul class="promo-list">
                     <li><i class="fas fa-check-circle"></i> Akses Full Fitur Aplikasi Sancaka Express.</li>
                     <li><i class="fas fa-store"></i> <a href="https://tokosancaka.com/etalase" target="_blank" style="text-decoration: underline; color: inherit;"><strong>Berjualan di Marketplace Sancaka</strong></a> (Jangkauan Luas).</li>
                     <li><i class="fas fa-wallet"></i> Jadi AGEN Loket PPOB Dengan Harga Kulak Kompetitif dan Realtime (Jual Pulsa, Token Listrik, Bayar Air PDAM, dll).</li>
                     <li><i class="fas fa-chart-line"></i> Monitor Jumlah Kiriman Paket ALL Ekpedisi & SPX Realtime.</li>
                     <li><i class="fas fa-search-location"></i> Lacak Status & Surat Jalan SPX dengan Detail.</li>
-                    
+
                     <li>
-                        <i class="fas fa-truck-fast"></i> 
+                        <i class="fas fa-truck-fast"></i>
                     <span>
                         <strong>Kirim Paket Multi Ekspedisi:</strong> Support POS, JNE, J&T (Express/Cargo), ID Express, SiCepat, Ninja Xpress, dll.
                     </span>
                     </li>
 
                     <li>
-                    <i class="fas fa-wallet"></i> 
+                    <i class="fas fa-wallet"></i>
                     <span>
                         <strong>Pembayaran Otomatis:</strong> Topup Saldo, QRIS, Virtual Account (Semua Bank), Indomaret & Alfamart.
                     </span>
                     </li>
 
                     <li>
-                    <i class="fas fa-map-location-dot"></i> 
+                    <i class="fas fa-map-location-dot"></i>
                     <span>
                         <strong>Live Tracking</strong> Realtime via Link: <a href="https://tokosancaka.com/tracking" target="_blank" style="color: #2563eb; font-weight: bold;">tokosancaka.com/tracking</a>
                     </span>
                     </li>
 
                     <li>
-                    <i class="fas fa-chart-pie"></i> 
+                    <i class="fas fa-chart-pie"></i>
                     <span>
                         <strong>Laporan Keuangan & Grafik Analisa:</strong> Monitor omzet penjualan dan performa pengiriman ekspedisi Anda.
                     </span>
@@ -319,7 +319,7 @@
                                 <h2 class="h5 fw-bold text-dark mb-3">Hasil Scan Paket Anda</h2>
                                 <div class="p-4 rounded-4 mb-3 text-center"
      style="background: rgba(25, 135, 84, 0.12); border: 1px solid rgba(25, 135, 84, 0.35);">
-    
+
     <p class="mb-1 fw-semibold" style="color:#198754;">
         Jumlah Paket
     </p>
@@ -348,10 +348,35 @@
         </div>
     </div>
 
+    <div class="modal fade" id="downloadApkModal" tabindex="-1" aria-labelledby="downloadApkModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center pb-4 pt-0 px-4">
+                    <div class="mb-3">
+                        <i class="fab fa-android text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    <h4 class="modal-title fw-bold mb-2 text-dark" id="downloadApkModalLabel">Gunakan Aplikasi Sancaka Express</h4>
+                    <p class="text-muted mb-4" style="font-size: 14px;">
+                        Download aplikasi Android kami untuk pengalaman scan resi, cek status, dan kelola paket yang lebih cepat dan praktis!
+                    </p>
+                    <a href="https://tokosancaka.com/public/assets/app/SancakaExpress.apk"
+                       class="btn btn-orange btn-lg w-100 fw-bold rounded-pill"
+                       target="_blank"
+                       onclick="tutupModalApk()">
+                        <i class="fas fa-download me-2"></i> Download APK Sekarang
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Modal dan Footer bisa Anda include --}}
     @include('layouts.partials.scan-modal')
     @include('layouts.partials.public-footer')
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
@@ -385,6 +410,25 @@
         const beepSuccess = document.getElementById('beep-success');
         const beepFail = document.getElementById('beep-fail');
 
+        // ===================== MODAL DOWNLOAD APK =====================
+        // Cek apakah user sudah pernah melihat modal ini sebelumnya
+        const isApkModalSeen = localStorage.getItem('sancaka_apk_modal_seen');
+
+        if (!isApkModalSeen) {
+            // Beri sedikit delay (misal 1 detik) agar halaman ter-render sempurna dulu
+            setTimeout(() => {
+                const apkModalEl = document.getElementById('downloadApkModal');
+                if (apkModalEl) {
+                    const apkModal = new bootstrap.Modal(apkModalEl);
+                    apkModal.show();
+
+                    // Simpan data di local storage agar tidak muncul lagi di load berikutnya
+                    localStorage.setItem('sancaka_apk_modal_seen', 'true');
+                }
+            }, 1000);
+        }
+        // ==============================================================
+
         // State
         let selectedKontak = null;
         let scannedResiArray = [];
@@ -408,7 +452,7 @@
             let icon = 'fa-spinner fa-spin';
             if (type === 'success') icon = 'fa-map-marker-alt';
             if (type === 'danger') icon = 'fa-exclamation-triangle';
-            
+
             gpsStatusContainer.innerHTML = `
                 <div class="alert alert-${type} d-flex align-items-center" role="alert">
                     <i class="fas ${icon} me-2"></i>
@@ -421,7 +465,7 @@
         const initGeolocation = () => {
             updateGpsStatusUI('Sedang mengambil lokasi GPS Anda. Mohon tunggu...', 'info');
             searchInput.placeholder = 'Mengambil GPS...';
-            
+
             if (!'geolocation' in navigator) {
                 locationError = 'Browser Anda tidak mendukung Geolocation.';
                 updateGpsStatusUI(locationError, 'danger');
@@ -436,11 +480,11 @@
                     longitude = position.coords.longitude;
                     isLoadingLocation = false;
                     locationError = '';
-                    
+
                     updateGpsStatusUI('Lokasi GPS didapat. Silakan cari nama Anda.', 'success');
                     searchInput.disabled = false; // Aktifkan input nama
                     searchInput.placeholder = 'Ketik nama atau nomor HP Anda...';
-                    
+
                     // Sembunyikan pesan sukses setelah 5 detik
                     setTimeout(() => {
                         if (!locationError) gpsStatusContainer.innerHTML = '';
@@ -486,7 +530,7 @@
             }
 
             selectedKontak = kontak;
-    
+
     // LOGIC SENSOR (Copy paste yang tadi)
     let hpSensor = kontak.no_hp;
     if(hpSensor.length > 6) {
@@ -525,8 +569,8 @@
                         'Accept': 'application/json'
                     },
                     // MODIFIKASI: Tambahkan latitude dan longitude
-                    body: JSON.stringify({ 
-                        kontak_id: selectedKontak.id, 
+                    body: JSON.stringify({
+                        kontak_id: selectedKontak.id,
                         resi: resiValue,
                         latitude: latitude,
                         longitude: longitude
@@ -546,7 +590,7 @@
                     showAlert(errorMsg);
                     return; // Hentikan fungsi di sini
                 }
-                
+
                 const result = await response.json();
                 if(response.ok && result.success){
                     playBeep(true);
@@ -591,7 +635,7 @@
     data.forEach(kontak => {
         const li = document.createElement('li');
         li.className = 'list-group-item list-group-item-action';
-        
+
         // === LOGIC SENSOR NO HP ===
         // Ambil 3 digit awal dan 3 digit akhir
         let hpSensor = kontak.no_hp;
@@ -604,11 +648,11 @@
 
         // Tampilkan hpSensor di layar (bukan nomor asli)
         li.innerHTML = `<div class="fw-semibold">${kontak.nama}</div><small class="text-muted">${hpSensor}</small>`;
-        
+
         // PENTING: Saat diklik, kita tetap kirim data 'kontak' yang ASLI (lengkap) ke sistem
         // agar proses selanjutnya tidak error.
         li.onclick = () => selectKontak(kontak);
-        
+
         searchResultsUl.appendChild(li);
     });
 
@@ -671,7 +715,7 @@
                 showAlert('Lokasi GPS wajib diaktifkan. ' + (locationError || 'Tunggu GPS selesai loading.'), 'danger');
                 return;
             }
-        
+
             try {
                 const response = await fetch("{{ route('scan.spx.suratjalan.create') }}", {
                     method: 'POST',
@@ -688,7 +732,7 @@
                         longitude: longitude
                     })
                 });
-        
+
                 const result = await response.json();
                 if (response.ok && result.success) {
                     // ... (sisa kode tidak berubah) ...
