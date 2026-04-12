@@ -744,14 +744,32 @@ $(document).ready(function() {
             url: `/admin/chat/messages/${currentUserId}`,
             method: 'GET',
             dataType: 'json',
-            success: function(messages) {
-                const messagesContainer = $('#chat-messages');
+            success: function(response) {
+                let messages = response.messages || response;
+
+                // === 🟢 LOGIKA UPDATE STATUS ONLINE REAL-TIME ===
+                let isTargetOnline = response.target_online || false;
+                isCurrentChatOnline = isTargetOnline; // Update global var untuk centang abu/biru
+
+                let activeSidebarBadge = $(`.user-item[data-id="${currentUserId}"] .online-badge`);
+
+                if (isTargetOnline) {
+                    $('#header-online-badge').removeClass('hidden');
+                    $('#chat-header-status').removeClass('hidden');
+                    activeSidebarBadge.removeClass('hidden');
+                } else {
+                    $('#header-online-badge').addClass('hidden');
+                    $('#chat-header-status').addClass('hidden');
+                    activeSidebarBadge.addClass('hidden');
+                }
+                // ===============================================
 
                 if (messages.length !== lastMessageCount) {
                     if (lastMessageCount > 0 && messages.length > 0 && messages[messages.length - 1].from_id != adminId && messages.length > lastMessageCount) {
                         notificationSound.play().catch(e => console.error("Gagal memutar suara:", e));
                     }
 
+                    const messagesContainer = $('#chat-messages');
                     messagesContainer.html('');
                     if (messages.length > 0) {
                         messages.forEach(displayMessage);
