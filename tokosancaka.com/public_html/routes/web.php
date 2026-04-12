@@ -474,11 +474,13 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan'])->prefix('custo
         Route::delete('/{kontak}', [CustomerKontakController::class, 'destroy'])->name('destroy');
     });
 
-    // Chat
+    // =========================================================
+    // ✅ CHAT CUSTOMER
+    // =========================================================
     Route::prefix('chat')->name('chat.')->group(function () {
-        Route::get('/', [CustomerChatController::class, 'index'])->name('index');
-        Route::get('/messages', [CustomerChatController::class, 'fetchMessages'])->name('fetchMessages');
-        Route::post('/messages', [CustomerChatController::class, 'sendMessage'])->name('sendMessage');
+        Route::get('/', [\App\Http\Controllers\ChatController::class, 'customerIndex'])->name('index');
+        Route::get('/messages/{contactId}', [\App\Http\Controllers\ChatController::class, 'getMessages'])->name('fetchMessages');
+        Route::post('/messages/{contactId}', [\App\Http\Controllers\ChatController::class, 'sendMessage'])->name('sendMessage');
     });
 
     // Notifikasi
