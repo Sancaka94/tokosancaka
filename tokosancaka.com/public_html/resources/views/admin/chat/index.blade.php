@@ -6,7 +6,7 @@
 @push('styles')
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 <style>
-    /* === DESAIN BARU === */
+    /* === DESAIN ROOT === */
     :root {
         --background-color: #f0f2f5;
         --sidebar-background: #fff;
@@ -32,15 +32,20 @@
         overflow: hidden;
     }
 
-    /* --- Sidebar --- */
-    .user-list {
+    /* --- Sidebar Kiri --- */
+    .sidebar {
         width: 30%;
-        min-width: 300px;
-        max-width: 400px;
+        min-width: 320px;
+        max-width: 420px;
         border-right: 1px solid var(--border-color);
         display: flex;
         flex-direction: column;
         background-color: var(--sidebar-background);
+        z-index: 10;
+    }
+
+    .user-list {
+        flex-grow: 1;
         overflow-y: auto;
     }
 
@@ -56,71 +61,38 @@
     .user-item:hover { background-color: var(--active-chat-background); }
     .user-item.active { background-color: #e9edef; }
 
-    .user-item .avatar {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        margin-right: 12px;
-        background-color: #667781;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        color: white;
-        flex-shrink: 0;
-        background-size: cover;
-        background-position: center;
-    }
-
-    .user-details { flex-grow: 1; overflow: hidden; }
-    .user-details .font-semibold { font-weight: 600; color: var(--text-primary); }
-    .user-details .last-message { font-size: 0.9rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    /* --- Area Chat --- */
+    /* --- Area Chat Kanan --- */
     .chat-area {
         width: 70%;
+        flex-grow: 1;
         display: flex;
         flex-direction: column;
         background-color: var(--chat-panel-background);
         background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
         background-repeat: repeat;
+        position: relative;
     }
 
     .chat-header {
-        display: flex; align-items: center; padding: 10px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 20px;
+        height: 65px; /* Tinggi Fix agar sejajar */
         background-color: var(--header-background);
         border-bottom: 1px solid var(--border-color);
-        color: var(--text-primary); font-weight: 600; flex-shrink: 0;
+        box-sizing: border-box;
     }
 
-    .chat-messages { flex-grow: 1; padding: 20px 5%; overflow-y: auto; display: flex; flex-direction: column; }
-
-    #chat-welcome { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; color: #54656f; background-color: #f0f2f5; font-size: 1.1rem; text-align: center; }
-    #chat-welcome i { font-size: 4rem; margin-bottom: 1rem; color: #aebac1; }
-
-    /* === KODE BARU: PREVIEW GAMBAR & PRODUCT CARD === */
-    #image-preview-container {
-        padding: 10px 16px;
-        background-color: var(--header-background);
-        border-top: 1px solid var(--border-color);
-        display: flex; align-items: center; gap: 15px;
-    }
-    .preview-box { position: relative; display: inline-block; }
-    .preview-box img { height: 80px; width: 80px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border-color); }
-    .preview-box button {
-        position: absolute; top: -8px; right: -8px; background: #ef4444; color: white;
-        border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer;
+    .chat-messages {
+        flex-grow: 1;
+        padding: 20px 5%;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
     }
 
-    .chat-product-card {
-        border: 1px solid #e9edef; padding: 8px; border-radius: 8px; background: #ffffff; margin-bottom: 5px; min-width: 220px; display: flex; gap: 10px; align-items: center;
-    }
-    .chat-product-card img { width: 50px; height: 50px; border-radius: 4px; object-fit: cover; }
-    .chat-product-info { flex: 1; }
-    .chat-product-title { font-size: 12px; font-weight: bold; color: #111b21; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .chat-product-price { font-size: 12px; color: #dc2626; font-weight: bold; margin-top: 2px; }
-    /* =============================================== */
-
+    /* --- Komponen Detail Chat --- */
     .chat-input-container {
         display: flex; align-items: center; padding: 10px 16px;
         background-color: var(--header-background);
@@ -136,34 +108,6 @@
         background: none; border: none; color: var(--text-secondary);
         font-size: 1.5rem; cursor: pointer; padding: 8px;
     }
-
-    /* === CSS INDIKATOR ONLINE & CENTANG === */
-    .avatar-wrapper {
-        position: relative;
-        display: inline-block;
-    }
-    .online-badge {
-        position: absolute;
-        bottom: 2px;
-        right: 0px;
-        width: 12px;
-        height: 12px;
-        background-color: #25D366; /* Hijau WhatsApp */
-        border: 2px solid white;
-        border-radius: 50%;
-    }
-    .status-text {
-        font-size: 12px;
-        color: #10b981; /* Hijau teks */
-        margin-top: 2px;
-    }
-    .msg-tick {
-        font-size: 0.7rem;
-        margin-left: 5px;
-    }
-    .tick-read { color: #ef4444; } /* Merah */
-    .tick-sent { color: #9ca3af; } /* Abu-abu */
-
     .chat-input-container button:hover { color: #1e2a33; }
 
     .message-container { display: flex; flex-direction: column; margin-bottom: 8px; max-width: 65%; width: fit-content; }
@@ -176,10 +120,31 @@
     .message-container.sent .message-time { text-align: right; }
     .message-container.received .message-time { text-align: left; }
 
-    /* --- CSS SCROLLBAR BARU --- */
-    /* Berikan margin nol agar mepet kanan */
+    /* --- Status, Avatar, Badge & Tick --- */
+    .avatar-wrapper { position: relative; display: inline-block; }
+    .online-badge {
+        position: absolute; bottom: 2px; right: 0px; width: 12px; height: 12px;
+        background-color: #25D366; border: 2px solid white; border-radius: 50%;
+    }
+    .status-text { font-size: 12px; color: #10b981; margin-top: 2px; }
+    .msg-tick { font-size: 0.7rem; margin-left: 5px; }
+    .tick-read { color: #3b82f6; } /* Biru/Merah */
+    .tick-sent { color: #8696a0; } /* Abu-abu */
+
+    /* --- Preview & Product Card --- */
+    .chat-product-card {
+        border: 1px solid #e9edef; padding: 8px; border-radius: 8px; background: #ffffff; margin-bottom: 5px; min-width: 220px; display: flex; gap: 10px; align-items: center;
+    }
+    .chat-product-card img { width: 50px; height: 50px; border-radius: 4px; object-fit: cover; }
+    .chat-product-info { flex: 1; }
+    .chat-product-title { font-size: 12px; font-weight: bold; color: #111b21; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .chat-product-price { font-size: 12px; color: #dc2626; font-weight: bold; margin-top: 2px; }
+
+    .hidden { display: none !important; }
+
+    /* --- CSS SCROLLBAR (Mepet Kanan & Rapi) --- */
     .user-list::-webkit-scrollbar { width: 6px; }
-    .user-list::-webkit-scrollbar-track { background: transparent; } /* Transparan agar tidak terlihat kotak putih */
+    .user-list::-webkit-scrollbar-track { background: transparent; }
     .user-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
     .user-list::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
@@ -192,7 +157,7 @@
 @section('content')
 <div class="chat-container">
 
-    <div class="sidebar" style="width: 30%; min-width: 320px; max-width: 420px; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; background-color: white; z-index: 10;">
+    <div class="sidebar">
 
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; height: 65px; background-color: var(--header-background); border-bottom: 1px solid var(--border-color); box-sizing: border-box;">
             <h1 style="font-size: 20px; font-weight: bold; color: var(--text-primary); margin: 0;">Chats</h1>
@@ -214,7 +179,7 @@
             </div>
         </div>
 
-        <div class="user-list" id="user-list" style="flex-grow: 1; overflow-y: auto;">
+        <div class="user-list" id="user-list">
             @forelse ($users as $user)
                 @php
                     $avatarUrl = $user->store_logo_path ?? '';
@@ -232,7 +197,6 @@
                     $unreadCount = $user->unread_count ?? 0;
 
                     if ($lastMsg) {
-                        // Teks Pesan
                         if (str_starts_with($lastMsg->message, '[TANYA PRODUK]') || str_starts_with($lastMsg->message, '[INFO PRODUK]')) {
                             $msgText = '📦 Bertanya tentang produk';
                         } elseif ($lastMsg->image_url && !$lastMsg->message) {
@@ -241,7 +205,6 @@
                             $msgText = $lastMsg->message;
                         }
 
-                        // Waktu Pesan
                         $msgDate = \Carbon\Carbon::parse($lastMsg->created_at);
                         if ($msgDate->isToday()) {
                             $timeText = $msgDate->format('H:i');
@@ -251,7 +214,6 @@
                             $timeText = $msgDate->format('d/m/Y');
                         }
 
-                        // Centang Pesan Terakhir
                         if ($lastMsg->from_id == auth()->id()) {
                             if ($lastMsg->read_at) {
                                 $tickHtml = '<i class="fa-solid fa-check-double" style="color: #3b82f6; font-size: 11px; margin-right: 4px;"></i>';
@@ -268,15 +230,14 @@
                      data-unread="{{ $unreadCount > 0 ? 'true' : 'false' }}"
                      data-phone="{{ $user->no_wa ?? '' }}"
                      data-avatar="{{ $finalAvatarUrl }}"
-                     data-online="{{ $isOnline ? 'true' : 'false' }}"
-                     style="display: flex; align-items: center; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--border-color);">
+                     data-online="{{ $isOnline ? 'true' : 'false' }}">
 
-                    <div class="avatar-wrapper" style="margin-right: 15px; position: relative;">
+                    <div class="avatar-wrapper" style="margin-right: 15px;">
                         <div class="avatar" style="width: 48px; height: 48px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #64748b; background-size: cover; background-position: center; {{ $finalAvatarUrl ? 'background-image: url(' . $finalAvatarUrl . '); color: transparent;' : '' }}">
                             @if(!$finalAvatarUrl) {{ $initial }} @endif
                         </div>
                         @if($isOnline)
-                            <div class="online-badge" style="position: absolute; bottom: 2px; right: 0; width: 12px; height: 12px; background: #25D366; border: 2px solid white; border-radius: 50%;"></div>
+                            <div class="online-badge"></div>
                         @endif
                     </div>
 
@@ -306,29 +267,28 @@
         </div>
     </div>
 
-
     <div class="chat-area">
 
-        <div id="chat-welcome" class="chat-messages">
+        <div id="chat-welcome" style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; color: #54656f; background-color: #f0f2f5; text-align: center;">
              <div>
-                <i class="fa-regular fa-comments"></i>
-                <p>Pilih pelanggan untuk memulai percakapan.</p>
+                <i class="fa-regular fa-comments" style="font-size: 4rem; margin-bottom: 1rem; color: #aebac1;"></i>
+                <p style="font-size: 1.1rem;">Pilih pelanggan untuk memulai percakapan.</p>
             </div>
         </div>
 
-        <div id="chat-box" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
+        <div id="chat-box" style="display: none; flex-direction: column; height: 100%;">
 
-            <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; height: 65px; background-color: var(--header-background); border-bottom: 1px solid var(--border-color); box-sizing: border-box;">
+            <div class="chat-header">
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <div class="avatar-wrapper">
                         <img id="header-avatar-img" src="" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; display: none;">
                         <div id="header-avatar-initial" style="width: 42px; height: 42px; border-radius: 50%; background-color: #667781; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;"></div>
-                        <div id="header-online-badge" class="online-badge hidden"></div>
+                        <div id="header-online-badge" class="online-badge" style="display: none;"></div>
                     </div>
 
                     <div>
                         <div id="chat-header-name" style="font-size: 16px; font-weight: bold; color: #111b21;">Nama Pelanggan</div>
-                        <div id="chat-header-status" class="status-text hidden">Online</div>
+                        <div id="chat-header-status" class="status-text" style="display: none;">Online</div>
                     </div>
                 </div>
 
@@ -339,7 +299,7 @@
                     <button id="chat-options-btn" style="background:none; border:none; color: var(--text-secondary); cursor:pointer; font-size: 1.3rem;">
                         <i class="fa-solid fa-ellipsis-vertical"></i>
                     </button>
-                    <div id="chat-options-menu" class="hidden" style="position: absolute; right: 0; top: 40px; background: white; border: 1px solid #e9edef; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 5px 0; min-width: 200px; z-index: 1000;">
+                    <div id="chat-options-menu" style="display: none; position: absolute; right: 0; top: 40px; background: white; border: 1px solid #e9edef; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 5px 0; min-width: 200px; z-index: 1000;">
                         <button id="delete-chat-btn" style="width: 100%; text-align: left; padding: 12px 15px; background: none; border: none; color: #ef4444; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px;">
                             <i class="fa-solid fa-trash"></i> Hapus Riwayat Chat
                         </button>
@@ -349,17 +309,19 @@
 
             <div class="chat-messages custom-scrollbar" id="chat-messages"></div>
 
-            <div id="image-preview-container" class="hidden">
-                <div class="preview-box">
-                    <img id="image-preview" src="" alt="Preview">
-                    <button id="remove-image-btn" title="Hapus Gambar"><i class="fa-solid fa-times"></i></button>
+            <div id="image-preview-container" style="display: none; padding: 10px 16px; background-color: var(--header-background); border-top: 1px solid var(--border-color); align-items: center; gap: 15px;">
+                <div class="preview-box" style="position: relative; display: inline-block;">
+                    <img id="image-preview" src="" alt="Preview" style="height: 80px; width: 80px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border-color);">
+                    <button id="remove-image-btn" title="Hapus Gambar" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; justify-content: center; align-items: center;">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
                 </div>
             </div>
 
             <div class="chat-input-container">
                 <button title="Emoji (fitur belum aktif)"><i class="fa-regular fa-face-smile"></i></button>
 
-                <input type="file" id="image-upload-input" accept="image/png, image/jpeg, image/webp" class="hidden">
+                <input type="file" id="image-upload-input" accept="image/png, image/jpeg, image/webp" style="display: none;">
                 <button id="attachment-btn" title="Kirim Gambar" onclick="document.getElementById('image-upload-input').click()">
                     <i class="fa-solid fa-paperclip"></i>
                 </button>
@@ -388,10 +350,9 @@ $(document).ready(function() {
     let pollingInterval = null;
     let lastMessageCount = 0;
     let selectedImageFile = null;
-    let isCurrentChatOnline = false; // Penanda status online untuk logika centang
+    let isCurrentChatOnline = false;
     const notificationSound = new Audio('{{ asset("sounds/beep.mp3") }}');
 
-    // === 2. FUNGSI SCROLL ===
     function scrollToBottom(containerSelector = '#chat-messages') {
         const container = $(containerSelector);
         if (container.length) {
@@ -399,12 +360,10 @@ $(document).ready(function() {
         }
     }
 
-    // === 3. FUNGSI PARSER PRODUCT CARD & XSS PROTECTION ===
+    // === 2. PARSER PRODUK & GAMBAR ===
     function parseMessage(text) {
         if (!text) return '';
-
         let safeText = $('<div>').text(text).html();
-
         if (safeText.startsWith('[TANYA PRODUK]') || safeText.startsWith('[INFO PRODUK]')) {
             const lines = safeText.split('\n');
             if (lines.length >= 3) {
@@ -413,11 +372,11 @@ $(document).ready(function() {
                     imgUri = lines[3].startsWith('http') ? lines[3] : `/storage/${lines[3]}`;
                 }
                 return `
-                    <div class="chat-product-card" style="border: 1px solid #e9edef; padding: 8px; border-radius: 8px; background: #ffffff; margin-bottom: 5px; min-width: 220px; display: flex; gap: 10px; align-items: center;">
-                        <img src="${imgUri}" style="width: 50px; height: 50px; border-radius: 4px; object-fit: cover;">
-                        <div class="chat-product-info" style="flex: 1;">
-                            <div class="chat-product-title" style="font-size: 12px; font-weight: bold; color: #111b21; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${lines[1]}</div>
-                            <div class="chat-product-price" style="font-size: 12px; color: #dc2626; font-weight: bold; margin-top: 2px;">${lines[2].replace('Harga: ', '')}</div>
+                    <div class="chat-product-card">
+                        <img src="${imgUri}">
+                        <div class="chat-product-info">
+                            <div class="chat-product-title">${lines[1]}</div>
+                            <div class="chat-product-price">${lines[2].replace('Harga: ', '')}</div>
                         </div>
                     </div>
                 `;
@@ -426,32 +385,26 @@ $(document).ready(function() {
         return safeText.replace(/\n/g, '<br>');
     }
 
-    // === 4. FUNGSI RENDER PESAN (DENGAN LOGIKA CENTANG) ===
+    // === 3. RENDER PESAN ===
     function displayMessage(msg) {
         const messageSide = msg.from_id == adminId ? 'sent' : 'received';
         const timeString = moment(msg.created_at).locale('id').format('HH:mm');
 
         let contentHtml = '';
-
         if (msg.image_url) {
             let imgPath = msg.image_url.startsWith('http') ? msg.image_url : `/storage/${msg.image_url}`;
             contentHtml += `<img src="${imgPath}" style="max-width: 100%; border-radius: 6px; margin-bottom: 5px; max-height: 250px; object-fit: cover;">`;
         }
-
         contentHtml += parseMessage(msg.message);
 
-        // --- Logika Centang ---
         let tickHtml = '';
-        if (msg.is_me) { // Centang hanya untuk pesan yang dikirim Admin
+        if (msg.is_me) {
             if (msg.is_read) {
-                // Centang 2 Merah
-                tickHtml = '<i class="fa-solid fa-check-double" style="font-size: 0.7rem; margin-left: 5px; color: #ef4444;"></i>';
+                tickHtml = '<i class="fa-solid fa-check-double msg-tick tick-read"></i>';
             } else if (isCurrentChatOnline) {
-                // Centang 2 Abu-abu (Terkirim & User Online)
-                tickHtml = '<i class="fa-solid fa-check-double" style="font-size: 0.7rem; margin-left: 5px; color: #9ca3af;"></i>';
+                tickHtml = '<i class="fa-solid fa-check-double msg-tick tick-sent"></i>';
             } else {
-                // Centang 1 Abu-abu (Terkirim, User Offline)
-                tickHtml = '<i class="fa-solid fa-check" style="font-size: 0.7rem; margin-left: 5px; color: #9ca3af;"></i>';
+                tickHtml = '<i class="fa-solid fa-check msg-tick tick-sent"></i>';
             }
         }
 
@@ -466,40 +419,34 @@ $(document).ready(function() {
         $('#chat-messages').append(messageHtml);
     }
 
-    // === 5. FUNGSI TARIK DATA (POLLING) ===
+    // === 4. POLLING CHAT ===
     function fetchMessages() {
         if (!currentUserId) return;
-
         $.ajax({
             url: `/admin/chat/messages/${currentUserId}`,
             method: 'GET',
             dataType: 'json',
             success: function(messages) {
                 const messagesContainer = $('#chat-messages');
-
                 if (messages.length !== lastMessageCount) {
                     if (lastMessageCount > 0 && messages.length > 0 && messages[messages.length - 1].from_id != adminId && messages.length > lastMessageCount) {
-                        notificationSound.play().catch(e => console.error("Gagal memutar suara:", e));
+                        notificationSound.play().catch(e => console.log("Gagal memutar suara:", e));
                     }
-
                     messagesContainer.html('');
                     if (messages.length > 0) {
                         messages.forEach(displayMessage);
                     } else {
                         messagesContainer.html('<p style="text-align: center; padding: 20px; color: var(--text-secondary);">Belum ada pesan.</p>');
                     }
-
                     scrollToBottom();
                     lastMessageCount = messages.length;
                 }
             },
-            error: function(jqXHR, textStatus, errorThrown) {
-                console.error('Gagal memuat pesan:', textStatus, errorThrown);
-            }
+            error: function() { console.log('Gagal memuat pesan'); }
         });
     }
 
-    // === 6. LOGIKA PREVIEW GAMBAR ===
+    // === 5. PREVIEW GAMBAR ===
     $('#image-upload-input').on('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -507,7 +454,7 @@ $(document).ready(function() {
             const reader = new FileReader();
             reader.onload = function(e) {
                 $('#image-preview').attr('src', e.target.result);
-                $('#image-preview-container').removeClass('hidden');
+                $('#image-preview-container').css('display', 'flex');
                 $('#message-input').focus();
             }
             reader.readAsDataURL(file);
@@ -517,10 +464,10 @@ $(document).ready(function() {
     $('#remove-image-btn').on('click', function() {
         selectedImageFile = null;
         $('#image-upload-input').val('');
-        $('#image-preview-container').addClass('hidden');
+        $('#image-preview-container').hide();
     });
 
-    // === 7. FUNGSI KIRIM PESAN ===
+    // === 6. KIRIM PESAN ===
     function sendMessage() {
         const messageInput = $('#message-input');
         const message = messageInput.val().trim();
@@ -546,24 +493,16 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.status === 'Pesan terkirim!' || response.success) {
                     messageInput.val('');
-
                     selectedImageFile = null;
                     $('#image-upload-input').val('');
-                    $('#image-preview-container').addClass('hidden');
-
+                    $('#image-preview-container').hide();
                     lastMessageCount = 0;
                     fetchMessages();
                 } else {
-                     toastr.error(response.status || 'Gagal mengirim pesan.', 'Error');
+                     toastr.error('Gagal mengirim pesan.', 'Error');
                 }
             },
-            error: function(jqXHR, textStatus, errorThrown) {
-                 let errorMsg = 'Gagal mengirim pesan. Silakan coba lagi.';
-                 if(jqXHR.responseJSON && jqXHR.responseJSON.message) {
-                     errorMsg = jqXHR.responseJSON.message;
-                 }
-                 toastr.error(errorMsg, 'Error Server');
-            },
+            error: function() { toastr.error('Gagal mengirim pesan.', 'Error'); },
             complete: function() {
                 sendButton.prop('disabled', false);
                 messageInput.prop('disabled', false).focus();
@@ -571,24 +510,15 @@ $(document).ready(function() {
         });
     }
 
-    // === 8. LOGIKA MENU OPSI (TITIK TIGA) ===
-    $('#chat-options-btn').on('click', function(e) {
-        e.stopPropagation();
-        $('#chat-options-menu').toggleClass('hidden');
-    });
-
-    $(document).on('click', function() {
-        $('#chat-options-menu').addClass('hidden');
-    });
-
-    $('#delete-chat-btn').on('click', function() {
-        if(confirm('Yakin ingin menghapus semua riwayat chat dengan pengguna ini?')) {
-            alert('Fitur hapus pesan akan disambungkan ke backend!');
-            $('#chat-options-menu').addClass('hidden');
+    $('#send-button').on('click', sendMessage);
+    $('#message-input').on('keypress', function(e) {
+        if (e.which === 13 && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
         }
     });
 
-    // === 9. FUNGSI AKTIVASI CHAT (AVATAR, WA, ONLINE STATUS) ===
+    // === 7. KLIK CHAT DI SIDEBAR ===
     function setActiveChat(userId) {
         const userElement = $(`.user-item[data-id=${userId}]`);
         if (!userElement.length) return;
@@ -597,16 +527,12 @@ $(document).ready(function() {
         const userAvatar = userElement.data('avatar');
         const userPhone = userElement.data('phone');
 
-        // Baca status online dari HTML
         const isOnline = userElement.data('online') === true || userElement.data('online') === 'true';
         isCurrentChatOnline = isOnline;
 
-        if (userId === currentUserId && !$('#chat-box').hasClass('hidden')) {
-            return;
-        }
+        if (userId === currentUserId && !$('#chat-box').is(':hidden')) return;
 
-        // --- Set Header Kiri ---
-        $('#chat-header-name').text(userName);
+        $('#chat-header-name').text(userName.toUpperCase());
 
         if (userAvatar && userAvatar !== '') {
             $('#header-avatar-img').attr('src', userAvatar).show();
@@ -616,16 +542,14 @@ $(document).ready(function() {
             $('#header-avatar-initial').text(userName.charAt(0).toUpperCase()).show();
         }
 
-        // Tampilkan/Sembunyikan Badge & Teks Online
         if (isOnline) {
-            $('#header-online-badge').removeClass('hidden');
-            $('#chat-header-status').removeClass('hidden');
+            $('#header-online-badge').show();
+            $('#chat-header-status').show();
         } else {
-            $('#header-online-badge').addClass('hidden');
-            $('#chat-header-status').addClass('hidden');
+            $('#header-online-badge').hide();
+            $('#chat-header-status').hide();
         }
 
-        // --- Set Header Kanan (WA) ---
         if (userPhone && userPhone !== '') {
             let phoneStr = String(userPhone).replace(/[-+ \s]/g, '');
             if (phoneStr.startsWith('0')) phoneStr = '62' + phoneStr.substring(1);
@@ -636,42 +560,41 @@ $(document).ready(function() {
             $('#wa-call-btn').hide();
         }
 
-        // --- Tampilkan Chat Area ---
-        $('#chat-welcome').addClass('hidden');
-        $('#chat-box').removeClass('hidden');
+        $('#chat-welcome').hide();
+        $('#chat-box').css('display', 'flex');
         $('#message-input').val('').focus();
 
         $('.user-item').removeClass('active');
         userElement.addClass('active');
 
         if (pollingInterval) clearInterval(pollingInterval);
-
         currentUserId = userId;
         lastMessageCount = 0;
         fetchMessages();
         pollingInterval = setInterval(fetchMessages, 3000);
     }
 
-    // === 10. EVENT LISTENERS UTAMA ===
     $('#user-list').on('click', '.user-item', function() {
-        const userId = $(this).data('id');
-        setActiveChat(userId);
+        setActiveChat($(this).data('id'));
     });
 
-    $('#send-button').on('click', sendMessage);
-
-    $('#message-input').on('keypress', function(e) {
-        if (e.which === 13 && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
+    // === 8. MENU OPSI (TITIK TIGA) ===
+    $('#chat-options-btn').on('click', function(e) {
+        e.stopPropagation();
+        $('#chat-options-menu').toggle();
+    });
+    $(document).on('click', function() { $('#chat-options-menu').hide(); });
+    $('#delete-chat-btn').on('click', function() {
+        if(confirm('Yakin ingin menghapus semua riwayat chat dengan pengguna ini?')) {
+            alert('Fitur hapus pesan akan disambungkan ke backend!');
+            $('#chat-options-menu').hide();
         }
     });
 
-    // === 11. FITUR PENCARIAN (SEARCH BAR) ===
+    // === 9. SEARCH & FILTER ===
     $('#search-chat').on('keyup', function() {
         const searchValue = $(this).val().toLowerCase();
         $('.user-item').each(function() {
-            // Ambil nama dari atribut data-name yang sudah kita buat huruf kecil semua
             const name = $(this).data('name');
             if (name.includes(searchValue)) {
                 $(this).show();
@@ -681,50 +604,35 @@ $(document).ready(function() {
         });
     });
 
-    // === 12. FITUR FILTER (ALL / UNREAD) ===
     $('.filter-btn').on('click', function() {
-        // Ganti styling tombol aktif
         $('.filter-btn').css({ 'background': 'var(--header-background)', 'color': '#54656f' }).removeClass('active');
         $(this).css({ 'background': '#e2e8f0', 'color': '#111b21' }).addClass('active');
 
         const filterType = $(this).data('filter');
-
         $('.user-item').each(function() {
             if (filterType === 'all') {
                 $(this).show();
             } else if (filterType === 'unread') {
                 const isUnread = $(this).data('unread') === true || $(this).data('unread') === 'true';
-                if (isUnread) {
-                    $(this).show();
-                } else {
-                    $(this).hide();
-                }
+                if (isUnread) $(this).show(); else $(this).hide();
             } else {
-                // Untuk tombol Groups, bisa disembunyikan semua dulu jika belum ada fitur grup
                 $(this).hide();
             }
         });
-
-        // Bersihkan kotak pencarian jika filter diklik
         $('#search-chat').val('');
     });
 
+    // === 10. URL PARAMS ===
     const urlParams = new URLSearchParams(window.location.search);
-    const chatWithUserId = urlParams.get('chat_with');
-
-    if (chatWithUserId) {
-        setActiveChat(chatWithUserId);
-         const contactElement = $(`.user-item[data-id="${chatWithUserId}"]`);
-         if(contactElement.length) {
-              $('#user-list').scrollTop(contactElement.offset().top - $('#user-list').offset().top + $('#user-list').scrollTop() - 50);
-         }
+    if (urlParams.get('chat_with')) {
+        setActiveChat(urlParams.get('chat_with'));
+        const contactElement = $(`.user-item[data-id="${urlParams.get('chat_with')}"]`);
+        if(contactElement.length) {
+            $('#user-list').scrollTop(contactElement.offset().top - $('#user-list').offset().top + $('#user-list').scrollTop() - 50);
+        }
     }
 
-    toastr.options = {
-        "positionClass": "toast-top-right",
-        "progressBar": true,
-        "timeOut": "4000",
-    };
+    toastr.options = { "positionClass": "toast-top-right", "timeOut": "4000" };
 });
 </script>
 @endpush
