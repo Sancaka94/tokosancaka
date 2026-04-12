@@ -98,6 +98,7 @@ class ChatController extends Controller
         return view('customer.chat', compact('users'));
     }
 
+
     /**
      * API: Mendapatkan daftar percakapan (List Inbox)
      */
