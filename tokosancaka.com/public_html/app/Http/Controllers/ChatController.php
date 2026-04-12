@@ -15,17 +15,14 @@ class ChatController extends Controller
     public function adminIndex()
     {
         $user = Auth::user();
-        // Ambil ID dengan aman, utamakan id_pengguna
         $userId = $user->id_pengguna ?? $user->id;
 
-        // 1. Ambil semua ID pengguna yang pernah interaksi dengan admin ini
         $contactIds = Message::where('from_id', $userId)->pluck('to_id')
             ->merge(Message::where('to_id', $userId)->pluck('from_id'))
             ->unique()->toArray();
 
-        // 2. 🟢 PERBAIKAN: Gunakan 'id_pengguna', bukan 'id'
         $users = User::whereIn('id_pengguna', $contactIds)->get()->map(function($u) use ($userId) {
-            $uId = $u->id_pengguna; // Ambil ID yang benar
+            $uId = $u->id_pengguna;
 
             $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
                 $q->where('from_id', $userId)->where('to_id', $uId);
@@ -40,7 +37,8 @@ class ChatController extends Controller
 
             return $u;
         })->sortByDesc(function($u) {
-            return $u->last_message_data->created_at ?? '2000-01-01';
+            // 🟢 PERBAIKAN: Gunakan ternary operator agar tidak error jika null
+            return $u->last_message_data ? $u->last_message_data->created_at : '2000-01-01 00:00:00';
         });
 
         return view('admin.chat', compact('users'));
@@ -50,39 +48,33 @@ class ChatController extends Controller
     public function customerIndex()
     {
         $user = Auth::user();
-        // Gunakan id_pengguna sesuai dengan database Anda
         $userId = $user->id_pengguna ?? $user->id;
 
-        // 1. Cari ID toko/admin yang pernah di-chat oleh customer ini
-        $contactIds = \App\Models\Message::where('from_id', $userId)->pluck('to_id')
-            ->merge(\App\Models\Message::where('to_id', $userId)->pluck('from_id'))
+        $contactIds = Message::where('from_id', $userId)->pluck('to_id')
+            ->merge(Message::where('to_id', $userId)->pluck('from_id'))
             ->unique()->toArray();
 
-        // 2. WAJIB: Masukkan ID Admin Pusat (Admin = 4) agar CS selalu muncul di sidebar
+        // WAJIB: Masukkan ID Admin Pusat (Admin = 4) agar CS selalu muncul
         $adminId = 4;
         if (!in_array($adminId, $contactIds)) {
             $contactIds[] = $adminId;
         }
 
-        // 3. Tarik data User/Toko berdasarkan riwayat
-        $users = \App\Models\User::whereIn('id_pengguna', $contactIds)->get()->map(function($u) use ($userId) {
-            $uId = $u->id_pengguna; // Gunakan id_pengguna
+        $users = User::whereIn('id_pengguna', $contactIds)->get()->map(function($u) use ($userId) {
+            $uId = $u->id_pengguna;
 
-            // Ambil pesan terakhir
-            $u->last_message_data = \App\Models\Message::where(function($q) use ($userId, $uId) {
+            $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
                 $q->where('from_id', $userId)->where('to_id', $uId);
             })->orWhere(function($q) use ($userId, $uId) {
                 $q->where('from_id', $uId)->where('to_id', $userId);
             })->orderBy('created_at', 'desc')->first();
 
-            // Hitung pesan yang belum dibaca
-            $u->unread_count = \App\Models\Message::where('from_id', $uId)
+            $u->unread_count = Message::where('from_id', $uId)
                 ->where('to_id', $userId)
                 ->whereNull('read_at')
                 ->count();
 
-            // Ganti nama dengan nama Toko (jika dia penjual) atau Admin
-            $store = \App\Models\Store::where('user_id', $uId)->first();
+            $store = Store::where('user_id', $uId)->first();
             if ($store) {
                 $u->nama_lengkap = $store->name;
                 $u->store_logo_path = $store->logo ?? null;
@@ -92,17 +84,16 @@ class ChatController extends Controller
 
             return $u;
         })->sortByDesc(function($u) {
-            // Urutkan agar chat terbaru selalu di atas
-            return $u->last_message_data->created_at ?? '2000-01-01';
+            // 🟢 PERBAIKAN: Cegah error Attempt to read property on null
+            return $u->last_message_data ? $u->last_message_data->created_at : '2000-01-01 00:00:00';
         });
 
-        // 4. KIRIM DATA KE VIEW (Ini kunci agar layarnya tidak kosong!)
         return view('customer.chat', compact('users'));
     }
 
 
     /**
-     * API: Mendapatkan daftar percakapan (List Inbox)
+     * API: Mendapatkan daftar percakapan (List Inbox untuk dipanggil JS AJAX)
      */
     public function getConversations()
     {
@@ -112,7 +103,6 @@ class ChatController extends Controller
 
         $messagesQuery = Message::orderBy('created_at', 'desc');
 
-        // PRIVASI: Jika bukan admin, hanya ambil pesan miliknya sendiri
         if (!$isAdmin) {
             $messagesQuery->where(function($q) use ($userId) {
                 $q->where('from_id', $userId)->orWhere('to_id', $userId);
@@ -123,8 +113,10 @@ class ChatController extends Controller
         $conversationsMap = [];
 
         foreach ($allMessages as $msg) {
-            // Tentukan siapa lawan bicaranya
             $contactId = ($msg->from_id == $userId) ? $msg->to_id : $msg->from_id;
+
+            // Hindari user chat dengan dirinya sendiri
+            if ($contactId == $userId) continue;
 
             if (!isset($conversationsMap[$contactId])) {
                 $conversationsMap[$contactId] = [
@@ -135,31 +127,45 @@ class ChatController extends Controller
                 ];
             }
 
-            // Hitung Unread Count (Pesan dari lawan chat yang belum kita baca)
             if ($msg->from_id == $contactId && $msg->to_id == $userId && $msg->read_at == null) {
                 $conversationsMap[$contactId]['unread_count'] += 1;
             }
         }
 
+        // 🟢 PERBAIKAN KRUSIAL: Memaksa Admin Sancaka (ID 4) SELALU ADA di API Customer
+        // Walaupun mereka belum pernah chat sekalipun.
+        if (!$isAdmin && !isset($conversationsMap[4])) {
+            $conversationsMap[4] = [
+                'contact_id'   => 4,
+                'last_message' => 'Klik untuk mulai percakapan',
+                'last_time'    => now()->toDateTimeString(),
+                'unread_count' => 0
+            ];
+        }
+
         $finalConversations = [];
         foreach ($conversationsMap as $conv) {
-            $contactUser = User::find($conv['contact_id']);
+            // 🟢 PERBAIKAN: Gunakan where('id_pengguna') untuk mencegah User::find gagal
+            $contactUser = User::where('id_pengguna', $conv['contact_id'])->first();
             if (!$contactUser) continue;
 
             $store = Store::where('user_id', $conv['contact_id'])->first();
 
-            // Prioritaskan nama toko, jika tidak ada pakai nama user
-            $conv['name'] = $store ? $store->name : ($contactUser->nama_lengkap ?? $contactUser->name ?? 'Pengguna');
+            if ($store) {
+                $conv['name'] = $store->name;
+            } elseif (in_array(strtolower($contactUser->role ?? ''), ['admin', 'superadmin']) || $conv['contact_id'] == 4) {
+                $conv['name'] = "Admin Sancaka";
+            } else {
+                $conv['name'] = $contactUser->nama_lengkap ?? $contactUser->name ?? 'Pengguna';
+            }
+
             $conv['logo'] = $contactUser->store_logo_path ?? null;
             $conv['store_id'] = $store ? $store->id : $conv['contact_id'];
-
-            // Tambahkan informasi online
             $conv['is_online'] = $contactUser->last_seen && Carbon::parse($contactUser->last_seen)->diffInMinutes(now()) < 5;
 
             $finalConversations[] = $conv;
         }
 
-        // Sortir ulang agar chat terbaru naik ke atas
         usort($finalConversations, function($a, $b) {
             return strtotime($b['last_time']) - strtotime($a['last_time']);
         });
@@ -169,30 +175,26 @@ class ChatController extends Controller
 
     /**
      * API: Mendapatkan pesan dari sebuah percakapan
-     * Parameter $contactId diambil dari URL route
      */
     public function getMessages($contactId)
     {
         $user = Auth::user();
         $userId = $user->id_pengguna ?? $user->id;
 
-        // 1. FITUR CENTANG BACA: Tandai pesan dari kontak ini sudah dibaca
         Message::where('from_id', $contactId)
             ->where('to_id', $userId)
             ->whereNull('read_at')
             ->update(['read_at' => Carbon::now()]);
 
-        // 2. Ambil riwayat pesannya
         $messages = Message::where(function($q) use ($userId, $contactId) {
                 $q->where('from_id', $userId)->where('to_id', $contactId);
             })->orWhere(function($q) use ($userId, $contactId) {
                 $q->where('from_id', $contactId)->where('to_id', $userId);
             })
-            ->orderBy('created_at', 'asc') // Web Ascending (Pesan lama di atas)
+            ->orderBy('created_at', 'asc')
             ->limit(500)
             ->get();
 
-        // 3. Format ulang untuk Frontend
         $formattedMessages = $messages->map(function($msg) use ($userId) {
             return [
                 'id'          => $msg->id,
@@ -208,11 +210,9 @@ class ChatController extends Controller
             ];
         });
 
-        // 4. Cek Status Online Lawan Bicara (Untuk fitur centang & indikator hijau)
-        $targetUser = User::find($contactId);
+        $targetUser = User::where('id_pengguna', $contactId)->first();
         $isTargetOnline = $targetUser && $targetUser->last_seen && Carbon::parse($targetUser->last_seen)->diffInMinutes(now()) < 5;
 
-        // Khusus untuk web Customer: Kita beri tahu apakah yang online ini Admin
         $isAdminOnline = false;
         if ($targetUser && in_array(strtolower($targetUser->role ?? ''), ['admin', 'superadmin'])) {
             $isAdminOnline = $isTargetOnline;
@@ -228,7 +228,6 @@ class ChatController extends Controller
 
     /**
      * API: Mengirim pesan baru
-     * Parameter $contactId diambil dari URL route
      */
     public function sendMessage(Request $request, $contactId)
     {
@@ -245,7 +244,6 @@ class ChatController extends Controller
             $imageUrl = null;
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
-                // Simpan path relatif (Sama seperti logika Mobile App)
                 $path = $file->store('uploads/chat', 'public');
                 $imageUrl = $path;
             }
@@ -290,7 +288,6 @@ class ChatController extends Controller
         $user = Auth::user();
         $userId = $user->id_pengguna ?? $user->id;
 
-        // Bisa dari payload POST atau dari route parameter
         $contactId = $request->user_id ?? $request->contact_id;
 
         if (!$contactId) {
