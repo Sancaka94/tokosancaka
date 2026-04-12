@@ -14,13 +14,83 @@ class ChatController extends Controller
     // Menampilkan halaman chat untuk ADMIN
     public function adminIndex()
     {
-        return view('admin.chat');
+        $userId = Auth::id();
+
+        // 1. Ambil semua ID pengguna yang pernah interaksi dengan admin ini
+        $contactIds = Message::where('from_id', $userId)->pluck('to_id')
+            ->merge(Message::where('to_id', $userId)->pluck('from_id'))
+            ->unique()->toArray();
+
+        // 2. Tarik data User lengkap dengan relasi Pesan Terakhir
+        $users = User::whereIn('id', $contactIds)->get()->map(function($u) use ($userId) {
+            $u->last_message_data = Message::where(function($q) use ($userId, $u) {
+                $q->where('from_id', $userId)->where('to_id', $u->id);
+            })->orWhere(function($q) use ($userId, $u) {
+                $q->where('from_id', $u->id)->where('to_id', $userId);
+            })->orderBy('created_at', 'desc')->first();
+
+            $u->unread_count = Message::where('from_id', $u->id)
+                ->where('to_id', $userId)
+                ->whereNull('read_at')
+                ->count();
+
+            return $u;
+        })->sortByDesc(function($u) {
+            return $u->last_message_data->created_at ?? '2000-01-01';
+        });
+
+        return view('admin.chat', compact('users'));
     }
 
     // Menampilkan halaman chat untuk CUSTOMER
     public function customerIndex()
     {
-        return view('customer.chat');
+        $userId = Auth::id();
+
+        // 1. Cari ID toko/admin yang pernah di-chat oleh customer ini
+        $contactIds = Message::where('from_id', $userId)->pluck('to_id')
+            ->merge(Message::where('to_id', $userId)->pluck('from_id'))
+            ->unique()->toArray();
+
+        // 2. WAJIB ADA: Masukkan ID Admin Pusat (Misal ID 4) agar selalu muncul di sidebar customer
+        // Sesuaikan angka 4 ini dengan ID akun Admin Sancaka di database Anda
+        $adminId = 4;
+        if (!in_array($adminId, $contactIds)) {
+            $contactIds[] = $adminId;
+        }
+
+        // 3. Tarik data User/Toko lengkap
+        $users = User::whereIn('id', $contactIds)->get()->map(function($u) use ($userId) {
+
+            // Ambil pesan terakhir
+            $u->last_message_data = Message::where(function($q) use ($userId, $u) {
+                $q->where('from_id', $userId)->where('to_id', $u->id);
+            })->orWhere(function($q) use ($userId, $u) {
+                $q->where('from_id', $u->id)->where('to_id', $userId);
+            })->orderBy('created_at', 'desc')->first();
+
+            // Hitung yang belum dibaca
+            $u->unread_count = Message::where('from_id', $u->id)
+                ->where('to_id', $userId)
+                ->whereNull('read_at')
+                ->count();
+
+            // Cek apakah dia Toko, jika ya ganti namanya dengan nama toko
+            $store = \App\Models\Store::where('user_id', $u->id)->first();
+            if ($store) {
+                $u->nama_lengkap = $store->name;
+                $u->store_logo_path = $store->logo ?? null;
+            } elseif (in_array(strtolower($u->role ?? ''), ['admin', 'superadmin'])) {
+                $u->nama_lengkap = "Admin Sancaka";
+            }
+
+            return $u;
+        })->sortByDesc(function($u) {
+            return $u->last_message_data->created_at ?? '2000-01-01'; // Sortir dari chat terbaru
+        });
+
+        // 4. Kirim variabel $users ke Blade
+        return view('customer.chat', compact('users'));
     }
 
     /**
