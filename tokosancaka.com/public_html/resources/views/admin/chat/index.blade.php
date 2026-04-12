@@ -224,45 +224,6 @@
     .user-list::-webkit-scrollbar-track, .chat-messages::-webkit-scrollbar-track { background: #f1f1f1; }
     .user-list::-webkit-scrollbar-thumb, .chat-messages::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px;}
     .user-list::-webkit-scrollbar-thumb:hover, .chat-messages::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
-
-    /* --- Style Card Produk di Dashboard Admin --- */
-    .admin-product-card {
-        background: #ffffff;
-        border-radius: 8px;
-        padding: 10px;
-        display: flex;
-        flex-direction: row;
-        gap: 12px;
-        border: 1px solid #e9edef;
-        margin-bottom: 5px;
-        max-width: 300px;
-        text-decoration: none !important;
-        color: inherit;
-    }
-    .admin-product-card img {
-        width: 60px;
-        height: 60px;
-        border-radius: 4px;
-        object-fit: cover;
-    }
-    .admin-product-info { display: flex; flex-direction: column; justify-content: center; }
-    .admin-product-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; color: #111b21; }
-    .admin-product-price { font-size: 13px; color: #dc2626; font-weight: bold; }
-
-    /* Image Chat Style */
-    .chat-img-msg {
-        max-width: 250px;
-        border-radius: 8px;
-        margin-bottom: 5px;
-        cursor: pointer;
-        border: 1px solid var(--border-color);
-    }
-
-    /* Header Action Buttons */
-    .header-actions { display: flex; gap: 15px; margin-left: auto; align-items: center; }
-    .header-actions i { color: #667781; cursor: pointer; font-size: 18px; transition: 0.2s; }
-    .header-actions i:hover { color: #111b21; }
-
 </style>
 @endpush
 
@@ -277,10 +238,7 @@
                 $avatarUrl = $user->profile_photo_url ?? ''; // Asumsi path foto profil
                 $initial = strtoupper(substr($user->nama_lengkap ?? 'U', 0, 1));
             @endphp
-            <div class="user-item"
-             data-id="{{ $user->id }}"
-             data-name="{{ $user->nama_lengkap }}"
-             data-phone="{{ $user->no_wa }}">
+            <div class="user-item" data-id="{{ $user->getKey() }}" data-name="{{ $user->nama_lengkap }}">
                 <div class="avatar" style="{{ $avatarUrl ? 'background-image: url(' . asset($avatarUrl) . '); color: transparent;' : '' }}">
                     {{-- Tampilkan initial jika tidak ada gambar --}}
                     @if(!$avatarUrl)
@@ -310,15 +268,7 @@
         {{-- Box Chat Utama (Awalnya Kosong & Tersembunyi) --}}
         <div id="chat-box" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
             {{-- Header Nama Kontak --}}
-            <div class="chat-header">
-                <span id="chat-header-name"></span>
-                <div class="header-actions">
-                    {{-- Tombol Panggil WhatsApp --}}
-                    <i class="fa-brands fa-whatsapp" id="btn-wa-call" title="WhatsApp Pelanggan" style="color: #25D366;"></i>
-                    {{-- Tombol Hapus Chat --}}
-                    <i class="fa-solid fa-trash-can" id="btn-delete-chat" title="Hapus Semua Chat" style="color: #ef4444;"></i>
-                </div>
-            </div>
+            <div class="chat-header" id="chat-header-name"></div>
             {{-- Tempat Pesan --}}
             <div class="chat-messages custom-scrollbar" id="chat-messages"></div>
              {{-- Form Input Pesan --}}
@@ -357,98 +307,24 @@ $(document).ready(function() {
         }
     }
 
-    // 1. Fungsi Pendeteksi Pesan Produk (Sinkron dengan Logika HP)
-    function parseProductMessage(text) {
-        if (!text || !text.startsWith('[TANYA PRODUK]')) return null;
-        const lines = text.split('\n');
-        if (lines.length < 3) return null;
-
-        let imgPath = lines[3] ? lines[3].trim() : '';
-        let imgUrl = imgPath ? (imgPath.startsWith('http') ? imgPath : `/storage/${imgPath}`) : 'https://placehold.co/100x100.png';
-
-        return {
-            title: lines[1],
-            price: lines[2].replace('Harga: ', ''),
-            image: imgUrl
-        };
-    }
-
-    // 2. Fungsi Menampilkan Pesan yang Diperbarui (Support Gambar & Produk)
-    function displayMessage(msg) {
+    // Fungsi menampilkan satu pesan
+     function displayMessage(msg) {
         const messageSide = msg.from_id == adminId ? 'sent' : 'received';
-        const timeString = moment(msg.created_at).locale('id').format('HH:mm');
-        let contentHtml = '';
+        // Format waktu menggunakan Moment.js
+        const timeString = moment(msg.created_at).locale('id').format('HH:mm'); // Format jam:menit
+        const dateString = moment(msg.created_at).locale('id').format('D MMM'); // Format tanggal singkat (opsional)
 
-        // A. Render Gambar jika ada image_url (Kiriman dari HP)
-        if (msg.image_url) {
-            let fullImgUrl = msg.image_url.startsWith('http') ? msg.image_url : `/storage/${msg.image_url}`;
-            contentHtml += `<a href="${fullImgUrl}" target="_blank"><img src="${fullImgUrl}" class="chat-img-msg"></a><br>`;
-        }
-
-        // B. Render Card Produk atau Teks Biasa
-        const product = parseProductMessage(msg.message);
-        if (product) {
-            contentHtml += `
-                <div class="admin-product-card">
-                    <img src="${product.image}">
-                    <div class="admin-product-info">
-                        <div class="admin-product-title">${product.title}</div>
-                        <div class="admin-product-price">${product.price}</div>
-                    </div>
-                </div>
-            `;
-        } else if (msg.message) {
-            // Escape dan ubah newline menjadi <br>
-            contentHtml += $('<div>').text(msg.message).html().replace(/\n/g, '<br>');
-        }
+        // Escape pesan untuk keamanan
+        const escapedMessage = $('<div>').text(msg.message).html();
 
         const messageHtml = `
             <div class="message-container ${messageSide}">
-                <div class="message-bubble">${contentHtml}</div>
+                <div class="message-bubble">${escapedMessage}</div>
                 <div class="message-time">${timeString}</div>
             </div>
         `;
         $('#chat-messages').append(messageHtml);
-    }
-
-    // 3. Logika Klik Tombol WhatsApp
-    $(document).on('click', '#btn-wa-call', function() {
-        const activeUser = $('.user-item.active');
-        let phone = activeUser.data('phone') || '';
-
-        if (!phone) return toastr.warning('Nomor WhatsApp pelanggan tidak ditemukan.');
-
-        // Format ke standar internasional 62
-        if (phone.startsWith('0')) phone = '62' + phone.substring(1);
-        phone = phone.replace(/\D/g,'');
-
-        window.open(`https://wa.me/${phone}`, '_blank');
-    });
-
-    // 4. Logika Klik Tombol Hapus Chat
-    $(document).on('click', '#btn-delete-chat', function() {
-        if (!currentUserId) return;
-
-        if (confirm('Hapus seluruh riwayat percakapan dengan pelanggan ini? Tindakan ini tidak bisa dibatalkan.')) {
-            $.ajax({
-                url: `/admin/chat/messages/delete-all`, // Sesuaikan Route Laravel Anda
-                method: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    user_id: currentUserId
-                },
-                success: function(res) {
-                    if (res.success) {
-                        $('#chat-messages').empty();
-                        lastMessageCount = 0;
-                        toastr.success('Riwayat chat berhasil dihapus.');
-                    } else {
-                        toastr.error(res.message || 'Gagal menghapus.');
-                    }
-                }
-            });
-        }
-    });
+     }
 
     // Fungsi memuat history pesan
     function fetchMessages() {
