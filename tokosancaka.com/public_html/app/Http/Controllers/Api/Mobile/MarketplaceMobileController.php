@@ -725,6 +725,17 @@ class MarketplaceMobileController extends Controller
         $order->status = 'cancelled';
         $order->save();
 
+        // 👇 TAMBAHKAN KODE REFUND INI
+        // Jika pembeli menggunakan saldo dan pesanan sudah dipotong (bukan unpaid)
+        if (in_array(strtoupper($order->payment_method), ['POTONG SALDO', 'SALDO'])) {
+            $user->saldo += $order->total_amount;
+            $user->save();
+
+            // Opsional: Jika Anda punya tabel RiwayatMutasi/HistorySaldo, catat penambahan saldo di sini
+            Log::info("Refund Saldo Sukses untuk Order {$order->invoice_number} sebesar Rp{$order->total_amount}");
+        }
+        // --------------------------------
+
         foreach ($order->items as $item) {
             if ($item->product_variant_id) {
                 ProductVariant::where('id', $item->product_variant_id)->increment('stock', $item->quantity);
