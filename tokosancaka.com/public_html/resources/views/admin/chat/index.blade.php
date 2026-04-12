@@ -200,26 +200,26 @@
         </div>
 
         <div id="chat-box" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
-            <div class="chat-header" style="justify-content: space-between;">
+            <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px;">
 
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <img id="header-avatar-img" src="" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: none;">
-                    <div id="header-avatar-initial" style="width: 40px; height: 40px; border-radius: 50%; background-color: #667781; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;"></div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <img id="header-avatar-img" src="" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; display: none;">
+                    <div id="header-avatar-initial" style="width: 42px; height: 42px; border-radius: 50%; background-color: #667781; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;"></div>
 
-                    <div id="chat-header-name" style="font-size: 16px;">Nama Pelanggan</div>
+                    <div id="chat-header-name" style="font-size: 16px; font-weight: bold; color: #111b21;">Nama Pelanggan</div>
                 </div>
 
-                <div style="display: flex; gap: 15px; position: relative;">
-                    <button id="wa-call-btn" title="Hubungi via WhatsApp" style="background:none; border:none; color: var(--text-secondary); cursor:pointer; font-size: 1.2rem;">
-                        <i class="fa-brands fa-whatsapp"></i>
+                <div style="display: flex; align-items: center; gap: 20px; position: relative;">
+                    <button id="wa-call-btn" title="Hubungi via WhatsApp" style="background:none; border:none; cursor:pointer; font-size: 1.4rem; display: none;">
+                        <i class="fa-brands fa-whatsapp" style="color: #25D366;"></i>
                     </button>
 
-                    <button id="chat-options-btn" title="Opsi Chat" style="background:none; border:none; color: var(--text-secondary); cursor:pointer; font-size: 1.2rem;">
+                    <button id="chat-options-btn" title="Opsi Chat" style="background:none; border:none; color: var(--text-secondary); cursor:pointer; font-size: 1.3rem;">
                         <i class="fa-solid fa-ellipsis-vertical"></i>
                     </button>
 
-                    <div id="chat-options-menu" class="hidden" style="position: absolute; right: 0; top: 35px; background: white; border: 1px solid #e9edef; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 5px 0; min-width: 180px; z-index: 100;">
-                        <button id="delete-chat-btn" style="width: 100%; text-align: left; padding: 10px 15px; background: none; border: none; color: #ef4444; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px;">
+                    <div id="chat-options-menu" class="hidden" style="position: absolute; right: 0; top: 40px; background: white; border: 1px solid #e9edef; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 5px 0; min-width: 200px; z-index: 1000;">
+                        <button id="delete-chat-btn" style="width: 100%; text-align: left; padding: 12px 15px; background: none; border: none; color: #ef4444; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px;">
                             <i class="fa-solid fa-trash"></i> Hapus Riwayat Chat
                         </button>
                     </div>
