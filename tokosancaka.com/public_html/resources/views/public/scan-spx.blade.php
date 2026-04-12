@@ -843,6 +843,20 @@ function showPromo() {
     }
 }
 
+// Fungsi untuk menutup modal secara otomatis setelah tombol download diklik
+    function tutupModalApk() {
+        const apkModalEl = document.getElementById('downloadApkModal');
+        if (apkModalEl) {
+            const apkModal = bootstrap.Modal.getInstance(apkModalEl);
+            if (apkModal) {
+                // Beri delay sedikit agar browser sempat trigger proses download sebelum modal hilang
+                setTimeout(() => {
+                    apkModal.hide();
+                }, 500);
+            }
+        }
+    }
+
     </script>
 
 </body>
