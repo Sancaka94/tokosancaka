@@ -194,7 +194,7 @@
 
     <div class="sidebar" style="width: 30%; min-width: 320px; max-width: 420px; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; background-color: white; z-index: 10;">
 
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background-color: var(--header-background); border-bottom: 1px solid var(--border-color);">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; height: 65px; background-color: var(--header-background); border-bottom: 1px solid var(--border-color); box-sizing: border-box;">
             <h1 style="font-size: 20px; font-weight: bold; color: var(--text-primary); margin: 0;">Chats</h1>
             <div style="display: flex; gap: 20px; color: #54656f; font-size: 1.2rem;">
                 <button title="New Chat" style="background:none; border:none; cursor:pointer; color:inherit;"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -207,7 +207,7 @@
                 <i class="fa-solid fa-magnifying-glass" style="color: #8696a0; font-size: 14px; margin-right: 15px;"></i>
                 <input type="text" id="search-chat" placeholder="Search or start a new chat" style="border: none; background: transparent; width: 100%; outline: none; font-size: 14px; color: var(--text-primary);">
             </div>
-            <div style="display: flex; gap: 8px; margin-top: 12px; overflow-x: auto;">
+            <div style="display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px;">
                 <button class="filter-btn active" data-filter="all" style="background: #e2e8f0; border: none; padding: 6px 14px; border-radius: 20px; font-size: 13px; color: #111b21; cursor: pointer;">All</button>
                 <button class="filter-btn" data-filter="unread" style="background: var(--header-background); border: none; padding: 6px 14px; border-radius: 20px; font-size: 13px; color: #54656f; cursor: pointer;">Unread</button>
                 <button class="filter-btn" data-filter="groups" style="background: var(--header-background); border: none; padding: 6px 14px; border-radius: 20px; font-size: 13px; color: #54656f; cursor: pointer;">Groups</button>
@@ -225,15 +225,15 @@
                     $isOnline = $user->last_seen && \Carbon\Carbon::parse($user->last_seen)->diffInMinutes(now()) < 5;
 
                     // Logika Pesan Terakhir
-                    $lastMsg = $user->last_message_data;
+                    $lastMsg = $user->last_message_data ?? null;
                     $msgText = 'Belum ada pesan...';
                     $timeText = '';
                     $tickHtml = '';
                     $unreadCount = $user->unread_count ?? 0;
 
                     if ($lastMsg) {
-                        // Teks Pesan (Jika format produk, ubah jadi teks singkat)
-                        if (str_starts_with($lastMsg->message, '[TANYA PRODUK]')) {
+                        // Teks Pesan
+                        if (str_starts_with($lastMsg->message, '[TANYA PRODUK]') || str_starts_with($lastMsg->message, '[INFO PRODUK]')) {
                             $msgText = '📦 Bertanya tentang produk';
                         } elseif ($lastMsg->image_url && !$lastMsg->message) {
                             $msgText = '📷 Mengirim gambar';
@@ -241,7 +241,7 @@
                             $msgText = $lastMsg->message;
                         }
 
-                        // Format Waktu (Hari ini = Jam, Kemarin = Yesterday, Lebih Lama = Tanggal)
+                        // Waktu Pesan
                         $msgDate = \Carbon\Carbon::parse($lastMsg->created_at);
                         if ($msgDate->isToday()) {
                             $timeText = $msgDate->format('H:i');
@@ -251,13 +251,11 @@
                             $timeText = $msgDate->format('d/m/Y');
                         }
 
-                        // Logika Centang jika pengirim adalah Admin
+                        // Centang Pesan Terakhir
                         if ($lastMsg->from_id == auth()->id()) {
                             if ($lastMsg->read_at) {
-                                // Centang Biru/Merah (Sudah dibaca)
                                 $tickHtml = '<i class="fa-solid fa-check-double" style="color: #3b82f6; font-size: 11px; margin-right: 4px;"></i>';
                             } else {
-                                // Centang Abu-abu
                                 $tickHtml = '<i class="fa-solid fa-check-double" style="color: #8696a0; font-size: 11px; margin-right: 4px;"></i>';
                             }
                         }
@@ -308,6 +306,7 @@
         </div>
     </div>
 
+
     <div class="chat-area">
 
         <div id="chat-welcome" class="chat-messages">
@@ -319,7 +318,7 @@
 
         <div id="chat-box" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
 
-            <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px;">
+            <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; height: 65px; background-color: var(--header-background); border-bottom: 1px solid var(--border-color); box-sizing: border-box;">
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <div class="avatar-wrapper">
                         <img id="header-avatar-img" src="" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; display: none;">
@@ -368,7 +367,10 @@
                 <button id="send-button" type="submit" title="Kirim Pesan"><i class="fa-solid fa-paper-plane"></i></button>
             </div>
 
-        </div> </div> </div>
+        </div>
+    </div>
+
+</div>
 @endsection
 
 @push('scripts')
