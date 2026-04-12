@@ -14,7 +14,9 @@ class ChatController extends Controller
     // Menampilkan halaman chat untuk ADMIN
     public function adminIndex()
     {
-        $userId = Auth::id();
+        $user = Auth::user();
+        $userId = $user->id_pengguna ?? $user->id;
+        $pk = (new User())->getKeyName(); // Otomatis mendeteksi apakah pakai 'id' atau 'id_pengguna'
 
         // 1. Ambil semua ID pengguna yang pernah interaksi dengan admin ini
         $contactIds = Message::where('from_id', $userId)->pluck('to_id')
@@ -22,14 +24,16 @@ class ChatController extends Controller
             ->unique()->toArray();
 
         // 2. Tarik data User lengkap dengan relasi Pesan Terakhir
-        $users = User::whereIn('id', $contactIds)->get()->map(function($u) use ($userId) {
-            $u->last_message_data = Message::where(function($q) use ($userId, $u) {
-                $q->where('from_id', $userId)->where('to_id', $u->id);
-            })->orWhere(function($q) use ($userId, $u) {
-                $q->where('from_id', $u->id)->where('to_id', $userId);
+        $users = User::whereIn($pk, $contactIds)->get()->map(function($u) use ($userId) {
+            $uId = $u->id_pengguna ?? $u->id;
+
+            $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
+                $q->where('from_id', $userId)->where('to_id', $uId);
+            })->orWhere(function($q) use ($userId, $uId) {
+                $q->where('from_id', $uId)->where('to_id', $userId);
             })->orderBy('created_at', 'desc')->first();
 
-            $u->unread_count = Message::where('from_id', $u->id)
+            $u->unread_count = Message::where('from_id', $uId)
                 ->where('to_id', $userId)
                 ->whereNull('read_at')
                 ->count();
@@ -45,38 +49,44 @@ class ChatController extends Controller
     // Menampilkan halaman chat untuk CUSTOMER
     public function customerIndex()
     {
-        $userId = Auth::id();
+        $user = Auth::user();
+        $userId = $user->id_pengguna ?? $user->id;
+        $pk = (new User())->getKeyName(); // Otomatis mendeteksi primary key
 
         // 1. Cari ID toko/admin yang pernah di-chat oleh customer ini
         $contactIds = Message::where('from_id', $userId)->pluck('to_id')
             ->merge(Message::where('to_id', $userId)->pluck('from_id'))
             ->unique()->toArray();
 
-        // 2. WAJIB ADA: Masukkan ID Admin Pusat (Misal ID 4) agar selalu muncul di sidebar customer
-        // Sesuaikan angka 4 ini dengan ID akun Admin Sancaka di database Anda
-        $adminId = 4;
-        if (!in_array($adminId, $contactIds)) {
-            $contactIds[] = $adminId;
+        // 2. DINAMIS: Cari Admin Pusat otomatis dari tabel users berdasarkan role
+        $admin = User::whereIn('role', ['admin', 'superadmin'])->first();
+        if ($admin) {
+            $adminId = $admin->id_pengguna ?? $admin->id;
+            // Pastikan Admin selalu ada di sidebar, meskipun belum pernah chat
+            if (!in_array($adminId, $contactIds)) {
+                $contactIds[] = $adminId;
+            }
         }
 
         // 3. Tarik data User/Toko lengkap
-        $users = User::whereIn('id', $contactIds)->get()->map(function($u) use ($userId) {
+        $users = User::whereIn($pk, $contactIds)->get()->map(function($u) use ($userId) {
+            $uId = $u->id_pengguna ?? $u->id;
 
             // Ambil pesan terakhir
-            $u->last_message_data = Message::where(function($q) use ($userId, $u) {
-                $q->where('from_id', $userId)->where('to_id', $u->id);
-            })->orWhere(function($q) use ($userId, $u) {
-                $q->where('from_id', $u->id)->where('to_id', $userId);
+            $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
+                $q->where('from_id', $userId)->where('to_id', $uId);
+            })->orWhere(function($q) use ($userId, $uId) {
+                $q->where('from_id', $uId)->where('to_id', $userId);
             })->orderBy('created_at', 'desc')->first();
 
             // Hitung yang belum dibaca
-            $u->unread_count = Message::where('from_id', $u->id)
+            $u->unread_count = Message::where('from_id', $uId)
                 ->where('to_id', $userId)
                 ->whereNull('read_at')
                 ->count();
 
-            // Cek apakah dia Toko, jika ya ganti namanya dengan nama toko
-            $store = \App\Models\Store::where('user_id', $u->id)->first();
+            // Cek apakah dia Toko, jika ya ganti namanya
+            $store = \App\Models\Store::where('user_id', $uId)->first();
             if ($store) {
                 $u->nama_lengkap = $store->name;
                 $u->store_logo_path = $store->logo ?? null;
@@ -86,10 +96,9 @@ class ChatController extends Controller
 
             return $u;
         })->sortByDesc(function($u) {
-            return $u->last_message_data->created_at ?? '2000-01-01'; // Sortir dari chat terbaru
+            return $u->last_message_data->created_at ?? '2000-01-01';
         });
 
-        // 4. Kirim variabel $users ke Blade
         return view('customer.chat', compact('users'));
     }
 
