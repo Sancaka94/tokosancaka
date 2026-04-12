@@ -161,17 +161,25 @@
     <div class="user-list" id="user-list">
         @forelse ($users as $user)
             @php
-                $avatarUrl = $user->profile_photo_url ?? '';
+                // PERBAIKAN: Gunakan kolom store_logo_path dari database
+                $avatarUrl = $user->store_logo_path ?? '';
                 $initial = strtoupper(substr($user->nama_lengkap ?? 'U', 0, 1));
+
+                // Pastikan format URL gambar benar (tambah storage/ jika path lokal)
+                $finalAvatarUrl = '';
+                if ($avatarUrl) {
+                    $finalAvatarUrl = str_starts_with($avatarUrl, 'http') ? $avatarUrl : asset('storage/' . $avatarUrl);
+                }
             @endphp
+
             <div class="user-item"
                  data-id="{{ $user->getKey() }}"
                  data-name="{{ $user->nama_lengkap }}"
-                 data-phone="{{ $user->no_hp ?? $user->whatsapp ?? '' }}"
-                 data-avatar="{{ $avatarUrl ? asset($avatarUrl) : '' }}">
+                 data-phone="{{ $user->no_wa ?? '' }}"
+                 data-avatar="{{ $finalAvatarUrl }}">
 
-                <div class="avatar" style="{{ $avatarUrl ? 'background-image: url(' . asset($avatarUrl) . '); color: transparent;' : '' }}">
-                    @if(!$avatarUrl) {{ $initial }} @endif
+                <div class="avatar" style="{{ $finalAvatarUrl ? 'background-image: url(' . $finalAvatarUrl . '); color: transparent;' : '' }}">
+                    @if(!$finalAvatarUrl) {{ $initial }} @endif
                 </div>
                 <div class="user-details">
                     <p class="font-semibold">{{ $user->nama_lengkap }}</p>
