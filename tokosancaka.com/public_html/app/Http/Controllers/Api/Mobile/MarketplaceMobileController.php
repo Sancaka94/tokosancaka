@@ -37,7 +37,7 @@ class MarketplaceMobileController extends Controller
 
     public function home(Request $request)
     {
-        $query = Product::with(['category', 'store'])->where('status', 'active')->where('stock', '>', 0);
+        $query = Product::with(['category', 'store.user'])->where('status', 'active')->where('stock', '>', 0);
 
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
@@ -51,7 +51,7 @@ class MarketplaceMobileController extends Controller
 
         $products = $query->latest()->paginate(10);
 
-        $flashSaleProducts = Product::with(['category', 'store'])->where('status', 'active')
+        $flashSaleProducts = Product::with(['category', 'store.user'])->where('status', 'active')
             ->where('stock', '>', 0)
             ->whereNotNull('original_price')
             ->where('price', '<', DB::raw('original_price'))
@@ -79,7 +79,7 @@ class MarketplaceMobileController extends Controller
     {
         $category = Category::findOrFail($id);
 
-        $products = Product::with(['store'])
+        $products = Product::with(['store.user'])
             ->where('category_id', $category->id)
             ->where('status', 'active')
             ->where('stock', '>', 0)
