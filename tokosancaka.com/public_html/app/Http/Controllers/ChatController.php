@@ -15,17 +15,17 @@ class ChatController extends Controller
     public function adminIndex()
     {
         $user = Auth::user();
+        // Ambil ID dengan aman, utamakan id_pengguna
         $userId = $user->id_pengguna ?? $user->id;
-        $pk = (new User())->getKeyName(); // Otomatis mendeteksi apakah pakai 'id' atau 'id_pengguna'
 
         // 1. Ambil semua ID pengguna yang pernah interaksi dengan admin ini
         $contactIds = Message::where('from_id', $userId)->pluck('to_id')
             ->merge(Message::where('to_id', $userId)->pluck('from_id'))
             ->unique()->toArray();
 
-        // 2. Tarik data User lengkap dengan relasi Pesan Terakhir
-        $users = User::whereIn($pk, $contactIds)->get()->map(function($u) use ($userId) {
-            $uId = $u->id_pengguna ?? $u->id;
+        // 2. 🟢 PERBAIKAN: Gunakan 'id_pengguna', bukan 'id'
+        $users = User::whereIn('id_pengguna', $contactIds)->get()->map(function($u) use ($userId) {
+            $uId = $u->id_pengguna; // Ambil ID yang benar
 
             $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
                 $q->where('from_id', $userId)->where('to_id', $uId);
@@ -50,27 +50,23 @@ class ChatController extends Controller
     public function customerIndex()
     {
         $user = Auth::user();
+        // Ambil ID dengan aman, utamakan id_pengguna
         $userId = $user->id_pengguna ?? $user->id;
-        $pk = (new User())->getKeyName(); // Otomatis mendeteksi primary key
 
         // 1. Cari ID toko/admin yang pernah di-chat oleh customer ini
         $contactIds = Message::where('from_id', $userId)->pluck('to_id')
             ->merge(Message::where('to_id', $userId)->pluck('from_id'))
             ->unique()->toArray();
 
-        // 2. DINAMIS: Cari Admin Pusat otomatis dari tabel users berdasarkan role
-        $admin = User::whereIn('role', ['admin', 'superadmin'])->first();
-        if ($admin) {
-            $adminId = $admin->id_pengguna ?? $admin->id;
-            // Pastikan Admin selalu ada di sidebar, meskipun belum pernah chat
-            if (!in_array($adminId, $contactIds)) {
-                $contactIds[] = $adminId;
-            }
+        // 2. Masukkan ID Admin Pusat (Sesuai database Anda, Admin = 4)
+        $adminId = 4;
+        if (!in_array($adminId, $contactIds)) {
+            $contactIds[] = $adminId;
         }
 
-        // 3. Tarik data User/Toko lengkap
-        $users = User::whereIn($pk, $contactIds)->get()->map(function($u) use ($userId) {
-            $uId = $u->id_pengguna ?? $u->id;
+        // 3. 🟢 PERBAIKAN: Gunakan 'id_pengguna', bukan 'id'
+        $users = User::whereIn('id_pengguna', $contactIds)->get()->map(function($u) use ($userId) {
+            $uId = $u->id_pengguna; // Ambil ID yang benar
 
             // Ambil pesan terakhir
             $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
@@ -85,7 +81,7 @@ class ChatController extends Controller
                 ->whereNull('read_at')
                 ->count();
 
-            // Cek apakah dia Toko, jika ya ganti namanya
+            // Cek apakah dia Toko
             $store = \App\Models\Store::where('user_id', $uId)->first();
             if ($store) {
                 $u->nama_lengkap = $store->name;
