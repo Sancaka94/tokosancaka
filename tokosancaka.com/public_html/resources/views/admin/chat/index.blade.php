@@ -136,6 +136,34 @@
         background: none; border: none; color: var(--text-secondary);
         font-size: 1.5rem; cursor: pointer; padding: 8px;
     }
+
+    /* === CSS INDIKATOR ONLINE & CENTANG === */
+    .avatar-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    .online-badge {
+        position: absolute;
+        bottom: 2px;
+        right: 0px;
+        width: 12px;
+        height: 12px;
+        background-color: #25D366; /* Hijau WhatsApp */
+        border: 2px solid white;
+        border-radius: 50%;
+    }
+    .status-text {
+        font-size: 12px;
+        color: #10b981; /* Hijau teks */
+        margin-top: 2px;
+    }
+    .msg-tick {
+        font-size: 0.7rem;
+        margin-left: 5px;
+    }
+    .tick-read { color: #ef4444; } /* Merah */
+    .tick-sent { color: #9ca3af; } /* Abu-abu */
+
     .chat-input-container button:hover { color: #1e2a33; }
 
     .message-container { display: flex; flex-direction: column; margin-bottom: 8px; max-width: 65%; width: fit-content; }
@@ -161,14 +189,14 @@
     <div class="user-list" id="user-list">
         @forelse ($users as $user)
             @php
-                // PERBAIKAN: Gunakan kolom store_logo_path dari database
                 $avatarUrl = $user->store_logo_path ?? '';
                 $initial = strtoupper(substr($user->nama_lengkap ?? 'U', 0, 1));
+                $finalAvatarUrl = $avatarUrl ? (str_starts_with($avatarUrl, 'http') ? $avatarUrl : asset('storage/' . $avatarUrl)) : '';
 
-                // Pastikan format URL gambar benar (tambah storage/ jika path lokal)
-                $finalAvatarUrl = '';
-                if ($avatarUrl) {
-                    $finalAvatarUrl = str_starts_with($avatarUrl, 'http') ? $avatarUrl : asset('storage/' . $avatarUrl);
+                // LOGIKA ONLINE: Anggap online jika last_seen di bawah 5 menit yang lalu
+                $isOnline = false;
+                if ($user->last_seen) {
+                    $isOnline = \Carbon\Carbon::parse($user->last_seen)->diffInMinutes(now()) < 5;
                 }
             @endphp
 
@@ -176,11 +204,16 @@
                  data-id="{{ $user->getKey() }}"
                  data-name="{{ $user->nama_lengkap }}"
                  data-phone="{{ $user->no_wa ?? '' }}"
-                 data-avatar="{{ $finalAvatarUrl }}">
-
-                <div class="avatar" style="{{ $finalAvatarUrl ? 'background-image: url(' . $finalAvatarUrl . '); color: transparent;' : '' }}">
-                    @if(!$finalAvatarUrl) {{ $initial }} @endif
+                 data-avatar="{{ $finalAvatarUrl }}"
+                 data-online="{{ $isOnline ? 'true' : 'false' }}"> <div class="avatar-wrapper" style="margin-right: 12px;">
+                    <div class="avatar" style="margin-right: 0; {{ $finalAvatarUrl ? 'background-image: url(' . $finalAvatarUrl . '); color: transparent;' : '' }}">
+                        @if(!$finalAvatarUrl) {{ $initial }} @endif
+                    </div>
+                    @if($isOnline)
+                        <div class="online-badge"></div>
+                    @endif
                 </div>
+
                 <div class="user-details">
                     <p class="font-semibold">{{ $user->nama_lengkap }}</p>
                     <p class="last-message" id="last-message-{{ $user->getKey() }}">Klik untuk chat...</p>
@@ -191,40 +224,34 @@
         @endforelse
     </div>
 
-    <div class="chat-area">
-        <div id="chat-welcome" class="chat-messages">
-             <div>
-                <i class="fa-regular fa-comments"></i>
-                <p>Pilih pelanggan untuk memulai percakapan.</p>
+    <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div class="avatar-wrapper">
+                <img id="header-avatar-img" src="" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; display: none;">
+                <div id="header-avatar-initial" style="width: 42px; height: 42px; border-radius: 50%; background-color: #667781; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;"></div>
+                <div id="header-online-badge" class="online-badge hidden"></div>
+            </div>
+
+            <div>
+                <div id="chat-header-name" style="font-size: 16px; font-weight: bold; color: #111b21;">Nama Pelanggan</div>
+                <div id="chat-header-status" class="status-text hidden">Online</div>
             </div>
         </div>
 
-        <div id="chat-box" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
-            <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px;">
-
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <img id="header-avatar-img" src="" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; display: none;">
-                    <div id="header-avatar-initial" style="width: 42px; height: 42px; border-radius: 50%; background-color: #667781; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;"></div>
-
-                    <div id="chat-header-name" style="font-size: 16px; font-weight: bold; color: #111b21;">Nama Pelanggan</div>
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 20px; position: relative;">
-                    <button id="wa-call-btn" title="Hubungi via WhatsApp" style="background:none; border:none; cursor:pointer; font-size: 1.4rem; display: none;">
-                        <i class="fa-brands fa-whatsapp" style="color: #25D366;"></i>
-                    </button>
-
-                    <button id="chat-options-btn" title="Opsi Chat" style="background:none; border:none; color: var(--text-secondary); cursor:pointer; font-size: 1.3rem;">
-                        <i class="fa-solid fa-ellipsis-vertical"></i>
-                    </button>
-
-                    <div id="chat-options-menu" class="hidden" style="position: absolute; right: 0; top: 40px; background: white; border: 1px solid #e9edef; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 5px 0; min-width: 200px; z-index: 1000;">
-                        <button id="delete-chat-btn" style="width: 100%; text-align: left; padding: 12px 15px; background: none; border: none; color: #ef4444; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px;">
-                            <i class="fa-solid fa-trash"></i> Hapus Riwayat Chat
-                        </button>
-                    </div>
-                </div>
+        <div style="display: flex; align-items: center; gap: 20px; position: relative;">
+            <button id="wa-call-btn" title="Hubungi via WhatsApp" style="background:none; border:none; cursor:pointer; font-size: 1.4rem; display: none;">
+                <i class="fa-brands fa-whatsapp" style="color: #25D366;"></i>
+            </button>
+            <button id="chat-options-btn" style="background:none; border:none; color: var(--text-secondary); cursor:pointer; font-size: 1.3rem;">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+            </button>
+            <div id="chat-options-menu" class="hidden" style="position: absolute; right: 0; top: 40px; background: white; border: 1px solid #e9edef; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 5px 0; min-width: 200px; z-index: 1000;">
+                <button id="delete-chat-btn" style="width: 100%; text-align: left; padding: 12px 15px; background: none; border: none; color: #ef4444; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px;">
+                    <i class="fa-solid fa-trash"></i> Hapus Riwayat Chat
+                </button>
             </div>
+        </div>
+    </div>
 
             <div class="chat-messages custom-scrollbar" id="chat-messages"></div>
 
@@ -258,13 +285,16 @@
 
 <script>
 $(document).ready(function() {
+    // === 1. VARIABEL GLOBAL ===
     let currentUserId = null;
     const adminId = {{ auth()->id() }};
     let pollingInterval = null;
     let lastMessageCount = 0;
     let selectedImageFile = null;
+    let isCurrentChatOnline = false; // Penanda status online untuk logika centang
     const notificationSound = new Audio('{{ asset("sounds/beep.mp3") }}');
 
+    // === 2. FUNGSI SCROLL ===
     function scrollToBottom(containerSelector = '#chat-messages') {
         const container = $(containerSelector);
         if (container.length) {
@@ -272,7 +302,7 @@ $(document).ready(function() {
         }
     }
 
-    // === FUNGSI PARSER PRODUCT CARD & XSS PROTECTION ===
+    // === 3. FUNGSI PARSER PRODUCT CARD & XSS PROTECTION ===
     function parseMessage(text) {
         if (!text) return '';
 
@@ -286,21 +316,20 @@ $(document).ready(function() {
                     imgUri = lines[3].startsWith('http') ? lines[3] : `/storage/${lines[3]}`;
                 }
                 return `
-                    <div class="chat-product-card">
-                        <img src="${imgUri}">
-                        <div class="chat-product-info">
-                            <div class="chat-product-title">${lines[1]}</div>
-                            <div class="chat-product-price">${lines[2].replace('Harga: ', '')}</div>
+                    <div class="chat-product-card" style="border: 1px solid #e9edef; padding: 8px; border-radius: 8px; background: #ffffff; margin-bottom: 5px; min-width: 220px; display: flex; gap: 10px; align-items: center;">
+                        <img src="${imgUri}" style="width: 50px; height: 50px; border-radius: 4px; object-fit: cover;">
+                        <div class="chat-product-info" style="flex: 1;">
+                            <div class="chat-product-title" style="font-size: 12px; font-weight: bold; color: #111b21; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${lines[1]}</div>
+                            <div class="chat-product-price" style="font-size: 12px; color: #dc2626; font-weight: bold; margin-top: 2px;">${lines[2].replace('Harga: ', '')}</div>
                         </div>
                     </div>
                 `;
             }
         }
-
         return safeText.replace(/\n/g, '<br>');
     }
-    // =============================================================
 
+    // === 4. FUNGSI RENDER PESAN (DENGAN LOGIKA CENTANG) ===
     function displayMessage(msg) {
         const messageSide = msg.from_id == adminId ? 'sent' : 'received';
         const timeString = moment(msg.created_at).locale('id').format('HH:mm');
@@ -314,17 +343,33 @@ $(document).ready(function() {
 
         contentHtml += parseMessage(msg.message);
 
+        // --- Logika Centang ---
+        let tickHtml = '';
+        if (msg.is_me) { // Centang hanya untuk pesan yang dikirim Admin
+            if (msg.is_read) {
+                // Centang 2 Merah
+                tickHtml = '<i class="fa-solid fa-check-double" style="font-size: 0.7rem; margin-left: 5px; color: #ef4444;"></i>';
+            } else if (isCurrentChatOnline) {
+                // Centang 2 Abu-abu (Terkirim & User Online)
+                tickHtml = '<i class="fa-solid fa-check-double" style="font-size: 0.7rem; margin-left: 5px; color: #9ca3af;"></i>';
+            } else {
+                // Centang 1 Abu-abu (Terkirim, User Offline)
+                tickHtml = '<i class="fa-solid fa-check" style="font-size: 0.7rem; margin-left: 5px; color: #9ca3af;"></i>';
+            }
+        }
+
         const messageHtml = `
             <div class="message-container ${messageSide}">
                 <div class="message-bubble">
                     ${contentHtml}
-                    <div class="message-time">${timeString}</div>
+                    <div class="message-time">${timeString} ${tickHtml}</div>
                 </div>
             </div>
         `;
         $('#chat-messages').append(messageHtml);
     }
 
+    // === 5. FUNGSI TARIK DATA (POLLING) ===
     function fetchMessages() {
         if (!currentUserId) return;
 
@@ -357,7 +402,7 @@ $(document).ready(function() {
         });
     }
 
-    // === LOGIKA PREVIEW GAMBAR SEBELUM DIKIRIM ===
+    // === 6. LOGIKA PREVIEW GAMBAR ===
     $('#image-upload-input').on('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -377,9 +422,8 @@ $(document).ready(function() {
         $('#image-upload-input').val('');
         $('#image-preview-container').addClass('hidden');
     });
-    // ========================================================
 
-    // === UPDATE SEND MESSAGE MENGGUNAKAN FORMDATA ===
+    // === 7. FUNGSI KIRIM PESAN ===
     function sendMessage() {
         const messageInput = $('#message-input');
         const message = messageInput.val().trim();
@@ -429,9 +473,8 @@ $(document).ready(function() {
             }
         });
     }
-    // ===========================================================
 
-    // === KODE BARU: EVENT LISTENER MENU HEADER (TITIK TIGA) ===
+    // === 8. LOGIKA MENU OPSI (TITIK TIGA) ===
     $('#chat-options-btn').on('click', function(e) {
         e.stopPropagation();
         $('#chat-options-menu').toggleClass('hidden');
@@ -443,31 +486,31 @@ $(document).ready(function() {
 
     $('#delete-chat-btn').on('click', function() {
         if(confirm('Yakin ingin menghapus semua riwayat chat dengan pengguna ini?')) {
-            // TODO: Integrasikan dengan Controller Hapus Pesan Anda nanti
             alert('Fitur hapus pesan akan disambungkan ke backend!');
             $('#chat-options-menu').addClass('hidden');
         }
     });
-    // ===========================================================
 
-
-    // === KODE BARU: UPDATE SET ACTIVE CHAT (AVATAR & WA) ===
+    // === 9. FUNGSI AKTIVASI CHAT (AVATAR, WA, ONLINE STATUS) ===
     function setActiveChat(userId) {
         const userElement = $(`.user-item[data-id=${userId}]`);
         if (!userElement.length) return;
 
         const userName = userElement.data('name');
-        const userAvatar = userElement.data('avatar'); // Ambil data avatar
-        const userPhone = userElement.data('phone');   // Ambil data nomor HP
+        const userAvatar = userElement.data('avatar');
+        const userPhone = userElement.data('phone');
+
+        // Baca status online dari HTML
+        const isOnline = userElement.data('online') === true || userElement.data('online') === 'true';
+        isCurrentChatOnline = isOnline;
 
         if (userId === currentUserId && !$('#chat-box').hasClass('hidden')) {
             return;
         }
 
-        // Set Nama
+        // --- Set Header Kiri ---
         $('#chat-header-name').text(userName);
 
-        // Set Avatar di Header
         if (userAvatar && userAvatar !== '') {
             $('#header-avatar-img').attr('src', userAvatar).show();
             $('#header-avatar-initial').hide();
@@ -476,19 +519,27 @@ $(document).ready(function() {
             $('#header-avatar-initial').text(userName.charAt(0).toUpperCase()).show();
         }
 
-        // Set Link Tombol WhatsApp
+        // Tampilkan/Sembunyikan Badge & Teks Online
+        if (isOnline) {
+            $('#header-online-badge').removeClass('hidden');
+            $('#chat-header-status').removeClass('hidden');
+        } else {
+            $('#header-online-badge').addClass('hidden');
+            $('#chat-header-status').addClass('hidden');
+        }
+
+        // --- Set Header Kanan (WA) ---
         if (userPhone && userPhone !== '') {
             let phoneStr = String(userPhone).replace(/[-+ \s]/g, '');
             if (phoneStr.startsWith('0')) phoneStr = '62' + phoneStr.substring(1);
-
             $('#wa-call-btn').show().off('click').on('click', function() {
                 window.open(`https://wa.me/${phoneStr}`, '_blank');
             });
         } else {
-            $('#wa-call-btn').hide(); // Sembunyikan kalau no HP kosong
+            $('#wa-call-btn').hide();
         }
 
-        // Tampilkan Box Chat
+        // --- Tampilkan Chat Area ---
         $('#chat-welcome').addClass('hidden');
         $('#chat-box').removeClass('hidden');
         $('#message-input').val('').focus();
@@ -503,10 +554,8 @@ $(document).ready(function() {
         fetchMessages();
         pollingInterval = setInterval(fetchMessages, 3000);
     }
-    // ===========================================================
 
-
-    // --- Event Listeners Bawaan ---
+    // === 10. EVENT LISTENERS UTAMA ===
     $('#user-list').on('click', '.user-item', function() {
         const userId = $(this).data('id');
         setActiveChat(userId);
