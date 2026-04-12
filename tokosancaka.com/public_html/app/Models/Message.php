@@ -18,6 +18,7 @@ class Message extends Model
         'message',
         'read_at',
         'product_id',
+        'image_url',
     ];
 
     /**
