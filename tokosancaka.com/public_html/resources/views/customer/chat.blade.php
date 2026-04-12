@@ -254,7 +254,7 @@
                             <div class="avatar">{{ $initial }}</div>
                         @endif
 
-                        @if($isOnline) <div class="online-badge"></div> @endif
+                        <div class="online-badge {{ $isOnline ? '' : 'hidden' }}"></div>
                     </div>
 
                     <div class="user-details">
@@ -502,6 +502,24 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
                 let messages = response.messages ? response.messages : response;
+
+                // === 🟢 LOGIKA UPDATE STATUS ONLINE REAL-TIME ===
+                let isOnlineNow = response.admin_online !== undefined ? response.admin_online : (response.target_online || false);
+                isAdminOnline = isOnlineNow; // Update global var
+
+                // Cari badge milik kontak yang sedang aktif di Sidebar
+                let activeSidebarBadge = $(`.user-item[data-id='${currentTargetId}'] .online-badge`);
+
+                if (isOnlineNow) {
+                    $('#header-online-badge').removeClass('hidden');
+                    $('#chat-header-status').removeClass('hidden');
+                    activeSidebarBadge.removeClass('hidden'); // Munculkan di sidebar
+                } else {
+                    $('#header-online-badge').addClass('hidden');
+                    $('#chat-header-status').addClass('hidden');
+                    activeSidebarBadge.addClass('hidden'); // Sembunyikan dari sidebar
+                }
+                // ===============================================
 
                 if (messages.length !== lastMessageCount) {
                     if (lastMessageCount > 0 && messages.length > 0 && messages[messages.length - 1].from_id != customerId) {
