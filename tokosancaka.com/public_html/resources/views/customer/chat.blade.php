@@ -153,8 +153,17 @@
 
         <div class="sidebar-header">
             <div class="customer-profile">
-                @php $myInitial = strtoupper(substr(auth()->user()->nama_lengkap ?? auth()->user()->name ?? 'C', 0, 1)); @endphp
-                <div class="customer-avatar">{{ $myInitial }}</div>
+                @php
+                    $myInitial = strtoupper(substr(auth()->user()->nama_lengkap ?? auth()->user()->name ?? 'C', 0, 1));
+                    $myAvatar = auth()->user()->store_logo_path ?? auth()->user()->profile_photo_path ?? '';
+                    $myFinalAvatar = $myAvatar ? (str_starts_with($myAvatar, 'http') ? $myAvatar : asset('storage/' . $myAvatar)) : '';
+                @endphp
+
+                @if($myFinalAvatar)
+                    <img src="{{ $myFinalAvatar }}" class="customer-avatar" alt="Profile" onerror="this.onerror=null; this.outerHTML='<div class=\'customer-avatar\'>{{ $myInitial }}</div>';">
+                @else
+                    <div class="customer-avatar">{{ $myInitial }}</div>
+                @endif
                 <h1 style="font-size: 16px; font-weight: bold; color: var(--text-primary); margin: 0;">{{ auth()->user()->nama_lengkap ?? auth()->user()->name }}</h1>
             </div>
 
@@ -233,10 +242,13 @@
 
                     <input type="checkbox" class="chat-checkbox hidden" value="{{ $userIdDb }}">
 
-                    <div class="avatar-wrapper">
-                        <div class="avatar" style="{{ $finalAvatarUrl ? 'background-image: url(' . $finalAvatarUrl . '); color: transparent;' : '' }}">
-                            @if(!$finalAvatarUrl) {{ $initial }} @endif
-                        </div>
+                   <div class="avatar-wrapper">
+                        @if($finalAvatarUrl)
+                            <img src="{{ $finalAvatarUrl }}" class="avatar" style="object-fit: cover; border: none; padding: 0;" onerror="this.onerror=null; this.outerHTML='<div class=\'avatar\'>{{ $initial }}</div>';">
+                        @else
+                            <div class="avatar">{{ $initial }}</div>
+                        @endif
+
                         @if($isOnline) <div class="online-badge"></div> @endif
                     </div>
 
