@@ -164,7 +164,12 @@
                 $avatarUrl = $user->profile_photo_url ?? '';
                 $initial = strtoupper(substr($user->nama_lengkap ?? 'U', 0, 1));
             @endphp
-            <div class="user-item" data-id="{{ $user->getKey() }}" data-name="{{ $user->nama_lengkap }}">
+            <div class="user-item"
+                 data-id="{{ $user->getKey() }}"
+                 data-name="{{ $user->nama_lengkap }}"
+                 data-phone="{{ $user->no_hp ?? $user->whatsapp ?? '' }}"
+                 data-avatar="{{ $avatarUrl ? asset($avatarUrl) : '' }}">
+
                 <div class="avatar" style="{{ $avatarUrl ? 'background-image: url(' . asset($avatarUrl) . '); color: transparent;' : '' }}">
                     @if(!$avatarUrl) {{ $initial }} @endif
                 </div>
@@ -187,7 +192,31 @@
         </div>
 
         <div id="chat-box" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
-            <div class="chat-header" id="chat-header-name"></div>
+            <div class="chat-header" style="justify-content: space-between;">
+
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img id="header-avatar-img" src="" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: none;">
+                    <div id="header-avatar-initial" style="width: 40px; height: 40px; border-radius: 50%; background-color: #667781; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;"></div>
+
+                    <div id="chat-header-name" style="font-size: 16px;">Nama Pelanggan</div>
+                </div>
+
+                <div style="display: flex; gap: 15px; position: relative;">
+                    <button id="wa-call-btn" title="Hubungi via WhatsApp" style="background:none; border:none; color: var(--text-secondary); cursor:pointer; font-size: 1.2rem;">
+                        <i class="fa-brands fa-whatsapp"></i>
+                    </button>
+
+                    <button id="chat-options-btn" title="Opsi Chat" style="background:none; border:none; color: var(--text-secondary); cursor:pointer; font-size: 1.2rem;">
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+
+                    <div id="chat-options-menu" class="hidden" style="position: absolute; right: 0; top: 35px; background: white; border: 1px solid #e9edef; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 5px 0; min-width: 180px; z-index: 100;">
+                        <button id="delete-chat-btn" style="width: 100%; text-align: left; padding: 10px 15px; background: none; border: none; color: #ef4444; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px;">
+                            <i class="fa-solid fa-trash"></i> Hapus Riwayat Chat
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             <div class="chat-messages custom-scrollbar" id="chat-messages"></div>
 
@@ -225,7 +254,7 @@ $(document).ready(function() {
     const adminId = {{ auth()->id() }};
     let pollingInterval = null;
     let lastMessageCount = 0;
-    let selectedImageFile = null; // === Variabel untuk simpan file gambar ===
+    let selectedImageFile = null;
     const notificationSound = new Audio('{{ asset("sounds/beep.mp3") }}');
 
     function scrollToBottom(containerSelector = '#chat-messages') {
@@ -235,14 +264,12 @@ $(document).ready(function() {
         }
     }
 
-    // === KODE BARU: FUNGSI PARSER PRODUCT CARD & XSS PROTECTION ===
+    // === FUNGSI PARSER PRODUCT CARD & XSS PROTECTION ===
     function parseMessage(text) {
         if (!text) return '';
 
-        // 1. Amankan teks dari XSS terlebih dahulu
         let safeText = $('<div>').text(text).html();
 
-        // 2. Cek apakah ini template produk dari React Native
         if (safeText.startsWith('[TANYA PRODUK]') || safeText.startsWith('[INFO PRODUK]')) {
             const lines = safeText.split('\n');
             if (lines.length >= 3) {
@@ -262,7 +289,6 @@ $(document).ready(function() {
             }
         }
 
-        // 3. Kembalikan teks biasa dengan break-line (<br>)
         return safeText.replace(/\n/g, '<br>');
     }
     // =============================================================
@@ -271,18 +297,14 @@ $(document).ready(function() {
         const messageSide = msg.from_id == adminId ? 'sent' : 'received';
         const timeString = moment(msg.created_at).locale('id').format('HH:mm');
 
-        // === KODE BARU: RENDER GAMBAR DAN PARSER TEXT ===
         let contentHtml = '';
 
-        // Jika pesan memiliki gambar
         if (msg.image_url) {
             let imgPath = msg.image_url.startsWith('http') ? msg.image_url : `/storage/${msg.image_url}`;
             contentHtml += `<img src="${imgPath}" style="max-width: 100%; border-radius: 6px; margin-bottom: 5px; max-height: 250px; object-fit: cover;">`;
         }
 
-        // Parse teks menggunakan fungsi di atas
         contentHtml += parseMessage(msg.message);
-        // ===============================================
 
         const messageHtml = `
             <div class="message-container ${messageSide}">
@@ -327,7 +349,7 @@ $(document).ready(function() {
         });
     }
 
-    // === KODE BARU: LOGIKA PREVIEW GAMBAR SEBELUM DIKIRIM ===
+    // === LOGIKA PREVIEW GAMBAR SEBELUM DIKIRIM ===
     $('#image-upload-input').on('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -349,19 +371,17 @@ $(document).ready(function() {
     });
     // ========================================================
 
-    // === KODE BARU: UPDATE SEND MESSAGE MENGGUNAKAN FORMDATA ===
+    // === UPDATE SEND MESSAGE MENGGUNAKAN FORMDATA ===
     function sendMessage() {
         const messageInput = $('#message-input');
         const message = messageInput.val().trim();
         const sendButton = $('#send-button');
 
-        // Validasi: Cegah kirim jika teks dan gambar kosong
         if ((!message && !selectedImageFile) || !currentUserId || sendButton.prop('disabled')) return;
 
         sendButton.prop('disabled', true);
         messageInput.prop('disabled', true);
 
-        // Karena ada file, kita harus pakai FormData
         let formData = new FormData();
         formData.append('_token', '{{ csrf_token() }}');
         if (message) formData.append('message', message);
@@ -371,14 +391,13 @@ $(document).ready(function() {
             url: `/admin/chat/messages/${currentUserId}`,
             method: 'POST',
             data: formData,
-            processData: false, // WAJIB untuk FormData
-            contentType: false, // WAJIB untuk FormData
+            processData: false,
+            contentType: false,
             dataType: 'json',
             success: function(response) {
                 if (response.status === 'Pesan terkirim!' || response.success) {
                     messageInput.val('');
 
-                    // Reset Gambar
                     selectedImageFile = null;
                     $('#image-upload-input').val('');
                     $('#image-preview-container').addClass('hidden');
@@ -404,17 +423,64 @@ $(document).ready(function() {
     }
     // ===========================================================
 
+    // === KODE BARU: EVENT LISTENER MENU HEADER (TITIK TIGA) ===
+    $('#chat-options-btn').on('click', function(e) {
+        e.stopPropagation();
+        $('#chat-options-menu').toggleClass('hidden');
+    });
+
+    $(document).on('click', function() {
+        $('#chat-options-menu').addClass('hidden');
+    });
+
+    $('#delete-chat-btn').on('click', function() {
+        if(confirm('Yakin ingin menghapus semua riwayat chat dengan pengguna ini?')) {
+            // TODO: Integrasikan dengan Controller Hapus Pesan Anda nanti
+            alert('Fitur hapus pesan akan disambungkan ke backend!');
+            $('#chat-options-menu').addClass('hidden');
+        }
+    });
+    // ===========================================================
+
+
+    // === KODE BARU: UPDATE SET ACTIVE CHAT (AVATAR & WA) ===
     function setActiveChat(userId) {
         const userElement = $(`.user-item[data-id=${userId}]`);
         if (!userElement.length) return;
 
         const userName = userElement.data('name');
+        const userAvatar = userElement.data('avatar'); // Ambil data avatar
+        const userPhone = userElement.data('phone');   // Ambil data nomor HP
 
         if (userId === currentUserId && !$('#chat-box').hasClass('hidden')) {
             return;
         }
 
+        // Set Nama
         $('#chat-header-name').text(userName);
+
+        // Set Avatar di Header
+        if (userAvatar && userAvatar !== '') {
+            $('#header-avatar-img').attr('src', userAvatar).show();
+            $('#header-avatar-initial').hide();
+        } else {
+            $('#header-avatar-img').hide();
+            $('#header-avatar-initial').text(userName.charAt(0).toUpperCase()).show();
+        }
+
+        // Set Link Tombol WhatsApp
+        if (userPhone && userPhone !== '') {
+            let phoneStr = String(userPhone).replace(/[-+ \s]/g, '');
+            if (phoneStr.startsWith('0')) phoneStr = '62' + phoneStr.substring(1);
+
+            $('#wa-call-btn').show().off('click').on('click', function() {
+                window.open(`https://wa.me/${phoneStr}`, '_blank');
+            });
+        } else {
+            $('#wa-call-btn').hide(); // Sembunyikan kalau no HP kosong
+        }
+
+        // Tampilkan Box Chat
         $('#chat-welcome').addClass('hidden');
         $('#chat-box').removeClass('hidden');
         $('#message-input').val('').focus();
@@ -429,9 +495,10 @@ $(document).ready(function() {
         fetchMessages();
         pollingInterval = setInterval(fetchMessages, 3000);
     }
+    // ===========================================================
 
 
-    // --- Event Listeners ---
+    // --- Event Listeners Bawaan ---
     $('#user-list').on('click', '.user-item', function() {
         const userId = $(this).data('id');
         setActiveChat(userId);
