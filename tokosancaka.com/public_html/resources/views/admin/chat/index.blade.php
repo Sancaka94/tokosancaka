@@ -176,11 +176,16 @@
     .message-container.sent .message-time { text-align: right; }
     .message-container.received .message-time { text-align: left; }
 
-    .hidden { display: none !important; }
-    .user-list::-webkit-scrollbar, .chat-messages::-webkit-scrollbar { width: 6px; }
-    .user-list::-webkit-scrollbar-track, .chat-messages::-webkit-scrollbar-track { background: #f1f1f1; }
-    .user-list::-webkit-scrollbar-thumb, .chat-messages::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px;}
-    .user-list::-webkit-scrollbar-thumb:hover, .chat-messages::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    /* --- CSS SCROLLBAR BARU --- */
+    /* Berikan margin nol agar mepet kanan */
+    .user-list::-webkit-scrollbar { width: 6px; }
+    .user-list::-webkit-scrollbar-track { background: transparent; } /* Transparan agar tidak terlihat kotak putih */
+    .user-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    .user-list::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+    .chat-messages::-webkit-scrollbar { width: 6px; }
+    .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .chat-messages::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
 </style>
 @endpush
 
