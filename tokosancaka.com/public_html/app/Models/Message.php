@@ -19,6 +19,7 @@ class Message extends Model
         'read_at',
         'product_id',
         'image_url',
+        'audio_url'
     ];
 
     /**

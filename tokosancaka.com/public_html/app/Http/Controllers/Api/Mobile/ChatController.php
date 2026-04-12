@@ -48,6 +48,14 @@ class ChatController extends Controller
                     : 'https://tokosancaka.com/storage/' . $msg->image_url;
             }
 
+             // 👇 TAMBAHKAN FORMAT URL AUDIO
+            $finalAudioUrl = null;
+            if ($msg->audio_url) {
+                $finalAudioUrl = str_starts_with($msg->audio_url, 'http')
+                    ? $msg->audio_url
+                    : 'https://tokosancaka.com/storage/' . $msg->audio_url;
+            }
+
             return [
                 'id'         => $msg->id,
                 'sender'     => ($msg->from_id == $userId) ? 'user' : 'store',
@@ -55,6 +63,7 @@ class ChatController extends Controller
                 'product_id' => $msg->product_id,
                 'image_url'  => $finalImageUrl, // <-- Terapkan URL yang sudah aman
                 'created_at' => $msg->created_at,
+                'audio_url'  => $finalAudioUrl,
                 'is_read'    => $msg->read_at ? true : false,
             ];
         });
@@ -82,6 +91,8 @@ class ChatController extends Controller
             $lastSeen = "Beberapa waktu lalu";
         }
 
+
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -103,6 +114,7 @@ class ChatController extends Controller
             'store_id'   => 'required',
             'message'    => 'nullable|string|max:1000',
             'image'      => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120',
+            'audio'      => 'nullable|file|mimes:m4a,mp3,wav,ogg,aac|max:10240',
             'product_id' => 'nullable|integer'
         ]);
 
@@ -124,6 +136,14 @@ class ChatController extends Controller
                 $imageUrl = $path;
             }
 
+            // 👇 TAMBAHKAN LOGIKA UPLOAD AUDIO DI SINI
+            $audioUrl = null;
+            if ($request->hasFile('audio')) {
+                $file = $request->file('audio');
+                $path = $file->store('uploads/chat_audio', 'public'); // Folder khusus audio
+                $audioUrl = $path;
+            }
+
             if (empty($request->message) && empty($imageUrl)) {
                 return response()->json(['success' => false, 'message' => 'Pesan tidak boleh kosong.'], 400);
             }
@@ -133,6 +153,7 @@ class ChatController extends Controller
                 'to_id'      => $contactId,
                 'message'    => $request->message ?? '',
                 'image_url'  => $imageUrl,
+                'audio_url'  => $audioUrl,
                 'product_id' => $request->product_id,
             ]);
 
@@ -145,6 +166,7 @@ class ChatController extends Controller
                     'product_id' => $message->product_id,
                     'image_url'  => $message->image_url ? 'https://tokosancaka.com/storage/' . $message->image_url : null,
                     'created_at' => $message->created_at,
+                    'audio_url'  => $message->audio_url ? 'https://tokosancaka.com/storage/' . $message->audio_url : null,
                     'is_read'    => false
                 ]
             ]);
@@ -188,9 +210,20 @@ class ChatController extends Controller
             $contactId = ($msg->from_id == $userId) ? $msg->to_id : $msg->from_id;
 
             if (!isset($conversationsMap[$contactId])) {
+
+                // 👇 PERBAIKI LOGIKA LAST_MESSAGE
+                $lastMsgText = $msg->message;
+                if (empty($lastMsgText)) {
+                    if ($msg->audio_url) {
+                        $lastMsgText = '🎵 Pesan Suara';
+                    } elseif ($msg->image_url) {
+                        $lastMsgText = '📷 Mengirim Gambar';
+                    }
+                }
+
                 $conversationsMap[$contactId] = [
                     'contact_id'   => $contactId,
-                    'last_message' => $msg->message ?: ($msg->image_url ? '📷 Mengirim Gambar' : ''),
+                    'last_message' => $lastMsgText, // <-- Gunakan variabel baru ini
                     'last_time'    => $msg->created_at,
                     'unread_count' => 0
                 ];
