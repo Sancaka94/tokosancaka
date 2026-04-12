@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use Carbon\Carbon; // <--- 🟢 WAJIB DITAMBAHKAN UNTUK MANIPULASI WAKTU
 
 class AuthenticatedSessionController extends Controller
 {
@@ -36,19 +37,19 @@ class AuthenticatedSessionController extends Controller
 
         // 4. LOGIKA REDIRECT BERDASARKAN ROLE
         // ============================================================
-        
+
         if ($role === 'Admin') {
             // Jika Admin, arahkan ke /admin/dashboard
             // Pastikan route name 'admin.dashboard' sudah ada di web.php
             return redirect()->intended(route('admin.dashboard', absolute: false));
-        } 
-        
+        }
+
         elseif ($role === 'Pelanggan') {
             // Jika Pelanggan, arahkan ke /customer/dashboard
             // Pastikan route name 'customer.dashboard' sudah ada di web.php
             return redirect()->intended(route('customer.dashboard', absolute: false));
-        } 
-        
+        }
+
         elseif ($role === 'Seller') {
             // Jika Seller, arahkan ke /seller/dashboard
             // Pastikan route name 'seller.dashboard' sudah ada di web.php
@@ -64,6 +65,23 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        // 🟢 TAMBAHAN KODE BARU: Reset status Online menjadi Offline seketika
+        if (Auth::check()) {
+            $user = Auth::user();
+
+            // Mundurkan waktu last_seen menjadi 10 menit yang lalu
+            $user->last_seen = Carbon::now()->subMinutes(10);
+
+            // Jika tabel Anda juga punya kolom last_seen_at, update sekalian agar seragam
+            if (\Schema::hasColumn('Pengguna', 'last_seen_at')) {
+                $user->last_seen_at = Carbon::now()->subMinutes(10);
+            }
+
+            $user->save();
+        }
+        // =================================================================
+
+        // Proses logout bawaan Laravel
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
