@@ -114,7 +114,7 @@ class ChatController extends Controller
             'store_id'   => 'required',
             'message'    => 'nullable|string|max:1000',
             'image'      => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120',
-            'audio'      => 'nullable|file|mimes:m4a,mp3,wav,ogg,aac|max:10240',
+            'audio'      => 'nullable|file|mimes:m4a,mp3,wav,ogg,aac,mp4,3gp,webm|max:10240',
             'product_id' => 'nullable|integer'
         ]);
 
