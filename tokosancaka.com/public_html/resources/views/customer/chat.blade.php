@@ -154,17 +154,22 @@
         <div class="sidebar-header">
             <div class="customer-profile">
                 @php
-                    $myInitial = strtoupper(substr(auth()->user()->nama_lengkap ?? auth()->user()->name ?? 'C', 0, 1));
-                    $myAvatar = auth()->user()->store_logo_path ?? auth()->user()->profile_photo_path ?? '';
+                    $user = auth()->user();
+                    $myInitial = strtoupper(substr($user->nama_lengkap ?? $user->name ?? 'U', 0, 1));
+                    $myAvatar = $user->store_logo_path ?? $user->profile_photo_path ?? '';
                     $myFinalAvatar = $myAvatar ? (str_starts_with($myAvatar, 'http') ? $myAvatar : asset('storage/' . $myAvatar)) : '';
+
+                    // Fallback Avatar: Cadangan otomatis jika link gambar rusak / 404 dari server
+                    $fallbackAvatar = "https://ui-avatars.com/api/?name=" . urlencode($myInitial) . "&background=cbd5e1&color=ffffff&size=100";
                 @endphp
 
-                @if($myFinalAvatar)
-                    <img src="{{ $myFinalAvatar }}" class="customer-avatar" alt="Profile" onerror="this.onerror=null; this.outerHTML='<div class=\'customer-avatar\'>{{ $myInitial }}</div>';">
-                @else
-                    <div class="customer-avatar">{{ $myInitial }}</div>
-                @endif
-                <h1 style="font-size: 16px; font-weight: bold; color: var(--text-primary); margin: 0;">{{ auth()->user()->nama_lengkap ?? auth()->user()->name }}</h1>
+                <img src="{{ $myFinalAvatar ?: $fallbackAvatar }}"
+                     class="customer-avatar"
+                     alt="Profile"
+                     style="border: 1px solid var(--border-color); padding: 0;"
+                     onerror="this.onerror=null; this.src='{{ $fallbackAvatar }}';">
+
+                <h1 style="font-size: 16px; font-weight: bold; color: var(--text-primary); margin: 0;">{{ $user->nama_lengkap ?? $user->name }}</h1>
             </div>
 
             <div class="action-btn-wrapper">
