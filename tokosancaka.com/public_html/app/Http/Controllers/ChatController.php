@@ -25,7 +25,6 @@ class ChatController extends Controller
 
     /**
      * API: Mendapatkan daftar percakapan (List Inbox)
-     * Sama persis dengan logika mobile: mengambil chat terakhir dan jumlah unread
      */
     public function getConversations()
     {
@@ -76,20 +75,23 @@ class ChatController extends Controller
             $conv['logo'] = $contactUser->store_logo_path ?? null;
             $conv['store_id'] = $store ? $store->id : $conv['contact_id'];
 
+            // Tambahkan informasi online
+            $conv['is_online'] = $contactUser->last_seen && Carbon::parse($contactUser->last_seen)->diffInMinutes(now()) < 5;
+
             $finalConversations[] = $conv;
         }
 
-        // Sortir ulang agar yang ada chat terbaru naik ke atas
+        // Sortir ulang agar chat terbaru naik ke atas
         usort($finalConversations, function($a, $b) {
             return strtotime($b['last_time']) - strtotime($a['last_time']);
         });
 
-        // Kembalikan format array langsung (biasanya Javascript Web membutuhkan ini)
         return response()->json($finalConversations);
     }
 
     /**
      * API: Mendapatkan pesan dari sebuah percakapan
+     * Parameter $contactId diambil dari URL route
      */
     public function getMessages($contactId)
     {
@@ -108,54 +110,66 @@ class ChatController extends Controller
             })->orWhere(function($q) use ($userId, $contactId) {
                 $q->where('from_id', $contactId)->where('to_id', $userId);
             })
-            ->orderBy('created_at', 'asc') // Web biasanya Ascending (Pesan lama di atas)
-            ->limit(300)
+            ->orderBy('created_at', 'asc') // Web Ascending (Pesan lama di atas)
+            ->limit(500)
             ->get();
 
-        // 3. Format ulang agar kompatibel dengan Javascript Web yang sudah ada
+        // 3. Format ulang untuk Frontend
         $formattedMessages = $messages->map(function($msg) use ($userId) {
             return [
-                'id'              => $msg->id,
-                'sender_id'       => $msg->from_id,
-                'receiver_id'     => $msg->to_id,
-                'is_me'           => ($msg->from_id == $userId), // Boolean untuk UI Web
-                'content'         => $msg->message, // Jaga kompatibilitas jika JS lama pakai 'content'
-                'message'         => $msg->message,
-                'image_url'       => $msg->image_url,
-                'created_at'      => $msg->created_at,
-                'is_read'         => $msg->read_at ? true : false,
+                'id'          => $msg->id,
+                'from_id'     => $msg->from_id,
+                'to_id'       => $msg->to_id,
+                'is_me'       => ($msg->from_id == $userId),
+                'message'     => $msg->message,
+                'image_url'   => $msg->image_url,
+                'product_id'  => $msg->product_id ?? null,
+                'created_at'  => $msg->created_at,
+                'is_read'     => $msg->read_at ? true : false,
+                'read_at'     => $msg->read_at
             ];
         });
 
-        return response()->json($formattedMessages);
+        // 4. Cek Status Online Lawan Bicara (Untuk fitur centang & indikator hijau)
+        $targetUser = User::find($contactId);
+        $isTargetOnline = $targetUser && $targetUser->last_seen && Carbon::parse($targetUser->last_seen)->diffInMinutes(now()) < 5;
+
+        // Khusus untuk web Customer: Kita beri tahu apakah yang online ini Admin
+        $isAdminOnline = false;
+        if ($targetUser && in_array(strtolower($targetUser->role ?? ''), ['admin', 'superadmin'])) {
+            $isAdminOnline = $isTargetOnline;
+        }
+
+        return response()->json([
+            'success'       => true,
+            'messages'      => $formattedMessages,
+            'target_online' => $isTargetOnline,
+            'admin_online'  => $isAdminOnline
+        ]);
     }
 
     /**
      * API: Mengirim pesan baru
+     * Parameter $contactId diambil dari URL route
      */
-    public function sendMessage(Request $request)
+    public function sendMessage(Request $request, $contactId)
     {
-        // Validasi bisa menerima 'content' (dari web lama) atau 'message', dan 'image'
         $request->validate([
-            'contact_id' => 'required',
-            'content'    => 'nullable|string|max:2000',
-            'message'    => 'nullable|string|max:2000',
-            'image'      => 'nullable|image|mimes:jpeg,png,jpg|max:5120'
+            'message' => 'nullable|string|max:2000',
+            'image'   => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120'
         ]);
 
         $user = Auth::user();
         $userId = $user->id_pengguna ?? $user->id;
-        $contactId = $request->contact_id;
-
-        // Ambil teks dari parameter mana pun yang dikirim Frontend
         $messageText = $request->message ?? $request->content ?? '';
 
         try {
             $imageUrl = null;
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
+                // Simpan path relatif (Sama seperti logika Mobile App)
                 $path = $file->store('uploads/chat', 'public');
-                $imageUrl = asset('storage/' . $path);
+                $imageUrl = $path;
             }
 
             if (empty($messageText) && empty($imageUrl)) {
@@ -163,25 +177,23 @@ class ChatController extends Controller
             }
 
             $message = Message::create([
-                'from_id'   => $userId,
-                'to_id'     => $contactId,
-                'message'   => $messageText,
-                'image_url' => $imageUrl,
+                'from_id'    => $userId,
+                'to_id'      => $contactId,
+                'message'    => $messageText,
+                'image_url'  => $imageUrl,
+                'product_id' => $request->product_id ?? null,
             ]);
-
-            // TODO: Broadcast pesan menggunakan WebSockets (Laravel Echo)
-            // event(new MessageSent($message, $contactId));
 
             return response()->json([
                 'success' => true,
                 'message' => 'Terkirim',
                 'data' => [
                     'id'         => $message->id,
-                    'sender_id'  => $message->from_id,
+                    'from_id'    => $message->from_id,
                     'is_me'      => true,
-                    'content'    => $message->message,
                     'message'    => $message->message,
                     'image_url'  => $message->image_url,
+                    'product_id' => $message->product_id,
                     'created_at' => $message->created_at,
                     'is_read'    => false
                 ]
@@ -189,6 +201,34 @@ class ChatController extends Controller
 
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * API: Hapus seluruh riwayat pesan dengan satu user
+     */
+    public function deleteAllMessages(Request $request)
+    {
+        $user = Auth::user();
+        $userId = $user->id_pengguna ?? $user->id;
+
+        // Bisa dari payload POST atau dari route parameter
+        $contactId = $request->user_id ?? $request->contact_id;
+
+        if (!$contactId) {
+            return response()->json(['success' => false, 'message' => 'User ID tidak ditemukan.'], 400);
+        }
+
+        try {
+            Message::where(function($q) use ($userId, $contactId) {
+                $q->where('from_id', $userId)->where('to_id', $contactId);
+            })->orWhere(function($q) use ($userId, $contactId) {
+                $q->where('from_id', $contactId)->where('to_id', $userId);
+            })->delete();
+
+            return response()->json(['success' => true, 'message' => 'Riwayat chat berhasil dibersihkan.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal menghapus pesan.'], 500);
         }
     }
 }
