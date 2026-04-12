@@ -4,163 +4,265 @@
 @section('title', 'Support Chat')
 
 @push('styles')
-{{-- Memuat ikon dan style dasar untuk chat --}}
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 <style>
-    /* === DESAIN BARU UNTUK CUSTOMER === */
+    /* === DESAIN BARU (WHATSAPP WEB CLONE - CUSTOMER VIEW) === */
     :root {
-        --background-color: #f0f2f5;
-        --chat-panel-background: #e5ddd5;
+        --app-background: #e2e8f0;
+        --sidebar-background: #ffffff;
+        --chat-panel-background: #efeae2;
         --header-background: #f0f2f5;
-        --message-sent-background: #dcf8c6;
-        --message-received-background: #fff;
+        --message-sent-background: #d9fdd3;
+        --message-received-background: #ffffff;
         --text-primary: #111b21;
         --text-secondary: #667781;
         --border-color: #e9edef;
+        --active-chat-background: #f0f2f5;
+        --hover-background: #f5f6f6;
+        --wa-green: #25D366;
+        --wa-blue-tick: #53bdeb;
     }
 
-    /* Kontainer utama yang mengisi ruang layout */
-    .chat-wrapper {
+    body {
+        background-color: var(--app-background);
+    }
+
+    .chat-container {
         display: flex;
-        flex-direction: column;
         height: 85vh;
         width: 100%;
-        max-width: 900px;
+        max-width: 1600px;
         margin: auto;
-        background-color: #fff;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        background-color: var(--sidebar-background);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         border-radius: 8px;
         overflow: hidden;
     }
 
-    /* --- Area Chat --- */
-    .chat-panel {
-        width: 100%;
-        height: 100%;
+    /* === SIDEBAR (DAFTAR KONTAK CS/TOKO) === */
+    .sidebar {
+        width: 30%;
+        min-width: 320px;
+        max-width: 420px;
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        background-color: var(--sidebar-background);
+        z-index: 10;
+    }
+
+    .sidebar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 16px;
+        height: 65px;
+        background-color: var(--header-background);
+        border-bottom: 1px solid var(--border-color);
+        box-sizing: border-box;
+    }
+
+    /* Profil Customer Sendiri di Kiri Atas */
+    .customer-profile {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .customer-avatar {
+        width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background-color: #cbd5e1;
+        display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;
+    }
+
+    .sidebar-actions { display: flex; gap: 20px; color: #54656f; font-size: 1.2rem; }
+    .sidebar-actions button { background: none; border: none; cursor: pointer; color: inherit; transition: color 0.2s; }
+    .sidebar-actions button:hover { color: var(--text-primary); }
+
+    .search-section { padding: 10px 14px; border-bottom: 1px solid var(--border-color); }
+    .search-box { display: flex; align-items: center; background-color: var(--header-background); border-radius: 8px; padding: 6px 12px; }
+    .search-box input { border: none; background: transparent; width: 100%; outline: none; font-size: 14px; color: var(--text-primary); margin-left: 15px; }
+
+    .user-list { flex-grow: 1; overflow-y: auto; }
+    .user-item { display: flex; align-items: center; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--border-color); transition: background-color 0.2s; }
+    .user-item:hover { background-color: var(--hover-background); }
+    .user-item.active { background-color: var(--active-chat-background); }
+
+    .avatar-wrapper { margin-right: 15px; position: relative; }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; background-color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 20px; color: white; }
+    .online-badge { position: absolute; bottom: 2px; right: 0px; width: 12px; height: 12px; background-color: var(--wa-green); border: 2px solid white; border-radius: 50%; }
+
+    .user-details { flex: 1; min-width: 0; }
+    .user-details-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+    .user-name { font-weight: 600; font-size: 16px; color: var(--text-primary); margin: 0; }
+    .user-time { font-size: 12px; color: var(--wa-green); font-weight: bold; }
+    .user-details-bottom { display: flex; justify-content: space-between; align-items: center; }
+    .last-message { margin: 0; font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* === AREA CHAT UTAMA === */
+    .chat-area {
+        width: 70%;
         display: flex;
         flex-direction: column;
         background-color: var(--chat-panel-background);
         background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+        background-repeat: repeat;
+        position: relative;
     }
 
     .chat-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 16px;
-        background-color: var(--header-background);
-        border-bottom: 1px solid var(--border-color);
-        color: var(--text-primary);
-        font-weight: 600;
-        font-size: 1.1rem;
+        display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; height: 65px;
+        background-color: var(--header-background); border-bottom: 1px solid var(--border-color); box-sizing: border-box; flex-shrink: 0;
     }
 
-    .chat-messages {
-        flex-grow: 1;
-        padding: 20px 5%;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
+    .chat-header-info { display: flex; align-items: center; gap: 15px; }
+    .chat-header-text { display: flex; flex-direction: column; }
+    #chat-header-name { font-size: 16px; font-weight: bold; color: var(--text-primary); }
+    .status-text { font-size: 12px; color: var(--wa-green); margin-top: 2px; }
+
+    .chat-header-actions { display: flex; align-items: center; gap: 20px; position: relative; }
+    .header-action-btn { background: none; border: none; cursor: pointer; font-size: 1.4rem; color: var(--text-secondary); transition: color 0.2s; }
+    .header-action-btn:hover { color: var(--text-primary); }
+
+    #chat-welcome {
+        display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%;
+        color: #54656f; background-color: var(--header-background); font-size: 1.1rem; text-align: center;
+        position: absolute; width: 100%; z-index: 5;
+    }
+    #chat-welcome i { font-size: 4rem; margin-bottom: 1rem; color: #aebac1; }
+
+    .chat-messages { flex-grow: 1; padding: 20px 5%; overflow-y: auto; display: flex; flex-direction: column; z-index: 1; }
+
+    /* === BUBBLE CHAT & WAKTU === */
+    .message-container { display: flex; flex-direction: column; margin-bottom: 8px; max-width: 65%; width: fit-content; }
+    .message-container.sent { align-self: flex-end; }
+    .message-container.received { align-self: flex-start; }
+
+    .message-bubble {
+        padding: 6px 7px 20px 9px; border-radius: 7.5px; word-wrap: break-word;
+        box-shadow: 0 1px 0.5px rgba(11,20,26,.13); position: relative; color: var(--text-primary); font-size: 0.95rem; line-height: 1.4; min-width: 80px;
+    }
+    .message-container.sent .message-bubble { background-color: var(--message-sent-background); border-top-right-radius: 0; }
+    .message-container.received .message-bubble { background-color: var(--message-received-background); border-top-left-radius: 0; }
+
+    .message-time {
+        position: absolute; right: 8px; bottom: 4px; font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 3px; white-space: nowrap;
     }
 
-    /* --- Preview Gambar --- */
-    #image-preview-container {
-        padding: 10px 16px;
-        background-color: var(--header-background);
-        border-top: 1px solid var(--border-color);
-        display: flex; align-items: center; gap: 15px;
-    }
+    /* === PREVIEW GAMBAR & CARD PRODUK === */
+    #image-preview-container { padding: 10px 16px; background-color: var(--header-background); border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 15px; }
     .preview-box { position: relative; display: inline-block; }
     .preview-box img { height: 80px; width: 80px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border-color); }
-    .preview-box button {
-        position: absolute; top: -8px; right: -8px; background: #ef4444; color: white;
-        border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer;
-    }
+    .preview-box button { position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; }
 
-    /* --- Card Produk --- */
-    .chat-product-card {
-        border: 1px solid #e9edef; padding: 8px; border-radius: 8px; background: #ffffff; margin-bottom: 5px; min-width: 220px; display: flex; gap: 10px; align-items: center;
-    }
+    .chat-product-card { border: 1px solid #e9edef; padding: 8px; border-radius: 8px; background: #ffffff; margin-bottom: 5px; min-width: 220px; display: flex; gap: 10px; align-items: center; }
     .chat-product-card img { width: 50px; height: 50px; border-radius: 4px; object-fit: cover; }
     .chat-product-info { flex: 1; }
-    .chat-product-title { font-size: 12px; font-weight: bold; color: #111b21; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .chat-product-title { font-size: 12px; font-weight: bold; color: var(--text-primary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .chat-product-price { font-size: 12px; color: #dc2626; font-weight: bold; margin-top: 2px; }
 
-    /* --- Input Box --- */
-    .chat-input-container {
-        display: flex;
-        align-items: center;
-        padding: 10px 16px;
-        background-color: var(--header-background);
-        border-top: 1px solid var(--border-color);
-    }
-
-    .chat-input-container input[type="text"] {
-        flex-grow: 1; border: none; padding: 12px 16px; border-radius: 20px;
-        outline: none; font-size: 1rem; margin: 0 10px;
-    }
-
-    .chat-input-container button {
-        background: none; border: none; color: var(--text-secondary);
-        font-size: 1.5rem; cursor: pointer; padding: 8px;
-    }
-    .chat-input-container button:hover { color: #1e2a33; }
-
-    /* --- Indikator Status & Avatar --- */
-    .avatar-wrapper { position: relative; display: inline-block; }
-    .online-badge { position: absolute; bottom: 2px; right: 0px; width: 12px; height: 12px; background-color: #25D366; border: 2px solid white; border-radius: 50%; }
-    .status-text { font-size: 12px; color: #10b981; margin-top: 2px; font-weight: normal; }
-    .msg-tick { font-size: 0.7rem; margin-left: 5px; }
-    .tick-read { color: #ef4444; }
-    .tick-sent { color: #9ca3af; }
-
-    /* --- Gelembung Pesan --- */
-    .message-container { display: flex; flex-direction: column; margin-bottom: 8px; max-width: 75%; }
-    .message-container.sent { align-self: flex-end; align-items: flex-end; }
-    .message-container.received { align-self: flex-start; align-items: flex-start; }
-    .message-bubble { padding: 8px 12px; border-radius: 8px; word-wrap: break-word; box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05); position: relative; color: var(--text-primary); font-size: 0.95rem; line-height: 1.4; }
-    .message-container.sent .message-bubble { background-color: var(--message-sent-background); }
-    .message-container.received .message-bubble { background-color: var(--message-received-background); }
-    .message-time { font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px; padding: 0 4px; }
+    /* === FORM INPUT === */
+    .chat-input-container { display: flex; align-items: center; padding: 10px 16px; background-color: var(--header-background); border-top: 1px solid var(--border-color); flex-shrink: 0; z-index: 2; }
+    .chat-input-container input[type="text"] { flex-grow: 1; border: none; padding: 12px 16px; border-radius: 8px; outline: none; font-size: 1rem; margin: 0 10px; background-color: #ffffff; }
+    .chat-input-btn { background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 8px; transition: 0.2s; }
+    .chat-input-btn:hover { color: var(--text-primary); }
 
     .hidden { display: none !important; }
+
+    /* --- SCROLLBAR STYLE --- */
+    .user-list::-webkit-scrollbar, .chat-messages::-webkit-scrollbar { width: 6px; }
+    .user-list::-webkit-scrollbar-track, .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .user-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+    .user-list::-webkit-scrollbar-thumb:hover, .chat-messages::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 </style>
 @endpush
 
 @section('content')
-<div class="chat-wrapper">
-    <div class="chat-panel">
+<div class="chat-container">
 
-        <div class="chat-header">
-            <div style="display: flex; align-items: center; gap: 15px;">
+    <div class="sidebar">
+
+        <div class="sidebar-header">
+            <div class="customer-profile">
+                @php
+                    $myInitial = strtoupper(substr(auth()->user()->nama_lengkap ?? 'C', 0, 1));
+                @endphp
+                <div class="customer-avatar">{{ $myInitial }}</div>
+                <h1 style="font-size: 16px; font-weight: bold; color: var(--text-primary); margin: 0;">{{ auth()->user()->nama_lengkap }}</h1>
+            </div>
+            <div class="sidebar-actions">
+                <button title="Menu"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+            </div>
+        </div>
+
+        <div class="search-section">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass" style="color: #8696a0; font-size: 14px;"></i>
+                <input type="text" id="search-chat" placeholder="Cari layanan...">
+            </div>
+        </div>
+
+        <div class="user-list" id="user-list">
+            <div class="user-item" data-id="admin" data-name="Admin Sancaka Express">
                 <div class="avatar-wrapper">
-                    <div style="width: 42px; height: 42px; border-radius: 50%; background-color: #dc2626; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;">
+                    <div class="avatar">
                         <i class="fa-solid fa-headset"></i>
                     </div>
-                    <div id="admin-online-badge" class="online-badge hidden"></div>
+                    <div class="online-badge hidden" id="sidebar-online-badge"></div>
                 </div>
-                <div>
-                    <div style="font-size: 16px; font-weight: bold; color: #111b21;">Admin Sancaka</div>
-                    <div id="admin-status-text" class="status-text hidden">Online</div>
+
+                <div class="user-details">
+                    <div class="user-details-top">
+                        <p class="user-name">Admin Sancaka Express</p>
+                        <span class="user-time" id="sidebar-time"></span>
+                    </div>
+
+                    <div class="user-details-bottom">
+                        <div style="display: flex; align-items: center; flex: 1; min-width: 0; padding-right: 10px;">
+                            <p class="last-message" id="sidebar-last-msg">Klik untuk meminta bantuan CS...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <div>
-                <button style="background:none; border:none; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer;">
-                    <i class="fa-solid fa-ellipsis-vertical"></i>
-                </button>
+
+    <div class="chat-area">
+
+        <div id="chat-welcome">
+             <div>
+                <i class="fa-brands fa-whatsapp"></i>
+                <p>Sancaka Express Support</p>
+                <small>Silakan klik Admin Sancaka di sebelah kiri untuk memulai chat.</small>
             </div>
         </div>
 
-        <div class="chat-messages" id="chat-messages">
-            @if ($errors->any())
-                <p class="text-center text-red-500 p-4">{{ $errors->first() }}</p>
-            @else
-                <p class="text-center text-gray-400 p-4">Memuat percakapan...</p>
-            @endif
-        </div>
+        <div id="chat-box" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
 
-        @if (!$errors->any())
+            <div class="chat-header">
+                <div class="chat-header-info">
+                    <div class="avatar-wrapper">
+                        <div style="width: 42px; height: 42px; border-radius: 50%; background-color: #dc2626; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                            <i class="fa-solid fa-headset"></i>
+                        </div>
+                        <div id="header-online-badge" class="online-badge hidden"></div>
+                    </div>
+
+                    <div class="chat-header-text">
+                        <div id="chat-header-name">Admin Sancaka Express</div>
+                        <div id="chat-header-status" class="status-text hidden">Online</div>
+                    </div>
+                </div>
+
+                <div class="chat-header-actions">
+                    <button class="header-action-btn" title="Options">
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="chat-messages custom-scrollbar" id="chat-messages"></div>
+
             <div id="image-preview-container" class="hidden">
                 <div class="preview-box">
                     <img id="image-preview" src="" alt="Preview">
@@ -169,19 +271,23 @@
             </div>
 
             <div class="chat-input-container">
-                <button title="Emoji"><i class="fa-regular fa-face-smile"></i></button>
+                <button class="chat-input-btn" title="Emoji"><i class="fa-regular fa-face-smile"></i></button>
 
                 <input type="file" id="image-upload-input" accept="image/png, image/jpeg, image/webp" class="hidden">
-                <button id="attachment-btn" title="Kirim Gambar" onclick="document.getElementById('image-upload-input').click()">
+                <button id="attachment-btn" class="chat-input-btn" title="Kirim Gambar" onclick="document.getElementById('image-upload-input').click()">
                     <i class="fa-solid fa-paperclip"></i>
                 </button>
 
                 <input type="text" id="message-input" placeholder="Ketik pesan..." autocomplete="off">
-                <button id="send-button" type="submit" title="Kirim Pesan"><i class="fa-solid fa-paper-plane"></i></button>
-            </div>
-        @endif
 
+                <button id="send-button" class="chat-input-btn" type="submit" title="Kirim Pesan">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+
+        </div>
     </div>
+
 </div>
 @endsection
 
@@ -196,19 +302,20 @@
 $(document).ready(function() {
     @if ($errors->any()) return; @endif
 
-    // === VARIABEL GLOBAL ===
     const customerId = {{ auth()->id() }};
-    const messagesContainer = $('#chat-messages');
+    let pollingInterval = null;
     let lastMessageCount = 0;
     let selectedImageFile = null;
-    let isAdminOnline = false; // Penanda status online admin
-    const notificationSound = new Audio('{{ asset("sounds/beep.mp3") }}'); // Pastikan file suara ada
+    let isAdminOnline = false;
+    const notificationSound = new Audio('{{ asset("sounds/beep.mp3") }}');
 
     function scrollToBottom() {
-        messagesContainer.scrollTop(messagesContainer[0].scrollHeight);
+        const container = $('#chat-messages');
+        if (container.length) {
+            container.scrollTop(container[0].scrollHeight);
+        }
     }
 
-    // === FUNGSI PARSER PRODUCT CARD & XSS PROTECTION ===
     function parseMessage(text) {
         if (!text) return '';
         let safeText = $('<div>').text(text).html();
@@ -234,33 +341,28 @@ $(document).ready(function() {
         return safeText.replace(/\n/g, '<br>');
     }
 
-    // === FUNGSI RENDER PESAN (DENGAN GAMBAR & CENTANG) ===
     function createMessageBubble(msg) {
-        // Toleransi jika API mereturn format berbeda, pastikan cek isSent
         const isSent = (msg.from_id == customerId) || msg.is_me;
         const messageSide = isSent ? 'sent' : 'received';
         const timeString = moment(msg.created_at).locale('id').format('HH:mm');
 
         let contentHtml = '';
 
-        // Render Gambar
         if (msg.image_url) {
             let imgPath = msg.image_url.startsWith('http') ? msg.image_url : `/storage/${msg.image_url}`;
             contentHtml += `<img src="${imgPath}" style="max-width: 100%; border-radius: 6px; margin-bottom: 5px; max-height: 250px; object-fit: cover;">`;
         }
 
-        // Render Text/Card
         contentHtml += parseMessage(msg.message);
 
-        // Render Centang (Hanya untuk pesan yang dikirim Customer)
         let tickHtml = '';
         if (isSent) {
             if (msg.is_read || msg.read_at) {
-                tickHtml = '<i class="fa-solid fa-check-double msg-tick tick-read"></i>';
+                tickHtml = '<i class="fa-solid fa-check-double" style="font-size: 0.7rem; color: var(--wa-blue-tick);"></i>';
             } else if (isAdminOnline) {
-                tickHtml = '<i class="fa-solid fa-check-double msg-tick tick-sent"></i>';
+                tickHtml = '<i class="fa-solid fa-check-double" style="font-size: 0.7rem; color: #9ca3af;"></i>';
             } else {
-                tickHtml = '<i class="fa-solid fa-check msg-tick tick-sent"></i>';
+                tickHtml = '<i class="fa-solid fa-check" style="font-size: 0.7rem; color: #9ca3af;"></i>';
             }
         }
 
@@ -268,50 +370,60 @@ $(document).ready(function() {
             <div class="message-container ${messageSide}">
                 <div class="message-bubble">
                     ${contentHtml}
-                    <div class="message-time" style="text-align: ${isSent ? 'right' : 'left'}">${timeString} ${tickHtml}</div>
+                    <div class="message-time">${timeString} ${tickHtml}</div>
                 </div>
             </div>
         `;
     }
 
-    // === FUNGSI TARIK DATA (POLLING) ===
     function loadMessages() {
         $.ajax({
             url: "{{ route('customer.chat.fetchMessages') }}",
             method: 'GET',
             dataType: 'json',
             success: function(response) {
-                // Handle jika response berupa object { messages: [...], admin_online: true } atau langsung array [...]
                 let messages = response.messages ? response.messages : response;
 
-                // Set Admin Online Status (Jika API backend mengirimkannya)
                 if (response.admin_online !== undefined) {
                     isAdminOnline = response.admin_online;
                     if (isAdminOnline) {
-                        $('#admin-online-badge').removeClass('hidden');
-                        $('#admin-status-text').removeClass('hidden');
+                        $('#header-online-badge').removeClass('hidden');
+                        $('#chat-header-status').removeClass('hidden');
+                        $('#sidebar-online-badge').removeClass('hidden');
                     } else {
-                        $('#admin-online-badge').addClass('hidden');
-                        $('#admin-status-text').addClass('hidden');
+                        $('#header-online-badge').addClass('hidden');
+                        $('#chat-header-status').addClass('hidden');
+                        $('#sidebar-online-badge').addClass('hidden');
                     }
                 }
 
                 if (messages.length !== lastMessageCount) {
-                    // Bunyikan notifikasi jika ada pesan baru dari Admin
                     if (lastMessageCount > 0 && messages.length > 0) {
                         const latestMsg = messages[messages.length - 1];
                         if (latestMsg.from_id != customerId) {
-                            notificationSound.play().catch(e => console.log("Notif sound blocked by browser"));
+                            notificationSound.play().catch(e => console.log("Notif sound blocked"));
                         }
                     }
 
+                    const messagesContainer = $('#chat-messages');
                     messagesContainer.html('');
+
                     if (messages.length === 0) {
-                        messagesContainer.html('<p class="text-center text-gray-400 p-4">Belum ada percakapan. Mulai sekarang!</p>');
+                        messagesContainer.html('<p class="text-center text-gray-500 p-4" style="background: white; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); width: fit-content; margin: 0 auto;">Belum ada percakapan. Mulai sekarang!</p>');
+                        $('#sidebar-last-msg').text('Belum ada pesan...');
                     } else {
                         messages.forEach(function(msg) {
                             messagesContainer.append(createMessageBubble(msg));
                         });
+
+                        // Update Sidebar Last Message
+                        const lastM = messages[messages.length - 1];
+                        let lastText = lastM.message;
+                        if(lastM.image_url) lastText = '📷 Gambar';
+                        if(lastText.startsWith('[TANYA PRODUK]')) lastText = '📦 Bertanya Produk';
+
+                        $('#sidebar-last-msg').text(lastText);
+                        $('#sidebar-time').text(moment(lastM.created_at).locale('id').format('HH:mm'));
                     }
                     scrollToBottom();
                     lastMessageCount = messages.length;
@@ -322,6 +434,22 @@ $(document).ready(function() {
             }
         });
     }
+
+    // === LOGIKA SIDEBAR KLIK ===
+    $('#user-list').on('click', '.user-item', function() {
+        $('.user-item').removeClass('active');
+        $(this).addClass('active');
+
+        $('#chat-welcome').addClass('hidden');
+        $('#chat-box').removeClass('hidden');
+        $('#message-input').focus();
+
+        if (pollingInterval) clearInterval(pollingInterval);
+
+        lastMessageCount = 0;
+        loadMessages();
+        pollingInterval = setInterval(loadMessages, 3000);
+    });
 
     // === LOGIKA UPLOAD GAMBAR ===
     $('#image-upload-input').on('change', function(e) {
@@ -344,19 +472,16 @@ $(document).ready(function() {
         $('#image-preview-container').addClass('hidden');
     });
 
-    // === FUNGSI KIRIM PESAN DENGAN FORMDATA ===
     function sendMessage() {
         const messageInput = $('#message-input');
         const message = messageInput.val().trim();
         const sendButton = $('#send-button');
 
-        // Validasi: Tidak boleh kirim jika teks dan gambar kosong
         if ((!message && !selectedImageFile) || sendButton.prop('disabled')) return;
 
         sendButton.prop('disabled', true);
         messageInput.prop('disabled', true);
 
-        // Gunakan FormData untuk mengirim Text + File Gambar
         let formData = new FormData();
         formData.append('_token', '{{ csrf_token() }}');
         if (message) formData.append('message', message);
@@ -366,8 +491,8 @@ $(document).ready(function() {
             url: "{{ route('customer.chat.sendMessage') }}",
             method: 'POST',
             data: formData,
-            processData: false, // Wajib untuk FormData
-            contentType: false, // Wajib untuk FormData
+            processData: false,
+            contentType: false,
             dataType: 'json',
             success: function(response) {
                 messageInput.val('');
@@ -375,7 +500,7 @@ $(document).ready(function() {
                 $('#image-upload-input').val('');
                 $('#image-preview-container').addClass('hidden');
 
-                lastMessageCount = 0; // Trigger render ulang
+                lastMessageCount = 0;
                 loadMessages();
             },
             error: function(jqXHR) {
@@ -388,7 +513,6 @@ $(document).ready(function() {
         });
     }
 
-    // === EVENT LISTENER ===
     $('#send-button').on('click', sendMessage);
     $('#message-input').on('keypress', function(e) {
         if (e.which === 13 && !e.shiftKey) {
@@ -397,16 +521,11 @@ $(document).ready(function() {
         }
     });
 
-    // Setup Toastr
     toastr.options = {
         "positionClass": "toast-top-right",
         "progressBar": true,
         "timeOut": "4000",
     };
-
-    // Jalankan loadMessages pertama kali & Polling setiap 3 detik (Samakan dengan Admin)
-    loadMessages();
-    setInterval(loadMessages, 3000);
 });
 </script>
 @endpush
