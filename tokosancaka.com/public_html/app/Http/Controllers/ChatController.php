@@ -11,100 +11,86 @@ use Carbon\Carbon;
 
 class ChatController extends Controller
 {
-    // =================================================================
-    // 1. HALAMAN CHAT UNTUK ADMIN
-    // =================================================================
+    // Menampilkan halaman chat untuk ADMIN
     public function adminIndex()
     {
         $user = Auth::user();
-        $userId = $user->getKey(); // Jauh lebih aman dari $user->id_pengguna
-        $keyName = (new User)->getKeyName(); // Dinamis mengambil primary key (id atau id_pengguna)
+        $userId = $user->id_pengguna ?? $user->id;
 
-        $contactIds = Message::where('from_id', $userId)->pluck('to_id')
-            ->merge(Message::where('to_id', $userId)->pluck('from_id'))
-            ->unique()->values()->toArray();
+        $contactIds = \App\Models\Message::where('from_id', $userId)->pluck('to_id')
+            ->merge(\App\Models\Message::where('to_id', $userId)->pluck('from_id'))
+            ->unique()->toArray();
 
-        $users = User::whereIn($keyName, $contactIds)
-            ->where($keyName, '!=', $userId) // Jangan tampilkan diri sendiri
-            ->get()
-            ->map(function($u) use ($userId) {
-                $uId = $u->getKey();
+        $users = \App\Models\User::whereIn('id_pengguna', $contactIds)->get()->map(function($u) use ($userId) {
+            $uId = $u->id_pengguna;
 
-                $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
-                    $q->where('from_id', $userId)->where('to_id', $uId);
-                })->orWhere(function($q) use ($userId, $uId) {
-                    $q->where('from_id', $uId)->where('to_id', $userId);
-                })->orderBy('created_at', 'desc')->first();
+            $u->last_message_data = \App\Models\Message::where(function($q) use ($userId, $uId) {
+                $q->where('from_id', $userId)->where('to_id', $uId);
+            })->orWhere(function($q) use ($userId, $uId) {
+                $q->where('from_id', $uId)->where('to_id', $userId);
+            })->orderBy('created_at', 'desc')->first();
 
-                $u->unread_count = Message::where('from_id', $uId)
-                    ->where('to_id', $userId)
-                    ->whereNull('read_at')
-                    ->count();
+            $u->unread_count = \App\Models\Message::where('from_id', $uId)
+                ->where('to_id', $userId)
+                ->whereNull('read_at')
+                ->count();
 
-                return $u;
-            })->sortByDesc(function($u) {
-                return $u->last_message_data ? $u->last_message_data->created_at : '2000-01-01 00:00:00';
-            });
+            // PASTIKAN LOGO DIAMBIL DENGAN AMAN
+            $u->store_logo_path = $u->store_logo_path ?? $u->profile_photo_path ?? null;
+
+            return $u;
+        })->sortByDesc(function($u) {
+            return $u->last_message_data->created_at ?? '2000-01-01';
+        });
 
         return view('admin.chat', compact('users'));
     }
 
-    // =================================================================
-    // 2. HALAMAN CHAT UNTUK CUSTOMER
-    // =================================================================
+    // Menampilkan halaman chat untuk CUSTOMER
     public function customerIndex()
     {
         $user = Auth::user();
-        $userId = $user->getKey();
-        $keyName = (new User)->getKeyName();
+        $userId = $user->id_pengguna ?? $user->id;
 
-        // 1. Cari riwayat kontak
-        $contactIds = Message::where('from_id', $userId)->pluck('to_id')
-            ->merge(Message::where('to_id', $userId)->pluck('from_id'))
-            ->unique()->values()->toArray();
+        $contactIds = \App\Models\Message::where('from_id', $userId)->pluck('to_id')
+            ->merge(\App\Models\Message::where('to_id', $userId)->pluck('from_id'))
+            ->unique()->toArray();
 
-        // 2. WAJIB: Masukkan ID Admin Pusat (Admin = 4) agar CS selalu muncul
         $adminId = 4;
         if (!in_array($adminId, $contactIds)) {
             $contactIds[] = $adminId;
         }
 
-        // 3. Tarik data dari database dengan aman
-        $users = User::whereIn($keyName, $contactIds)
-            ->where($keyName, '!=', $userId) // Jangan tampilkan diri sendiri
-            ->get()
-            ->map(function($u) use ($userId) {
-                $uId = $u->getKey();
+        $users = \App\Models\User::whereIn('id_pengguna', $contactIds)->get()->map(function($u) use ($userId) {
+            $uId = $u->id_pengguna;
 
-                $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
-                    $q->where('from_id', $userId)->where('to_id', $uId);
-                })->orWhere(function($q) use ($userId, $uId) {
-                    $q->where('from_id', $uId)->where('to_id', $userId);
-                })->orderBy('created_at', 'desc')->first();
+            $u->last_message_data = \App\Models\Message::where(function($q) use ($userId, $uId) {
+                $q->where('from_id', $userId)->where('to_id', $uId);
+            })->orWhere(function($q) use ($userId, $uId) {
+                $q->where('from_id', $uId)->where('to_id', $userId);
+            })->orderBy('created_at', 'desc')->first();
 
-                $u->unread_count = Message::where('from_id', $uId)
-                    ->where('to_id', $userId)
-                    ->whereNull('read_at')
-                    ->count();
+            $u->unread_count = \App\Models\Message::where('from_id', $uId)
+                ->where('to_id', $userId)
+                ->whereNull('read_at')
+                ->count();
 
-                // Ganti nama dengan nama Toko jika punya toko
-                if (class_exists(Store::class)) {
-                    $store = Store::where('user_id', $uId)->first();
-                    if ($store) {
-                        $u->nama_lengkap = $store->name;
-                        $u->store_logo_path = $store->logo ?? null;
-                    }
-                }
+            $store = \App\Models\Store::where('user_id', $uId)->first();
+            if ($store) {
+                $u->nama_lengkap = $store->name;
+                // PERBAIKAN: Jangan timpa logo jika logo toko kosong
+                $u->store_logo_path = $store->logo ?? $u->store_logo_path ?? $u->profile_photo_path ?? null;
+            } elseif (in_array(strtolower($u->role ?? ''), ['admin', 'superadmin']) || $uId == 4) {
+                $u->nama_lengkap = "Admin Sancaka";
+                $u->store_logo_path = $u->store_logo_path ?? $u->profile_photo_path ?? null;
+            } else {
+                $u->store_logo_path = $u->store_logo_path ?? $u->profile_photo_path ?? null;
+            }
 
-                // Pastikan ID 4 selalu bernama Admin
-                if (in_array(strtolower($u->role ?? ''), ['admin', 'superadmin']) || $uId == 4) {
-                    $u->nama_lengkap = "Admin Sancaka";
-                }
-
-                return $u;
-            })->sortByDesc(function($u) {
-                return $u->last_message_data ? $u->last_message_data->created_at : '2000-01-01 00:00:00';
-            });
+            return $u;
+        })->sortByDesc(function($u) {
+            return $u->last_message_data->created_at ?? '2000-01-01';
+        });
 
         return view('customer.chat', compact('users'));
     }
