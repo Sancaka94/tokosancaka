@@ -25,6 +25,9 @@
 
     body { background-color: var(--app-background); }
 
+    /* KELAS SUPER UNTUK MENYEMBUNYIKAN ELEMEN (ANTI BENTROK) */
+    .d-none { display: none !important; }
+
     .chat-container {
         display: flex; height: 85vh; width: 100%; max-width: 1600px; margin: auto;
         background-color: var(--sidebar-background); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
@@ -99,13 +102,22 @@
     /* === AREA CHAT KANAN === */
     .chat-area { width: 70%; display: flex; flex-direction: column; background-color: var(--chat-panel-background); background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-repeat: repeat; position: relative; }
 
+    /* Layar Welcome Overlay */
+    .chat-welcome-screen {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        background-color: var(--header-background); color: #54656f; text-align: center;
+        z-index: 20;
+    }
+    .chat-welcome-screen i { font-size: 4rem; margin-bottom: 1rem; color: #aebac1; }
+
+    .chat-box { display: flex; flex-direction: column; height: 100%; width: 100%; }
+
     .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; height: 65px; background-color: var(--header-background); border-bottom: 1px solid var(--border-color); box-sizing: border-box; flex-shrink: 0; }
     .chat-header-info { display: flex; align-items: center; gap: 15px; }
     #chat-header-name { font-size: 16px; font-weight: bold; color: var(--text-primary); }
     .status-text { font-size: 12px; color: var(--wa-green); margin-top: 2px; }
-
-    #chat-welcome { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; color: #54656f; background-color: var(--header-background); font-size: 1.1rem; text-align: center; position: absolute; width: 100%; z-index: 5; }
-    #chat-welcome i { font-size: 4rem; margin-bottom: 1rem; color: #aebac1; }
 
     .chat-messages { flex-grow: 1; padding: 20px 5%; overflow-y: auto; display: flex; flex-direction: column; z-index: 1; }
 
@@ -119,10 +131,10 @@
     .message-time { position: absolute; right: 8px; bottom: 4px; font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 3px; white-space: nowrap; }
 
     /* PREVIEW & PRODUCT CARD */
-    #image-preview-container { padding: 10px 16px; background-color: var(--header-background); border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 15px; }
+    .image-preview-container { padding: 10px 16px; background-color: var(--header-background); border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 15px; }
     .preview-box { position: relative; display: inline-block; }
     .preview-box img { height: 80px; width: 80px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border-color); }
-    .preview-box button { position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; }
+    .preview-box button { position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; justify-content: center; align-items: center; }
 
     .chat-product-card { border: 1px solid #e9edef; padding: 8px; border-radius: 8px; background: #ffffff; margin-bottom: 5px; min-width: 220px; display: flex; gap: 10px; align-items: center; }
     .chat-product-card img { width: 50px; height: 50px; border-radius: 4px; object-fit: cover; }
@@ -135,7 +147,6 @@
     .chat-input-container input[type="text"] { flex-grow: 1; border: none; padding: 12px 16px; border-radius: 8px; outline: none; font-size: 1rem; margin: 0 10px; background-color: #ffffff; }
     .chat-input-btn { background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 8px; transition: 0.2s; }
     .chat-input-btn:hover { color: var(--text-primary); }
-    .hidden { display: none !important; }
 
     /* SCROLLBAR */
     .user-list::-webkit-scrollbar, .chat-messages::-webkit-scrollbar { width: 6px; }
@@ -153,14 +164,14 @@
 
         <div class="sidebar-header">
             <div class="customer-profile">
-                @php $myInitial = strtoupper(substr(auth()->user()->nama_lengkap ?? 'C', 0, 1)); @endphp
+                @php $myInitial = strtoupper(substr(auth()->user()->nama_lengkap ?? auth()->user()->name ?? 'C', 0, 1)); @endphp
                 <div class="customer-avatar">{{ $myInitial }}</div>
-                <h1 style="font-size: 16px; font-weight: bold; color: var(--text-primary); margin: 0;">{{ auth()->user()->nama_lengkap }}</h1>
+                <h1 style="font-size: 16px; font-weight: bold; color: var(--text-primary); margin: 0;">{{ auth()->user()->nama_lengkap ?? auth()->user()->name ?? 'Saya' }}</h1>
             </div>
 
             <div class="action-btn-wrapper">
                 <button class="action-btn" id="sidebar-menu-btn" title="Menu"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-                <div id="sidebar-dropdown" class="dropdown-menu hidden">
+                <div id="sidebar-dropdown" class="dropdown-menu d-none">
                     <button class="dropdown-item" id="btn-select-chats"><i class="fa-solid fa-check-square"></i> Pilih Chat</button>
                     <button class="dropdown-item" id="btn-mark-read-all"><i class="fa-solid fa-envelope-open"></i> Tandai Semua Dibaca</button>
                     <button class="dropdown-item danger" id="btn-delete-selected" style="display: none;"><i class="fa-solid fa-trash"></i> Hapus yang Dipilih</button>
@@ -191,13 +202,13 @@
                     // Logika Status
                     $isOnline = $user->last_seen && \Carbon\Carbon::parse($user->last_seen)->diffInMinutes(now()) < 5;
                     $lastMsg = $user->last_message_data ?? null;
-                    $msgText = 'Belum ada pesan...';
+                    $msgText = 'Klik untuk memulai obrolan';
                     $timeText = '';
                     $tickHtml = '';
                     $unreadCount = $user->unread_count ?? 0;
 
                     if ($lastMsg) {
-                        if (str_starts_with($lastMsg->message, '[TANYA PRODUK]')) {
+                        if (str_starts_with($lastMsg->message, '[TANYA PRODUK]') || str_starts_with($lastMsg->message, '[INFO PRODUK]')) {
                             $msgText = '📦 Bertanya tentang produk';
                         } elseif ($lastMsg->image_url && !$lastMsg->message) {
                             $msgText = '📷 Mengirim gambar';
@@ -210,7 +221,7 @@
                         elseif ($msgDate->isYesterday()) { $timeText = 'Kemarin'; }
                         else { $timeText = $msgDate->format('d/m/Y'); }
 
-                        if ($lastMsg->from_id == auth()->id()) {
+                        if ($lastMsg->from_id == auth()->id() || $lastMsg->from_id == auth()->user()->id_pengguna) {
                             if ($lastMsg->read_at) {
                                 $tickHtml = '<i class="fa-solid fa-check-double" style="color: var(--wa-blue-tick); font-size: 11px; margin-right: 4px;"></i>';
                             } else {
@@ -221,13 +232,13 @@
                 @endphp
 
                 <div class="user-item"
-                     data-id="{{ $user->id }}"
+                     data-id="{{ $user->id_pengguna ?? $user->id }}"
                      data-name="{{ strtolower($user->nama_lengkap ?? $user->name ?? '') }}"
                      data-unread="{{ $unreadCount > 0 ? 'true' : 'false' }}"
                      data-avatar="{{ $finalAvatarUrl }}"
                      data-online="{{ $isOnline ? 'true' : 'false' }}">
 
-                    <input type="checkbox" class="chat-checkbox hidden" value="{{ $user->id }}">
+                    <input type="checkbox" class="chat-checkbox d-none" value="{{ $user->id_pengguna ?? $user->id }}">
 
                     <div class="avatar-wrapper">
                         <div class="avatar" style="{{ $finalAvatarUrl ? 'background-image: url(' . $finalAvatarUrl . '); color: transparent;' : '' }}">
@@ -265,7 +276,7 @@
 
     <div class="chat-area">
 
-        <div id="chat-welcome">
+        <div id="chat-welcome" class="chat-welcome-screen">
              <div>
                 <i class="fa-brands fa-whatsapp"></i>
                 <p>Sancaka Express Web</p>
@@ -273,18 +284,18 @@
             </div>
         </div>
 
-        <div id="chat-box" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
+        <div id="chat-box" class="chat-box d-none">
 
             <div class="chat-header">
                 <div class="chat-header-info">
                     <div class="avatar-wrapper">
-                        <img id="header-avatar-img" src="" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; display: none;">
-                        <div id="header-avatar-initial" style="width: 42px; height: 42px; border-radius: 50%; background-color: #667781; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;"></div>
-                        <div id="header-online-badge" class="online-badge hidden"></div>
+                        <img id="header-avatar-img" src="" class="d-none" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover;">
+                        <div id="header-avatar-initial" class="d-none" style="width: 42px; height: 42px; border-radius: 50%; background-color: #667781; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;"></div>
+                        <div id="header-online-badge" class="online-badge d-none"></div>
                     </div>
                     <div style="display: flex; flex-direction: column;">
                         <div id="chat-header-name" style="font-size: 16px; font-weight: bold; color: var(--text-primary);">Nama Toko</div>
-                        <div id="chat-header-status" class="status-text hidden">Online</div>
+                        <div id="chat-header-status" class="status-text d-none">Online</div>
                     </div>
                 </div>
 
@@ -292,7 +303,7 @@
                     <button class="action-btn" id="chat-menu-btn" title="Options">
                         <i class="fa-solid fa-ellipsis-vertical"></i>
                     </button>
-                    <div id="chat-dropdown" class="dropdown-menu hidden">
+                    <div id="chat-dropdown" class="dropdown-menu d-none">
                         <button class="dropdown-item danger" id="btn-delete-chat"><i class="fa-solid fa-trash"></i> Bersihkan Chat</button>
                     </div>
                 </div>
@@ -300,7 +311,7 @@
 
             <div class="chat-messages custom-scrollbar" id="chat-messages"></div>
 
-            <div id="image-preview-container" class="hidden">
+            <div id="image-preview-container" class="image-preview-container d-none">
                 <div class="preview-box">
                     <img id="image-preview" src="" alt="Preview">
                     <button id="remove-image-btn" title="Hapus Gambar"><i class="fa-solid fa-times"></i></button>
@@ -309,7 +320,7 @@
 
             <div class="chat-input-container">
                 <button class="chat-input-btn" title="Emoji"><i class="fa-regular fa-face-smile"></i></button>
-                <input type="file" id="image-upload-input" accept="image/png, image/jpeg, image/webp" class="hidden">
+                <input type="file" id="image-upload-input" accept="image/png, image/jpeg, image/webp" class="d-none">
                 <button id="attachment-btn" class="chat-input-btn" title="Kirim Gambar" onclick="document.getElementById('image-upload-input').click()">
                     <i class="fa-solid fa-paperclip"></i>
                 </button>
@@ -334,7 +345,8 @@
 
 <script>
 $(document).ready(function() {
-    const customerId = {{ auth()->id() }};
+    // Ambil ID customer yang sedang login (antisipasi id vs id_pengguna)
+    const customerId = {{ auth()->user()->id_pengguna ?? auth()->id() }};
     let currentTargetId = null;
     let pollingInterval = null;
     let lastMessageCount = 0;
@@ -351,19 +363,19 @@ $(document).ready(function() {
     // === DROPDOWN MENUS (TITIK TIGA) ===
     $('#sidebar-menu-btn').on('click', function(e) {
         e.stopPropagation();
-        $('#chat-dropdown').addClass('hidden');
-        $('#sidebar-dropdown').toggleClass('hidden');
+        $('#chat-dropdown').addClass('d-none');
+        $('#sidebar-dropdown').toggleClass('d-none');
     });
 
     $('#chat-menu-btn').on('click', function(e) {
         e.stopPropagation();
-        $('#sidebar-dropdown').addClass('hidden');
-        $('#chat-dropdown').toggleClass('hidden');
+        $('#sidebar-dropdown').addClass('d-none');
+        $('#chat-dropdown').toggleClass('d-none');
     });
 
     $(document).on('click', function() {
-        $('#sidebar-dropdown').addClass('hidden');
-        $('#chat-dropdown').addClass('hidden');
+        $('#sidebar-dropdown').addClass('d-none');
+        $('#chat-dropdown').addClass('d-none');
     });
 
     // === SEARCH & FILTER ===
@@ -395,11 +407,11 @@ $(document).ready(function() {
     $('#btn-select-chats').on('click', function() {
         isSelectMode = !isSelectMode;
         if(isSelectMode) {
-            $('.chat-checkbox').removeClass('hidden');
+            $('.chat-checkbox').removeClass('d-none');
             $('#btn-delete-selected').show();
             toastr.info('Mode pilih diaktifkan. Silakan ceklis chat yang ingin dihapus.');
         } else {
-            $('.chat-checkbox').addClass('hidden').prop('checked', false);
+            $('.chat-checkbox').addClass('d-none').prop('checked', false);
             $('#btn-delete-selected').hide();
         }
     });
@@ -411,9 +423,8 @@ $(document).ready(function() {
         if(selectedIds.length === 0) return toastr.warning('Tidak ada chat yang dipilih.');
 
         if(confirm(`Yakin ingin menghapus ${selectedIds.length} riwayat chat ini?`)) {
-            // Simulasi request ajax delete multiple
             alert('Fitur hapus massal akan disambungkan ke Controller Laravel: ' + selectedIds.join(', '));
-            $('.chat-checkbox').addClass('hidden').prop('checked', false);
+            $('.chat-checkbox').addClass('d-none').prop('checked', false);
             $('#btn-delete-selected').hide();
             isSelectMode = false;
         }
@@ -431,7 +442,7 @@ $(document).ready(function() {
         if (!text) return '';
         let safeText = $('<div>').text(text).html();
 
-        if (safeText.startsWith('[TANYA PRODUK]')) {
+        if (safeText.startsWith('[TANYA PRODUK]') || safeText.startsWith('[INFO PRODUK]')) {
             const lines = safeText.split('\n');
             if (lines.length >= 3) {
                 let imgUri = lines[3] ? (lines[3].startsWith('http') ? lines[3] : `/storage/${lines[3]}`) : 'https://placehold.co/100x100.png';
@@ -468,8 +479,7 @@ $(document).ready(function() {
         if (!currentTargetId) return;
 
         $.ajax({
-            // Ganti endpoint sesuai format URL Anda, contoh: route('customer.chat.fetch', ['id' => targetId])
-            url: `/customer/chat/messages/${currentTargetId}`,
+            url: `/admin/chat/messages/${currentTargetId}`, // Pastikan Endpoint API Customer Sesuai
             method: 'GET',
             dataType: 'json',
             success: function(response) {
@@ -497,7 +507,6 @@ $(document).ready(function() {
 
     // === LOGIKA SIDEBAR KLIK (PILIH OBROLAN) ===
     $('#user-list').on('click', '.user-item', function(e) {
-        // Jika sedang dalam mode checklist dan yang diklik adalah checkbox, jangan jalankan chat
         if(isSelectMode && $(e.target).is('input[type="checkbox"]')) return;
 
         const targetId = $(this).data('id');
@@ -510,23 +519,23 @@ $(document).ready(function() {
         // Set Header Kanan
         $('#chat-header-name').text(targetName);
         if (targetAvatar && targetAvatar !== '') {
-            $('#header-avatar-img').attr('src', targetAvatar).show();
-            $('#header-avatar-initial').hide();
+            $('#header-avatar-img').attr('src', targetAvatar).removeClass('d-none');
+            $('#header-avatar-initial').addClass('d-none');
         } else {
-            $('#header-avatar-img').hide();
-            $('#header-avatar-initial').text(targetName.charAt(0).toUpperCase()).show();
+            $('#header-avatar-img').addClass('d-none');
+            $('#header-avatar-initial').text(targetName.charAt(0).toUpperCase()).removeClass('d-none');
         }
 
         if (targetOnline) {
-            $('#header-online-badge').removeClass('hidden');
-            $('#chat-header-status').removeClass('hidden');
+            $('#header-online-badge').removeClass('d-none');
+            $('#chat-header-status').removeClass('d-none');
         } else {
-            $('#header-online-badge').addClass('hidden');
-            $('#chat-header-status').addClass('hidden');
+            $('#header-online-badge').addClass('d-none');
+            $('#chat-header-status').addClass('d-none');
         }
 
-        $('#chat-welcome').addClass('hidden');
-        $('#chat-box').removeClass('hidden');
+        $('#chat-welcome').addClass('d-none');
+        $('#chat-box').removeClass('d-none');
         $('#message-input').focus();
 
         $('.user-item').removeClass('active');
@@ -548,7 +557,7 @@ $(document).ready(function() {
             const reader = new FileReader();
             reader.onload = function(e) {
                 $('#image-preview').attr('src', e.target.result);
-                $('#image-preview-container').removeClass('hidden');
+                $('#image-preview-container').removeClass('d-none');
                 $('#message-input').focus();
             }
             reader.readAsDataURL(file);
@@ -558,7 +567,7 @@ $(document).ready(function() {
     $('#remove-image-btn').on('click', function() {
         selectedImageFile = null;
         $('#image-upload-input').val('');
-        $('#image-preview-container').addClass('hidden');
+        $('#image-preview-container').addClass('d-none');
     });
 
     function sendMessage() {
@@ -577,7 +586,7 @@ $(document).ready(function() {
         if (selectedImageFile) formData.append('image', selectedImageFile);
 
         $.ajax({
-            url: `/customer/chat/messages/${currentTargetId}`, // Sesuaikan URL controller POST Anda
+            url: `/admin/chat/messages/${currentTargetId}`, // Pastikan URL sesuai dengan API Customer
             method: 'POST',
             data: formData,
             processData: false,
@@ -587,7 +596,7 @@ $(document).ready(function() {
                 messageInput.val('');
                 selectedImageFile = null;
                 $('#image-upload-input').val('');
-                $('#image-preview-container').addClass('hidden');
+                $('#image-preview-container').addClass('d-none');
                 lastMessageCount = 0;
                 loadMessages();
             },
