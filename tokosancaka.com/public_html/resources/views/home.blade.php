@@ -580,11 +580,11 @@ width: 22px;
             <div class="col">
                 <a href="https://tokosancaka.com/public/assets/app/SancakaExpress.apk" target="_blank" class="text-decoration-none text-dark">
                     <div class="action-card clickable h-100">
-                        <h5 class="fw-bold"><i class="fa-brands fa-android me-2 text-success"></i>Download Aplikasi</h5>
+                        <h5 class="fw-bold"><i class="fa-brands fa-android me-2 text-success"></i>Download Aplikasi Android</h5>
                         <p class="text-muted small">Lebih praktis! Nikmati fitur layanan lengkap Sancaka Express langsung dari HP Anda.</p>
                         <div class="d-grid mt-auto">
                             <button class="btn btn-success btn-lg text-white fw-bold" type="button">
-                                <i class="fas fa-download me-1"></i> Download APK
+                                <i class="fas fa-download me-1"></i> Download
                             </button>
                         </div>
                     </div>
