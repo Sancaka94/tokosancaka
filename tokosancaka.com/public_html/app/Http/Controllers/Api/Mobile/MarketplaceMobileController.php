@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 use Exception;
+use Carbon\Carbon; // Pastikan Carbon di-import untuk logika jadwal pickup
 
 // Models
 use App\Models\Product;
@@ -135,7 +136,7 @@ class MarketplaceMobileController extends Controller
 
 
     // =========================================================================
-    // BAGIAN 2: KERANJANG (CART API - BERBASIS DATABASE)
+    // BAGIAN 2: KERANJANG (CART API)
     // =========================================================================
 
     private function _getUserCartRecord()
@@ -210,7 +211,7 @@ class MarketplaceMobileController extends Controller
                 $itemName = $product->name . ' (' . str_replace(';', ', ', $variant->combination_string) . ')';
                 $itemImageUrl = $variant->image_url ?? $product->image_url;
                 $itemKey = 'variant_' . $variantId;
-                $weight = $variant->weight ?? $product->weight ?? 0;
+                $weight = $variant->weight ?? $product->weight ?? 1000;
             } else {
                 if ($product->productVariantTypes()->exists()) {
                      return response()->json(['success' => false, 'message' => 'Silakan pilih varian produk.'], 400);
@@ -221,7 +222,7 @@ class MarketplaceMobileController extends Controller
                 $itemName = $product->name;
                 $itemImageUrl = $product->image_url;
                 $itemKey = 'product_' . $productId;
-                $weight = $product->weight ?? 0;
+                $weight = $product->weight ?? 1000;
             }
 
             $currentQuantityInCart = $cart[$itemKey]['quantity'] ?? $cart[$itemKey]['qty'] ?? 0;
@@ -236,7 +237,6 @@ class MarketplaceMobileController extends Controller
             if (isset($cart[$itemKey])) {
                 $cart[$itemKey]['quantity'] = $newTotalQuantity;
                 $cart[$itemKey]['qty'] = $newTotalQuantity;
-                // Auto refresh data
                 $cart[$itemKey]['image_url'] = $itemImageUrl;
                 $cart[$itemKey]['store_logo'] = $storeLogo;
                 $cart[$itemKey]['store_name'] = $product->store->name ?? 'Toko Sancaka';
@@ -263,7 +263,7 @@ class MarketplaceMobileController extends Controller
             foreach($cart as $c) {
                 $qty = $c['quantity'] ?? $c['qty'] ?? 1;
                 $newTotalAmount += ($c['price'] * $qty);
-                $newTotalWeight += ($c['weight'] * $qty);
+                $newTotalWeight += (($c['weight'] ?? 1000) * $qty);
             }
 
             $cartRecord->item_description = json_encode($cart);
@@ -372,9 +372,8 @@ class MarketplaceMobileController extends Controller
                 $checkoutItems[] = $item;
                 $qty = $item['quantity'] ?? $item['qty'] ?? 1;
                 $subtotal += ($item['price'] * $qty);
-                $totalWeight += ($item['weight'] * $qty);
+                $totalWeight += (($item['weight'] ?? 1000) * $qty);
 
-                // PERBAIKAN: Pastikan store_id ditarik dengan benar
                 if (empty($storeId) && !empty($item['store_id'])) {
                     $storeId = $item['store_id'];
                 }
@@ -426,7 +425,7 @@ class MarketplaceMobileController extends Controller
         ]);
     }
 
-    // 🔥 PERBAIKAN FATAL: Mapping Sesuai Kolom Database & Validasi Payload API
+    // 🔥 PERBAIKAN FATAL MENGGUNAKAN LOGIKA WEB CHECKOUTCONTROLLER 🔥
     public function processCheckout(Request $request, KiriminAjaService $kiriminAja, DanaSignatureService $danaSignature)
     {
         $request->validate([
@@ -472,6 +471,7 @@ class MarketplaceMobileController extends Controller
             $shippingParts = explode('-', $request->shipping_method);
             if (count($shippingParts) < 4) throw new Exception("Format metode pengiriman tidak valid.");
 
+            $shippingType = $shippingParts[0];
             $courierCode = $shippingParts[1] ?? 'unknown';
             $serviceCode = $shippingParts[2] ?? 'REG';
             $shipping_cost = (int) ($shippingParts[3] ?? 0);
@@ -495,15 +495,14 @@ class MarketplaceMobileController extends Controller
 
             $store = Store::with('user')->find($storeId);
 
-            // Kita buat fallback manual agar API logistik tidak menolak jika data toko kosong
-            $senderName = $store?->name ?? ($cartItemsPayload[0]['store_name'] ?? 'Sancaka Store');
-
-            // Kolom di Pengguna adalah 'no_wa', bukan 'phone'
+            // Mencegah N/A (Mengikuti struktur Fallback di Web)
+            $senderName = $store?->name ?? ($cartItemsPayload[0]['store_name'] ?? 'Toko Sancaka');
             $senderPhone = $store?->user?->no_wa ?? '085745808809';
-
-            // Kolom di stores adalah 'address_detail', bukan 'address'
             $senderAddress = $store?->address_detail ?? 'Jl.Dr.Wahidin No.18A RT.22 RW.05, Ketanggi, Ngawi';
-            $senderDistrictId = '4354'; // Fallback aman jika null untuk API
+
+            // Fallback Kecamatan/Kelurahan Default Sancaka (Ngawi) jika di db Toko kosong
+            $originDistId = $store->district_id ?? 4354;
+            $originSubId  = $store->village_id ?? 40343;
 
             // 4. UPDATE TABEL CHECKOUT
             $checkoutRecord->update([
@@ -531,7 +530,7 @@ class MarketplaceMobileController extends Controller
 
             // 5. PINDAHKAN DATA KE ORDERS
             $order = new Order([
-                 'store_id'      => $storeId, // Memastikan masuk
+                 'store_id'      => $storeId,
                  'user_id'       => $checkoutRecord->user_id,
                  'invoice_number'=> $orderInvoice,
                  'subtotal'      => $checkoutRecord->subtotal,
@@ -542,11 +541,12 @@ class MarketplaceMobileController extends Controller
                  'payment_method'=> $checkoutRecord->payment_method,
                  'status'        => 'pending',
 
-                 // SENDER MAPPING (DIJAMIN TIDAK NULL)
+                 // SENDER MAPPING
                  'sender_name'      => $senderName,
                  'sender_phone'     => $senderPhone,
                  'sender_address'   => $senderAddress,
-                 'sender_district_id'=> $senderDistrictId,
+                 'sender_district_id'=> $originDistId,
+                 'sender_subdistrict_id'=> $originSubId,
 
                  // RECEIVER MAPPING
                  'receiver_name'    => $checkoutRecord->receiver_name,
@@ -604,57 +604,84 @@ class MarketplaceMobileController extends Controller
                 $webController = new \App\Http\Controllers\CheckoutController(app(\App\Services\DanaSignatureService::class));
                 $webController->processOrderCallback($orderInvoice, 'PAID', []);
 
-                // 🔥 TEMBAK API KIRIMINAJA UNTUK MENDAPATKAN RESI 🔥
+                // 🔥 PERBAIKAN FATAL KIRIMINAJA MENGGUNAKAN LOGIKA WEB 🔥
                 try {
-                    $kaMode = \App\Models\Api::getValue('KIRIMINAJA_MODE', 'global', 'sandbox');
-                    $kaBaseUrl = $kaMode === 'production' ? 'https://api.kiriminaja.com/api/mitra' : 'https://tdi.kiriminaja.com/api/mitra';
-                    $kaApiKey = \App\Models\Api::getValue('KIRIMINAJA_API_KEY', $kaMode);
-
                     $isCOD = in_array(strtolower($request->payment_method), ['cod', 'codbarang']);
+                    $now = Carbon::now('Asia/Jakarta');
 
-                    $kiriminAjaPayload = [
-                        'order' => [
-                            'order_id'      => $order->invoice_number,
-                            'service'       => $order->courier_code,
-                            'service_name'  => $order->service_code,
-                            'weight'        => $order->weight > 0 ? $order->weight : 1000,
-                            'payment_type'  => $isCOD ? 'cod' : 'non-cod',
-                            'cod_amount'    => $isCOD ? $order->total_amount : 0,
-                            'shipping_cost' => $order->shipping_cost,
-                            'drop'          => false
-                        ],
-                        'shipper' => [
-                            'name'        => $order->sender_name,
-                            'phone'       => $order->sender_phone,
-                            'address'     => $order->sender_address,
-                            'district_id' => $order->sender_district_id
-                        ],
-                        'receiver' => [
-                            'name'        => $order->receiver_name,
-                            'phone'       => $order->receiver_phone,
-                            'address'     => $order->receiver_address,
-                            'district_id' => $order->receiver_district_id
-                        ],
-                        'items' => array_map(function($item) {
-                            return [
-                                'name'  => $item['name'] ?? 'Produk Sancaka',
-                                'qty'   => $item['quantity'] ?? ($item['qty'] ?? 1),
-                                'value' => $item['price'] ?? 0
-                            ];
-                        }, $cartItemsPayload)
+                    // Penjadwalan: Jika di atas jam 17:00, jadwal besok jam 09:00. Jika tidak, hari ini +1 jam.
+                    if ($now->hour >= 17) {
+                        $finalSchedule = $now->copy()->addDay()->format('Y-m-d 09:00:00');
+                    } else {
+                        $finalSchedule = $now->copy()->addHour()->format('Y-m-d H:i:s');
+                    }
+
+                    // Build Array Packages Persis Seperti Web Controller
+                    $packagesPayload = [];
+                    foreach($cartItemsPayload as $item) {
+                        $qty = $item['quantity'] ?? ($item['qty'] ?? 1);
+                        $w = $item['weight'] ?? 1000;
+                        $packagesPayload[] = [
+                            'order_id' => $order->invoice_number,
+                            'destination_name' => $order->receiver_name,
+                            'destination_phone' => $order->receiver_phone,
+                            'destination_address' => $order->receiver_address,
+                            'destination_kecamatan_id' => $order->receiver_district_id,
+                            'destination_kelurahan_id' => $order->receiver_subdistrict_id,
+                            'weight' => $w * $qty,
+                            'width' => 10, 'height' => 10, 'length' => 10,
+                            'item_value' => $item['price'] * $qty,
+                            'item_name' => $item['name'] ?? 'Produk Sancaka',
+                            'service' => $courierCode,
+                            'service_type' => $serviceCode,
+                            'shipping_cost' => $shipping_cost,
+                            'package_type_id' => 1,
+                            'cod' => $isCOD ? $grand_total : 0,
+                            'insurance_amount' => $applied_insurance > 0 ? ($item['price'] * $qty) : 0,
+                        ];
+                    }
+
+                    // Build Payload Utama Persis Seperti Web
+                    $kaPayload = [
+                        'kecamatan_id' => $originDistId,
+                        'kelurahan_id' => $originSubId,
+                        'address' => $senderAddress,
+                        'phone' => $senderPhone,
+                        'name' => $senderName,
+                        'zipcode' => $store->postal_code ?? '63211',
+                        'latitude' => $store->latitude ?? 0,
+                        'longitude' => $store->longitude ?? 0,
+                        'packages' => $packagesPayload,
+                        'category' => ($shippingType == 'cargo' || $shippingType == 'trucking') ? 'trucking' : 'regular',
+                        'schedule' => $finalSchedule,
+                        'platform_name' => 'TOKOSANCAKA.COM'
                     ];
 
-                    $kaResponse = Http::withToken($kaApiKey)->post($kaBaseUrl . '/v2/deliveries', $kiriminAjaPayload);
-                    $kaResult = $kaResponse->json();
+                    // Tembak menggunakan Service yang sama dengan Web
+                    $kiriminResponse = $kiriminAja->createExpressOrder($kaPayload);
 
-                    if ($kaResponse->successful() && isset($kaResult['status']) && $kaResult['status'] === true) {
-                        $order->shipping_reference = $kaResult['data']['awb'] ?? $kaResult['data']['receipt_number'] ?? null;
-                        $order->save();
+                    // Auto Retry Jadwal Besok jika ditolak karena masalah jam (Sama seperti Web)
+                    if (isset($kiriminResponse['status']) && $kiriminResponse['status'] === false) {
+                        $pesanError = strtolower($kiriminResponse['text'] ?? '');
+                        if (str_contains($pesanError, 'jadwal') || str_contains($pesanError, 'schedule')) {
+                            $kaPayload['schedule'] = Carbon::now()->addDay()->format('Y-m-d 09:00:00');
+                            $kiriminResponse = $kiriminAja->createExpressOrder($kaPayload);
+                        }
+                    }
+
+                    // Simpan Resi
+                    if (!empty($kiriminResponse['status']) && $kiriminResponse['status'] === true) {
+                        $resi = $kiriminResponse['packages'][0]['awb'] ?? ($kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null));
+                        if ($resi) {
+                            $order->shipping_reference = $resi;
+                            $order->save();
+                            Log::info("API MOBILE: Booking KA Sukses! Resi: {$resi}");
+                        }
                     } else {
-                        Log::warning("Gagal Generate Resi KiriminAja untuk Order {$order->invoice_number}: " . json_encode($kaResult));
+                        Log::error("API MOBILE: Gagal Generate Resi KA untuk Order {$order->invoice_number}: " . json_encode($kiriminResponse));
                     }
                 } catch (\Exception $kaException) {
-                    Log::error("KiriminAja API Timeout/Error: " . $kaException->getMessage());
+                    Log::error("API MOBILE: KiriminAja Timeout/Error: " . $kaException->getMessage());
                 }
 
             } elseif (!in_array(strtolower($request->payment_method), ['dana', 'doku_jokul'])) {
@@ -692,7 +719,7 @@ class MarketplaceMobileController extends Controller
                     foreach($newCart as $nc) {
                         $qty = $nc['quantity'] ?? $nc['qty'] ?? 1;
                         $newSub += ($nc['price'] * $qty);
-                        $newWeight += ($nc['weight'] * $qty);
+                        $newWeight += (($nc['weight'] ?? 1000) * $qty);
                     }
                     $cartRecord->total_amount = $newSub;
                     $cartRecord->weight = $newWeight;
