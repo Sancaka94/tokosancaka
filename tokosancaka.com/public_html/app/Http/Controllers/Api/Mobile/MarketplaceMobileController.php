@@ -674,4 +674,97 @@ class MarketplaceMobileController extends Controller
             return ['success' => false, 'message' => 'Koneksi Gateway bermasalah.'];
         }
     }
+
+    // =========================================================================
+    // BAGIAN 4: RIWAYAT PESANAN & PEMBATALAN
+    // =========================================================================
+
+    public function myOrders()
+    {
+        $user = Auth::user() ?? auth('sanctum')->user();
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        $userId = $user->id_pengguna ?? $user->id;
+
+        $orders = Order::with(['store', 'items.product', 'items.variant', 'user'])
+            ->where('user_id', $userId)
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $orders
+        ]);
+    }
+
+    public function cancelOrder(Request $request, $invoice)
+    {
+        $user = Auth::user() ?? auth('sanctum')->user();
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        $userId = $user->id_pengguna ?? $user->id;
+
+        $order = Order::with('items')->where('invoice_number', $invoice)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
+        }
+
+        // Pastikan hanya bisa dibatalkan jika status masih dikemas/diproses
+        if (!in_array(strtolower($order->status), ['pending', 'unpaid', 'processing'])) {
+            return response()->json(['success' => false, 'message' => 'Pesanan sudah dikirim atau tidak dapat dibatalkan.'], 400);
+        }
+
+        $reason = $request->input('reason', 'Kesalahan data paket');
+
+        // 🔥 JIKA ORDER SUDAH PUNYA RESI, TEMBAK API KIRIMINAJA
+        if (!empty($order->shipping_reference) && !Str::contains($order->shipping_reference, 'MOCK')) {
+            $mode = \App\Models\Api::getValue('KIRIMINAJA_MODE', 'global', 'sandbox');
+            $baseUrl = $mode === 'production' ? 'https://api.kiriminaja.com/api/mitra' : 'https://tdi.kiriminaja.com/api/mitra';
+            $apiKey = \App\Models\Api::getValue('KIRIMINAJA_API_KEY', $mode);
+
+            try {
+                // Tembak API Cancel Shipment KiriminAja
+                $response = Http::withToken($apiKey)->post($baseUrl . '/cancel_shipment', [
+                    'awb' => $order->shipping_reference,
+                    'reason' => $reason
+                ]);
+
+                $result = $response->json();
+
+                // Jika ditolak oleh KiriminAja
+                if (!$response->successful() || empty($result['status']) || $result['status'] === false) {
+                    $errorMessage = $result['text'] ?? 'Gagal membatalkan di sistem ekspedisi.';
+                    return response()->json(['success' => false, 'message' => $errorMessage], 400);
+                }
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'message' => 'Gagal terhubung ke API Ekspedisi.'], 500);
+            }
+        }
+
+        // 🔥 BATALKAN LOKAL & KEMBALIKAN STOK
+        $order->status = 'cancelled';
+        $order->save();
+
+        // Jika pembeli menggunakan saldo dan pesanan sudah dipotong (bukan unpaid)
+        if (in_array(strtoupper($order->payment_method), ['POTONG SALDO', 'SALDO'])) {
+            $user->saldo += $order->total_amount;
+            $user->save();
+
+            Log::info("Refund Saldo Sukses untuk Order {$order->invoice_number} sebesar Rp{$order->total_amount}");
+        }
+
+        foreach ($order->items as $item) {
+            if ($item->product_variant_id) {
+                ProductVariant::where('id', $item->product_variant_id)->increment('stock', $item->quantity);
+            } else {
+                Product::where('id', $item->product_id)->increment('stock', $item->quantity);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pesanan berhasil dibatalkan.'
+        ]);
+    }
 }
