@@ -266,10 +266,12 @@ class MarketplaceMobileController extends Controller
                 $newTotalWeight += (($c['weight'] ?? 1000) * $qty);
             }
 
-            $cartRecord->item_description = json_encode($cart);
-            $cartRecord->total_amount = $newTotalAmount;
-            $cartRecord->weight = $newTotalWeight;
-            $cartRecord->store_id = $product->store_id;
+            Cart::where('id', $cartRecord->id)->update([
+                'item_description' => json_encode($cart),
+                'total_amount' => $newTotalAmount,
+                'weight' => $newTotalWeight,
+                'store_id' => $product->store_id,
+            ]);
             $cartRecord->save();
 
             return response()->json(['success' => true, 'message' => 'Produk ditambahkan ke keranjang.']);
