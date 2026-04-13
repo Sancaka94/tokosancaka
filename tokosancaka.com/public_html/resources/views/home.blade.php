@@ -536,87 +536,63 @@ width: 22px;
 </section>
 
 
-
-<!-- Action Bar Section -->
-
 <div class="container" style="margin-top: -80px; position: relative; z-index: 20;">
-
     <div class="action-bar">
-
-        <div class="row g-4 row-cols-1 row-cols-lg-3">
+        <div class="row g-4 row-cols-1 row-cols-md-2 row-cols-lg-4">
 
             <div class="col">
-
                 <div class="action-card h-100">
-
                     <h5 class="fw-bold"><i class="fa-solid fa-magnifying-glass me-2"></i>Lacak Kiriman Anda</h5>
-
                     <p class="text-muted small">Pantau posisi paket Anda secara akurat, real-time dan fast respond.</p>
-
                     <form action="{{ route('tracking.search') }}" method="GET" class="mt-auto">
-
                         <div class="input-group">
-
                             <input type="text" name="resi" class="form-control form-control-lg" placeholder="Cek Resi" required>
-
                             <button class="btn btn-danger px-4" type="submit" style="background-color: var(--google-blue); border-color: var(--google-blue);">
-
                                 <i class="fas fa-arrow-right"></i>
-
                             </button>
-
                         </div>
-
                     </form>
-
                 </div>
-
             </div>
 
             <div class="col">
-
                 <div class="action-card clickable h-100" data-bs-toggle="modal" data-bs-target="#cekOngkirModal">
-
                     <h5 class="fw-bold"><i class="fa-solid fa-calculator me-2"></i>Cek Estimasi Ongkir</h5>
-
                     <p class="text-muted small">Hitung biaya pengiriman secara transparan sebelum mengirim.</p>
-
                     <div class="d-grid mt-auto">
-
                         <button class="btn btn-warning btn-lg" type="button">Cek Ongkir</button>
-
                     </div>
-
                 </div>
-
             </div>
 
             <div class="col">
-
                 <a href="#cek-alamat" class="text-decoration-none text-dark">
-
                     <div class="action-card clickable h-100">
-
                         <h5 class="fw-bold"><i class="fa-solid fa-map-pin me-2"></i>Cek Kode Pos & Wilayah</h5>
-
                         <p class="text-muted small">Temukan informasi kode pos dan detail wilayah di seluruh Indonesia.</p>
-
                         <div class="d-grid mt-auto">
-
                             <button class="btn btn-danger btn-lg text-white" type="button">Cek Alamat</button>
-
                         </div>
-
                     </div>
-
                 </a>
+            </div>
 
+            <div class="col">
+                <a href="https://tokosancaka.com/public/assets/app/SancakaExpress.apk" target="_blank" class="text-decoration-none text-dark">
+                    <div class="action-card clickable h-100">
+                        <h5 class="fw-bold"><i class="fa-brands fa-android me-2 text-success"></i>Download Aplikasi</h5>
+                        <p class="text-muted small">Lebih praktis! Nikmati fitur layanan lengkap Sancaka Express langsung dari HP Anda.</p>
+                        <div class="d-grid mt-auto">
+                            <button class="btn btn-success btn-lg text-white fw-bold" type="button">
+                                <i class="fas fa-download me-1"></i> Download APK
+                            </button>
+                        </div>
+                    </div>
+                </a>
             </div>
 
         </div>
-
     </div>
-
 </div>
 
 
