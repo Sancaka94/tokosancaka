@@ -549,36 +549,35 @@ class MarketplaceMobileController extends Controller
 
             // 5. PINDAHKAN DATA KE ORDERS
             $order = new Order([
-                 'store_id'      => $storeId, // <--- Ini yang penting, pastikan masuk
-                 'user_id'       => $userId,
+                 'store_id'      => $storeId,
+                 'user_id'       => $checkoutRecord->user_id,
                  'invoice_number'=> $orderInvoice,
-                 'subtotal'      => $subtotal,
-                 'shipping_cost' => $shipping_cost,
-                 'insurance_cost'=> $applied_insurance,
-                 'total_amount'  => $grand_total,
-                 'shipping_method'=> $request->shipping_method,
-                 'payment_method'=> $request->payment_method,
+                 'subtotal'      => $checkoutRecord->subtotal,
+                 'shipping_cost' => $checkoutRecord->shipping_cost,
+                 'insurance_cost'=> $checkoutRecord->insurance_cost,
+                 'total_amount'  => $checkoutRecord->total_amount,
+                 'shipping_method'=> $checkoutRecord->shipping_method,
+                 'payment_method'=> $checkoutRecord->payment_method,
                  'status'        => 'pending',
 
-                 // PENGIRIM (Wajib terisi, tidak boleh fallback doang)
+                 // SENDER MAPPING
                  'sender_name'      => $senderName,
                  'sender_phone'     => $senderPhone,
                  'sender_address'   => $senderAddress,
                  'sender_district_id'=> $originDistId,
                  'sender_subdistrict_id'=> $originSubId,
 
-                 // PENERIMA
-                 'receiver_name'    => $request->receiver_name ?? $user->nama_lengkap,
-                 'receiver_phone'   => $request->receiver_phone ?? $user->no_wa,
-                 'receiver_address' => $request->receiver_address ?? $user->address_detail,
-                 'shipping_address' => ($request->receiver_address ?? $user->address_detail) . ', ' . ($request->receiver_full_region ?? ''),
-                 'customer_latitude' => $request->latitude ?? null,
-                 'customer_longitude' => $request->longitude ?? null,
-                 'receiver_district_id' => $request->destination_district_id,
-                 'receiver_subdistrict_id' => $request->destination_subdistrict_id,
-                 'receiver_village' => $user->village ?? 'Tidak Diketahui',
+                 // RECEIVER MAPPING
+                 'receiver_name'    => $checkoutRecord->receiver_name,
+                 'receiver_phone'   => $checkoutRecord->receiver_phone,
+                 'receiver_address' => $checkoutRecord->receiver_address,
+                 'shipping_address' => $checkoutRecord->shipping_address,
+                 'customer_latitude' => $checkoutRecord->customer_latitude,
+                 'customer_longitude' => $checkoutRecord->customer_longitude,
+                 'receiver_district_id' => $checkoutRecord->receiver_district_id,
+                 'receiver_subdistrict_id' => $checkoutRecord->receiver_subdistrict_id,
+                 'receiver_village' => $checkoutRecord->receiver_village,
 
-                 // ITEM
                  'item_description' => $checkoutRecord->item_description,
                  'weight'           => $checkoutRecord->weight,
                  'courier_code'     => $courierCode,
