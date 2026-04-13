@@ -373,7 +373,11 @@ class MarketplaceMobileController extends Controller
                 $qty = $item['quantity'] ?? $item['qty'] ?? 1;
                 $subtotal += ($item['price'] * $qty);
                 $totalWeight += ($item['weight'] * $qty);
-                if (!$storeId) $storeId = $item['store_id'] ?? null;
+
+                // PERBAIKAN: Pastikan store_id ditarik dengan benar
+                if (empty($storeId) && !empty($item['store_id'])) {
+                    $storeId = $item['store_id'];
+                }
             }
         }
 
@@ -422,7 +426,7 @@ class MarketplaceMobileController extends Controller
         ]);
     }
 
-    // 🔥 PERBAIKAN UTAMA: Mapping Pengirim (Sender), Courier Code, & Tembak API
+    // 🔥 PERBAIKAN FATAL: Mapping Sesuai Kolom Database & Validasi Payload API
     public function processCheckout(Request $request, KiriminAjaService $kiriminAja, DanaSignatureService $danaSignature)
     {
         $request->validate([
@@ -443,12 +447,9 @@ class MarketplaceMobileController extends Controller
         DB::beginTransaction();
 
         try {
-            // 1. Ambil Data Checkout yang Valid
+            // 1. Ambil Data Checkout
             $checkoutRecord = Checkout::where('invoice_number', $request->checkout_invoice)->where('user_id', $userId)->first();
-
-            if (!$checkoutRecord) {
-                throw new Exception("Sesi checkout tidak valid atau sudah diproses.");
-            }
+            if (!$checkoutRecord) throw new Exception("Sesi checkout tidak valid atau sudah diproses.");
 
             $cartItemsPayload = json_decode($checkoutRecord->item_description, true) ?? [];
             if(empty($cartItemsPayload)) throw new Exception("Keranjang kosong.");
@@ -467,8 +468,7 @@ class MarketplaceMobileController extends Controller
                 ];
             }
 
-            // 2. Ekstrak Kurir dan Service dari string shipping_method
-            // Format: type-courier_code-service_code-cost-x-y (contoh: regular-tiki-REG-6000-0-0)
+            // 2. Ekstrak Kurir
             $shippingParts = explode('-', $request->shipping_method);
             if (count($shippingParts) < 4) throw new Exception("Format metode pengiriman tidak valid.");
 
@@ -487,8 +487,23 @@ class MarketplaceMobileController extends Controller
                 throw new Exception("Saldo tidak cukup. Tagihan: Rp " . number_format($grand_total,0,',','.') . ", Saldo Anda: Rp " . number_format($user->saldo,0,',','.'));
             }
 
-            // 3. Ambil Identitas Toko (Store) untuk Mapping Pengirim (Sender)
-            $store = Store::with('user')->find($checkoutRecord->store_id);
+            // 3. AMBIL IDENTITAS PENGIRIM SECARA AMAN (Fix N/A)
+            $storeId = $checkoutRecord->store_id;
+            if (!$storeId && count($cartItemsPayload) > 0) {
+                $storeId = $cartItemsPayload[0]['store_id'] ?? null;
+            }
+
+            $store = Store::with('user')->find($storeId);
+
+            // Kita buat fallback manual agar API logistik tidak menolak jika data toko kosong
+            $senderName = $store?->name ?? ($cartItemsPayload[0]['store_name'] ?? 'Sancaka Store');
+
+            // Kolom di Pengguna adalah 'no_wa', bukan 'phone'
+            $senderPhone = $store?->user?->no_wa ?? '085745808809';
+
+            // Kolom di stores adalah 'address_detail', bukan 'address'
+            $senderAddress = $store?->address_detail ?? 'Jl.Dr.Wahidin No.18A RT.22 RW.05, Ketanggi, Ngawi';
+            $senderDistrictId = '4354'; // Fallback aman jika null untuk API
 
             // 4. UPDATE TABEL CHECKOUT
             $checkoutRecord->update([
@@ -509,14 +524,14 @@ class MarketplaceMobileController extends Controller
                 'receiver_village' => $user->village ?? 'Tidak Diketahui',
             ]);
 
-            // GENERATE INVOICE ORDER ASLI
+            // GENERATE INVOICE ORDER
             do {
                  $orderInvoice = 'SCK-ORD-' . strtoupper(Str::random(8));
             } while (Order::where('invoice_number', $orderInvoice)->exists());
 
-            // 5. PINDAHKAN DATA KE TABEL ORDERS & LENGKAPI IDENTITAS PENGIRIM (SENDER)
+            // 5. PINDAHKAN DATA KE ORDERS
             $order = new Order([
-                 'store_id'      => $checkoutRecord->store_id,
+                 'store_id'      => $storeId, // Memastikan masuk
                  'user_id'       => $checkoutRecord->user_id,
                  'invoice_number'=> $orderInvoice,
                  'subtotal'      => $checkoutRecord->subtotal,
@@ -527,13 +542,13 @@ class MarketplaceMobileController extends Controller
                  'payment_method'=> $checkoutRecord->payment_method,
                  'status'        => 'pending',
 
-                 // --- MAPPING SENDER (PENGIRIM) ---
-                 'sender_name'      => $store->name ?? 'Toko Sancaka',
-                 'sender_phone'     => $store->phone ?? ($store->user->no_wa ?? '0800000000'),
-                 'sender_address'   => $store->address ?? 'Ngawi',
-                 'sender_district_id'=> $store->district_id ?? null,
+                 // SENDER MAPPING (DIJAMIN TIDAK NULL)
+                 'sender_name'      => $senderName,
+                 'sender_phone'     => $senderPhone,
+                 'sender_address'   => $senderAddress,
+                 'sender_district_id'=> $senderDistrictId,
 
-                 // --- MAPPING RECEIVER (PENERIMA) ---
+                 // RECEIVER MAPPING
                  'receiver_name'    => $checkoutRecord->receiver_name,
                  'receiver_phone'   => $checkoutRecord->receiver_phone,
                  'receiver_address' => $checkoutRecord->receiver_address,
@@ -544,7 +559,6 @@ class MarketplaceMobileController extends Controller
                  'receiver_subdistrict_id' => $checkoutRecord->receiver_subdistrict_id,
                  'receiver_village' => $checkoutRecord->receiver_village,
 
-                 // --- MAPPING ITEM, WEIGHT, & COURIER ---
                  'item_description' => $checkoutRecord->item_description,
                  'weight'           => $checkoutRecord->weight,
                  'courier_code'     => $courierCode,
@@ -578,7 +592,6 @@ class MarketplaceMobileController extends Controller
             // --- PROSES PEMBAYARAN & EKSPEDISI ---
             if ($isPayWithSaldo || in_array(strtolower($request->payment_method), ['cod', 'cash', 'codbarang'])) {
 
-                // Pembayaran instan atau COD: Lanjut proses dan langsung buat resi
                 if ($isPayWithSaldo) {
                     $user->saldo -= $grand_total;
                     $user->save();
@@ -591,8 +604,7 @@ class MarketplaceMobileController extends Controller
                 $webController = new \App\Http\Controllers\CheckoutController(app(\App\Services\DanaSignatureService::class));
                 $webController->processOrderCallback($orderInvoice, 'PAID', []);
 
-                // 🔥 TEMBAK API KIRIMINAJA UNTUK MENDAPATKAN RESI (AWB) 🔥
-                // Dilakukan karena order sudah berstatus paid/processing (layak kirim)
+                // 🔥 TEMBAK API KIRIMINAJA UNTUK MENDAPATKAN RESI 🔥
                 try {
                     $kaMode = \App\Models\Api::getValue('KIRIMINAJA_MODE', 'global', 'sandbox');
                     $kaBaseUrl = $kaMode === 'production' ? 'https://api.kiriminaja.com/api/mitra' : 'https://tdi.kiriminaja.com/api/mitra';
@@ -609,13 +621,13 @@ class MarketplaceMobileController extends Controller
                             'payment_type'  => $isCOD ? 'cod' : 'non-cod',
                             'cod_amount'    => $isCOD ? $order->total_amount : 0,
                             'shipping_cost' => $order->shipping_cost,
-                            'drop'          => false // false = request pickup
+                            'drop'          => false
                         ],
                         'shipper' => [
                             'name'        => $order->sender_name,
                             'phone'       => $order->sender_phone,
                             'address'     => $order->sender_address,
-                            'district_id' => $order->sender_district_id ?? '1' // Ganti jika default berbeda
+                            'district_id' => $order->sender_district_id
                         ],
                         'receiver' => [
                             'name'        => $order->receiver_name,
@@ -636,7 +648,6 @@ class MarketplaceMobileController extends Controller
                     $kaResult = $kaResponse->json();
 
                     if ($kaResponse->successful() && isset($kaResult['status']) && $kaResult['status'] === true) {
-                        // Resi (AWB) sukses didapat
                         $order->shipping_reference = $kaResult['data']['awb'] ?? $kaResult['data']['receipt_number'] ?? null;
                         $order->save();
                     } else {
@@ -647,7 +658,6 @@ class MarketplaceMobileController extends Controller
                 }
 
             } elseif (!in_array(strtolower($request->payment_method), ['dana', 'doku_jokul'])) {
-                // Pembayaran menggunakan Payment Gateway Tripay
                 $tripayResult = $this->_createTripayTransaction($order, $request->payment_method, $grand_total, $user, $orderItemsPayload);
                 if ($tripayResult['success']) {
                     $paymentUrl = $tripayResult['data']['checkout_url'] ?? $tripayResult['data']['pay_url'];
@@ -655,7 +665,6 @@ class MarketplaceMobileController extends Controller
                     $order->pay_code = $tripayResult['data']['pay_code'] ?? null;
                     $order->qr_url = $tripayResult['data']['qr_url'] ?? null;
                     $order->save();
-                    // Catatan: Jika pakai Tripay, tembak KiriminAja dilakukan nanti di dalam Webhook Tripay saat status 'PAID'
                 } else {
                     throw new Exception($tripayResult['message']);
                 }
@@ -663,7 +672,7 @@ class MarketplaceMobileController extends Controller
 
             DB::commit();
 
-            // 🔥 HAPUS ITEM DARI KERANJANG YANG SUDAH JADI ORDER 🔥
+            // 🔥 HAPUS ITEM DARI KERANJANG
             $cartRecord = Cart::where('user_id', $userId)->first();
             if ($cartRecord) {
                 $currentCart = json_decode($cartRecord->item_description, true) ?? [];
@@ -676,10 +685,9 @@ class MarketplaceMobileController extends Controller
                 if (empty($newCart)) {
                     $cartRecord->delete();
                 } else {
-                    $newCart = array_values($newCart); // Reset array keys
+                    $newCart = array_values($newCart);
                     $cartRecord->item_description = json_encode($newCart);
 
-                    // Recalculate totals for remaining items
                     $newSub = 0; $newWeight = 0;
                     foreach($newCart as $nc) {
                         $qty = $nc['quantity'] ?? $nc['qty'] ?? 1;
@@ -692,7 +700,7 @@ class MarketplaceMobileController extends Controller
                 }
             }
 
-            // Hapus Record Checkout karena sudah selesai
+            // Hapus Record Checkout
             $checkoutRecord->delete();
 
             return response()->json([
@@ -785,21 +793,18 @@ class MarketplaceMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
         }
 
-        // Pastikan hanya bisa dibatalkan jika status belum dikirim
         if (!in_array(strtolower($order->status), ['pending', 'unpaid', 'processing', 'paid'])) {
             return response()->json(['success' => false, 'message' => 'Pesanan sudah dikirim atau tidak dapat dibatalkan.'], 400);
         }
 
         $reason = $request->input('reason', 'Kesalahan data paket');
 
-        // 🔥 JIKA ORDER SUDAH PUNYA RESI, TEMBAK API KIRIMINAJA
         if (!empty($order->shipping_reference) && !Str::contains($order->shipping_reference, 'MOCK')) {
             $mode = \App\Models\Api::getValue('KIRIMINAJA_MODE', 'global', 'sandbox');
             $baseUrl = $mode === 'production' ? 'https://api.kiriminaja.com/api/mitra' : 'https://tdi.kiriminaja.com/api/mitra';
             $apiKey = \App\Models\Api::getValue('KIRIMINAJA_API_KEY', $mode);
 
             try {
-                // Tembak API Cancel Shipment KiriminAja
                 $response = Http::withToken($apiKey)->post($baseUrl . '/cancel_shipment', [
                     'awb' => $order->shipping_reference,
                     'reason' => $reason
@@ -807,7 +812,6 @@ class MarketplaceMobileController extends Controller
 
                 $result = $response->json();
 
-                // Jika ditolak oleh KiriminAja
                 if (!$response->successful() || empty($result['status']) || $result['status'] === false) {
                     $errorMessage = $result['text'] ?? 'Gagal membatalkan di sistem ekspedisi.';
                     return response()->json(['success' => false, 'message' => $errorMessage], 400);
@@ -817,11 +821,9 @@ class MarketplaceMobileController extends Controller
             }
         }
 
-        // 🔥 BATALKAN LOKAL & KEMBALIKAN STOK
         $order->status = 'cancelled';
         $order->save();
 
-        // Jika pembeli menggunakan saldo dan pesanan sudah dipotong
         if (in_array(strtoupper($order->payment_method), ['POTONG SALDO', 'SALDO'])) {
             $user->saldo += $order->total_amount;
             $user->save();
