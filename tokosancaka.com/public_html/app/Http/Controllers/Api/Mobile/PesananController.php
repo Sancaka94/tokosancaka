@@ -116,14 +116,16 @@ class PesananController extends Controller
             $paymentUrl = null;
 
             // --- SIMPAN ITEM PRODUK ---
-            foreach ($validatedData['cart_items'] as $item) {
-                \App\Models\OrderItem::create([
-                    'order_id' => $order->id_pesanan ?? $order->id,
-                    'product_id' => $item['product_id'] ?? $item['id'] ?? null, // Tambahkan fallback $item['id']
-                    'product_variant_id' => $item['variant_id'] ?? null,
-                    'quantity' => $item['qty'] ?? 1,
-                    'price' => $item['price'] ?? 0,
-                ]);
+            if (!empty($validatedData['cart_items']) && is_array($validatedData['cart_items'])) {
+                foreach ($validatedData['cart_items'] as $item) {
+                    \App\Models\OrderItem::create([
+                        'order_id' => $order->id, // Ganti ke 'pesanan_id' jika foreign key Anda pesanan_id
+                        'product_id' => $item['product_id'] ?? null,
+                        'product_variant_id' => $item['variant_id'] ?? null,
+                        'quantity' => $item['qty'] ?? 1,
+                        'price' => $item['price'] ?? 0,
+                    ]);
+                }
             }
 
             // 6. PROSES LOGIKA BERDASARKAN METODE PEMBAYARAN
@@ -439,7 +441,7 @@ class PesananController extends Controller
     {
         $user = auth('sanctum')->user();
         if (!$user) {
-            throw new Exception('Unauthorized. Sesi tidak valid atau token kadaluarsa.');
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
         }
 
         // ==========================================
