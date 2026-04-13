@@ -424,16 +424,12 @@ class MarketplaceMobileController extends Controller
         ]);
     }
 
-    // 3. PROCESS CHECKOUT FINAL (Ditembak saat klik Bayar di Checkout.tsx)
     public function processCheckout(Request $request, KiriminAjaService $kiriminAja, DanaSignatureService $danaSignature)
     {
         $request->validate([
-            'checkout_invoice' => 'required|string',
-            'shipping_method' => 'required|string',
-            'payment_method' => 'required|string',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
-            'use_insurance' => 'boolean',
+            'checkout_invoice' => 'required',
+            'shipping_method' => 'required',
+            'payment_method' => 'required',
             'destination_district_id' => 'required',
             'destination_subdistrict_id' => 'required'
         ]);
@@ -443,203 +439,113 @@ class MarketplaceMobileController extends Controller
         $userId = $user->id_pengguna ?? $user->id;
 
         DB::beginTransaction();
-
         try {
-            // 1. Ambil Data Checkout yang Valid
+            // 1. Ambil Data Staging Checkout
             $checkoutRecord = Checkout::where('invoice_number', $request->checkout_invoice)->where('user_id', $userId)->first();
+            if (!$checkoutRecord) throw new Exception("Sesi checkout tidak ditemukan.");
 
-            if (!$checkoutRecord) {
-                throw new Exception("Sesi checkout tidak valid atau sudah diproses.");
-            }
+            $items = json_decode($checkoutRecord->item_description, true) ?? [];
 
-            $cartItemsPayload = json_decode($checkoutRecord->item_description, true) ?? [];
-            if(empty($cartItemsPayload)) throw new Exception("Keranjang kosong.");
+            // 2. Ambil Data Toko (Sangat Penting untuk data pengirim)
+            $store = Store::with('user')->find($checkoutRecord->store_id);
+            if (!$store || !$store->user) throw new Exception("Data toko/pengirim tidak ditemukan.");
 
-            $subtotal = $checkoutRecord->subtotal;
-            $orderItemsPayload = [];
-
-            foreach ($cartItemsPayload as $key => $details) {
-                $qty = isset($details['qty']) ? (int) $details['qty'] : ((int) ($details['quantity'] ?? 1));
-                $price = (int) ($details['price'] ?? 0);
-                $orderItemsPayload[] = [
-                    'sku' => $details['id'] ?? $key,
-                    'name' => $details['name'] ?? 'Produk',
-                    'price' => $price,
-                    'quantity' => $qty
-                ];
-            }
-
+            // 3. Kalkulasi Biaya
             $shippingParts = explode('-', $request->shipping_method);
-            if (count($shippingParts) < 4) throw new Exception("Format metode pengiriman tidak valid.");
+            $shipping_cost = (int)($shippingParts[3] ?? 0);
+            $insurance_cost = (int)($shippingParts[count($shippingParts) - 2] ?? 0);
+            $grand_total = $checkoutRecord->subtotal + $shipping_cost + ($request->use_insurance ? $insurance_cost : 0);
 
-            $shipping_cost = (int) ($shippingParts[3] ?? 0);
-            $insurance_cost = (int) ($shippingParts[count($shippingParts) - 2] ?? 0);
-
-            $useInsurance = $request->use_insurance && $insurance_cost > 0;
-            $applied_insurance = $useInsurance ? $insurance_cost : 0;
-            $grand_total = $subtotal + $shipping_cost + $applied_insurance;
-
-            // POTONG SALDO CEK
-            $isPayWithSaldo = in_array(strtoupper($request->payment_method), ['POTONG SALDO', 'SALDO']);
-            if ($isPayWithSaldo && ($user->saldo < $grand_total)) {
-                throw new Exception("Saldo tidak cukup. Tagihan: Rp " . number_format($grand_total,0,',','.') . ", Saldo Anda: Rp " . number_format($user->saldo,0,',','.'));
+            if (in_array(strtoupper($request->payment_method), ['POTONG SALDO', 'SALDO']) && $user->saldo < $grand_total) {
+                throw new Exception("Saldo tidak cukup");
             }
 
-            // 2. UPDATE TABEL CHECKOUT DENGAN DATA PENGIRIMAN & PEMBAYARAN
-            $checkoutRecord->update([
+            // 4. Buat Invoice Order Asli
+            $orderInvoice = 'SCK-ORD-' . strtoupper(Str::random(8));
+
+            // 5. Simpan ke Tabel Orders dengan Data Pengirim Lengkap
+            $order = Order::create([
+                'store_id'      => $store->id,
+                'user_id'       => $userId,
+                'invoice_number'=> $orderInvoice,
+                'subtotal'      => $checkoutRecord->subtotal,
                 'shipping_cost' => $shipping_cost,
-                'insurance_cost'=> $applied_insurance,
+                'insurance_cost'=> ($request->use_insurance ? $insurance_cost : 0),
                 'total_amount'  => $grand_total,
                 'shipping_method'=> $request->shipping_method,
                 'payment_method'=> $request->payment_method,
                 'status'        => 'pending',
-                'receiver_name'    => $request->receiver_name ?? $user->nama_lengkap,
-                'receiver_phone'   => $request->receiver_phone ?? $user->no_wa,
-                'receiver_address' => $request->receiver_address ?? $user->address_detail,
-                'shipping_address' => ($request->receiver_address ?? $user->address_detail) . ', ' . ($request->receiver_full_region ?? ''),
-                'customer_latitude' => $request->latitude ?? null,
-                'customer_longitude' => $request->longitude ?? null,
+
+                // DATA PENGIRIM (Ditarik dari tabel Store & Pengguna)
+                'sender_name'         => $store->name ?? $store->user->store_name ?? 'Toko Sancaka',
+                'sender_phone'        => $store->user->no_wa ?? '08123456789',
+                'sender_address'      => $store->address_detail ?? $store->user->address_detail ?? 'Alamat Toko',
+                'sender_district_id'  => $store->subdistrict_id ?? $store->user->subdistrict_id ?? 4354,
+
+                // DATA PENERIMA
+                'receiver_name'       => $request->receiver_name ?? $user->nama_lengkap,
+                'receiver_phone'      => $request->receiver_phone ?? $user->no_wa,
+                'receiver_address'    => $request->receiver_address ?? $user->address_detail,
+                'shipping_address'    => ($request->receiver_address ?? $user->address_detail) . ', ' . ($request->receiver_full_region ?? ''),
                 'receiver_district_id' => $request->destination_district_id,
                 'receiver_subdistrict_id' => $request->destination_subdistrict_id,
-                'receiver_village' => $user->village ?? 'Tidak Diketahui',
+                'receiver_village'    => $user->village ?? 'T/D',
+
+                'customer_latitude'   => $request->latitude,
+                'customer_longitude'  => $request->longitude,
+                'tanggal_pesanan'     => now(),
             ]);
 
-            // 3. GENERATE INVOICE ORDER ASLI
-            do {
-                 $orderInvoice = 'SCK-ORD-' . strtoupper(Str::random(8));
-            } while (Order::where('invoice_number', $orderInvoice)->exists());
+            // 6. Simpan Item Pesanan
+            foreach ($items as $details) {
+                $qty = $details['quantity'] ?? $details['qty'] ?? 1;
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $details['product_id'],
+                    'product_variant_id' => $details['variant_id'],
+                    'quantity' => $qty,
+                    'price' => $details['price']
+                ]);
 
-            // 4. PINDAHKAN DATA KE TABEL ORDERS (DILENGKAPI MAPPING ITEM DESCRIPTION & WEIGHT)
-            $order = new Order([
-                 'store_id'      => $checkoutRecord->store_id,
-                 'user_id'       => $checkoutRecord->user_id,
-                 'invoice_number'=> $orderInvoice,
-                 'subtotal'      => $checkoutRecord->subtotal,
-                 'shipping_cost' => $checkoutRecord->shipping_cost,
-                 'insurance_cost'=> $checkoutRecord->insurance_cost,
-                 'total_amount'  => $checkoutRecord->total_amount,
-                 'shipping_method'=> $checkoutRecord->shipping_method,
-                 'payment_method'=> $checkoutRecord->payment_method,
-                 'status'        => 'pending',
-                 'receiver_name'    => $checkoutRecord->receiver_name,
-                 'receiver_phone'   => $checkoutRecord->receiver_phone,
-                 'receiver_address' => $checkoutRecord->receiver_address,
-                 'shipping_address' => $checkoutRecord->shipping_address,
-                 'customer_latitude' => $checkoutRecord->customer_latitude,
-                 'customer_longitude' => $checkoutRecord->customer_longitude,
-                 'receiver_district_id' => $checkoutRecord->receiver_district_id,
-                 'receiver_subdistrict_id' => $checkoutRecord->receiver_subdistrict_id,
-                 'receiver_village' => $checkoutRecord->receiver_village,
-
-                 // PERBAIKAN: Mapping data keranjang dari tabel checkout ke orders
-                 'item_description' => $checkoutRecord->item_description,
-                 'weight'           => $checkoutRecord->weight,
-            ]);
-            $order->save();
-
-            // INSERT ITEMS (DENGAN NULL SAFETY)
-            foreach ($cartItemsPayload as $key => $details) {
-                 $qty = isset($details['qty']) ? (int) $details['qty'] : ((int) ($details['quantity'] ?? 1));
-                 $price = (int) ($details['price'] ?? 0);
-                 $variantId = $details['variant_id'] ?? null;
-                 $productId = $details['product_id'] ?? $details['id'] ?? null;
-
-                 if (!$productId) continue;
-
-                 OrderItem::create([
-                     'order_id' => $order->id,
-                     'product_id' => $productId,
-                     'product_variant_id' => $variantId,
-                     'quantity' => $qty,
-                     'price' => $price
-                 ]);
-
-                 if ($variantId) { ProductVariant::where('id', $variantId)->decrement('stock', $qty); }
-                 else { Product::where('id', $productId)->decrement('stock', $qty); }
+                // Kurangi Stok
+                if ($details['variant_id']) ProductVariant::where('id', $details['variant_id'])->decrement('stock', $qty);
+                else Product::where('id', $details['product_id'])->decrement('stock', $qty);
             }
 
-            $paymentUrl = null;
+            // 7. Proses Pembayaran
+            if (in_array(strtoupper($request->payment_method), ['POTONG SALDO', 'SALDO'])) {
+                $user->decrement('saldo', $grand_total);
+                $order->update(['status' => 'paid']);
 
-            // --- PROSES PEMBAYARAN & EKSPEDISI ---
-            if ($isPayWithSaldo) {
-                $user->saldo -= $grand_total;
-                $user->save();
-                $order->status = 'paid';
-                $order->save();
-
-                $webController = new \App\Http\Controllers\CheckoutController(app(\App\Services\DanaSignatureService::class));
+                // Trigger Booking KiriminAja & Generate Resi
+                $webController = new \App\Http\Controllers\CheckoutController($danaSignature);
                 $webController->processOrderCallback($orderInvoice, 'PAID', []);
-
-            } elseif (in_array(strtolower($request->payment_method), ['cod', 'cash', 'codbarang'])) {
-                $order->status = 'processing';
-                $order->save();
-
-                $webController = new \App\Http\Controllers\CheckoutController(app(\App\Services\DanaSignatureService::class));
-                $webController->processOrderCallback($orderInvoice, 'PAID', []);
-
-            } elseif (!in_array(strtolower($request->payment_method), ['dana', 'doku_jokul'])) {
-                $tripayResult = $this->_createTripayTransaction($order, $request->payment_method, $grand_total, $user, $orderItemsPayload);
-                if ($tripayResult['success']) {
-                    $paymentUrl = $tripayResult['data']['checkout_url'] ?? $tripayResult['data']['pay_url'];
-                    $order->payment_url = $paymentUrl;
-                    $order->pay_code = $tripayResult['data']['pay_code'] ?? null;
-                    $order->qr_url = $tripayResult['data']['qr_url'] ?? null;
-                    $order->save();
-                } else {
-                    throw new Exception($tripayResult['message']);
-                }
             }
 
-            DB::commit();
-
-            // 🔥 HAPUS ITEM DARI KERANJANG YANG SUDAH JADI ORDER 🔥
+            // 8. Bersihkan Cart & Hapus Staging Checkout
             $cartRecord = Cart::where('user_id', $userId)->first();
             if ($cartRecord) {
                 $currentCart = json_decode($cartRecord->item_description, true) ?? [];
-                $checkoutIds = array_column($cartItemsPayload, 'id');
-
-                $newCart = array_filter($currentCart, function($item) use ($checkoutIds) {
-                    return !in_array($item['id'], $checkoutIds);
-                });
-
-                if (empty($newCart)) {
-                    $cartRecord->delete();
-                } else {
-                    $newCart = array_values($newCart); // Reset array keys
-                    $cartRecord->item_description = json_encode($newCart);
-
-                    // Recalculate totals for remaining items
-                    $newSub = 0; $newWeight = 0;
-                    foreach($newCart as $nc) {
-                        $qty = $nc['quantity'] ?? $nc['qty'] ?? 1;
-                        $newSub += ($nc['price'] * $qty);
-                        $newWeight += ($nc['weight'] * $qty);
-                    }
-                    $cartRecord->total_amount = $newSub;
-                    $cartRecord->weight = $newWeight;
-                    $cartRecord->save();
-                }
+                $checkoutIds = array_column($items, 'id');
+                $newCart = array_filter($currentCart, fn($i) => !in_array($i['id'], $checkoutIds));
+                $cartRecord->update(['item_description' => json_encode(array_values($newCart))]);
             }
 
-            // Hapus Record Checkout karena sudah selesai
             $checkoutRecord->delete();
+            DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Pesanan berhasil dibuat.',
                 'data' => [
-                    'invoice_number' => $order->invoice_number,
-                    'total_amount' => $grand_total,
-                    'payment_method' => $order->payment_method,
-                    'status' => $order->status,
-                    'payment_url' => $paymentUrl
+                    'invoice_number' => $orderInvoice,
+                    'status' => $order->status
                 ]
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Checkout API Error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Gagal memproses order: ' . $e->getMessage()], 500);
+            Log::error("Checkout Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
