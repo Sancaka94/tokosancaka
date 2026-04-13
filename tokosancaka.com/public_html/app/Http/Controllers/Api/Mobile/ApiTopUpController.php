@@ -549,13 +549,27 @@ class ApiTopUpController extends Controller
             $message .= "*{$otpCode}*\n\n";
             $message .= "Kode ini hanya berlaku selama 5 menit. JANGAN BERIKAN KODE INI KEPADA SIAPAPUN, termasuk pihak Sancaka.";
 
+            // --- FORMAT NOMOR HP AGAR SESUAI DENGAN FONNTE ---
+            $nomorTujuan = $user->no_wa;
+
+            // Jika nomor berawalan 0, hapus 0 nya (karena akan digabung dengan countryCode 62)
+            if (str_starts_with($nomorTujuan, '0')) {
+                $nomorTujuan = substr($nomorTujuan, 1);
+            }
+            // Jika nomor sudah berawalan 62 atau +62, bersihkan dulu
+            elseif (str_starts_with($nomorTujuan, '62')) {
+                $nomorTujuan = substr($nomorTujuan, 2);
+            } elseif (str_starts_with($nomorTujuan, '+62')) {
+                $nomorTujuan = substr($nomorTujuan, 3);
+            }
+
             // Kirim ke Fonnte
             $response = Http::withHeaders([
                 'Authorization' => 'ynMyPswSKr14wdtXMJF7' // Token Fonnte Mas Amal
             ])->post('https://api.fonnte.com/send', [
-                'target' => $user->no_wa,
+                'target' => $nomorTujuan, // Gunakan nomor yang sudah dibersihkan
                 'message' => $message,
-                'countryCode' => '62', // Default kode negara Indonesia
+                'countryCode' => '62', // Otomatis menambahkan awalan 62
             ]);
 
             $fonnteResult = $response->json();
