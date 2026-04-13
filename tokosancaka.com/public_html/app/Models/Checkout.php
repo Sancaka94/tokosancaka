@@ -35,9 +35,11 @@ class Checkout extends Model
      * ==========================================
      */
 
+
     // Relasi ke tabel pengguna (pembeli)
     public function user()
     {
+        // Kunci utamanya adalah 'id_pengguna', BUKAN 'id'
         return $this->belongsTo(User::class, 'user_id', 'id_pengguna');
     }
 
