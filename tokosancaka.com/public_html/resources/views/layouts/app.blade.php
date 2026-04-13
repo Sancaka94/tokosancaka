@@ -547,6 +547,13 @@
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="{{ route('pesanan.public.create') }}"><i class="fas fa-shipping-fast me-2"></i>Order via <strong>Sancaka Express</strong></a></li>
                 <li><a class="dropdown-item" href="{{ route('scan.spx.show') }}"><i class="fas fa-barcode me-2"></i> Input Resi SPX Express</a></li>
+                {{-- TAMBAHAN TOMBOL DOWNLOAD --}}
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item text-success fw-bold" href="https://tokosancaka.com/public/assets/app/SancakaExpress.apk" target="_blank">
+                        <i class="fab fa-android me-2"></i> Download App Android
+                    </a>
+                </li>
             </ul>
         @endguest
     </div>
