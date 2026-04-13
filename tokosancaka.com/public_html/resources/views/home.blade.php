@@ -543,11 +543,17 @@ width: 22px;
             <div class="col-12">
                 <div class="action-card h-100">
                     <div class="row align-items-center">
-                        <div class="col-lg-6 mb-3 mb-lg-0">
+                        <div class="col-lg-7 mb-3 mb-lg-0">
                             <h5 class="fw-bold"><i class="fa-solid fa-magnifying-glass me-2"></i>Lacak Kiriman Anda</h5>
-                            <p class="text-muted small mb-0">Pantau posisi paket Anda secara akurat, real-time dan fast respond. Jika ada kendala silahkan Hub WA Admin 08819435180.</p>
+                            <p class="text-muted small mb-0">
+                                Pantau posisi paket Anda secara akurat, real-time dan fast respond.
+                                Jika ada kendala silahkan
+                                <a href="https://wa.me/628819435180" target="_blank" class="text-success fw-bold text-decoration-none">
+                                    <i class="fab fa-whatsapp me-1"></i>Hub WA Admin 08819435180
+                                </a>.
+                            </p>
                         </div>
-                        <div class="col-lg-6">
+                        <div class="col-lg-5">
                             <form action="{{ route('tracking.search') }}" method="GET" class="m-0">
                                 <div class="input-group">
                                     <input type="text" name="resi" class="form-control form-control-lg" placeholder="Cek Resi..." required>
@@ -587,11 +593,11 @@ width: 22px;
             <div class="col-12 col-md-4">
                 <a href="https://tokosancaka.com/public/assets/app/SancakaExpress.apk" target="_blank" class="text-decoration-none text-dark">
                     <div class="action-card clickable h-100">
-                        <h5 class="fw-bold"><i class="fa-brands fa-android me-2 text-success"></i>Download Aplikasi Android</h5>
+                        <h5 class="fw-bold"><i class="fa-brands fa-android me-2 text-success"></i>Aplikasi Android</h5>
                         <p class="text-muted small">Lebih praktis! Nikmati fitur layanan lengkap Sancaka Express langsung dari HP Anda.</p>
                         <div class="d-grid mt-auto">
                             <button class="btn btn-success btn-lg text-white fw-bold" type="button" style="background-color: #198754; border-color: #198754;">
-                                <i class="fas fa-download me-1"></i> Download
+                                <i class="fas fa-download me-1"></i> Download Apk
                             </button>
                         </div>
                     </div>
