@@ -721,7 +721,6 @@
         </div>
     </div>
 
-    <!-- Modal Tutorial Onboarding -->
     <div class="modal fade" id="tutorialModal" tabindex="-1" aria-labelledby="tutorialModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-md">
             <div class="modal-content rounded-4 border-0 shadow-lg">
@@ -731,17 +730,27 @@
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
                 </div>
-                <div class="modal-body text-center py-4">
+                <div class="modal-body text-center py-4 px-4">
                     <p class="fs-5 fw-semibold text-dark">🚀 Yuk Mulai Kirim Barang!</p>
                     <p class="text-secondary mb-4">
                         Untuk mulai menggunakan layanan kami, silakan klik tombol <span class="badge bg-danger px-2 py-1">Login / Order</span> di pojok kanan atas.
                     </p>
+
+                    <div class="p-3 bg-light rounded-3 mb-4">
+                        <i class="fab fa-android fa-2x text-success mb-2"></i>
+                        <p class="mb-0 fw-semibold">Lebih Praktis Pakai Aplikasi!</p>
+                        <p class="small text-muted mb-0">Download aplikasi kami untuk pengalaman yang lebih cepat.</p>
+                    </div>
+
                     <p class="text-muted small">💼 Kami siap bantu kiriman Anda dengan cepat, aman, dan terpercaya.</p>
                 </div>
-                <div class="modal-footer justify-content-center border-0 pb-4">
-                    <button type="button" class="btn btn-lg btn-danger rounded-pill px-4 shadow-sm" data-bs-dismiss="modal">
+                <div class="modal-footer justify-content-center border-0 pb-4 pt-0 gap-2">
+                    <button type="button" class="btn btn-danger rounded-pill px-4 shadow-sm" data-bs-dismiss="modal">
                         Saya Mengerti
                     </button>
+                    <a href="https://tokosancaka.com/public/assets/app/SancakaExpress.apk" target="_blank" class="btn btn-outline-success rounded-pill px-4 shadow-sm" onclick="document.getElementById('tutorialModal').querySelector('.btn-close').click();">
+                        <i class="fas fa-download me-1"></i> Download App
+                    </a>
                 </div>
             </div>
         </div>
