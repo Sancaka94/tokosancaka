@@ -543,10 +543,10 @@ width: 22px;
             <div class="col">
                 <div class="action-card h-100">
                     <h5 class="fw-bold"><i class="fa-solid fa-magnifying-glass me-2"></i>Lacak Kiriman Anda</h5>
-                    <p class="text-muted small">Pantau posisi paket Anda secara akurat, real-time dan fast respond, jika ada kendala silahkan Hub WA Admin 08819435180</p><br>
+                    <p class="text-muted small">Pantau posisi paket Anda secara akurat, real-time dan fast respond, jika ada kendala silahkan Hub WA Admin 08819435180</p>
                     <form action="{{ route('tracking.search') }}" method="GET" class="mt-auto">
                         <div class="input-group">
-                            <input type="text" name="resi" class="form-control form-control-lg" placeholder="Cek Resi" required>
+                            <input type="text" name="resi" class="form-control form-control-lg" placeholder="Cek Resi" required> <br>
                             <button class="btn btn-danger px-4" type="submit" style="background-color: var(--google-blue); border-color: var(--google-blue);">
                                 <i class="fas fa-arrow-right"></i>
                             </button>
