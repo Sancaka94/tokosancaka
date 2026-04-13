@@ -219,12 +219,31 @@ Route::prefix('seller')->group(function () {
         Route::get('/topup/methods', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'getMethods']);
         Route::post('/topup/request', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'requestTopUp']);
         Route::get('/topup/history', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'history']);
+
+        // --- API BARU: TOPUP (Dari ApiTopUpController) ---
+        Route::get('/topup/methods', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'getMethods']);
+        Route::post('/topup/request', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'requestTopUp']);
+        Route::get('/topup/history', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'history']);
         // --------------------------------------------------
+
+        // ==========================================
+        // MANAJEMEN PIN KEAMANAN & OTP WHATSAPP
+        // ==========================================
+        Route::post('/pin/register', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'registerPin']);
+        Route::post('/pin/edit', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'editPin']);
+        Route::post('/pin/verify', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'verifyPin']);
+
+        // Lupa PIN via OTP Fonnte
+        Route::post('/pin/forgot/request-otp', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'requestOtpResetPin']);
+        Route::post('/pin/forgot/reset', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'resetPinWithOtp']);
+        // ==========================================
 
         // PPOB & Pembayaran Digital
         Route::post('/ppob/inquiry', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'inquiry']); // Cek Tagihan
         Route::post('/ppob/pay', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'pay']); // Bayar
         Route::get('/ppob/history', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'history']);
+        // --------------------------------------------------
+
 
         // Marketplace Cart & Checkout
         Route::get('/cart', [\App\Http\Controllers\Api\Mobile\CartController::class, 'index']);

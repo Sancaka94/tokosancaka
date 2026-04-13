@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 
 class ApiTopUpController extends Controller
 {
@@ -332,6 +333,313 @@ class ApiTopUpController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * ==========================================================
+     * 4. API: REGISTER PIN (PEMBUATAN PIN PERTAMA KALI)
+     * ==========================================================
+     */
+    public function registerPin(Request $request)
+    {
+        $request->validate([
+            'pin' => 'required|digits:6|confirmed' // memastikan ada pin_confirmation
+        ], [
+            'pin.required' => 'PIN wajib diisi.',
+            'pin.digits' => 'PIN harus terdiri dari 6 angka.',
+            'pin.confirmed' => 'Konfirmasi PIN tidak cocok.'
+        ]);
+
+        try {
+            $user = Auth::user();
+
+            // Cek apakah user sudah punya PIN
+            if (!empty($user->pin)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda sudah memiliki PIN. Silakan gunakan menu Edit PIN.'
+                ], 400);
+            }
+
+            // Simpan PIN dengan Hash
+            $user->pin = Hash::make($request->pin);
+            $user->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'PIN berhasil dibuat.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Register PIN Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat membuat PIN.'
+            ], 500);
+        }
+    }
+
+    /**
+     * ==========================================================
+     * 5. API: EDIT PIN (UBAH PIN SAAT INGAT PIN LAMA)
+     * ==========================================================
+     */
+    public function editPin(Request $request)
+    {
+        $request->validate([
+            'old_pin' => 'required|digits:6',
+            'new_pin' => 'required|digits:6|confirmed'
+        ], [
+            'old_pin.required' => 'PIN lama wajib diisi.',
+            'new_pin.required' => 'PIN baru wajib diisi.',
+            'new_pin.digits' => 'PIN baru harus 6 angka.',
+            'new_pin.confirmed' => 'Konfirmasi PIN baru tidak cocok.'
+        ]);
+
+        try {
+            $user = Auth::user();
+
+            // Cek apakah PIN lama cocok dengan yang di database
+            if (!Hash::check($request->old_pin, $user->pin)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'PIN lama yang Anda masukkan salah.'
+                ], 400);
+            }
+
+            // Simpan PIN baru
+            $user->pin = Hash::make($request->new_pin);
+            $user->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'PIN berhasil diperbarui.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Edit PIN Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengubah PIN.'
+            ], 500);
+        }
+    }
+
+    /**
+     * ==========================================================
+     * 6. API: RESET PIN (LUPA PIN - VERIFIKASI VIA PASSWORD)
+     * ==========================================================
+     */
+    public function resetPin(Request $request)
+    {
+        $request->validate([
+            'password' => 'required', // Meminta password akun untuk keamanan
+            'new_pin'  => 'required|digits:6|confirmed'
+        ], [
+            'password.required' => 'Password akun wajib diisi untuk verifikasi keamanan.',
+            'new_pin.required' => 'PIN baru wajib diisi.',
+            'new_pin.digits' => 'PIN baru harus 6 angka.',
+            'new_pin.confirmed' => 'Konfirmasi PIN baru tidak cocok.'
+        ]);
+
+        try {
+            $user = Auth::user();
+
+            // Verifikasi Password Akun
+            if (!Hash::check($request->password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Password akun yang Anda masukkan salah. Gagal mereset PIN.'
+                ], 401);
+            }
+
+            // Jika password benar, buat PIN baru
+            $user->pin = Hash::make($request->new_pin);
+            $user->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'PIN berhasil di-reset dan diperbarui.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Reset PIN Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mereset PIN.'
+            ], 500);
+        }
+    }
+
+    /**
+     * ==========================================================
+     * 7. API: VERIFIKASI PIN (UNTUK KEPERLUAN SEBELUM TRANSAKSI)
+     * ==========================================================
+     */
+    public function verifyPin(Request $request)
+    {
+        $request->validate([
+            'pin' => 'required|digits:6'
+        ]);
+
+        try {
+            $user = Auth::user();
+
+            // Jika user belum setting PIN sama sekali
+            if (empty($user->pin)) {
+                return response()->json([
+                    'success' => false,
+                    'is_set' => false,
+                    'message' => 'Anda belum membuat PIN Keamanan.'
+                ], 403);
+            }
+
+            // Cek kebenaran PIN
+            if (!Hash::check($request->pin, $user->pin)) {
+                return response()->json([
+                    'success' => false,
+                    'is_set' => true,
+                    'message' => 'PIN Keamanan salah.'
+                ], 401);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'PIN valid.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Verify PIN Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan internal.'
+            ], 500);
+        }
+    }
+
+    /**
+     * ==========================================================
+     * 8. API: REQUEST OTP VIA WHATSAPP (FONNTE)
+     * ==========================================================
+     */
+    public function requestOtpResetPin(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            // Pastikan user memiliki nomor WA
+            if (empty($user->no_wa)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Nomor WhatsApp belum terdaftar di akun Anda.'
+                ], 400);
+            }
+
+            // Generate OTP 6 Karakter (Huruf & Angka, Uppercase)
+            $otpCode = strtoupper(Str::random(6));
+
+            // Simpan OTP di Cache selama 5 menit dengan key unik per user
+            Cache::put('otp_reset_pin_' . $user->id_pengguna, $otpCode, now()->addMinutes(5));
+
+            // Format Pesan WhatsApp
+            $message = "Halo *{$user->nama_lengkap}*,\n\n";
+            $message .= "Berikut adalah kode OTP untuk mereset PIN Keamanan Anda:\n\n";
+            $message .= "*{$otpCode}*\n\n";
+            $message .= "Kode ini hanya berlaku selama 5 menit. JANGAN BERIKAN KODE INI KEPADA SIAPAPUN, termasuk pihak Sancaka.";
+
+            // Kirim ke Fonnte
+            $response = Http::withHeaders([
+                'Authorization' => 'ynMyPswSKr14wdtXMJF7' // Token Fonnte Mas Amal
+            ])->post('https://api.fonnte.com/send', [
+                'target' => $user->no_wa,
+                'message' => $message,
+                'countryCode' => '62', // Default kode negara Indonesia
+            ]);
+
+            $fonnteResult = $response->json();
+
+            if ($response->successful() && isset($fonnteResult['status']) && $fonnteResult['status'] == true) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Kode OTP berhasil dikirim ke WhatsApp Anda.'
+                ]);
+            } else {
+                Log::error('Fonnte Send Error: ' . json_encode($fonnteResult));
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal mengirim OTP ke WhatsApp. Pastikan nomor aktif.'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Request OTP Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan internal saat mengirim OTP.'
+            ], 500);
+        }
+    }
+
+    /**
+     * ==========================================================
+     * 9. API: RESET PIN DENGAN OTP (MENGGANTIKAN RESET VIA PASSWORD)
+     * ==========================================================
+     */
+    public function resetPinWithOtp(Request $request)
+    {
+        $request->validate([
+            'otp'      => 'required|string|size:6',
+            'new_pin'  => 'required|digits:6|confirmed'
+        ], [
+            'otp.required' => 'Kode OTP wajib diisi.',
+            'otp.size' => 'Kode OTP harus 6 karakter.',
+            'new_pin.required' => 'PIN baru wajib diisi.',
+            'new_pin.digits' => 'PIN baru harus 6 angka.',
+            'new_pin.confirmed' => 'Konfirmasi PIN baru tidak cocok.'
+        ]);
+
+        try {
+            $user = Auth::user();
+            $cacheKey = 'otp_reset_pin_' . $user->id_pengguna;
+
+            // Ambil OTP dari Cache
+            $savedOtp = Cache::get($cacheKey);
+
+            // Cek apakah OTP ada/belum expired
+            if (!$savedOtp) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kode OTP sudah kedaluwarsa atau tidak valid. Silakan request ulang.'
+                ], 400);
+            }
+
+            // Cocokkan OTP (Case Insensitive agar aman kalau user ketik huruf kecil)
+            if (strtoupper($request->otp) !== $savedOtp) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kode OTP yang Anda masukkan salah.'
+                ], 400);
+            }
+
+            // Jika OTP Benar, Reset PIN
+            $user->pin = Hash::make($request->new_pin);
+            $user->save();
+
+            // Hapus OTP dari cache agar tidak bisa dipakai 2 kali (Sekali Pakai / One Time)
+            Cache::forget($cacheKey);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'PIN berhasil di-reset dan diperbarui.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Reset PIN OTP Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mereset PIN.'
             ], 500);
         }
     }
