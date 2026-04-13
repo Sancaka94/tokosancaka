@@ -46,7 +46,7 @@ Route::post('/resend-token', [\App\Http\Controllers\Api\Mobile\AuthController::c
 // --- ENDPOINT UPDATE APLIKASI (SELF-HOSTED PLAYSTORE) ---
 Route::get('/check-update', function(Request $request) {
     // 1. Tentukan versi rilis terbaru di server
-    $latestVersion = '1.0.8'; // Ubah ini setiap kali ada update baru, bisa juga diambil dari database jika ingin lebih dinamis
+    $latestVersion = '1.0.9'; // Ubah ini setiap kali ada update baru, bisa juga diambil dari database jika ingin lebih dinamis
 
     // 2. Tangkap versi aplikasi yang sedang dipakai user dari parameter URL
     $appVersion = $request->query('app_version');
