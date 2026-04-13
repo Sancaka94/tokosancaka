@@ -143,7 +143,7 @@ class MarketplaceMobileController extends Controller
         $user = Auth::user() ?? auth('sanctum')->user();
         if (!$user) return null;
 
-        $userId = $user->id_pengguna ?? $user->id; // Fallback jika pakai id
+        $userId = $user->id_pengguna ?? $user->id;
 
         return Cart::firstOrCreate(
             ['user_id' => $userId],
@@ -231,33 +231,30 @@ class MarketplaceMobileController extends Controller
                 return response()->json(['success' => false, 'message' => "Stok tidak mencukupi. Tersedia: {$stockToCheck}"], 422);
             }
 
+            $storeLogo = $product->store->logo ?? $product->store->user->store_logo_path ?? null;
+
             if (isset($cart[$itemKey])) {
                 $cart[$itemKey]['quantity'] = $newTotalQuantity;
-                $cart[$itemKey]['qty'] = $newTotalQuantity; // Backup bilingual
+                $cart[$itemKey]['qty'] = $newTotalQuantity;
+                // Auto refresh data
                 $cart[$itemKey]['image_url'] = $itemImageUrl;
-                $cart[$itemKey]['store_logo'] = $product->store->logo ?? $product->store->user->store_logo_path ?? null;
+                $cart[$itemKey]['store_logo'] = $storeLogo;
                 $cart[$itemKey]['store_name'] = $product->store->name ?? 'Toko Sancaka';
-                $cart[$itemKey]['store_regency'] = $product->store->regency ?? 'Ngawi';
             } else {
-                $storeName = $product->store->name ?? 'Toko Sancaka';
-                $storeRegency = $product->store->regency ?? 'Ngawi';
-                // Ambil logo toko dari tabel store, jika kosong ambil dari tabel pengguna
-                $storeLogo = $product->store->logo ?? $product->store->user->store_logo_path ?? null;
-
                 $cart[$itemKey] = [
                     "id"         => $itemKey,
                     "product_id" => $productId,
                     "variant_id" => $variantId,
                     "name"       => $itemName,
                     "quantity"   => $quantity,
-                    "qty"        => $quantity, // Backup bilingual
+                    "qty"        => $quantity,
                     "price"      => $itemPrice,
                     "image_url"  => $itemImageUrl,
                     "slug"       => $product->slug,
                     "weight"     => $weight,
                     "store_id"   => $product->store_id,
-                    "store_name" => $storeName,
-                    "store_regency" => $storeRegency,
+                    "store_name" => $product->store->name ?? 'Toko Sancaka',
+                    "store_regency" => $product->store->regency ?? 'Ngawi',
                     "store_logo" => $storeLogo,
                 ];
             }
@@ -335,7 +332,6 @@ class MarketplaceMobileController extends Controller
     public function removeFromCart(Request $request)
     {
         $itemKey = $request->input('id');
-
         $cartRecord = $this->_getUserCartRecord();
         $cart = json_decode($cartRecord->item_description, true) ?? [];
 
@@ -349,24 +345,92 @@ class MarketplaceMobileController extends Controller
         return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan.'], 404);
     }
 
-    public function clearCart()
+
+    // =========================================================================
+    // BAGIAN 3: SISTEM CHECKOUT (INIT -> GET -> PROCESS)
+    // =========================================================================
+
+    // 1. INIT CHECKOUT (Ditembak dari tombol Lanjut Checkout di CartScreen)
+    public function initCheckout(Request $request)
     {
-        $userId = Auth::id() ?? auth('sanctum')->id();
-        Cart::where('user_id', $userId)->delete();
-        return response()->json(['success' => true, 'message' => 'Keranjang dibersihkan.']);
+        $request->validate(['selected_ids' => 'required|array']);
+
+        $user = Auth::user() ?? auth('sanctum')->user();
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        $userId = $user->id_pengguna ?? $user->id;
+
+        $cartRecord = Cart::where('user_id', $userId)->first();
+        if (!$cartRecord) return response()->json(['success' => false, 'message' => 'Keranjang kosong.'], 400);
+
+        $cartItems = json_decode($cartRecord->item_description, true) ?? [];
+        $checkoutItems = [];
+        $subtotal = 0;
+        $totalWeight = 0;
+        $storeId = null;
+
+        foreach ($cartItems as $item) {
+            if (in_array($item['id'], $request->selected_ids)) {
+                $checkoutItems[] = $item;
+                $qty = $item['quantity'] ?? $item['qty'] ?? 1;
+                $subtotal += ($item['price'] * $qty);
+                $totalWeight += ($item['weight'] * $qty);
+                if (!$storeId) $storeId = $item['store_id'] ?? null;
+            }
+        }
+
+        if (empty($checkoutItems)) {
+            return response()->json(['success' => false, 'message' => 'Tidak ada produk valid yang dipilih.'], 400);
+        }
+
+        do {
+            $invoiceNumber = 'SCK-CHK-' . strtoupper(Str::random(8));
+        } while (Checkout::where('invoice_number', $invoiceNumber)->exists() || Order::where('invoice_number', $invoiceNumber)->exists());
+
+        Checkout::create([
+            'store_id' => $storeId,
+            'user_id' => $userId,
+            'invoice_number' => $invoiceNumber,
+            'subtotal' => $subtotal,
+            'weight' => $totalWeight,
+            'status' => 'draft',
+            'item_description' => json_encode($checkoutItems)
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => ['checkout_invoice' => $invoiceNumber]
+        ]);
     }
 
+    // 2. GET CHECKOUT DATA (Ditembak saat halaman Checkout.tsx terbuka)
+    public function getCheckoutData(Request $request)
+    {
+        $user = Auth::user() ?? auth('sanctum')->user();
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        $userId = $user->id_pengguna ?? $user->id;
 
-    // =========================================================================
-    // BAGIAN 3: CHECKOUT (PERSIAPAN & PROSES)
-    // =========================================================================
+        $invoice = $request->invoice;
+        $checkout = Checkout::where('invoice_number', $invoice)->where('user_id', $userId)->first();
 
+        if(!$checkout) return response()->json(['success'=>false, 'message'=>'Sesi checkout tidak valid atau kadaluarsa.'], 404);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'items' => json_decode($checkout->item_description, true),
+                'subtotal' => $checkout->subtotal,
+                'weight' => $checkout->weight
+            ]
+        ]);
+    }
+
+    // 3. PROCESS CHECKOUT FINAL (Ditembak saat klik Bayar di Checkout.tsx)
     public function processCheckout(Request $request, KiriminAjaService $kiriminAja, DanaSignatureService $danaSignature)
     {
         $request->validate([
+            'checkout_invoice' => 'required|string',
             'shipping_method' => 'required|string',
             'payment_method' => 'required|string',
-            'cart_items' => 'required|array',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'use_insurance' => 'boolean',
@@ -375,50 +439,28 @@ class MarketplaceMobileController extends Controller
         ]);
 
         $user = Auth::user() ?? auth('sanctum')->user();
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'Silakan login kembali.'], 401);
-        }
-
+        if (!$user) return response()->json(['success' => false, 'message' => 'Silakan login kembali.'], 401);
         $userId = $user->id_pengguna ?? $user->id;
-
-        $cartItemsPayload = $request->input('cart_items', []);
-
-        if (empty($cartItemsPayload)) {
-            return response()->json(['success' => false, 'message' => 'Keranjang kosong.'], 400);
-        }
 
         DB::beginTransaction();
 
         try {
-            // 1. Kalkulasi Data dari Payload
-            $subtotal = 0;
-            $orderItemsPayload = [];
-            $totalWeight = 0;
+            // 1. Ambil Data Checkout yang Valid
+            $checkoutRecord = Checkout::where('invoice_number', $request->checkout_invoice)->where('user_id', $userId)->first();
 
-            // KUNCI AMAN: Ambil store_id dari item keranjang pertama
-            $firstItem = reset($cartItemsPayload);
-            $storeId = $firstItem['store_id'] ?? null;
-
-            if (!$storeId) {
-                 // Jika tidak ada di payload, cari dari produk
-                 $productId = $firstItem['product_id'] ?? $firstItem['id'];
-                 $product = Product::find($productId);
-                 if (!$product) throw new Exception("Produk tidak ditemukan.");
-                 $storeId = $product->store_id;
+            if (!$checkoutRecord) {
+                throw new Exception("Sesi checkout tidak valid atau sudah diproses.");
             }
 
-            // AMBIL DATA TOKO
-            $store = Store::with('user')->find($storeId);
-            if (!$store) throw new Exception("Toko tidak ditemukan.");
+            $cartItemsPayload = json_decode($checkoutRecord->item_description, true) ?? [];
+            if(empty($cartItemsPayload)) throw new Exception("Keranjang kosong.");
+
+            $subtotal = $checkoutRecord->subtotal;
+            $orderItemsPayload = [];
 
             foreach ($cartItemsPayload as $key => $details) {
                 $qty = isset($details['qty']) ? (int) $details['qty'] : ((int) ($details['quantity'] ?? 1));
                 $price = (int) ($details['price'] ?? 0);
-                $weight = (int) ($details['weight'] ?? 1000);
-
-                $subtotal += ($price * $qty);
-                $totalWeight += ($weight * $qty);
-
                 $orderItemsPayload[] = [
                     'sku' => $details['id'] ?? $key,
                     'name' => $details['name'] ?? 'Produk',
@@ -428,9 +470,7 @@ class MarketplaceMobileController extends Controller
             }
 
             $shippingParts = explode('-', $request->shipping_method);
-            if (count($shippingParts) < 4) {
-                throw new Exception("Format metode pengiriman tidak valid.");
-            }
+            if (count($shippingParts) < 4) throw new Exception("Format metode pengiriman tidak valid.");
 
             $shipping_cost = (int) ($shippingParts[3] ?? 0);
             $insurance_cost = (int) ($shippingParts[count($shippingParts) - 2] ?? 0);
@@ -445,19 +485,8 @@ class MarketplaceMobileController extends Controller
                 throw new Exception("Saldo tidak cukup. Tagihan: Rp " . number_format($grand_total,0,',','.') . ", Saldo Anda: Rp " . number_format($user->saldo,0,',','.'));
             }
 
-            // BUAT INVOICE
-            do {
-                 $invoiceNumber = 'SCK-ORD-' . strtoupper(Str::random(8));
-            } while (Order::where('invoice_number', $invoiceNumber)->exists() || Checkout::where('invoice_number', $invoiceNumber)->exists());
-
-            // ========================================================
-            // 🔥 SIMPAN KE TABEL CHECKOUT DULU (STAGING) 🔥
-            // ========================================================
-            $checkoutRecord = Checkout::create([
-                'store_id'      => $store->id,
-                'user_id'       => $userId,
-                'invoice_number'=> $invoiceNumber,
-                'subtotal'      => $subtotal,
+            // 2. UPDATE TABEL CHECKOUT DENGAN DATA PENGIRIMAN & PEMBAYARAN
+            $checkoutRecord->update([
                 'shipping_cost' => $shipping_cost,
                 'insurance_cost'=> $applied_insurance,
                 'total_amount'  => $grand_total,
@@ -473,16 +502,18 @@ class MarketplaceMobileController extends Controller
                 'receiver_district_id' => $request->destination_district_id,
                 'receiver_subdistrict_id' => $request->destination_subdistrict_id,
                 'receiver_village' => $user->village ?? 'Tidak Diketahui',
-                'item_description' => json_encode($cartItemsPayload),
             ]);
 
-            // ========================================================
-            // 🔥 LANJUT SIMPAN KE TABEL ORDERS (AGAR RELASI AMAN) 🔥
-            // ========================================================
+            // 3. GENERATE INVOICE ORDER ASLI
+            do {
+                 $orderInvoice = 'SCK-ORD-' . strtoupper(Str::random(8));
+            } while (Order::where('invoice_number', $orderInvoice)->exists());
+
+            // 4. PINDAHKAN DATA KE TABEL ORDERS
             $order = new Order([
                  'store_id'      => $checkoutRecord->store_id,
                  'user_id'       => $checkoutRecord->user_id,
-                 'invoice_number'=> $checkoutRecord->invoice_number,
+                 'invoice_number'=> $orderInvoice,
                  'subtotal'      => $checkoutRecord->subtotal,
                  'shipping_cost' => $checkoutRecord->shipping_cost,
                  'insurance_cost'=> $checkoutRecord->insurance_cost,
@@ -527,21 +558,20 @@ class MarketplaceMobileController extends Controller
 
             // --- PROSES PEMBAYARAN & EKSPEDISI ---
             if ($isPayWithSaldo) {
-                // POTONG SALDO (Arahkan ke id_pengguna sesuai tabelmu)
                 $user->saldo -= $grand_total;
                 $user->save();
                 $order->status = 'paid';
                 $order->save();
 
                 $webController = new \App\Http\Controllers\CheckoutController(app(\App\Services\DanaSignatureService::class));
-                $webController->processOrderCallback($invoiceNumber, 'PAID', []);
+                $webController->processOrderCallback($orderInvoice, 'PAID', []);
 
             } elseif (in_array(strtolower($request->payment_method), ['cod', 'cash', 'codbarang'])) {
                 $order->status = 'processing';
                 $order->save();
 
                 $webController = new \App\Http\Controllers\CheckoutController(app(\App\Services\DanaSignatureService::class));
-                $webController->processOrderCallback($invoiceNumber, 'PAID', []);
+                $webController->processOrderCallback($orderInvoice, 'PAID', []);
 
             } elseif (!in_array(strtolower($request->payment_method), ['dana', 'doku_jokul'])) {
                 $tripayResult = $this->_createTripayTransaction($order, $request->payment_method, $grand_total, $user, $orderItemsPayload);
@@ -558,8 +588,37 @@ class MarketplaceMobileController extends Controller
 
             DB::commit();
 
-            // 🔥 HAPUS KERANJANG DI DATABASE KARENA SUDAH CHECKOUT 🔥
-            Cart::where('user_id', $userId)->delete();
+            // 🔥 HAPUS ITEM DARI KERANJANG YANG SUDAH JADI ORDER 🔥
+            $cartRecord = Cart::where('user_id', $userId)->first();
+            if ($cartRecord) {
+                $currentCart = json_decode($cartRecord->item_description, true) ?? [];
+                $checkoutIds = array_column($cartItemsPayload, 'id');
+
+                $newCart = array_filter($currentCart, function($item) use ($checkoutIds) {
+                    return !in_array($item['id'], $checkoutIds);
+                });
+
+                if (empty($newCart)) {
+                    $cartRecord->delete();
+                } else {
+                    $newCart = array_values($newCart); // Reset array keys
+                    $cartRecord->item_description = json_encode($newCart);
+
+                    // Recalculate totals for remaining items
+                    $newSub = 0; $newWeight = 0;
+                    foreach($newCart as $nc) {
+                        $qty = $nc['quantity'] ?? $nc['qty'] ?? 1;
+                        $newSub += ($nc['price'] * $qty);
+                        $newWeight += ($nc['weight'] * $qty);
+                    }
+                    $cartRecord->total_amount = $newSub;
+                    $cartRecord->weight = $newWeight;
+                    $cartRecord->save();
+                }
+            }
+
+            // Hapus Record Checkout karena sudah selesai
+            $checkoutRecord->delete();
 
             return response()->json([
                 'success' => true,
