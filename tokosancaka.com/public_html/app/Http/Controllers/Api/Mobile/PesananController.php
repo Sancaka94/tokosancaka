@@ -163,15 +163,7 @@ class PesananController extends Controller
                         \App\Http\Controllers\Customer\PesananController::simpanKeKeuangan($order);
                     }
                 } catch (Exception $e) {
-                    DB::rollBack();
-
-                    // 🔥 UBAH LOG INI AGAR MENCETAK FILE DAN BARIS ERROR 🔥
-                    Log::error('[API MOBILE] Order Creation Failed: ' . $e->getMessage() . ' | Line: ' . $e->getLine() . ' | File: ' . $e->getFile());
-
-                    return response()->json([
-                        'success' => false,
-                        'message' => $e->getMessage()
-                    ], 400);
+                    Log::error("[API MOBILE] Gagal rekam keuangan: " . $e->getMessage());
                 }
             }
             // B. PEMBAYARAN COD -> Langsung Booking Resi (Bayar Nanti)
