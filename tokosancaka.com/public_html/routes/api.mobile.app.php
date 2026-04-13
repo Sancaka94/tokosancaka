@@ -329,3 +329,6 @@ Route::middleware('auth:sanctum')->prefix('marketplace')->group(function () {
     Route::get('/store/{id}', [MarketplaceMobileController::class, 'showStore']);
 
 });
+
+Route::post('/mobile/marketplace/checkout/init', [MarketplaceMobileController::class, 'initCheckout']);
+Route::get('/mobile/marketplace/checkout/data', [MarketplaceMobileController::class, 'getCheckoutData']);
