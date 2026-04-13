@@ -475,6 +475,10 @@ class MarketplaceMobileController extends Controller
 
                 if (!$firstProduct) {
                     $firstProduct = Product::with('store.user')->find($productId);
+
+                    if (!$firstProduct || !$firstProduct->store) {
+                         throw new Exception("Produk atau Toko sudah tidak tersedia. Silakan bersihkan keranjang Anda dan coba lagi.");
+                    }
                 }
 
                 $orderItemsPayload[] = [
