@@ -318,17 +318,14 @@ Route::middleware('auth:sanctum')->prefix('marketplace')->group(function () {
     Route::post('/cart/remove', [MarketplaceMobileController::class, 'removeFromCart']);
     Route::post('/cart/clear', [MarketplaceMobileController::class, 'clearCart']);
 
-    // --- Checkout ---
-    Route::get('/checkout/prepare', [MarketplaceMobileController::class, 'prepareCheckout']);
+    // --- Checkout (Sistem Baru Database) ---
+    Route::post('/checkout/init', [MarketplaceMobileController::class, 'initCheckout']);
+    Route::get('/checkout/data', [MarketplaceMobileController::class, 'getCheckoutData']);
     Route::post('/checkout/process', [MarketplaceMobileController::class, 'processCheckout']);
 
+    // --- Lain-lain ---
     Route::get('/orders', [MarketplaceMobileController::class, 'myOrders']);
-
     Route::post('/orders/{invoice}/cancel', [MarketplaceMobileController::class, 'cancelOrder']);
-
     Route::get('/store/{id}', [MarketplaceMobileController::class, 'showStore']);
 
 });
-
-Route::post('/marketplace/checkout/init', [MarketplaceMobileController::class, 'initCheckout']);
-Route::get('/marketplace/checkout/data', [MarketplaceMobileController::class, 'getCheckoutData']);
