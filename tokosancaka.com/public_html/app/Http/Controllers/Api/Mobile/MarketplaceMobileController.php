@@ -487,15 +487,32 @@ class MarketplaceMobileController extends Controller
                 throw new Exception("Saldo tidak cukup. Tagihan: Rp " . number_format($grand_total,0,',','.') . ", Saldo Anda: Rp " . number_format($user->saldo,0,',','.'));
             }
 
-            // 3. AMBIL IDENTITAS PENGIRIM SECARA AMAN (Fix N/A)
+            // 3. AMBIL IDENTITAS PENGIRIM SECARA AMAN (ANTI N/A)
             $storeId = $checkoutRecord->store_id;
+
+            // Jika storeId kosong, kita PAKSA cari dari tabel Product!
             if (!$storeId && count($cartItemsPayload) > 0) {
-                $storeId = $cartItemsPayload[0]['store_id'] ?? null;
+                // Ambil ID Produk dari Payload
+                $extractedProductId = $cartItemsPayload[0]['product_id'] ?? null;
+
+                // Jika tidak ada 'product_id', ektrak dari SKU/ID (contoh: 'product_12')
+                if (!$extractedProductId && isset($cartItemsPayload[0]['sku'])) {
+                    $extractedProductId = (int) str_replace(['product_', 'variant_'], '', $cartItemsPayload[0]['sku']);
+                }
+
+                // Tembak langsung ke Database untuk mencari pemilik produk ini
+                if ($extractedProductId) {
+                    $productCheck = Product::find($extractedProductId);
+                    if ($productCheck) {
+                        $storeId = $productCheck->store_id;
+                    }
+                }
             }
 
+            // Cari Toko beserta data User (Pemilik Toko)
             $store = Store::with('user')->find($storeId);
 
-            // Mencegah N/A (Mengikuti struktur Fallback di Web)
+            // Mencegah N/A: Jika Toko ditarik dari DB, pakai datanya. Jika tidak, pakai Fallback.
             $senderName = $store?->name ?? ($cartItemsPayload[0]['store_name'] ?? 'Toko Sancaka');
             $senderPhone = $store?->user?->no_wa ?? '085745808809';
             $senderAddress = $store?->address_detail ?? 'Jl.Dr.Wahidin No.18A RT.22 RW.05, Ketanggi, Ngawi';
