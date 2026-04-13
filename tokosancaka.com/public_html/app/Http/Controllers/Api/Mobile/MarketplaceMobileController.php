@@ -234,6 +234,10 @@ class MarketplaceMobileController extends Controller
             if (isset($cart[$itemKey])) {
                 $cart[$itemKey]['quantity'] = $newTotalQuantity;
                 $cart[$itemKey]['qty'] = $newTotalQuantity; // Backup bilingual
+                $cart[$itemKey]['image_url'] = $itemImageUrl;
+                $cart[$itemKey]['store_logo'] = $product->store->logo ?? $product->store->user->store_logo_path ?? null;
+                $cart[$itemKey]['store_name'] = $product->store->name ?? 'Toko Sancaka';
+                $cart[$itemKey]['store_regency'] = $product->store->regency ?? 'Ngawi';
             } else {
                 $storeName = $product->store->name ?? 'Toko Sancaka';
                 $storeRegency = $product->store->regency ?? 'Ngawi';
