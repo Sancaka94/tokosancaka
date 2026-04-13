@@ -509,7 +509,7 @@ class MarketplaceMobileController extends Controller
                  $orderInvoice = 'SCK-ORD-' . strtoupper(Str::random(8));
             } while (Order::where('invoice_number', $orderInvoice)->exists());
 
-            // 4. PINDAHKAN DATA KE TABEL ORDERS
+            // 4. PINDAHKAN DATA KE TABEL ORDERS (DILENGKAPI MAPPING ITEM DESCRIPTION & WEIGHT)
             $order = new Order([
                  'store_id'      => $checkoutRecord->store_id,
                  'user_id'       => $checkoutRecord->user_id,
@@ -530,6 +530,10 @@ class MarketplaceMobileController extends Controller
                  'receiver_district_id' => $checkoutRecord->receiver_district_id,
                  'receiver_subdistrict_id' => $checkoutRecord->receiver_subdistrict_id,
                  'receiver_village' => $checkoutRecord->receiver_village,
+
+                 // PERBAIKAN: Mapping data keranjang dari tabel checkout ke orders
+                 'item_description' => $checkoutRecord->item_description,
+                 'weight'           => $checkoutRecord->weight,
             ]);
             $order->save();
 
