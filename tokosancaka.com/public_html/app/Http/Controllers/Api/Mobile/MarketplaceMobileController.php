@@ -710,8 +710,8 @@ class MarketplaceMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
         }
 
-        // Pastikan hanya bisa dibatalkan jika status masih dikemas/diproses
-        if (!in_array(strtolower($order->status), ['pending', 'unpaid', 'processing'])) {
+        // Pastikan hanya bisa dibatalkan jika status belum dikirim
+        if (!in_array(strtolower($order->status), ['pending', 'unpaid', 'processing', 'paid'])) {
             return response()->json(['success' => false, 'message' => 'Pesanan sudah dikirim atau tidak dapat dibatalkan.'], 400);
         }
 
@@ -746,7 +746,7 @@ class MarketplaceMobileController extends Controller
         $order->status = 'cancelled';
         $order->save();
 
-        // Jika pembeli menggunakan saldo dan pesanan sudah dipotong (bukan unpaid)
+        // Jika pembeli menggunakan saldo dan pesanan sudah dipotong
         if (in_array(strtoupper($order->payment_method), ['POTONG SALDO', 'SALDO'])) {
             $user->saldo += $order->total_amount;
             $user->save();
