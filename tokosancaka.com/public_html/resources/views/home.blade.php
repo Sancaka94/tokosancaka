@@ -556,7 +556,7 @@ width: 22px;
                         <div class="col-lg-5">
                             <form action="{{ route('tracking.search') }}" method="GET" class="m-0">
                                 <div class="input-group">
-                                    <input type="text" name="resi" class="form-control form-control-lg" placeholder="Cek Resi..." required>
+                                    <input type="text" name="resi" class="form-control form-control-lg" placeholder="Input Resi Disini..." required>
                                     <button class="btn btn-primary px-4 fw-bold" type="submit" style="background-color: #0d6efd; border-color: #0d6efd;">
                                         <i class="fas fa-arrow-right d-md-none"></i>
                                         <span class="d-none d-md-inline">Cek Resi <i class="fas fa-arrow-right ms-1"></i></span>
