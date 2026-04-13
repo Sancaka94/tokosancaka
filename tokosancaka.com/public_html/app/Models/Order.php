@@ -40,46 +40,7 @@ class Order extends Model
 
      */
 
-    protected $fillable = [
-
-        'user_id', // ✅ DITAMBAHKAN: Izinkan user_id untuk diisi secara massal
-        'invoice_number',
-        'subtotal',
-        'shipping_cost',
-        'total_amount',
-        'shipping_method',
-        'payment_method',
-        'status',
-        'shipping_address',
-        'shipping_ref', // <--- Tambahkan baris ini
-        'products', // Jika Anda menyimpan detail produk sebagai JSON
-        'payment_url',
-        'payment_session_id',
-        'transaction_id',
-        'shipping_reference',
-        'shipping_type',
-        'cod_fee',
-        'store_id',
-        'shipped_at',
-        'finished_at',
-        'rejected_at',
-        'returned_at',
-        'insurance_cost',
-        'idempotency_key',
-        'item_price',         // Biarkan jika masih dipakai
-        'total_harga_barang',
-        // === TAMBAHKAN DUA BARIS INI ===
-        'pay_code', // Untuk Nomor VA / Kode Bayar
-        'qr_url',   // Untuk Link Gambar QRIS
-        'receiver_name',
-        'receiver_phone',
-        'receiver_address',
-        'receiver_district_id',
-        'receiver_subdistrict_id', // Tambahkan saja walau mungkin di DB belum ada
-        'receiver_village',
-        // ===============================
-
-    ];
+    protected $guarded = ['id'];
 
 
 
