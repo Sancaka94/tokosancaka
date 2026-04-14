@@ -620,7 +620,9 @@ class MarketplaceMobileController extends Controller
                 }
                 $order->save();
 
+                // HANYA TEMBAK CALLBACK INI (Jangan tambahkan blok KiriminAja lagi setelah ini)
                 $webController = new \App\Http\Controllers\CheckoutController(app(\App\Services\DanaSignatureService::class));
+                // Callback ini di dalamnya sudah mengurus KiriminAja dan Fonnte!
                 $webController->processOrderCallback($orderInvoice, 'PAID', []);
 
                 // 🔥 PERBAIKAN FATAL KIRIMINAJA MENGGUNAKAN LOGIKA WEB 🔥
