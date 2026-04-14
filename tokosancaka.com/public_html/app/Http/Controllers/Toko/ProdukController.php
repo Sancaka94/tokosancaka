@@ -37,7 +37,7 @@ public function index(Request $request) // Tambahkan Request
     if (!$store) {
         return redirect()->route('seller.dashboard')->with('info', 'Anda perlu membuat toko terlebih dahulu.');
     }
-    
+
     $userId = $user->id_pengguna ?? $user->id; // Ini mungkin tidak terpakai jika semua query pakai store->id
     $search = $request->input('search'); // Ambil input pencarian
 
@@ -59,7 +59,7 @@ public function index(Request $request) // Tambahkan Request
     $products = $productsQuery->paginate(10);
 
     // Penting: agar pagination tetap menyertakan query pencarian
-    $products->appends($request->query()); 
+    $products->appends($request->query());
 
     return view('seller.produk.index', compact('products'));
 }
@@ -71,7 +71,7 @@ public function index(Request $request) // Tambahkan Request
     {
         // Ambil kategori untuk dropdown
         $categories = Category::where('type', 'product')->orderBy('name')->get(['id', 'name']);
-        
+
         // Kirim $categories ke view
         // Pastikan nama view ini sesuai
         return view('seller.produk.create', compact('categories'));
@@ -83,7 +83,7 @@ public function index(Request $request) // Tambahkan Request
     public function store(Request $request)
     {
         // === PERBAIKAN: DEFINISIKAN $user DI SINI ===
-        $user = Auth::user(); 
+        $user = Auth::user();
         if (!$user) {
             return redirect()->back()->withInput()->with('error', 'Sesi Anda telah berakhir. Silakan login kembali.');
         }
@@ -107,7 +107,7 @@ public function index(Request $request) // Tambahkan Request
             //'jenis_barang' => 'required|string', // atau integer, sesuaikan
             'status' => 'required|in:active,inactive',
             'sku' => ['nullable', 'string', 'max:100', Rule::unique('products', 'sku')->where('store_id', $store->id)],
-            
+
             // --- DITAMBAHKAN: Validasi Opsional ---
             'original_price' => 'nullable|numeric|min:0|gt:price', // Harga coret harus > harga jual
             'length' => 'nullable|numeric|min:0',
@@ -178,7 +178,7 @@ public function index(Request $request) // Tambahkan Request
             unset($dataToCreate['attributes']);
             unset($dataToCreate['variant_types']);
             unset($dataToCreate['product_variants']);
-            
+
             // 8. Buat Produk
             $product = Product::create($dataToCreate); // <-- Variabel $product dibuat di sini
 
@@ -228,7 +228,7 @@ public function index(Request $request) // Tambahkan Request
         $produk = Product::where('slug', $slug)
                             ->where('store_id', $storeId) // <-- Gunakan $storeId
                             ->with([
-                                'category', 
+                                'category',
                                 'productAttributes', // Relasi ke product_attributes
                                 'productVariantTypes.options', // Relasi ke variant_types dan options
                                 'productVariants.options' // DITAMBAHKAN: Ambil kombinasi varian yg ada
@@ -243,14 +243,14 @@ public function index(Request $request) // Tambahkan Request
         $attributeDefinitions = Attribute::where('category_id', $produk->category_id)
                                                 ->get()
                                                 ->keyBy('name'); // Key by name
-        
+
         $existingAttributesData = [];
         foreach($produk->productAttributes as $pa) {
             $slug = Str::slug($pa->name); // Buat slug dari nama
             $value = $pa->value;
             $def = $attributeDefinitions->get($pa->name);
             $type = $def->type ?? 'text';
-            
+
             if ($type === 'checkbox' && is_string($value)) {
                 $value = json_decode($value, true) ?? [$value];
             }
@@ -260,9 +260,9 @@ public function index(Request $request) // Tambahkan Request
 
         // 3. Prepare Variants JSON
         $existing_variant_types_json = $produk->productVariantTypes->map(function($variantType) {
-            return [ 
-                'name' => $variantType->name, 
-                'options' => $variantType->options->pluck('name')->implode(', ') 
+            return [
+                'name' => $variantType->name,
+                'options' => $variantType->options->pluck('name')->implode(', ')
             ];
         })->toJson();
 
@@ -280,10 +280,10 @@ public function index(Request $request) // Tambahkan Request
         })->toJson();
 
 
-        return view('toko.produk.edit', compact(
-            'produk', 
-            'categories', 
-            'existing_attributes_json', 
+        return view('seller.produk.edit', compact(
+            'produk',
+            'categories',
+            'existing_attributes_json',
             'existing_variant_types_json',
             'existing_variants_json' // <-- DITAMBAHKAN
         ));
@@ -332,7 +332,7 @@ public function index(Request $request) // Tambahkan Request
         ], [
             'original_price.gt' => 'Harga Asli (Coret) harus lebih besar dari Harga Jual.'
         ]);
-        
+
         $dataToUpdate = $validated;
         $hasVariantsRequest = $request->has('variant_types') && !empty($request->variant_types);
 
@@ -360,7 +360,7 @@ public function index(Request $request) // Tambahkan Request
                 $dataToUpdate['category'] = $category->name; // <-- TAMBAHKAN BARIS INI
             }
             $dataToUpdate['tags'] = json_encode(array_values(array_unique($manualTags)));
-            
+
             // 4. Handle Checkbox
             $dataToUpdate['is_new'] = $request->has('is_new');
             $dataToUpdate['is_bestseller'] = $request->has('is_bestseller');
@@ -380,17 +380,17 @@ public function index(Request $request) // Tambahkan Request
             $product->update($dataToUpdate);
 
             // 7. Sinkronisasi Attributes & Variants
-            
+
             // --- DILENGKAPI: SINKRONISASI ATRIBUT DAN VARIAN ---
             $this->syncAttributes($product, $request->input('attributes', []));
-            
+
             $totalStock = $validated['stock']; // Default ke stok utama
 
             if ($hasVariantsRequest) {
                  // Jika ada data varian, panggil helper lengkap
                  $totalStock = $this->syncVariantTypesAndCombinations(
-                     $product, 
-                     $request->input('variant_types', []), 
+                     $product,
+                     $request->input('variant_types', []),
                      $request->input('product_variants', [])
                  );
             } else {
@@ -398,7 +398,7 @@ public function index(Request $request) // Tambahkan Request
                  $product->productVariants()->delete();
                  $product->productVariantTypes()->delete();
             }
-            
+
             // Update stok utama produk
             $product->stock = $totalStock;
             $product->save();
@@ -436,7 +436,7 @@ public function index(Request $request) // Tambahkan Request
             if ($product->image_url && Storage::disk('public')->exists($product->image_url)) {
                 Storage::disk('public')->delete($product->image_url);
             }
-            
+
             // Hapus relasi (varian, atribut) - akan di-handle oleh foreign key 'cascadeOnDelete' jika diset di migrasi
             // Jika tidak, hapus manual:
             $product->productAttributes()->delete();
@@ -445,7 +445,7 @@ public function index(Request $request) // Tambahkan Request
 
             // Hapus produk dari database
             $product->delete();
-            
+
             DB::commit();
             return redirect()->route('seller.produk.index')->with('success', 'Produk berhasil dihapus.');
 
@@ -464,14 +464,14 @@ public function index(Request $request) // Tambahkan Request
         $slug = Str::slug($name);
         $originalSlug = $slug;
         $count = 1;
-        
+
         $query = Product::where('slug', $slug);
-        
+
         // Saat update, abaikan ID produk itu sendiri
         if ($ignoreId) {
             $query->where('id', '!=', $ignoreId);
         }
-        
+
         // Cek juga berdasarkan store_id, agar slug bisa sama antar toko
         // (Asumsi: slug unik per toko)
         if (Auth::check() && Auth::user()->store) {
@@ -517,7 +517,7 @@ public function index(Request $request) // Tambahkan Request
         }
         return $sku;
     }
-    
+
     /**
      * =============================================
      * TAMBAHKAN FUNGSI HELPER INI
@@ -531,7 +531,7 @@ public function index(Request $request) // Tambahkan Request
             return;
         }
 
-        $currentAttributeNames = []; 
+        $currentAttributeNames = [];
 
         // Ambil info atribut valid dari tabel 'attributes'
         $validAttributesInfo = Attribute::where('category_id', $product->category_id)
@@ -592,7 +592,7 @@ public function index(Request $request) // Tambahkan Request
                 ]
             );
             $currentTypeIds[] = $variantType->id;
-            
+
             // Sinkronkan Opsi
             $optionNames = array_map('trim', explode(',', $typeData['options']));
             $currentOptionIds = [];
@@ -608,12 +608,12 @@ public function index(Request $request) // Tambahkan Request
             }
             // Hapus opsi lama yang tidak ada di request
             $variantType->options()->whereNotIn('id', $currentOptionIds)->delete();
-            
+
             $syncedTypes->push($variantType->load('options'));
         }
         // Hapus tipe lama yang tidak ada di request
         $product->productVariantTypes()->whereNotIn('id', $currentTypeIds)->delete();
-        
+
         return $syncedTypes;
     }
 
@@ -630,7 +630,7 @@ public function index(Request $request) // Tambahkan Request
         // Buat pemetaan Opsi 'Nama' -> ID untuk lookup cepat
         // Cth: 'Merah' => 1, 'XL' => 5
         $optionNameMap = $syncedTypes->flatMap(fn($type) => $type->options)->pluck('id', 'name');
-        
+
         $currentVariantIds = [];
         $totalStock = 0;
 
@@ -642,7 +642,7 @@ public function index(Request $request) // Tambahkan Request
 
         // 2. Loop data kombinasi varian (dari tabel SKU/Harga/Stok di form)
         foreach ($productVariantsData as $variantData) {
-            
+
             $sku = $variantData['sku'] ?? null;
             $price = $variantData['price'] ?? 0;
             $stock = $variantData['stock'] ?? 0;
@@ -652,7 +652,7 @@ public function index(Request $request) // Tambahkan Request
 
             // 3. Buat/Update ProductVariant (kombinasinya)
             // Kita gunakan SKU sebagai ID unik jika ada, jika tidak, kita cari berdasarkan kombinasi
-            
+
             $variant = null;
             if (!empty($sku)) {
                 $variant = ProductVariant::updateOrCreate(
@@ -689,7 +689,7 @@ public function index(Request $request) // Tambahkan Request
                     $optionIdsToSync[] = $optionNameMap[$optionName];
                 }
             }
-            
+
             if (!empty($optionIdsToSync)) {
                 $variant->options()->sync($optionIdsToSync);
             }
@@ -704,24 +704,24 @@ public function index(Request $request) // Tambahkan Request
         // 6. Kembalikan total stok
         return $totalStock;
     }
-    
+
     /**
      * Handle ekspor data produk ke Excel.
      */
-    public function exportExcel(Request $request) 
+    public function exportExcel(Request $request)
     {
         $search = $request->input('search'); // Dapatkan query pencarian
         return Excel::download(new ProductsExport($search), 'produk_seller.xlsx');
     }
-    
+
     /**
      * Handle ekspor data produk ke PDF.
      */
-    public function exportPdf(Request $request) 
+    public function exportPdf(Request $request)
     {
         $search = $request->input('search'); // Dapatkan query pencarian
         // Pastikan Anda sudah 'composer require dompdf/dompdf'
         return Excel::download(new ProductsExport($search), 'produk_seller.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
     }
-    
+
 }
