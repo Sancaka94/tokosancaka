@@ -619,6 +619,7 @@ class MarketplaceMobileController extends Controller
 
             // Update Checkout
             $checkoutRecord->update([
+                'shipping_type' => $shippingType,
                 'shipping_cost' => $shipping_cost,
                 'insurance_cost'=> $applied_insurance,
                 'total_amount'  => $grand_total,
@@ -643,6 +644,7 @@ class MarketplaceMobileController extends Controller
 
             $order = new Order([
                 'store_id'      => $storeId,
+                'shipping_type' => $shippingType,
                 'user_id'       => $checkoutRecord->user_id,
                 'invoice_number'=> $orderInvoice,
                 'subtotal'      => $checkoutRecord->subtotal,
