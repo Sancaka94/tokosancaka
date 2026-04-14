@@ -96,11 +96,17 @@ class TelegramPpobController extends Controller
                     $this->checkOngkir($chatId, $text);
                     break;
 
-                // --- TAMBAHKAN INI ---
+
                 case '/kodepos': // Cari Kode Pos
                     $this->searchPostalCode($chatId, $text);
                     break;
-                // ---------------------
+
+                case 'halo':
+                case 'hai':
+                case 'hi':
+                case 'hay':
+                case 'p': // Sapaan
+
 
                 case '/setpin':
         $this->requestSetPin($chatId, $text);
