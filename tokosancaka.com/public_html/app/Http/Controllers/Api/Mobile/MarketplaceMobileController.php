@@ -580,6 +580,9 @@ class MarketplaceMobileController extends Controller
 
                  'item_description' => $checkoutRecord->item_description,
                  'weight'           => $checkoutRecord->weight,
+                 'shipping_type'      => $shippingType,
+                 'customer_latitude'  => $request->latitude,
+                 'customer_longitude' => $request->longitude,
                  'courier_code'     => $courierCode,
                  'service_code'     => $serviceCode,
             ]);

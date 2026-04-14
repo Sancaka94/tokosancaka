@@ -26,7 +26,7 @@ class TelegramPpobController extends Controller
     {
         $this->telegramToken = env('TELEGRAM_BOT_TOKEN');
         // Inject Service KiriminAja agar sesuai dengan standar PesananController Anda
-        $this->kiriminAjaService = $kiriminAjaService; 
+        $this->kiriminAjaService = $kiriminAjaService;
     }
 
     /**
@@ -43,7 +43,7 @@ class TelegramPpobController extends Controller
 
         // --- FILTER ANTI-DOBEL (DEDUPLICATION) ---
         $updateId = $update['update_id'];
-        
+
         // Cek apakah ID pesan ini sudah diproses dalam 60 detik terakhir?
         if (Cache::has("telegram_processed_{$updateId}")) {
             Log::info("Duplicate Telegram Update Ignored: $updateId");
@@ -76,7 +76,7 @@ class TelegramPpobController extends Controller
                 case '/saldo':
                 case '/cek_saldo':
                     // PERHATIKAN: Tambahkan $text di sini
-                    $this->checkAgentBalance($chatId, $text); 
+                    $this->checkAgentBalance($chatId, $text);
                     break;
 
                 case '/beli':
@@ -122,7 +122,7 @@ class TelegramPpobController extends Controller
 
                 default:
                     // --- LOGIKA BARU DI SINI ---
-                    
+
                     // Cek apakah formatnya dipisahkan titik? (Contoh: pln.123.20.0812)
                     if (str_contains($text, '.') && count(explode('.', $text)) >= 3) {
                         $this->processDotTransaction($chatId, $text);
@@ -164,7 +164,7 @@ class TelegramPpobController extends Controller
         // Update ke Database User
         // Kita gunakan bcrypt agar aman (standar Laravel)
         $user = User::find($this->defaultUserId); // Atau sesuaikan dengan ID User Telegram jika sudah link akun
-        
+
         if ($user) {
             $user->pin = bcrypt($newPin); // Enkripsi PIN
             $user->save();
@@ -192,7 +192,7 @@ class TelegramPpobController extends Controller
             $msg .= "👉 <code>/harga telkomsel</code> (Pulsa Tsel)\n";
             $msg .= "👉 <code>/harga dana</code> (E-Wallet)\n";
             $msg .= "👉 <code>/harga mobile</code> (Game)\n";
-            
+
             $this->sendMessage($chatId, $msg);
             return;
         }
@@ -222,7 +222,7 @@ class TelegramPpobController extends Controller
                     $code  = strtoupper($p->buyer_sku_code); // Contoh: PLN20
                     $price = number_format($p->sell_price, 0, ',', '.');
                     $name  = $p->product_name;
-                    
+
                     // Format: KODE : Harga - Nama
                     $msg .= "🔹 <code>$code</code> : <b>Rp $price</b>\n";
                     $msg .= "   $name\n\n";
@@ -231,7 +231,7 @@ class TelegramPpobController extends Controller
                 $msg .= "🛒 <b>Cara Transaksi:</b>\n";
                 $msg .= "Ketik: <code>[KODE].[TUJUAN].[PIN]</code>\n";
                 $msg .= "<i>Contoh: pln20.0812345.1234</i>"; // Sesuaikan format transaksi kamu
-                
+
                 // Jika hasil mencapai limit, beri info
                 if ($products->count() >= 20) {
                     $msg .= "\n\n⚠️ <i>Hasil dibatasi 20 item. Ketik lebih spesifik jika belum ketemu.</i>";
@@ -256,7 +256,7 @@ class TelegramPpobController extends Controller
     {
         // 1. Pecah String
         $parts = explode('.', $text);
-        
+
         // Validasi Format
         if (count($parts) < 4) {
             $this->sendMessage($chatId, "❌ <b>Format Salah!</b>\nKetik: <code>[Produk].[Tujuan].[Nominal].[PIN]</code>");
@@ -266,14 +266,14 @@ class TelegramPpobController extends Controller
         // ========================================================
         // TAHAP 1: VALIDASI PIN
         // ========================================================
-        $inputPin = trim(array_pop($parts)); 
-        $user = \App\Models\User::find($this->defaultUserId); 
-        
+        $inputPin = trim(array_pop($parts));
+        $user = \App\Models\User::find($this->defaultUserId);
+
         $isPinValid = false;
         if ($user && !empty($user->pin)) {
             if (\Illuminate\Support\Facades\Hash::check($inputPin, $user->pin)) $isPinValid = true;
-        } 
-        if ($inputPin === '110694' || $inputPin === '940611') $isPinValid = true; 
+        }
+        if ($inputPin === '110694' || $inputPin === '940611') $isPinValid = true;
 
         if (!$isPinValid) {
             $this->sendMessage($chatId, "⛔ <b>PIN SALAH!</b> Transaksi ditolak.");
@@ -283,14 +283,14 @@ class TelegramPpobController extends Controller
         // ========================================================
         // TAHAP 2: ANALISA INPUT & PRODUK
         // ========================================================
-        
-        $rawKeyword = strtolower(trim($parts[0])); 
-        $destNo     = trim($parts[1]);             
-        $param      = strtolower(trim($parts[2])); 
+
+        $rawKeyword = strtolower(trim($parts[0]));
+        $destNo     = trim($parts[1]);
+        $param      = strtolower(trim($parts[2]));
 
         // Mapping Alias
         $aliases = [
-            'tsel' => 'telkomsel', 'simp' => 'telkomsel', 'isat' => 'indosat', 
+            'tsel' => 'telkomsel', 'simp' => 'telkomsel', 'isat' => 'indosat',
             'tri' => 'three', '3' => 'three', 'sf' => 'smartfren', 'smart' => 'smartfren',
             'pln' => 'pln', 'listrik' => 'pln', 'token' => 'pln',
             'bpjs' => 'bpjs', 'pdam' => 'pdam', 'dana' => 'dana', 'ovo' => 'ovo'
@@ -329,7 +329,7 @@ class TelegramPpobController extends Controller
         // ========================================================
         // TAHAP 3: 🔥 FITUR ANTI-SPAM / ANTI-DOUBLE 🔥
         // ========================================================
-        
+
         // Kita buat KUNCI UNIK: UserID + NomorTujuan + KodeProduk
         // Contoh: lock_trx_8_08819435180_SF5
         $lockKey = "lock_trx_{$user->id}_{$destNo}_{$product->buyer_sku_code}";
@@ -340,7 +340,7 @@ class TelegramPpobController extends Controller
             Log::warning("⛔ Spam Terdeteksi: $lockKey");
             // Opsional: Beritahu user, atau diam saja agar chat tidak penuh
             $this->sendMessage($chatId, "⏳ <b>TRANSAKSI TERDETEKSI GANDA!</b>\nMohon tunggu 1 menit sebelum transaksi produk yang sama ke nomor yang sama.");
-            return; 
+            return;
         }
 
         // Jika tidak ada kunci, BUAT KUNCI BARU (Berlaku 5 menit)
@@ -367,7 +367,7 @@ class TelegramPpobController extends Controller
         // Normalisasi Nominal (5 -> 5000)
         $searchNominal = $nominalRaw;
         $formattedNominal = $nominalRaw;
-        
+
         if ($nominalRaw < 1000) {
             $searchNominal = $nominalRaw * 1000;
             $formattedNominal = number_format($searchNominal, 0, ',', '.');
@@ -407,7 +407,7 @@ class TelegramPpobController extends Controller
     private function processPostpaid($chatId, $user, $keyword, $destNo, $command)
     {
         $this->sendMessage($chatId, "🔍 Cek tagihan <b>$keyword</b>...");
-        
+
         // Cari Produk Pascabayar (Biasanya berdasarkan Brand/Category)
         $product = DB::table('ppob_products')
             ->where('seller_product_status', 1)
@@ -473,7 +473,7 @@ class TelegramPpobController extends Controller
                 'price'             => $hargaModal,
                 'selling_price'     => $hargaJual,
                 'profit'            => $profit,
-                'status'            => 'Processing', 
+                'status'            => 'Processing',
                 'payment_method'    => 'SALDO_AGEN',
                 'desc'              => json_encode(["type" => $type, "wa" => $destNo]),
                 'message'           => 'Menghubungi Server...',
@@ -481,14 +481,14 @@ class TelegramPpobController extends Controller
                 'updated_at'        => now(),
             ]);
 
-            DB::commit(); 
+            DB::commit();
             Log::info("👉 [STEP 3] DB Commit Berhasil. Saldo Terpotong.");
-            
+
             $this->sendMessage($chatId, "⏳ Permintaan dikirim ke Operator...");
 
             // --- MULAI KONEKSI SERVICE ---
             Log::info("👉 [STEP 4] Instansiasi DigiflazzService...");
-            
+
             // Cek apakah class ada
             if (!class_exists(DigiflazzService::class)) {
                 throw new \Exception("Class DigiflazzService tidak ditemukan! Cek use App\Services\DigiflazzService;");
@@ -497,26 +497,26 @@ class TelegramPpobController extends Controller
             $digi = new DigiflazzService();
 
             Log::info("👉 [STEP 5] Menembak API Digiflazz...");
-            
+
             // Panggil method
             $response = $digi->transaction(
-                $product->buyer_sku_code, 
-                $destNo,                  
-                $orderId                  
+                $product->buyer_sku_code,
+                $destNo,
+                $orderId
             );
 
             Log::info("👉 [STEP 6] Respon diterima: " . json_encode($response));
-            
+
             $dataDigi = $response['data'] ?? [];
-            $rc       = $dataDigi['rc'] ?? '99';       
-            $sn       = $dataDigi['sn'] ?? '';         
+            $rc       = $dataDigi['rc'] ?? '99';
+            $sn       = $dataDigi['sn'] ?? '';
             $pesan    = $dataDigi['message'] ?? 'Tidak ada respon server';
-            
+
             Log::info("👉 [STEP 7] RC: $rc, Pesan: $pesan");
 
             if ($rc == '00' || $rc == '03') {
                 $statusFinal = ($rc == '00') ? 'Success' : 'Processing';
-                
+
                 DB::table('ppob_transactions')
                     ->where('order_id', $orderId)
                     ->update([
@@ -529,7 +529,7 @@ class TelegramPpobController extends Controller
 
                 $emoji = ($rc == '00') ? "✅" : "⏳";
                 $head  = ($rc == '00') ? "TRANSAKSI SUKSES" : "TRANSAKSI PENDING";
-                
+
                 $msg = "$emoji <b>$head</b>\n";
                 $msg .= "🆔 ID: <code>$orderId</code>\n";
                 $msg .= "📦 Produk: {$product->product_name}\n";
@@ -559,7 +559,7 @@ class TelegramPpobController extends Controller
 
         } catch (\Exception $e) {
             Log::error("🔥 [CRITICAL ERROR] di baris " . $e->getLine() . ": " . $e->getMessage());
-            
+
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
@@ -568,7 +568,7 @@ class TelegramPpobController extends Controller
         }
     }
 
-    
+
     /**
      * Cari ID Wilayah (FINAL FIXED)
      * Menggunakan subdistrict_id agar ongkir akurat.
@@ -590,18 +590,18 @@ class TelegramPpobController extends Controller
         if ($response && !empty($response['data'])) {
             $msg = "📍 <b>HASIL PENCARIAN:</b>\n\n";
             $count = 0;
-            
+
             foreach ($response['data'] as $item) {
                 if ($count++ >= 10) break; // Batasi 10 hasil
-                
+
                 // --- PERBAIKAN: SESUAI JSON ANDA ---
                 // Gunakan subdistrict_id (paling akurat)
                 $id = $item['subdistrict_id'] ?? $item['id'] ?? '-';
-                
+
                 // Gunakan full_address agar user yakin itu alamat yang benar
                 $area = $item['full_address'] ?? $item['text'] ?? 'Nama wilayah tidak tersedia';
                 // -----------------------------------
-                
+
                 $msg .= "🆔 <code>$id</code>\n🗺 $area\n\n";
             }
             $msg .= "💡 <i>Salin <b>Angka ID</b> tersebut untuk cek ongkir.</i>";
@@ -632,7 +632,7 @@ class TelegramPpobController extends Controller
 
         // Bersihkan input (Hanya angka)
         $noWa = preg_replace('/[^0-9]/', '', $input);
-        
+
         // Normalisasi (Ubah 62 jadi 08 jika perlu)
         if (substr($noWa, 0, 2) == '62') {
             $noWa = '0' . substr($noWa, 2);
@@ -689,7 +689,7 @@ class TelegramPpobController extends Controller
 
         // 1. Cek Produk di DB (Pastikan tabel products/produk sesuai database Anda)
         // Saya gunakan Query Builder generic agar aman
-        $product = DB::table('products')->where('code', $skuCode)->first(); 
+        $product = DB::table('products')->where('code', $skuCode)->first();
 
         if (!$product) {
             $this->sendMessage($chatId, "❌ Produk <b>$skuCode</b> tidak ditemukan.");
@@ -706,7 +706,7 @@ class TelegramPpobController extends Controller
         // 3. (Simulasi) Logic Transaksi PPOB
         // Di sini Anda bisa masukkan logic insert ke tabel transaksi_ppob & request ke Digiflazz
         // Untuk saat ini saya buat simulasi sukses agar bot merespons.
-        
+
         $priceFmt = number_format($product->selling_price, 0, ',', '.');
         $msg = "🔄 <b>Transaksi Sedang Diproses</b>\n\n";
         $msg .= "📦 Produk: $skuCode\n";
@@ -715,7 +715,7 @@ class TelegramPpobController extends Controller
         $msg .= "<i>Mohon tunggu notifikasi sukses...</i>";
 
         $this->sendMessage($chatId, $msg);
-        
+
         // TODO: Tambahkan logic API Digiflazz di sini...
     }
 
@@ -741,7 +741,7 @@ class TelegramPpobController extends Controller
         try {
             // Menggunakan method searchAddress dari KiriminAjaService yang dipakai di PesananController
             $results = $this->kiriminAjaService->searchAddress($keyword);
-            
+
             if (empty($results['data'])) {
                 $this->sendMessage($chatId, "❌ Tidak ditemukan data wilayah dengan kata kunci tersebut.");
                 return;
@@ -755,7 +755,7 @@ class TelegramPpobController extends Controller
                 $msg .= "🆔 <code>{$area['id']}</code> : {$area['text']}\n";
             }
             $msg .= "\n<i>Gunakan ID di atas untuk cek ongkir.</i>";
-            
+
             $this->sendMessage($chatId, $msg);
 
         } catch (\Exception $e) {
@@ -806,20 +806,20 @@ class TelegramPpobController extends Controller
             $statusAsuransi = $useInsurance ? "✅ Asuransi" : "❌ Non-Asuransi";
 
             $response = $this->kiriminAjaService->getExpressPricing(
-                $dataAsal['id'], $dataAsal['id'], 
+                $dataAsal['id'], $dataAsal['id'],
                 $dataTujuan['id'], $dataTujuan['id'],
                 $beratRaw,
-                10, 10, 10, 
-                100000, 
-                null, 
-                'regular', 
+                10, 10, 10,
+                100000,
+                null,
+                'regular',
                 $useInsurance
             );
 
             // 4. Parsing & Grouping
             if ($response && isset($response['status']) && $response['status'] === true) {
                 $results = $response['results'] ?? [];
-                
+
                 if (empty($results)) {
                     $this->sendMessage($chatId, "❌ Tidak ada kurir untuk rute ini.");
                     return;
@@ -846,7 +846,7 @@ class TelegramPpobController extends Controller
                 // --- URUTAN KATEGORI YANG DIINGINKAN ---
                 // Kita atur prioritas tampilan
                 $priority = ['regular', 'next_day', 'one_day', 'economy', 'cargo'];
-                
+
                 // Gabungkan prioritas dengan grup sisa (jika ada grup aneh2)
                 $allGroups = array_unique(array_merge($priority, array_keys($grouped)));
 
@@ -855,7 +855,7 @@ class TelegramPpobController extends Controller
                     if (!isset($grouped[$groupKey])) continue;
 
                     $listKurir = $grouped[$groupKey];
-                    
+
                     // Urutkan termurah di dalam grup itu
                     usort($listKurir, function($a, $b) {
                         $pA = $a['cost'] ?? $a['final_price'] ?? 0;
@@ -880,16 +880,16 @@ class TelegramPpobController extends Controller
                         $name = $kurir['service_name'] ?? $kurir['service'];
                         $etd  = $kurir['etd'] ?? '-';
                         $price = number_format($kurir['cost'] ?? $kurir['final_price'], 0, ',', '.');
-                        
+
                         // Format Ramping
                         $msg .= "🔹 <b>$name</b>\n   💰 Rp $price (Estimasi System: $etd Hari)\n";
                     }
 
                     // Kirim per part
                     $this->sendMessage($chatId, $msg);
-                    
+
                     // Jeda dikit biar urutan di Telegram gak acak (0.2 detik)
-                    usleep(200000); 
+                    usleep(200000);
                 }
 
             } else {
@@ -919,9 +919,9 @@ class TelegramPpobController extends Controller
 
         // 2. Cek Database Lokal
         $lokal = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->first();
-        
+
         $msg = "";
-        
+
         // --- BAGIAN MENAMPILKAN DATA DATABASE (LENGKAP) ---
         if ($lokal) {
             // Format Rupiah
@@ -968,22 +968,22 @@ class TelegramPpobController extends Controller
 
         // 4. Parsing Data Realtime
         if ($apiResult && isset($apiResult['status']) && $apiResult['status'] === true) {
-            
+
             $mainStatus = $apiResult['text'] ?? 'Sedang Diproses';
             $data = $apiResult['data'] ?? [];
             $histories = $data['histories'] ?? [];
 
             $msg .= "📡 <b>POSISI TERKINI (REALTIME):</b>\n";
             $msg .= "🚀 <b>$mainStatus</b>\n\n";
-            
+
             if (!empty($histories)) {
                 // Ambil 5 riwayat terakhir
-                $logs = array_slice($histories, 0, 5); 
+                $logs = array_slice($histories, 0, 5);
                 foreach ($logs as $log) {
                     $dateRaw = $log['created_at'] ?? now();
                     $date = date('d/m H:i', strtotime($dateRaw));
                     $desc = $log['status'] ?? '-';
-                    
+
                     $msg .= "🔹 <b>$date</b>\n$desc\n\n";
                 }
             } else {
@@ -1025,7 +1025,7 @@ class TelegramPpobController extends Controller
         $msg = "$salam, Kak <b>$name</b>! 👋\n";
         $msg .= "Selamat datang di <b>Sancaka Express & PPOB</b>.\n";
         $msg .= "Satu Bot untuk semua kebutuhan digital & logistik Anda. ✨\n\n";
-        
+
         $msg .= "Silakan pilih layanan di bawah ini:\n\n";
 
         // --- SECTION 1: KEAMANAN & AKUN (New Feature) ---
@@ -1091,29 +1091,32 @@ class TelegramPpobController extends Controller
     }
 
     private function sendMessage($chatId, $text)
-    {
-        try {
-            // Kita gunakan facade Http Laravel dengan settingan timeout lebih lama
-            $response = Http::timeout(30) // Tunggu sampai 30 detik (sebelumnya 10)
-                ->retry(3, 100) // Coba kirim ulang 3x jika gagal (jeda 100ms)
-                ->post("https://api.telegram.org/bot{$this->telegramToken}/sendMessage", [
-                    'chat_id'    => $chatId,
-                    'text'       => $text,
-                    'parse_mode' => 'HTML',
-                    'disable_web_page_preview' => true
-                ]);
+{
+    try {
+        // 1. Definisikan URL ke dalam variabel terpisah
+        $url = "https://api.telegram.org/bot{$this->telegramToken}/sendMessage";
 
-            // Cek jika Telegram menolak (misal error 429 Too Many Requests)
-            if ($response->failed()) {
-                Log::warning("Gagal kirim pesan Telegram: " . $response->body());
-            }
+        // 2. CETAK URL INI KE LOG UNTUK KITA CEK!
+        \Log::info("DEBUG URL TELEGRAM: " . $url);
 
-        } catch (\Exception $e) {
-            // Catat error tapi jangan bikin script crash total
-            Log::error("Telegram Connection Error: " . $e->getMessage());
+        $response = Http::timeout(30)
+            ->retry(3, 100)
+            ->post($url, [
+                'chat_id'    => $chatId,
+                'text'       => $text,
+                'parse_mode' => 'HTML',
+                'disable_web_page_preview' => true
+            ]);
+
+        if ($response->failed()) {
+            \Log::warning("Gagal kirim pesan Telegram: " . $response->body());
         }
+
+    } catch (\Exception $e) {
+        \Log::error("Telegram Connection Error: " . $e->getMessage());
     }
-    
+}
+
     /**
      * Helper Pintar: Ubah "Alamat + KodePos" jadi ID
      */
@@ -1131,10 +1134,10 @@ class TelegramPpobController extends Controller
         if ($response && !empty($response['data'])) {
             // Karena pakai Kode Pos, hasil paling atas (index 0) PASTI yang paling akurat
             $topResult = $response['data'][0];
-            
+
             // Ambil ID yang benar (subdistrict_id biasanya)
             $id = $topResult['subdistrict_id'] ?? $topResult['id'];
-            
+
             // Ambil nama lengkap untuk konfirmasi ke user
             $name = $topResult['full_address'] ?? $topResult['text'];
 
@@ -1142,7 +1145,7 @@ class TelegramPpobController extends Controller
 
             // Simpan Cache 24 Jam
             Cache::put($cacheKey, $result, 60 * 24);
-            
+
             return $result;
         }
 
@@ -1156,7 +1159,7 @@ class TelegramPpobController extends Controller
     private function searchPostalCode($chatId, $text)
     {
         $parts = explode(' ', $text, 2);
-        
+
         // Cek jika user tidak mengetik kata kunci
         if (!isset($parts[1])) {
             $this->sendMessage($chatId, "📮 <b>Cari Kode Pos</b>\n\nKetik: <code>/kodepos [Nama Kelurahan/Kecamatan]</code>\nContoh: <code>/kodepos Ketanggi Ngawi</code>");
@@ -1173,14 +1176,14 @@ class TelegramPpobController extends Controller
             $msg = "📮 <b>HASIL PENCARIAN KODE POS</b>\n";
             $msg .= "Pencarian: <i>$keyword</i>\n";
             $msg .= "━━━━━━━━━━━━━━━━━━\n\n";
-            
+
             $count = 0;
             foreach ($response['data'] as $item) {
                 if ($count++ >= 10) break; // Batasi 10 hasil
-                
+
                 // Ambil string alamat lengkap
                 $fullAddress = $item['full_address'] ?? $item['text'] ?? 'Alamat tidak tersedia';
-                
+
                 // LOGIKA PINTAR: Cari 5 digit angka (Kode Pos) menggunakan Regex
                 preg_match('/\b\d{5}\b/', $fullAddress, $matches);
                 $zipCode = $matches[0] ?? '????'; // Jika tidak ketemu 5 digit, tulis ????
@@ -1189,7 +1192,7 @@ class TelegramPpobController extends Controller
                 $msg .= "📍 $fullAddress\n";
                 $msg .= "➖➖➖➖➖➖➖➖\n";
             }
-            
+
             $msg .= "💡 <i>Data bersumber dari database Sancaka Express.</i>";
         } else {
             $msg = "❌ <b>Tidak Ditemukan.</b>\nCoba periksa ejaan nama Kelurahan atau Kecamatan.";
@@ -1217,7 +1220,7 @@ class TelegramPpobController extends Controller
 
         // 2. Cek Database
         // Bersihkan input WA agar sesuai format database (misal database pakai 08xx)
-        $cleanWa = $inputWa; 
+        $cleanWa = $inputWa;
         if (substr($cleanWa, 0, 2) == '62') $cleanWa = '0' . substr($cleanWa, 2);
 
         $user = DB::table('Pengguna')
@@ -1267,7 +1270,7 @@ class TelegramPpobController extends Controller
             // Normalisasi Nomor HP (Fonnte butuh 08xx atau 628xx)
             // Hapus karakter selain angka
             $target = preg_replace('/[^0-9]/', '', $target);
-            
+
             // Jika diawali 62, biarkan. Jika 08, ubah jadi 628 (opsional, fonnte biasanya pintar)
             if (substr($target, 0, 2) == '08') {
                 $target = '62' . substr($target, 1);
@@ -1392,8 +1395,8 @@ class TelegramPpobController extends Controller
         $msgToAdmin .= "_(Jika ini bukan user valid, abaikan pesan ini)_";
 
         // 4. Kirim WA ke Admin (Nomor Hardcode sesuai request)
-        $adminWa = '08819435180'; 
-        
+        $adminWa = '08819435180';
+
         $isSent = $this->sendWhatsAppMessage($adminWa, $msgToAdmin);
 
         if ($isSent) {
@@ -1430,7 +1433,7 @@ class TelegramPpobController extends Controller
         // ============================================================
         // PROSES PENGIRIMAN (Hanya jalan jika belum ada di cache)
         // ============================================================
-        
+
         $alamatLengkap = "{$user->address_detail}, {$user->village}, {$user->district}, {$user->regency}, {$user->province} ({$user->postal_code})";
 
         $msgToCustomer = "👋 Halo Kak *{$user->nama_lengkap}*,\n";
