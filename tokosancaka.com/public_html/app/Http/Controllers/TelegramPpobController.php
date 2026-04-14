@@ -75,6 +75,8 @@ class TelegramPpobController extends Controller
                 case 'hi':
                 case 'hay':
                 case 'p': // Sapaan
+                    $this->sendMenu($chatId, $fullName);
+                    break;
 
                 case '/menu':
                 case '/help':
