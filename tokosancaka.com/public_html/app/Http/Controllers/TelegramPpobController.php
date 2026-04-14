@@ -24,8 +24,9 @@ class TelegramPpobController extends Controller
 
     public function __construct(KiriminAjaService $kiriminAjaService)
     {
-        $this->telegramToken = env('TELEGRAM_BOT_TOKEN');
-        // Inject Service KiriminAja agar sesuai dengan standar PesananController Anda
+        // Panggil config services.telegram.token (sesuai isi services.php Anda)
+        $this->telegramToken = config('services.telegram.token');
+
         $this->kiriminAjaService = $kiriminAjaService;
     }
 
