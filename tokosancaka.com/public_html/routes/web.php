@@ -90,6 +90,7 @@ use App\Http\Controllers\CustomerChatController;
 use App\Http\Controllers\Admin\EmailController;
 use App\Http\Controllers\Admin\ImapController;
 use App\Http\Controllers\NotifikasiCustomerController;
+use App\Http\Controllers\Customer\ChatController
 
 
 // Admin Tools
