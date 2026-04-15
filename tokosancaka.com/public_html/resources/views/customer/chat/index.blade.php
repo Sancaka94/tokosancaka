@@ -637,63 +637,62 @@ $(document).ready(function() {
     toastr.options = { "positionClass": "toast-top-right", "progressBar": true, "timeOut": "4000" };
 });
 
-// === 🟢 FUNGSI RADAR: UPDATE STATUS ONLINE SEMUA ORANG DI SIDEBAR ===
-    function pollSidebarOnlineStatus() {
-        let userIds = [];
+// =============================================
+// POLLING BADGE ONLINE UNTUK SEMUA USER SIDEBAR
+// =============================================
+function fetchAllOnlineStatus() {
+    $.ajax({
+        url: '/admin/chat/online-status', // Sesuaikan URL (jika customer jadi /customer/...)
+        method: 'GET',
+        dataType: 'json',
+        success: function(onlineMap) {
+            // Loop semua user-item di sidebar
+            $('.user-item').each(function() {
+                const userId = $(this).data('id');
+                const isOnline = onlineMap[userId] === true;
+                const sidebarBadge = $(this).find('.sidebar-badge');
 
-        // Kumpulkan semua ID yang ada di sidebar
-        $('.user-item').each(function() {
-            userIds.push($(this).data('id'));
-        });
+                // Update atribut data
+                $(this).attr('data-online', isOnline ? 'true' : 'false');
+                $(this).data('online', isOnline ? 'true' : 'false');
 
-        if (userIds.length === 0) return;
+                // Update badge di Sidebar
+                if (isOnline) {
+                    sidebarBadge.removeClass('d-none hidden').show();
+                } else {
+                    sidebarBadge.addClass('d-none hidden').hide();
+                }
 
-        $.ajax({
-            url: `/admin/chat/check-online`, // UBAH INI JIKA ROUTE ANDA BERBEDA
-            method: 'POST',
-            data: {
-                user_ids: userIds,
-                _token: '{{ csrf_token() }}'
-            },
-            success: function(response) {
-                let onlineIds = response.online_users || [];
+                // Cek variabel mana yang sedang dipakai (Admin = currentUserId, Customer = currentTargetId)
+                let activeId = typeof currentTargetId !== 'undefined' ? currentTargetId : (typeof currentUserId !== 'undefined' ? currentUserId : null);
 
-                // Looping ulang sidebar dan nyalakan/matikan titik hijaunya
-                $('.user-item').each(function() {
-                    let uid = $(this).data('id');
-                    let badge = $(this).find('.sidebar-badge');
+                // Jika ini adalah user yang sedang aktif di-chat
+                if (userId === activeId) {
+                    // Update global variabel
+                    if (typeof isTargetOnline !== 'undefined') isTargetOnline = isOnline;
+                    if (typeof isCurrentChatOnline !== 'undefined') isCurrentChatOnline = isOnline;
 
-                    // Cek apakah ID ini ada di dalam daftar orang yang online
-                    let isUserOnline = onlineIds.some(id => id == uid);
-
-                    $(this).attr('data-online', isUserOnline ? 'true' : 'false');
-                    $(this).data('online', isUserOnline ? 'true' : 'false');
-
-                    if (isUserOnline) {
-                        badge.removeClass('d-none');
-                        // Jika kebetulan ini adalah chat yang sedang dibuka, nyalakan juga header-nya
-                        if (currentTargetId == uid) {
-                            $('#header-online-badge').removeClass('d-none');
-                            $('#chat-header-status').removeClass('d-none');
-                            isTargetOnline = true;
-                        }
+                    if (isOnline) {
+                        $('#header-online-badge').removeClass('d-none hidden');
+                        $('#chat-header-status').removeClass('d-none hidden');
                     } else {
-                        badge.addClass('d-none');
-                        if (currentTargetId == uid) {
-                            $('#header-online-badge').addClass('d-none');
-                            $('#chat-header-status').addClass('d-none');
-                            isTargetOnline = false;
-                        }
+                        $('#header-online-badge').addClass('d-none hidden');
+                        $('#chat-header-status').addClass('d-none hidden');
                     }
-                });
-            }
-        });
-    }
+                }
+            });
+        },
+        error: function(err) {
+            console.error('Gagal fetch status online:', err);
+        }
+    });
+}
 
-    fetchAllOnlineStatus();
-    setInterval(pollSidebarOnlineStatus, 10000);
+// Jalankan saat halaman pertama kali load
+fetchAllOnlineStatus();
 
-
+// Polling setiap 10 detik (lebih hemat dari 3 detik)
+setInterval(fetchAllOnlineStatus, 10000);
 
 </script>
 @endpush

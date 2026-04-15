@@ -244,26 +244,23 @@ class ChatController extends Controller
         }
     }
 
-    // =================================================================
-    // 6. API CEK STATUS ONLINE MASSAL (Untuk Sidebar)
-    // =================================================================
-    public function checkOnlineStatuses(Request $request)
+    public function getOnlineStatus()
     {
-        $userIds = $request->user_ids ?? [];
-
-        if (empty($userIds)) {
-            return response()->json(['online_users' => []]);
-        }
-
-        // Cari user yang ID-nya ada di array request dan masih aktif 5 menit terakhir
-        $keyName = (new User)->getKeyName();
-        $onlineUsers = User::whereIn($keyName, $userIds)
+        // PERBAIKAN 1: Gunakan last_seen_at
+        $users = User::select('id', 'id_pengguna', 'last_seen_at')
             ->whereNotNull('last_seen_at')
-            ->where('last_seen_at', '>=', \Carbon\Carbon::now()->subMinutes(5))
-            ->pluck($keyName);
+            ->get()
+            ->mapWithKeys(function ($user) {
+                // PERBAIKAN 2: Gunakan waktu dari last_seen_at
+                $isOnline = \Carbon\Carbon::parse($user->last_seen_at)
+                    ->diffInMinutes(now()) < 5;
 
-        return response()->json([
-            'online_users' => $onlineUsers
-        ]);
+                // Pastikan key-nya menggunakan ID yang dipakai di frontend (id_pengguna atau id)
+                $userId = $user->id_pengguna ?? $user->id;
+
+                return [$userId => $isOnline];
+            });
+
+        return response()->json($users);
     }
 }
