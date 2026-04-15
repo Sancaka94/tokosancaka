@@ -152,6 +152,9 @@ class ChatController extends Controller
     // =================================================================
     public function sendMessage(Request $request, $contactId)
     {
+        \Log::info('LOG LOG: [sendMessage] === REQUEST MASUK ===');
+        \Log::info('LOG LOG: [sendMessage] Mengirim pesan ke contactId (Tujuan): ' . $contactId);
+
         $request->validate([
             'message' => 'nullable|string|max:2000',
             'image'   => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120'
@@ -161,15 +164,19 @@ class ChatController extends Controller
         $userId = $user->getKey();
         $messageText = $request->message ?? $request->content ?? '';
 
+        \Log::info('LOG LOG: [sendMessage] Pengirim (userId): ' . $userId . ' | Role: ' . ($user->role ?? 'Kosong'));
+
         try {
             $imageUrl = null;
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
                 $path = $file->store('uploads/chat', 'public');
                 $imageUrl = $path;
+                \Log::info('LOG LOG: [sendMessage] Ada file gambar yang diupload: ' . $path);
             }
 
             if (empty($messageText) && empty($imageUrl)) {
+                \Log::warning('LOG LOG: [sendMessage] GAGAL - Pesan dan gambar kosong.');
                 return response()->json(['success' => false, 'message' => 'Pesan tidak boleh kosong.'], 400);
             }
 
@@ -181,28 +188,31 @@ class ChatController extends Controller
                 'product_id' => $request->product_id ?? null,
             ]);
 
-           // --- LOGIKA BOT AI (AKTIF UNTUK SEMUA ID) ---
-            // Pastikan pesan berupa teks tidak kosong
-            if (!empty($messageText)) {
+            \Log::info('LOG LOG: [sendMessage] Pesan berhasil disimpan ke DB (Message ID: ' . $message->id . ')');
 
-                // Opsional tapi sangat disarankan:
-                // Kita pastikan bot HANYA membalas jika yang mengirim chat adalah "Pelanggan".
-                // Agar ketika Admin/Seller membalas chat secara manual, bot tidak ikut-ikutan membalas pesannya Admin.
+            // --- LOGIKA BOT AI (AKTIF UNTUK SEMUA ID) ---
+            if (!empty($messageText)) {
                 $userRole = Auth::user()->role ?? '';
 
                 if (strtolower($userRole) == 'pelanggan') {
-                    // Bot merespons seolah-olah ia adalah $contactId (akun toko/admin tujuan)
+                    \Log::info('LOG LOG: [sendMessage] Pengirim adalah Pelanggan. Meneruskan ke forwardToBot...');
                     $this->forwardToBot($userId, $messageText, $contactId);
+                } else {
+                    \Log::info('LOG LOG: [sendMessage] Pengirim BUKAN Pelanggan (Role: ' . $userRole . '). Bot AI TIDAK dipicu.');
                 }
+            } else {
+                \Log::info('LOG LOG: [sendMessage] Pesan hanya berupa gambar/kosong teks. Bot AI TIDAK dipicu.');
             }
             // ---------------------------------------------
 
+            \Log::info('LOG LOG: [sendMessage] === REQUEST SELESAI (SUKSES) ===');
             return response()->json([
                 'success' => true,
                 'message' => 'Terkirim'
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('LOG LOG: [sendMessage] ERROR SISTEM: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
         }
     }
