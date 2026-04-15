@@ -144,7 +144,9 @@ class ChatController extends Controller
         // Cek Online
         $keyName = (new User)->getKeyName();
         $targetUser = User::where($keyName, $contactId)->first();
-        $isTargetOnline = $targetUser && $targetUser->last_seen && Carbon::parse($targetUser->last_seen)->diffInMinutes(now()) < 5;
+
+        // PERBAIKAN: Ubah last_seen menjadi last_seen_at di sini
+        $isTargetOnline = $targetUser && $targetUser->last_seen_at && Carbon::parse($targetUser->last_seen_at)->diffInMinutes(now()) < 5;
 
         return response()->json([
             'success'       => true,
