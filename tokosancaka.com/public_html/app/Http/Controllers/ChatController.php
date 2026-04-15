@@ -273,7 +273,7 @@ class ChatController extends Controller
 
             // PANGGIL SECARA DINAMIS DARI .ENV (AMAN UNTUK GITHUB)
             $apiKey = config('services.gemini.key');
-            $model = config('services.gemini.model', 'gemini-2.5-flash');
+            $model = config('services.gemini.model', 'gemini-3.1-flash-lite');
             $baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
 
             // Eksekusi API secara langsung dari Controller

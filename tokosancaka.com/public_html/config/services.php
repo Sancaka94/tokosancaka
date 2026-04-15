@@ -71,10 +71,10 @@ return [
     'gemini' => [
         // Parameter kedua adalah HARDCODE-nya.
         // Jika .env kosong/error, Laravel otomatis memakai key yang di dalam tanda kutip ini.
-        'key' => env('GEMINI_API_KEY', 'AIzaSyB9fyhAx_RGqL2cUb8XbLu6e3zMCO128kA'),
+        'key' => env('GEMINI_API_KEY', 'AIzaSyB42ulhi_MNU1Oo4os9zv7Y7IhEeiOdwts'),
 
         // Pastikan fallback modelnya juga sudah pakai versi 2.5 agar tidak error "not found"
-        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+        'model' => env('GEMINI_MODEL', 'gemini-3.1-flash-lite'),
     ],
 
     // --- Konfigurasi IAK PPOB ---
