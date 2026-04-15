@@ -272,7 +272,7 @@ class ChatController extends Controller
                       "Pertanyaan Pelanggan: " . $messageText;
 
             // HARDCODE API KEY DAN MODEL
-            $apiKey = 'AIzaSyAXMyMi7AhMxO-St85oBXkZT-2nFrzPExc';
+            $apiKey = 'AIzaSyDI6T0OLSdYurqMlklM1Gqb0fS9rt7dIn8';
             $model = 'gemini-2.5-flash';
             $baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
 
