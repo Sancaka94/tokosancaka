@@ -1177,4 +1177,4 @@ Route::post('pesanan/{resi}/cancel', [PesananController::class, 'cancelOrder'])-
 
 Route::delete('/admin/pesanan-massal/destroy', [\App\Http\Controllers\Admin\PesananController::class, 'bulkDestroy'])->name('admin.pesanan.bulk_destroy');
 
-Route::get('/admin/chat/online-status', [ChatController::class, 'getOnlineStatus'])->name('chat.online-status');
+Route::get('/customer/chat/online-status', [ChatController::class, 'getOnlineStatus'])->name('chat.online-status');

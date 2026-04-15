@@ -642,7 +642,7 @@ $(document).ready(function() {
 // =============================================
 function fetchAllOnlineStatus() {
     $.ajax({
-        url: '/admin/chat/online-status', // Sesuaikan URL (jika customer jadi /customer/...)
+        url: '/customer/chat/online-status', // Sesuaikan URL (jika customer jadi /customer/...)
         method: 'GET',
         dataType: 'json',
         success: function(onlineMap) {
