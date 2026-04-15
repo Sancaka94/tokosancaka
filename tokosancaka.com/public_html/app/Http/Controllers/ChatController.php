@@ -9,10 +9,21 @@ use App\Models\Message;
 use App\Models\Store;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Support\Str; // <-- Tambahkan ini untuk fungsi Str::startsWith
+use App\Services\GeminiService; // <-- Tambahkan ini untuk memanggil service
 
 
 class ChatController extends Controller
 {
+
+    protected $geminiService;
+
+    // Inject GeminiService agar bisa dipakai di seluruh method controller ini
+    public function __construct(GeminiService $geminiService)
+    {
+        $this->geminiService = $geminiService;
+    }
+
     // Menampilkan halaman chat untuk ADMIN
     public function adminIndex()
     {
@@ -246,60 +257,50 @@ class ChatController extends Controller
     }
 
     // =================================================================
-    // FUNGSI UNTUK MENGIRIM PESAN KE N8N DAN MENYIMPAN BALASANNYA
+    // FUNGSI UNTUK MENGIRIM PESAN KE GEMINI AI DAN MENYIMPAN BALASANNYA
     // =================================================================
     private function forwardToBot($userId, $messageText, $botId)
     {
-        // Ganti dengan Production URL dari node Webhook n8n Anda
-        $n8nWebhookUrl = 'https://ykzu69-n8n.bocindonesia.com/webhook/sancaka-chat';
-
         \Log::info('LOG LOG: === MULAI MEMANGGIL AI ===');
         \Log::info('LOG LOG: UserID: ' . $userId . ' | Tujuan Toko (BotID): ' . $botId . ' | Pesan: ' . $messageText);
 
         try {
-            // Tembak API n8n
-            $response = Http::timeout(30)->post($n8nWebhookUrl, [
-                'user_id' => 'user_' . $userId, // Session ID unik untuk memory n8n
-                'message' => $messageText
-            ]);
+            // Prompt khusus agar AI merespons sebagai Customer Service
+            $prompt = "Anda adalah asisten virtual (Customer Service) untuk Sancaka Express.
+            Tugas Anda adalah menjawab pertanyaan pelanggan dengan ramah, sopan, ringkas, dan jelas.
+            Jangan gunakan format Markdown berlebihan karena ini adalah pesan chat.
 
-            \Log::info('LOG LOG: Status Code dari n8n: ' . $response->status());
+            Pertanyaan Pelanggan: " . $messageText;
 
-            if ($response->successful()) {
-                $rawBody = $response->body();
-                $jsonResponse = $response->json();
+            // Memanggil fungsi generateText dari GeminiService
+            $botReply = $this->geminiService->generateText($prompt);
 
-                \Log::info('LOG LOG: Response Mentah n8n (Body): ' . $rawBody);
-                \Log::info('LOG LOG: Response JSON n8n: ' . json_encode($jsonResponse));
+            \Log::info('LOG LOG: Response dari Gemini berhasil diterima.');
 
-                // N8n AI Agent biasanya meletakkan teks di field 'output'
-                // Ditambahkan fallback untuk membaca plain text jika respons tidak berformat JSON murni
-                $botReply = null;
-
-                if (is_array($jsonResponse)) {
-                    $botReply = $jsonResponse['output'] ?? $jsonResponse['balasan'] ?? $jsonResponse['text'] ?? null;
-                } elseif (!empty($rawBody)) {
-                    $botReply = $rawBody;
-                }
-
-                if (!empty($botReply)) {
-                    Message::create([
-                        'from_id' => $botId,
-                        'to_id'   => $userId,
-                        'message' => $botReply,
-                    ]);
-                    \Log::info('LOG LOG: Balasan bot berhasil disimpan!');
-                } else {
-                    \Log::error('LOG LOG: Field output/balasan tidak ditemukan atau respons kosong. Isi Body: ' . $rawBody);
-                }
-            } else {
-                \Log::error('LOG LOG: n8n mengembalikan status error: ' . $response->status() . ' - ' . $response->body());
+            // Cek apakah balasan berupa pesan error dari Service
+            if (Str::startsWith($botReply, 'Gagal') || Str::startsWith($botReply, 'Error')) {
+                \Log::error('LOG LOG: API Gemini mengembalikan pesan error: ' . $botReply);
+                // Fallback text jika API Limit/Error
+                $botReply = "Mohon maaf, sistem AI kami sedang mengalami kendala. Silakan tinggalkan pesan, Admin kami akan segera membalas.";
             }
+
+            if (!empty($botReply)) {
+                Message::create([
+                    'from_id' => $botId,
+                    'to_id'   => $userId,
+                    'message' => $botReply,
+                ]);
+                \Log::info('LOG LOG: Balasan bot berhasil disimpan!');
+            } else {
+                \Log::error('LOG LOG: Respons Gemini kosong.');
+            }
+
         } catch (\Exception $e) {
-            // Jika n8n mati atau timeout
-            \Log::error('LOG LOG: Gagal/Timeout menghubungi Bot n8n: ' . $e->getMessage());
+            // Jika koneksi ke Gemini terputus atau timeout
+            \Log::error('LOG LOG: Gagal/Timeout menghubungi Bot AI: ' . $e->getMessage());
         }
 
         \Log::info('LOG LOG: === SELESAI MEMANGGIL AI ===');
     }
+}
 }
