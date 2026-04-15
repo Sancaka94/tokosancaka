@@ -86,49 +86,48 @@ class ChatController extends Controller
         return redirect()->route('admin.chat.index', ['chat_with' => $id_pengguna]);
     }
 
-    /**
-     * Mengambil riwayat pesan antara admin dan user tertentu (AJAX).
-     * ✅ DISAMAKAN DENGAN HP: Menambahkan fitur auto-read (Centang Biru)
-     */
     public function fetchMessages(User $user)
     {
         $adminId = Auth::id();
         $userId = $user->getKey();
 
-        // 1. FITUR CENTANG BACA: Tandai pesan dari user ke admin menjadi sudah dibaca
+        // 1. FITUR CENTANG BACA
         Message::where('from_id', $userId)
             ->where('to_id', $adminId)
             ->whereNull('read_at')
             ->update(['read_at' => Carbon::now()]);
 
-        // 2. Query pesan antara admin dan user
+        // 2. Query pesan
         $messages = Message::where(function($query) use ($adminId, $userId) {
-                // Pesan dari admin ke user
                 $query->where('from_id', $adminId)->where('to_id', $userId);
             })->orWhere(function($query) use ($adminId, $userId) {
-                // Pesan dari user ke admin
                 $query->where('from_id', $userId)->where('to_id', $adminId);
-            })
-            ->orderBy('created_at', 'asc') // Web biasanya Ascending (Dari atas ke bawah)
-            ->get();
+            })->orderBy('created_at', 'asc')->get();
 
-        $isTargetOnline = $user->last_seen && Carbon::parse($user->last_seen)->diffInMinutes(now()) < 5;
-
-        // 3. Format ulang agar JS di frontend web lebih mudah memprosesnya
+        // 3. Format pesan
         $formattedMessages = $messages->map(function($msg) use ($adminId) {
             return [
                 'id'         => $msg->id,
                 'from_id'    => $msg->from_id,
                 'to_id'      => $msg->to_id,
                 'message'    => $msg->message,
-                'image_url'  => $msg->image_url, // Support Gambar
+                'image_url'  => $msg->image_url,
                 'created_at' => $msg->created_at,
-                'is_me'      => ($msg->from_id == $adminId), // True jika ini pesan admin
+                'is_me'      => ($msg->from_id == $adminId),
                 'is_read'    => $msg->read_at ? true : false,
             ];
         });
 
-        return response()->json($formattedMessages);
+        // --- TAMBAHAN: CEK STATUS ONLINE USER ---
+        $isTargetOnline = $user->last_seen && Carbon::parse($user->last_seen)->diffInMinutes(now()) < 5;
+
+        // PERHATIAN: Pastikan Javascript di file view Admin disesuaikan untuk
+        // membaca format JSON yang baru ini (sebelumnya hanya return array messages langsung)
+        return response()->json([
+            'success'       => true,
+            'messages'      => $formattedMessages,
+            'target_online' => $isTargetOnline
+        ]);
     }
 
     /**
