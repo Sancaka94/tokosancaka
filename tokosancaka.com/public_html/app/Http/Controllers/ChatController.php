@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use App\Models\User;
 use App\Models\Message;
 use App\Models\Store;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+
 
 class ChatController extends Controller
 {
@@ -179,6 +181,15 @@ class ChatController extends Controller
                 'product_id' => $request->product_id ?? null,
             ]);
 
+            // --- TAMBAHAN LOGIKA BOT AI YANG TERLEWAT ---
+            // Asumsikan $contactId "4" adalah akun admin Sancaka/Bot.
+            $botId = 4;
+
+            if ($contactId == $botId && !empty($messageText)) {
+                $this->forwardToBot($userId, $messageText, $botId);
+            }
+            // ---------------------------------------------
+
             return response()->json([
                 'success' => true,
                 'message' => 'Terkirim'
@@ -212,6 +223,40 @@ class ChatController extends Controller
             return response()->json(['success' => true, 'message' => 'Riwayat chat berhasil dibersihkan.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Gagal menghapus pesan.'], 500);
+        }
+    }
+
+    // =================================================================
+    // FUNGSI BARU UNTUK MENGIRIM PESAN KE N8N DAN MENYIMPAN BALASANNYA
+    // =================================================================
+    private function forwardToBot($userId, $messageText, $botId)
+    {
+        // Ganti dengan Production URL dari node Webhook n8n Anda
+        $n8nWebhookUrl = 'https://ykzu69-n8n.bocindonesia.com/webhook/sancaka-chat';
+
+        try {
+            // Tembak API n8n
+            $response = Http::timeout(30)->post($n8nWebhookUrl, [
+                'user_id' => 'user_' . $userId, // Session ID unik untuk memory n8n
+                'message' => $messageText
+            ]);
+
+            if ($response->successful()) {
+                // Ambil field "balasan" dari JSON n8n (sesuai setting Respond to Webhook kita)
+                $botReply = $response->json('balasan');
+
+                if (!empty($botReply)) {
+                    // Simpan balasan bot ke database seolah-olah dikirim oleh akun Bot/Admin
+                    Message::create([
+                        'from_id' => $botId,
+                        'to_id'   => $userId,
+                        'message' => $botReply,
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            // Jika n8n mati atau timeout, Anda bisa abaikan atau beri pesan error default
+            \Log::error('Gagal menghubungi Bot n8n: ' . $e->getMessage());
         }
     }
 }
