@@ -223,9 +223,14 @@
 
                         if ($lastMsg->from_id == auth()->id() || $lastMsg->from_id == auth()->user()->id_pengguna) {
                             if ($lastMsg->read_at) {
+                                // Sudah Dibaca = 2 Centang Biru
                                 $tickHtml = '<i class="fa-solid fa-check-double" style="color: var(--wa-blue-tick); font-size: 11px; margin-right: 4px;"></i>';
-                            } else {
+                            } elseif ($isOnline) {
+                                // Belum Dibaca tapi Online = 2 Centang Abu-abu
                                 $tickHtml = '<i class="fa-solid fa-check-double" style="color: #8696a0; font-size: 11px; margin-right: 4px;"></i>';
+                            } else {
+                                // Belum Dibaca dan Offline = 1 Centang Abu-abu
+                                $tickHtml = '<i class="fa-solid fa-check" style="color: #8696a0; font-size: 11px; margin-right: 4px;"></i>';
                             }
                         }
                     }
