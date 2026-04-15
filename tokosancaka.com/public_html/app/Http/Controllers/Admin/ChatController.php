@@ -119,7 +119,8 @@ class ChatController extends Controller
         });
 
         // --- TAMBAHAN: CEK STATUS ONLINE USER ---
-        $isTargetOnline = $user->last_seen && Carbon::parse($user->last_seen)->diffInMinutes(now()) < 5;
+        // Tambahkan "_at" pada last_seen
+        $isTargetOnline = $user->last_seen_at && \Carbon\Carbon::parse($user->last_seen_at)->diffInMinutes(now()) < 5;
 
         //$isTargetOnline = true; // Paksa jadi true dulu
 
