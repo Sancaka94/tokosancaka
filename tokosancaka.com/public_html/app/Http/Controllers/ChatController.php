@@ -192,13 +192,20 @@ class ChatController extends Controller
 
             // --- LOGIKA BOT AI (AKTIF UNTUK SEMUA ID) ---
             if (!empty($messageText)) {
-                $userRole = Auth::user()->role ?? '';
+                // Ambil role dan buat menjadi huruf kecil semua untuk keamanan pengecekan
+                $roleLower = strtolower($role);
 
-                if (strtolower($userRole) == 'pelanggan') {
-                    \Log::info('LOG LOG: [sendMessage] Pengirim adalah Pelanggan. Meneruskan ke forwardToBot...');
-                    $this->forwardToBot($userId, $messageText, $contactId);
+                // Daftar role yang diizinkan (dalam huruf kecil)
+                $allowedRoles = ['pelanggan', 'seller', 'agent'];
+
+                if (in_array($roleLower, $allowedRoles)) {
+                    // Role VALID
+                    \Log::info("LOG LOG: [sendMessage] Pengirim valid (Role: {$role}). Bot AI dipicu.");
+
+                    // TRIGER BOT AI ANDA DISINI
                 } else {
-                    \Log::info('LOG LOG: [sendMessage] Pengirim BUKAN Pelanggan (Role: ' . $userRole . '). Bot AI TIDAK dipicu.');
+                    // Role TIDAK VALID
+                    \Log::info("LOG LOG: [sendMessage] Pengirim BUKAN Pelanggan, Seller, atau Agent (Role: {$role}). Bot AI TIDAK dipicu.");
                 }
             } else {
                 \Log::info('LOG LOG: [sendMessage] Pesan hanya berupa gambar/kosong teks. Bot AI TIDAK dipicu.');
