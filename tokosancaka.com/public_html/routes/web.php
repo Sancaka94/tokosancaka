@@ -1176,3 +1176,5 @@ Route::get('/admin/kontak/{id}/history', [\App\Http\Controllers\KontakController
 Route::post('pesanan/{resi}/cancel', [PesananController::class, 'cancelOrder'])->name('admin.pesanan.cancel');
 
 Route::delete('/admin/pesanan-massal/destroy', [\App\Http\Controllers\Admin\PesananController::class, 'bulkDestroy'])->name('admin.pesanan.bulk_destroy');
+
+Route::post('/admin/chat/check-online', [ChatController::class, 'checkOnlineStatuses']);

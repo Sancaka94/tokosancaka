@@ -243,4 +243,27 @@ class ChatController extends Controller
             return response()->json(['success' => false, 'message' => 'Gagal menghapus pesan.'], 500);
         }
     }
+
+    // =================================================================
+    // 6. API CEK STATUS ONLINE MASSAL (Untuk Sidebar)
+    // =================================================================
+    public function checkOnlineStatuses(Request $request)
+    {
+        $userIds = $request->user_ids ?? [];
+
+        if (empty($userIds)) {
+            return response()->json(['online_users' => []]);
+        }
+
+        // Cari user yang ID-nya ada di array request dan masih aktif 5 menit terakhir
+        $keyName = (new User)->getKeyName();
+        $onlineUsers = User::whereIn($keyName, $userIds)
+            ->whereNotNull('last_seen_at')
+            ->where('last_seen_at', '>=', \Carbon\Carbon::now()->subMinutes(5))
+            ->pluck($keyName);
+
+        return response()->json([
+            'online_users' => $onlineUsers
+        ]);
+    }
 }

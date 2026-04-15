@@ -636,5 +636,64 @@ $(document).ready(function() {
 
     toastr.options = { "positionClass": "toast-top-right", "progressBar": true, "timeOut": "4000" };
 });
+
+// === 🟢 FUNGSI RADAR: UPDATE STATUS ONLINE SEMUA ORANG DI SIDEBAR ===
+    function pollSidebarOnlineStatus() {
+        let userIds = [];
+
+        // Kumpulkan semua ID yang ada di sidebar
+        $('.user-item').each(function() {
+            userIds.push($(this).data('id'));
+        });
+
+        if (userIds.length === 0) return;
+
+        $.ajax({
+            url: `/admin/chat/check-online`, // UBAH INI JIKA ROUTE ANDA BERBEDA
+            method: 'POST',
+            data: {
+                user_ids: userIds,
+                _token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                let onlineIds = response.online_users || [];
+
+                // Looping ulang sidebar dan nyalakan/matikan titik hijaunya
+                $('.user-item').each(function() {
+                    let uid = $(this).data('id');
+                    let badge = $(this).find('.sidebar-badge');
+
+                    // Cek apakah ID ini ada di dalam daftar orang yang online
+                    let isUserOnline = onlineIds.some(id => id == uid);
+
+                    $(this).attr('data-online', isUserOnline ? 'true' : 'false');
+                    $(this).data('online', isUserOnline ? 'true' : 'false');
+
+                    if (isUserOnline) {
+                        badge.removeClass('d-none');
+                        // Jika kebetulan ini adalah chat yang sedang dibuka, nyalakan juga header-nya
+                        if (currentTargetId == uid) {
+                            $('#header-online-badge').removeClass('d-none');
+                            $('#chat-header-status').removeClass('d-none');
+                            isTargetOnline = true;
+                        }
+                    } else {
+                        badge.addClass('d-none');
+                        if (currentTargetId == uid) {
+                            $('#header-online-badge').addClass('d-none');
+                            $('#chat-header-status').addClass('d-none');
+                            isTargetOnline = false;
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    fetchAllOnlineStatus();
+    setInterval(pollSidebarOnlineStatus, 10000);
+
+
+
 </script>
 @endpush
