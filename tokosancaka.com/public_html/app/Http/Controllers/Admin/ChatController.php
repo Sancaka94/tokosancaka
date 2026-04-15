@@ -119,7 +119,9 @@ class ChatController extends Controller
         });
 
         // --- TAMBAHAN: CEK STATUS ONLINE USER ---
-        $isTargetOnline = $user->last_seen && Carbon::parse($user->last_seen)->diffInMinutes(now()) < 5;
+        // $isTargetOnline = $user->last_seen && Carbon::parse($user->last_seen)->diffInMinutes(now()) < 5;
+
+        $isTargetOnline = true; // Paksa jadi true dulu
 
         // PERHATIAN: Pastikan Javascript di file view Admin disesuaikan untuk
         // membaca format JSON yang baru ini (sebelumnya hanya return array messages langsung)
