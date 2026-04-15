@@ -636,10 +636,6 @@ $(document).ready(function() {
 
     toastr.options = { "positionClass": "toast-top-right", "progressBar": true, "timeOut": "4000" };
 
-    // =============================================
-    // POLLING BADGE ONLINE UNTUK SEMUA USER SIDEBAR
-    // (SEKARANG BERADA DI DALAM DOCUMENT READY)
-    // =============================================
     function fetchAllOnlineStatus() {
         $.ajax({
             url: '/customer/chat/online-status',
@@ -689,6 +685,6 @@ $(document).ready(function() {
     // Polling setiap 10 detik
     setInterval(fetchAllOnlineStatus, 10000);
 
-}); // <--- PENUTUP $(DOCUMENT).READY() HARUS ADA DI PALING BAWAH SINI
+});
 </script>
 @endpush
