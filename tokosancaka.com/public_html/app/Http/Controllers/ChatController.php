@@ -190,27 +190,22 @@ class ChatController extends Controller
 
             \Log::info('LOG LOG: [sendMessage] Pesan berhasil disimpan ke DB (Message ID: ' . $message->id . ')');
 
-            // --- LOGIKA BOT AI (AKTIF UNTUK SEMUA ID) ---
+            // --- LOGIKA BOT AI (DIPERBAIKI) ---
             if (!empty($messageText)) {
-                // Ambil role dan buat menjadi huruf kecil semua untuk keamanan pengecekan
-                $roleLower = strtolower($role);
+                // Ambil role user dengan aman
+                $userRole = strtolower($user->role ?? '');
 
-                // Daftar role yang diizinkan (dalam huruf kecil)
-                $allowedRoles = ['pelanggan', 'seller', 'agent'];
+                \Log::info('LOG LOG: [sendMessage] Mengecek pemicu AI untuk Role: ' . $userRole);
 
-                if (in_array($roleLower, $allowedRoles)) {
-                    // Role VALID
-                    \Log::info("LOG LOG: [sendMessage] Pengirim valid (Role: {$role}). Bot AI dipicu.");
-
-                    // TRIGER BOT AI ANDA DISINI
+                // Tambahkan 'seller' ke dalam daftar yang diperbolehkan memicu bot
+                if (in_array($userRole, ['pelanggan', 'seller'])) {
+                    \Log::info('LOG LOG: [sendMessage] Role diizinkan. Meneruskan ke forwardToBot...');
+                    $this->forwardToBot($userId, $messageText, $contactId);
                 } else {
-                    // Role TIDAK VALID
-                    \Log::info("LOG LOG: [sendMessage] Pengirim BUKAN Pelanggan, Seller, atau Agent (Role: {$role}). Bot AI TIDAK dipicu.");
+                    \Log::info('LOG LOG: [sendMessage] Role ' . $userRole . ' tidak diset untuk memicu bot.');
                 }
-            } else {
-                \Log::info('LOG LOG: [sendMessage] Pesan hanya berupa gambar/kosong teks. Bot AI TIDAK dipicu.');
             }
-            // ---------------------------------------------
+            // ----------------------------------
 
             \Log::info('LOG LOG: [sendMessage] === REQUEST SELESAI (SUKSES) ===');
             return response()->json([
