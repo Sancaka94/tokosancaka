@@ -266,25 +266,22 @@ class ChatController extends Controller
             \Log::info('LOG LOG: Status Code dari n8n: ' . $response->status());
 
             if ($response->successful()) {
-                // Catat bentuk mentah balasan dari n8n
                 \Log::info('LOG LOG: Response Mentah n8n: ' . json_encode($response->json()));
 
-                // Ambil field "balasan" dari JSON n8n
-                $botReply = $response->json('balasan');
+                // N8n AI Agent biasanya meletakkan teks di field 'output'
+                // Kita coba ambil 'output', jika tidak ada kita ambil 'balasan'
+                $botReply = $response->json('output') ?? $response->json('balasan');
 
                 if (!empty($botReply)) {
-                    // Simpan balasan bot ke database seolah-olah dikirim oleh akun Toko/Admin
                     Message::create([
                         'from_id' => $botId,
                         'to_id'   => $userId,
                         'message' => $botReply,
                     ]);
-                    \Log::info('LOG LOG: Balasan bot berhasil di-insert ke database!');
+                    \Log::info('LOG LOG: Balasan bot berhasil disimpan!');
                 } else {
-                    \Log::error('LOG LOG: N8n membalas sukses, tapi field "balasan" kosong atau tidak ditemukan dalam format JSON.');
+                    \Log::error('LOG LOG: Field output/balasan tidak ditemukan. Isi JSON: ' . json_encode($response->json()));
                 }
-            } else {
-                \Log::error('LOG LOG: N8n menolak request. Response body: ' . $response->body());
             }
         } catch (\Exception $e) {
             // Jika n8n mati atau timeout
