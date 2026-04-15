@@ -747,22 +747,32 @@ $(document).ready(function() {
             success: function(response) {
                 let messages = response.messages || response;
 
-                // === 🟢 LOGIKA UPDATE STATUS ONLINE REAL-TIME ===
-                let isTargetOnline = response.target_online || false;
-                isCurrentChatOnline = isTargetOnline; // Update global var untuk centang abu/biru
+                    let isTargetOnline = response.target_online || false;
+                    isCurrentChatOnline = isTargetOnline;
 
-                let activeSidebarBadge = $(`.user-item[data-id="${currentUserId}"] .online-badge`);
+                    let activeUserItem = $(`.user-item[data-id="${currentUserId}"]`);
+                    let activeSidebarBadge = activeUserItem.find('.online-badge');
 
-                if (isTargetOnline) {
-                    $('#header-online-badge').removeClass('hidden');
-                    $('#chat-header-status').removeClass('hidden');
-                    activeSidebarBadge.removeClass('hidden');
-                } else {
-                    $('#header-online-badge').addClass('hidden');
-                    $('#chat-header-status').addClass('hidden');
-                    activeSidebarBadge.addClass('hidden');
-                }
-                // ===============================================
+                    // [TAMBAHAN BARU] Jika elemen badge belum ada di HTML sidebar, buatkan otomatis!
+                    if (activeSidebarBadge.length === 0) {
+                        activeUserItem.find('.avatar-wrapper').append('<div class="online-badge hidden"></div>');
+                        activeSidebarBadge = activeUserItem.find('.online-badge'); // Ambil ulang elemennya
+                    }
+
+                    // Update atribut data supaya tidak glitch saat klik/ganti chat
+                    activeUserItem.attr('data-online', isTargetOnline ? 'true' : 'false');
+                    activeUserItem.data('online', isTargetOnline ? 'true' : 'false');
+
+                    if (isTargetOnline) {
+                        $('#header-online-badge').removeClass('hidden');
+                        $('#chat-header-status').removeClass('hidden');
+                        activeSidebarBadge.removeClass('hidden');
+                    } else {
+                        $('#header-online-badge').addClass('hidden');
+                        $('#chat-header-status').addClass('hidden');
+                        activeSidebarBadge.addClass('hidden');
+                    }
+
 
                 if (messages.length !== lastMessageCount) {
                     if (lastMessageCount > 0 && messages.length > 0 && messages[messages.length - 1].from_id != adminId && messages.length > lastMessageCount) {
