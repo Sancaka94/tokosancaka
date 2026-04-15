@@ -881,7 +881,8 @@ $(document).ready(function() {
         const userAvatar = userElement.data('avatar');
         const userPhone = userElement.data('phone');
 
-        const isOnline = userElement.data('online') === true || userElement.data('online') === 'true';
+        // const isOnline = userElement.data('online') === true || userElement.data('online') === 'true';
+        const isOnline = userElement.attr('data-online') === 'true';
         isCurrentChatOnline = isOnline;
 
         if (userId === currentUserId && !$('#chat-box').hasClass('hidden')) {
