@@ -158,8 +158,16 @@ class ChatController extends Controller
     // =================================================================
     public function sendMessage(Request $request, $contactId)
     {
-        Log::info('LOG LOG: [sendMessage] === REQUEST MASUK ===');
-        Log::info('LOG LOG: [sendMessage] Mengirim pesan ke contactId (Tujuan): ' . $contactId);
+        \Log::info('LOG LOG: [sendMessage] === REQUEST MASUK ===');
+        \Log::info('LOG LOG: [sendMessage] Mengirim pesan ke contactId (Tujuan): ' . $contactId);
+
+        // --- TAMBAHAN PERBAIKAN ---
+        // Cegat jika Javascript frontend salah alamat mengirim perintah "delete-all" ke rute Send
+        if ($contactId === 'delete-all' || $request->contact_id === 'delete-all') {
+            \Log::info('LOG LOG: [sendMessage] Mengalihkan request ke fungsi deleteAllMessages...');
+            return $this->deleteAllMessages($request);
+        }
+        // --------------------------
 
         $request->validate([
             'message' => 'nullable|string|max:2000',
@@ -170,20 +178,19 @@ class ChatController extends Controller
         $userId = $user->getKey();
         $messageText = $request->message ?? $request->content ?? '';
 
-        Log::info('LOG LOG: [sendMessage] Pengirim (userId): ' . $userId . ' | Role: ' . ($user->role ?? 'Kosong'));
+        \Log::info('LOG LOG: [sendMessage] Pengirim (userId): ' . $userId . ' | Role: ' . ($user->role ?? 'Kosong'));
 
         try {
             $imageUrl = null;
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
-                // Menggunakan penyimpanan external sesuai preferensi (D/External HDD via symlink public)
                 $path = $file->store('uploads/chat', 'public');
                 $imageUrl = $path;
-                Log::info('LOG LOG: [sendMessage] Ada file gambar yang diupload: ' . $path);
+                \Log::info('LOG LOG: [sendMessage] Ada file gambar yang diupload: ' . $path);
             }
 
             if (empty($messageText) && empty($imageUrl)) {
-                Log::warning('LOG LOG: [sendMessage] GAGAL - Pesan dan gambar kosong.');
+                \Log::warning('LOG LOG: [sendMessage] GAGAL - Pesan dan gambar kosong.');
                 return response()->json(['success' => false, 'message' => 'Pesan tidak boleh kosong.'], 400);
             }
 
@@ -195,17 +202,16 @@ class ChatController extends Controller
                 'product_id' => $request->product_id ?? null,
             ]);
 
-            Log::info('LOG LOG: [sendMessage] Pesan berhasil disimpan ke DB (Message ID: ' . $message->id . ')');
+            \Log::info('LOG LOG: [sendMessage] Pesan berhasil disimpan ke DB (Message ID: ' . $message->id . ')');
 
-            Log::info('LOG LOG: [sendMessage] === REQUEST SELESAI (SUKSES) ===');
-
+            \Log::info('LOG LOG: [sendMessage] === REQUEST SELESAI (SUKSES) ===');
             return response()->json([
                 'success' => true,
                 'message' => 'Terkirim'
             ]);
 
         } catch (\Exception $e) {
-            Log::error('LOG LOG: [sendMessage] ERROR SISTEM: ' . $e->getMessage());
+            \Log::error('LOG LOG: [sendMessage] ERROR SISTEM: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
         }
     }
