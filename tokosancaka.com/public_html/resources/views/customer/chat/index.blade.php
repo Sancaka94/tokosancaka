@@ -354,11 +354,15 @@ $(document).ready(function() {
     const customerId = {{ auth()->user()->id_pengguna ?? auth()->id() }};
     let currentTargetId = null;
     let pollingInterval = null;
-    let lastMessageCount = 0;
     let selectedImageFile = null;
     let isTargetOnline = false;
     let isSelectMode = false;
     const notificationSound = new Audio('{{ asset("sounds/beep.mp3") }}');
+
+    // === VARIABEL MEMORI UNTUK CENTANG ===
+    let lastMessageCount = 0;
+    let lastUnreadCount = 0;
+    let wasTargetOnline = false;
 
     function scrollToBottom() {
         const container = $('#chat-messages');
@@ -441,7 +445,6 @@ $(document).ready(function() {
         }
     });
 
-
     // === FUNGSI RENDER PESAN ===
     function parseMessage(text) {
         if (!text) return '';
@@ -481,7 +484,7 @@ $(document).ready(function() {
     }
 
     function loadMessages() {
-    if (!currentTargetId) return;
+        if (!currentTargetId) return;
 
         $.ajax({
             url: `/admin/chat/messages/${currentTargetId}`, // PASTIKAN URL INI BENAR UNTUK CUSTOMER
@@ -490,28 +493,16 @@ $(document).ready(function() {
             success: function(response) {
                 let messages = response.messages ? response.messages : response;
 
-                // === 🟢 TAMBAHAN LOGIKA UPDATE ONLINE REAL-TIME ===
+                // Update Status Online dari response terbaru
                 let targetOnlineData = response.target_online || false;
-                isTargetOnline = targetOnlineData; // Update global variable
+                isTargetOnline = targetOnlineData;
 
-                let activeUserItem = $(`.user-item[data-id="${currentTargetId}"]`);
-                let activeSidebarBadge = activeUserItem.find('.sidebar-badge');
+                // Hitung berapa pesan kita yang BELUM dibaca oleh target
+                let currentUnreadCount = messages.filter(m => ((m.from_id == customerId) || m.is_me) && !m.is_read).length;
 
-                activeUserItem.attr('data-online', targetOnlineData ? 'true' : 'false');
-                activeUserItem.data('online', targetOnlineData ? 'true' : 'false');
+                // 🟢 RENDER ULANG LAYAR CHAT JIKA: Ada pesan baru ATAU centang berubah ATAU status online berubah
+                if (messages.length !== lastMessageCount || currentUnreadCount !== lastUnreadCount || targetOnlineData !== wasTargetOnline) {
 
-                if (targetOnlineData) {
-                    $('#header-online-badge').removeClass('d-none');
-                    $('#chat-header-status').removeClass('d-none');
-                    activeSidebarBadge.removeClass('d-none');
-                } else {
-                    $('#header-online-badge').addClass('d-none');
-                    $('#chat-header-status').addClass('d-none');
-                    activeSidebarBadge.addClass('d-none');
-                }
-                // ==================================================
-
-                if (messages.length !== lastMessageCount) {
                     if (lastMessageCount > 0 && messages.length > 0 && messages[messages.length - 1].from_id != customerId) {
                         notificationSound.play().catch(e => {});
                     }
@@ -525,7 +516,11 @@ $(document).ready(function() {
                         messages.forEach(function(msg) { messagesContainer.append(createMessageBubble(msg)); });
                     }
                     scrollToBottom();
+
+                    // Simpan memori state untuk pengecekan AJAX berikutnya
                     lastMessageCount = messages.length;
+                    lastUnreadCount = currentUnreadCount;
+                    wasTargetOnline = targetOnlineData;
                 }
             }
         });
@@ -553,11 +548,11 @@ $(document).ready(function() {
         }
 
         if (targetOnline) {
-            $('#header-online-badge').removeClass('d-none');
-            $('#chat-header-status').removeClass('d-none');
+            $('#header-online-badge').removeClass('d-none hidden');
+            $('#chat-header-status').removeClass('d-none hidden');
         } else {
-            $('#header-online-badge').addClass('d-none');
-            $('#chat-header-status').addClass('d-none');
+            $('#header-online-badge').addClass('d-none hidden');
+            $('#chat-header-status').addClass('d-none hidden');
         }
 
         $('#chat-welcome').addClass('d-none');
@@ -569,8 +564,12 @@ $(document).ready(function() {
 
         if (pollingInterval) clearInterval(pollingInterval);
 
+        // Reset variabel memori saat ganti chat
         currentTargetId = targetId;
         lastMessageCount = 0;
+        lastUnreadCount = 0;
+        wasTargetOnline = false;
+
         loadMessages();
         pollingInterval = setInterval(loadMessages, 3000);
     });
@@ -623,6 +622,8 @@ $(document).ready(function() {
                 selectedImageFile = null;
                 $('#image-upload-input').val('');
                 $('#image-preview-container').addClass('d-none');
+
+                // Reset memori agar langsung digambar ulang
                 lastMessageCount = 0;
                 loadMessages();
             },
@@ -641,32 +642,31 @@ $(document).ready(function() {
 
     toastr.options = { "positionClass": "toast-top-right", "progressBar": true, "timeOut": "4000" };
 
+    // =============================================
+    // POLLING BADGE ONLINE UNTUK SEMUA USER SIDEBAR
+    // =============================================
     function fetchAllOnlineStatus() {
         $.ajax({
             url: '/customer/chat/online-status',
             method: 'GET',
             dataType: 'json',
             success: function(onlineMap) {
-                // Loop semua user-item di sidebar
                 $('.user-item').each(function() {
                     const userId = $(this).data('id');
                     const isOnline = onlineMap[userId] === true;
                     const sidebarBadge = $(this).find('.sidebar-badge');
 
-                    // Update atribut data
                     $(this).attr('data-online', isOnline ? 'true' : 'false');
                     $(this).data('online', isOnline ? 'true' : 'false');
 
-                    // Tampilkan/sembunyikan titik hijau sidebar
                     if (isOnline) {
                         sidebarBadge.removeClass('d-none hidden').show();
                     } else {
                         sidebarBadge.addClass('d-none hidden').hide();
                     }
 
-                    // Cek jika ini adalah obrolan yang sedang dibuka di sebelah kanan
                     if (userId === currentTargetId) {
-                        isTargetOnline = isOnline; // Update status untuk centang biru
+                        isTargetOnline = isOnline;
 
                         if (isOnline) {
                             $('#header-online-badge').removeClass('d-none hidden');
@@ -684,12 +684,10 @@ $(document).ready(function() {
         });
     }
 
-    // Jalankan saat halaman pertama kali load (Setelah HTML siap 100%)
     fetchAllOnlineStatus();
-
-    // Polling setiap 10 detik
     setInterval(fetchAllOnlineStatus, 10000);
 
-});
+}); // Penutup Document Ready
 </script>
 @endpush
+
