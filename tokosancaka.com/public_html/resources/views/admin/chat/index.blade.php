@@ -498,7 +498,8 @@
                     $finalAvatarUrl = $avatarUrl ? (str_starts_with($avatarUrl, 'http') ? $avatarUrl : asset('storage/' . $avatarUrl)) : '';
 
                     // Logika Online
-                    $isOnline = $user->last_seen && \Carbon\Carbon::parse($user->last_seen)->diffInMinutes(now()) < 5;
+                    // Tambahkan "_at" pada last_seen
+                    $isOnline = $user->last_seen_at && \Carbon\Carbon::parse($user->last_seen_at)->diffInMinutes(now()) < 5;
 
                     // Logika Pesan Terakhir
                     $lastMsg = $user->last_message_data ?? null;
