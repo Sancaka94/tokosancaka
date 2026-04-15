@@ -303,4 +303,5 @@ class ChatController extends Controller
         \Log::info('LOG LOG: === SELESAI MEMANGGIL AI ===');
     }
 }
-}
+
+
