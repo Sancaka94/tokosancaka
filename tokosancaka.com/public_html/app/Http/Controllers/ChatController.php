@@ -256,7 +256,7 @@ class ChatController extends Controller
         }
     }
 
-    // =================================================================
+   // =================================================================
     // FUNGSI UNTUK MENGIRIM PESAN KE GEMINI AI (PENGGANTI N8N)
     // =================================================================
     private function forwardToBot($userId, $messageText, $botId)
@@ -271,16 +271,34 @@ class ChatController extends Controller
                       "Gunakan bahasa Indonesia yang baik. Hindari penggunaan format Markdown seperti bintang (**) atau tanda pagar (#) karena ini adalah antarmuka chat biasa.\n\n" .
                       "Pertanyaan Pelanggan: " . $messageText;
 
-            // Memanggil fungsi generateText dari GeminiService
-            $botReply = $this->geminiService->generateText($prompt);
+            // HARDCODE API KEY DAN MODEL
+            $apiKey = 'AIzaSyAXMyMi7AhMxO-St85oBXkZT-2nFrzPExc';
+            $model = 'gemini-2.5-flash';
+            $baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
 
-            \Log::info('LOG LOG: Response API berhasil diproses.');
+            // Eksekusi API secara langsung dari Controller
+            $response = \Illuminate\Support\Facades\Http::timeout(120)
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->post("{$baseUrl}?key={$apiKey}", [
+                    'contents' => [
+                        [
+                            'parts' => [['text' => $prompt]]
+                        ]
+                    ]
+                ]);
 
-            // Cek apakah service mengembalikan pesan error (karena limit atau gagal koneksi)
-            // Menggunakan penulisan namespace lengkap agar tidak perlu menambahkan "use" di atas
-            if (\Illuminate\Support\Str::startsWith($botReply, 'Error') || \Illuminate\Support\Str::startsWith($botReply, 'Gagal')) {
-                \Log::error('LOG LOG: API Gemini mengembalikan indikasi error: ' . $botReply);
-                // Fallback text agar user tetap mendapat balasan humanis saat sistem AI sedang down
+            $botReply = null;
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $botReply = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
+                \Log::info('LOG LOG: Response API berhasil diproses.');
+            } else {
+                $errorBody = $response->json();
+                $errorMessage = $errorBody['error']['message'] ?? 'Unknown API Error';
+                \Log::error('LOG LOG: API Gemini mengembalikan indikasi error: ' . $errorMessage);
+
+                // Fallback text agar user tetap mendapat balasan humanis saat sistem AI limit/down
                 $botReply = "Mohon maaf, asisten virtual kami sedang sibuk atau dalam perbaikan. Silakan tinggalkan pesan Anda, tim Admin Sancaka akan segera membalas.";
             }
 
@@ -297,7 +315,7 @@ class ChatController extends Controller
             }
 
         } catch (\Exception $e) {
-            // Menangkap fatal error pada level Controller
+            // Menangkap fatal error pada level Controller (seperti timeout koneksi)
             \Log::error('LOG LOG: Gagal/Error Sistem di Controller saat memanggil AI: ' . $e->getMessage());
         }
 
