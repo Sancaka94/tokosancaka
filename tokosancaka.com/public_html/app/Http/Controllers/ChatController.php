@@ -246,17 +246,16 @@ class ChatController extends Controller
 
     public function getOnlineStatus()
     {
-        // PERBAIKAN 1: Gunakan last_seen_at
-        $users = User::select('id', 'id_pengguna', 'last_seen_at')
+        // PERBAIKAN: Hapus 'id', cukup panggil 'id_pengguna' dan 'last_seen_at'
+        $users = User::select('id_pengguna', 'last_seen_at')
             ->whereNotNull('last_seen_at')
             ->get()
             ->mapWithKeys(function ($user) {
-                // PERBAIKAN 2: Gunakan waktu dari last_seen_at
                 $isOnline = \Carbon\Carbon::parse($user->last_seen_at)
                     ->diffInMinutes(now()) < 5;
 
-                // Pastikan key-nya menggunakan ID yang dipakai di frontend (id_pengguna atau id)
-                $userId = $user->id_pengguna ?? $user->id;
+                // Gunakan id_pengguna sebagai key array-nya
+                $userId = $user->id_pengguna;
 
                 return [$userId => $isOnline];
             });
