@@ -257,50 +257,51 @@ class ChatController extends Controller
     }
 
     // =================================================================
-    // FUNGSI UNTUK MENGIRIM PESAN KE GEMINI AI DAN MENYIMPAN BALASANNYA
+    // FUNGSI UNTUK MENGIRIM PESAN KE GEMINI AI (PENGGANTI N8N)
     // =================================================================
     private function forwardToBot($userId, $messageText, $botId)
     {
-        \Log::info('LOG LOG: === MULAI MEMANGGIL AI ===');
+        \Log::info('LOG LOG: === MULAI MEMANGGIL AI GEMINI ===');
         \Log::info('LOG LOG: UserID: ' . $userId . ' | Tujuan Toko (BotID): ' . $botId . ' | Pesan: ' . $messageText);
 
         try {
-            // Prompt khusus agar AI merespons sebagai Customer Service
-            $prompt = "Anda adalah asisten virtual (Customer Service) untuk Sancaka Express.
-            Tugas Anda adalah menjawab pertanyaan pelanggan dengan ramah, sopan, ringkas, dan jelas.
-            Jangan gunakan format Markdown berlebihan karena ini adalah pesan chat.
-
-            Pertanyaan Pelanggan: " . $messageText;
+            // Prompt khusus agar AI merespons sebagai Customer Service Sancaka Express
+            $prompt = "Anda adalah asisten virtual (Customer Service) untuk Sancaka Express.\n" .
+                      "Tugas Anda adalah menjawab pertanyaan pelanggan dengan ramah, sopan, ringkas, dan jelas.\n" .
+                      "Gunakan bahasa Indonesia yang baik. Hindari penggunaan format Markdown seperti bintang (**) atau tanda pagar (#) karena ini adalah antarmuka chat biasa.\n\n" .
+                      "Pertanyaan Pelanggan: " . $messageText;
 
             // Memanggil fungsi generateText dari GeminiService
             $botReply = $this->geminiService->generateText($prompt);
 
-            \Log::info('LOG LOG: Response dari Gemini berhasil diterima.');
+            \Log::info('LOG LOG: Response API berhasil diproses.');
 
-            // Cek apakah balasan berupa pesan error dari Service
-            if (Str::startsWith($botReply, 'Gagal') || Str::startsWith($botReply, 'Error')) {
-                \Log::error('LOG LOG: API Gemini mengembalikan pesan error: ' . $botReply);
-                // Fallback text jika API Limit/Error
-                $botReply = "Mohon maaf, sistem AI kami sedang mengalami kendala. Silakan tinggalkan pesan, Admin kami akan segera membalas.";
+            // Cek apakah service mengembalikan pesan error (karena limit atau gagal koneksi)
+            // Menggunakan penulisan namespace lengkap agar tidak perlu menambahkan "use" di atas
+            if (\Illuminate\Support\Str::startsWith($botReply, 'Error') || \Illuminate\Support\Str::startsWith($botReply, 'Gagal')) {
+                \Log::error('LOG LOG: API Gemini mengembalikan indikasi error: ' . $botReply);
+                // Fallback text agar user tetap mendapat balasan humanis saat sistem AI sedang down
+                $botReply = "Mohon maaf, asisten virtual kami sedang sibuk atau dalam perbaikan. Silakan tinggalkan pesan Anda, tim Admin Sancaka akan segera membalas.";
             }
 
+            // Simpan balasan ke tabel Messages jika tidak kosong
             if (!empty($botReply)) {
                 Message::create([
                     'from_id' => $botId,
                     'to_id'   => $userId,
                     'message' => $botReply,
                 ]);
-                \Log::info('LOG LOG: Balasan bot berhasil disimpan!');
+                \Log::info('LOG LOG: Balasan bot berhasil disimpan ke DB!');
             } else {
-                \Log::error('LOG LOG: Respons Gemini kosong.');
+                \Log::error('LOG LOG: Respons dari AI kosong, gagal menyimpan ke database.');
             }
 
         } catch (\Exception $e) {
-            // Jika koneksi ke Gemini terputus atau timeout
-            \Log::error('LOG LOG: Gagal/Timeout menghubungi Bot AI: ' . $e->getMessage());
+            // Menangkap fatal error pada level Controller
+            \Log::error('LOG LOG: Gagal/Error Sistem di Controller saat memanggil AI: ' . $e->getMessage());
         }
 
-        \Log::info('LOG LOG: === SELESAI MEMANGGIL AI ===');
+        \Log::info('LOG LOG: === SELESAI MEMANGGIL AI GEMINI ===');
     }
 }
 
