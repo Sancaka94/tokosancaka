@@ -133,8 +133,20 @@ class ChatController extends Controller
      * Mengirim pesan dari admin ke user (AJAX).
      * ✅ DISAMAKAN DENGAN HP: Support Upload Gambar & Pesan Boleh Kosong
      */
-    public function sendMessage(Request $request, User $user)
+    public function sendMessage(Request $request, $userId)
     {
+        // -----------------------------------------------------------------
+        // JARING PENGAMAN: Cegat jika Javascript frontend salah mengirimkan
+        // perintah "delete-all" ke rute sendMessage ini.
+        // -----------------------------------------------------------------
+        if ($userId === 'delete-all' || $request->contact_id === 'delete-all' || $request->user_id === 'delete-all') {
+            Log::info('LOG LOG: Mengalihkan request nyasar ke fungsi penghapusan chat.');
+            return $this->deleteAllMessages($request);
+        }
+
+        // Lanjutkan proses normal jika ID valid
+        $user = User::findOrFail($userId);
+
         // Validasi disamakan: Teks boleh kosong jika ada gambar
         $request->validate([
             'message' => 'nullable|string|max:1000',
@@ -142,7 +154,6 @@ class ChatController extends Controller
         ]);
 
         $adminId = Auth::id();
-        $userId = $user->getKey();
 
         try {
             $imageUrl = null;
@@ -193,6 +204,42 @@ class ChatController extends Controller
             return response()->json([
                 'status' => 'Gagal mengirim pesan.',
                 'error'  => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Menghapus semua riwayat pesan antara admin dan user tertentu.
+     */
+    public function deleteAllMessages(Request $request)
+    {
+        $adminId = Auth::id();
+        $contactId = $request->user_id ?? $request->contact_id;
+
+        if (!$contactId || $contactId === 'delete-all') {
+            return response()->json(['success' => false, 'message' => 'ID Pengguna tujuan tidak ditemukan.'], 400);
+        }
+
+        try {
+            Message::where(function($q) use ($adminId, $contactId) {
+                $q->where('from_id', $adminId)->where('to_id', $contactId);
+            })->orWhere(function($q) use ($adminId, $contactId) {
+                $q->where('from_id', $contactId)->where('to_id', $adminId);
+            })->delete();
+
+            Log::info("LOG LOG: Admin [{$adminId}] telah menghapus riwayat chat dengan User [{$contactId}].");
+
+            return response()->json([
+                'success' => true,
+                'status' => 'Sukses',
+                'message' => 'Riwayat chat berhasil dibersihkan.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error deleting messages: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'status' => 'Gagal',
+                'message' => 'Gagal menghapus pesan.'
             ], 500);
         }
     }
