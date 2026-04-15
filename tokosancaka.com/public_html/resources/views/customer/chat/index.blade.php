@@ -200,7 +200,7 @@
                     $finalAvatarUrl = $avatarUrl ? (str_starts_with($avatarUrl, 'http') ? $avatarUrl : asset('storage/' . $avatarUrl)) : '';
 
                     // Logika Status
-                    $isOnline = $user->last_seen && \Carbon\Carbon::parse($user->last_seen)->diffInMinutes(now()) < 5;
+                    $isOnline = $user->last_seen_at && \Carbon\Carbon::parse($user->last_seen_at)->diffInMinutes(now()) < 5;
                     $lastMsg = $user->last_message_data ?? null;
                     $msgText = 'Klik untuk memulai obrolan';
                     $timeText = '';
@@ -244,7 +244,7 @@
                         <div class="avatar" style="{{ $finalAvatarUrl ? 'background-image: url(' . $finalAvatarUrl . '); color: transparent;' : '' }}">
                             @if(!$finalAvatarUrl) {{ $initial }} @endif
                         </div>
-                        @if($isOnline) <div class="online-badge"></div> @endif
+                        <div class="online-badge sidebar-badge {{ $isOnline ? '' : 'd-none' }}"></div>
                     </div>
 
                     <div class="user-details">
@@ -476,14 +476,35 @@ $(document).ready(function() {
     }
 
     function loadMessages() {
-        if (!currentTargetId) return;
+    if (!currentTargetId) return;
 
         $.ajax({
-            url: `/admin/chat/messages/${currentTargetId}`, // Pastikan Endpoint API Customer Sesuai
+            url: `/admin/chat/messages/${currentTargetId}`, // PASTIKAN URL INI BENAR UNTUK CUSTOMER
             method: 'GET',
             dataType: 'json',
             success: function(response) {
                 let messages = response.messages ? response.messages : response;
+
+                // === 🟢 TAMBAHAN LOGIKA UPDATE ONLINE REAL-TIME ===
+                let targetOnlineData = response.target_online || false;
+                isTargetOnline = targetOnlineData; // Update global variable
+
+                let activeUserItem = $(`.user-item[data-id="${currentTargetId}"]`);
+                let activeSidebarBadge = activeUserItem.find('.sidebar-badge');
+
+                activeUserItem.attr('data-online', targetOnlineData ? 'true' : 'false');
+                activeUserItem.data('online', targetOnlineData ? 'true' : 'false');
+
+                if (targetOnlineData) {
+                    $('#header-online-badge').removeClass('d-none');
+                    $('#chat-header-status').removeClass('d-none');
+                    activeSidebarBadge.removeClass('d-none');
+                } else {
+                    $('#header-online-badge').addClass('d-none');
+                    $('#chat-header-status').addClass('d-none');
+                    activeSidebarBadge.addClass('d-none');
+                }
+                // ==================================================
 
                 if (messages.length !== lastMessageCount) {
                     if (lastMessageCount > 0 && messages.length > 0 && messages[messages.length - 1].from_id != customerId) {
