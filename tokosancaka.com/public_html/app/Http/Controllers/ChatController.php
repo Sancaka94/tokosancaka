@@ -271,13 +271,9 @@ class ChatController extends Controller
                       "Gunakan bahasa Indonesia yang baik. Hindari penggunaan format Markdown seperti bintang (**) atau tanda pagar (#) karena ini adalah antarmuka chat biasa.\n\n" .
                       "Pertanyaan Pelanggan: " . $messageText;
 
-            // HARDCODE API KEY DAN MODEL
-            $apiKey = 'AIzaSyDI6T0OLSdYurqMlklM1Gqb0fS9rt7dIn8';
-            //$model = 'gemini-2.5-flash';
-            //$baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
-
-            //$apiKey = 'API_KEY_KAMU_YANG_BARU';
-            $model = 'gemini-2.5-flash';
+            // PANGGIL SECARA DINAMIS DARI .ENV (AMAN UNTUK GITHUB)
+            $apiKey = env('GEMINI_API_KEY');
+            $model = env('GEMINI_MODEL', 'gemini-2.5-flash');
             $baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
 
             // Eksekusi API secara langsung dari Controller
