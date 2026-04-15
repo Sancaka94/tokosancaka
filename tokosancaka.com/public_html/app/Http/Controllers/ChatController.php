@@ -181,12 +181,19 @@ class ChatController extends Controller
                 'product_id' => $request->product_id ?? null,
             ]);
 
-            // --- TAMBAHAN LOGIKA BOT AI YANG TERLEWAT ---
-            // Asumsikan $contactId "4" adalah akun admin Sancaka/Bot.
-            $botId = 4;
+           // --- LOGIKA BOT AI (AKTIF UNTUK SEMUA ID) ---
+            // Pastikan pesan berupa teks tidak kosong
+            if (!empty($messageText)) {
 
-            if ($contactId == $botId && !empty($messageText)) {
-                $this->forwardToBot($userId, $messageText, $botId);
+                // Opsional tapi sangat disarankan:
+                // Kita pastikan bot HANYA membalas jika yang mengirim chat adalah "Pelanggan".
+                // Agar ketika Admin/Seller membalas chat secara manual, bot tidak ikut-ikutan membalas pesannya Admin.
+                $userRole = Auth::user()->role ?? '';
+
+                if (strtolower($userRole) == 'pelanggan') {
+                    // Bot merespons seolah-olah ia adalah $contactId (akun toko/admin tujuan)
+                    $this->forwardToBot($userId, $messageText, $contactId);
+                }
             }
             // ---------------------------------------------
 
