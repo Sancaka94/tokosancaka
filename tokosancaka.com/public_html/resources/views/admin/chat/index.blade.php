@@ -746,31 +746,34 @@ $(document).ready(function() {
             success: function(response) {
                 let messages = response.messages || response;
 
+                    // === 🟢 LOGIKA UPDATE STATUS ONLINE REAL-TIME ===
                     let isTargetOnline = response.target_online || false;
                     isCurrentChatOnline = isTargetOnline;
 
                     let activeUserItem = $(`.user-item[data-id="${currentUserId}"]`);
-                    let activeSidebarBadge = activeUserItem.find('.online-badge');
-
-                    // [TAMBAHAN BARU] Jika elemen badge belum ada di HTML sidebar, buatkan otomatis!
-                    if (activeSidebarBadge.length === 0) {
-                        activeUserItem.find('.avatar-wrapper').append('<div class="online-badge hidden"></div>');
-                        activeSidebarBadge = activeUserItem.find('.online-badge'); // Ambil ulang elemennya
-                    }
+                    // Target class spesifik yang baru saja kita buat di Blade
+                    let activeSidebarBadge = activeUserItem.find('.sidebar-badge');
 
                     // Update atribut data supaya tidak glitch saat klik/ganti chat
                     activeUserItem.attr('data-online', isTargetOnline ? 'true' : 'false');
                     activeUserItem.data('online', isTargetOnline ? 'true' : 'false');
 
                     if (isTargetOnline) {
+                        // Header
                         $('#header-online-badge').removeClass('hidden');
                         $('#chat-header-status').removeClass('hidden');
-                        activeSidebarBadge.removeClass('hidden');
+
+                        // Sidebar: Gunakan .show() yang otomatis menyuntikkan display: block !important
+                        activeSidebarBadge.show();
                     } else {
+                        // Header
                         $('#header-online-badge').addClass('hidden');
                         $('#chat-header-status').addClass('hidden');
-                        activeSidebarBadge.addClass('hidden');
+
+                        // Sidebar: Gunakan .hide() yang otomatis menyuntikkan display: none
+                        activeSidebarBadge.hide();
                     }
+                    // ===============================================
 
 
                 if (messages.length !== lastMessageCount) {
