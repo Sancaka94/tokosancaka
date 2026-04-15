@@ -273,7 +273,11 @@ class ChatController extends Controller
 
             // HARDCODE API KEY DAN MODEL
             $apiKey = 'AIzaSyDI6T0OLSdYurqMlklM1Gqb0fS9rt7dIn8';
-            $model = 'gemini-2.5-flash';
+            //$model = 'gemini-2.5-flash';
+            //$baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+
+            //$apiKey = 'API_KEY_KAMU_YANG_BARU';
+            $model = 'gemini-1.5-flash'; // <-- Ubah angka 2.5 menjadi 1.5
             $baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
 
             // Eksekusi API secara langsung dari Controller
