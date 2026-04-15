@@ -112,6 +112,8 @@ class ChatController extends Controller
             ->orderBy('created_at', 'asc') // Web biasanya Ascending (Dari atas ke bawah)
             ->get();
 
+        $isTargetOnline = $user->last_seen && Carbon::parse($user->last_seen)->diffInMinutes(now()) < 5;
+
         // 3. Format ulang agar JS di frontend web lebih mudah memprosesnya
         $formattedMessages = $messages->map(function($msg) use ($adminId) {
             return [
