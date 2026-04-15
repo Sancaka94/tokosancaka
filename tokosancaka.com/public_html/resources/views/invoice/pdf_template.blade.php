@@ -39,7 +39,7 @@
             <div class="invoice-no">NO: {{ $invoice->invoice_no }}</div>
         </div>
         <div class="logo-area">
-            <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" class="logo" alt="Sancaka Logo">
+            <img src="data:image/jpeg;base64,{{ base64_encode(file_get_contents(storage_path('app/public/uploads/logo.jpeg'))) }}" class="logo" alt="Sancaka Logo">
         </div>
     </div>
 
