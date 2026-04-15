@@ -3,47 +3,41 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use App\Models\User;
 use App\Models\Message;
 use App\Models\Store;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
-use Illuminate\Support\Str; // <-- Tambahkan ini untuk fungsi Str::startsWith
-use App\Services\GeminiService; // <-- Tambahkan ini untuk memanggil service
-
+use Illuminate\Support\Facades\Log;
 
 class ChatController extends Controller
 {
-
-    protected $geminiService;
-
-    // Inject GeminiService agar bisa dipakai di seluruh method controller ini
-    public function __construct(GeminiService $geminiService)
-    {
-        $this->geminiService = $geminiService;
-    }
-
-    // Menampilkan halaman chat untuk ADMIN
+    // =================================================================
+    // 1. Menampilkan halaman chat untuk ADMIN
+    // =================================================================
     public function adminIndex()
     {
         $user = Auth::user();
         $userId = $user->id_pengguna ?? $user->id;
 
-        $contactIds = \App\Models\Message::where('from_id', $userId)->pluck('to_id')
-            ->merge(\App\Models\Message::where('to_id', $userId)->pluck('from_id'))
+        // Ambil semua kontak yang pernah berinteraksi
+        $contactIds = Message::where('from_id', $userId)->pluck('to_id')
+            ->merge(Message::where('to_id', $userId)->pluck('from_id'))
             ->unique()->toArray();
 
-        $users = \App\Models\User::whereIn('id_pengguna', $contactIds)->get()->map(function($u) use ($userId) {
+        // Optimasi: Gunakan Eager Loading (with) jika ada relasi, atau ambil data di luar loop
+        $users = User::whereIn('id_pengguna', $contactIds)->get()->map(function($u) use ($userId) {
             $uId = $u->id_pengguna;
 
-            $u->last_message_data = \App\Models\Message::where(function($q) use ($userId, $uId) {
+            // Subquery untuk Last Message
+            $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
                 $q->where('from_id', $userId)->where('to_id', $uId);
             })->orWhere(function($q) use ($userId, $uId) {
                 $q->where('from_id', $uId)->where('to_id', $userId);
             })->orderBy('created_at', 'desc')->first();
 
-            $u->unread_count = \App\Models\Message::where('from_id', $uId)
+            // Hitung Unread
+            $u->unread_count = Message::where('from_id', $uId)
                 ->where('to_id', $userId)
                 ->whereNull('read_at')
                 ->count();
@@ -59,41 +53,42 @@ class ChatController extends Controller
         return view('admin.chat', compact('users'));
     }
 
-    // Menampilkan halaman chat untuk CUSTOMER
+    // =================================================================
+    // 2. Menampilkan halaman chat untuk CUSTOMER
+    // =================================================================
     public function customerIndex()
     {
         $user = Auth::user();
         $userId = $user->id_pengguna ?? $user->id;
 
-        $contactIds = \App\Models\Message::where('from_id', $userId)->pluck('to_id')
-            ->merge(\App\Models\Message::where('to_id', $userId)->pluck('from_id'))
+        $contactIds = Message::where('from_id', $userId)->pluck('to_id')
+            ->merge(Message::where('to_id', $userId)->pluck('from_id'))
             ->unique()->toArray();
 
-        $adminId = 4;
-        if (!in_array($adminId, $contactIds)) {
-            $contactIds[] = $adminId;
-        }
+        // PERBAIKAN: Ambil ID dinamis untuk Admin/Superadmin agar tidak hardcode di angka 4
+        $adminIds = User::whereIn('role', ['admin', 'superadmin'])->pluck('id_pengguna')->toArray();
+        $contactIds = array_unique(array_merge($contactIds, $adminIds));
 
-        $users = \App\Models\User::whereIn('id_pengguna', $contactIds)->get()->map(function($u) use ($userId) {
+        $users = User::whereIn('id_pengguna', $contactIds)->get()->map(function($u) use ($userId) {
             $uId = $u->id_pengguna;
 
-            $u->last_message_data = \App\Models\Message::where(function($q) use ($userId, $uId) {
+            $u->last_message_data = Message::where(function($q) use ($userId, $uId) {
                 $q->where('from_id', $userId)->where('to_id', $uId);
             })->orWhere(function($q) use ($userId, $uId) {
                 $q->where('from_id', $uId)->where('to_id', $userId);
             })->orderBy('created_at', 'desc')->first();
 
-            $u->unread_count = \App\Models\Message::where('from_id', $uId)
+            $u->unread_count = Message::where('from_id', $uId)
                 ->where('to_id', $userId)
                 ->whereNull('read_at')
                 ->count();
 
-            $store = \App\Models\Store::where('user_id', $uId)->first();
+            $store = Store::where('user_id', $uId)->first();
             if ($store) {
                 $u->nama_lengkap = $store->name;
                 // PERBAIKAN: Jangan timpa logo jika logo toko kosong
                 $u->store_logo_path = $store->logo ?? $u->store_logo_path ?? $u->profile_photo_path ?? null;
-            } elseif (in_array(strtolower($u->role ?? ''), ['admin', 'superadmin']) || $uId == 4) {
+            } elseif (in_array(strtolower($u->role ?? ''), ['admin', 'superadmin'])) {
                 $u->nama_lengkap = "Admin Sancaka";
                 $u->store_logo_path = $u->store_logo_path ?? $u->profile_photo_path ?? null;
             } else {
@@ -163,8 +158,8 @@ class ChatController extends Controller
     // =================================================================
     public function sendMessage(Request $request, $contactId)
     {
-        \Log::info('LOG LOG: [sendMessage] === REQUEST MASUK ===');
-        \Log::info('LOG LOG: [sendMessage] Mengirim pesan ke contactId (Tujuan): ' . $contactId);
+        Log::info('LOG LOG: [sendMessage] === REQUEST MASUK ===');
+        Log::info('LOG LOG: [sendMessage] Mengirim pesan ke contactId (Tujuan): ' . $contactId);
 
         $request->validate([
             'message' => 'nullable|string|max:2000',
@@ -175,19 +170,20 @@ class ChatController extends Controller
         $userId = $user->getKey();
         $messageText = $request->message ?? $request->content ?? '';
 
-        \Log::info('LOG LOG: [sendMessage] Pengirim (userId): ' . $userId . ' | Role: ' . ($user->role ?? 'Kosong'));
+        Log::info('LOG LOG: [sendMessage] Pengirim (userId): ' . $userId . ' | Role: ' . ($user->role ?? 'Kosong'));
 
         try {
             $imageUrl = null;
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
+                // Menggunakan penyimpanan external sesuai preferensi (D/External HDD via symlink public)
                 $path = $file->store('uploads/chat', 'public');
                 $imageUrl = $path;
-                \Log::info('LOG LOG: [sendMessage] Ada file gambar yang diupload: ' . $path);
+                Log::info('LOG LOG: [sendMessage] Ada file gambar yang diupload: ' . $path);
             }
 
             if (empty($messageText) && empty($imageUrl)) {
-                \Log::warning('LOG LOG: [sendMessage] GAGAL - Pesan dan gambar kosong.');
+                Log::warning('LOG LOG: [sendMessage] GAGAL - Pesan dan gambar kosong.');
                 return response()->json(['success' => false, 'message' => 'Pesan tidak boleh kosong.'], 400);
             }
 
@@ -199,33 +195,17 @@ class ChatController extends Controller
                 'product_id' => $request->product_id ?? null,
             ]);
 
-            \Log::info('LOG LOG: [sendMessage] Pesan berhasil disimpan ke DB (Message ID: ' . $message->id . ')');
+            Log::info('LOG LOG: [sendMessage] Pesan berhasil disimpan ke DB (Message ID: ' . $message->id . ')');
 
-            // --- LOGIKA BOT AI (DIPERBAIKI) ---
-            if (!empty($messageText)) {
-                // Ambil role user dengan aman
-                $userRole = strtolower($user->role ?? '');
+            Log::info('LOG LOG: [sendMessage] === REQUEST SELESAI (SUKSES) ===');
 
-                \Log::info('LOG LOG: [sendMessage] Mengecek pemicu AI untuk Role: ' . $userRole);
-
-                // Tambahkan 'seller' ke dalam daftar yang diperbolehkan memicu bot
-                if (in_array($userRole, ['pelanggan', 'seller'])) {
-                    \Log::info('LOG LOG: [sendMessage] Role diizinkan. Meneruskan ke forwardToBot...');
-                    $this->forwardToBot($userId, $messageText, $contactId);
-                } else {
-                    \Log::info('LOG LOG: [sendMessage] Role ' . $userRole . ' tidak diset untuk memicu bot.');
-                }
-            }
-            // ----------------------------------
-
-            \Log::info('LOG LOG: [sendMessage] === REQUEST SELESAI (SUKSES) ===');
             return response()->json([
                 'success' => true,
                 'message' => 'Terkirim'
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('LOG LOG: [sendMessage] ERROR SISTEM: ' . $e->getMessage());
+            Log::error('LOG LOG: [sendMessage] ERROR SISTEM: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
         }
     }
@@ -255,72 +235,4 @@ class ChatController extends Controller
             return response()->json(['success' => false, 'message' => 'Gagal menghapus pesan.'], 500);
         }
     }
-
-   // =================================================================
-    // FUNGSI UNTUK MENGIRIM PESAN KE GEMINI AI (PENGGANTI N8N)
-    // =================================================================
-    private function forwardToBot($userId, $messageText, $botId)
-    {
-        \Log::info('LOG LOG: === MULAI MEMANGGIL AI GEMINI ===');
-        \Log::info('LOG LOG: UserID: ' . $userId . ' | Tujuan Toko (BotID): ' . $botId . ' | Pesan: ' . $messageText);
-
-        try {
-            // Prompt khusus agar AI merespons sebagai Customer Service Sancaka Express
-            $prompt = "Anda adalah asisten virtual (Customer Service) untuk Sancaka Express.\n" .
-                      "Tugas Anda adalah menjawab pertanyaan pelanggan dengan ramah, sopan, ringkas, dan jelas.\n" .
-                      "Gunakan bahasa Indonesia yang baik. Hindari penggunaan format Markdown seperti bintang (**) atau tanda pagar (#) karena ini adalah antarmuka chat biasa.\n\n" .
-                      "Pertanyaan Pelanggan: " . $messageText;
-
-            // PANGGIL SECARA DINAMIS DARI .ENV (AMAN UNTUK GITHUB)
-            $apiKey = config('services.gemini.key');
-            $model = config('services.gemini.model', 'gemini-3.1-flash-lite');
-            $baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
-
-            // Eksekusi API secara langsung dari Controller
-            $response = \Illuminate\Support\Facades\Http::timeout(120)
-                ->withHeaders(['Content-Type' => 'application/json'])
-                ->post("{$baseUrl}?key={$apiKey}", [
-                    'contents' => [
-                        [
-                            'parts' => [['text' => $prompt]]
-                        ]
-                    ]
-                ]);
-
-            $botReply = null;
-
-            if ($response->successful()) {
-                $data = $response->json();
-                $botReply = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
-                \Log::info('LOG LOG: Response API berhasil diproses.');
-            } else {
-                $errorBody = $response->json();
-                $errorMessage = $errorBody['error']['message'] ?? 'Unknown API Error';
-                \Log::error('LOG LOG: API Gemini mengembalikan indikasi error: ' . $errorMessage);
-
-                // Fallback text agar user tetap mendapat balasan humanis saat sistem AI limit/down
-                $botReply = "Mohon maaf, asisten virtual kami sedang sibuk atau dalam perbaikan. Silakan tinggalkan pesan Anda, tim Admin Sancaka akan segera membalas.";
-            }
-
-            // Simpan balasan ke tabel Messages jika tidak kosong
-            if (!empty($botReply)) {
-                Message::create([
-                    'from_id' => $botId,
-                    'to_id'   => $userId,
-                    'message' => $botReply,
-                ]);
-                \Log::info('LOG LOG: Balasan bot berhasil disimpan ke DB!');
-            } else {
-                \Log::error('LOG LOG: Respons dari AI kosong, gagal menyimpan ke database.');
-            }
-
-        } catch (\Exception $e) {
-            // Menangkap fatal error pada level Controller (seperti timeout koneksi)
-            \Log::error('LOG LOG: Gagal/Error Sistem di Controller saat memanggil AI: ' . $e->getMessage());
-        }
-
-        \Log::info('LOG LOG: === SELESAI MEMANGGIL AI GEMINI ===');
-    }
 }
-
-
