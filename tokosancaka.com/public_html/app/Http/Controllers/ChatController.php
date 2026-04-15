@@ -266,11 +266,21 @@ class ChatController extends Controller
             \Log::info('LOG LOG: Status Code dari n8n: ' . $response->status());
 
             if ($response->successful()) {
-                \Log::info('LOG LOG: Response Mentah n8n: ' . json_encode($response->json()));
+                $rawBody = $response->body();
+                $jsonResponse = $response->json();
+
+                \Log::info('LOG LOG: Response Mentah n8n (Body): ' . $rawBody);
+                \Log::info('LOG LOG: Response JSON n8n: ' . json_encode($jsonResponse));
 
                 // N8n AI Agent biasanya meletakkan teks di field 'output'
-                // Kita coba ambil 'output', jika tidak ada kita ambil 'balasan'
-                $botReply = $response->json('output') ?? $response->json('balasan');
+                // Ditambahkan fallback untuk membaca plain text jika respons tidak berformat JSON murni
+                $botReply = null;
+
+                if (is_array($jsonResponse)) {
+                    $botReply = $jsonResponse['output'] ?? $jsonResponse['balasan'] ?? $jsonResponse['text'] ?? null;
+                } elseif (!empty($rawBody)) {
+                    $botReply = $rawBody;
+                }
 
                 if (!empty($botReply)) {
                     Message::create([
@@ -280,8 +290,10 @@ class ChatController extends Controller
                     ]);
                     \Log::info('LOG LOG: Balasan bot berhasil disimpan!');
                 } else {
-                    \Log::error('LOG LOG: Field output/balasan tidak ditemukan. Isi JSON: ' . json_encode($response->json()));
+                    \Log::error('LOG LOG: Field output/balasan tidak ditemukan atau respons kosong. Isi Body: ' . $rawBody);
                 }
+            } else {
+                \Log::error('LOG LOG: n8n mengembalikan status error: ' . $response->status() . ' - ' . $response->body());
             }
         } catch (\Exception $e) {
             // Jika n8n mati atau timeout
