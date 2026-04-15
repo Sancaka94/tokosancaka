@@ -234,12 +234,15 @@ class ChatController extends Controller
     }
 
     // =================================================================
-    // FUNGSI BARU UNTUK MENGIRIM PESAN KE N8N DAN MENYIMPAN BALASANNYA
+    // FUNGSI UNTUK MENGIRIM PESAN KE N8N DAN MENYIMPAN BALASANNYA
     // =================================================================
     private function forwardToBot($userId, $messageText, $botId)
     {
         // Ganti dengan Production URL dari node Webhook n8n Anda
         $n8nWebhookUrl = 'https://ykzu69-n8n.bocindonesia.com/webhook/sancaka-chat';
+
+        \Log::info('LOG LOG: === MULAI MEMANGGIL AI ===');
+        \Log::info('LOG LOG: UserID: ' . $userId . ' | Tujuan Toko (BotID): ' . $botId . ' | Pesan: ' . $messageText);
 
         try {
             // Tembak API n8n
@@ -248,22 +251,34 @@ class ChatController extends Controller
                 'message' => $messageText
             ]);
 
+            \Log::info('LOG LOG: Status Code dari n8n: ' . $response->status());
+
             if ($response->successful()) {
-                // Ambil field "balasan" dari JSON n8n (sesuai setting Respond to Webhook kita)
+                // Catat bentuk mentah balasan dari n8n
+                \Log::info('LOG LOG: Response Mentah n8n: ' . json_encode($response->json()));
+
+                // Ambil field "balasan" dari JSON n8n
                 $botReply = $response->json('balasan');
 
                 if (!empty($botReply)) {
-                    // Simpan balasan bot ke database seolah-olah dikirim oleh akun Bot/Admin
+                    // Simpan balasan bot ke database seolah-olah dikirim oleh akun Toko/Admin
                     Message::create([
                         'from_id' => $botId,
                         'to_id'   => $userId,
                         'message' => $botReply,
                     ]);
+                    \Log::info('LOG LOG: Balasan bot berhasil di-insert ke database!');
+                } else {
+                    \Log::error('LOG LOG: N8n membalas sukses, tapi field "balasan" kosong atau tidak ditemukan dalam format JSON.');
                 }
+            } else {
+                \Log::error('LOG LOG: N8n menolak request. Response body: ' . $response->body());
             }
         } catch (\Exception $e) {
-            // Jika n8n mati atau timeout, Anda bisa abaikan atau beri pesan error default
-            \Log::error('Gagal menghubungi Bot n8n: ' . $e->getMessage());
+            // Jika n8n mati atau timeout
+            \Log::error('LOG LOG: Gagal/Timeout menghubungi Bot n8n: ' . $e->getMessage());
         }
+
+        \Log::info('LOG LOG: === SELESAI MEMANGGIL AI ===');
     }
 }
