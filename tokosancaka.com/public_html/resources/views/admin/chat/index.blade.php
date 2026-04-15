@@ -548,9 +548,8 @@
                         <div class="avatar" style="{{ $finalAvatarUrl ? 'background-image: url(' . $finalAvatarUrl . '); color: transparent;' : '' }}">
                             @if(!$finalAvatarUrl) {{ $initial }} @endif
                         </div>
-                        @if($isOnline)
-                            <div class="online-badge"></div>
-                        @endif
+
+                        <div class="online-badge sidebar-badge" style="display: {{ $isOnline ? 'block' : 'none' }}; z-index: 20;"></div>
                     </div>
 
                     <div class="user-details">
