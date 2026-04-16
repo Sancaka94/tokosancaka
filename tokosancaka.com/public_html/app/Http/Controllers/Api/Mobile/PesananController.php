@@ -603,10 +603,27 @@ class PesananController extends Controller
 
             \Illuminate\Support\Facades\Log::info("[API MOBILE] Pesanan ditemukan. Melanjutkan pembatalan untuk ID/Invoice: {$order->nomor_invoice}");
 
+            // =========================================================================
+            // 🔥 LOGIKA BYPASS UNTUK RESI MOCK (TESTING) 🔥
+            // =========================================================================
+            if (\Illuminate\Support\Str::startsWith($validatedData['awb'], 'MOCK')) {
+                \Illuminate\Support\Facades\Log::info("[API MOBILE] Resi MOCK terdeteksi. Membatalkan pesanan secara lokal tanpa hit API KiriminAja.");
+
+                $order->status = 'Dibatalkan';
+                $order->status_pesanan = 'Dibatalkan';
+                $order->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pesanan (Testing) berhasil dibatalkan secara lokal.'
+                ], 200);
+            }
+            // =========================================================================
+
+
             $apiKey = env('KIRIMINAJA_API_KEY'); // Pastikan API Key di .env sudah benar
 
             // 4. LOGIKA URL DINAMIS (Berdasarkan mode di .env)
-            // Ubah 'KIRIMINAJA_MODE' di file .env menjadi 'production' jika aplikasi sudah rilis
             $isProduction = env('KIRIMINAJA_MODE', 'sandbox') === 'production';
             $domain = $isProduction ? 'https://client.kiriminaja.com' : 'https://tdev.kiriminaja.com';
             $endpoint = $domain . '/api/mitra/v3/cancel_shipment';
@@ -644,7 +661,6 @@ class PesananController extends Controller
             return response()->json(['success' => false, 'message' => $jsonResponse['text'] ?? 'Gagal di sistem ekspedisi.'], 400);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // TANGKAP ERROR VALIDASI SECARA TERPISAH AGAR RESPONSE 422 (Unprocessable Entity)
             \Illuminate\Support\Facades\Log::warning('[API MOBILE] Validasi gagal saat cancelOrder:', $e->errors());
             return response()->json([
                 'success' => false,
@@ -653,7 +669,6 @@ class PesananController extends Controller
             ], 422);
 
         } catch (\Exception $e) {
-            // ERROR SISTEM UMUM
             \Illuminate\Support\Facades\Log::error('[API MOBILE] Exception pada cancelOrder: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
