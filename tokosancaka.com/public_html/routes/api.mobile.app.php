@@ -330,4 +330,4 @@ Route::middleware('auth:sanctum')->prefix('marketplace')->group(function () {
 
 });
 
-Route::post('/mobile/customer/pesanan/cancel', [App\Http\Controllers\Api\Mobile\PesananController::class, 'cancelOrder']);
+Route::post('/customer/pesanan/cancel', [App\Http\Controllers\Api\Mobile\PesananController::class, 'cancelOrder']);
