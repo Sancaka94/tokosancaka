@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\TelegramGroup;
 use App\Models\TelegramMessage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log; // Wajib di-import untuk LOG LOG
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class TelegramGroupController extends Controller
 {
@@ -60,10 +61,7 @@ class TelegramGroupController extends Controller
     {
         Log::info("LOG LOG: 🟢 Menerima payload Webhook dari Telegram API.");
 
-        // Telegram mengirimkan data berformat JSON
         $update = $request->all();
-
-        // Pastikan ini adalah pesan dari channel atau grup
         $message = $update['message'] ?? $update['channel_post'] ?? null;
 
         if ($message) {
@@ -74,13 +72,12 @@ class TelegramGroupController extends Controller
 
             $mediaType = null;
             $mediaFileId = null;
+            $localMediaPath = null;
 
             Log::info("LOG LOG: Memproses pesan ID {$messageId} dari Chat/Grup: {$chatTitle}");
 
-            // Deteksi jika ada media (Foto/Dokumen/Video)
             if (isset($message['photo'])) {
                 $mediaType = 'photo';
-                // Ambil ukuran foto terbesar (elemen terakhir dari array photo)
                 $mediaFileId = end($message['photo'])['file_id'];
                 Log::info("LOG LOG: Terdeteksi media (Foto) pada pesan ID {$messageId}.");
             } elseif (isset($message['video'])) {
@@ -93,15 +90,40 @@ class TelegramGroupController extends Controller
                 Log::info("LOG LOG: Terdeteksi media (Dokumen) pada pesan ID {$messageId}.");
             }
 
+            if ($mediaFileId) {
+                $botToken = env('TELEGRAM_BOT_TOKEN');
+
+                try {
+                    Log::info("LOG LOG: Meminta file_path ke Telegram untuk File ID: {$mediaFileId}");
+                    $response = Http::get("https://api.telegram.org/bot{$botToken}/getFile?file_id={$mediaFileId}");
+
+                    if ($response->successful() && isset($response->json()['result']['file_path'])) {
+                        $filePath = $response->json()['result']['file_path'];
+                        $telegramFileUrl = "https://api.telegram.org/file/bot{$botToken}/{$filePath}";
+
+                        $fileContents = Http::get($telegramFileUrl)->body();
+                        $fileName = 'telegram_media/' . basename($filePath);
+
+                        Storage::disk('public')->put($fileName, $fileContents);
+                        $localMediaPath = $fileName;
+                        Log::info("LOG LOG: ✅ Berhasil mendownload dan menyimpan media ke {$fileName}");
+                    } else {
+                        Log::error("LOG LOG: ❌ Gagal mendapatkan file_path dari Telegram.");
+                    }
+                } catch (\Exception $e) {
+                    Log::error("LOG LOG: ❌ Terjadi error saat mendownload media: " . $e->getMessage());
+                }
+            }
+
             try {
-                // Simpan ke Database (Gunakan updateOrCreate agar jika bot restart tidak ada data ganda)
                 TelegramMessage::updateOrCreate(
                     ['message_id' => $messageId, 'chat_id' => $chatId],
                     [
                         'chat_title' => $chatTitle,
                         'text' => $text,
                         'media_type' => $mediaType,
-                        'media_file_id' => $mediaFileId
+                        'media_file_id' => $mediaFileId,
+                        'local_media_path' => $localMediaPath
                     ]
                 );
 
@@ -114,7 +136,6 @@ class TelegramGroupController extends Controller
             Log::warning("LOG LOG: ⚠️ Payload webhook diterima tapi tidak ada object 'message' atau 'channel_post'.");
         }
 
-        // Telegram API selalu mengharapkan respon 200 OK agar tidak mengirim ulang pesan yang sama
         return response('OK', 200);
     }
 
@@ -135,7 +156,6 @@ class TelegramGroupController extends Controller
         $groups = TelegramGroup::all();
         $hasil_pencarian = [];
 
-        // Mencari dari database kita sendiri (Sangat Cepat!)
         $dbMessages = TelegramMessage::where('text', 'LIKE', "%{$keyword}%")
                         ->orderBy('created_at', 'desc')
                         ->limit(30)
@@ -143,39 +163,12 @@ class TelegramGroupController extends Controller
 
         Log::info("LOG LOG: Ditemukan " . $dbMessages->count() . " hasil di MySQL untuk '{$keyword}'.");
 
-        $botToken = env('TELEGRAM_BOT_TOKEN');
-
-        if (!$botToken) {
-            Log::warning("LOG LOG: ⚠️ TELEGRAM_BOT_TOKEN belum disetting di file .env!");
-        }
-
         foreach ($dbMessages as $msg) {
-            $path_media = null;
-
-            // Jika ada media, kita minta link download langsung dari Telegram (Tanpa mendownload file fisik ke server)
-            if ($msg->media_file_id && $botToken) {
-                try {
-                    Log::info("LOG LOG: Request URL gambar ke Telegram untuk File ID: {$msg->media_file_id}");
-
-                    // Request untuk mendapatkan File Path ke server API Telegram
-                    $response = Http::get("https://api.telegram.org/bot{$botToken}/getFile?file_id={$msg->media_file_id}");
-
-                    if ($response->successful() && isset($response->json()['result']['file_path'])) {
-                        $filePath = $response->json()['result']['file_path'];
-                        // Generate URL langsung ke server Telegram CDN
-                        $path_media = "https://api.telegram.org/file/bot{$botToken}/{$filePath}";
-                        Log::info("LOG LOG: ✅ Berhasil generate URL Media CDN untuk pesan ID {$msg->message_id}");
-                    } else {
-                        Log::error("LOG LOG: ❌ Gagal ambil file path. Response Telegram: " . $response->body());
-                    }
-                } catch (\Exception $e) {
-                    Log::error("LOG LOG: ❌ Terjadi error saat hit API HTTP getFile: " . $e->getMessage());
-                }
-            }
+            $path_media = $msg->local_media_path ? asset('storage/' . $msg->local_media_path) : null;
 
             $hasil_pencarian[] = [
                 'grup'       => $msg->chat_title,
-                'link_grup'  => '#', // Link asli
+                'link_grup'  => '#',
                 'teks'       => $msg->text ?? '[Hanya Media]',
                 'tipe_media' => $msg->media_type,
                 'path_media' => $path_media,
