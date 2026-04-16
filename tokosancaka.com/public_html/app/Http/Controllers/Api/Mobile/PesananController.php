@@ -604,7 +604,7 @@ class PesananController extends Controller
                 'Authorization' => "Bearer {$apiKey}",
                 'Accept'        => 'application/json',
                 'Content-Type'  => 'application/json'
-            ])->post('https://api.kiriminaja.com/api/mitra/v2/cancel_shipment', [
+            ])->post('https://api.kiriminaja.com/api/mitra/v3/cancel_shipment', [
                 'awb'    => $validatedData['awb'],
                 'reason' => $validatedData['reason']
             ]);
