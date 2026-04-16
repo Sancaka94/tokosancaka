@@ -87,4 +87,4 @@ Thumbs.db
 *.keystore
 *.mobileprovision
 google-services.json
-GoogleService-Info.plist
+GoogleService-Info.plist*.apk
