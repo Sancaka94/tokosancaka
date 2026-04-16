@@ -576,16 +576,30 @@ class PesananController extends Controller
 
     public function cancelOrder(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info('[API MOBILE] Memulai proses cancelOrder. Data Request:', $request->all());
+
         try {
             $validatedData = $request->validate([
                 'awb'    => 'required|string|max:30',
                 'reason' => 'required|string|min:5|max:200',
             ]);
+            \Illuminate\Support\Facades\Log::info('[API MOBILE] Validasi cancelOrder berhasil dilewati.', $validatedData);
 
             $order = Pesanan::where('resi', $validatedData['awb'])->first();
-            if (!$order) return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
+
+            if (!$order) {
+                \Illuminate\Support\Facades\Log::warning("[API MOBILE] CancelOrder gagal: Pesanan dengan resi {$validatedData['awb']} tidak ditemukan.");
+                return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
+            }
+            \Illuminate\Support\Facades\Log::info("[API MOBILE] Pesanan ditemukan. Melanjutkan pembatalan untuk ID/Invoice: {$order->nomor_invoice}");
 
             $apiKey = env('KIRIMINAJA_API_KEY'); // Sesuaikan API Key Anda
+
+            \Illuminate\Support\Facades\Log::info('[API MOBILE] Mengirim payload pembatalan ke API KiriminAja...', [
+                'awb' => $validatedData['awb'],
+                'reason' => $validatedData['reason']
+            ]);
+
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'Authorization' => "Bearer {$apiKey}",
                 'Accept'        => 'application/json',
@@ -596,18 +610,26 @@ class PesananController extends Controller
             ]);
 
             $jsonResponse = $response->json();
+            \Illuminate\Support\Facades\Log::info('[API MOBILE] Response dari KiriminAja (cancel_shipment):', is_array($jsonResponse) ? $jsonResponse : ['response' => $jsonResponse]);
 
             if (isset($jsonResponse['status']) && $jsonResponse['status'] === true) {
                 $order->status = 'Dibatalkan';
                 $order->status_pesanan = 'Dibatalkan';
                 $order->save();
 
+                \Illuminate\Support\Facades\Log::info("[API MOBILE] Status pesanan {$order->nomor_invoice} berhasil diupdate menjadi 'Dibatalkan' di database.");
                 return response()->json(['success' => true, 'message' => $jsonResponse['text'] ?? 'Berhasil.'], 200);
             }
 
+            \Illuminate\Support\Facades\Log::error('[API MOBILE] Gagal membatalkan di sistem ekspedisi KiriminAja.', $jsonResponse ?? []);
             return response()->json(['success' => false, 'message' => $jsonResponse['text'] ?? 'Gagal di sistem ekspedisi.'], 400);
 
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[API MOBILE] Exception pada cancelOrder: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
