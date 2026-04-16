@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sancaka Search Engine</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #ffffff;
+        }
+        /* Efek Warna Warni ala Google untuk tulisan Sancaka */
+        .logo {
+            font-size: 5rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            letter-spacing: -2px;
+        }
+        .logo span:nth-child(1) { color: #4285F4; } /* S */
+        .logo span:nth-child(2) { color: #EA4335; } /* a */
+        .logo span:nth-child(3) { color: #FBBC05; } /* n */
+        .logo span:nth-child(4) { color: #4285F4; } /* c */
+        .logo span:nth-child(5) { color: #34A853; } /* a */
+        .logo span:nth-child(6) { color: #EA4335; } /* k */
+        .logo span:nth-child(7) { color: #FBBC05; } /* a */
+        
+        .search-box {
+            width: 100%;
+            max-width: 600px;
+            position: relative;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+        .search-input {
+            width: 100%;
+            padding: 14px 20px 14px 45px;
+            border: 1px solid #dfe1e5;
+            border-radius: 24px;
+            font-size: 16px;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .search-input:hover, .search-input:focus {
+            box-shadow: 0 1px 6px rgba(32,33,36,.28);
+            border-color: rgba(223,225,229,0);
+        }
+        .search-icon {
+            position: absolute;
+            left: 35px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9aa0a6;
+            font-size: 18px;
+        }
+        .buttons {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
+        .btn {
+            background-color: #f8f9fa;
+            border: 1px solid #f8f9fa;
+            border-radius: 4px;
+            color: #3c4043;
+            font-family: arial,sans-serif;
+            font-size: 14px;
+            padding: 0 16px;
+            height: 36px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            box-shadow: 0 1px 1px rgba(0,0,0,.1);
+            border: 1px solid #dadce0;
+            color: #202124;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="logo">
+        <span>S</span><span>a</span><span>n</span><span>c</span><span>a</span><span>k</span><span>a</span>
+    </div>
+
+    <form class="search-box" action="http://search.tokosancaka.com:8501" method="GET">
+        <span class="search-icon">🔍</span>
+        <input type="text" name="q" class="search-input" placeholder="Cari artikel, brosur, atau kajian video..." required autofocus autocomplete="off">
+        
+        <div class="buttons">
+            <button type="submit" class="btn">Penelusuran Sancaka</button>
+            <button type="button" class="btn" onclick="alert('In Syaa Allah akan selalu mendapatkan hasil yang bermanfaat!')">Saya Lagi Beruntung</button>
+        </div>
+    </form>
+
+</body>
+</html>
