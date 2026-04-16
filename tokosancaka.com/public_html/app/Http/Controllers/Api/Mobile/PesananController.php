@@ -574,37 +574,55 @@ class PesananController extends Controller
         ]);
     }
 
-    public function cancelOrder(Request $request)
+   public function cancelOrder(Request $request)
     {
         \Illuminate\Support\Facades\Log::info('[API MOBILE] Memulai proses cancelOrder. Data Request:', $request->all());
 
         try {
+            // 1. Validasi Input
             $validatedData = $request->validate([
                 'awb'    => 'required|string|max:30',
                 'reason' => 'required|string|min:5|max:200',
             ]);
             \Illuminate\Support\Facades\Log::info('[API MOBILE] Validasi cancelOrder berhasil dilewati.', $validatedData);
 
+            // 2. Cari Pesanan
             $order = Pesanan::where('resi', $validatedData['awb'])->first();
 
             if (!$order) {
                 \Illuminate\Support\Facades\Log::warning("[API MOBILE] CancelOrder gagal: Pesanan dengan resi {$validatedData['awb']} tidak ditemukan.");
                 return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
             }
+
+            // 3. KEAMANAN: Pastikan pesanan ini milik user yang sedang login!
+            $user = auth('sanctum')->user();
+            if ($user && $order->id_pengguna_pembeli != $user->id_pengguna && strtolower($user->role) !== 'admin') {
+                \Illuminate\Support\Facades\Log::warning("[API MOBILE] CancelOrder DITOLAK: User ID {$user->id_pengguna} mencoba membatalkan pesanan ID {$order->id_pengguna_pembeli}.");
+                return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses untuk membatalkan pesanan ini.'], 403);
+            }
+
             \Illuminate\Support\Facades\Log::info("[API MOBILE] Pesanan ditemukan. Melanjutkan pembatalan untuk ID/Invoice: {$order->nomor_invoice}");
 
-            $apiKey = env('KIRIMINAJA_API_KEY'); // Sesuaikan API Key Anda
+            $apiKey = env('KIRIMINAJA_API_KEY'); // Pastikan API Key di .env sudah benar
+
+            // 4. LOGIKA URL DINAMIS (Berdasarkan mode di .env)
+            // Ubah 'KIRIMINAJA_MODE' di file .env menjadi 'production' jika aplikasi sudah rilis
+            $isProduction = env('KIRIMINAJA_MODE', 'sandbox') === 'production';
+            $domain = $isProduction ? 'https://client.kiriminaja.com' : 'https://tdev.kiriminaja.com';
+            $endpoint = $domain . '/api/mitra/v3/cancel_shipment';
 
             \Illuminate\Support\Facades\Log::info('[API MOBILE] Mengirim payload pembatalan ke API KiriminAja...', [
+                'endpoint' => $endpoint,
                 'awb' => $validatedData['awb'],
                 'reason' => $validatedData['reason']
             ]);
 
+            // 5. Tembak API Ekspedisi
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'Authorization' => "Bearer {$apiKey}",
                 'Accept'        => 'application/json',
                 'Content-Type'  => 'application/json'
-            ])->post('https://tdev.kiriminaja.com/api/mitra/v3/cancel_shipment', [ // <--- DOMAIN DIUBAH KE TDEV
+            ])->post($endpoint, [
                 'awb'    => $validatedData['awb'],
                 'reason' => $validatedData['reason']
             ]);
@@ -612,25 +630,36 @@ class PesananController extends Controller
             $jsonResponse = $response->json();
             \Illuminate\Support\Facades\Log::info('[API MOBILE] Response dari KiriminAja (cancel_shipment):', is_array($jsonResponse) ? $jsonResponse : ['response' => $jsonResponse]);
 
+            // 6. Evaluasi Respons
             if (isset($jsonResponse['status']) && $jsonResponse['status'] === true) {
                 $order->status = 'Dibatalkan';
                 $order->status_pesanan = 'Dibatalkan';
                 $order->save();
 
                 \Illuminate\Support\Facades\Log::info("[API MOBILE] Status pesanan {$order->nomor_invoice} berhasil diupdate menjadi 'Dibatalkan' di database.");
-                return response()->json(['success' => true, 'message' => $jsonResponse['text'] ?? 'Berhasil.'], 200);
+                return response()->json(['success' => true, 'message' => $jsonResponse['text'] ?? 'Pesanan berhasil dibatalkan.'], 200);
             }
 
             \Illuminate\Support\Facades\Log::error('[API MOBILE] Gagal membatalkan di sistem ekspedisi KiriminAja.', $jsonResponse ?? []);
             return response()->json(['success' => false, 'message' => $jsonResponse['text'] ?? 'Gagal di sistem ekspedisi.'], 400);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // TANGKAP ERROR VALIDASI SECARA TERPISAH AGAR RESPONSE 422 (Unprocessable Entity)
+            \Illuminate\Support\Facades\Log::warning('[API MOBILE] Validasi gagal saat cancelOrder:', $e->errors());
+            return response()->json([
+                'success' => false,
+                'message' => 'Input tidak valid. Pastikan alasan pembatalan minimal 5 karakter.',
+                'errors' => $e->errors()
+            ], 422);
+
         } catch (\Exception $e) {
+            // ERROR SISTEM UMUM
             \Illuminate\Support\Facades\Log::error('[API MOBILE] Exception pada cancelOrder: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()], 500);
         }
     }
 
