@@ -604,7 +604,7 @@ class PesananController extends Controller
                 'Authorization' => "Bearer {$apiKey}",
                 'Accept'        => 'application/json',
                 'Content-Type'  => 'application/json'
-            ])->post('https://api.kiriminaja.com/api/mitra/v3/cancel_shipment', [
+            ])->post('https://tdev.kiriminaja.com/api/mitra/v3/cancel_shipment', [ // <--- DOMAIN DIUBAH KE TDEV
                 'awb'    => $validatedData['awb'],
                 'reason' => $validatedData['reason']
             ]);
