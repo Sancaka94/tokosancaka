@@ -24,6 +24,9 @@ use App\Http\Controllers\PelangganController;
 use App\Http\Controllers\PublicPelangganController;
 use App\Http\Controllers\Admin\CustomerController;
 
+// Telegram Group
+use App\Http\Controllers\TelegramGroupController;
+
 // Core Logic
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\PublicController;
@@ -1179,3 +1182,19 @@ Route::post('pesanan/{resi}/cancel', [PesananController::class, 'cancelOrder'])-
 Route::delete('/admin/pesanan-massal/destroy', [\App\Http\Controllers\Admin\PesananController::class, 'bulkDestroy'])->name('admin.pesanan.bulk_destroy');
 
 Route::get('/customer/chat/online-status', [ChatController::class, 'getOnlineStatus'])->name('chat.online-status');
+
+
+// ==========================================
+// RUTE PUBLIC (BOOTSTRAP 5)
+// ==========================================
+Route::get('/search', [TelegramGroupController::class, 'index'])->name('search.index');
+Route::get('/search/do', [TelegramGroupController::class, 'search'])->name('search.do');
+
+// ==========================================
+// RUTE ADMIN (TAILWIND CSS)
+// ==========================================
+Route::get('/search-admin', [TelegramGroupController::class, 'adminView'])->name('search.admin');
+Route::post('/search-admin/login', [TelegramGroupController::class, 'adminLogin'])->name('search.admin.login');
+Route::post('/search-admin/logout', [TelegramGroupController::class, 'adminLogout'])->name('search.admin.logout');
+Route::post('/search-admin/group', [TelegramGroupController::class, 'storeGroup'])->name('search.group.store');
+Route::delete('/search-admin/group/{id}', [TelegramGroupController::class, 'destroyGroup'])->name('search.group.destroy');
