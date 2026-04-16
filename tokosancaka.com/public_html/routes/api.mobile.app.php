@@ -329,3 +329,4 @@ Route::middleware('auth:sanctum')->prefix('marketplace')->group(function () {
     Route::get('/store/{id}', [MarketplaceMobileController::class, 'showStore']);
 
 });
+

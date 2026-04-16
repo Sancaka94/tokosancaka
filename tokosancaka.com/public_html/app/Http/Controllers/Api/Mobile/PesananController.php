@@ -573,4 +573,42 @@ class PesananController extends Controller
             'last_page' => $orders->lastPage()
         ]);
     }
+
+    public function cancelOrder(Request $request)
+    {
+        try {
+            $validatedData = $request->validate([
+                'awb'    => 'required|string|max:30',
+                'reason' => 'required|string|min:5|max:200',
+            ]);
+
+            $order = Pesanan::where('resi', $validatedData['awb'])->first();
+            if (!$order) return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
+
+            $apiKey = env('KIRIMINAJA_API_KEY'); // Sesuaikan API Key Anda
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Authorization' => "Bearer {$apiKey}",
+                'Accept'        => 'application/json',
+                'Content-Type'  => 'application/json'
+            ])->post('https://api.kiriminaja.com/api/mitra/v2/cancel_shipment', [
+                'awb'    => $validatedData['awb'],
+                'reason' => $validatedData['reason']
+            ]);
+
+            $jsonResponse = $response->json();
+
+            if (isset($jsonResponse['status']) && $jsonResponse['status'] === true) {
+                $order->status = 'Dibatalkan';
+                $order->status_pesanan = 'Dibatalkan';
+                $order->save();
+
+                return response()->json(['success' => true, 'message' => $jsonResponse['text'] ?? 'Berhasil.'], 200);
+            }
+
+            return response()->json(['success' => false, 'message' => $jsonResponse['text'] ?? 'Gagal di sistem ekspedisi.'], 400);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
 }
