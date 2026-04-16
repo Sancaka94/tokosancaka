@@ -1198,3 +1198,5 @@ Route::post('/search-admin/login', [TelegramGroupController::class, 'adminLogin'
 Route::post('/search-admin/logout', [TelegramGroupController::class, 'adminLogout'])->name('search.admin.logout');
 Route::post('/search-admin/group', [TelegramGroupController::class, 'storeGroup'])->name('search.group.store');
 Route::delete('/search-admin/group/{id}', [TelegramGroupController::class, 'destroyGroup'])->name('search.group.destroy');
+
+Route::post('/customer/pesanan/cancel', [App\Http\Controllers\Customer\PesananController::class, 'cancelOrder'])->name('customer.pesanan.cancel');

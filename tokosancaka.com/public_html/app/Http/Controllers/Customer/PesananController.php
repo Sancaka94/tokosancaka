@@ -1751,4 +1751,82 @@ public function cetakThermal($resi)
         }
     }
 
+    /**
+     * =========================================================================
+     * FUNGSI CANCEL EXPRESS ORDER (WEB CUSTOMER)
+     * =========================================================================
+     */
+    public function cancelOrder(Request $request)
+    {
+        Log::info('[WEB CUSTOMER] Request pembatalan pesanan:', $request->all());
+
+        try {
+            // 1. Validasi Input
+            $validatedData = $request->validate([
+                'awb'    => 'required|string|max:30',
+                'reason' => 'required|string|min:5|max:200',
+            ]);
+
+            // 2. Cari Pesanan di Database (Hanya yang milik user login)
+            $userId = Auth::id();
+            $order = Pesanan::where('resi', $validatedData['awb'])
+                            ->where('id_pengguna_pembeli', $userId)
+                            ->first();
+
+            if (!$order) {
+                Log::warning("[WEB CUSTOMER] CancelOrder gagal: Pesanan tidak ditemukan atau bukan milik user login.");
+                return redirect()->back()->with('error', 'Pesanan tidak ditemukan atau Anda tidak memiliki akses.');
+            }
+
+            Log::info("[WEB CUSTOMER] Pesanan ditemukan. Melanjutkan pembatalan untuk ID/Invoice: {$order->nomor_invoice}");
+
+            // 3. Tembak API Ekspedisi (KiriminAja)
+            $apiKey = env('KIRIMINAJA_API_KEY'); // Sesuaikan API Key Anda
+            $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox'); // Pakai pengecekan mode yang sama
+            $kiriminajaDomain = ($mode === 'production') ? 'https://client.kiriminaja.com' : 'https://tdev.kiriminaja.com';
+
+            $endpoint = $kiriminajaDomain . '/api/mitra/v3/cancel_shipment';
+
+            Log::info('[WEB CUSTOMER] Mengirim payload pembatalan ke API KiriminAja...', [
+                'endpoint' => $endpoint,
+                'awb' => $validatedData['awb']
+            ]);
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Authorization' => "Bearer {$apiKey}",
+                'Accept'        => 'application/json',
+                'Content-Type'  => 'application/json'
+            ])->post($endpoint, [
+                'awb'    => $validatedData['awb'],
+                'reason' => $validatedData['reason']
+            ]);
+
+            $jsonResponse = $response->json();
+            Log::info('[WEB CUSTOMER] Response dari KiriminAja (cancel_shipment):', is_array($jsonResponse) ? $jsonResponse : ['response' => $jsonResponse]);
+
+            // 4. Update Database jika Berhasil
+            if (isset($jsonResponse['status']) && $jsonResponse['status'] === true) {
+
+                $order->status = 'Dibatalkan';
+                $order->status_pesanan = 'Dibatalkan';
+                $order->save();
+
+                Log::info("[WEB CUSTOMER] Status pesanan {$order->nomor_invoice} berhasil diupdate menjadi 'Dibatalkan'.");
+                return redirect()->back()->with('success', $jsonResponse['text'] ?? 'Pesanan berhasil dibatalkan.');
+            }
+
+            // Jika Gagal dari pihak Ekspedisi
+            Log::error('[WEB CUSTOMER] Gagal membatalkan di sistem ekspedisi KiriminAja.', $jsonResponse ?? []);
+            return redirect()->back()->with('error', $jsonResponse['text'] ?? 'Gagal membatalkan pesanan di sistem ekspedisi.');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            Log::error('[WEB CUSTOMER] Gagal Cancel Order: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+        }
+    }
+
 }
