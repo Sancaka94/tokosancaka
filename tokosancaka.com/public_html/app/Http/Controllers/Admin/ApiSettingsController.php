@@ -258,4 +258,22 @@ class ApiSettingsController extends Controller
         }
     }
 
+    public function getSystemMode()
+    {
+        try {
+            // Membaca mode saat ini menggunakan fungsi bawaan dari kodemu
+            $currentMode = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
+
+            return response()->json([
+                'success' => true,
+                'mode'    => $currentMode // Akan berisi 'production', 'staging', atau 'sandbox'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil status sistem'
+            ], 500);
+        }
+    }
+
 }

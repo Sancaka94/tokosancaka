@@ -59,7 +59,8 @@ Route::post('/ppob/webhook', [PpobIakController::class, 'webhook']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/admin/toggle-system-mode', [ApiSettingsController::class, 'toggleApi']);
-});
+    Route::get('/admin/get-system-mode', [ApiSettingsController::class, 'getSystemMode']);
+);
 
 // Endpoint untuk DOKU Notification
 // Route::post('/doku/notify', [TopUpController::class, 'dokuNotify'])->name('doku.notify');
