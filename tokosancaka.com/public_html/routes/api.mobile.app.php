@@ -43,6 +43,7 @@ Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendR
 Route::post('/verify-token', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'verifyToken']);
 Route::post('/resend-token', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'resendToken']);
 
+/*
 // --- ENDPOINT UPDATE APLIKASI (SELF-HOSTED PLAYSTORE) ---
 Route::get('/check-update', function(Request $request) {
     // 1. Tentukan versi rilis terbaru di server
@@ -70,7 +71,7 @@ Route::get('/check-update', function(Request $request) {
         'force_update'   => true,
         'notes'          => 'Fix bug dan peningkatan performa. Tambah Fitur Kirim Paket Banyak!'
     ]);
-});
+}); */
 
 Route::prefix('public')->group(function () {
     // Tracking & Ekspedisi
