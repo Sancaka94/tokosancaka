@@ -216,44 +216,49 @@ class ApiSettingsController extends Controller
         }
     }
 
+    // Fungsi POST untuk mengubah mode dari Expo
     public function toggleApi(Request $request)
     {
         try {
-            $currentMode = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
+            // Tangkap perintah dari HP: true (Production/ON) atau false (Sandbox/OFF)
+            $isProduction = $request->input('is_production');
 
-            if ($currentMode === 'production') {
-                $targetKA     = 'staging';
-                $targetTripay = 'sandbox';
-                $targetDoku   = 'sandbox';
-                $targetIAK    = 'development';
-                $label        = 'SANDBOX / STAGING / DEVELOPMENT';
-            } else {
+            if ($isProduction == true) {
+                // Jika ON -> Ubah semua ke Production
                 $targetKA     = 'production';
                 $targetTripay = 'production';
                 $targetDoku   = 'production';
                 $targetIAK    = 'production';
                 $label        = 'PRODUCTION (LIVE)';
+            } else {
+                // Jika OFF -> Ubah semua ke Sandbox / Staging
+                $targetKA     = 'staging';
+                $targetTripay = 'sandbox';
+                $targetDoku   = 'sandbox';
+                $targetIAK    = 'development';
+                $label        = 'SANDBOX / MAINTENANCE';
             }
 
+            // 1. Simpan perubahan ke Database
             Api::setValue('KIRIMINAJA_MODE', $targetKA, 'kiriminaja', 'global');
             Api::setValue('TRIPAY_MODE', $targetTripay, 'tripay', 'global');
             Api::setValue('DOKU_ENV', $targetDoku, 'doku', 'global');
             Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global');
 
-            // Trigger Real-time Event
+            // 2. Beritahu semua user yang sedang online (Opsional jika pakai Pusher/Echo)
             event(new SystemModeUpdated($targetKA));
 
-            // RETURN HARUS BERUPA JSON UNTUK EXPO
+            // 3. Kembalikan respons sukses ke HP
             return response()->json([
                 'success' => true,
-                'message' => "Mode API berhasil diubah ke: $label",
-                'current_mode' => $targetKA
+                'message' => "Sistem berhasil diubah ke mode $label",
+                'mode'    => $targetKA
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengubah mode: ' . $e->getMessage()
+                'message' => 'Gagal mengubah database: ' . $e->getMessage()
             ], 500);
         }
     }
