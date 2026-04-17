@@ -27,6 +27,8 @@ use App\Http\Controllers\Admin\CustomerController;
 // Telegram Group
 use App\Http\Controllers\TelegramGroupController;
 
+use App\Http\Controllers\Customer\ProfileController;
+
 // Core Logic
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\PublicController;
@@ -1200,3 +1202,7 @@ Route::post('/search-admin/group', [TelegramGroupController::class, 'storeGroup'
 Route::delete('/search-admin/group/{id}', [TelegramGroupController::class, 'destroyGroup'])->name('search.group.destroy');
 
 Route::post('/customer/pesanan/cancel', [App\Http\Controllers\Customer\PesananController::class, 'cancelOrder'])->name('customer.pesanan.cancel');
+
+// Route Public untuk Permohonan Hapus Akun
+Route::get('/hapus-akun', [ProfileController::class, 'showDeleteAccountForm'])->name('customer.profile.request-delete');
+Route::post('/hapus-akun', [ProfileController::class, 'submitDeleteAccountRequest'])->name('customer.profile.request-delete.submit');
