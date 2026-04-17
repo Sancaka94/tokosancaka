@@ -63,6 +63,7 @@ Route::get('/check-update', function(Request $request) {
 
     return response()->json([
         'success'        => true,
+        'received_version' => $appVersion,
         'needs_update'   => $needsUpdate, // <-- Kunci utamanya di sini
         'latest_version' => $latestVersion,
         'download_url'   => 'https://tokosancaka.com/public/assets/app/SancakaExpress.apk',
