@@ -49,6 +49,7 @@ use App\Http\Controllers\Customer\PesananController as CustomerPesananController
 use App\Http\Controllers\TelegramPpobController;
 use App\Http\Controllers\Api\ScraperController;
 use App\Http\Controllers\PpobIakController;
+use App\Http\Controllers\Admin\ApiSettingsController;
 
 
 Route::post('/ppob/webhook', [PpobIakController::class, 'webhook']);
@@ -56,6 +57,9 @@ Route::post('/ppob/webhook', [PpobIakController::class, 'webhook']);
 // Website fontend WA Integration
 //use App\Http\Controllers\WhatsappController;
 
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/admin/toggle-system-mode', [ApiSettingsController::class, 'toggleApi']);
+});
 
 // Endpoint untuk DOKU Notification
 // Route::post('/doku/notify', [TopUpController::class, 'dokuNotify'])->name('doku.notify');

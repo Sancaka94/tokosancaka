@@ -216,4 +216,46 @@ class ApiSettingsController extends Controller
         }
     }
 
+    public function toggleApi(Request $request)
+    {
+        try {
+            $currentMode = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
+
+            if ($currentMode === 'production') {
+                $targetKA     = 'staging';
+                $targetTripay = 'sandbox';
+                $targetDoku   = 'sandbox';
+                $targetIAK    = 'development';
+                $label        = 'SANDBOX / STAGING / DEVELOPMENT';
+            } else {
+                $targetKA     = 'production';
+                $targetTripay = 'production';
+                $targetDoku   = 'production';
+                $targetIAK    = 'production';
+                $label        = 'PRODUCTION (LIVE)';
+            }
+
+            Api::setValue('KIRIMINAJA_MODE', $targetKA, 'kiriminaja', 'global');
+            Api::setValue('TRIPAY_MODE', $targetTripay, 'tripay', 'global');
+            Api::setValue('DOKU_ENV', $targetDoku, 'doku', 'global');
+            Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global');
+
+            // Trigger Real-time Event
+            event(new SystemModeUpdated($targetKA));
+
+            // RETURN HARUS BERUPA JSON UNTUK EXPO
+            return response()->json([
+                'success' => true,
+                'message' => "Mode API berhasil diubah ke: $label",
+                'current_mode' => $targetKA
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengubah mode: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 }
