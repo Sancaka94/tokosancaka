@@ -566,6 +566,35 @@ document.addEventListener('DOMContentLoaded', function () {
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
 
+    // --- FUNGSI FORMAT NOMOR HP OTOMATIS ---
+    function setupPhoneFormatting(inputId) {
+        const phoneInput = document.getElementById(inputId);
+        if (!phoneInput) return;
+
+        phoneInput.addEventListener('input', function (e) {
+            let val = this.value;
+
+            // 1. Hapus semua karakter yang bukan angka (seperti +, -, spasi, huruf)
+            val = val.replace(/\D/g, '');
+
+            // 2. Jika diawali angka '62', potong dan ganti depannya dengan '0'
+            if (val.startsWith('62')) {
+                val = '0' + val.substring(2);
+            }
+            // 3. Jika sudah diketik tapi tidak diawali '0', paksa tambah '0'
+            else if (val.length > 0 && !val.startsWith('0')) {
+                val = '0' + val;
+            }
+
+            // 4. Masukkan kembali teks yang sudah bersih ke dalam kolom input
+            this.value = val;
+        });
+    }
+
+    // Terapkan ke kolom HP Pengirim dan Penerima
+    setupPhoneFormatting('sender_phone');
+    setupPhoneFormatting('receiver_phone');
+
     document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
 
     ongkirModalEl.addEventListener('click', function(e) {
@@ -953,6 +982,7 @@ applyStrictInsurance(true);
             confirmButtonColor: '#d33'
         });
     });
+
 </script>
 @endif
 
