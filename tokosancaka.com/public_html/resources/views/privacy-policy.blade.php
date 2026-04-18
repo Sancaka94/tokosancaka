@@ -12,8 +12,8 @@
                     <p class="text-muted text-center">Privasi Anda adalah prioritas utama kami di <strong>Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace</strong>.</p>
 
                     <p>
-                        Dokumen ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi pribadi 
-                        Anda saat menggunakan layanan kami. Dengan menggunakan situs atau aplikasi kami, Anda dianggap telah menyetujui 
+                        Dokumen ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi pribadi
+                        Anda saat menggunakan layanan kami. Dengan menggunakan situs atau aplikasi kami, Anda dianggap telah menyetujui
                         seluruh isi Kebijakan Privasi ini.
                     </p>
 
@@ -48,15 +48,15 @@
 
                     <h5 class="fw-bold mt-4">4. Penggunaan Cookie</h5>
                     <p>
-                        Kami menggunakan cookie untuk menyimpan preferensi pengguna, melacak aktivitas, dan meningkatkan pengalaman 
-                        saat menggunakan layanan. Anda dapat menonaktifkan cookie melalui pengaturan browser, namun beberapa fitur 
+                        Kami menggunakan cookie untuk menyimpan preferensi pengguna, melacak aktivitas, dan meningkatkan pengalaman
+                        saat menggunakan layanan. Anda dapat menonaktifkan cookie melalui pengaturan browser, namun beberapa fitur
                         mungkin tidak berfungsi optimal.
                     </p>
 
                     <h5 class="fw-bold mt-4">5. Perlindungan Data</h5>
                     <p>
-                        Kami menerapkan teknologi enkripsi dan prosedur keamanan standar industri untuk melindungi data pribadi Anda. 
-                        Meskipun demikian, transmisi data melalui internet tidak sepenuhnya aman, dan kami tidak dapat menjamin 100% 
+                        Kami menerapkan teknologi enkripsi dan prosedur keamanan standar industri untuk melindungi data pribadi Anda.
+                        Meskipun demikian, transmisi data melalui internet tidak sepenuhnya aman, dan kami tidak dapat menjamin 100%
                         keamanan informasi.
                     </p>
 
@@ -79,41 +79,41 @@
 
                     <h5 class="fw-bold mt-4">8. Penyimpanan Data</h5>
                     <p>
-                        Data pribadi Anda akan disimpan selama akun aktif atau selama diperlukan untuk memenuhi tujuan yang disebutkan 
+                        Data pribadi Anda akan disimpan selama akun aktif atau selama diperlukan untuk memenuhi tujuan yang disebutkan
                         dalam kebijakan ini. Setelah itu, data akan dihapus atau dianonimkan.
                     </p>
 
                     <h5 class="fw-bold mt-4">9. Keamanan Transaksi</h5>
                     <p>
-                        Semua transaksi hanya dapat dilakukan melalui metode pembayaran resmi yang tersedia di 
-                        <strong>Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace</strong>. 
+                        Semua transaksi hanya dapat dilakukan melalui metode pembayaran resmi yang tersedia di
+                        <strong>Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace</strong>.
                         Kami tidak bertanggung jawab atas transaksi di luar platform resmi kami.
                     </p>
 
                     <h5 class="fw-bold mt-4">10. Layanan Pihak Ketiga</h5>
                     <p>
-                        Situs atau aplikasi kami dapat memuat tautan ke layanan pihak ketiga (misalnya ekspedisi, metode pembayaran). 
-                        Kami tidak bertanggung jawab atas kebijakan privasi pihak ketiga tersebut. Disarankan untuk membaca syarat dan 
+                        Situs atau aplikasi kami dapat memuat tautan ke layanan pihak ketiga (misalnya ekspedisi, metode pembayaran).
+                        Kami tidak bertanggung jawab atas kebijakan privasi pihak ketiga tersebut. Disarankan untuk membaca syarat dan
                         ketentuan mereka secara terpisah.
                     </p>
 
                     <h5 class="fw-bold mt-4">11. Kebijakan Anak-anak</h5>
                     <p>
-                        Layanan kami tidak ditujukan untuk anak-anak di bawah usia 13 tahun. Kami tidak sengaja mengumpulkan informasi 
-                        pribadi dari anak-anak. Jika Anda percaya bahwa anak Anda telah memberikan data kepada kami, segera hubungi 
+                        Layanan kami tidak ditujukan untuk anak-anak di bawah usia 13 tahun. Kami tidak sengaja mengumpulkan informasi
+                        pribadi dari anak-anak. Jika Anda percaya bahwa anak Anda telah memberikan data kepada kami, segera hubungi
                         layanan pelanggan.
                     </p>
 
                     <h5 class="fw-bold mt-4">12. Proses Delivery</h5>
                     <p>
-                        Estimasi pengiriman ditentukan oleh pihak ekspedisi. Data alamat yang Anda berikan akan digunakan untuk 
-                        memastikan pesanan sampai dengan benar. Kami tidak bertanggung jawab atas kesalahan pengiriman akibat 
+                        Estimasi pengiriman ditentukan oleh pihak ekspedisi. Data alamat yang Anda berikan akan digunakan untuk
+                        memastikan pesanan sampai dengan benar. Kami tidak bertanggung jawab atas kesalahan pengiriman akibat
                         informasi alamat yang tidak lengkap atau salah.
                     </p>
 
                     <h5 class="fw-bold mt-4">13. Pembatalan Pesanan (Cancel)</h5>
                     <p>
-                        Pesanan dapat dibatalkan sebelum status berubah menjadi "Diproses". Setelah pesanan diproses atau dikirim, 
+                        Pesanan dapat dibatalkan sebelum status berubah menjadi "Diproses". Setelah pesanan diproses atau dikirim,
                         pembatalan tidak dapat dilakukan. Untuk bantuan pembatalan, hubungi layanan pelanggan segera setelah pemesanan.
                     </p>
 
@@ -127,13 +127,13 @@
                         <li>Produk hilang dalam proses pengiriman (setelah konfirmasi resmi dari ekspedisi)</li>
                     </ul>
                     <p>
-                        Proses refund akan dilakukan ke metode pembayaran yang sama dengan yang digunakan saat transaksi. 
+                        Proses refund akan dilakukan ke metode pembayaran yang sama dengan yang digunakan saat transaksi.
                         Waktu pencairan refund mengikuti kebijakan bank atau penyedia pembayaran masing-masing.
                     </p>
 
                     <h5 class="fw-bold mt-4">15. Perubahan Kebijakan</h5>
                     <p>
-                        Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Versi terbaru akan ditampilkan di situs web, 
+                        Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Versi terbaru akan ditampilkan di situs web,
                         dan perubahan berlaku sejak tanggal dipublikasikan.
                     </p>
 
@@ -142,10 +142,24 @@
                         Dengan menggunakan layanan kami, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh isi Kebijakan Privasi ini.
                     </p>
 
-                    <h5 class="fw-bold mt-4">17. Kontak Kami</h5>
+                    <h5 class="fw-bold mt-4">17. Izin Akses Perangkat (Permissions)</h5>
                     <p>
-                        Jika Anda memiliki pertanyaan, keluhan, atau permintaan terkait data pribadi, pengiriman, pembatalan, atau refund, 
-                        silakan hubungi kami melalui halaman kontak resmi di 
+                        Untuk memastikan aplikasi dan layanan kami berfungsi dengan optimal, kami mungkin meminta izin akses ke beberapa fitur pada perangkat Anda, yaitu:
+                    </p>
+                    <ul>
+                        <li><strong>Kamera:</strong> Untuk mengambil foto profil, memindai QR code/barcode, atau melampirkan foto bukti transaksi dan pengembalian barang.</li>
+                        <li><strong>GPS (Lokasi):</strong> Untuk mendeteksi lokasi Anda demi akurasi alamat pengiriman, pencarian toko terdekat, dan pelacakan kurir.</li>
+                        <li><strong>Browser & Akses Internet:</strong> Untuk menghubungkan aplikasi dengan server kami, memproses transaksi secara <i>real-time</i>, dan membuka tautan layanan.</li>
+                        <li><strong>Pengiriman Data Pribadi:</strong> Untuk mengirimkan dan menyinkronkan data pribadi Anda secara aman ke server kami guna keperluan verifikasi akun dan kelancaran layanan.</li>
+                    </ul>
+                    <p>
+                        Anda dapat mengaktifkan atau menonaktifkan izin ini kapan saja melalui pengaturan (<i>settings</i>) perangkat Anda. Namun, perlu diketahui bahwa menonaktifkan izin tertentu dapat membuat beberapa fitur aplikasi tidak berfungsi dengan baik.
+                    </p>
+
+                    <h5 class="fw-bold mt-4">18. Kontak Kami</h5>
+                    <p>
+                        Jika Anda memiliki pertanyaan, keluhan, atau permintaan terkait data pribadi, pengiriman, pembatalan, atau refund,
+                        silakan hubungi kami melalui halaman kontak resmi di
                         <strong>Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace</strong>.
                     </p>
 
