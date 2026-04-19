@@ -1224,4 +1224,4 @@ Route::get('/pembayaran', [PembayaranController::class, 'index'])->name('pembaya
 Route::get('/pembayaran/cek', [PembayaranController::class, 'index'])->name('pembayaran.cek');
 
 // 3. Endpoint saat tombol "Bayar Sekarang" diklik di tabel
-Route::get('/pembayaran/{invoice_number}/proses', [PembayaranController::class, 'proses'])->name('pembayaran.proses');
+Route::post('/pembayaran/{invoice_number}/proses', [PembayaranController::class, 'proses'])->name('pembayaran.proses');

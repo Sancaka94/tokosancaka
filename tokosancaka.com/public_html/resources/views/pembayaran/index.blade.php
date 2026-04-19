@@ -123,9 +123,49 @@
                                                 <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">Pending</span>
                                             </td>
                                             <td class="text-center">
-                                                <a href="{{ route('pembayaran.proses', $inv->invoice_number) }}" class="btn btn-danger btn-sm w-100 fw-bold shadow-sm">
+                                                <button type="button" class="btn btn-danger btn-sm w-100 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#payModal{{ $inv->invoice_number }}">
                                                     <i class="bi bi-credit-card me-1"></i> Bayar Sekarang
-                                                </a>
+                                                </button>
+
+                                                <div class="modal fade text-start" id="payModal{{ $inv->invoice_number }}" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog modal-dialog-centered">
+                                                        <div class="modal-content border-0 shadow">
+                                                            <form action="{{ route('pembayaran.proses', $inv->invoice_number) }}" method="POST">
+                                                                @csrf
+                                                                <div class="modal-header bg-light">
+                                                                    <h6 class="modal-title fw-bold text-dark">Pilih Metode Pembayaran</h6>
+                                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                                </div>
+                                                                <div class="modal-body p-4">
+                                                                    <div class="alert alert-info py-2 mb-4">
+                                                                        <small>Total Tagihan:</small><br>
+                                                                        <span class="fs-5 fw-bold text-danger">Rp {{ number_format($inv->total_amount, 0, ',', '.') }}</span>
+                                                                    </div>
+
+                                                                    <label class="form-label fw-bold">E-Wallet & Virtual Account</label>
+                                                                    <select name="payment_method" class="form-select form-select-lg mb-3" required>
+                                                                        <option value="">-- Pilih Pembayaran --</option>
+                                                                        <option value="DANA">DANA Otomatis (Aplikasi)</option>
+                                                                        <option value="DOKU_JOKUL">DOKU (Kartu Kredit & QRIS)</option>
+
+                                                                        @if(isset($tripayChannels) && count($tripayChannels) > 0)
+                                                                            <optgroup label="Virtual Account & Retail (Tripay)">
+                                                                                @foreach($tripayChannels as $channel)
+                                                                                    <option value="{{ $channel['code'] }}">{{ $channel['name'] }}</option>
+                                                                                @endforeach
+                                                                            </optgroup>
+                                                                        @endif
+                                                                    </select>
+                                                                </div>
+                                                                <div class="modal-footer border-0 pt-0">
+                                                                    <button type="submit" class="btn btn-danger w-100 fw-bold py-2">
+                                                                        Lanjutkan Pembayaran <i class="bi bi-arrow-right ms-1"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </td>
                                         </tr>
                                         @endforeach
