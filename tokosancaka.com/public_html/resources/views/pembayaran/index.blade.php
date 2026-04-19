@@ -78,9 +78,42 @@
                                             <td class="text-center fw-bold text-primary">{{ $inv->invoice_number }}</td>
                                             <td>
                                                 <div class="d-flex flex-column">
-                                                    <span class="mb-1"><strong class="text-dark">Produk:</strong> {{ $inv->item_description ?? 'Pembelian Marketplace' }}</span>
-                                                    <span class="mb-1"><strong class="text-dark">Pengirim:</strong> {{ $inv->sender_name ?? 'Toko Sancaka' }}</span>
-                                                    <span><strong class="text-dark">Ekspedisi:</strong> {{ $inv->shipping_method ?? 'Ambil di Toko' }}</span>
+                                                    <strong class="text-dark mb-2">Produk:</strong>
+
+                                                    @php
+                                                        // Terjemahkan string JSON menjadi Array PHP
+                                                        $items = json_decode($inv->item_description, true);
+                                                    @endphp
+
+                                                    @if(is_array($items) && count($items) > 0)
+                                                        <div class="d-flex flex-column gap-2 mb-3">
+                                                            @foreach($items as $item)
+                                                                <div class="d-flex align-items-center">
+                                                                    @if(!empty($item['image_url']))
+                                                                        <img src="{{ asset('storage/' . $item['image_url']) }}" alt="{{ $item['name'] ?? 'Produk' }}" class="rounded border border-secondary-subtle me-2" style="width: 45px; height: 45px; object-fit: cover;">
+                                                                    @else
+                                                                        <div class="bg-light rounded border border-secondary-subtle me-2 d-flex align-items-center justify-content-center text-secondary" style="width: 45px; height: 45px;">
+                                                                            <i class="bi bi-box"></i>
+                                                                        </div>
+                                                                    @endif
+
+                                                                    <div style="font-size: 0.85rem; line-height: 1.2;">
+                                                                        <div class="fw-bold text-dark">{{ $item['name'] ?? 'Produk Sancaka' }}</div>
+                                                                        <div class="text-muted mt-1">
+                                                                            {{ $item['qty'] ?? $item['quantity'] ?? 1 }}x Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @else
+                                                        <span class="mb-3 text-muted">{{ $inv->item_description ?? 'Pembelian Marketplace' }}</span>
+                                                    @endif
+
+                                                    <div class="border-top pt-2 mt-1" style="font-size: 0.85rem;">
+                                                        <div class="mb-1"><strong class="text-dark">Pengirim:</strong> {{ $inv->sender_name ?? 'Toko Sancaka' }}</div>
+                                                        <div><strong class="text-dark">Ekspedisi:</strong> {{ strtoupper(explode('-', $inv->shipping_method)[1] ?? ($inv->shipping_method ?? 'Ambil di Toko')) }}</div>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td class="text-center text-danger fw-bold fs-5">
