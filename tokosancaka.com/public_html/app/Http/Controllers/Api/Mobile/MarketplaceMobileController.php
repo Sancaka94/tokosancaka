@@ -614,6 +614,7 @@ class MarketplaceMobileController extends Controller
             // --- PROSES PEMBAYARAN & EKSPEDISI ---
             if ($isPayWithSaldo || in_array(strtolower($request->payment_method), ['cod', 'cash', 'codbarang'])) {
 
+                // 1. Potong Saldo & Update Status Pesanan
                 if ($isPayWithSaldo) {
                     $user->saldo -= $grand_total;
                     $user->save();
@@ -623,24 +624,24 @@ class MarketplaceMobileController extends Controller
                 }
                 $order->save();
 
-                // HANYA TEMBAK CALLBACK INI (Jangan tambahkan blok KiriminAja lagi setelah ini)
+                // 2. Tembak Callback Internal (Untuk Notifikasi WA / Fonnte)
+                // Pastikan class CheckoutController Web sudah di-import atau gunakan namespace penuh seperti ini
                 $webController = new \App\Http\Controllers\CheckoutController(app(\App\Services\DanaSignatureService::class));
-                // Callback ini di dalamnya sudah mengurus KiriminAja dan Fonnte!
                 $webController->processOrderCallback($orderInvoice, 'PAID', []);
 
-                // 🔥 PERBAIKAN FATAL KIRIMINAJA MENGGUNAKAN LOGIKA WEB 🔥
+                // 3. Proses Booking Kurir Otomatis via API KiriminAja
                 try {
                     $isCOD = in_array(strtolower($request->payment_method), ['cod', 'codbarang']);
-                    $now = Carbon::now('Asia/Jakarta');
+                    $now = \Carbon\Carbon::now('Asia/Jakarta');
 
-                    // Penjadwalan: Jika di atas jam 17:00, jadwal besok jam 09:00. Jika tidak, hari ini +1 jam.
+                    // Penjadwalan Cerdas: Jika order di atas jam 17:00, kurir dijadwalkan besok jam 09:00 pagi.
                     if ($now->hour >= 17) {
                         $finalSchedule = $now->copy()->addDay()->format('Y-m-d 09:00:00');
                     } else {
                         $finalSchedule = $now->copy()->addHour()->format('Y-m-d H:i:s');
                     }
 
-                    // Build Array Packages Persis Seperti Web Controller
+                    // Build Data Paket (Bisa lebih dari 1 macam barang dalam 1 checkout)
                     $packagesPayload = [];
                     foreach($cartItemsPayload as $item) {
                         $qty = $item['quantity'] ?? ($item['qty'] ?? 1);
@@ -665,7 +666,7 @@ class MarketplaceMobileController extends Controller
                         ];
                     }
 
-                    // Build Payload Utama Persis Seperti Web
+                    // Build Data Utama untuk KiriminAja
                     $kaPayload = [
                         'kecamatan_id' => $originDistId,
                         'kelurahan_id' => $originSubId,
@@ -681,33 +682,47 @@ class MarketplaceMobileController extends Controller
                         'platform_name' => 'TOKOSANCAKA.COM'
                     ];
 
-                    // Tembak menggunakan Service yang sama dengan Web
+                    // Tembak API
                     $kiriminResponse = $kiriminAja->createExpressOrder($kaPayload);
 
-                    // Auto Retry Jadwal Besok jika ditolak karena masalah jam (Sama seperti Web)
+                    // Auto-Retry Jika Gagal karena Jadwal Toko/Kurir Tutup
                     if (isset($kiriminResponse['status']) && $kiriminResponse['status'] === false) {
                         $pesanError = strtolower($kiriminResponse['text'] ?? '');
                         if (str_contains($pesanError, 'jadwal') || str_contains($pesanError, 'schedule')) {
-                            $kaPayload['schedule'] = Carbon::now()->addDay()->format('Y-m-d 09:00:00');
+                            // Paksa jadwal ke besok pagi
+                            $kaPayload['schedule'] = \Carbon\Carbon::now('Asia/Jakarta')->addDay()->format('Y-m-d 09:00:00');
                             $kiriminResponse = $kiriminAja->createExpressOrder($kaPayload);
                         }
                     }
 
-                    // Simpan Resi
+                    // Simpan Nomor Resi (AWB) ke Database
                     if (!empty($kiriminResponse['status']) && $kiriminResponse['status'] === true) {
                         $resi = $kiriminResponse['packages'][0]['awb'] ?? ($kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null));
                         if ($resi) {
                             $order->shipping_reference = $resi;
                             $order->save();
-                            Log::info("API MOBILE: Booking KA Sukses! Resi: {$resi}");
+                            \Illuminate\Support\Facades\Log::info("API MOBILE: Booking KiriminAja Sukses! Resi: {$resi}");
                         }
                     } else {
-                        Log::error("API MOBILE: Gagal Generate Resi KA untuk Order {$order->invoice_number}: " . json_encode($kiriminResponse));
+                        \Illuminate\Support\Facades\Log::error("API MOBILE: Gagal Generate Resi KA untuk Order {$order->invoice_number}: " . json_encode($kiriminResponse));
                     }
                 } catch (\Exception $kaException) {
-                    Log::error("API MOBILE: KiriminAja Timeout/Error: " . $kaException->getMessage());
+                    \Illuminate\Support\Facades\Log::error("API MOBILE: KiriminAja Timeout/Error: " . $kaException->getMessage());
                 }
 
+            // =========================================================================
+            // BLOK UNTUK METODE GATEWAY (Diarahkan ke Web)
+            // =========================================================================
+            } elseif (strtoupper($request->payment_method) === 'GATEWAY') {
+                $order->status = 'pending';
+                // URL ini akan dibuka oleh aplikasi mobile
+                $paymentUrl = url('/pembayaran?akun=' . urlencode($user->no_wa));
+                $order->payment_url = $paymentUrl;
+                $order->save();
+
+            // =========================================================================
+            // BLOK LAMA JIKA ADA METODE TRIPAY SPESIFIK YANG TERLEWAT
+            // =========================================================================
             } elseif (!in_array(strtolower($request->payment_method), ['dana', 'doku_jokul'])) {
                 $tripayResult = $this->_createTripayTransaction($order, $request->payment_method, $grand_total, $user, $orderItemsPayload);
                 if ($tripayResult['success']) {
