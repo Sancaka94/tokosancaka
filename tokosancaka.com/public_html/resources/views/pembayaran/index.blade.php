@@ -42,7 +42,7 @@
                         </div>
                         <div class="text-end">
                             <span class="d-block">ID Pelanggan</span>
-                            <h5 class="mb-0 text-warning fw-bold">#{{ str_pad($user->id, 5, '0', STR_PAD_LEFT) }}</h5>
+                            <h5 class="mb-0 text-warning fw-bold">#{{ str_pad($userId, 5, '0', STR_PAD_LEFT) }}</h5>
                         </div>
                     </div>
 

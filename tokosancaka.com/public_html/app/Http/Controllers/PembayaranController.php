@@ -11,14 +11,10 @@ class PembayaranController extends Controller
 {
     // LOG LOG - Inisialisasi Controller Pembayaran Publik
 
-    /**
-     * Menampilkan halaman pencarian tagihan dan hasil datanya.
-     */
-    public function index(Request $request)
+   public function index(Request $request)
     {
         $akun = $request->input('akun');
 
-        // Jika form kosong (baru buka halaman), tampilkan view awal
         if (!$akun) {
             return view('pembayaran.index');
         }
@@ -28,20 +24,21 @@ class PembayaranController extends Controller
                     ->orWhere('email', $akun)
                     ->first();
 
-        // Jika user ditemukan, ambil daftar tagihannya
         if ($user) {
-            // Mengambil order yang statusnya pending/unpaid dan via GATEWAY
-            $invoices = Order::where('user_id', $user->id)
+            // MENGAMBIL ID YANG BENAR DARI DATABASE SANCAKA
+            $userId = $user->id_pengguna ?? $user->id;
+
+            // Tarik data tagihan sesuai user_id (4)
+            $invoices = Order::where('user_id', $userId)
                              ->whereIn('status', ['pending', 'unpaid'])
                              ->where('payment_method', 'GATEWAY')
                              ->orderBy('created_at', 'desc')
                              ->get();
 
-            // Kembalikan ke view dengan membawa data user dan invoices
-            return view('pembayaran.index', compact('user', 'invoices'));
+            // Lempar variabel userId juga ke Blade agar lebih mudah dicetak
+            return view('pembayaran.index', compact('user', 'invoices', 'userId'));
         }
 
-        // Jika user tidak ditemukan, kembali ke view (Blade akan memunculkan alert gagal)
         return view('pembayaran.index');
     }
 
