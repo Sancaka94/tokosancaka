@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Order;
 use App\Models\Transaction;
-use App\Models\Pesanan; // Tambahkan Model Pesanan (Ekspedisi)
+use App\Models\Pesanan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -38,9 +38,9 @@ class PembayaranController extends Controller
         $user = User::where('no_wa', $akun)->orWhere('email', $akun)->first();
 
         if ($user) {
-            Log::info('User ditemukan:', ['user_id' => $user->id]);
+            Log::info('User ditemukan:', ['user_id' => $user->id_pengguna ?? 'Tidak ada']);
 
-            $userId = $user->id_pengguna ?? $user->id;
+            $userId = $user->id_pengguna; // Pastikan menggunakan id_pengguna
             $excludedMethods = ['CASH', 'COD', 'CODBARANG', 'POTONG SALDO'];
 
             // 1. CARI TAGIHAN BELANJA TOKO (ORDERS)
@@ -57,8 +57,7 @@ class PembayaranController extends Controller
                              ->orderBy('created_at', 'desc')
                              ->get();
 
-            // 3. CARI TAGIHAN EKSPEDISI SANCAKA EXPRESS (PESANAN)
-            // Sesuai dengan kolom di database Anda (customer_id & status)
+            // 3. CARI TAGIHAN EKSPEDISI (PESANAN)
             $ekspedisi = Pesanan::where('customer_id', $userId)
                              ->whereIn('status', ['pending', 'unpaid', 'Belum Bayar'])
                              ->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(payment_method)'), $excludedMethods)
@@ -95,7 +94,6 @@ class PembayaranController extends Controller
                 return [];
             });
 
-            // Kirim variabel $ekspedisi ke view Blade
             return view('pembayaran.index', compact('user', 'invoices', 'topups', 'ekspedisi', 'userId', 'tripayChannels'));
         }
 
@@ -103,7 +101,10 @@ class PembayaranController extends Controller
         return view('pembayaran.index');
     }
 
-   public function proses(Request $request, $invoice_number)
+    /**
+     * Memproses API Gateway berdasarkan pilihan user di Modal Web
+     */
+    public function proses(Request $request, $invoice_number)
     {
         Log::info('Memulai proses Generate URL Pembayaran', [
             'invoice' => $invoice_number,
@@ -116,19 +117,51 @@ class PembayaranController extends Controller
 
         $method = strtoupper($request->payment_method);
 
-        // Deteksi Tipe Transaksi
-        $isTopup = Str::startsWith($invoice_number, 'TOPUP-');
-        $isOrder = Str::startsWith($invoice_number, 'SCK-ORD-');
-        $isEkspedisi = !$isOrder && Str::startsWith($invoice_number, 'SCK-'); // SCK-20251118-XXXX
+        // ====================================================================
+        // DETEKSI TIPE TRANSAKSI 100% AKURAT DARI DATABASE (TANPA PREFIX)
+        // ====================================================================
+        $isTopup = false;
+        $isEkspedisi = false;
+        $isOrder = false;
+        $model = null;
+
+        // 1. Cek di tabel Transactions (Top Up)
+        $trx = Transaction::where('reference_id', $invoice_number)->first();
+        if ($trx) {
+            $isTopup = true;
+            $model = $trx;
+        }
+        else {
+            // 2. Cek di tabel Pesanan (Ekspedisi Sancaka Express)
+            $pesanan = Pesanan::where('nomor_invoice', $invoice_number)->first();
+            if ($pesanan) {
+                $isEkspedisi = true;
+                $model = $pesanan;
+            }
+            else {
+                // 3. Cek di tabel Orders (Belanja Toko)
+                $order = Order::with('items.product')->where('invoice_number', $invoice_number)->first();
+                if ($order) {
+                    $isOrder = true;
+                    $model = $order;
+                }
+            }
+        }
+
+        // Jika invoice tidak dikenali di sistem manapun
+        if (!$model) {
+            Log::warning('Tagihan fiktif / tidak ditemukan', ['invoice' => $invoice_number]);
+            return back()->with('error', 'Tagihan tidak ditemukan di sistem.');
+        }
 
         // ====================================================================
-        // A. JIKA INI ADALAH TRANSAKSI TOP UP
+        // A. PROSES JIKA INI TRANSAKSI TOP UP
         // ====================================================================
         if ($isTopup) {
-            $model = Transaction::where('reference_id', $invoice_number)->first();
-            if (!$model || $model->status !== 'pending') return back()->with('error', 'Tagihan Top Up tidak valid atau sudah dibayar.');
+            if (strtolower($model->status) !== 'pending') {
+                return back()->with('error', 'Tagihan Top Up ini tidak valid atau sudah dibayar.');
+            }
 
-            // FIX: Hanya gunakan id_pengguna
             $user = User::where('id_pengguna', $model->user_id)->first();
             $grand_total = $model->amount;
 
@@ -139,16 +172,13 @@ class PembayaranController extends Controller
         }
 
         // ====================================================================
-        // B. JIKA INI ADALAH TAGIHAN EKSPEDISI (PESANAN)
+        // B. PROSES JIKA INI TAGIHAN EKSPEDISI (PESANAN)
         // ====================================================================
         elseif ($isEkspedisi) {
-            $model = Pesanan::where('nomor_invoice', $invoice_number)->first();
-
-            if (!$model || !in_array(strtolower($model->status), ['pending', 'unpaid', 'belum bayar'])) {
-                return back()->with('error', 'Tagihan Pengiriman tidak valid atau sudah dibayar.');
+            if (!in_array(strtolower($model->status), ['pending', 'unpaid', 'belum bayar'])) {
+                return back()->with('error', 'Tagihan Pengiriman ini tidak valid atau sudah dibayar.');
             }
 
-            // FIX: Hanya gunakan id_pengguna
             $user = User::where('id_pengguna', $model->customer_id)->first();
             if (!$user) {
                 $user = (object) [
@@ -167,15 +197,14 @@ class PembayaranController extends Controller
         }
 
         // ====================================================================
-        // C. JIKA INI ADALAH PESANAN BELANJA (ORDER MARKETPLACE)
+        // C. PROSES JIKA INI PESANAN BELANJA (ORDER MARKETPLACE)
         // ====================================================================
         else {
-            $model = Order::with('user', 'items.product')->where('invoice_number', $invoice_number)->first();
-            if (!$model || !in_array(strtolower($model->status), ['pending', 'unpaid'])) {
-                return back()->with('error', 'Tagihan belanja tidak valid atau sudah dibayar.');
+            if (!in_array(strtolower($model->status), ['pending', 'unpaid'])) {
+                return back()->with('error', 'Tagihan belanja ini tidak valid atau sudah dibayar.');
             }
 
-            $user = $model->user;
+            $user = User::where('id_pengguna', $model->user_id)->first();
             $grand_total = $model->total_amount;
             $orderItemsPayload = [];
             $calculatedTotalItems = 0;
@@ -206,31 +235,26 @@ class PembayaranController extends Controller
             }
         }
 
-       // =======================================================
-        // CEK RE-USE PAYMENT URL (Mencegah Redirect Loop)
         // =======================================================
-
-        // Ambil metode pembayaran saat ini dari database (menyesuaikan kolom tabel)
+        // CEK RE-USE PAYMENT URL (Mencegah Limit Gateway)
+        // =======================================================
         $currentMethod = $isTopup
             ? str_replace('Top up saldo via ', '', $model->description ?? '')
             : $model->payment_method;
 
         if ($currentMethod === $method && !empty($model->payment_url) && !str_contains($model->payment_url, 'tokosancaka.com/pembayaran')) {
-            Log::info('Menggunakan ulang Payment URL yang sudah ada', ['invoice' => $invoice_number, 'url' => $model->payment_url]);
+            Log::info('Menggunakan ulang Payment URL', ['invoice' => $invoice_number, 'url' => $model->payment_url]);
             return redirect()->away($model->payment_url);
         }
 
-        // =======================================================
-        // UPDATE METODE PEMBAYARAN KE DATABASE
-        // =======================================================
+        // Simpan pembaruan metode ke tabel yang benar
         if ($isTopup) {
-            // Tabel transactions menggunakan kolom description
             $model->description = 'Top up saldo via ' . $method;
         } else {
-            // Tabel orders dan Pesanan menggunakan kolom payment_method
             $model->payment_method = $method;
         }
         $model->save();
+
 
         // =======================================================
         // 3. ROUTING KE API GATEWAY MASING-MASING
@@ -291,6 +315,7 @@ class PembayaranController extends Controller
                 $paymentUrl = $tripayResult['data']['checkout_url'] ?? $tripayResult['data']['pay_url'] ?? null;
                 $model->payment_url = $paymentUrl;
 
+                // Kolom pay_code & qr_url hanya di tabel Orders
                 if ($isOrder) {
                     $model->pay_code = $tripayResult['data']['pay_code'] ?? null;
                     $model->qr_url = $tripayResult['data']['qr_url'] ?? null;
@@ -303,7 +328,6 @@ class PembayaranController extends Controller
             }
         }
     }
-
 
     /**
      * =========================================================================
@@ -373,7 +397,6 @@ class PembayaranController extends Controller
         }
     }
 
-
     /**
      * =========================================================================
      * HELPER: CREATE DANA TRANSACTION
@@ -414,7 +437,7 @@ class PembayaranController extends Controller
                     "orderMemo"         => substr("Inv " . $cleanInvoice, 0, 40),
                     "createdTime"       => $timestamp,
                     "buyer"             => [
-                        "externalUserId"   => (string) ($user->id ?? 'GUEST'.rand(100,999)),
+                        "externalUserId"   => (string) ($user->id_pengguna ?? 'GUEST'.rand(100,999)),
                         "externalUserType" => "MERCHANT_USER",
                         "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap ?? 'Guest'), 0, 20),
                     ],
