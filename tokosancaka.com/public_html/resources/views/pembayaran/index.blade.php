@@ -1,29 +1,58 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container py-5">
+
+<style>
+    .payment-card-input {
+        display: none;
+    }
+    .payment-card-label {
+        cursor: pointer;
+        border: 2px solid #e9ecef;
+        border-radius: 0.75rem;
+        transition: all 0.2s ease-in-out;
+        background-color: #ffffff;
+    }
+    .payment-card-label:hover {
+        background-color: #f8f9fa;
+        border-color: #ced4da;
+    }
+    .payment-card-input:checked + .payment-card-label {
+        border-color: #dc3545 !important;
+        background-color: #fff5f5 !important;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.1);
+    }
+    .payment-card-icon {
+        height: 25px;
+        width: auto;
+        max-width: 50px;
+        object-fit: contain;
+    }
+</style>
+
+<div class="container py-4 py-md-5">
 
     <div class="row justify-content-center mb-4">
-        <div class="col-md-8 text-center">
-            <h2 class="fw-bold text-dark">Portal Pembayaran Sancaka Express</h2>
-            <p class="text-muted">Cek tagihan dan selesaikan pembayaran Anda dengan aman.</p>
+        <div class="col-12 col-md-8 text-center">
+            <h2 class="fw-bold text-dark fs-3 fs-md-2">Portal Pembayaran Sancaka</h2>
+            <p class="text-muted fs-6 fs-md-5">Cek tagihan dan selesaikan pembayaran Anda dengan aman.</p>
         </div>
     </div>
 
-    <div class="row justify-content-center mb-5">
-        <div class="col-md-8">
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
+    <div class="row justify-content-center mb-4 mb-md-5">
+        <div class="col-12 col-md-8 col-lg-6">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-3 p-md-4">
                     <form action="{{ route('pembayaran.cek') }}" method="GET">
                         <label for="akun" class="form-label fw-bold">Cek Identitas Pelanggan</label>
                         <div class="input-group input-group-lg">
-                            <span class="input-group-text bg-light"><i class="bi bi-person-badge"></i></span>
-                            <input type="text" name="akun" id="akun" class="form-control"
-                                   placeholder="Masukkan Nomor WhatsApp atau Email Anda..."
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-person-badge text-secondary"></i></span>
+                            <input type="text" name="akun" id="akun" class="form-control border-start-0 ps-0"
+                                   placeholder="Nomor WA / Email..."
                                    value="{{ request('akun') }}" required>
-                            <button type="submit" class="btn btn-danger px-4 fw-bold">Cek Tagihan</button>
+                            <button type="submit" class="btn btn-danger px-3 px-md-4 fw-bold">Cek</button>
                         </div>
-                        <small class="text-muted mt-2 d-block">Masukkan data yang terdaftar pada aplikasi Sancaka Express.</small>
+                        <small class="text-muted mt-2 d-block" style="font-size: 0.8rem;">Masukkan data yang terdaftar pada aplikasi Sancaka Express.</small>
                     </form>
                 </div>
             </div>
@@ -32,167 +61,206 @@
 
     @if(isset($user))
         <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="card shadow-lg border-0 overflow-hidden">
+            <div class="col-12 col-xl-10">
+                <div class="card shadow-lg border-0 overflow-hidden rounded-4">
 
-                    <div class="card-header bg-dark text-white p-4 d-flex justify-content-between align-items-center">
+                    <div class="card-header bg-dark text-white p-3 p-md-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                         <div>
-                            <h5 class="mb-0 fw-bold">Rincian Tagihan Pelanggan</h5>
+                            <h5 class="mb-0 fw-bold fs-5">Rincian Tagihan Pelanggan</h5>
                             <small class="text-light opacity-75">Sancaka Express Gateway</small>
                         </div>
-                        <div class="text-end">
-                            <span class="d-block">ID Pelanggan</span>
-                            <h5 class="mb-0 text-warning fw-bold">#{{ str_pad($userId, 5, '0', STR_PAD_LEFT) }}</h5>
+                        <div class="text-start text-md-end border-top border-md-0 border-secondary pt-2 pt-md-0 mt-2 mt-md-0">
+                            <span class="d-block" style="font-size: 0.85rem;">ID Pelanggan</span>
+                            <h5 class="mb-0 text-warning fw-bold fs-5">#{{ str_pad($userId, 5, '0', STR_PAD_LEFT) }}</h5>
                         </div>
                     </div>
 
                     <div class="card-body p-0 bg-light">
-                        <div class="p-4 bg-white border-bottom">
+                        <div class="p-3 p-md-4 bg-white border-bottom">
                             <div class="row">
-                                <div class="col-md-6">
-                                    <h6 class="text-muted mb-1">Ditagihkan Kepada:</h6>
-                                    <h5 class="fw-bold mb-1 text-dark">{{ $user->nama_lengkap ?? $user->name }}</h5>
-                                    <p class="mb-0 text-muted">
-                                        <i class="bi bi-telephone-fill me-2"></i> {{ $user->no_wa ?? $user->phone }}<br>
-                                        <i class="bi bi-geo-alt-fill me-2"></i> {{ $user->address_detail ?? 'Alamat tidak tersedia' }}
-                                    </p>
+                                <div class="col-12 col-md-8">
+                                    <h6 class="text-muted mb-1" style="font-size: 0.85rem;">Ditagihkan Kepada:</h6>
+                                    <h5 class="fw-bold mb-2 text-dark fs-5">{{ $user->nama_lengkap ?? $user->name }}</h5>
+                                    <div class="text-muted d-flex flex-column gap-1" style="font-size: 0.9rem;">
+                                        <span><i class="bi bi-telephone-fill me-2 text-secondary"></i> {{ $user->no_wa ?? $user->phone }}</span>
+                                        <span><i class="bi bi-geo-alt-fill me-2 text-secondary"></i> {{ $user->address_detail ?? 'Alamat tidak tersedia' }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="table-responsive p-4">
+                        <div class="p-3 p-md-4">
                             @if($invoices->count() > 0)
-                                <table class="table table-hover table-bordered align-middle bg-white mb-0">
-                                    <thead class="table-light text-center">
-                                        <tr>
-                                            <th width="15%">No. Invoice</th>
-                                            <th width="35%">Rincian Belanja</th>
-                                            <th width="20%">Total Tagihan</th>
-                                            <th width="15%">Status</th>
-                                            <th width="15%">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($invoices as $inv)
-                                        <tr>
-                                            <td class="text-center fw-bold text-primary">{{ $inv->invoice_number }}</td>
-                                            <td>
-                                                <div class="d-flex flex-column">
-                                                    <strong class="text-dark mb-2">Produk:</strong>
+                                <div class="d-flex flex-column gap-3">
+                                    @foreach($invoices as $inv)
+                                        <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+                                            <div class="card-body p-0">
+                                                <div class="row g-0">
 
-                                                    @php
-                                                        // Terjemahkan string JSON menjadi Array PHP
-                                                        $items = json_decode($inv->item_description, true);
-                                                    @endphp
+                                                    <div class="col-12 col-lg-8 p-3 p-md-4 border-end-lg">
+                                                        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                                                            <span class="badge bg-light text-dark border fw-bold px-3 py-2">
+                                                                <i class="bi bi-receipt me-1"></i> {{ $inv->invoice_number }}
+                                                            </span>
+                                                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">Pending</span>
+                                                        </div>
 
-                                                    @if(is_array($items) && count($items) > 0)
-                                                        <div class="d-flex flex-column gap-2 mb-3">
-                                                            @foreach($items as $item)
-                                                                <div class="d-flex align-items-center">
-                                                                    @if(!empty($item['image_url']))
-                                                                        <img src="{{ asset('storage/' . $item['image_url']) }}" alt="{{ $item['name'] ?? 'Produk' }}" class="rounded border border-secondary-subtle me-2" style="width: 45px; height: 45px; object-fit: cover;">
-                                                                    @else
-                                                                        <div class="bg-light rounded border border-secondary-subtle me-2 d-flex align-items-center justify-content-center text-secondary" style="width: 45px; height: 45px;">
-                                                                            <i class="bi bi-box"></i>
+                                                        <div class="d-flex flex-column">
+                                                            <strong class="text-dark mb-2" style="font-size: 0.9rem;">Rincian Produk:</strong>
+                                                            @php $items = json_decode($inv->item_description, true); @endphp
+
+                                                            @if(is_array($items) && count($items) > 0)
+                                                                <div class="d-flex flex-column gap-2 mb-3">
+                                                                    @foreach($items as $item)
+                                                                        <div class="d-flex align-items-center bg-light p-2 rounded-3 border border-light">
+                                                                            @if(!empty($item['image_url']))
+                                                                                <img src="{{ asset('storage/' . $item['image_url']) }}" alt="{{ $item['name'] ?? 'Produk' }}" class="rounded me-3 border bg-white" style="width: 50px; height: 50px; object-fit: cover;">
+                                                                            @else
+                                                                                <div class="bg-white rounded border me-3 d-flex align-items-center justify-content-center text-secondary" style="width: 50px; height: 50px;">
+                                                                                    <i class="bi bi-box fs-4"></i>
+                                                                                </div>
+                                                                            @endif
+                                                                            <div style="font-size: 0.85rem; line-height: 1.3;">
+                                                                                <div class="fw-bold text-dark mb-1">{{ $item['name'] ?? 'Produk Sancaka' }}</div>
+                                                                                <div class="text-muted fw-semibold">
+                                                                                    {{ $item['qty'] ?? $item['quantity'] ?? 1 }} x Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}
+                                                                                </div>
+                                                                            </div>
                                                                         </div>
-                                                                    @endif
+                                                                    @endforeach
+                                                                </div>
+                                                            @else
+                                                                <span class="mb-3 text-muted" style="font-size: 0.9rem;">{{ $inv->item_description ?? 'Pembelian Marketplace' }}</span>
+                                                            @endif
 
-                                                                    <div style="font-size: 0.85rem; line-height: 1.2;">
-                                                                        <div class="fw-bold text-dark">{{ $item['name'] ?? 'Produk Sancaka' }}</div>
-                                                                        <div class="text-muted mt-1">
-                                                                            {{ $item['qty'] ?? $item['quantity'] ?? 1 }}x Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}
-                                                                        </div>
+                                                            <div class="bg-light p-3 rounded-3 border border-light" style="font-size: 0.85rem;">
+                                                                <div class="row g-2">
+                                                                    <div class="col-12 col-sm-6">
+                                                                        <span class="text-muted d-block mb-1"><i class="bi bi-shop me-1"></i> Pengirim:</span>
+                                                                        <strong class="text-dark">{{ $inv->sender_name ?? 'Toko Sancaka' }}</strong>
+                                                                    </div>
+                                                                    <div class="col-12 col-sm-6">
+                                                                        <span class="text-muted d-block mb-1"><i class="bi bi-truck me-1"></i> Ekspedisi:</span>
+                                                                        <strong class="text-dark text-uppercase">{{ explode('-', $inv->shipping_method)[1] ?? ($inv->shipping_method ?? 'Ambil di Toko') }}</strong>
                                                                     </div>
                                                                 </div>
-                                                            @endforeach
+                                                            </div>
                                                         </div>
-                                                    @else
-                                                        <span class="mb-3 text-muted">{{ $inv->item_description ?? 'Pembelian Marketplace' }}</span>
-                                                    @endif
-
-                                                    <div class="border-top pt-2 mt-1" style="font-size: 0.85rem;">
-                                                        <div class="mb-1"><strong class="text-dark">Pengirim:</strong> {{ $inv->sender_name ?? 'Toko Sancaka' }}</div>
-                                                        <div><strong class="text-dark">Ekspedisi:</strong> {{ strtoupper(explode('-', $inv->shipping_method)[1] ?? ($inv->shipping_method ?? 'Ambil di Toko')) }}</div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td class="text-center text-danger fw-bold fs-5">
-                                                Rp {{ number_format($inv->total_amount, 0, ',', '.') }}
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">Pending</span>
-                                            </td>
-                                            <td class="text-center">
-                                                <button type="button" class="btn btn-danger btn-sm w-100 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#payModal{{ $inv->invoice_number }}">
-                                                    <i class="bi bi-credit-card me-1"></i> Bayar Sekarang
-                                                </button>
 
-                                                <div class="modal fade text-start" id="payModal{{ $inv->invoice_number }}" tabindex="-1" aria-hidden="true">
-                                                    <div class="modal-dialog modal-dialog-centered">
-                                                        <div class="modal-content border-0 shadow">
-                                                            <form action="{{ route('pembayaran.proses', $inv->invoice_number) }}" method="POST">
-                                                                @csrf
-                                                                <div class="modal-header bg-light">
-                                                                    <h6 class="modal-title fw-bold text-dark">Pilih Metode Pembayaran</h6>
-                                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    <div class="col-12 col-lg-4 p-3 p-md-4 bg-white d-flex flex-column justify-content-center align-items-center text-center">
+                                                        <span class="text-muted fw-bold mb-2" style="font-size: 0.9rem;">Total Tagihan</span>
+                                                        <h3 class="fw-black text-danger mb-4">Rp {{ number_format($inv->total_amount, 0, ',', '.') }}</h3>
+
+                                                        <button type="button" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm rounded-3" data-bs-toggle="modal" data-bs-target="#payModal{{ $inv->invoice_number }}">
+                                                            <i class="bi bi-credit-card me-2"></i> Bayar Sekarang
+                                                        </button>
+                                                    </div>
+
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="modal fade text-start" id="payModal{{ $inv->invoice_number }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+                                                <div class="modal-content border-0 shadow-lg rounded-4">
+                                                    <form action="{{ route('pembayaran.proses', $inv->invoice_number) }}" method="POST">
+                                                        @csrf
+                                                        <div class="modal-header bg-white border-bottom px-4 py-3">
+                                                            <h5 class="modal-title fw-bold text-dark">Pilih Metode Pembayaran</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+
+                                                        <div class="modal-body p-3 p-md-4 bg-light">
+                                                            <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-3 border shadow-sm mb-4">
+                                                                <span class="text-muted fw-bold" style="font-size: 0.9rem;">Total Tagihan</span>
+                                                                <span class="fs-4 fw-black text-danger mb-0">Rp {{ number_format($inv->total_amount, 0, ',', '.') }}</span>
+                                                            </div>
+
+                                                            <h6 class="fw-bold text-secondary mb-3 text-uppercase" style="font-size: 0.8rem; letter-spacing: 1px;">E-Wallet & QRIS Utama</h6>
+                                                            <div class="row g-2 g-md-3 mb-4">
+                                                                <div class="col-12 col-md-6">
+                                                                    <input type="radio" name="payment_method" value="DANA" id="dana_{{ $inv->invoice_number }}" class="payment-card-input" required>
+                                                                    <label for="dana_{{ $inv->invoice_number }}" class="payment-card-label d-flex align-items-center p-3 w-100 h-100 m-0">
+                                                                        <div class="bg-light border rounded p-2 me-3 d-flex align-items-center justify-content-center" style="width: 55px; height: 35px;">
+                                                                            <img src="https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg" alt="DANA" style="height: 15px; object-fit: contain;">
+                                                                        </div>
+                                                                        <div>
+                                                                            <div class="fw-bold text-dark" style="font-size: 0.9rem;">DANA Otomatis</div>
+                                                                        </div>
+                                                                    </label>
                                                                 </div>
-                                                                <div class="modal-body p-4">
-                                                                    <div class="alert alert-info py-2 mb-4">
-                                                                        <small>Total Tagihan:</small><br>
-                                                                        <span class="fs-5 fw-bold text-danger">Rp {{ number_format($inv->total_amount, 0, ',', '.') }}</span>
+                                                                <div class="col-12 col-md-6">
+                                                                    <input type="radio" name="payment_method" value="DOKU_JOKUL" id="doku_{{ $inv->invoice_number }}" class="payment-card-input">
+                                                                    <label for="doku_{{ $inv->invoice_number }}" class="payment-card-label d-flex align-items-center p-3 w-100 h-100 m-0">
+                                                                        <div class="bg-light border rounded p-2 me-3 d-flex align-items-center justify-content-center" style="width: 55px; height: 35px;">
+                                                                            <span class="fw-black text-danger" style="font-size: 0.8rem;">DOKU</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <div class="fw-bold text-dark" style="font-size: 0.9rem;">DOKU Payment</div>
+                                                                            <div class="text-muted" style="font-size: 0.75rem;">Kartu Kredit & QRIS</div>
+                                                                        </div>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+
+                                                            @if(isset($tripayChannels) && count($tripayChannels) > 0)
+                                                                @php $groupedChannels = collect($tripayChannels)->groupBy('group'); @endphp
+                                                                @foreach($groupedChannels as $groupName => $channels)
+                                                                    <h6 class="fw-bold text-secondary mb-3 mt-2 text-uppercase" style="font-size: 0.8rem; letter-spacing: 1px;">{{ $groupName }}</h6>
+                                                                    <div class="row g-2 g-md-3 mb-4">
+                                                                        @foreach($channels as $channel)
+                                                                            <div class="col-12 col-md-6">
+                                                                                <input type="radio" name="payment_method" value="{{ $channel['code'] }}" id="chan_{{ $channel['code'] }}_{{ $inv->invoice_number }}" class="payment-card-input">
+                                                                                <label for="chan_{{ $channel['code'] }}_{{ $inv->invoice_number }}" class="payment-card-label d-flex align-items-center p-3 w-100 h-100 m-0">
+                                                                                    <div class="bg-white border rounded p-1 me-3 d-flex align-items-center justify-content-center" style="width: 55px; height: 35px;">
+                                                                                        <img src="{{ $channel['icon_url'] }}" alt="{{ $channel['name'] }}" class="payment-card-icon">
+                                                                                    </div>
+                                                                                    <div class="flex-grow-1">
+                                                                                        <div class="fw-bold text-dark" style="font-size: 0.85rem;">{{ $channel['name'] }}</div>
+                                                                                    </div>
+                                                                                </label>
+                                                                            </div>
+                                                                        @endforeach
                                                                     </div>
-
-                                                                    <label class="form-label fw-bold">E-Wallet & Virtual Account</label>
-                                                                    <select name="payment_method" class="form-select form-select-lg mb-3" required>
-                                                                        <option value="">-- Pilih Pembayaran --</option>
-                                                                        <option value="DANA">DANA Otomatis (Aplikasi)</option>
-                                                                        <option value="DOKU_JOKUL">DOKU (Kartu Kredit & QRIS)</option>
-
-                                                                        @if(isset($tripayChannels) && count($tripayChannels) > 0)
-                                                                            <optgroup label="Virtual Account & Retail (Tripay)">
-                                                                                @foreach($tripayChannels as $channel)
-                                                                                    <option value="{{ $channel['code'] }}">{{ $channel['name'] }}</option>
-                                                                                @endforeach
-                                                                            </optgroup>
-                                                                        @endif
-                                                                    </select>
-                                                                </div>
-                                                                <div class="modal-footer border-0 pt-0">
-                                                                    <button type="submit" class="btn btn-danger w-100 fw-bold py-2">
-                                                                        Lanjutkan Pembayaran <i class="bi bi-arrow-right ms-1"></i>
-                                                                    </button>
-                                                                </div>
-                                                            </form>
+                                                                @endforeach
+                                                            @endif
                                                         </div>
-                                                    </div>
+
+                                                        <div class="modal-footer bg-white border-top p-3 d-flex flex-column flex-sm-row">
+                                                            <button type="button" class="btn btn-light px-4 w-100 w-sm-auto mb-2 mb-sm-0" data-bs-dismiss="modal">Batal</button>
+                                                            <button type="submit" class="btn btn-danger px-5 fw-bold shadow-sm w-100 w-sm-auto">
+                                                                Lanjutkan Pembayaran <i class="bi bi-arrow-right ms-2"></i>
+                                                            </button>
+                                                        </div>
+                                                    </form>
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </div>
+                                        </div>
                                         @endforeach
-                                    </tbody>
-                                </table>
+                                </div>
                             @else
                                 <div class="text-center py-5">
-                                    <h5 class="text-muted">Tidak ada tagihan yang tertunda.</h5>
-                                    <p class="text-muted">Terima kasih telah menggunakan layanan Sancaka Express!</p>
+                                    <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                                        <i class="bi bi-check2-circle text-success fs-1"></i>
+                                    </div>
+                                    <h5 class="text-dark fw-bold">Semua Tagihan Lunas!</h5>
+                                    <p class="text-muted">Terima kasih telah menggunakan layanan Sancaka Express.</p>
                                 </div>
                             @endif
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>
     @elseif(request()->has('akun'))
         <div class="row justify-content-center">
-            <div class="col-md-8 text-center">
-                <div class="alert alert-danger shadow-sm" role="alert">
-                    <i class="bi bi-exclamation-circle-fill me-2"></i> Akun dengan identitas tersebut tidak ditemukan di sistem Sancaka Express.
+            <div class="col-12 col-md-8 text-center">
+                <div class="alert alert-danger shadow-sm border-0 rounded-4" role="alert">
+                    <i class="bi bi-exclamation-circle-fill me-2"></i> Akun dengan identitas tersebut tidak ditemukan di sistem.
                 </div>
             </div>
         </div>
     @endif
-
 </div>
-
 @endsection
