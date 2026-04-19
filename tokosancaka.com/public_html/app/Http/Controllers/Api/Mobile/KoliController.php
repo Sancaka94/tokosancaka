@@ -13,7 +13,6 @@ use App\Models\Pesanan;
 use App\Models\Kontak;
 use App\Models\User;
 use App\Services\KiriminAjaService;
-use App\Services\DokuJokulService;
 use Exception;
 
 class KoliController extends Controller
@@ -32,7 +31,9 @@ class KoliController extends Controller
         if ($pm === '#SALDO') $pm = 'Potong Saldo';
         elseif ($pm === 'COD_ONGKIR') $pm = 'COD';
         elseif ($pm === 'COD_BARANG') $pm = 'CODBARANG';
-        elseif ($pm === '#DOKU') $pm = 'DOKU_JOKUL';
+
+        // Catatan: #DOKU atau DOKU_JOKUL sudah tidak digunakan lagi dari Mobile
+        // karena semuanya akan dikirim sebagai 'GATEWAY'
 
         $request->merge(['payment_method' => $pm]);
     }
@@ -156,234 +157,9 @@ class KoliController extends Controller
     // ==========================================
     public function storeSingle(Request $request, KiriminAjaService $kirimaja)
     {
-        $this->_normalizePaymentMethod($request);
-        $key = $request->input('idempotency_key');
-
-        if ($key && Pesanan::where('idempotency_key', $key)->exists()) {
-            return response()->json(['success' => false, 'message' => 'Pesanan ini sudah dibuat. Harap refresh.'], 422);
-        }
-
-        DB::beginTransaction();
-        try {
-            $itemPrice = (int) str_replace(['Rp', '.', ',', ' '], '', $request->item_price);
-
-            $request->validate([
-                'sender_name' => 'required', 'sender_phone' => 'required',
-                'receiver_name' => 'required', 'receiver_phone' => 'required|min:9|max:13',
-                'sender_district_id' => 'required', 'receiver_district_id' => 'required',
-                'receiver_address' => 'required|string|min:10', 'sender_address' => 'required|string|min:10',
-                'courier_code' => 'required', 'service_code' => 'required',
-                'weight' => 'required|numeric', 'payment_method' => 'required',
-                'item_description' => 'required'
-            ]);
-
-            $this->_saveKontak($request, 'sender', 'Pengirim');
-            $this->_saveKontak($request, 'receiver', 'Penerima');
-
-            $senderAddressData = $this->_getAddressData($request, 'sender');
-            $receiverAddressData = $this->_getAddressData($request, 'receiver');
-
-            // --- HITUNG VOLUME DAN BERAT AKTUAL (P x L x T) ---
-            $beratFisik = (int) $request->weight;
-            $p = (int) ($request->length ?? 10);
-            $l = (int) ($request->width ?? 10);
-            $t = (int) ($request->height ?? 10);
-
-            $divisor = (strpos(strtolower($request->service_code), 'cargo') !== false || strpos(strtolower($request->service_code), 'trucking') !== false) ? 4000 : 6000;
-            $volumeWeight = ($p * $l * $t) / $divisor * 1000;
-            $chargeableWeight = (int) ceil(max($beratFisik, $volumeWeight));
-
-            $realCostData = $this->_getRealShippingCost(
-                $kirimaja, $senderAddressData['kirimaja_data'], $receiverAddressData['kirimaja_data'],
-                $beratFisik, $p, $l, $t, $request->courier_code, $request->service_code, $itemPrice, $request->ansuransi
-            );
-
-            $shippingCost = (int) $realCostData['cost'];
-            $insuranceCost = ($request->ansuransi == 'iya') ? (int)$realCostData['insurance'] : 0;
-
-            $codFee = 0; $totalPrice = 0; $codValueApi = 0;
-
-            if ($request->payment_method == 'COD' || $request->payment_method == 'CODBARANG') {
-                $baseTotal = $shippingCost + $insuranceCost;
-                if ($request->payment_method == 'CODBARANG') $baseTotal += $itemPrice;
-
-                $rawFee = $baseTotal * 0.03;
-                $codFeeBeforePPN = max(2500, $rawFee);
-                $ppnFee = $codFeeBeforePPN * 0.11;
-                $grandTotalMentah = $baseTotal + $codFeeBeforePPN + $ppnFee;
-
-                $codValueApi = (int) (ceil($grandTotalMentah / 500) * 500);
-                $totalPrice = $codValueApi;
-                $codFee = $codFeeBeforePPN + $ppnFee;
-            } else {
-                $totalPrice = $shippingCost + $insuranceCost;
-                $codValueApi = 0;
-            }
-
-            $pesanan = new Pesanan();
-            $pesanan->nomor_invoice = $this->generateInvoiceNumber();
-            $pesanan->customer_id = Auth::id();
-            $pesanan->id_pengguna_pembeli = Auth::id();
-
-            // SENDER & RECEIVER
-            $pesanan->sender_name = $request->sender_name; $pesanan->sender_phone = $this->_sanitizePhone($request->sender_phone);
-            $pesanan->sender_address = $request->sender_address; $pesanan->sender_district_id = $request->sender_district_id;
-            $pesanan->sender_subdistrict_id = $request->sender_subdistrict_id; $pesanan->sender_province = $request->sender_province;
-            $pesanan->sender_regency = $request->sender_regency; $pesanan->sender_district = $request->sender_district;
-            $pesanan->sender_village = $request->sender_village; $pesanan->sender_postal_code = $request->sender_postal_code;
-            $pesanan->sender_lat = $senderAddressData['lat'] ?? 0; $pesanan->sender_lng = $senderAddressData['lng'] ?? 0;
-
-            $pesanan->receiver_name = $request->receiver_name; $pesanan->receiver_phone = $this->_sanitizePhone($request->receiver_phone);
-            $pesanan->receiver_address = $request->receiver_address; $pesanan->receiver_district_id = $request->receiver_district_id;
-            $pesanan->receiver_subdistrict_id = $request->receiver_subdistrict_id; $pesanan->receiver_province = $request->receiver_province;
-            $pesanan->receiver_regency = $request->receiver_regency; $pesanan->receiver_district = $request->receiver_district;
-            $pesanan->receiver_village = $request->receiver_village; $pesanan->receiver_postal_code = $request->receiver_postal_code;
-            $pesanan->receiver_lat = $receiverAddressData['lat'] ?? 0; $pesanan->receiver_lng = $receiverAddressData['lng'] ?? 0;
-
-            $pesanan->item_description = $request->item_description;
-            $pesanan->weight = $beratFisik; $pesanan->length = $p; $pesanan->width = $l; $pesanan->height = $t;
-            $pesanan->item_type = $request->item_type ?? 7; $pesanan->item_price = $itemPrice;
-
-            $pesanan->payment_method = $request->payment_method;
-            $pesanan->ansuransi = $request->ansuransi;
-
-            $pesanan->shipping_cost = $shippingCost;
-            $pesanan->insurance_cost = $insuranceCost;
-            $pesanan->cod_fee = $codFee;
-            $pesanan->price = $totalPrice;
-
-            $pesanan->expedition = sprintf('mix-%s-%s-%d-%d-%d', strtolower($request->courier_code), strtoupper($request->service_code), $shippingCost, $insuranceCost, $codFee);
-            $pesanan->service_type = 'Single-Mobile';
-            $pesanan->status = 'Menunggu Pembayaran';
-            $pesanan->status_pesanan = 'Menunggu Pembayaran';
-            $pesanan->tanggal_pesanan = now();
-            $pesanan->idempotency_key = $key;
-
-            $pesanan->save();
-
-            $paymentUrl = null;
-            $masterOrder = $createdOrders[0];
-            $paymentUrl = null;
-            // MENJADI SEPERTI INI:
-            $user = User::where('id_pengguna', Auth::id())->first();
-
-            // --- PEMBAYARAN ---
-            if ($request->payment_method === 'CASH') {
-                if ($user->id_pengguna != 4) {
-                    throw new Exception("Metode pembayaran Cash hanya tersedia untuk Admin.");
-                }
-
-                foreach ($createdOrders as $o) {
-                    $o->status = 'Menunggu Pickup';
-                    $o->status_pesanan = 'Menunggu Pickup';
-                    $o->save();
-                }
-            }
-            elseif ($request->payment_method === 'Potong Saldo') {
-                if ($user->saldo < $grandTotalTagihan) throw new Exception("Saldo Anda tidak mencukupi.");
-
-                $user->decrement('saldo', $grandTotalTagihan);
-
-                foreach ($createdOrders as $o) {
-                    $o->status = 'Menunggu Pickup';
-                    $o->status_pesanan = 'Menunggu Pickup';
-                    $o->save();
-                }
-            }
-            elseif ($request->payment_method === 'Potong Saldo') {
-                if (!$user) throw new Exception("Sistem gagal membaca Token Login Anda.");
-
-                $dbId = $user->id_pengguna ?? $user->id;
-                $userSaldo = DB::table('Pengguna')->where('id_pengguna', $dbId)->value('saldo');
-
-                if ($userSaldo < $grandTotalTagihan) {
-                    throw new Exception("Saldo Anda tidak mencukupi. (Sisa: Rp " . number_format($userSaldo, 0, ',', '.') . ")");
-                }
-
-                DB::table('Pengguna')->where('id_pengguna', $dbId)->decrement('saldo', $grandTotalTagihan);
-
-                foreach ($createdOrders as $o) {
-                    $o->status = 'Menunggu Pickup';
-                    $o->status_pesanan = 'Menunggu Pickup';
-                    $o->save();
-                }
-            }
-            elseif ($request->payment_method === 'Potong Saldo') {
-                if ($user->saldo < $pesanan->price) throw new Exception("Saldo Anda tidak mencukupi.");
-                $user->decrement('saldo', $pesanan->price);
-
-                $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
-                $pesanan->save();
-            }
-            elseif (in_array($request->payment_method, ['COD', 'CODBARANG'])) {
-                $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
-                $pesanan->save();
-            }
-            else {
-                $paymentGateway = 'tripay';
-                if ($request->payment_method === 'DOKU_JOKUL') $paymentGateway = 'doku';
-
-                if ($paymentGateway === 'doku') {
-                    $dokuService = new DokuJokulService();
-                    $paymentUrl = $dokuService->createPayment($pesanan->nomor_invoice, $pesanan->price);
-                    if (empty($paymentUrl)) throw new Exception('Gagal generate DOKU URL.');
-                } else {
-                    $orderItems = [[ 'sku' => 'SHIPPING', 'name' => 'Ongkir Pesanan', 'price' => (int)$pesanan->price, 'quantity' => 1 ]];
-                    $tripayResponse = $this->_createTripayTransactionInternal($request->all(), $pesanan, $pesanan->price, $orderItems);
-                    if (empty($tripayResponse['success'])) throw new Exception('Tripay Error: ' . ($tripayResponse['message'] ?? 'Unknown'));
-                    $paymentUrl = $tripayResponse['data']['checkout_url'];
-                }
-                $pesanan->payment_url = $paymentUrl;
-                $pesanan->save();
-            }
-
-            // HIT API KIRIMINAJA JIKA LUNAS / COD / CASH
-            $resi = "DIPROSES";
-            if (in_array($request->payment_method, ['COD', 'CODBARANG', 'Potong Saldo', 'CASH'])) {
-                $apiPayload = [
-                    'item_description' => $pesanan->item_description, 'item_price' => $itemPrice,
-                    'weight' => $chargeableWeight, 'length' => $p, 'width' => $l, 'height' => $t,
-                    'courier_code' => $request->courier_code, 'service_code' => $request->service_code, 'ansuransi' => $request->ansuransi
-                ];
-
-                $kiriminResponse = $this->_createKiriminAjaOrderLocal(
-                    $apiPayload, $pesanan, $kirimaja, $senderAddressData, $receiverAddressData,
-                    $codValueApi, $shippingCost, $insuranceCost
-                );
-
-                if (($kiriminResponse['status'] ?? false) === true) {
-                    $resi = $kiriminResponse['details']['awb'] ?? $kiriminResponse['awb'] ?? null;
-                    if($resi) {
-                        $pesanan->resi = $resi;
-                        $pesanan->status = 'Dikemas'; $pesanan->status_pesanan = 'Dikemas';
-                    } else {
-                        $pesanan->status = 'Menunggu Resi'; $pesanan->status_pesanan = 'Menunggu Resi';
-                    }
-                    $pesanan->save();
-                } else {
-                    throw new Exception("Ekspedisi Error: " . ($kiriminResponse['text'] ?? 'Unknown Error'));
-                }
-            }
-
-            try {
-                $this->_sendWhatsappNotification($pesanan, ['payment_method' => $request->payment_method, 'item_price' => $itemPrice], $shippingCost, $insuranceCost, $codFee, $totalPrice, $request, 1);
-            } catch (Exception $e) { Log::error('WA Error: ' . $e->getMessage()); }
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Pesanan berhasil dibuat.',
-                'resi' => $resi,
-                'invoice' => $pesanan->nomor_invoice,
-                'payment_url' => $paymentUrl
-            ]);
-
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error("StoreSingle Mobile Error: " . $e->getMessage());
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
+        // Fungsi storeSingle pada KoliController sebaiknya tidak digunakan lagi (diganti PesananController).
+        // Namun untuk jaga-jaga, saya biarkan eksis dan mengembalikan error jika tereksekusi.
+        return response()->json(['success' => false, 'message' => 'Endpoint ini sudah tidak digunakan. Gunakan PesananController untuk Single Order.'], 400);
     }
 
     // ==========================================
@@ -391,6 +167,7 @@ class KoliController extends Controller
     // ==========================================
     public function store(Request $request, KiriminAjaService $kirimaja)
     {
+        Log::info('[API MOBILE MULTI] Menerima request pembuatan Multi Koli. Data Request:', $request->all());
         $this->_normalizePaymentMethod($request);
         $key = $request->input('idempotency_key');
 
@@ -523,12 +300,13 @@ class KoliController extends Controller
             $masterOrder = $createdOrders[0];
             $paymentUrl = null;
 
-            // INI KUNCI JAWABANNYA: Mengambil user dengan akurat dari Auth
+            // Mengambil user dengan akurat dari Auth
             $user = User::where('id_pengguna', Auth::id())->first();
 
-            // --- PEMBAYARAN ---
+            // =========================================================
+            // PROSES PEMBAYARAN MULTI KOLI
+            // =========================================================
             if ($request->payment_method === 'CASH') {
-                // Mengecek ke kolom id_pengguna secara akurat
                 if (!$user || $user->id_pengguna != 4) {
                     throw new Exception("Metode pembayaran Cash hanya tersedia untuk Admin.");
                 }
@@ -556,28 +334,29 @@ class KoliController extends Controller
                      $o->save();
                 }
             }
-            else {
-                $paymentGateway = 'tripay';
-                if ($request->payment_method === 'DOKU_JOKUL') $paymentGateway = 'doku';
+            elseif (strtoupper($request->payment_method) === 'GATEWAY') {
+                // KODE BARU: Lempar status ke Menunggu Pembayaran & Set Link
+                Log::info("[API MOBILE MULTI] Metode GATEWAY terpilih. Meneruskan user ke portal Sancaka.");
 
-                if ($paymentGateway === 'doku') {
-                    $dokuService = new DokuJokulService();
-                    $paymentUrl = $dokuService->createPayment($masterOrder->nomor_invoice, $grandTotalTagihan);
-                    if (empty($paymentUrl)) throw new Exception('Gagal generate URL DOKU.');
-                    foreach ($createdOrders as $o) { $o->payment_url = $paymentUrl; $o->save(); }
-                } else {
-                    $orderItems = [];
-                    foreach ($createdOrders as $o) {
-                        $orderItems[] = ['sku' => 'SHIP-'.$o->nomor_invoice, 'name' => 'Ongkir Koli', 'price' => (int)$o->price, 'quantity' => 1];
-                    }
-                    $tripayResponse = $this->_createTripayTransactionInternal($request->all(), $masterOrder, $grandTotalTagihan, $orderItems);
-                    if (empty($tripayResponse['success'])) throw new Exception('Tripay Error: ' . ($tripayResponse['message'] ?? 'Unknown'));
-                    $paymentUrl = $tripayResponse['data']['checkout_url'] ?? null;
-                    foreach ($createdOrders as $o) { $o->payment_url = $paymentUrl; $o->save(); }
+                // Gunakan nomor WA user yang sedang login
+                $noWa = $user->no_wa ?? '08000000';
+                $paymentUrl = url('/pembayaran?akun=' . urlencode($noWa));
+
+                foreach ($createdOrders as $o) {
+                    $o->status = 'Menunggu Pembayaran';
+                    $o->status_pesanan = 'Menunggu Pembayaran';
+                    // Kita tidak menyimpan payment_url di database karena ini akan diambil dinamis
+                    // oleh React Native via response JSON di bawah.
+                    $o->save();
                 }
             }
+            else {
+                throw new Exception("Metode pembayaran " . $request->payment_method . " tidak dikenali.");
+            }
 
+            // =========================================================
             // HIT API KIRIMINAJA JIKA LUNAS / COD / CASH
+            // =========================================================
             if (in_array($request->payment_method, ['COD', 'CODBARANG', 'Potong Saldo', 'CASH'])) {
                 foreach ($createdOrders as $order) {
                     $temp = $tempDataPerOrder[$order->id];
@@ -607,6 +386,7 @@ class KoliController extends Controller
                 }
             }
 
+            // NOTIFIKASI WA
             try {
                 $waTotalFee = collect($createdOrders)->sum('cod_fee');
                 $waTotalIns = collect($createdOrders)->sum('insurance_cost');
@@ -622,7 +402,7 @@ class KoliController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => count($createdOrders) . " Pesanan berhasil dibuat!",
-                'payment_url' => $paymentUrl
+                'payment_url' => $paymentUrl // <--- Ini akan ditangkap oleh React Native jika GATEWAY
             ]);
 
         } catch (Exception $e) {
@@ -633,7 +413,7 @@ class KoliController extends Controller
     }
 
     // ==========================================
-    // INNER HELPERS: COST, KIRIMINAJA & TRIPAY
+    // INNER HELPERS: COST & KIRIMINAJA
     // ==========================================
     private function _getRealShippingCost($kirimaja, $senderData, $receiverData, $weight, $length, $width, $height, $courier, $service, $itemValue, $ansuransi)
     {
@@ -645,7 +425,6 @@ class KoliController extends Controller
             $category = 'trucking';
         }
 
-        // --- HITUNG VOLUME DAN BERAT AKTUAL (P x L x T) UNTUK API CEK ONGKIR ---
         $divisor = ($category === 'trucking') ? 4000 : 6000;
         $volumeWeight = ($length * $width * $height) / $divisor * 1000;
         $chargeableWeight = (int) ceil(max($weight, $volumeWeight));
@@ -716,38 +495,6 @@ class KoliController extends Controller
             ]]
         ];
         return $kirimaja->createExpressOrder($payload);
-    }
-
-    private function _createTripayTransactionInternal(array $data, Pesanan $order, int $total, array $orderItems): array
-    {
-        $apiKey = config('tripay.api_key'); $privateKey = config('tripay.private_key'); $merchantCode = config('tripay.merchant_code'); $mode = config('tripay.mode', 'sandbox');
-        if ($total <= 0) return ['success' => false, 'message' => 'Jumlah tidak valid.'];
-
-        $customerEmail = Auth::user()->email ?? 'admin+' . Str::random(5) . '@tokosancaka.com';
-
-        $payload = [
-            'method' => $data['payment_method'], 'merchant_ref' => $order->nomor_invoice, 'amount' => $total,
-            'customer_name' => $data['receiver_name'], 'customer_email' => $customerEmail, 'customer_phone' => $data['receiver_phone'],
-            'order_items' => $orderItems,
-            'return_url' => 'https://tokosancaka.com',
-            'expired_time' => time() + (1 * 60 * 60),
-            'signature' => hash_hmac('sha256', $merchantCode . $order->nomor_invoice . $total, $privateKey),
-        ];
-
-        $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
-
-        try {
-            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->timeout(60)->withoutVerifying()->post($baseUrl, $payload);
-            if (!$response->successful()) return ['success' => false, 'message' => 'Gagal menghubung server pembayaran.'];
-
-            $responseData = $response->json();
-            if (!isset($responseData['success']) || $responseData['success'] !== true) {
-                return ['success' => false, 'message' => $responseData['message'] ?? 'Gagal membuat tagihan.'];
-            }
-            return $responseData;
-        } catch (\Exception $e) {
-            return ['success' => false, 'message' => 'Kesalahan internal pembayaran.'];
-        }
     }
 
     // ==========================================
