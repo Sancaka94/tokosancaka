@@ -183,14 +183,20 @@ class PembayaranController extends Controller
         }
 
         // ====================================================================
-        // B. PROSES JIKA INI TAGIHAN EKSPEDISI (PESANAN)
-        // ====================================================================
-        elseif ($isEkspedisi) {
-            if (!in_array(strtolower($model->status), ['pending', 'unpaid', 'belum bayar'])) {
-                return back()->with('error', 'Tagihan Pengiriman ini tidak valid atau sudah dibayar.');
-            }
+// B. PROSES JIKA INI TAGIHAN EKSPEDISI (PESANAN)
+// ====================================================================
+elseif ($isEkspedisi) {
+    // Tambahkan log untuk debug status apa yang sebenarnya terbaca
+    Log::info('Mengecek status ekspedisi:', ['status_db' => $model->status_pesanan]);
 
-            $user = User::where('id_pengguna', $model->customer_id)->first();
+    // Perbaiki pengecekan status agar mencakup variasi teks yang kamu gunakan di query index
+    $statusValid = ['pending', 'unpaid', 'belum bayar', 'menunggu pembayaran'];
+
+    if (!in_array(strtolower($model->status_pesanan), $statusValid)) {
+        return back()->with('error', 'Tagihan Pengiriman ini tidak valid atau sudah dibayar. Status saat ini: ' . $model->status_pesanan);
+    }
+
+    $user = User::where('id_pengguna', $model->customer_id)->first();
             if (!$user) {
                 $user = (object) [
                     'nama_lengkap' => $model->sender_name ?? 'Pelanggan Sancaka',
