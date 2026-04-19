@@ -20,6 +20,10 @@ class ApiTopUpController extends Controller
      * ==========================================================
      * 1. API: AMBIL DAFTAR METODE PEMBAYARAN (SUDAH FIX 4 METODE)
      * ==========================================================
+     * Catatan: Jika aplikasi Mobile (TopUpScreen) sudah menggunakan
+     * hardcode 'CASH' dan 'GATEWAY', fungsi getMethods() ini
+     * sebenarnya tidak lagi dipanggil oleh aplikasi mobile terbaru Anda.
+     * Namun tetap dibiarkan jika sewaktu-waktu dibutuhkan.
      */
     public function getMethods()
     {
@@ -47,7 +51,7 @@ class ApiTopUpController extends Controller
         $dokuMethods = [
             [
                 'group' => 'Payment Gateway',
-                'code' => 'DOKU_JOKUL', // Kode ini akan dibaca oleh fungsi store() Mas Amal
+                'code' => 'DOKU_JOKUL',
                 'name' => 'DOKU Payment Gateway',
                 'icon_url' => 'https://dashboard.doku.com/bo/assets/images/logodoku.png'
             ]
@@ -57,7 +61,7 @@ class ApiTopUpController extends Controller
         $danaMethods = [
             [
                 'group' => 'E-Wallet',
-                'code' => 'DANA', // Kode ini akan dibaca oleh DANA Direct Mas Amal
+                'code' => 'DANA',
                 'name' => 'DANA (Direct)',
                 'icon_url' => 'https://img.antaranews.com/cache/1200x800/2022/04/25/dana.jpg.webp'
             ]
@@ -85,167 +89,132 @@ class ApiTopUpController extends Controller
         ]);
     }
 
-    // PASTIKAN BARIS INI ADA DI PALING ATAS FILE (di bawah namespace)
-// use App\Services\DokuJokulService;
-
     /**
      * ==========================================================
      * 2. API: REQUEST TOP UP (GENERATE INVOICE & URL)
+     * Diperbarui: Hanya memproses 'CASH' dan 'GATEWAY'
      * ==========================================================
      */
-    public function requestTopUp(Request $request, \App\Services\DokuJokulService $dokuJokulService)
+    public function requestTopUp(Request $request)
     {
         $request->validate([
             'amount'         => 'required|numeric|min:10000',
             'payment_method' => 'required|string',
         ]);
 
-        DB::beginTransaction();
-        try {
-            $user = Auth::user();
-            $amount = (int) $request->amount;
-            $invoiceNumber = 'TOPUP-' . strtoupper(Str::random(10));
+        $user = Auth::user() ?? auth('sanctum')->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Silakan login kembali.'], 401);
+        }
 
-            // Buat Transaksi di DB
+        DB::beginTransaction();
+
+        try {
+            $amount        = (int) $request->amount;
+            $paymentMethod = strtoupper($request->payment_method);
+            $userId        = $user->id_pengguna ?? $user->id;
+
+            // 1. Generate Reference ID Unik (Format: TOPUP-XXXXXX)
+            do {
+                $invoiceNumber = 'TOPUP-' . strtoupper(Str::random(8));
+            } while (Transaction::where('reference_id', $invoiceNumber)->exists());
+
+            $paymentUrl = null;
+            $isManual   = false;
+            $status     = 'pending';
+
+            // ====================================================================
+            // 2. CEGAT METODE PEMBAYARAN
+            // ====================================================================
+
+            // A. JIKA METODE GATEWAY (Arahkan ke Web Portal)
+            if ($paymentMethod === 'GATEWAY') {
+                $akun = $user->no_wa ?? $user->email ?? $userId;
+                $paymentUrl = url('/pembayaran?akun=' . urlencode($akun));
+            }
+
+            // B. JIKA METODE CASH (Khusus Admin / ID 4)
+            elseif ($paymentMethod === 'CASH') {
+                if ($userId != 4) {
+                    throw new \Exception("Akses Ditolak: Metode CASH hanya untuk Admin.");
+                }
+                $isManual = true;
+            }
+
+            // C. JIKA METODE TRANSFER_MANUAL (Bawaan Kode Lama)
+            elseif ($paymentMethod === 'TRANSFER_MANUAL') {
+                 $isManual = true;
+            }
+
+            // D. FALLBACK (Metode lain paksa menjadi GATEWAY)
+            else {
+                $paymentMethod = 'GATEWAY';
+                $akun          = $user->no_wa ?? $user->email ?? $userId;
+                $paymentUrl    = url('/pembayaran?akun=' . urlencode($akun));
+            }
+
+            // ====================================================================
+            // 3. SIMPAN KE DATABASE
+            // ====================================================================
             $transaction = Transaction::create([
-                'user_id'            => $user->id_pengguna,
-                'amount'             => $amount,
-                'type'               => 'topup',
-                'status'             => 'pending',
-                'payment_method'     => $request->payment_method,
-                'description'        => 'Top up saldo via ' . $request->payment_method,
-                'reference_id'       => $invoiceNumber,
+                'user_id'        => $userId,
+                'amount'         => $amount,
+                'type'           => 'topup',
+                'status'         => $status,
+                'payment_method' => $paymentMethod,
+                'description'    => 'Top up saldo via ' . $paymentMethod,
+                'reference_id'   => $invoiceNumber,
+                'payment_url'    => $paymentUrl,
             ]);
 
-            // ===========================================
-            // LOGIKA 1: TRANSFER MANUAL
-            // ===========================================
-            if ($request->payment_method === 'TRANSFER_MANUAL') {
-                DB::commit();
-                return response()->json([
+            DB::commit();
+
+            Log::info("API MOBILE: Request Top Up berhasil dibuat: {$invoiceNumber} via {$paymentMethod} (User ID: {$userId})");
+
+            // ====================================================================
+            // 4. RETURN DATA KHUSUS (Jika manual vs gateway)
+            // ====================================================================
+            if ($paymentMethod === 'TRANSFER_MANUAL') {
+                 return response()->json([
                     'success' => true,
                     'message' => 'Silakan lakukan transfer manual.',
                     'data' => [
-                        'reference_id' => $invoiceNumber,
-                        'amount' => $amount,
-                        'is_manual' => true,
-                        'bank_name' => 'BCA',
+                        'reference_id'   => $invoiceNumber,
+                        'amount'         => $amount,
+                        'is_manual'      => true,
+                        'payment_url'    => null,
+                        'bank_name'      => 'BCA',
                         'account_number' => '1234567890',
-                        'account_name' => 'CV. Sancaka Karya Hutama'
+                        'account_name'   => 'CV. Sancaka Karya Hutama'
                     ]
                 ]);
             }
 
-            // ===========================================
-            // LOGIKA 2: DOKU JOKUL
-            // ===========================================
-            elseif ($request->payment_method === 'DOKU_JOKUL') {
-                Log::info('Memulai Top Up DOKU (Jokul) Mobile: ' . $invoiceNumber);
-
-                $customerData = [
-                    'name'  => $user->nama_lengkap,
-                    'email' => $user->email ?? 'no-email@sancaka.com',
-                    'phone' => $user->no_wa ?? '080000000000'
-                ];
-                $lineItems = [
-                    ['name' => 'Top Up Saldo', 'price' => $amount, 'quantity' => 1]
-                ];
-
-                // URL ini cuma fallback, di mobile akan di-handle Expo Browser
-                $successRedirectUrl = config('app.url');
-
-                $paymentUrl = $dokuJokulService->createPayment(
-                    $invoiceNumber,
-                    $amount,
-                    $customerData,
-                    $lineItems,
-                    [],
-                    $successRedirectUrl
-                );
-
-                if (empty($paymentUrl)) {
-                    throw new \Exception('Gagal membuat transaksi DOKU.');
-                }
-
-                $transaction->payment_url = $paymentUrl;
-                $transaction->save();
-                DB::commit();
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Transaksi DOKU berhasil dibuat.',
-                    'data' => [
-                        'reference_id' => $invoiceNumber,
-                        'amount' => $amount,
-                        'payment_url' => $paymentUrl, // <--- Expo Browser akan baca ini
-                        'is_manual' => false
-                    ]
-                ]);
-            }
-
-            // ===========================================
-            // LOGIKA 3: TRIPAY (Default)
-            // ===========================================
-            else {
-                $apiKey       = config('tripay.api_key');
-                $privateKey   = config('tripay.private_key');
-                $merchantCode = config('tripay.merchant_code');
-                $mode         = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
-
-                $payload = [
-                    'method'         => $request->payment_method,
-                    'merchant_ref'   => $invoiceNumber,
-                    'amount'         => $amount,
-                    'customer_name'  => $user->nama_lengkap,
-                    'customer_email' => $user->email ?? 'no-email@sancaka.com',
-                    'customer_phone' => $user->no_wa ?? '080000000000',
-                    'order_items'    => [
-                        ['sku' => 'TOPUP', 'name' => 'Top Up Saldo', 'price' => $amount, 'quantity' => 1],
-                    ],
-                    'expired_time'   => time() + (1 * 60 * 60),
-                    'signature'      => hash_hmac('sha256', $merchantCode.$invoiceNumber.$amount, $privateKey),
-                ];
-
-                $baseUrl = $mode === 'production'
-                    ? 'https://tripay.co.id/api/transaction/create'
-                    : 'https://tripay.co.id/api-sandbox/transaction/create';
-
-                $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->post($baseUrl, $payload);
-
-                if ($response->successful() && isset($response->json()['success']) && $response->json()['success'] === true) {
-                    $tripayData = $response->json()['data'];
-                    $paymentUrl = $tripayData['checkout_url'] ?? null;
-
-                    $transaction->payment_url = $paymentUrl;
-                    $transaction->save();
-                    DB::commit();
-
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Transaksi Tripay berhasil dibuat.',
-                        'data' => [
-                            'reference_id' => $invoiceNumber,
-                            'amount' => $amount,
-                            'payment_url' => $paymentUrl,
-                            'is_manual' => false
-                        ]
-                    ]);
-                } else {
-                    throw new \Exception('Gagal dari server Tripay: ' . ($response->json()['message'] ?? 'Unknown Error'));
-                }
-            }
+            // RETURN DEFAULT
+            return response()->json([
+                'success' => true,
+                'message' => 'Berhasil membuat tagihan Top Up.',
+                'data' => [
+                    'reference_id'   => $transaction->reference_id,
+                    'amount'         => $transaction->amount,
+                    'status'         => $transaction->status,
+                    'payment_method' => $transaction->payment_method,
+                    'payment_url'    => $transaction->payment_url,
+                    'is_manual'      => $isManual
+                ]
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('API TopUp Request Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Gagal memproses top up: ' . $e->getMessage()
             ], 500);
         }
     }
 
-  /**
+    /**
      * ==========================================================
      * 3. API: MENGAMBIL RIWAYAT TOP UP (FIX BUG KOLOM UNION)
      * ==========================================================
@@ -257,7 +226,6 @@ class ApiTopUpController extends Controller
             $search = $request->query('search');
 
             // 1. QUERY DARI TRANSACTIONS
-            // (Tabel ini tidak punya payment_method, punyanya description)
             $q1 = DB::table('transactions')
                 ->select(
                     'id',
@@ -277,7 +245,6 @@ class ApiTopUpController extends Controller
             }
 
             // 2. QUERY DARI TOP_UPS
-            // (Tabel ini punya payment_method, kita samarkan jadi 'description' agar kembar dengan Q1)
             $q2 = DB::table('top_ups')
                 ->select(
                     'id',
@@ -306,20 +273,18 @@ class ApiTopUpController extends Controller
 
             // 5. FORMAT DATA SEBELUM DIKIRIM KE HP
             $formattedData = collect($results->items())->map(function ($trx) {
-                // Tarik nama metode dari 'description' yang sudah kita seragamkan tadi
                 $deskripsi = $trx->description ?? '';
-                // Bersihkan tulisan bawaan
                 $metode = str_ireplace('Top up saldo via ', '', $deskripsi);
 
                 return [
-                    'id' => $trx->id,
-                    'reference_id' => $trx->reference_id,
-                    'amount' => (float)$trx->amount,
-                    'status' => strtolower($trx->status),
+                    'id'             => $trx->id,
+                    'reference_id'   => $trx->reference_id,
+                    'amount'         => (float)$trx->amount,
+                    'status'         => strtolower($trx->status),
                     'payment_method' => strtoupper($metode ?: 'SISTEM'),
-                    'payment_url' => $trx->payment_url,
-                    'kategori' => $trx->kategori_sumber,
-                    'created_at' => date('d M Y, H:i', strtotime($trx->created_at)),
+                    'payment_url'    => $trx->payment_url,
+                    'kategori'       => $trx->kategori_sumber,
+                    'created_at'     => date('d M Y, H:i', strtotime($trx->created_at)),
                 ];
             });
 
@@ -345,17 +310,16 @@ class ApiTopUpController extends Controller
     public function registerPin(Request $request)
     {
         $request->validate([
-            'pin' => 'required|digits:6|confirmed' // memastikan ada pin_confirmation
+            'pin' => 'required|digits:6|confirmed'
         ], [
-            'pin.required' => 'PIN wajib diisi.',
-            'pin.digits' => 'PIN harus terdiri dari 6 angka.',
+            'pin.required'  => 'PIN wajib diisi.',
+            'pin.digits'    => 'PIN harus terdiri dari 6 angka.',
             'pin.confirmed' => 'Konfirmasi PIN tidak cocok.'
         ]);
 
         try {
             $user = Auth::user();
 
-            // Cek apakah user sudah punya PIN
             if (!empty($user->pin)) {
                 return response()->json([
                     'success' => false,
@@ -363,7 +327,6 @@ class ApiTopUpController extends Controller
                 ], 400);
             }
 
-            // Simpan PIN dengan Hash
             $user->pin = Hash::make($request->pin);
             $user->save();
 
@@ -392,16 +355,15 @@ class ApiTopUpController extends Controller
             'old_pin' => 'required|digits:6',
             'new_pin' => 'required|digits:6|confirmed'
         ], [
-            'old_pin.required' => 'PIN lama wajib diisi.',
-            'new_pin.required' => 'PIN baru wajib diisi.',
-            'new_pin.digits' => 'PIN baru harus 6 angka.',
+            'old_pin.required'  => 'PIN lama wajib diisi.',
+            'new_pin.required'  => 'PIN baru wajib diisi.',
+            'new_pin.digits'    => 'PIN baru harus 6 angka.',
             'new_pin.confirmed' => 'Konfirmasi PIN baru tidak cocok.'
         ]);
 
         try {
             $user = Auth::user();
 
-            // Cek apakah PIN lama cocok dengan yang di database
             if (!Hash::check($request->old_pin, $user->pin)) {
                 return response()->json([
                     'success' => false,
@@ -409,7 +371,6 @@ class ApiTopUpController extends Controller
                 ], 400);
             }
 
-            // Simpan PIN baru
             $user->pin = Hash::make($request->new_pin);
             $user->save();
 
@@ -435,19 +396,18 @@ class ApiTopUpController extends Controller
     public function resetPin(Request $request)
     {
         $request->validate([
-            'password' => 'required', // Meminta password akun untuk keamanan
+            'password' => 'required',
             'new_pin'  => 'required|digits:6|confirmed'
         ], [
             'password.required' => 'Password akun wajib diisi untuk verifikasi keamanan.',
-            'new_pin.required' => 'PIN baru wajib diisi.',
-            'new_pin.digits' => 'PIN baru harus 6 angka.',
+            'new_pin.required'  => 'PIN baru wajib diisi.',
+            'new_pin.digits'    => 'PIN baru harus 6 angka.',
             'new_pin.confirmed' => 'Konfirmasi PIN baru tidak cocok.'
         ]);
 
         try {
             $user = Auth::user();
 
-            // Verifikasi Password Akun
             if (!Hash::check($request->password, $user->password)) {
                 return response()->json([
                     'success' => false,
@@ -455,7 +415,6 @@ class ApiTopUpController extends Controller
                 ], 401);
             }
 
-            // Jika password benar, buat PIN baru
             $user->pin = Hash::make($request->new_pin);
             $user->save();
 
@@ -487,20 +446,18 @@ class ApiTopUpController extends Controller
         try {
             $user = Auth::user();
 
-            // Jika user belum setting PIN sama sekali
             if (empty($user->pin)) {
                 return response()->json([
                     'success' => false,
-                    'is_set' => false,
+                    'is_set'  => false,
                     'message' => 'Anda belum membuat PIN Keamanan.'
                 ], 403);
             }
 
-            // Cek kebenaran PIN
             if (!Hash::check($request->pin, $user->pin)) {
                 return response()->json([
                     'success' => false,
-                    'is_set' => true,
+                    'is_set'  => true,
                     'message' => 'PIN Keamanan salah.'
                 ], 401);
             }
@@ -529,7 +486,6 @@ class ApiTopUpController extends Controller
         try {
             $user = Auth::user();
 
-            // Pastikan user memiliki nomor WA
             if (empty($user->no_wa)) {
                 return response()->json([
                     'success' => false,
@@ -537,39 +493,29 @@ class ApiTopUpController extends Controller
                 ], 400);
             }
 
-            // Generate OTP 6 Karakter (Huruf & Angka, Uppercase)
             $otpCode = strtoupper(Str::random(6));
-
-            // Simpan OTP di Cache selama 5 menit dengan key unik per user
             Cache::put('otp_reset_pin_' . $user->id_pengguna, $otpCode, now()->addMinutes(5));
 
-            // Format Pesan WhatsApp
             $message = "Halo *{$user->nama_lengkap}*,\n\n";
             $message .= "Berikut adalah kode OTP untuk mereset PIN Keamanan Anda:\n\n";
             $message .= "*{$otpCode}*\n\n";
             $message .= "Kode ini hanya berlaku selama 5 menit. JANGAN BERIKAN KODE INI KEPADA SIAPAPUN, termasuk pihak Sancaka.";
 
-            // --- FORMAT NOMOR HP AGAR SESUAI DENGAN FONNTE ---
             $nomorTujuan = $user->no_wa;
-
-            // Jika nomor berawalan 0, hapus 0 nya (karena akan digabung dengan countryCode 62)
             if (str_starts_with($nomorTujuan, '0')) {
                 $nomorTujuan = substr($nomorTujuan, 1);
-            }
-            // Jika nomor sudah berawalan 62 atau +62, bersihkan dulu
-            elseif (str_starts_with($nomorTujuan, '62')) {
+            } elseif (str_starts_with($nomorTujuan, '62')) {
                 $nomorTujuan = substr($nomorTujuan, 2);
             } elseif (str_starts_with($nomorTujuan, '+62')) {
                 $nomorTujuan = substr($nomorTujuan, 3);
             }
 
-            // Kirim ke Fonnte
             $response = Http::withHeaders([
-                'Authorization' => 'ynMyPswSKr14wdtXMJF7' // Token Fonnte Mas Amal
+                'Authorization' => env('FONNTE_API_KEY') ?? env('FONNTE_KEY') ?? 'ynMyPswSKr14wdtXMJF7'
             ])->post('https://api.fonnte.com/send', [
-                'target' => $nomorTujuan, // Gunakan nomor yang sudah dibersihkan
-                'message' => $message,
-                'countryCode' => '62', // Otomatis menambahkan awalan 62
+                'target'      => $nomorTujuan,
+                'message'     => $message,
+                'countryCode' => '62',
             ]);
 
             $fonnteResult = $response->json();
@@ -598,19 +544,19 @@ class ApiTopUpController extends Controller
 
     /**
      * ==========================================================
-     * 9. API: RESET PIN DENGAN OTP (MENGGANTIKAN RESET VIA PASSWORD)
+     * 9. API: RESET PIN DENGAN OTP
      * ==========================================================
      */
     public function resetPinWithOtp(Request $request)
     {
         $request->validate([
-            'otp'      => 'required|string|size:6',
-            'new_pin'  => 'required|digits:6|confirmed'
+            'otp'     => 'required|string|size:6',
+            'new_pin' => 'required|digits:6|confirmed'
         ], [
-            'otp.required' => 'Kode OTP wajib diisi.',
-            'otp.size' => 'Kode OTP harus 6 karakter.',
-            'new_pin.required' => 'PIN baru wajib diisi.',
-            'new_pin.digits' => 'PIN baru harus 6 angka.',
+            'otp.required'      => 'Kode OTP wajib diisi.',
+            'otp.size'          => 'Kode OTP harus 6 karakter.',
+            'new_pin.required'  => 'PIN baru wajib diisi.',
+            'new_pin.digits'    => 'PIN baru harus 6 angka.',
             'new_pin.confirmed' => 'Konfirmasi PIN baru tidak cocok.'
         ]);
 
@@ -618,10 +564,8 @@ class ApiTopUpController extends Controller
             $user = Auth::user();
             $cacheKey = 'otp_reset_pin_' . $user->id_pengguna;
 
-            // Ambil OTP dari Cache
             $savedOtp = Cache::get($cacheKey);
 
-            // Cek apakah OTP ada/belum expired
             if (!$savedOtp) {
                 return response()->json([
                     'success' => false,
@@ -629,7 +573,6 @@ class ApiTopUpController extends Controller
                 ], 400);
             }
 
-            // Cocokkan OTP (Case Insensitive agar aman kalau user ketik huruf kecil)
             if (strtoupper($request->otp) !== $savedOtp) {
                 return response()->json([
                     'success' => false,
@@ -637,11 +580,9 @@ class ApiTopUpController extends Controller
                 ], 400);
             }
 
-            // Jika OTP Benar, Reset PIN
             $user->pin = Hash::make($request->new_pin);
             $user->save();
 
-            // Hapus OTP dari cache agar tidak bisa dipakai 2 kali (Sekali Pakai / One Time)
             Cache::forget($cacheKey);
 
             return response()->json([
