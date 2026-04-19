@@ -403,10 +403,11 @@ class DokuWebhookController extends Controller
                 }
 
                 // -------------------------------------------------------------
-                // A.5 DELEGASI KE CONTROLLER LAIN (TOPUP, INV, ORD)
+                // A.5 DELEGASI KE CONTROLLER LAIN (TOPUP, ADM, INV, ORD)
                 // -------------------------------------------------------------
                 else {
-                    if (Str::startsWith($orderId, 'TOPUP-')) {
+                    if (Str::startsWith($orderId, 'TOPUP-') || Str::startsWith($orderId, 'ADM-')) {
+                        Log::info("➡️ Order $orderId didelegasikan ke TopUpController.");
                         return App::make(\App\Http\Controllers\Customer\TopUpController::class)->handleDokuCallback($data);
                     } else if (Str::startsWith($orderId, 'INV-')) {
                         return App::make(\App\Http\Controllers\CustomerOrderController::class)->handleDokuCallback($data);
