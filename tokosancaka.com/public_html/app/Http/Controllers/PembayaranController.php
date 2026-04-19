@@ -58,11 +58,9 @@ class PembayaranController extends Controller
                              ->get();
 
             // 3. CARI TAGIHAN EKSPEDISI SANCAKA EXPRESS (PESANAN)
+            // Menggunakan kolom 'status_pesanan' dan mengecualikan metode 'POTONG SALDO' dll.
             $ekspedisi = Pesanan::where('customer_id', $userId)
-                             ->where(function($query) {
-                                 $query->whereIn('status', ['pending', 'unpaid', 'Belum Bayar', 'BELUM BAYAR'])
-                                       ->orWhereIn('status_pesanan', ['pending', 'unpaid', 'Belum Bayar', 'BELUM BAYAR']);
-                             })
+                             ->whereIn('status_pesanan', ['pending', 'unpaid', 'Belum Bayar', 'BELUM BAYAR'])
                              ->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(payment_method)'), $excludedMethods)
                              ->orderBy('created_at', 'desc')
                              ->get();
@@ -250,11 +248,16 @@ class PembayaranController extends Controller
             return redirect()->away($model->payment_url);
         }
 
-        // Simpan pembaruan metode ke tabel yang benar
+        // =======================================================
+        // UPDATE METODE PEMBAYARAN KE DATABASE
+        // =======================================================
         if ($isTopup) {
             $model->description = 'Top up saldo via ' . $method;
         } else {
             $model->payment_method = $method;
+
+            // Opsional: Jika tabel Pesanan butuh update status_pesanan saat ganti metode
+            if ($isEkspedisi) { $model->status_pesanan = 'Menunggu Pembayaran'; }
         }
         $model->save();
 
