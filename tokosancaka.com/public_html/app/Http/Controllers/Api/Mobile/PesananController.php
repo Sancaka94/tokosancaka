@@ -230,27 +230,26 @@ class PesananController extends Controller
                 $order->resi = !empty($awbAsli) ? $awbAsli : ($bookingId ?? 'REF-'.$order->nomor_invoice);
                 Log::info("[API MOBILE] Resi COD berhasil di-generate: {$order->resi}");
             }
-            // C. PAYMENT GATEWAY (DOKU dll) -> Tunda Resi (Menunggu Pembayaran)
+            // C. PAYMENT GATEWAY (Diarahkan ke Web Browser)
+            elseif (strtoupper($validatedData['payment_method']) === 'GATEWAY') {
+                Log::info("[API MOBILE] Metode pembayaran menggunakan Web Payment Gateway...");
+
+                // Set status order ke Menunggu Pembayaran
+                $order->status = 'Menunggu Pembayaran';
+                $order->status_pesanan = 'Menunggu Pembayaran';
+
+                // Buatkan URL ke portal pembayaran Sancaka, bawa parameter akun (No WA)
+                // Gunakan nomor WA user yang sedang login
+                $paymentUrl = url('/pembayaran?akun=' . urlencode($user->no_wa));
+
+                // Opsional: Simpan url ke tabel Pesanan jika kolom payment_url tersedia
+                $order->payment_url = $paymentUrl;
+
+                Log::info("[API MOBILE] URL Portal Pembayaran disiapkan: {$paymentUrl}");
+            }
+            // D. JIKA ADA METODE LAIN YANG TERLEWAT (Fallback)
             else {
-                Log::info("[API MOBILE] Metode pembayaran menggunakan Payment Gateway...");
-                if (in_array($validatedData['payment_method'], ['#DOKU', 'DOKU_JOKUL'])) {
-                    try {
-                        Log::info("[API MOBILE] Meminta link pembayaran ke DOKU Jokul...");
-                        $dokuService = new DokuJokulService();
-                        $tagihanDoku = $validatedData['item_price'] + $total_paid_ongkir; // Harga Barang + Ongkir
-                        $paymentUrl = $dokuService->createPayment($order->nomor_invoice, $tagihanDoku);
-
-                        if (empty($paymentUrl)) {
-                            throw new Exception('Gagal membuat transaksi DOKU. Response link kosong.');
-                        }
-
-                        $order->payment_url = $paymentUrl;
-                        Log::info("[API MOBILE] Link DOKU berhasil dibuat: {$paymentUrl}");
-                    } catch (Exception $e) {
-                        Log::error('[API MOBILE] DOKU Exception: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-                        throw new Exception('Gagal menghubungi DOKU Payment Gateway.');
-                    }
-                }
+                Log::info("[API MOBILE] Metode pembayaran lainnya...");
                 $order->status = 'Menunggu Pembayaran';
                 $order->status_pesanan = 'Menunggu Pembayaran';
             }

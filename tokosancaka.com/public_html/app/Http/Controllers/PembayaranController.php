@@ -57,9 +57,12 @@ class PembayaranController extends Controller
                              ->orderBy('created_at', 'desc')
                              ->get();
 
-            // 3. CARI TAGIHAN EKSPEDISI (PESANAN)
+            // 3. CARI TAGIHAN EKSPEDISI SANCAKA EXPRESS (PESANAN)
             $ekspedisi = Pesanan::where('customer_id', $userId)
-                             ->whereIn('status', ['pending', 'unpaid', 'Belum Bayar'])
+                             ->where(function($query) {
+                                 $query->whereIn('status', ['pending', 'unpaid', 'Belum Bayar', 'BELUM BAYAR'])
+                                       ->orWhereIn('status_pesanan', ['pending', 'unpaid', 'Belum Bayar', 'BELUM BAYAR']);
+                             })
                              ->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(payment_method)'), $excludedMethods)
                              ->orderBy('created_at', 'desc')
                              ->get();
