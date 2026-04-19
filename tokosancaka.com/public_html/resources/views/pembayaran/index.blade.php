@@ -163,15 +163,14 @@
 
                                         <div class="modal fade text-start" id="payModal{{ $inv->invoice_number }}" tabindex="-1" aria-hidden="true">
                                             <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
-                                                <div class="modal-content border-0 shadow-lg rounded-4">
-                                                    <form action="{{ route('pembayaran.proses', $inv->invoice_number) }}" method="POST">
-                                                        @csrf
-                                                        <div class="modal-header bg-white border-bottom px-4 py-3">
-                                                            <h5 class="modal-title fw-bold text-dark">Pilih Metode Pembayaran</h5>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                        </div>
+                                                <form action="{{ route('pembayaran.proses', $inv->invoice_number) }}" method="POST" class="modal-content border-0 shadow-lg rounded-4">
+                                                    @csrf
+                                                    <div class="modal-header bg-white border-bottom px-4 py-3">
+                                                        <h5 class="modal-title fw-bold text-dark">Pilih Metode Pembayaran</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
 
-                                                        <div class="modal-body p-3 p-md-4 bg-light">
+                                                    <div class="modal-body p-3 p-md-4 bg-light">
                                                             <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-3 border shadow-sm mb-4">
                                                                 <span class="text-muted fw-bold" style="font-size: 0.9rem;">Total Tagihan</span>
                                                                 <span class="fs-4 fw-black text-danger mb-0">Rp {{ number_format($inv->total_amount, 0, ',', '.') }}</span>
