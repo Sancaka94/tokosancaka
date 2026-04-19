@@ -107,16 +107,51 @@ class PembayaranController extends Controller
         // 2. SIAPKAN PAYLOAD ITEM UNTUK API
         $orderItemsPayload = [];
         $calculatedTotalItems = 0;
+
+        // Masukkan Produk
         foreach ($order->items as $item) {
             $price = (int) $item->price;
             $qty = (int) $item->quantity;
             $orderItemsPayload[] = [
-                'sku'      => $item->product_id ?? 'ITEM',
-                'name'     => $item->product->name ?? 'Produk Sancaka',
+                'sku'      => (string) ($item->product_id ?? 'ITEM'),
+                'name'     => substr($item->product->name ?? 'Produk Sancaka', 0, 50),
                 'price'    => $price,
                 'quantity' => $qty
             ];
             $calculatedTotalItems += ($price * $qty);
+        }
+
+        // TAMBAHKAN ONGKOS KIRIM KE DAFTAR BARANG (Agar DOKU tidak error)
+        if ($order->shipping_cost > 0) {
+            $orderItemsPayload[] = [
+                'sku'      => 'SHIPPING_FEE',
+                'name'     => 'Ongkos Kirim',
+                'price'    => (int) $order->shipping_cost,
+                'quantity' => 1
+            ];
+            $calculatedTotalItems += (int) $order->shipping_cost;
+        }
+
+        // TAMBAHKAN ASURANSI (Jika ada)
+        if ($order->insurance_cost > 0) {
+            $orderItemsPayload[] = [
+                'sku'      => 'INSURANCE_FEE',
+                'name'     => 'Biaya Asuransi',
+                'price'    => (int) $order->insurance_cost,
+                'quantity' => 1
+            ];
+            $calculatedTotalItems += (int) $order->insurance_cost;
+        }
+
+        // TAMBAHKAN BIAYA COD (Jika ada)
+        if ($order->cod_fee > 0) {
+            $orderItemsPayload[] = [
+                'sku'      => 'COD_FEE',
+                'name'     => 'Biaya Layanan COD',
+                'price'    => (int) $order->cod_fee,
+                'quantity' => 1
+            ];
+            $calculatedTotalItems += (int) $order->cod_fee;
         }
 
         // =======================================================
