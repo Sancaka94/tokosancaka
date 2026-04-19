@@ -3,9 +3,7 @@
 @section('content')
 
 <style>
-    .payment-card-input {
-        display: none;
-    }
+    .payment-card-input { display: none; }
     .payment-card-label {
         cursor: pointer;
         border: 2px solid #e9ecef;
@@ -27,6 +25,16 @@
         width: auto;
         max-width: 50px;
         object-fit: contain;
+    }
+    /* Animasi transisi form PIN */
+    .fade-enter {
+        opacity: 0;
+        transform: translateY(-10px);
+        transition: all 0.3s ease-out;
+    }
+    .fade-enter-active {
+        opacity: 1;
+        transform: translateY(0);
     }
 </style>
 
@@ -51,26 +59,55 @@
         </div>
     </div>
 
+    {{-- FORM CEK TAGIHAN (2-STEP) --}}
     <div class="row justify-content-center mb-4 mb-md-5">
         <div class="col-12 col-md-8 col-lg-6">
             <div class="card shadow-sm border-0 rounded-4">
                 <div class="card-body p-3 p-md-4">
-                    <form action="{{ route('pembayaran.cek') }}" method="GET">
-                        <label for="akun" class="form-label fw-bold">Cek Identitas Pelanggan</label>
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-person-badge text-secondary"></i></span>
-                            <input type="text" name="akun" id="akun" class="form-control border-start-0 ps-0"
-                                   placeholder="Nomor WA / Email..."
-                                   value="{{ request('akun') }}" required>
-                            <button type="submit" class="btn btn-danger px-3 px-md-4 fw-bold">Cek</button>
+                    <form action="{{ route('pembayaran.index') }}" method="GET" id="formCekTagihan">
+
+                        {{-- STEP 1: INPUT IDENTITAS --}}
+                        <div id="step1-akun">
+                            <label for="akun" class="form-label fw-bold">Cek Identitas Pelanggan</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-light border-end-0"><i class="bi bi-person-badge text-secondary"></i></span>
+                                <input type="text" name="akun" id="akun_input" class="form-control border-start-0 ps-0"
+                                       placeholder="Nomor WA / Email..."
+                                       value="{{ request('akun') }}" required>
+                                <button type="button" id="btn-lanjut" class="btn btn-danger px-3 px-md-4 fw-bold">Lanjut <i class="bi bi-arrow-right ms-1"></i></button>
+                            </div>
+                            <small class="text-muted mt-2 d-block" style="font-size: 0.8rem;">Masukkan data yang terdaftar pada aplikasi Sancaka Express.</small>
                         </div>
-                        <small class="text-muted mt-2 d-block" style="font-size: 0.8rem;">Masukkan data yang terdaftar pada aplikasi Sancaka Express.</small>
+
+                        {{-- STEP 2: INPUT PIN (Awalnya Disembunyikan) --}}
+                        <div id="step2-pin" class="d-none fade-enter">
+                            <label for="pin" class="form-label fw-bold">Masukkan PIN Keamanan</label>
+                            <div class="input-group input-group-lg">
+                                <button type="button" id="btn-kembali" class="btn btn-light border" title="Kembali"><i class="bi bi-arrow-left"></i></button>
+                                <span class="input-group-text bg-light border-end-0 border-start-0"><i class="bi bi-shield-lock text-secondary"></i></span>
+                                <input type="password" name="pin" id="pin_input" class="form-control border-start-0 ps-0 text-center fw-bold"
+                                       placeholder="* * * * * *" maxlength="6" pattern="[0-9]{6}">
+                                <button type="submit" class="btn btn-danger px-3 px-md-4 fw-bold">Cek Tagihan</button>
+                            </div>
+
+                            {{-- LINK BANTUAN PIN --}}
+                            <div class="d-flex justify-content-between align-items-center mt-3 px-1">
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#modalBuatPin" class="text-decoration-none text-primary" style="font-size: 0.85rem;">
+                                    <i class="bi bi-plus-circle me-1"></i> Belum punya PIN?
+                                </a>
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#modalLupaPin" class="text-decoration-none text-danger" style="font-size: 0.85rem;">
+                                    <i class="bi bi-question-circle me-1"></i> Lupa PIN?
+                                </a>
+                            </div>
+                        </div>
+
                     </form>
                 </div>
             </div>
         </div>
     </div>
 
+    {{-- TAMPILAN TAGIHAN (TETAP SAMA SEPERTI ASLINYA) --}}
     @if(isset($user))
         <div class="row justify-content-center">
             <div class="col-12 col-xl-10">
@@ -101,13 +138,9 @@
                             </div>
                         </div>
 
-                        {{-- ==========================================================
-                             BUNGKUS SEMUA TAGIHAN MENJADI SATU FORMAT (NORMALISASI)
-                             ========================================================== --}}
                         @php
                             $allBills = collect();
 
-                            // 1. Tagihan Order (Belanja Toko)
                             if(isset($invoices)) {
                                 foreach($invoices as $inv) {
                                     $allBills->push((object)[
@@ -122,7 +155,6 @@
                                 }
                             }
 
-                            // 2. Tagihan Top Up (Isi Saldo)
                             if(isset($topups)) {
                                 foreach($topups as $topup) {
                                     $allBills->push((object)[
@@ -137,7 +169,6 @@
                                 }
                             }
 
-                            // 3. Tagihan Ekspedisi (Pengiriman Barang)
                             if(isset($ekspedisi)) {
                                 foreach($ekspedisi as $eks) {
                                     $totalEks = $eks->price ?? ($eks->shipping_cost + $eks->insurance_cost + $eks->cod_fee);
@@ -161,7 +192,6 @@
                                         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
                                             <div class="card-body p-0">
                                                 <div class="row g-0">
-
                                                     <div class="col-12 col-lg-8 p-3 p-md-4 border-end-lg">
                                                         <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
                                                             <span class="badge bg-light text-dark border fw-bold px-3 py-2">
@@ -172,7 +202,6 @@
 
                                                         <div class="d-flex flex-column">
                                                             <strong class="text-dark mb-2" style="font-size: 0.9rem;">Rincian Tagihan:</strong>
-
                                                             @if(is_array($bill->items) && count($bill->items) > 0)
                                                                 <div class="d-flex flex-column gap-2 mb-3">
                                                                     @foreach($bill->items as $item)
@@ -220,12 +249,11 @@
                                                             <i class="bi bi-credit-card me-2"></i> Bayar Sekarang
                                                         </button>
                                                     </div>
-
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {{-- MODAL PEMBAYARAN --}}
+                                        {{-- MODAL METODE PEMBAYARAN --}}
                                         <div class="modal fade text-start" id="payModal{{ $bill->id }}" tabindex="-1" aria-hidden="true">
                                             <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
                                                 <form action="{{ route('pembayaran.proses', $bill->id) }}" method="POST" class="modal-content border-0 shadow-lg rounded-4">
@@ -316,7 +344,7 @@
                 </div>
             </div>
         </div>
-    @elseif(request()->has('akun'))
+    @elseif(request()->has('akun') && !session('error'))
         <div class="row justify-content-center">
             <div class="col-12 col-md-8 text-center">
                 <div class="alert alert-danger shadow-sm border-0 rounded-4" role="alert">
@@ -326,4 +354,138 @@
         </div>
     @endif
 </div>
+
+{{-- ========================================================= --}}
+{{-- MODAL BUAT PIN BARU --}}
+{{-- ========================================================= --}}
+<div class="modal fade" id="modalBuatPin" tabindex="-1" aria-labelledby="modalBuatPinLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form action="{{ url('/api/mobile/pin/register-public') }}" method="POST" class="modal-content rounded-4 border-0 shadow">
+            @csrf
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="modalBuatPinLabel">Buat PIN Baru</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Buat 6 digit PIN untuk mengamankan transaksi Anda.</p>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Nomor WA / Email</label>
+                    <input type="text" name="akun" class="form-control bg-light" id="inputBuatPinAkun" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">PIN Baru (6 Angka)</label>
+                    <input type="password" name="pin" class="form-control" placeholder="******" maxlength="6" pattern="[0-9]{6}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Konfirmasi PIN</label>
+                    <input type="password" name="pin_confirmation" class="form-control" placeholder="******" maxlength="6" pattern="[0-9]{6}" required>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-danger px-4 fw-bold">Simpan PIN</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- ========================================================= --}}
+{{-- MODAL LUPA PIN (REQUEST OTP & RESET) --}}
+{{-- ========================================================= --}}
+<div class="modal fade" id="modalLupaPin" tabindex="-1" aria-labelledby="modalLupaPinLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form action="{{ url('/api/mobile/pin/reset-with-otp-public') }}" method="POST" class="modal-content rounded-4 border-0 shadow">
+            @csrf
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger" id="modalLupaPinLabel">Reset PIN via OTP</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Kami akan mengirimkan kode OTP ke WhatsApp Anda untuk mereset PIN.</p>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Nomor WA Terdaftar</label>
+                    <div class="input-group">
+                        <input type="text" name="akun" class="form-control bg-light" id="inputLupaPinAkun" readonly>
+                        <button class="btn btn-outline-danger" type="button" onclick="alert('Fungsi request OTP via AJAX perlu dihubungkan ke backend')">Kirim OTP</button>
+                    </div>
+                </div>
+                <hr>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Kode OTP</label>
+                    <input type="text" name="otp" class="form-control" placeholder="Masukkan 6 huruf/angka OTP" maxlength="6" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">PIN Baru (6 Angka)</label>
+                    <input type="password" name="new_pin" class="form-control" placeholder="******" maxlength="6" pattern="[0-9]{6}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Konfirmasi PIN Baru</label>
+                    <input type="password" name="new_pin_confirmation" class="form-control" placeholder="******" maxlength="6" pattern="[0-9]{6}" required>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-danger px-4 fw-bold">Reset PIN</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnLanjut = document.getElementById('btn-lanjut');
+        const btnKembali = document.getElementById('btn-kembali');
+        const step1Akun = document.getElementById('step1-akun');
+        const step2Pin = document.getElementById('step2-pin');
+        const akunInput = document.getElementById('akun_input');
+        const pinInput = document.getElementById('pin_input');
+
+        // Input Modals
+        const inputBuatPinAkun = document.getElementById('inputBuatPinAkun');
+        const inputLupaPinAkun = document.getElementById('inputLupaPinAkun');
+
+        // Fungsi Transisi ke Step PIN
+        function goToStep2() {
+            if(akunInput.value.trim() === '') {
+                akunInput.focus();
+                return;
+            }
+            // Sembunyikan form input identitas, munculkan PIN
+            step1Akun.classList.add('d-none');
+            step2Pin.classList.remove('d-none');
+            step2Pin.classList.add('fade-enter-active');
+            pinInput.focus();
+
+            // Isi nilai akun ke dalam form modal agar ter-passing ke backend saat modal disubmit
+            inputBuatPinAkun.value = akunInput.value;
+            inputLupaPinAkun.value = akunInput.value;
+        }
+
+        // Fungsi Kembali ke Step Identitas
+        function goToStep1() {
+            step2Pin.classList.remove('fade-enter-active');
+            step2Pin.classList.add('d-none');
+            step1Akun.classList.remove('d-none');
+        }
+
+        btnLanjut.addEventListener('click', goToStep2);
+        btnKembali.addEventListener('click', goToStep1);
+
+        // Jika user menekan enter di input akun, langsung arahkan ke step 2
+        akunInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                goToStep2();
+            }
+        });
+
+        // AUTO TAMPILKAN PIN: Jika ada error PIN atau halaman diload dengan request akun (redirect back dari validasi PIN yang gagal)
+        @if(request('akun'))
+            goToStep2();
+        @endif
+    });
+</script>
+@endpush
