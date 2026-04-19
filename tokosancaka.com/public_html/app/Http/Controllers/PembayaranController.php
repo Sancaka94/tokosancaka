@@ -45,10 +45,13 @@ class PembayaranController extends Controller
 
             // 1. CARI TAGIHAN BELANJA TOKO (ORDERS)
             $invoices = Order::where('user_id', $userId)
-                             ->whereIn('status', ['pending', 'unpaid'])
-                             ->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(payment_method)'), $excludedMethods)
-                             ->orderBy('created_at', 'desc')
-                             ->get();
+                 ->whereIn('status', ['pending', 'unpaid'])
+                 ->where(function($query) use ($excludedMethods) {
+                     $query->whereNull('payment_method')
+                           ->orWhereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(payment_method)'), $excludedMethods);
+                 })
+                 ->orderBy('created_at', 'desc')
+                 ->get();
 
             // 2. CARI TAGIHAN TOP UP (TRANSACTIONS)
             $topups = Transaction::where('user_id', $userId)
@@ -57,19 +60,20 @@ class PembayaranController extends Controller
                              ->orderBy('created_at', 'desc')
                              ->get();
 
-            // 3. CARI TAGIHAN EKSPEDISI SANCAKA EXPRESS (PESANAN)
-            // Tambahkan 'Menunggu Pembayaran' dan cek 2 kolom ID untuk berjaga-jaga
             $ekspedisi = Pesanan::where(function($query) use ($userId) {
-                                 $query->where('customer_id', $userId)
-                                       ->orWhere('id_pengguna_pembeli', $userId);
-                             })
-                             ->whereIn('status_pesanan', [
-                                 'pending', 'unpaid', 'Belum Bayar', 'BELUM BAYAR',
-                                 'Menunggu Pembayaran', 'menunggu pembayaran' // <--- INI KUNCI UTAMANYA!
-                             ])
-                             ->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(payment_method)'), $excludedMethods)
-                             ->orderBy('created_at', 'desc')
-                             ->get();
+                         $query->where('customer_id', $userId)
+                               ->orWhere('id_pengguna_pembeli', $userId);
+                     })
+                     ->whereIn('status_pesanan', [
+                         'pending', 'unpaid', 'Belum Bayar', 'BELUM BAYAR',
+                         'Menunggu Pembayaran', 'menunggu pembayaran'
+                     ])
+                     ->where(function($query) use ($excludedMethods) {
+                         $query->whereNull('payment_method')
+                               ->orWhereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(payment_method)'), $excludedMethods);
+                     })
+                     ->orderBy('created_at', 'desc')
+                     ->get();
 
             Log::info('Total tagihan pending ditemukan:', [
                 'orders' => $invoices->count(),
