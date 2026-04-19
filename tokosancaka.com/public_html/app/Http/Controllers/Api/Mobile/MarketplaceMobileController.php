@@ -641,48 +641,68 @@ class MarketplaceMobileController extends Controller
                         $finalSchedule = $now->copy()->addHour()->format('Y-m-d H:i:s');
                     }
 
-                    // Build Data Paket (Bisa lebih dari 1 macam barang dalam 1 checkout)
+                   // Build Data Paket (Sesuai Dokumentasi KiriminAja & Dinamis)
                     $packagesPayload = [];
                     foreach($cartItemsPayload as $item) {
                         $qty = $item['quantity'] ?? ($item['qty'] ?? 1);
+                        $w = $item['weight'] ?? 1000;
 
-                        $w = $item['weight'] ?? 1000; // Asumsi dari DB adalah Gram
+                        // Mengambil dimensi dari database produk (jika kosong, fallback ke 10cm)
+                        $width  = !empty($item['width']) ? (int) $item['width'] : 10;
+                        $height = !empty($item['height']) ? (int) $item['height'] : 10;
+                        $length = !empty($item['length']) ? (int) $item['length'] : 10;
 
-                        $weightInGrams = (int) ceil($w * $qty);
                         $packagesPayload[] = [
-                            'order_id' => $order->invoice_number,
-                            'destination_name' => $order->receiver_name,
-                            'destination_phone' => $order->receiver_phone,
-                            'destination_address' => $order->receiver_address,
-                            'destination_kecamatan_id' => $order->receiver_district_id,
-                            'destination_kelurahan_id' => $order->receiver_subdistrict_id,
-                            'weight' => $weightInGrams,
-                            'width' => 10, 'height' => 10, 'length' => 10,
-                            'item_value' => $item['price'] * $qty,
-                            'item_name' => $item['name'] ?? 'Produk Sancaka',
-                            'service' => $courierCode,
-                            'service_type' => $serviceCode,
-                            'shipping_cost' => $shipping_cost,
-                            'package_type_id' => 1,
-                            'cod' => $isCOD ? $grand_total : 0,
-                            'insurance_amount' => $applied_insurance > 0 ? ($item['price'] * $qty) : 0,
+                            'order_id'                 => (string) $order->invoice_number,
+                            'destination_name'         => (string) substr($order->receiver_name, 0, 50),
+                            'destination_phone'        => (string) $order->receiver_phone,
+                            'destination_address'      => (string) $order->receiver_address,
+                            'destination_kecamatan_id' => (int) $order->receiver_district_id,
+                            'destination_kelurahan_id' => (int) $order->receiver_subdistrict_id,
+
+                            // [DINAMIS] Mengambil kodepos dari tabel Order
+                            'destination_zipcode'      => (string) ($order->receiver_postal_code ?? '00000'),
+
+                            'weight'                   => (int) ($w * $qty), // WAJIB GRAM & INTEGER
+
+                            // [DINAMIS] Menggunakan dimensi produk dari database
+                            'width'                    => $width,
+                            'height'                   => $height,
+                            'length'                   => $length,
+
+                            'item_value'               => (int) ($item['price'] * $qty), // Minimal 1000
+                            'shipping_cost'            => (int) $shipping_cost,
+                            'service'                  => (string) $courierCode,
+                            'service_type'             => (string) $serviceCode,
+                            'item_name'                => (string) substr(($item['name'] ?? 'Produk Sancaka'), 0, 255),
+
+                            // [DINAMIS] Cek jika ada tipe paket khusus di database, default 7
+                            'package_type_id'          => (int) ($item['package_type_id'] ?? 7),
+
+                            'cod'                      => $isCOD ? (int) $grand_total : 0,
+                            'insurance_amount'         => $applied_insurance > 0 ? (int) ($item['price'] * $qty) : 0,
                         ];
                     }
 
+                    // [DINAMIS] Mengambil nama platform dari configurasi server (.env -> APP_NAME)
+                    $platformName = config('app.name', 'Sancaka');
+
                     // Build Data Utama untuk KiriminAja
                     $kaPayload = [
-                        'kecamatan_id' => $originDistId,
-                        'kelurahan_id' => $originSubId,
-                        'address' => $senderAddress,
-                        'phone' => $senderPhone,
-                        'name' => $senderName,
-                        'zipcode' => $store->postal_code ?? '63211',
-                        'latitude' => $store->latitude ?? 0,
-                        'longitude' => $store->longitude ?? 0,
-                        'packages' => $packagesPayload,
-                        'category' => ($shippingType == 'cargo' || $shippingType == 'trucking') ? 'trucking' : 'regular',
-                        'schedule' => $finalSchedule,
-                        'platform_name' => 'TOKOSANCAKA.COM'
+                        'address'       => (string) $senderAddress,
+                        'phone'         => (string) $senderPhone,
+                        'name'          => (string) substr($senderName, 0, 50),
+
+                        // [DINAMIS] Mengambil kodepos dari data Toko atau profil User penjual
+                        'zipcode'       => (string) ($store->postal_code ?? $store->user->postal_code ?? '00000'),
+
+                        'kecamatan_id'  => (int) $originDistId,
+                        'kelurahan_id'  => (int) $originSubId,
+                        'latitude'      => (float) ($store->latitude ?? 0),
+                        'longitude'     => (float) ($store->longitude ?? 0),
+                        'packages'      => $packagesPayload,
+                        'schedule'      => (string) $finalSchedule,
+                        'platform_name' => (string) $platformName
                     ];
 
                     // Tembak API
