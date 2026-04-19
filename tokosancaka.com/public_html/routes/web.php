@@ -27,7 +27,11 @@ use App\Http\Controllers\Admin\CustomerController;
 // Telegram Group
 use App\Http\Controllers\TelegramGroupController;
 
+// Kontak & Chat
 use App\Http\Controllers\Customer\ProfileController;
+
+// Pembayaran
+use App\Http\Controllers\PembayaranController;
 
 // Core Logic
 use App\Http\Controllers\AdminController;
@@ -1206,3 +1210,18 @@ Route::post('/customer/pesanan/cancel', [App\Http\Controllers\Customer\PesananCo
 // Route Public untuk Permohonan Hapus Akun
 Route::get('/hapus-akun', [ProfileController::class, 'showDeleteAccountForm'])->name('customer.profile.request-delete');
 Route::post('/hapus-akun', [ProfileController::class, 'submitDeleteAccountRequest'])->name('customer.profile.request-delete.submit');
+
+
+// Route untuk pembayran marketlace via payment gateway (misal DOKU) di aplikasi HP
+// ========================================================================
+// PORTAL PEMBAYARAN PUBLIK SANCAKA EXPRESS
+// ========================================================================
+
+// 1. Halaman utama pencarian tagihan
+Route::get('/pembayaran', [PembayaranController::class, 'index'])->name('pembayaran.index');
+
+// 2. Endpoint saat form pencarian di-submit (Menggunakan GET agar parameter ?akun= muncul di URL)
+Route::get('/pembayaran/cek', [PembayaranController::class, 'index'])->name('pembayaran.cek');
+
+// 3. Endpoint saat tombol "Bayar Sekarang" diklik di tabel
+Route::get('/pembayaran/{invoice_number}/proses', [PembayaranController::class, 'proses'])->name('pembayaran.proses');
