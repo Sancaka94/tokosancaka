@@ -32,6 +32,18 @@
 
 <div class="container py-4 py-md-5">
 
+    @if(session('error'))
+        <div class="row justify-content-center mb-3">
+            <div class="col-12 col-md-8 col-lg-6">
+                <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 rounded-4" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                    <span>{{ session('error') }}</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="row justify-content-center mb-4">
         <div class="col-12 col-md-8 text-center">
             <h2 class="fw-bold text-dark fs-3 fs-md-2">Portal Pembayaran Sancaka</h2>

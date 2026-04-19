@@ -38,7 +38,7 @@ class PembayaranController extends Controller
 
             $invoices = Order::where('user_id', $userId)
                              ->whereIn('status', ['pending', 'unpaid'])
-                             ->whereRaw('UPPER(payment_method) = ?', ['GATEWAY'])
+                             ->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(payment_method)'), ['CASH', 'COD', 'CODBARANG', 'POTONG SALDO'])
                              ->orderBy('created_at', 'desc')
                              ->get();
 
@@ -89,6 +89,15 @@ class PembayaranController extends Controller
 
         // 1. UPDATE METODE DARI 'GATEWAY' KE METODE ASLI (misal: 'DANA' atau 'BRIVA')
         $method = strtoupper($request->payment_method);
+
+        // =========================================================
+        // TAMBAHKAN BLOK INI:
+        // Jika user klik metode yang sama dan URL sudah ada, langsung lempar ke URL tersebut!
+        if ($order->payment_method === $method && !empty($order->payment_url)) {
+            return redirect()->away($order->payment_url);
+        }
+        // =========================================================
+
         $order->payment_method = $method;
         $order->save();
 
