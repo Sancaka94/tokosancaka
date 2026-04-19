@@ -645,7 +645,10 @@ class MarketplaceMobileController extends Controller
                     $packagesPayload = [];
                     foreach($cartItemsPayload as $item) {
                         $qty = $item['quantity'] ?? ($item['qty'] ?? 1);
-                        $w = $item['weight'] ?? 1000;
+
+                        $w = $item['weight'] ?? 1000; // Asumsi dari DB adalah Gram
+
+                        $weightInKg = max(0.1, round(($w * $qty) / 1000, 2));
                         $packagesPayload[] = [
                             'order_id' => $order->invoice_number,
                             'destination_name' => $order->receiver_name,
@@ -653,7 +656,7 @@ class MarketplaceMobileController extends Controller
                             'destination_address' => $order->receiver_address,
                             'destination_kecamatan_id' => $order->receiver_district_id,
                             'destination_kelurahan_id' => $order->receiver_subdistrict_id,
-                            'weight' => $w * $qty,
+                            'weight' => $weightInKg,
                             'width' => 10, 'height' => 10, 'length' => 10,
                             'item_value' => $item['price'] * $qty,
                             'item_name' => $item['name'] ?? 'Produk Sancaka',
