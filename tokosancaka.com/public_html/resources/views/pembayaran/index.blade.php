@@ -148,7 +148,7 @@
                                         'total'   => $totalEks,
                                         'sender'  => $eks->sender_name ?? 'Pelanggan Sancaka',
                                         'courier' => explode('-', $eks->shipping_method)[1] ?? ($eks->expedition ?? 'Sancaka Express'),
-                                        'items'   => [ ['name' => 'Ongkos Kirim (' . ($eks->weight ?? 1) . ' Kg)', 'qty' => 1, 'price' => $totalEks] ],
+                                        'items'   => [ ['name' => 'Ongkos Kirim (' . ($eks->weight ?? 1) . ' Gr)', 'qty' => 1, 'price' => $totalEks] ],
                                     ]);
                                 }
                             }
