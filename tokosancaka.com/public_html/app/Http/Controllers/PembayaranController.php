@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Order;
+use App\Models\Transaction;
+use App\Models\Pesanan; // Tambahkan Model Pesanan (Ekspedisi)
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -39,16 +41,37 @@ class PembayaranController extends Controller
             Log::info('User ditemukan:', ['user_id' => $user->id]);
 
             $userId = $user->id_pengguna ?? $user->id;
+            $excludedMethods = ['CASH', 'COD', 'CODBARANG', 'POTONG SALDO'];
 
+            // 1. CARI TAGIHAN BELANJA TOKO (ORDERS)
             $invoices = Order::where('user_id', $userId)
                              ->whereIn('status', ['pending', 'unpaid'])
-                             ->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(payment_method)'), ['CASH', 'COD', 'CODBARANG', 'POTONG SALDO'])
+                             ->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(payment_method)'), $excludedMethods)
                              ->orderBy('created_at', 'desc')
                              ->get();
 
-            Log::info('Total tagihan pending ditemukan:', ['jumlah' => $invoices->count()]);
+            // 2. CARI TAGIHAN TOP UP (TRANSACTIONS)
+            $topups = Transaction::where('user_id', $userId)
+                             ->where('type', 'topup')
+                             ->where('status', 'pending')
+                             ->orderBy('created_at', 'desc')
+                             ->get();
 
-            // AMBIL LIST METODE BAYAR TRIPAY (Persis seperti CheckoutController)
+            // 3. CARI TAGIHAN EKSPEDISI SANCAKA EXPRESS (PESANAN)
+            // Sesuai dengan kolom di database Anda (customer_id & status)
+            $ekspedisi = Pesanan::where('customer_id', $userId)
+                             ->whereIn('status', ['pending', 'unpaid', 'Belum Bayar'])
+                             ->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(payment_method)'), $excludedMethods)
+                             ->orderBy('created_at', 'desc')
+                             ->get();
+
+            Log::info('Total tagihan pending ditemukan:', [
+                'orders' => $invoices->count(),
+                'topups' => $topups->count(),
+                'ekspedisi' => $ekspedisi->count()
+            ]);
+
+            // AMBIL LIST METODE BAYAR TRIPAY
             $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
             $cacheKey = 'tripay_channels_list_' . $currentMode;
 
@@ -62,21 +85,18 @@ class PembayaranController extends Controller
                 }
 
                 try {
-                    Log::info('Fetching Tripay Channels dari API Gateway', ['mode' => $currentMode]);
                     $response = Http::withToken($apiKey)->timeout(10)->get($baseUrl . '/merchant/payment-channel');
-
                     if ($response->successful()) {
-                        Log::info('Berhasil mendapatkan Tripay Channels');
                         return $response->json()['data'] ?? [];
                     }
-                    Log::warning('Gagal mendapatkan Tripay Channels, Status:', ['status' => $response->status()]);
                 } catch (\Exception $e) {
                     Log::error('Exception saat get Tripay Channels:', ['error' => $e->getMessage()]);
                 }
                 return [];
             });
 
-            return view('pembayaran.index', compact('user', 'invoices', 'userId', 'tripayChannels'));
+            // Kirim variabel $ekspedisi ke view Blade
+            return view('pembayaran.index', compact('user', 'invoices', 'topups', 'ekspedisi', 'userId', 'tripayChannels'));
         }
 
         Log::warning('User tidak ditemukan saat pencarian tagihan', ['akun' => $akun]);
@@ -97,89 +117,111 @@ class PembayaranController extends Controller
             'payment_method' => 'required|string'
         ]);
 
-        $order = Order::with('user', 'items.product')->where('invoice_number', $invoice_number)->first();
-
-        if (!$order || !in_array(strtolower($order->status), ['pending', 'unpaid'])) {
-            Log::warning('Tagihan tidak valid / sudah lunas / dibatalkan', ['invoice' => $invoice_number]);
-            return back()->with('error', 'Tagihan tidak valid atau sudah dibayar/dibatalkan.');
-        }
-
-        // 1. UPDATE METODE DARI 'GATEWAY' KE METODE ASLI
         $method = strtoupper($request->payment_method);
 
-        // Jika user klik metode yang sama dan URL sudah ada, langsung lempar ke URL tersebut!
-        // Validasi Ekstra: Pastikan URL bukan kembali ke web internal (mencegah redirect loop)
-        if ($order->payment_method === $method && !empty($order->payment_url) && !str_contains($order->payment_url, 'tokosancaka.com/pembayaran')) {
-            Log::info('Menggunakan ulang Payment URL yang sudah ada', [
-                'invoice' => $invoice_number,
-                'method' => $method,
-                'url' => $order->payment_url
-            ]);
-            return redirect()->away($order->payment_url);
-        }
+        // Deteksi Tipe Transaksi
+        $isTopup = Str::startsWith($invoice_number, 'TOPUP-');
+        $isOrder = Str::startsWith($invoice_number, 'SCK-ORD-');
+        $isEkspedisi = !$isOrder && Str::startsWith($invoice_number, 'SCK-'); // SCK-20251118-XXXX
 
-        $order->payment_method = $method;
-        $order->save();
+        // ====================================================================
+        // A. JIKA INI ADALAH TRANSAKSI TOP UP
+        // ====================================================================
+        if ($isTopup) {
+            $model = Transaction::where('reference_id', $invoice_number)->first();
+            if (!$model || $model->status !== 'pending') return back()->with('error', 'Tagihan Top Up tidak valid atau sudah dibayar.');
 
-        $grand_total = $order->total_amount;
-        $user = $order->user;
+            $user = User::where('id', $model->user_id)->orWhere('id_pengguna', $model->user_id)->first();
+            $grand_total = $model->amount;
 
-        // 2. SIAPKAN PAYLOAD ITEM UNTUK API
-        Log::info('Menyiapkan payload order items', ['invoice' => $invoice_number]);
-        $orderItemsPayload = [];
-        $calculatedTotalItems = 0;
-
-        // Masukkan Produk
-        foreach ($order->items as $item) {
-            $price = (int) $item->price;
-            $qty = (int) $item->quantity;
-            $orderItemsPayload[] = [
-                'sku'      => (string) ($item->product_id ?? 'ITEM'),
-                'name'     => substr($item->product->name ?? 'Produk Sancaka', 0, 50),
-                'price'    => $price,
-                'quantity' => $qty
+            $orderItemsPayload = [
+                ['sku' => 'TOPUP', 'name' => 'Top Up Saldo Sancaka', 'price' => (int) $grand_total, 'quantity' => 1]
             ];
-            $calculatedTotalItems += ($price * $qty);
+            $calculatedTotalItems = (int) $grand_total;
         }
 
-        // TAMBAHKAN ONGKOS KIRIM
-        if ($order->shipping_cost > 0) {
-            $orderItemsPayload[] = [
-                'sku'      => 'SHIPPING_FEE',
-                'name'     => 'Ongkos Kirim',
-                'price'    => (int) $order->shipping_cost,
-                'quantity' => 1
+        // ====================================================================
+        // B. JIKA INI ADALAH TAGIHAN EKSPEDISI (PESANAN)
+        // ====================================================================
+        elseif ($isEkspedisi) {
+            $model = Pesanan::where('nomor_invoice', $invoice_number)->first();
+
+            // Cek variasi status (pending / Belum Bayar)
+            if (!$model || !in_array(strtolower($model->status), ['pending', 'unpaid', 'belum bayar'])) {
+                return back()->with('error', 'Tagihan Pengiriman tidak valid atau sudah dibayar.');
+            }
+
+            // Cari data user (Jika null, fallback ke data nama pengirim)
+            $user = User::where('id', $model->customer_id)->orWhere('id_pengguna', $model->customer_id)->first();
+            if (!$user) {
+                $user = (object) [
+                    'nama_lengkap' => $model->sender_name ?? 'Pelanggan Sancaka',
+                    'no_wa' => $model->sender_phone ?? '0800000000',
+                    'email' => 'no-email@sancaka.com'
+                ];
+            }
+
+            // Gunakan field 'price' dari tabel Pesanan yang merepresentasikan grand total
+            $grand_total = $model->price ?? ($model->shipping_cost + $model->insurance_cost + $model->cod_fee);
+
+            $orderItemsPayload = [
+                ['sku' => 'SHIPPING', 'name' => 'Ongkos Kirim Sancaka Express', 'price' => (int) $grand_total, 'quantity' => 1]
             ];
-            $calculatedTotalItems += (int) $order->shipping_cost;
+            $calculatedTotalItems = (int) $grand_total;
         }
 
-        // TAMBAHKAN ASURANSI
-        if ($order->insurance_cost > 0) {
-            $orderItemsPayload[] = [
-                'sku'      => 'INSURANCE_FEE',
-                'name'     => 'Biaya Asuransi',
-                'price'    => (int) $order->insurance_cost,
-                'quantity' => 1
-            ];
-            $calculatedTotalItems += (int) $order->insurance_cost;
+        // ====================================================================
+        // C. JIKA INI ADALAH PESANAN BELANJA (ORDER MARKETPLACE)
+        // ====================================================================
+        else {
+            $model = Order::with('user', 'items.product')->where('invoice_number', $invoice_number)->first();
+            if (!$model || !in_array(strtolower($model->status), ['pending', 'unpaid'])) {
+                return back()->with('error', 'Tagihan belanja tidak valid atau sudah dibayar.');
+            }
+
+            $user = $model->user;
+            $grand_total = $model->total_amount;
+            $orderItemsPayload = [];
+            $calculatedTotalItems = 0;
+
+            foreach ($model->items as $item) {
+                $price = (int) $item->price;
+                $qty = (int) $item->quantity;
+                $orderItemsPayload[] = [
+                    'sku'      => (string) ($item->product_id ?? 'ITEM'),
+                    'name'     => substr($item->product->name ?? 'Produk Sancaka', 0, 50),
+                    'price'    => $price,
+                    'quantity' => $qty
+                ];
+                $calculatedTotalItems += ($price * $qty);
+            }
+
+            if ($model->shipping_cost > 0) {
+                $orderItemsPayload[] = ['sku' => 'SHIPPING_FEE', 'name' => 'Ongkos Kirim', 'price' => (int) $model->shipping_cost, 'quantity' => 1];
+                $calculatedTotalItems += (int) $model->shipping_cost;
+            }
+            if ($model->insurance_cost > 0) {
+                $orderItemsPayload[] = ['sku' => 'INSURANCE_FEE', 'name' => 'Biaya Asuransi', 'price' => (int) $model->insurance_cost, 'quantity' => 1];
+                $calculatedTotalItems += (int) $model->insurance_cost;
+            }
+            if ($model->cod_fee > 0) {
+                $orderItemsPayload[] = ['sku' => 'COD_FEE', 'name' => 'Biaya Layanan COD', 'price' => (int) $model->cod_fee, 'quantity' => 1];
+                $calculatedTotalItems += (int) $model->cod_fee;
+            }
         }
 
-        // TAMBAHKAN BIAYA COD
-        if ($order->cod_fee > 0) {
-            $orderItemsPayload[] = [
-                'sku'      => 'COD_FEE',
-                'name'     => 'Biaya Layanan COD',
-                'price'    => (int) $order->cod_fee,
-                'quantity' => 1
-            ];
-            $calculatedTotalItems += (int) $order->cod_fee;
+        // =======================================================
+        // CEK RE-USE PAYMENT URL (Agar Tidak Redirect Loop)
+        // =======================================================
+        if ($model->payment_method === $method && !empty($model->payment_url) && !str_contains($model->payment_url, 'tokosancaka.com/pembayaran')) {
+            Log::info('Menggunakan ulang Payment URL yang sudah ada', ['invoice' => $invoice_number, 'url' => $model->payment_url]);
+            return redirect()->away($model->payment_url);
         }
 
-        Log::info('Payload items selesai dibuat', [
-            'invoice' => $invoice_number,
-            'calculated_total' => $calculatedTotalItems,
-            'grand_total_db' => $grand_total
-        ]);
+        // Update Metode Pembayaran di DB
+        $model->payment_method = $method;
+        $model->save();
+
 
         // =======================================================
         // 3. ROUTING KE API GATEWAY MASING-MASING
@@ -188,7 +230,7 @@ class PembayaranController extends Controller
         // ---> A. DANA API
         if ($method === 'DANA') {
             Log::info('Routing ke Gateway DANA', ['invoice' => $invoice_number]);
-            return $this->createPaymentDANA($order);
+            return $this->createPaymentDANA($invoice_number, $grand_total, $user, $model);
         }
 
         // ---> B. DOKU JOKUL API
@@ -203,7 +245,7 @@ class PembayaranController extends Controller
                 ];
 
                 $paymentUrl = $dokuService->createPayment(
-                    $order->invoice_number,
+                    $invoice_number,
                     $grand_total,
                     $customerData,
                     $orderItemsPayload,
@@ -211,14 +253,13 @@ class PembayaranController extends Controller
                 );
 
                 if ($paymentUrl) {
-                    Log::info('Berhasil generate link DOKU', ['invoice' => $invoice_number, 'url' => $paymentUrl]);
-                    $order->payment_url = $paymentUrl;
-                    $order->save();
+                    $model->payment_url = $paymentUrl;
+                    $model->save();
                     return redirect()->away($paymentUrl);
                 }
-                throw new \Exception('Gagal generate link DOKU, response return null.');
+                throw new \Exception('Gagal generate link DOKU.');
             } catch (\Exception $e) {
-                Log::error('DOKU_FAIL Web Portal: ' . $e->getMessage(), ['invoice' => $invoice_number]);
+                Log::error('DOKU_FAIL Web Portal: ' . $e->getMessage());
                 return back()->with('error', 'Gagal memproses pembayaran DOKU.');
             }
         }
@@ -227,7 +268,7 @@ class PembayaranController extends Controller
         else {
             Log::info('Routing ke Gateway TRIPAY', ['invoice' => $invoice_number, 'channel' => $method]);
             $tripayResult = $this->_createTripayTransaction(
-                $order,
+                $invoice_number,
                 $method,
                 $grand_total,
                 $user->nama_lengkap ?? 'Pelanggan',
@@ -239,17 +280,17 @@ class PembayaranController extends Controller
 
             if ($tripayResult['success']) {
                 $paymentUrl = $tripayResult['data']['checkout_url'] ?? $tripayResult['data']['pay_url'] ?? null;
+                $model->payment_url = $paymentUrl;
 
-                Log::info('Berhasil generate link TRIPAY', ['invoice' => $invoice_number, 'url' => $paymentUrl]);
-
-                $order->payment_url = $paymentUrl;
-                $order->pay_code = $tripayResult['data']['pay_code'] ?? null;
-                $order->qr_url = $tripayResult['data']['qr_url'] ?? null;
-                $order->save();
+                // Kolom pay_code dan qr_url hanya tersedia di tabel Orders (Toko), hindari error di tabel lain
+                if ($isOrder) {
+                    $model->pay_code = $tripayResult['data']['pay_code'] ?? null;
+                    $model->qr_url = $tripayResult['data']['qr_url'] ?? null;
+                }
+                $model->save();
 
                 return redirect()->away($paymentUrl);
             } else {
-                Log::warning('Gagal generate transaksi TRIPAY', ['invoice' => $invoice_number, 'message' => $tripayResult['message']]);
                 return back()->with('error', $tripayResult['message']);
             }
         }
@@ -261,11 +302,9 @@ class PembayaranController extends Controller
      * HELPER: CREATE TRIPAY TRANSACTION
      * =========================================================================
      */
-    private function _createTripayTransaction($order, $methodChannel, $amount, $custName, $custEmail, $custPhone, $items, $calculatedTotalItems)
+    private function _createTripayTransaction($invoice_number, $methodChannel, $amount, $custName, $custEmail, $custPhone, $items, $calculatedTotalItems)
     {
         $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
-
-        Log::info('Inisiasi Tripay Request', ['mode' => $mode, 'invoice' => $order->invoice_number]);
 
         if ($mode === 'production') {
             $baseUrl      = 'https://tripay.co.id/api/transaction/create';
@@ -280,31 +319,25 @@ class PembayaranController extends Controller
         }
 
         if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
-            Log::error('Konfigurasi Tripay tidak lengkap', ['invoice' => $order->invoice_number]);
             return ['success' => false, 'message' => 'Konfigurasi Tripay belum lengkap.'];
         }
 
         $amount = (int) $amount;
 
-        // Cegah Error "Total amount mismatch"
         if ($calculatedTotalItems !== $amount) {
-            Log::warning('Total amount mismatch di Tripay, menggunakan fallback 1 Item Invoice', [
-                'calculated' => $calculatedTotalItems,
-                'amount_db' => $amount
-            ]);
             $items = [[
-                'sku'      => 'INV-' . $order->invoice_number,
-                'name'     => 'Pembayaran Invoice #' . $order->invoice_number,
+                'sku'      => 'INV-' . $invoice_number,
+                'name'     => 'Pembayaran Invoice #' . $invoice_number,
                 'price'    => $amount,
                 'quantity' => 1
             ]];
         }
 
-        $signature = hash_hmac('sha256', $merchantCode . $order->invoice_number . $amount, $privateKey);
+        $signature = hash_hmac('sha256', $merchantCode . $invoice_number . $amount, $privateKey);
 
         $payload = [
             'method'         => $methodChannel,
-            'merchant_ref'   => $order->invoice_number,
+            'merchant_ref'   => $invoice_number,
             'amount'         => $amount,
             'customer_name'  => $custName,
             'customer_email' => $custEmail,
@@ -316,21 +349,18 @@ class PembayaranController extends Controller
         ];
 
         try {
-            Log::info('Mengirim Payload ke API Tripay', ['url' => $baseUrl, 'merchant_ref' => $order->invoice_number]);
             $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
                             ->timeout(30)->withoutVerifying()->post($baseUrl, $payload);
 
             $body = $response->json();
 
             if ($response->successful() && ($body['success'] ?? false) === true) {
-                Log::info('Response API Tripay SUKSES', ['reference' => $body['data']['reference'] ?? '-']);
                 return ['success' => true, 'data' => $body['data']];
             }
-
             Log::error('Tripay Web Error Response:', ['response' => $body]);
             return ['success' => false, 'message' => $body['message'] ?? 'Gagal transaksi Tripay.'];
         } catch (\Exception $e) {
-            Log::error("Tripay Exception: " . $e->getMessage(), ['invoice' => $order->invoice_number]);
+            Log::error("Tripay Exception: " . $e->getMessage());
             return ['success' => false, 'message' => 'Koneksi ke gateway bermasalah.'];
         }
     }
@@ -341,18 +371,16 @@ class PembayaranController extends Controller
      * HELPER: CREATE DANA TRANSACTION
      * =========================================================================
      */
-    public function createPaymentDANA(Order $order)
+    public function createPaymentDANA($invoice_number, $grand_total, $user, $model)
     {
-        Log::info('Inisiasi DANA Request', ['invoice' => $order->invoice_number]);
-
         $validId = "216620080014040009735";
         $merchantIdConf = $validId;
         $partnerIdConf  = "2025081520100641466855";
 
-        $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $order->invoice_number);
+        $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $invoice_number);
         $timestamp    = Carbon::now('Asia/Jakarta')->toIso8601String();
         $expiryTime   = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
-        $amountValue  = number_format((float)$order->total_amount, 2, '.', '');
+        $amountValue  = number_format((float)$grand_total, 2, '.', '');
 
         $bodyArray = [
             "partnerReferenceNo" => $cleanInvoice,
@@ -378,13 +406,13 @@ class PembayaranController extends Controller
                     "orderMemo"         => substr("Inv " . $cleanInvoice, 0, 40),
                     "createdTime"       => $timestamp,
                     "buyer"             => [
-                        "externalUserId"   => (string) ($order->user_id ?? 'GUEST'.rand(100,999)),
+                        "externalUserId"   => (string) ($user->id ?? 'GUEST'.rand(100,999)),
                         "externalUserType" => "MERCHANT_USER",
-                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $order->user->nama_lengkap ?? 'Guest'), 0, 20),
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap ?? 'Guest'), 0, 20),
                     ],
                     "goods" => [[
                         "merchantGoodsId" => substr("ITEM" . $cleanInvoice, 0, 40),
-                        "description"     => "Pembayaran Order",
+                        "description"     => "Pembayaran Sancaka",
                         "category"        => "DIGITAL_GOODS",
                         "price"           => ["value" => $amountValue, "currency" => "IDR"],
                         "unit"            => "pcs",
@@ -403,7 +431,6 @@ class PembayaranController extends Controller
         $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
         try {
-            Log::info('Generate Signature & Access Token DANA', ['invoice' => $order->invoice_number]);
             $accessToken = $this->danaSignature->getAccessToken();
             $signature   = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
 
@@ -418,7 +445,6 @@ class PembayaranController extends Controller
                 'ORIGIN'         => config('services.dana.origin'),
             ];
 
-            Log::info('Mengirim API Request ke DANA Host-to-Host', ['url' => config('services.dana.base_url') . $relativePath]);
             $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')
                             ->post(config('services.dana.base_url') . $relativePath);
 
@@ -427,18 +453,17 @@ class PembayaranController extends Controller
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
                 if($redirectUrl) {
-                    Log::info('Berhasil generate WebRedirectUrl DANA', ['invoice' => $order->invoice_number, 'url' => $redirectUrl]);
-                    $order->payment_url = $redirectUrl;
-                    $order->save();
+                    $model->payment_url = $redirectUrl;
+                    $model->save();
                     return redirect()->away($redirectUrl);
                 }
             }
 
-            Log::error('DANA_FAIL Web Portal', ['Result' => $result, 'invoice' => $order->invoice_number]);
+            Log::error('DANA_FAIL Web Portal', ['Result' => $result]);
             return back()->with('error', 'Gagal memproses pembayaran DANA: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 
         } catch (\Exception $e) {
-            Log::error('DANA_EXCEPTION Web Portal', ['Error' => $e->getMessage(), 'invoice' => $order->invoice_number]);
+            Log::error('DANA_EXCEPTION Web Portal', ['Error' => $e->getMessage()]);
             return back()->with('error', 'Terjadi kesalahan koneksi ke DANA.');
         }
     }
