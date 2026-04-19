@@ -206,15 +206,30 @@ class PembayaranController extends Controller
             }
         }
 
+       // =======================================================
+        // CEK RE-USE PAYMENT URL (Mencegah Redirect Loop)
         // =======================================================
-        // CEK RE-USE PAYMENT URL
-        // =======================================================
-        if ($model->payment_method === $method && !empty($model->payment_url) && !str_contains($model->payment_url, 'tokosancaka.com/pembayaran')) {
+
+        // Ambil metode pembayaran saat ini dari database (menyesuaikan kolom tabel)
+        $currentMethod = $isTopup
+            ? str_replace('Top up saldo via ', '', $model->description ?? '')
+            : $model->payment_method;
+
+        if ($currentMethod === $method && !empty($model->payment_url) && !str_contains($model->payment_url, 'tokosancaka.com/pembayaran')) {
             Log::info('Menggunakan ulang Payment URL yang sudah ada', ['invoice' => $invoice_number, 'url' => $model->payment_url]);
             return redirect()->away($model->payment_url);
         }
 
-        $model->payment_method = $method;
+        // =======================================================
+        // UPDATE METODE PEMBAYARAN KE DATABASE
+        // =======================================================
+        if ($isTopup) {
+            // Tabel transactions menggunakan kolom description
+            $model->description = 'Top up saldo via ' . $method;
+        } else {
+            // Tabel orders dan Pesanan menggunakan kolom payment_method
+            $model->payment_method = $method;
+        }
         $model->save();
 
         // =======================================================
