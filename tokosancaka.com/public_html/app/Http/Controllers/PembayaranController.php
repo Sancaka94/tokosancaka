@@ -108,7 +108,8 @@ class PembayaranController extends Controller
         $method = strtoupper($request->payment_method);
 
         // Jika user klik metode yang sama dan URL sudah ada, langsung lempar ke URL tersebut!
-        if ($order->payment_method === $method && !empty($order->payment_url)) {
+        // Validasi Ekstra: Pastikan URL bukan kembali ke web internal (mencegah redirect loop)
+        if ($order->payment_method === $method && !empty($order->payment_url) && !str_contains($order->payment_url, 'tokosancaka.com/pembayaran')) {
             Log::info('Menggunakan ulang Payment URL yang sudah ada', [
                 'invoice' => $invoice_number,
                 'method' => $method,
