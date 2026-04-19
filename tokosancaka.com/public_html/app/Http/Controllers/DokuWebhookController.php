@@ -214,21 +214,27 @@ class DokuWebhookController extends Controller
                 }
 
                 // =================================================================
-                // A.3 LOGIKA UNTUK PESANAN UMUM (SCK-) -> EKSPEDISI & MARKETPLACE
+                // A.3 LOGIKA UNTUK PESANAN UMUM (SCK-) -> TOKO UTAMA, EKSPEDISI & MARKETPLACE
                 // =================================================================
                 else if (Str::startsWith($orderId, 'SCK-')) {
                     Log::info("🛍️ LOG TRX (SCK-): Webhook DOKU Masuk untuk Order: $orderId");
 
-                    // CEK DULU DI DATABASE EKSPEDISI (MAIN DB)
+                    // 1. CEK DI DATABASE EKSPEDISI (MAIN DB - Tabel Pesanan)
                     $pesananEkspedisi = \App\Models\Pesanan::where('nomor_invoice', $orderId)->first();
+
+                    // 2. CEK DI DATABASE TOKO UTAMA (MAIN DB - Tabel Orders)
+                    $pesananTokoUtama = \App\Models\Order::where('invoice_number', $orderId)->first();
 
                     if ($pesananEkspedisi) {
                         Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Sancaka Express/Mobile.");
-                        // Arahkan ke Controller Ekspedisi Anda!
                         return App::make(\App\Http\Controllers\Admin\PesananController::class)->handleDokuCallback($data);
                     }
-
-                    // JIKA TIDAK DITEMUKAN DI EKSPEDISI, BERARTI INI PESANAN MARKETPLACE
+                    else if ($pesananTokoUtama) {
+                        Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Toko Utama (Checkout Sancaka).");
+                        // Arahkan ke CheckoutController agar status di database utama (tokq3391_db) terupdate
+                        return App::make(\App\Http\Controllers\CheckoutController::class)->handleDokuCallback($data);
+                    }
+                    // 3. JIKA TIDAK DITEMUKAN DI KEDUANYA, BERARTI INI PESANAN MARKETPLACE (DB SECOND)
                     else {
                         Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Marketplace (mysql_second).");
                         try {
