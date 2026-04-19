@@ -55,19 +55,19 @@ class TopUpController extends Controller
         }
     }
 
-    /**
-     * API: MEMBUAT TRANSAKSI TOP UP BARU
+   /**
+     * API: MEMBUAT TRANSAKSI TOP UP BARU (DARI MOBILE APP)
      */
-    public function store(Request $request)
+    public function request(Request $request)
     {
         $request->validate([
             'amount' => 'required|numeric|min:10000',
             'payment_method' => 'required|string'
         ]);
 
-        $user = Auth::user();
+        $user = Auth::user() ?? auth('sanctum')->user();
         if (!$user) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+            return response()->json(['success' => false, 'message' => 'Silakan login kembali.'], 401);
         }
 
         DB::beginTransaction();
@@ -75,28 +75,60 @@ class TopUpController extends Controller
         try {
             $amount = $request->amount;
             $paymentMethod = strtoupper($request->payment_method);
+            $userId = $user->id_pengguna ?? $user->id;
 
             // 1. Generate Reference ID Unik (Format: TOPUP-XXXXXX)
             do {
                 $referenceId = 'TOPUP-' . strtoupper(Str::random(8));
-            } while (Transaction::where('reference_id', $referenceId)->exists());
+            } while (\App\Models\Transaction::where('reference_id', $referenceId)->exists());
 
             $paymentUrl = null;
+            $isManual = false;
             $status = 'pending';
 
-            // 2. Logika Pembayaran GATEWAY (Arahkan ke Web Portal)
+            // ====================================================================
+            // 2. CEGAT METODE PEMBAYARAN AGAR TIDAK ERROR DI TRIPAY
+            // ====================================================================
+
+            // A. JIKA METODE GATEWAY (Arahkan ke Web Portal)
             if ($paymentMethod === 'GATEWAY') {
-                // Menggunakan No WA user sebagai parameter akun untuk halaman web
-                // Fallback ke email atau ID jika No WA kosong
-                $akun = $user->no_wa ?? $user->email ?? ($user->id_pengguna ?? $user->id);
+                // Gunakan No WA, jika tidak ada gunakan Email, jika tidak ada gunakan ID
+                $akun = $user->no_wa ?? $user->email ?? $userId;
 
                 // Set Payment URL menuju ke halaman portal web Sancaka
                 $paymentUrl = url('/pembayaran?akun=' . urlencode($akun));
             }
 
-            // 3. Simpan ke Database
-            $transaction = Transaction::create([
-                'user_id' => $user->id_pengguna ?? $user->id,
+            // B. JIKA METODE CASH (Khusus Admin / ID 4)
+            elseif ($paymentMethod === 'CASH') {
+                if ($userId != 4) {
+                    throw new \Exception("Metode CASH hanya untuk Akses Admin.");
+                }
+
+                // Flag is_manual = true agar React Native menampilkan alert "Transfer Manual"
+                $isManual = true;
+
+                // Opsional: Jika Anda ingin CASH otomatis Lunas & Saldo bertambah saat itu juga:
+                /*
+                $status = 'success';
+                $user->saldo += $amount;
+                $user->save();
+                */
+            }
+
+            // C. FALLBACK: Jika ada versi aplikasi lama yang mengirim metode selain di atas
+            else {
+                // Paksa ubah menjadi GATEWAY agar aman dan diarahkan ke Web Portal
+                $paymentMethod = 'GATEWAY';
+                $akun = $user->no_wa ?? $user->email ?? $userId;
+                $paymentUrl = url('/pembayaran?akun=' . urlencode($akun));
+            }
+
+            // ====================================================================
+            // 3. SIMPAN KE DATABASE
+            // ====================================================================
+            $transaction = \App\Models\Transaction::create([
+                'user_id' => $userId,
                 'reference_id' => $referenceId,
                 'type' => 'topup',
                 'amount' => $amount,
@@ -109,7 +141,9 @@ class TopUpController extends Controller
 
             Log::info("API MOBILE: Request Top Up berhasil dibuat: {$referenceId} via {$paymentMethod}");
 
-            // 4. Return Response JSON ke Mobile
+            // ====================================================================
+            // 4. RETURN RESPONSE KE REACT NATIVE
+            // ====================================================================
             return response()->json([
                 'success' => true,
                 'message' => 'Berhasil membuat tagihan Top Up.',
@@ -119,12 +153,13 @@ class TopUpController extends Controller
                     'status' => $transaction->status,
                     'payment_method' => $transaction->payment_method,
                     'payment_url' => $transaction->payment_url,
+                    'is_manual' => $isManual // <--- Dibaca oleh RN untuk menentukan pindah halaman / buka browser
                 ]
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('API TopUp Create Error: ' . $e->getMessage());
+            Log::error('API TopUp Request Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal memproses top up: ' . $e->getMessage()
