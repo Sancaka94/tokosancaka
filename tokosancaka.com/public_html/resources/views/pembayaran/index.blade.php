@@ -101,10 +101,63 @@
                             </div>
                         </div>
 
+                        {{-- ==========================================================
+                             BUNGKUS SEMUA TAGIHAN MENJADI SATU FORMAT (NORMALISASI)
+                             ========================================================== --}}
+                        @php
+                            $allBills = collect();
+
+                            // 1. Tagihan Order (Belanja Toko)
+                            if(isset($invoices)) {
+                                foreach($invoices as $inv) {
+                                    $allBills->push((object)[
+                                        'id'      => $inv->invoice_number,
+                                        'type'    => 'Belanja Marketplace',
+                                        'icon'    => 'bi-shop',
+                                        'total'   => $inv->total_amount,
+                                        'sender'  => $inv->sender_name ?? 'Toko Sancaka',
+                                        'courier' => explode('-', $inv->shipping_method)[1] ?? ($inv->shipping_method ?? 'Ambil di Toko'),
+                                        'items'   => json_decode($inv->item_description, true),
+                                    ]);
+                                }
+                            }
+
+                            // 2. Tagihan Top Up (Isi Saldo)
+                            if(isset($topups)) {
+                                foreach($topups as $topup) {
+                                    $allBills->push((object)[
+                                        'id'      => $topup->reference_id,
+                                        'type'    => 'Top Up Saldo',
+                                        'icon'    => 'bi-wallet2',
+                                        'total'   => $topup->amount,
+                                        'sender'  => 'Sistem Sancaka',
+                                        'courier' => '-',
+                                        'items'   => [ ['name' => 'Top Up Saldo Aplikasi', 'qty' => 1, 'price' => $topup->amount] ],
+                                    ]);
+                                }
+                            }
+
+                            // 3. Tagihan Ekspedisi (Pengiriman Barang)
+                            if(isset($ekspedisi)) {
+                                foreach($ekspedisi as $eks) {
+                                    $totalEks = $eks->price ?? ($eks->shipping_cost + $eks->insurance_cost + $eks->cod_fee);
+                                    $allBills->push((object)[
+                                        'id'      => $eks->nomor_invoice,
+                                        'type'    => 'Pengiriman Paket',
+                                        'icon'    => 'bi-box-seam',
+                                        'total'   => $totalEks,
+                                        'sender'  => $eks->sender_name ?? 'Pelanggan Sancaka',
+                                        'courier' => explode('-', $eks->shipping_method)[1] ?? ($eks->expedition ?? 'Sancaka Express'),
+                                        'items'   => [ ['name' => 'Ongkos Kirim (' . ($eks->weight ?? 1) . ' Kg)', 'qty' => 1, 'price' => $totalEks] ],
+                                    ]);
+                                }
+                            }
+                        @endphp
+
                         <div class="p-3 p-md-4">
-                            @if($invoices->count() > 0)
+                            @if($allBills->count() > 0)
                                 <div class="d-flex flex-column gap-3">
-                                    @foreach($invoices as $inv)
+                                    @foreach($allBills as $bill)
                                         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
                                             <div class="card-body p-0">
                                                 <div class="row g-0">
@@ -112,18 +165,17 @@
                                                     <div class="col-12 col-lg-8 p-3 p-md-4 border-end-lg">
                                                         <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
                                                             <span class="badge bg-light text-dark border fw-bold px-3 py-2">
-                                                                <i class="bi bi-receipt me-1"></i> {{ $inv->invoice_number }}
+                                                                <i class="bi {{ $bill->icon }} me-1"></i> {{ $bill->id }}
                                                             </span>
-                                                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">Pending</span>
+                                                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">{{ $bill->type }}</span>
                                                         </div>
 
                                                         <div class="d-flex flex-column">
-                                                            <strong class="text-dark mb-2" style="font-size: 0.9rem;">Rincian Produk:</strong>
-                                                            @php $items = json_decode($inv->item_description, true); @endphp
+                                                            <strong class="text-dark mb-2" style="font-size: 0.9rem;">Rincian Tagihan:</strong>
 
-                                                            @if(is_array($items) && count($items) > 0)
+                                                            @if(is_array($bill->items) && count($bill->items) > 0)
                                                                 <div class="d-flex flex-column gap-2 mb-3">
-                                                                    @foreach($items as $item)
+                                                                    @foreach($bill->items as $item)
                                                                         <div class="d-flex align-items-center bg-light p-2 rounded-3 border border-light">
                                                                             @if(!empty($item['image_url']))
                                                                                 <img src="{{ asset('storage/' . $item['image_url']) }}" alt="{{ $item['name'] ?? 'Produk' }}" class="rounded me-3 border bg-white" style="width: 50px; height: 50px; object-fit: cover;">
@@ -142,18 +194,18 @@
                                                                     @endforeach
                                                                 </div>
                                                             @else
-                                                                <span class="mb-3 text-muted" style="font-size: 0.9rem;">{{ $inv->item_description ?? 'Pembelian Marketplace' }}</span>
+                                                                <span class="mb-3 text-muted" style="font-size: 0.9rem;">Detail tagihan tidak tersedia.</span>
                                                             @endif
 
                                                             <div class="bg-light p-3 rounded-3 border border-light" style="font-size: 0.85rem;">
                                                                 <div class="row g-2">
                                                                     <div class="col-12 col-sm-6">
-                                                                        <span class="text-muted d-block mb-1"><i class="bi bi-shop me-1"></i> Pengirim:</span>
-                                                                        <strong class="text-dark">{{ $inv->sender_name ?? 'Toko Sancaka' }}</strong>
+                                                                        <span class="text-muted d-block mb-1"><i class="bi bi-person me-1"></i> Asal Tagihan:</span>
+                                                                        <strong class="text-dark">{{ $bill->sender }}</strong>
                                                                     </div>
                                                                     <div class="col-12 col-sm-6">
-                                                                        <span class="text-muted d-block mb-1"><i class="bi bi-truck me-1"></i> Ekspedisi:</span>
-                                                                        <strong class="text-dark text-uppercase">{{ explode('-', $inv->shipping_method)[1] ?? ($inv->shipping_method ?? 'Ambil di Toko') }}</strong>
+                                                                        <span class="text-muted d-block mb-1"><i class="bi bi-truck me-1"></i> Layanan:</span>
+                                                                        <strong class="text-dark text-uppercase">{{ $bill->courier }}</strong>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -162,9 +214,9 @@
 
                                                     <div class="col-12 col-lg-4 p-3 p-md-4 bg-white d-flex flex-column justify-content-center align-items-center text-center">
                                                         <span class="text-muted fw-bold mb-2" style="font-size: 0.9rem;">Total Tagihan</span>
-                                                        <h3 class="fw-black text-danger mb-4">Rp {{ number_format($inv->total_amount, 0, ',', '.') }}</h3>
+                                                        <h3 class="fw-black text-danger mb-4">Rp {{ number_format($bill->total, 0, ',', '.') }}</h3>
 
-                                                        <button type="button" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm rounded-3" data-bs-toggle="modal" data-bs-target="#payModal{{ $inv->invoice_number }}">
+                                                        <button type="button" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm rounded-3" data-bs-toggle="modal" data-bs-target="#payModal{{ $bill->id }}">
                                                             <i class="bi bi-credit-card me-2"></i> Bayar Sekarang
                                                         </button>
                                                     </div>
@@ -173,9 +225,10 @@
                                             </div>
                                         </div>
 
-                                        <div class="modal fade text-start" id="payModal{{ $inv->invoice_number }}" tabindex="-1" aria-hidden="true">
+                                        {{-- MODAL PEMBAYARAN --}}
+                                        <div class="modal fade text-start" id="payModal{{ $bill->id }}" tabindex="-1" aria-hidden="true">
                                             <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
-                                                <form action="{{ route('pembayaran.proses', $inv->invoice_number) }}" method="POST" class="modal-content border-0 shadow-lg rounded-4">
+                                                <form action="{{ route('pembayaran.proses', $bill->id) }}" method="POST" class="modal-content border-0 shadow-lg rounded-4">
                                                     @csrf
                                                     <div class="modal-header bg-white border-bottom px-4 py-3">
                                                         <h5 class="modal-title fw-bold text-dark">Pilih Metode Pembayaran</h5>
@@ -183,72 +236,71 @@
                                                     </div>
 
                                                     <div class="modal-body p-3 p-md-4 bg-light">
-                                                            <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-3 border shadow-sm mb-4">
-                                                                <span class="text-muted fw-bold" style="font-size: 0.9rem;">Total Tagihan</span>
-                                                                <span class="fs-4 fw-black text-danger mb-0">Rp {{ number_format($inv->total_amount, 0, ',', '.') }}</span>
-                                                            </div>
+                                                        <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-3 border shadow-sm mb-4">
+                                                            <span class="text-muted fw-bold" style="font-size: 0.9rem;">Total Tagihan</span>
+                                                            <span class="fs-4 fw-black text-danger mb-0">Rp {{ number_format($bill->total, 0, ',', '.') }}</span>
+                                                        </div>
 
-                                                            <h6 class="fw-bold text-secondary mb-3 text-uppercase" style="font-size: 0.8rem; letter-spacing: 1px;">E-Wallet & QRIS Utama</h6>
-                                                            <div class="row g-2 g-md-3 mb-4">
-                                                                <div class="col-12 col-md-6">
-                                                                    <input type="radio" name="payment_method" value="DANA" id="dana_{{ $inv->invoice_number }}" class="payment-card-input" required>
-                                                                    <label for="dana_{{ $inv->invoice_number }}" class="payment-card-label d-flex align-items-center p-3 w-100 h-100 m-0">
-                                                                        <div class="bg-light border rounded p-2 me-3 d-flex align-items-center justify-content-center" style="width: 55px; height: 35px;">
-                                                                            <img src="https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg" alt="DANA" style="height: 15px; object-fit: contain;">
-                                                                        </div>
-                                                                        <div>
-                                                                            <div class="fw-bold text-dark" style="font-size: 0.9rem;">DANA Otomatis</div>
-                                                                        </div>
-                                                                    </label>
-                                                                </div>
-                                                                <div class="col-12 col-md-6">
-                                                                    <input type="radio" name="payment_method" value="DOKU_JOKUL" id="doku_{{ $inv->invoice_number }}" class="payment-card-input">
-                                                                    <label for="doku_{{ $inv->invoice_number }}" class="payment-card-label d-flex align-items-center p-3 w-100 h-100 m-0">
-                                                                        <div class="bg-light border rounded p-2 me-3 d-flex align-items-center justify-content-center" style="width: 55px; height: 35px;">
-                                                                            <span class="fw-black text-danger" style="font-size: 0.8rem;">DOKU</span>
-                                                                        </div>
-                                                                        <div>
-                                                                            <div class="fw-bold text-dark" style="font-size: 0.9rem;">DOKU Payment</div>
-                                                                            <div class="text-muted" style="font-size: 0.75rem;">Kartu Kredit & QRIS</div>
-                                                                        </div>
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-
-                                                            @if(isset($tripayChannels) && count($tripayChannels) > 0)
-                                                                @php $groupedChannels = collect($tripayChannels)->groupBy('group'); @endphp
-                                                                @foreach($groupedChannels as $groupName => $channels)
-                                                                    <h6 class="fw-bold text-secondary mb-3 mt-2 text-uppercase" style="font-size: 0.8rem; letter-spacing: 1px;">{{ $groupName }}</h6>
-                                                                    <div class="row g-2 g-md-3 mb-4">
-                                                                        @foreach($channels as $channel)
-                                                                            <div class="col-12 col-md-6">
-                                                                                <input type="radio" name="payment_method" value="{{ $channel['code'] }}" id="chan_{{ $channel['code'] }}_{{ $inv->invoice_number }}" class="payment-card-input">
-                                                                                <label for="chan_{{ $channel['code'] }}_{{ $inv->invoice_number }}" class="payment-card-label d-flex align-items-center p-3 w-100 h-100 m-0">
-                                                                                    <div class="bg-white border rounded p-1 me-3 d-flex align-items-center justify-content-center" style="width: 55px; height: 35px;">
-                                                                                        <img src="{{ $channel['icon_url'] }}" alt="{{ $channel['name'] }}" class="payment-card-icon">
-                                                                                    </div>
-                                                                                    <div class="flex-grow-1">
-                                                                                        <div class="fw-bold text-dark" style="font-size: 0.85rem;">{{ $channel['name'] }}</div>
-                                                                                    </div>
-                                                                                </label>
-                                                                            </div>
-                                                                        @endforeach
+                                                        <h6 class="fw-bold text-secondary mb-3 text-uppercase" style="font-size: 0.8rem; letter-spacing: 1px;">E-Wallet & QRIS Utama</h6>
+                                                        <div class="row g-2 g-md-3 mb-4">
+                                                            <div class="col-12 col-md-6">
+                                                                <input type="radio" name="payment_method" value="DANA" id="dana_{{ $bill->id }}" class="payment-card-input" required>
+                                                                <label for="dana_{{ $bill->id }}" class="payment-card-label d-flex align-items-center p-3 w-100 h-100 m-0">
+                                                                    <div class="bg-light border rounded p-2 me-3 d-flex align-items-center justify-content-center" style="width: 55px; height: 35px;">
+                                                                        <img src="https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg" alt="DANA" style="height: 15px; object-fit: contain;">
                                                                     </div>
-                                                                @endforeach
-                                                            @endif
+                                                                    <div>
+                                                                        <div class="fw-bold text-dark" style="font-size: 0.9rem;">DANA Otomatis</div>
+                                                                    </div>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-12 col-md-6">
+                                                                <input type="radio" name="payment_method" value="DOKU_JOKUL" id="doku_{{ $bill->id }}" class="payment-card-input">
+                                                                <label for="doku_{{ $bill->id }}" class="payment-card-label d-flex align-items-center p-3 w-100 h-100 m-0">
+                                                                    <div class="bg-light border rounded p-2 me-3 d-flex align-items-center justify-content-center" style="width: 55px; height: 35px;">
+                                                                        <span class="fw-black text-danger" style="font-size: 0.8rem;">DOKU</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div class="fw-bold text-dark" style="font-size: 0.9rem;">DOKU Payment</div>
+                                                                        <div class="text-muted" style="font-size: 0.75rem;">Kartu Kredit & QRIS</div>
+                                                                    </div>
+                                                                </label>
+                                                            </div>
                                                         </div>
 
-                                                        <div class="modal-footer bg-white border-top p-3 d-flex flex-column flex-sm-row">
-                                                            <button type="button" class="btn btn-light px-4 w-100 w-sm-auto mb-2 mb-sm-0" data-bs-dismiss="modal">Batal</button>
-                                                            <button type="submit" class="btn btn-danger px-5 fw-bold shadow-sm w-100 w-sm-auto">
-                                                                Lanjutkan Pembayaran <i class="bi bi-arrow-right ms-2"></i>
-                                                            </button>
-                                                        </div>
-                                                    </form>
-                                                </div>
+                                                        @if(isset($tripayChannels) && count($tripayChannels) > 0)
+                                                            @php $groupedChannels = collect($tripayChannels)->groupBy('group'); @endphp
+                                                            @foreach($groupedChannels as $groupName => $channels)
+                                                                <h6 class="fw-bold text-secondary mb-3 mt-2 text-uppercase" style="font-size: 0.8rem; letter-spacing: 1px;">{{ $groupName }}</h6>
+                                                                <div class="row g-2 g-md-3 mb-4">
+                                                                    @foreach($channels as $channel)
+                                                                        <div class="col-12 col-md-6">
+                                                                            <input type="radio" name="payment_method" value="{{ $channel['code'] }}" id="chan_{{ $channel['code'] }}_{{ $bill->id }}" class="payment-card-input">
+                                                                            <label for="chan_{{ $channel['code'] }}_{{ $bill->id }}" class="payment-card-label d-flex align-items-center p-3 w-100 h-100 m-0">
+                                                                                <div class="bg-white border rounded p-1 me-3 d-flex align-items-center justify-content-center" style="width: 55px; height: 35px;">
+                                                                                    <img src="{{ $channel['icon_url'] }}" alt="{{ $channel['name'] }}" class="payment-card-icon">
+                                                                                </div>
+                                                                                <div class="flex-grow-1">
+                                                                                    <div class="fw-bold text-dark" style="font-size: 0.85rem;">{{ $channel['name'] }}</div>
+                                                                                </div>
+                                                                            </label>
+                                                                        </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            @endforeach
+                                                        @endif
+                                                    </div>
+
+                                                    <div class="modal-footer bg-white border-top p-3 d-flex flex-column flex-sm-row">
+                                                        <button type="button" class="btn btn-light px-4 w-100 w-sm-auto mb-2 mb-sm-0" data-bs-dismiss="modal">Batal</button>
+                                                        <button type="submit" class="btn btn-danger px-5 fw-bold shadow-sm w-100 w-sm-auto">
+                                                            Lanjutkan Pembayaran <i class="bi bi-arrow-right ms-2"></i>
+                                                        </button>
+                                                    </div>
+                                                </form>
                                             </div>
                                         </div>
-                                        @endforeach
+                                    @endforeach
                                 </div>
                             @else
                                 <div class="text-center py-5">
