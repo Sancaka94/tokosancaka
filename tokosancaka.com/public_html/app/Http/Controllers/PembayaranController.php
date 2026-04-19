@@ -57,6 +57,9 @@ class PembayaranController extends Controller
             $topups = Transaction::where('user_id', $userId)
                              ->where('type', 'topup')
                              ->where('status', 'pending')
+                             // Tambahkan dua baris di bawah ini
+                             ->where('reference_id', 'not like', 'ADM%')
+                             ->where('reference_id', 'not like', 'OLD%')
                              ->orderBy('created_at', 'desc')
                              ->get();
 
