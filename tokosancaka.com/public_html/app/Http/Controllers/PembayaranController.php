@@ -103,10 +103,7 @@ class PembayaranController extends Controller
         return view('pembayaran.index');
     }
 
-    /**
-     * Memproses API Gateway berdasarkan pilihan user di Modal Web
-     */
-    public function proses(Request $request, $invoice_number)
+   public function proses(Request $request, $invoice_number)
     {
         Log::info('Memulai proses Generate URL Pembayaran', [
             'invoice' => $invoice_number,
@@ -131,7 +128,8 @@ class PembayaranController extends Controller
             $model = Transaction::where('reference_id', $invoice_number)->first();
             if (!$model || $model->status !== 'pending') return back()->with('error', 'Tagihan Top Up tidak valid atau sudah dibayar.');
 
-            $user = User::where('id', $model->user_id)->orWhere('id_pengguna', $model->user_id)->first();
+            // FIX: Hanya gunakan id_pengguna
+            $user = User::where('id_pengguna', $model->user_id)->first();
             $grand_total = $model->amount;
 
             $orderItemsPayload = [
@@ -146,13 +144,12 @@ class PembayaranController extends Controller
         elseif ($isEkspedisi) {
             $model = Pesanan::where('nomor_invoice', $invoice_number)->first();
 
-            // Cek variasi status (pending / Belum Bayar)
             if (!$model || !in_array(strtolower($model->status), ['pending', 'unpaid', 'belum bayar'])) {
                 return back()->with('error', 'Tagihan Pengiriman tidak valid atau sudah dibayar.');
             }
 
-            // Cari data user (Jika null, fallback ke data nama pengirim)
-            $user = User::where('id', $model->customer_id)->orWhere('id_pengguna', $model->customer_id)->first();
+            // FIX: Hanya gunakan id_pengguna
+            $user = User::where('id_pengguna', $model->customer_id)->first();
             if (!$user) {
                 $user = (object) [
                     'nama_lengkap' => $model->sender_name ?? 'Pelanggan Sancaka',
@@ -161,7 +158,6 @@ class PembayaranController extends Controller
                 ];
             }
 
-            // Gunakan field 'price' dari tabel Pesanan yang merepresentasikan grand total
             $grand_total = $model->price ?? ($model->shipping_cost + $model->insurance_cost + $model->cod_fee);
 
             $orderItemsPayload = [
@@ -211,17 +207,15 @@ class PembayaranController extends Controller
         }
 
         // =======================================================
-        // CEK RE-USE PAYMENT URL (Agar Tidak Redirect Loop)
+        // CEK RE-USE PAYMENT URL
         // =======================================================
         if ($model->payment_method === $method && !empty($model->payment_url) && !str_contains($model->payment_url, 'tokosancaka.com/pembayaran')) {
             Log::info('Menggunakan ulang Payment URL yang sudah ada', ['invoice' => $invoice_number, 'url' => $model->payment_url]);
             return redirect()->away($model->payment_url);
         }
 
-        // Update Metode Pembayaran di DB
         $model->payment_method = $method;
         $model->save();
-
 
         // =======================================================
         // 3. ROUTING KE API GATEWAY MASING-MASING
@@ -282,7 +276,6 @@ class PembayaranController extends Controller
                 $paymentUrl = $tripayResult['data']['checkout_url'] ?? $tripayResult['data']['pay_url'] ?? null;
                 $model->payment_url = $paymentUrl;
 
-                // Kolom pay_code dan qr_url hanya tersedia di tabel Orders (Toko), hindari error di tabel lain
                 if ($isOrder) {
                     $model->pay_code = $tripayResult['data']['pay_code'] ?? null;
                     $model->qr_url = $tripayResult['data']['qr_url'] ?? null;
