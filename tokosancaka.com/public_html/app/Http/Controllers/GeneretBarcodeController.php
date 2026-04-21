@@ -73,17 +73,28 @@ class GeneretBarcodeController extends Controller
         return redirect()->route('barcode.create')->with('success', 'Riwayat berhasil dihapus!');
     }
 
-    // 6. Fungsi Download PNG
-    public function download($id)
+   public function download($id)
     {
         $data = DB::table('riwayat_barcodes')->where('id', $id)->first();
         if (!$data) abort(404);
 
-        $image = QrCode::format('png')->size(300)->margin(2)->generate($data->url);
         $fileName = 'barcode-' . time() . '.png';
 
-        return response($image)
-            ->header('Content-Type', 'image/png')
-            ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+        // Generate gambar dan paksa casting menjadi (string) murni
+        $image = (string) QrCode::format('png')->size(300)->margin(2)->generate($data->url);
+
+        return response()->streamDownload(function () use ($image) {
+            // Bersihkan output buffer jika ada karakter spasi tak sengaja dari file PHP lain
+            if (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+            // Cetak binary gambar
+            echo $image;
+        }, $fileName, [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
     }
 }
