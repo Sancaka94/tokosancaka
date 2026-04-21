@@ -9,13 +9,14 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class GeneretBarcodeController extends Controller
 {
+    // 1. Tampilkan Halaman Utama & Tabel Riwayat
     public function create()
     {
-        // Ambil data riwayat diurutkan dari yang terbaru
         $riwayat = DB::table('riwayat_barcodes')->orderBy('id', 'desc')->paginate(10);
         return view('barcode.create', compact('riwayat'));
     }
 
+    // 2. Proses Simpan & Generate Baru
     public function generate(Request $request)
     {
         $request->validate([
@@ -25,22 +26,25 @@ class GeneretBarcodeController extends Controller
             'url.url' => 'Format URL tidak valid.'
         ]);
 
-        // Simpan URL ke tabel riwayat
+        // Simpan ke Database
         DB::table('riwayat_barcodes')->insert([
             'url' => $request->url,
             'created_at' => now(),
             'updated_at' => now()
         ]);
 
-        // Generate untuk preview langsung
-        $barcode = base64_encode(QrCode::format('png')->size(300)->margin(2)->generate($request->url));
-
-        // Ambil kembali data riwayat untuk ditampilkan di tabel
+        // Ambil data riwayat lagi agar tabel tetap muncul setelah submit
         $riwayat = DB::table('riwayat_barcodes')->orderBy('id', 'desc')->paginate(10);
 
-        return view('barcode.create', compact('barcode', 'riwayat'))->with('url', $request->url)->with('success', 'Barcode berhasil di-generate & disimpan!');
+        // Generate untuk preview di atas
+        $barcode = base64_encode(QrCode::format('png')->size(300)->margin(2)->generate($request->url));
+
+        return view('barcode.create', compact('barcode', 'riwayat'))
+                ->with('url', $request->url)
+                ->with('success', 'Barcode berhasil dibuat dan disimpan ke riwayat!');
     }
 
+    // 3. Halaman Edit
     public function edit($id)
     {
         $data = DB::table('riwayat_barcodes')->where('id', $id)->first();
@@ -49,6 +53,7 @@ class GeneretBarcodeController extends Controller
         return view('barcode.edit', compact('data'));
     }
 
+    // 4. Proses Update
     public function update(Request $request, $id)
     {
         $request->validate(['url' => 'required|url']);
@@ -58,27 +63,25 @@ class GeneretBarcodeController extends Controller
             'updated_at' => now()
         ]);
 
-        return redirect()->route('barcode.create')->with('success', 'URL Barcode berhasil diperbarui!');
+        return redirect()->route('barcode.create')->with('success', 'Riwayat berhasil diperbarui!');
     }
 
+    // 5. Proses Hapus
     public function destroy($id)
     {
         DB::table('riwayat_barcodes')->where('id', $id)->delete();
         return redirect()->route('barcode.create')->with('success', 'Riwayat berhasil dihapus!');
     }
 
+    // 6. Fungsi Download PNG
     public function download($id)
     {
         $data = DB::table('riwayat_barcodes')->where('id', $id)->first();
-        if (!$data) return abort(404);
+        if (!$data) abort(404);
 
-        // Generate gambar format PNG saat tombol download diklik
         $image = QrCode::format('png')->size(300)->margin(2)->generate($data->url);
+        $fileName = 'barcode-' . time() . '.png';
 
-        // Nama file menyesuaikan URL
-        $fileName = 'barcode-' . Str::slug(substr($data->url, 0, 30)) . '-' . time() . '.png';
-
-        // Paksa browser untuk mendownload gambar langsung
         return response($image)
             ->header('Content-Type', 'image/png')
             ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
