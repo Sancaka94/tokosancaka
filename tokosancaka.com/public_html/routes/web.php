@@ -1232,3 +1232,9 @@ Route::post('/pembayaran/{invoice_number}/proses', [PembayaranController::class,
 // Generate Barcode 2D
 Route::get('/generate-barcode', [GeneretBarcodeController::class, 'create'])->name('barcode.create');
 Route::post('/generate-barcode', [GeneretBarcodeController::class, 'generate'])->name('barcode.generate');
+
+// Route CRUD & Download Riwayat
+Route::get('/generate-barcode/{id}/edit', [GeneretBarcodeController::class, 'edit'])->name('barcode.edit');
+Route::put('/generate-barcode/{id}', [GeneretBarcodeController::class, 'update'])->name('barcode.update');
+Route::delete('/generate-barcode/{id}', [GeneretBarcodeController::class, 'destroy'])->name('barcode.destroy');
+Route::get('/generate-barcode/{id}/download', [GeneretBarcodeController::class, 'download'])->name('barcode.download');
