@@ -33,6 +33,8 @@ use App\Http\Controllers\Customer\ProfileController;
 // Pembayaran
 use App\Http\Controllers\PembayaranController;
 
+use App\Http\Controllers\GeneretBarcodeController;
+
 // Core Logic
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\PublicController;
@@ -1225,3 +1227,8 @@ Route::get('/pembayaran/cek', [PembayaranController::class, 'index'])->name('pem
 
 // 3. Endpoint saat tombol "Bayar Sekarang" diklik di tabel
 Route::post('/pembayaran/{invoice_number}/proses', [PembayaranController::class, 'proses'])->name('pembayaran.proses');
+
+
+// Generate Barcode 2D
+Route::get('/generate-barcode', [GeneretBarcodeController::class, 'create'])->name('barcode.create');
+Route::post('/generate-barcode', [GeneretBarcodeController::class, 'generate'])->name('barcode.generate');

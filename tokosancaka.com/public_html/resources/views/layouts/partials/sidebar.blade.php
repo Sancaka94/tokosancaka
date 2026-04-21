@@ -219,6 +219,14 @@
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Pencarian Kode Pos</span>
             </a>
 
+            {{-- Generate 2D Barcode --}}
+            <a href="{{ route('barcode.create') }}" wire:navigate
+               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+               class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('barcode.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                <i class="fa-solid fa-qrcode fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('barcode.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Generate Barcode</span>
+            </a>
+
             {{-- ================= MARKETPLACE ================= --}}
 
             {{-- Marketplace Dropdown --}}
