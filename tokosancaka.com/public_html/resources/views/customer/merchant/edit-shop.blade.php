@@ -48,7 +48,7 @@
                     {{-- Nama Toko --}}
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700">Nama Toko (Main Name) <span class="text-red-500">*</span></label>
-                        <input type="text" name="mainName" required value="{{ old('mainName', $shop->main_name) }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <input type="text" name="mainName" required value="{{ old('mainName', $shop->main_name) }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
 
                     {{-- Deskripsi --}}
@@ -108,46 +108,46 @@
                     
                     {{-- Koordinat --}}
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700">Latitude</label>
-                        <input type="text" name="lat" required value="{{ old('lat', $shop->lat) }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Latitude <span class="text-red-500">*</span></label>
+                        <input type="text" name="lat" required value="{{ old('lat', $shop->lat) }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700">Longitude</label>
-                        <input type="text" name="ln" required value="{{ old('ln', $shop->ln) }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Longitude <span class="text-red-500">*</span></label>
+                        <input type="text" name="ln" required value="{{ old('ln', $shop->ln) }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-6 border-t my-2"></div>
 
                     {{-- Detail Alamat --}}
                     <div class="sm:col-span-6">
-                        <label class="block text-sm font-medium text-gray-700">Alamat Lengkap 1 (Nama Jalan/Gedung)</label>
-                        <input type="text" name="shopAddress[address1]" required value="{{ old('shopAddress.address1', $shop->shop_address['address1'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Alamat Lengkap 1 (Nama Jalan/Gedung) <span class="text-red-500">*</span></label>
+                        <input type="text" name="shopAddress[address1]" required value="{{ old('shopAddress.address1', $shop->shop_address['address1'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-6">
-                        <label class="block text-sm font-medium text-gray-700">Alamat Lengkap 2 (RT/RW/Patokan)</label>
-                        <input type="text" name="shopAddress[address2]" required value="{{ old('shopAddress.address2', $shop->shop_address['address2'] ?? '-') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Alamat Lengkap 2 (RT/RW/Patokan) <span class="text-red-500">*</span></label>
+                        <input type="text" name="shopAddress[address2]" required value="{{ old('shopAddress.address2', $shop->shop_address['address2'] ?? '-') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700">Kelurahan (Sub District)</label>
-                        <input type="text" name="shopAddress[subDistrict]" required value="{{ old('shopAddress.subDistrict', $shop->shop_address['subDistrict'] ?? '-') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Kelurahan (Sub District) <span class="text-red-500">*</span></label>
+                        <input type="text" name="shopAddress[subDistrict]" required value="{{ old('shopAddress.subDistrict', $shop->shop_address['subDistrict'] ?? '-') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700">Kecamatan (Area)</label>
-                        <input type="text" name="shopAddress[area]" required value="{{ old('shopAddress.area', $shop->shop_address['area'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Kecamatan (Area) <span class="text-red-500">*</span></label>
+                        <input type="text" name="shopAddress[area]" required value="{{ old('shopAddress.area', $shop->shop_address['area'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Kota/Kabupaten</label>
-                        <input type="text" name="shopAddress[city]" required value="{{ old('shopAddress.city', $shop->shop_address['city'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Kota/Kabupaten <span class="text-red-500">*</span></label>
+                        <input type="text" name="shopAddress[city]" required value="{{ old('shopAddress.city', $shop->shop_address['city'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Provinsi</label>
-                        <input type="text" name="shopAddress[province]" required value="{{ old('shopAddress.province', $shop->shop_address['province'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Provinsi <span class="text-red-500">*</span></label>
+                        <input type="text" name="shopAddress[province]" required value="{{ old('shopAddress.province', $shop->shop_address['province'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Kode Pos</label>
-                        <input type="text" name="shopAddress[postcode]" required value="{{ old('shopAddress.postcode', $shop->shop_address['postcode'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Kode Pos <span class="text-red-500">*</span></label>
+                        <input type="text" name="shopAddress[postcode]" required value="{{ old('shopAddress.postcode', $shop->shop_address['postcode'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                 </div>
             </div>
@@ -164,16 +164,16 @@
                 <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     {{-- Kontak PIC --}}
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Email PIC</label>
-                        <input type="email" name="extInfo[PIC_EMAIL]" required value="{{ old('extInfo.PIC_EMAIL', $shop->ext_info['PIC_EMAIL'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Email PIC <span class="text-red-500">*</span></label>
+                        <input type="email" name="extInfo[PIC_EMAIL]" required value="{{ old('extInfo.PIC_EMAIL', $shop->ext_info['PIC_EMAIL'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">No. HP PIC (62...)</label>
-                        <input type="text" name="extInfo[PIC_PHONENUMBER]" required value="{{ old('extInfo.PIC_PHONENUMBER', $shop->ext_info['PIC_PHONENUMBER'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">No. HP PIC (62...) <span class="text-red-500">*</span></label>
+                        <input type="text" name="extInfo[PIC_PHONENUMBER]" required value="{{ old('extInfo.PIC_PHONENUMBER', $shop->ext_info['PIC_PHONENUMBER'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Email Admin (Submitter)</label>
-                        <input type="email" name="extInfo[SUBMITTER_EMAIL]" required value="{{ old('extInfo.SUBMITTER_EMAIL', $shop->ext_info['SUBMITTER_EMAIL'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Email Admin <span class="text-red-500">*</span></label>
+                        <input type="email" name="extInfo[SUBMITTER_EMAIL]" required value="{{ old('extInfo.SUBMITTER_EMAIL', $shop->ext_info['SUBMITTER_EMAIL'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
 
                     {{-- Detail Bisnis --}}
@@ -191,29 +191,28 @@
 
                     {{-- Profiling Keuangan --}}
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Target Pasar</label>
-                        <select name="extInfo[USER_PROFILING]" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm sm:text-sm">
+                        <label class="block text-sm font-medium text-gray-700">Target Pasar <span class="text-red-500">*</span></label>
+                        <select name="extInfo[USER_PROFILING]" required class="wajib-isi mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm sm:text-sm">
                             <option value="B2C" {{ (old('extInfo.USER_PROFILING', $shop->ext_info['USER_PROFILING'] ?? '') == 'B2C') ? 'selected' : '' }}>B2C (Konsumen)</option>
                             <option value="B2B" {{ (old('extInfo.USER_PROFILING', $shop->ext_info['USER_PROFILING'] ?? '') == 'B2B') ? 'selected' : '' }}>B2B (Bisnis)</option>
                         </select>
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Rata-rata Transaksi</label>
-                        <select name="extInfo[AVG_TICKET]" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm sm:text-sm">
+                        <label class="block text-sm font-medium text-gray-700">Rata-rata Transaksi <span class="text-red-500">*</span></label>
+                        <select name="extInfo[AVG_TICKET]" required class="wajib-isi mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm sm:text-sm">
                             <option value="10000-50000" {{ (old('extInfo.AVG_TICKET', $shop->ext_info['AVG_TICKET'] ?? '') == '10000-50000') ? 'selected' : '' }}>10rb - 50rb</option>
                             <option value="50000-100000" {{ (old('extInfo.AVG_TICKET', $shop->ext_info['AVG_TICKET'] ?? '') == '50000-100000') ? 'selected' : '' }}>50rb - 100rb</option>
                             <option value="100000-500000" {{ (old('extInfo.AVG_TICKET', $shop->ext_info['AVG_TICKET'] ?? '') == '100000-500000') ? 'selected' : '' }}>100rb - 500rb</option>
                         </select>
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Omzet Per Tahun</label>
-                        <select name="extInfo[OMZET]" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm sm:text-sm">
+                        <label class="block text-sm font-medium text-gray-700">Omzet Per Tahun <span class="text-red-500">*</span></label>
+                        <select name="extInfo[OMZET]" required class="wajib-isi mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm sm:text-sm">
                             <option value="<100JT" {{ (old('extInfo.OMZET', $shop->ext_info['OMZET'] ?? '') == '<100JT') ? 'selected' : '' }}>< 100 Juta</option>
                             <option value="100JT-500JT" {{ (old('extInfo.OMZET', $shop->ext_info['OMZET'] ?? '') == '100JT-500JT') ? 'selected' : '' }}>100jt - 500jt</option>
                             <option value="500JT-2M" {{ (old('extInfo.OMZET', $shop->ext_info['OMZET'] ?? '') == '500JT-2M') ? 'selected' : '' }}>500jt - 2 Milyar</option>
                         </select>
                     </div>
-                    {{-- Hidden Usecase Default --}}
                     <input type="hidden" name="extInfo[USECASE]" value="QRIS_DIGITAL">
                 </div>
             </div>
@@ -230,18 +229,18 @@
                 <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     {{-- Nama Owner --}}
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700">Nama Depan</label>
-                        <input type="text" name="ownerName[firstName]" required value="{{ old('ownerName.firstName', $shop->owner_first_name) }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Nama Depan <span class="text-red-500">*</span></label>
+                        <input type="text" name="ownerName[firstName]" required value="{{ old('ownerName.firstName', $shop->owner_first_name) }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700">Nama Belakang</label>
-                        <input type="text" name="ownerName[lastName]" required value="{{ old('ownerName.lastName', $shop->owner_last_name) }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Nama Belakang <span class="text-red-500">*</span></label>
+                        <input type="text" name="ownerName[lastName]" required value="{{ old('ownerName.lastName', $shop->owner_last_name) }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     
                     {{-- Kontak Owner --}}
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700">No. HP Pemilik</label>
-                        <input type="text" name="ownerPhoneNumber[mobileNo]" required value="{{ old('ownerPhoneNumber.mobileNo', $shop->owner_phone) }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">No. HP Pemilik <span class="text-red-500">*</span></label>
+                        <input type="text" name="ownerPhoneNumber[mobileNo]" required value="{{ old('ownerPhoneNumber.mobileNo', $shop->owner_phone) }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
 
                     {{-- ALAMAT OWNER --}}
@@ -250,32 +249,32 @@
                     </div>
                     
                     <div class="sm:col-span-6">
-                        <label class="block text-sm font-medium text-gray-700">Alamat Lengkap (Jalan)</label>
-                        <input type="text" name="ownerAddress[address1]" required value="{{ old('ownerAddress.address1', $shop->owner_address['address1'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Alamat Lengkap (Jalan) <span class="text-red-500">*</span></label>
+                        <input type="text" name="ownerAddress[address1]" required value="{{ old('ownerAddress.address1', $shop->owner_address['address1'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-6">
-                        <label class="block text-sm font-medium text-gray-700">Detail Lain (RT/RW)</label>
-                        <input type="text" name="ownerAddress[address2]" required value="{{ old('ownerAddress.address2', $shop->owner_address['address2'] ?? '-') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Detail Lain (RT/RW) <span class="text-red-500">*</span></label>
+                        <input type="text" name="ownerAddress[address2]" required value="{{ old('ownerAddress.address2', $shop->owner_address['address2'] ?? '-') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700">Kelurahan (Sub District)</label>
-                        <input type="text" name="ownerAddress[subDistrict]" required value="{{ old('ownerAddress.subDistrict', $shop->owner_address['subDistrict'] ?? '-') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Kelurahan (Sub District) <span class="text-red-500">*</span></label>
+                        <input type="text" name="ownerAddress[subDistrict]" required value="{{ old('ownerAddress.subDistrict', $shop->owner_address['subDistrict'] ?? '-') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700">Kecamatan (Area)</label>
-                        <input type="text" name="ownerAddress[area]" required value="{{ old('ownerAddress.area', $shop->owner_address['area'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Kecamatan (Area) <span class="text-red-500">*</span></label>
+                        <input type="text" name="ownerAddress[area]" required value="{{ old('ownerAddress.area', $shop->owner_address['area'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Kota</label>
-                        <input type="text" name="ownerAddress[city]" required value="{{ old('ownerAddress.city', $shop->owner_address['city'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Kota <span class="text-red-500">*</span></label>
+                        <input type="text" name="ownerAddress[city]" required value="{{ old('ownerAddress.city', $shop->owner_address['city'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Provinsi</label>
-                        <input type="text" name="ownerAddress[province]" required value="{{ old('ownerAddress.province', $shop->owner_address['province'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Provinsi <span class="text-red-500">*</span></label>
+                        <input type="text" name="ownerAddress[province]" required value="{{ old('ownerAddress.province', $shop->owner_address['province'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Kode Pos</label>
-                        <input type="text" name="ownerAddress[postcode]" required value="{{ old('ownerAddress.postcode', $shop->owner_address['postcode'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Kode Pos <span class="text-red-500">*</span></label>
+                        <input type="text" name="ownerAddress[postcode]" required value="{{ old('ownerAddress.postcode', $shop->owner_address['postcode'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                 </div>
             </div>
@@ -292,24 +291,24 @@
                 <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700">Brand Name</label>
-                        <input type="text" name="brandName" required value="{{ old('brandName', $shop->brand_name) }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Brand Name <span class="text-red-500">*</span></label>
+                        <input type="text" name="brandName" required value="{{ old('brandName', $shop->brand_name) }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700">MCC Code</label>
-                        <input type="text" name="mccCodes[]" value="0783" required class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">MCC Code <span class="text-red-500">*</span></label>
+                        <input type="text" name="mccCodes[]" value="0783" required class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
 
                     {{-- INFO PAJAK --}}
                     <div class="sm:col-span-6 border-t mt-2 pt-2"><h4 class="text-xs font-bold text-gray-500 uppercase">Informasi Pajak (NPWP)</h4></div>
                     
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Nomor NPWP</label>
-                        <input type="text" name="taxNo" required value="{{ old('taxNo', $shop->tax_no) }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Nomor NPWP <span class="text-red-500">*</span></label>
+                        <input type="text" name="taxNo" required value="{{ old('taxNo', $shop->tax_no) }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     <div class="sm:col-span-4">
-                        <label class="block text-sm font-medium text-gray-700">Alamat di NPWP</label>
-                        <input type="text" name="taxAddress[address1]" required value="{{ old('taxAddress.address1', $shop->tax_address['address1'] ?? '') }}" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Alamat di NPWP <span class="text-red-500">*</span></label>
+                        <input type="text" name="taxAddress[address1]" required value="{{ old('taxAddress.address1', $shop->tax_address['address1'] ?? '') }}" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
 
                     {{-- DOKUMEN IDENTITAS --}}
@@ -336,18 +335,17 @@
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Nomor Dokumen (ID)</label>
-                        <input type="text" name="docId" required value="{{ old('docId', $shop->owner_id_no) }}" placeholder="NIK / NIB" class="mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700">Nomor Dokumen (ID) <span class="text-red-500">*</span></label>
+                        <input type="text" name="docId" required value="{{ old('docId', $shop->owner_id_no) }}" placeholder="NIK / NIB" class="wajib-isi mt-1 shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
                     
-                    {{-- Hidden: ownerIdType akan diset sama dengan docType via JS --}}
                     <input type="hidden" name="ownerIdType" id="hiddenOwnerIdType" value="KTP">
                 </div>
             </div>
         </div>
 
         {{-- =========================================================
-             CARD 6: MANAJEMEN (DIRECTORS) - Required by API
+             CARD 6: MANAJEMEN (DIRECTORS)
              ========================================================= --}}
         <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
@@ -357,19 +355,19 @@
                 <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     {{-- Direktur --}}
                     <div class="sm:col-span-3">
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Direktur (Keuangan)</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Direktur (Keuangan) <span class="text-red-500">*</span></label>
                         <input type="text" name="directorPics[0][picName]" required 
                             value="{{ old('directorPics.0.picName', $shop->director_pics[0]['picName'] ?? $shop->owner_first_name) }}" 
-                            class="shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border" placeholder="Nama Lengkap">
+                            class="wajib-isi shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border" placeholder="Nama Lengkap">
                         <input type="hidden" name="directorPics[0][picPosition]" value="DIRECTOR_FINANCE">
                     </div>
 
                     {{-- Operasional --}}
                     <div class="sm:col-span-3">
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Manajer (Operasional)</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Manajer (Operasional) <span class="text-red-500">*</span></label>
                         <input type="text" name="nonDirectorPics[0][picName]" required 
                             value="{{ old('nonDirectorPics.0.picName', $shop->non_director_pics[0]['picName'] ?? $shop->owner_first_name) }}" 
-                            class="shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border" placeholder="Nama Lengkap">
+                            class="wajib-isi shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border" placeholder="Nama Lengkap">
                         <input type="hidden" name="nonDirectorPics[0][picPosition]" value="OPERATION">
                     </div>
                 </div>
@@ -377,7 +375,7 @@
         </div>
 
         {{-- =========================================================
-             CARD 7: UPLOAD FILE
+             CARD 7: UPLOAD FILE (TIDAK WAJIB DI FORM UPDATE)
              ========================================================= --}}
         <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
@@ -421,7 +419,7 @@
 
         {{-- TOMBOL SUBMIT --}}
         <div class="flex justify-end mb-12">
-            <button type="submit" class="inline-flex justify-center py-3 px-8 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <button type="submit" id="btnSubmit" disabled class="inline-flex justify-center py-3 px-8 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-gray-400 cursor-not-allowed transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                 <i class="fas fa-save mr-2 mt-1"></i> Update Data Toko
             </button>
         </div>
@@ -429,8 +427,9 @@
     </form>
 </div>
 
-{{-- SCRIPT LOGIKA DOKUMEN --}}
+{{-- SCRIPT LOGIKA FORM --}}
 <script>
+    // Logika Dokumen (Dari kode lama Anda)
     function adjustDocType() {
         var entity = document.getElementById("businessEntity").value;
         var docSelect = document.getElementById("docType");
@@ -461,7 +460,6 @@
             docSelect.appendChild(option);
         });
         
-        // Set hidden input value saat update
         if(docSelect.value) {
             hiddenIdType.value = docSelect.value;
         }
@@ -471,8 +469,52 @@
         };
     }
 
+    // Logika Validasi Tombol Submit
+    function setupFormValidation() {
+        const inputsWajib = document.querySelectorAll('.wajib-isi');
+        const btnSubmit = document.getElementById('btnSubmit');
+
+        function cekFormValid() {
+            let semuaTerisi = true;
+
+            inputsWajib.forEach(function(input) {
+                // Di form update ini, kita tidak membuat tipe file jadi 'wajib-isi'
+                // Tapi logika ini dibiarkan sebagai pelindung jika kedepannya ada file wajib
+                if (input.type === 'file') {
+                    if (input.files.length === 0) {
+                        semuaTerisi = false;
+                    }
+                } else {
+                    if (input.value.trim() === '') {
+                        semuaTerisi = false;
+                    }
+                }
+            });
+
+            if (semuaTerisi) {
+                btnSubmit.disabled = false;
+                btnSubmit.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                btnSubmit.classList.add('bg-blue-600', 'hover:bg-blue-700'); 
+            } else {
+                btnSubmit.disabled = true;
+                btnSubmit.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btnSubmit.classList.add('bg-gray-400', 'cursor-not-allowed');
+            }
+        }
+
+        inputsWajib.forEach(function(input) {
+            input.addEventListener('input', cekFormValid);
+            input.addEventListener('change', cekFormValid);
+        });
+
+        // Langsung cek saat halaman dimuat (karena form edit sudah terisi data)
+        // Tombol akan otomatis menyala biru jika data lama lengkap
+        cekFormValid(); 
+    }
+
     document.addEventListener("DOMContentLoaded", function() {
         adjustDocType();
+        setupFormValidation();
     });
 </script>
 @endsection
