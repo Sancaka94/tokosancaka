@@ -74,20 +74,20 @@
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md bg-gray-100 cursor-not-allowed px-3 py-2 border">
                     </div>
 
-                    {{-- NAMA TOKO: Ambil dari Auth 'store_name' --}}
+                    {{-- NAMA TOKO --}}
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nama Toko (Main Name) <span class="text-red-500">*</span></label>
                         <input type="text" name="mainName" placeholder="Contoh: Sancaka Store" required
                             value="{{ old('mainName', auth()->user()->store_name) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
-                    {{-- ID TOKO UNIK: Default pakai slug dari Nama Toko --}}
+                    {{-- ID TOKO UNIK --}}
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">External Shop ID <span class="text-red-500">*</span></label>
                         <input type="text" name="externalShopId" placeholder="ID Unik Toko Anda" required
                             value="{{ old('externalShopId', Str::slug(auth()->user()->store_name ?? 'shop-'.auth()->id())) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-6">
@@ -137,29 +137,27 @@
             <div class="px-6 py-6 bg-white">
                 <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     
-                    {{-- KOORDINAT: Ambil dari Auth latitude/longitude --}}
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Latitude <span class="text-red-500">*</span></label>
                         <input type="text" name="lat" placeholder="-6.200000" required
                             value="{{ old('lat', auth()->user()->latitude) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Longitude <span class="text-red-500">*</span></label>
                         <input type="text" name="ln" placeholder="106.816666" required
                             value="{{ old('ln', auth()->user()->longitude) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-6 border-t border-gray-100 my-2"></div>
 
-                    {{-- ALAMAT: Ambil dari Auth address_detail, province, regency --}}
                     <div class="sm:col-span-6">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap 1 (Jalan) <span class="text-red-500">*</span></label>
                         <input type="text" name="shopAddress[address1]" placeholder="Jalan, Nomor Gedung" required
                             value="{{ old('shopAddress.address1', auth()->user()->address_detail) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-6">
@@ -173,35 +171,35 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kelurahan (Sub District) <span class="text-red-500">*</span></label>
                         <input type="text" name="shopAddress[subDistrict]" required
                             value="{{ old('shopAddress.subDistrict', auth()->user()->village ?? '-') }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kecamatan <span class="text-red-500">*</span></label>
                         <input type="text" name="shopAddress[area]" required
                             value="{{ old('shopAddress.area', auth()->user()->district) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Provinsi <span class="text-red-500">*</span></label>
                         <input type="text" name="shopAddress[province]" required
                             value="{{ old('shopAddress.province', auth()->user()->province) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kota/Kabupaten <span class="text-red-500">*</span></label>
                         <input type="text" name="shopAddress[city]" required
                             value="{{ old('shopAddress.city', auth()->user()->regency) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kode Pos <span class="text-red-500">*</span></label>
                         <input type="text" name="shopAddress[postcode]" maxlength="5" required
                             value="{{ old('shopAddress.postcode', auth()->user()->postal_code) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
                     
                     <input type="hidden" name="shopAddress[country]" value="Indonesia">
@@ -217,40 +215,37 @@
             <div class="px-6 py-6 bg-white">
                 <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     
-                    {{-- PIC EMAIL: Ambil dari Auth Email --}}
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Email PIC <span class="text-red-500">*</span></label>
                         <input type="email" name="extInfo[PIC_EMAIL]" required
                             value="{{ old('extInfo.PIC_EMAIL', auth()->user()->email) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
-                    {{-- NO HP: Ambil dari Auth no_wa --}}
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">No. HP PIC (628...) <span class="text-red-500">*</span></label>
                         @php
-                            // Normalisasi No HP (08 -> 628)
                             $phone = auth()->user()->no_wa;
                             if(substr($phone, 0, 1) == '0') $phone = '62' . substr($phone, 1);
                         @endphp
                         <input type="text" name="extInfo[PIC_PHONENUMBER]" required
                             value="{{ old('extInfo.PIC_PHONENUMBER', $phone) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Admin</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Admin <span class="text-red-500">*</span></label>
                         <input type="email" name="extInfo[SUBMITTER_EMAIL]" required
                             value="{{ old('extInfo.SUBMITTER_EMAIL', auth()->user()->email) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
-                    {{-- DROPDOWNS BISNIS (Tetap Manual karena tidak ada di DB User) --}}
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Link Website/Sosmed</label>
                         <input type="url" name="extInfo[EXT_URLS]" placeholder="https://..."
                             class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
+
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Barang</label>
                         <select name="extInfo[GOODS_SOLD_TYPE]" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
@@ -258,6 +253,7 @@
                             <option value="NON_DIGITAL">NON DIGITAL (Fisik)</option>
                         </select>
                     </div>
+
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Use Case</label>
                         <select name="extInfo[USECASE]" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
@@ -266,10 +262,9 @@
                         </select>
                     </div>
 
-                    {{-- TAMBAHAN BARU: Field Wajib DANA --}}
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Target Pasar (Profiling) <span class="text-red-500">*</span></label>
-                        <select name="extInfo[USER_PROFILING]" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
+                        <select name="extInfo[USER_PROFILING]" required class="wajib-isi mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
                             <option value="B2C">B2C (Ke Konsumen)</option>
                             <option value="B2B">B2B (Ke Bisnis Lain)</option>
                             <option value="B2B2C">B2B2C (Campuran)</option>
@@ -278,7 +273,7 @@
 
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Rata-rata Nilai Transaksi <span class="text-red-500">*</span></label>
-                        <select name="extInfo[AVG_TICKET]" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
+                        <select name="extInfo[AVG_TICKET]" required class="wajib-isi mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
                             <option value="0-10000">< Rp 10.000</option>
                             <option value="10000-50000">Rp 10.000 - Rp 50.000</option>
                             <option value="50000-100000">Rp 50.000 - Rp 100.000</option>
@@ -289,7 +284,7 @@
 
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Omzet Per Tahun <span class="text-red-500">*</span></label>
-                        <select name="extInfo[OMZET]" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
+                        <select name="extInfo[OMZET]" required class="wajib-isi mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
                             <option value="<100JT">< Rp 100 Juta</option>
                             <option value="100JT-500JT">Rp 100 Juta - Rp 500 Juta</option>
                             <option value="500JT-2M">Rp 500 Juta - Rp 2 Milyar</option>
@@ -310,7 +305,6 @@
                 <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     
                     @php
-                        // Split Nama Lengkap menjadi Depan & Belakang
                         $fullName = auth()->user()->nama_lengkap ?? '';
                         $parts = explode(' ', $fullName);
                         $firstName = $parts[0] ?? '';
@@ -321,82 +315,81 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nama Depan <span class="text-red-500">*</span></label>
                         <input type="text" name="ownerName[firstName]" required
                             value="{{ old('ownerName.firstName', $firstName) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nama Belakang <span class="text-red-500">*</span></label>
                         <input type="text" name="ownerName[lastName]" required
                             value="{{ old('ownerName.lastName', $lastName) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">No. HP Pemilik <span class="text-red-500">*</span></label>
                         <input type="text" name="ownerPhoneNumber[mobileNo]" required
                             value="{{ old('ownerPhoneNumber.mobileNo', $phone) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
-                    {{-- ALAMAT OWNER: Disamakan dengan alamat toko (Auth) --}}
                     <div class="sm:col-span-6 mt-2">
                         <h4 class="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide border-b pb-1">Alamat Domisili Pemilik</h4>
                     </div>
 
                     <div class="sm:col-span-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap (Jalan)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap (Jalan) <span class="text-red-500">*</span></label>
                         <input type="text" name="ownerAddress[address1]" required
                             value="{{ old('ownerAddress.address1', auth()->user()->address_detail) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
                     
-                    {{-- Tambahkan ini di CARD 4 (Owner), setelah Provinsi/Kota --}}
                     <div class="sm:col-span-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Detail Lain (RT/RW)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Detail Lain (RT/RW) <span class="text-red-500">*</span></label>
                         <input type="text" name="ownerAddress[address2]" required
                             value="{{ old('ownerAddress.address2', '-') }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Kelurahan (Sub District)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kelurahan (Sub District) <span class="text-red-500">*</span></label>
                         <input type="text" name="ownerAddress[subDistrict]" required
                             value="{{ old('ownerAddress.subDistrict', auth()->user()->village ?? '-') }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Kecamatan</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kecamatan <span class="text-red-500">*</span></label>
                         <input type="text" name="ownerAddress[area]" required
                             value="{{ old('ownerAddress.area', auth()->user()->district) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
                     
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Kota</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kota <span class="text-red-500">*</span></label>
                         <input type="text" name="ownerAddress[city]" required
                             value="{{ old('ownerAddress.city', auth()->user()->regency) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
                     
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Provinsi</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Provinsi <span class="text-red-500">*</span></label>
                         <input type="text" name="ownerAddress[province]" required
                             value="{{ old('ownerAddress.province', auth()->user()->province) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
+                    
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Kode Pos</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kode Pos <span class="text-red-500">*</span></label>
                         <input type="text" name="ownerAddress[postcode]" required
                             value="{{ old('ownerAddress.postcode', auth()->user()->postal_code) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
                     <input type="hidden" name="ownerAddress[country]" value="Indonesia">
                 </div>
             </div>
         </div>
 
-        {{-- CARD 5: LEGALITAS & DOKUMEN (LOGIKA LENGKAP) --}}
+        {{-- CARD 5: LEGALITAS & DOKUMEN --}}
         <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
                 <h3 class="text-lg leading-6 font-medium text-gray-900">5. Legalitas & Pajak</h3>
@@ -404,29 +397,29 @@
             <div class="px-6 py-6 bg-white">
                 <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Brand Name</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Brand Name <span class="text-red-500">*</span></label>
                         <input type="text" name="brandName" required
                             value="{{ old('brandName', auth()->user()->store_name) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">MCC Code</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">MCC Code <span class="text-red-500">*</span></label>
                         <input type="text" name="mccCodes[]" value="0783" required
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">NPWP (Optional)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">NPWP <span class="text-red-500">*</span></label>
                         <input type="text" name="taxNo" value="0000000000000000" required
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Alamat NPWP</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Alamat NPWP <span class="text-red-500">*</span></label>
                         <input type="text" name="taxAddress[address1]" placeholder="Jalan" required
                             value="{{ old('taxAddress.address1', auth()->user()->address_detail) }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
 
                     <div class="sm:col-span-6 border-t mt-4 pt-4"><h4 class="text-sm font-bold text-gray-900 uppercase">Dokumen Identitas / Bisnis</h4></div>
@@ -450,19 +443,19 @@
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Dokumen</label>
-                        <input type="text" name="docId" required placeholder="NIK / NIB"
-                            value="{{ old('docId') }}"
-                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Dokumen <span class="text-red-500">*</span></label>
+                        {{-- BUG FIX: Name diubah dari docId ke ownerIdNo agar sesuai dengan Controller --}}
+                        <input type="text" name="ownerIdNo" required placeholder="NIK / NIB"
+                            value="{{ old('ownerIdNo') }}"
+                            class="wajib-isi shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border">
                     </div>
                     
-                    {{-- Hidden: ownerIdType akan diset sama dengan docType di controller/js --}}
                     <input type="hidden" name="ownerIdType" id="hiddenOwnerIdType" value="KTP">
                 </div>
             </div>
         </div>
 
-        {{-- CARD 6: MANAJEMEN (Otomatis Nama Owner) --}}
+        {{-- CARD 6: MANAJEMEN --}}
         <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
                 <h3 class="text-lg leading-6 font-medium text-gray-900">6. Struktur Manajemen</h3>
@@ -506,12 +499,12 @@
             <div class="px-6 py-6 bg-white">
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Upload Logo Toko (PNG)</label>
-                        <input type="file" name="shop_logo" accept="image/png" required class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Upload Logo Toko (PNG) <span class="text-red-500">*</span></label>
+                        <input type="file" name="shop_logo" accept="image/png" required class="wajib-isi block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Upload KTP (PDF/IMG)</label>
-                        <input type="file" name="business_doc_file" accept="image/*,application/pdf" required class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Upload KTP (PDF/IMG) <span class="text-red-500">*</span></label>
+                        <input type="file" name="business_doc_file" accept="image/*,application/pdf" required class="wajib-isi block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
                     </div>
                 </div>
             </div>
@@ -519,7 +512,7 @@
 
         {{-- TOMBOL --}}
         <div class="flex justify-end mb-12">
-            <button type="submit" class="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+            <button type="submit" id="btnSubmit" disabled class="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-400 cursor-not-allowed transition-colors duration-200 focus:outline-none">
                 Kirim Pendaftaran
             </button>
         </div>
@@ -527,8 +520,9 @@
     </form>
 </div>
 
-{{-- SCRIPT LOGIKA DOKUMEN --}}
+{{-- SCRIPT LOGIKA FORM --}}
 <script>
+    // Logika Dokumen
     function adjustDocType() {
         var entity = document.getElementById("businessEntity").value;
         var docSelect = document.getElementById("docType");
@@ -559,7 +553,6 @@
             docSelect.appendChild(option);
         });
         
-        // Update hidden input saat dropdown berubah
         if(docSelect.value) hiddenIdType.value = docSelect.value;
         
         docSelect.onchange = function() {
@@ -567,8 +560,48 @@
         };
     }
 
+    // Logika Validasi Tombol Submit
+    function setupFormValidation() {
+        const inputsWajib = document.querySelectorAll('.wajib-isi');
+        const btnSubmit = document.getElementById('btnSubmit');
+
+        function cekFormValid() {
+            let semuaTerisi = true;
+
+            inputsWajib.forEach(function(input) {
+                if (input.type === 'file') {
+                    if (input.files.length === 0) {
+                        semuaTerisi = false;
+                    }
+                } else {
+                    if (input.value.trim() === '') {
+                        semuaTerisi = false;
+                    }
+                }
+            });
+
+            if (semuaTerisi) {
+                btnSubmit.disabled = false;
+                btnSubmit.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                btnSubmit.classList.add('bg-blue-600', 'hover:bg-blue-700'); 
+            } else {
+                btnSubmit.disabled = true;
+                btnSubmit.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btnSubmit.classList.add('bg-gray-400', 'cursor-not-allowed');
+            }
+        }
+
+        inputsWajib.forEach(function(input) {
+            input.addEventListener('input', cekFormValid);
+            input.addEventListener('change', cekFormValid);
+        });
+
+        cekFormValid(); // Cek saat halaman dimuat
+    }
+
     document.addEventListener("DOMContentLoaded", function() {
         adjustDocType();
+        setupFormValidation();
     });
 </script>
 @endsection

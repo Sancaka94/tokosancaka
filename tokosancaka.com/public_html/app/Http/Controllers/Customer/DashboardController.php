@@ -332,6 +332,8 @@ public function index()
             'business_doc_file' => 'required|mimes:pdf,jpg,jpeg,png|max:2048',
             'lat' => 'required', 'ln' => 'required',
             'shopAddress.province' => 'required', 'shopAddress.city' => 'required',
+            'ownerIdNo' => 'required', 
+            'ownerIdType' => 'required',
         ]);
 
         DB::beginTransaction();
