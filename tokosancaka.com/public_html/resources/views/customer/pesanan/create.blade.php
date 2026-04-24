@@ -184,11 +184,6 @@
                 placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05"
                 required>{{ old('sender_address', auth()->user()->address_detail) }}</textarea>
 
-                {{-- Peringatan Merah di bawah input --}}
-                <p class="text-xs text-red-500 mt-1 italic">
-                    <i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.
-                </p>
-
             @error('sender_address')
                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
             @enderror
@@ -196,6 +191,11 @@
             <div id="sender_address_feedback" class="invalid-feedback text-sm text-red-600 mt-1" style="display:none;">
                 Alamat minimal 10 karakter.
             </div>
+
+            {{-- Peringatan Merah di bawah input --}}
+                <p class="text-xs text-red-500 mt-1 italic">
+                    <i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.
+                </p>
         </div>
 
         <div class="md:col-span-2">
@@ -267,12 +267,6 @@
             <label for="receiver_address" class="block mb-2 text-sm font-medium text-blue-800 required-label">Alamat Penerima Lengkap (Min. 10 Karakter)</label>
             <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-blue-50 border border-blue-200 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_address') is-invalid @enderror" placeholder="Contoh: Jl. Merdeka No. 45, RT 02/RW 03" required>{{ old('receiver_address') }}</textarea>
 
-
-            {{-- Peringatan Merah di bawah input --}}
-            <p class="text-xs text-red-500 mt-1 italic">
-                <i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.
-            </p>
-            
             {{-- BLOK ERROR SERVER LARAVEL --}}
             @error('receiver_address')
                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
@@ -282,6 +276,10 @@
             <div id="receiver_address_feedback" class="invalid-feedback text-sm text-red-600 mt-1" style="display:none;">
                 Alamat minimal 10 karakter.
             </div>
+
+            <p class="text-xs text-red-500 mt-1 italic">
+                <i class="fas fa-exclamation-circle mr-1"></i>Alamat otomatis dikapitalisasi & wajib minimal 10 karakter.
+            </p>
         </div>
          <div class="md:col-span-2">
                 <label class="flex items-center text-sm text-blue-800"><input type="checkbox" id="save_receiver_checkbox" name="save_receiver" value="on" class="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 mr-2 transition-all duration-200"> Simpan data penerima ini</label>
