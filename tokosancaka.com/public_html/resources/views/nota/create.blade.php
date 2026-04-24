@@ -111,11 +111,11 @@
                 
                 <div class="d-flex justify-content-center gap-3">
                     <a href="{{ route('nota.download', session('success_nota_id')) }}" class="btn btn-primary px-4 py-2 fw-bold" target="_blank">
-                        <i class="fa-solid fa-print me-1"></i> Cetak / Download
+                        <i class="fa-solid fa-print me-1"></i> Cetak 
                     </a>
                     
                     <button type="button" class="btn btn-outline-secondary px-4 py-2 fw-bold" data-bs-dismiss="modal">
-                        Buat Nota Baru
+                        Nota Baru
                     </button>
                 </div>
             </div>
