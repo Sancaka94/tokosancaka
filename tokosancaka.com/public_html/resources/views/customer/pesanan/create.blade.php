@@ -132,6 +132,8 @@
             @error('sender_name')
                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
             @enderror
+
+            <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Hanya boleh huruf dan spasi. Angka & simbol otomatis dihapus.</p>
         </div>
 
         <div class="relative">
