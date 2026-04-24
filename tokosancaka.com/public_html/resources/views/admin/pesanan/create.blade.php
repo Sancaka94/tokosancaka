@@ -65,6 +65,7 @@
                             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim </label>
                             <input type="text" id="sender_name" name="sender_name"
                             class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
+                            <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Hanya boleh huruf dan spasi. Angka & simbol otomatis dihapus.</p>
                             <div id="sender_contact_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="relative">
@@ -115,6 +116,7 @@
                             <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Penerima</label>
                             <input type="text" id="receiver_name" name="receiver_name"
                             class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md" required autocomplete="off">
+                            <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Hanya boleh huruf dan spasi. Angka & simbol otomatis dihapus.</p>
                             <div id="receiver_contact_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="relative">
