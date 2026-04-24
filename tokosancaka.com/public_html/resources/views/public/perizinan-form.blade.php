@@ -130,7 +130,7 @@
                         </div>
                         <div class="col-md-4 mb-2">
                             <label class="form-label">Penghuni/Karyawan</label>
-                            <input type="number" name="jumlah_penghuni" class="form-control" placeholder="Kiraan orang" value="{{ old('jumlah_penghuni') }}">
+                            <input type="number" name="jumlah_penghuni" class="form-control" placeholder="Contoh: 5" value="{{ old('jumlah_penghuni') }}">
                         </div>
                         <div class="col-md-4 mb-2">
                             <label class="form-label">Ada Basement?</label>
