@@ -20,6 +20,10 @@ class Nota extends Model
         'no_nota',
         'kepada',
         'tanggal',
+        'nama_pembeli',
+        'nama_penjual',
+        'ttd_pembeli',
+        'ttd_penjual',
         'total_harga',
     ];
 

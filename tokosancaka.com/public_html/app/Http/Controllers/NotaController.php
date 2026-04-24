@@ -6,79 +6,226 @@ use App\Models\Nota;
 use App\Models\NotaItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Barryvdh\DomPDF\Facade\Pdf; // Buka komentar ini jika package DomPDF sudah diinstal
+use Maatwebsite\Excel\Facades\Excel; // Buka komentar ini jika package Excel sudah diinstal
+use App\Exports\NotaExport; // Buka ini jika class Export sudah dibuat
 
 class NotaController extends Controller
 {
-    // Menampilkan Riwayat Nota (Admin)
+    /**
+     * 1. INDEX: Menampilkan riwayat nota
+     */
     public function index()
     {
-        $notas = Nota::orderBy('created_at', 'desc')->paginate(10);
+        // Gunakan eager loading 'items' agar query lebih cepat (N+1 problem solved)
+        $notas = Nota::with('items')->orderBy('created_at', 'desc')->paginate(10);
         return view('nota.index', compact('notas'));
     }
 
-    // Menampilkan Form Pembuatan Nota (App)
+    /**
+     * 2. CREATE: Menampilkan form tambah nota
+     */
     public function create()
     {
-        // Generate No Nota otomatis (opsional, bisa disesuaikan)
-        $no_nota = 'NOTA-' . date('Ymd') . '-' . rand(100, 999);
+        $no_nota = 'NOTA-' . date('Ymd') . '-' . rand(1000, 9999);
         return view('nota.create', compact('no_nota'));
     }
 
-    // Menyimpan Nota dan Item ke Database
+    /**
+     * 3. STORE: Menyimpan nota baru ke database
+     */
     public function store(Request $request)
     {
         $request->validate([
-            'no_nota' => 'required|unique:notas',
-            'kepada' => 'required',
-            'tanggal' => 'required|date',
-            'barang.*.nama' => 'required',
+            'no_nota'      => 'required|unique:notas',
+            'kepada'       => 'required|string|max:255',
+            'tanggal'      => 'required|date',
+            'nama_pembeli' => 'required|string|max:255',
+            'nama_penjual' => 'required|string|max:255',
+            'ttd_pembeli'  => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'ttd_penjual'  => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'barang.*.nama'      => 'required|string',
             'barang.*.banyaknya' => 'required|numeric|min:1',
-            'barang.*.harga' => 'required|numeric|min:0',
+            'barang.*.harga'     => 'required|numeric|min:0',
         ]);
 
         try {
             DB::beginTransaction();
 
-            // 1. Simpan Header Nota
+            // Handle Upload TTD
+            $path_ttd_pembeli = $request->hasFile('ttd_pembeli') ? $request->file('ttd_pembeli')->store('uploads/ttd', 'public') : null;
+            $path_ttd_penjual = $request->hasFile('ttd_penjual') ? $request->file('ttd_penjual')->store('uploads/ttd', 'public') : null;
+
+            // Simpan Header Nota
             $nota = Nota::create([
-                'no_nota' => $request->no_nota,
-                'kepada' => $request->kepada,
-                'tanggal' => $request->tanggal,
-                'total_harga' => 0, // Akan diupdate di bawah
+                'no_nota'      => $request->no_nota,
+                'kepada'       => $request->kepada,
+                'tanggal'      => $request->tanggal,
+                'nama_pembeli' => $request->nama_pembeli,
+                'nama_penjual' => $request->nama_penjual,
+                'ttd_pembeli'  => $path_ttd_pembeli,
+                'ttd_penjual'  => $path_ttd_penjual,
+                'total_harga'  => 0, // Akan diupdate
             ]);
 
             $total_harga = 0;
 
-            // 2. Simpan Detail Item Barang
+            // Simpan Item
             foreach ($request->barang as $item) {
                 $jumlah = $item['banyaknya'] * $item['harga'];
                 $total_harga += $jumlah;
 
                 NotaItem::create([
-                    'nota_id' => $nota->id,
+                    'nota_id'     => $nota->id,
                     'nama_barang' => $item['nama'],
-                    'banyaknya' => $item['banyaknya'],
-                    'harga' => $item['harga'],
-                    'jumlah' => $jumlah,
+                    'banyaknya'   => $item['banyaknya'],
+                    'harga'       => $item['harga'],
+                    'jumlah'      => $jumlah,
                 ]);
             }
 
-            // 3. Update Grand Total
+            // Update Grand Total
             $nota->update(['total_harga' => $total_harga]);
 
             DB::commit();
-            return redirect()->route('nota.index')->with('success', 'Nota berhasil dibuat!');
+            return redirect()->route('nota.index')->with('success', 'Nota berhasil dibuat dan disimpan!');
 
         } catch (\Exception $e) {
             DB::rollback();
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage())->withInput();
         }
     }
 
-    // Menghapus Nota (Otomatis menghapus item karena cascade)
+    /**
+     * 4. SHOW: Menampilkan detail nota (biasanya untuk cetak halaman web)
+     */
+    public function show($id)
+    {
+        $nota = Nota::with('items')->findOrFail($id);
+        return view('nota.show', compact('nota')); 
+    }
+
+    /**
+     * 5. EDIT: Menampilkan form edit nota
+     */
+    public function edit($id)
+    {
+        $nota = Nota::with('items')->findOrFail($id);
+        return view('nota.edit', compact('nota'));
+    }
+
+    /**
+     * 6. UPDATE: Menyimpan perubahan nota
+     */
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'kepada'       => 'required|string|max:255',
+            'tanggal'      => 'required|date',
+            'nama_pembeli' => 'required|string|max:255',
+            'nama_penjual' => 'required|string|max:255',
+            'ttd_pembeli'  => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'ttd_penjual'  => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'barang.*.nama'      => 'required|string',
+            'barang.*.banyaknya' => 'required|numeric|min:1',
+            'barang.*.harga'     => 'required|numeric|min:0',
+        ]);
+
+        try {
+            DB::beginTransaction();
+            $nota = Nota::findOrFail($id);
+
+            // Handle Update TTD Pembeli (Hapus gambar lama jika ada gambar baru)
+            if ($request->hasFile('ttd_pembeli')) {
+                if ($nota->ttd_pembeli) Storage::disk('public')->delete($nota->ttd_pembeli);
+                $nota->ttd_pembeli = $request->file('ttd_pembeli')->store('uploads/ttd', 'public');
+            }
+
+            // Handle Update TTD Penjual
+            if ($request->hasFile('ttd_penjual')) {
+                if ($nota->ttd_penjual) Storage::disk('public')->delete($nota->ttd_penjual);
+                $nota->ttd_penjual = $request->file('ttd_penjual')->store('uploads/ttd', 'public');
+            }
+
+            // Update Field Lainnya
+            $nota->kepada = $request->kepada;
+            $nota->tanggal = $request->tanggal;
+            $nota->nama_pembeli = $request->nama_pembeli;
+            $nota->nama_penjual = $request->nama_penjual;
+            $nota->save();
+
+            // Cara paling aman & bersih untuk update relasi One-to-Many: 
+            // Hapus semua item lama, lalu masukkan (insert) item yang baru dari form
+            $nota->items()->delete();
+
+            $total_harga = 0;
+            foreach ($request->barang as $item) {
+                $jumlah = $item['banyaknya'] * $item['harga'];
+                $total_harga += $jumlah;
+
+                NotaItem::create([
+                    'nota_id'     => $nota->id,
+                    'nama_barang' => $item['nama'],
+                    'banyaknya'   => $item['banyaknya'],
+                    'harga'       => $item['harga'],
+                    'jumlah'      => $jumlah,
+                ]);
+            }
+
+            $nota->update(['total_harga' => $total_harga]);
+
+            DB::commit();
+            return redirect()->route('nota.index')->with('success', 'Nota berhasil diperbarui!');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return back()->with('error', 'Gagal update: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 7. DESTROY: Menghapus nota beserta gambarnya
+     */
     public function destroy($id)
     {
-        Nota::findOrFail($id)->delete();
-        return redirect()->route('nota.index')->with('success', 'Nota berhasil dihapus!');
+        $nota = Nota::findOrFail($id);
+
+        // Hapus file gambar dari folder public/storage/uploads/ttd/
+        if ($nota->ttd_pembeli) Storage::disk('public')->delete($nota->ttd_pembeli);
+        if ($nota->ttd_penjual) Storage::disk('public')->delete($nota->ttd_penjual);
+
+        // Hapus data dari database (otomatis hapus item karena cascade)
+        $nota->delete();
+
+        return redirect()->route('nota.index')->with('success', 'Nota beserta data gambarnya berhasil dihapus!');
+    }
+
+    /**
+     * =========================================
+     * BAGIAN EXPORT (PDF & EXCEL)
+     * =========================================
+     */
+
+    public function exportPdf()
+    {
+        // Pastikan Anda sudah menjalankan: composer require barryvdh/laravel-dompdf
+        $notas = Nota::with('items')->orderBy('tanggal', 'desc')->get();
+        
+        // Buat file view baru di resources/views/nota/pdf.blade.php khusus untuk format cetak
+        $pdf = Pdf::loadView('nota.pdf', compact('notas'));
+        return $pdf->download('Laporan_Riwayat_Nota.pdf');
+        
+        return back()->with('error', 'Fitur Export PDF memerlukan instalasi barryvdh/laravel-dompdf terlebih dahulu.');
+    }
+
+    public function exportExcel()
+    {
+        // Pastikan Anda sudah menjalankan: composer require maatwebsite/excel
+        // Lalu buat file export: php artisan make:export NotaExport --model=Nota
+        
+        return Excel::download(new NotaExport, 'Laporan_Riwayat_Nota.xlsx');
+        
+        return back()->with('error', 'Fitur Export Excel memerlukan instalasi maatwebsite/excel terlebih dahulu.');
     }
 }
