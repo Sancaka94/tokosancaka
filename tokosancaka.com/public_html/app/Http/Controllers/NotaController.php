@@ -216,4 +216,20 @@ class NotaController extends Controller
     {
         return Excel::download(new NotaExport, 'Laporan_Riwayat_Nota.xlsx');
     }
+
+    /**
+     * DOWNLOAD: Mengunduh PDF untuk 1 Nota Spesifik (Lengkap dengan TTD)
+     */
+    public function downloadNota($id)
+    {
+        $nota = Nota::with('items')->findOrFail($id);
+        
+        // Memuat view khusus untuk cetak 1 nota
+        $pdf = Pdf::loadView('nota.receipt_pdf', compact('nota'));
+        
+        // Mengatur ukuran kertas (A5 portrait biasanya cocok untuk nota)
+        $pdf->setPaper('A5', 'portrait');
+        
+        return $pdf->download('Nota_' . $nota->no_nota . '.pdf');
+    }
 }

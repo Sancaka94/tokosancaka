@@ -39,12 +39,17 @@
                         <td class="px-6 py-4 font-bold text-emerald-600">Rp {{ number_format($nota->total_harga, 0, ',', '.') }}</td>
                         <td class="px-6 py-4">
                             <div class="flex justify-center gap-2">
-                                <a href="{{ route('nota.edit', $nota->id) }}" class="text-amber-600 hover:bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-md transition flex items-center">
+                                <a href="{{ route('nota.download', $nota->id) }}" class="text-blue-600 hover:bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-md transition flex items-center" title="Download PDF">
+                                    <i class="fa-solid fa-download"></i>
+                                </a>
+                                
+                                <a href="{{ route('nota.edit', $nota->id) }}" class="text-amber-600 hover:bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-md transition flex items-center" title="Edit Nota">
                                     <i class="fa-solid fa-pen-to-square"></i>
                                 </a>
-                                <form action="{{ route('nota.destroy', $nota->id) }}" method="POST" onsubmit="return confirm('Hapus nota ini?');">
+                                
+                                <form action="{{ route('nota.destroy', $nota->id) }}" method="POST" onsubmit="return confirm('Hapus nota ini?');" class="inline-block">
                                     @csrf @method('DELETE')
-                                    <button class="text-red-600 hover:bg-red-50 border border-red-200 px-3 py-1.5 rounded-md transition">
+                                    <button type="submit" class="text-red-500 hover:text-white border border-red-500 hover:bg-red-500 font-medium rounded-md text-xs px-3 py-1.5 transition-colors duration-200 flex items-center justify-center" title="Hapus Nota">
                                         <i class="fa-solid fa-trash-can"></i>
                                     </button>
                                 </form>

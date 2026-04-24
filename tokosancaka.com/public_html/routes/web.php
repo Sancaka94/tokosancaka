@@ -1245,5 +1245,6 @@ Route::get('/generate-barcode/{id}/download', [GeneretBarcodeController::class, 
 // Route Export
 Route::get('nota/export-pdf', [NotaController::class, 'exportPdf'])->name('nota.export-pdf');
 Route::get('nota/export-excel', [NotaController::class, 'exportExcel'])->name('nota.export-excel');
+Route::get('nota/{id}/download', [App\Http\Controllers\NotaController::class, 'downloadNota'])->name('nota.download');
 
 Route::resource('nota', NotaController::class);
