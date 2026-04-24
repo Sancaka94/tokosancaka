@@ -74,7 +74,7 @@
                             <img id="imgPembeli" src="#" alt="TTD Pembeli" style="max-height: 100px; max-width: 100%; display: none; position: relative; z-index: 1;">
                         </div>
                         <div class="mt-2 mx-auto" style="width: 80%;">
-                            <input type="text" name="nama_pembeli" class="form-control text-center border-0 border-bottom bg-transparent fw-bold" placeholder="Ketik Nama Pembeli..." required>
+                            <input type="text" name="nama_pembeli" class="form-control text-center border-0 border-bottom bg-transparent fw-bold" value="Customer" placeholder="Ketik Nama Pembeli..." required>
                         </div>
                     </div>
 
