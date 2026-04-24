@@ -152,6 +152,8 @@
             @error('sender_phone')
                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
             @enderror
+
+                <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Hanya angka, otomatis diawali 0.</p>
         </div>
 
         <div class="md:col-span-2 relative">
@@ -254,6 +256,8 @@
             @error('receiver_phone')
                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
             @enderror
+
+            <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Hanya angka, otomatis diawali 0.</p>
         </div>
         <div class="md:col-span-2 relative">
             <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-blue-800 required-label">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
@@ -1058,6 +1062,38 @@ asuransiSelect.addEventListener('mousedown', function(e) {
     setupContactSearch('receiver');
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
+
+    // --- FUNGSI FORMAT NOMOR HP OTOMATIS ---
+    function setupPhoneFormatting(inputId) {
+        const phoneInput = document.getElementById(inputId);
+        if (!phoneInput) return;
+
+        phoneInput.addEventListener('input', function () {
+            // 1. Hapus SEMUA karakter selain angka (spasi, huruf, simbol, tanda +)
+            let val = this.value.replace(/\D/g, '');
+
+            // 2. Pastikan selalu diawali dengan angka 0
+            if (val.startsWith('62')) {
+                // Jika user mengetik/paste '62', potong dan ganti jadi '0'
+                val = '0' + val.substring(2);
+            } else if (val.length > 0 && !val.startsWith('0')) {
+                // Jika user langsung mengetik angka selain 0 (misal '8'), tambahkan 0 di depannya
+                val = '0' + val;
+            }
+
+            // 3. Batasi panjang karakter maksimal (opsional, misal max 14 digit)
+            if (val.length > 14) {
+                val = val.substring(0, 14);
+            }
+
+            // 4. Kembalikan nilai yang sudah bersih ke dalam kolom input
+            this.value = val;
+        });
+    }
+
+    // Terapkan ke kolom HP Pengirim dan Penerima
+    setupPhoneFormatting('sender_phone');
+    setupPhoneFormatting('receiver_phone');
 
     // --- FUNGSI FORMAT NAMA OTOMATIS (HANYA HURUF BESAR & SPASI) ---
     function setupNameFormatting(inputId) {
