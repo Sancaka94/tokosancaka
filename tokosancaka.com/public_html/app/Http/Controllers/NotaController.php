@@ -89,7 +89,10 @@ class NotaController extends Controller
             $nota->update(['total_harga' => $total_harga]);
 
             DB::commit();
-            return redirect()->route('nota.index')->with('success', 'Nota berhasil dibuat dan disimpan!');
+            // Redirect kembali ke halaman create, sambil membawa ID nota yang baru saja dibuat
+            return back()
+                ->with('success', 'Nota berhasil dibuat dan disimpan!')
+                ->with('success_nota_id', $nota->id);
 
         } catch (\Exception $e) {
             DB::rollback();

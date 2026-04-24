@@ -99,6 +99,32 @@
     </div>
 </div>
 
+</div> @if(session('success_nota_id'))
+<div class="modal fade" id="successModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-center border-0 shadow-lg">
+            <div class="modal-body p-5">
+                <div class="mb-4">
+                    <i class="fa-solid fa-circle-check text-success" style="font-size: 5rem;"></i>
+                </div>
+                
+                <h3 class="fw-bold mb-3">Berhasil!</h3>
+                <p class="text-muted mb-4">{{ session('success') }}</p>
+                
+                <div class="d-flex justify-content-center gap-3">
+                    <a href="{{ route('nota.download', session('success_nota_id')) }}" class="btn btn-primary px-4 py-2 fw-bold">
+                        <i class="fa-solid fa-print me-1"></i> Cetak / Download
+                    </a>
+                    
+                    <button type="button" class="btn btn-outline-secondary px-4 py-2 fw-bold" data-bs-dismiss="modal">
+                        Buat Nota Baru
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     // Fitur Tambah Baris
     let rowIdx = 1;
@@ -162,4 +188,13 @@
         }
     }
 </script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var myModal = new bootstrap.Modal(document.getElementById('successModal'));
+        myModal.show();
+    });
+</script>
+@endif
+
 @endsection
