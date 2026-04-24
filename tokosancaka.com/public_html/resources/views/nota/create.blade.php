@@ -32,7 +32,7 @@
                         </div>
                         <div>
                             <label>Kepada</label>
-                            <input type="text" class="form-control" name="kepada" placeholder="Nama Pelanggan / Perusahaan" required>
+                            <input type="text" class="form-control" name="kepada" value="Customer Sancaka" placeholder="Nama Pelanggan / Perusahaan" required>
                         </div>
                     </div>
                 </div>
