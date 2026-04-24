@@ -92,7 +92,7 @@
                 </div>
 
                 <div class="text-end mt-5 border-top pt-3">
-                    <button type="submit" class="btn btn-primary px-5 btn-lg">Simpan & Cetak Nota</button>
+                    <button type="submit" class="btn btn-danger px-5 btn-lg">Simpan & Cetak Nota</button>
                 </div>
             </form>
         </div>
