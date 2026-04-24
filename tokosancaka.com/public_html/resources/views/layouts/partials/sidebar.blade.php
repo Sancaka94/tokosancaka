@@ -507,6 +507,48 @@
                 </div>
             </div>
 
+            {{-- ================= MANAJEMEN NOTA ================= --}}
+            <div x-data="{ open: {{ request()->routeIs('nota.*') ? 'true' : 'false' }} }"
+                 x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                 x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true"
+                 class="mt-0.5">
+
+                <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
+                        class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('nota.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                    <span class="flex items-center">
+                        <i class="fa-solid fa-receipt fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('nota.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Manajemen Nota</span>
+                    </span>
+                    <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
+                        <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
+                           :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->routeIs('nota.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
+                    </div>
+                </button>
+
+                <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
+                    <ul class="pl-9 pr-2 py-1 space-y-1">
+                        {{-- 1. Tombol Create (Public) --}}
+                        <li>
+                            <a href="{{ route('nota.create') }}" target="_blank"
+                               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                               class="flex justify-between items-center px-3 py-1.5 text-xs rounded-md transition-colors text-gray-500 hover:text-blue-600 hover:bg-gray-50">
+                                <span>Buat Nota Baru</span>
+                                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                            </a>
+                        </li>
+                        
+                        {{-- 2. Tombol Index (Admin) --}}
+                        <li>
+                            <a href="{{ route('nota.index') }}" wire:navigate
+                               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                               class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('nota.index') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                Riwayat Nota
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
             {{-- Laporan Keuangan --}}
             <div x-data="{ open: {{ request()->routeIs('admin.saldo.requests.*') || request()->routeIs('admin.keuangan.*') || request()->routeIs('admin.akuntansi.*') || request()->routeIs('admin.laporan.*') || request()->is('admin/wallet*') || request()->routeIs('admin.coa.*') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
