@@ -184,6 +184,11 @@
                 placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05"
                 required>{{ old('sender_address', auth()->user()->address_detail) }}</textarea>
 
+                {{-- Peringatan Merah di bawah input --}}
+                <p class="text-xs text-red-500 mt-1 italic">
+                    <i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.
+                </p>
+
             @error('sender_address')
                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
             @enderror
@@ -262,6 +267,12 @@
             <label for="receiver_address" class="block mb-2 text-sm font-medium text-blue-800 required-label">Alamat Penerima Lengkap (Min. 10 Karakter)</label>
             <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-blue-50 border border-blue-200 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_address') is-invalid @enderror" placeholder="Contoh: Jl. Merdeka No. 45, RT 02/RW 03" required>{{ old('receiver_address') }}</textarea>
 
+
+            {{-- Peringatan Merah di bawah input --}}
+            <p class="text-xs text-red-500 mt-1 italic">
+                <i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.
+            </p>
+            
             {{-- BLOK ERROR SERVER LARAVEL --}}
             @error('receiver_address')
                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
@@ -1074,12 +1085,12 @@ asuransiSelect.addEventListener('mousedown', function(e) {
         if (!addressInput) return;
 
         addressInput.addEventListener('input', function () {
-            // Hanya mengubah menjadi huruf besar (kapital), karakter bebas tetap diperbolehkan
+            // Mengubah menjadi huruf besar secara real-time
             this.value = this.value.toUpperCase();
         });
     }
 
-    // Terapkan ke kolom Alamat Pengirim dan Alamat Penerima
+    // Jalankan untuk Alamat Pengirim dan Penerima
     setupAddressFormatting('sender_address');
     setupAddressFormatting('receiver_address');
 
