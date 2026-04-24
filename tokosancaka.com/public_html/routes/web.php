@@ -159,6 +159,8 @@ use App\Http\Controllers\Admin\EscrowController;
 
 use App\Http\Controllers\PpobIakController;
 
+use App\Http\Controllers\NotaController;
+
 
 
 Route::get('/cek-sistem-sancaka', function () {
@@ -1238,3 +1240,6 @@ Route::get('/generate-barcode/{id}/edit', [GeneretBarcodeController::class, 'edi
 Route::put('/generate-barcode/{id}', [GeneretBarcodeController::class, 'update'])->name('barcode.update');
 Route::delete('/generate-barcode/{id}', [GeneretBarcodeController::class, 'destroy'])->name('barcode.destroy');
 Route::get('/generate-barcode/{id}/download', [GeneretBarcodeController::class, 'download'])->name('barcode.download');
+
+// Nota
+Route::resource('nota', NotaController::class);
