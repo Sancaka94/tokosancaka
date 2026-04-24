@@ -74,7 +74,7 @@
                             <img id="imgPembeli" src="#" alt="TTD Pembeli" style="max-height: 100px; max-width: 100%; display: none; position: relative; z-index: 1;">
                         </div>
                         <div class="mt-2 mx-auto" style="width: 80%;">
-                            <input type="text" name="nama_pembeli" class="form-control text-center border-0 border-bottom bg-transparent fw-bold" value="Customer" placeholder="Ketik Nama Pembeli..." required>
+                            <input type="text" name="nama_pembeli" class="form-control text-center border-0 border-bottom bg-transparent fw-bold" placeholder="Ketik Nama Pembeli..." required>
                         </div>
                     </div>
 
@@ -97,8 +97,6 @@
             </form>
         </div>
     </div>
-</div>
-
 </div> @if(session('success_nota_id'))
 <div class="modal fade" id="successModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -112,7 +110,7 @@
                 <p class="text-muted mb-4">{{ session('success') }}</p>
                 
                 <div class="d-flex justify-content-center gap-3">
-                    <a href="{{ route('nota.download', session('success_nota_id')) }}" class="btn btn-primary px-4 py-2 fw-bold">
+                    <a href="{{ route('nota.download', session('success_nota_id')) }}" class="btn btn-primary px-4 py-2 fw-bold" target="_blank">
                         <i class="fa-solid fa-print me-1"></i> Cetak / Download
                     </a>
                     
@@ -125,6 +123,13 @@
     </div>
 </div>
 
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var myModal = new bootstrap.Modal(document.getElementById('successModal'));
+        myModal.show();
+    });
+</script>
+@endif
 <script>
     // Fitur Tambah Baris
     let rowIdx = 1;
@@ -188,13 +193,4 @@
         }
     }
 </script>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var myModal = new bootstrap.Modal(document.getElementById('successModal'));
-        myModal.show();
-    });
-</script>
-@endif
-
 @endsection
