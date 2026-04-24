@@ -8,25 +8,24 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { background-color: #f0f2f5; }
-        
-        /* Penyesuaian padding form untuk HP vs PC */
         .paper-form {
             background: #fff;
             border-top: 5px solid #ffc107;
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            padding: 20px; /* Default untuk HP */
+            padding: 25px; /* Padding HP */
             background-image: radial-gradient(#e5e5e5 1px, transparent 1px);
             background-size: 20px 20px;
         }
         
-        @media (min-width: 768px) {
+        /* Padding lebih luas khusus untuk PC/Laptop */
+        @media (min-width: 992px) {
             .paper-form {
-                padding: 40px; /* Padding lebih lega untuk Tablet & PC */
+                padding: 40px 50px; 
             }
         }
 
-        .form-label { font-weight: bold; color: #333; }
+        .form-label { font-weight: bold; color: #333; font-size: 0.9rem; }
         .section-title {
             background-color: #0d6efd;
             color: white;
@@ -53,13 +52,14 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(13, 110, 253, 0.4);
         }
+        .form-check-label, .form-check-input { cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="container py-4 py-md-5">
     <div class="row justify-content-center">
-        <div class="col-12 col-md-10 col-lg-8">
+        <div class="col-12 col-lg-10 col-xl-10">
 
             @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show mb-4 shadow-sm" role="alert">
@@ -81,7 +81,7 @@
             @endif
 
             <div class="paper-form">
-                <div class="text-center mb-4">
+                <div class="text-center mb-5">
                     <h2 class="fw-bold text-uppercase fs-3 fs-md-2">Formulir Kriteria Bangunan</h2>
                     <p class="text-muted small md-text-base">Mohon diisi lengkap agar kami bisa menentukan harga perizinan.</p>
                 </div>
@@ -93,7 +93,7 @@
                         <i class="fas fa-user-circle me-2"></i> IDENTITAS PEMOHON
                     </div>
 
-                    <div class="row">
+                    <div class="row mb-3">
                         <div class="col-12 col-md-6 mb-3">
                             <label class="form-label">Nama Anda</label>
                             <input type="text" name="nama_pelanggan" class="form-control" placeholder="Contoh: Budi Santoso" value="{{ old('nama_pelanggan') }}" required>
@@ -108,38 +108,37 @@
                         </div>
                     </div>
 
-                    <hr class="my-4">
+                    <hr class="my-4 text-muted">
 
                     <div class="section-title">
                         <i class="fas fa-city me-2"></i> DATA BANGUNAN
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Lokasi Permohonan</label>
-                        <textarea name="lokasi" class="form-control" rows="2" placeholder="Alamat lengkap lokasi bangunan..." required>{{ old('lokasi') }}</textarea>
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label class="form-label">Lokasi Permohonan</label>
+                            <textarea name="lokasi" class="form-control" rows="2" placeholder="Alamat lengkap lokasi bangunan..." required>{{ old('lokasi') }}</textarea>
+                        </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-12 col-md-6 mb-3">
+                        <div class="col-6 col-lg-2 mb-3">
                             <label class="form-label">Lebar (m)</label>
                             <input type="number" step="0.1" name="lebar" class="form-control" placeholder="Contoh: 10" value="{{ old('lebar') }}" required>
                         </div>
-                        <div class="col-12 col-md-6 mb-3">
+                        <div class="col-6 col-lg-2 mb-3">
                             <label class="form-label">Panjang (m)</label>
                             <input type="number" step="0.1" name="panjang" class="form-control" placeholder="Contoh: 15" value="{{ old('panjang') }}" required>
                         </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-12 col-md-4 mb-3">
-                            <label class="form-label">Jumlah Lantai</label>
+                        <div class="col-12 col-md-4 col-lg-2 mb-3">
+                            <label class="form-label">Jml. Lantai</label>
                             <input type="number" name="jumlah_lantai" class="form-control" placeholder="Contoh: 2" value="{{ old('jumlah_lantai') }}" required>
                         </div>
-                        <div class="col-12 col-md-4 mb-3">
-                            <label class="form-label">Penghuni/Karyawan</label>
-                            <input type="number" name="jumlah_penghuni" class="form-control" placeholder="Contoh: 5" value="{{ old('jumlah_penghuni') }}">
+                        <div class="col-12 col-md-4 col-lg-3 mb-3">
+                            <label class="form-label">Penghuni / Karyawan</label>
+                            <input type="number" name="jumlah_penghuni" class="form-control" placeholder="Jumlah Orang" value="{{ old('jumlah_penghuni') }}">
                         </div>
-                        <div class="col-12 col-md-4 mb-3">
+                        <div class="col-12 col-md-4 col-lg-3 mb-3">
                             <label class="form-label">Ada Basement?</label>
                             <select name="memiliki_basement" class="form-select">
                                 <option value="0" {{ old('memiliki_basement') == '0' ? 'selected' : '' }}>Tidak Ada</option>
@@ -149,7 +148,7 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-12 col-md-6 mb-3">
+                        <div class="col-12 col-md-4 mb-3">
                             <label class="form-label">Status Terbangun?</label>
                             <select name="status_bangunan" class="form-select" required>
                                 <option value="">-- Pilih --</option>
@@ -157,7 +156,7 @@
                                 <option value="Belum Terbangun" {{ old('status_bangunan') == 'Belum Terbangun' ? 'selected' : '' }}>Belum Terbangun (Tanah Kosong)</option>
                             </select>
                         </div>
-                        <div class="col-12 col-md-6 mb-3">
+                        <div class="col-12 col-md-4 mb-3">
                             <label class="form-label">Jenis Bangunan</label>
                             <select name="jenis_bangunan" class="form-select" required>
                                 <option value="">-- Pilih --</option>
@@ -166,20 +165,19 @@
                                 <option value="Campuran" {{ old('jenis_bangunan') == 'Campuran' ? 'selected' : '' }}>Campuran (Ruko/Rukan)</option>
                             </select>
                         </div>
+                        <div class="col-12 col-md-4 mb-3">
+                            <label class="form-label">Fungsi Spesifik</label>
+                            <input type="text" name="fungsi_bangunan" class="form-control" placeholder="Cth: Toko / Gudang / Kost" value="{{ old('fungsi_bangunan') }}" required>
+                        </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Fungsi Bangunan Spesifik</label>
-                        <input type="text" name="fungsi_bangunan" class="form-control" placeholder="Contoh: Toko Kelontong / Gudang / Klinik / Kost" value="{{ old('fungsi_bangunan') }}" required>
-                    </div>
-
-                    <hr class="my-4">
+                    <hr class="my-4 text-muted">
 
                     <div class="section-title">
                         <i class="fas fa-file-signature me-2"></i> KELENGKAPAN PERIZINAN
                     </div>
                     
-                    <div class="row">
+                    <div class="row mb-2">
                         <div class="col-12 col-md-6 mb-3">
                             <label class="form-label text-primary">Status Tanah <span class="text-danger">*</span></label>
                             <select name="status_tanah" class="form-select border-primary" required>
@@ -234,23 +232,24 @@
                         </div>
                     </div>
 
-                    <div class="mb-4">
-                        <label class="form-label">Apakah sudah punya KRK / PKKPR? <span class="text-danger">*</span></label>
-                        <div class="d-flex flex-column flex-md-row gap-2 gap-md-4 p-3 bg-light rounded border">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="status_krk" value="Sudah Punya" id="krk1" {{ old('status_krk') == 'Sudah Punya' ? 'checked' : '' }} required>
-                                <label class="form-check-label text-success fw-bold" for="krk1">Sudah Punya</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="status_krk" value="Belum Punya" id="krk2" {{ old('status_krk', 'Belum Punya') == 'Belum Punya' ? 'checked' : '' }} required>
-                                <label class="form-check-label text-danger fw-bold" for="krk2">Belum Punya</label>
+                    <div class="row mb-4">
+                        <div class="col-12 col-md-6 mb-3 mb-md-0">
+                            <label class="form-label">Apakah sudah punya KRK / PKKPR? <span class="text-danger">*</span></label>
+                            <div class="d-flex flex-row gap-4 p-2 bg-light rounded border">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="status_krk" value="Sudah Punya" id="krk1" {{ old('status_krk') == 'Sudah Punya' ? 'checked' : '' }} required>
+                                    <label class="form-check-label text-success fw-bold" for="krk1">Sudah Punya</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="status_krk" value="Belum Punya" id="krk2" {{ old('status_krk', 'Belum Punya') == 'Belum Punya' ? 'checked' : '' }} required>
+                                    <label class="form-check-label text-danger fw-bold" for="krk2">Belum Punya</label>
+                                </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="mb-5">
-                        <label class="form-label">Perizinan Lain-Lain (Bila Ada)</label>
-                        <textarea name="perizinan_lain" class="form-control" rows="2" placeholder="Sebutkan jika ada izin lain yang sudah diurus/dimiliki...">{{ old('perizinan_lain') }}</textarea>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Perizinan Lain-Lain (Bila Ada)</label>
+                            <textarea name="perizinan_lain" class="form-control" rows="1" placeholder="Sebutkan jika ada izin lain...">{{ old('perizinan_lain') }}</textarea>
+                        </div>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-submit text-white shadow-lg mt-3">
