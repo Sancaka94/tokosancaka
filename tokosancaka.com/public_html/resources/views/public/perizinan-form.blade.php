@@ -255,8 +255,8 @@
                     <button type="submit" class="btn btn-primary btn-submit text-white shadow-lg mt-3">
                         <i class="fab fa-whatsapp me-2 fs-5"></i> KIRIM DATA & DAPATKAN HARGA
                     </button>
-                    <p class="text-center mt-3 text-muted small fw-bold">CV. SANCAKA KARYA HUTAMA</p><br>
-                    <p class="text-center mt-3 text-muted small fw-bold">Jl.Dr.Wahidin No.18A RT.22 RW.05 Kel.Ketanggi Kec.Ngawi Kab.Ngawi Jawa Timur 63211</p><br>
+                    <p class="text-center mt-3 text-muted small fw-bold">CV. SANCAKA KARYA HUTAMA</p>
+                    <p class="text-center mt-3 text-muted small fw-bold">Jl.Dr.Wahidin No.18A RT.22 RW.05 Kel.Ketanggi Kec.Ngawi Kab.Ngawi Jawa Timur 63211</p>
                     <p class="text-center mt-3 text-muted small fw-bold">
                         Helpdesk WhatsApp: 
                         <a href="https://wa.me/6285745808809" target="_blank" class="text-success text-decoration-none ms-1">
