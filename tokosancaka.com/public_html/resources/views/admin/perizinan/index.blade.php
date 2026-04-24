@@ -36,6 +36,10 @@
                             <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                 Detail Legalitas
                             </th>
+                            {{-- KOLOM BARU: KELENGKAPAN PERIZINAN --}}
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                Kelengkapan Perizinan
+                            </th>
                             <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                 Aksi
                             </th>
@@ -44,10 +48,10 @@
                     <tbody>
                         @forelse($data as $item)
                         <tr>
-                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm align-top">
                                 <p class="text-gray-900 whitespace-no-wrap">{{ $item->created_at->format('d/m/Y H:i') }}</p>
                             </td>
-                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm align-top">
                                 <div class="flex flex-col">
                                     <span class="font-bold text-gray-900">{{ $item->nama_pelanggan }}</span>
                                     <a href="https://wa.me/{{ $item->no_wa }}" target="_blank" class="text-green-600 hover:text-green-800 text-xs mt-1">
@@ -56,14 +60,16 @@
                                     <span class="text-gray-500 text-xs mt-1">{{ $item->lokasi }}</span>
                                 </div>
                             </td>
-                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm align-top">
                                 <div class="text-gray-900 whitespace-no-wrap text-xs">
                                     <div class="mb-1">📐 {{ $item->lebar }}m x {{ $item->panjang }}m ({{ $item->jumlah_lantai }} Lt)</div>
                                     <div class="mb-1">🏗 {{ $item->status_bangunan }}</div>
                                     <div class="mb-1">🏠 {{ $item->jenis_bangunan }}</div>
+                                    <div class="mb-1">👥 Penghuni/Karyawan: <span class="font-semibold">{{ $item->jumlah_penghuni ?? '-' }}</span></div>
+                                    <div class="mb-1">🏢 Basement: <span class="font-semibold">{{ $item->memiliki_basement ? 'Ada' : 'Tidak Ada' }}</span></div>
                                 </div>
                             </td>
-                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm align-top">
                                 <div class="text-gray-900 whitespace-no-wrap text-xs">
                                     <div class="mb-1">🛠 {{ $item->fungsi_bangunan }}</div>
                                     <div class="mb-1">📜 {{ $item->legalitas_saat_ini }}</div>
@@ -74,7 +80,59 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center">
+                            
+                            {{-- ISI KOLOM BARU: KELENGKAPAN PERIZINAN --}}
+                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm align-top">
+                                <div class="text-gray-900 whitespace-no-wrap text-xs grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1">
+                                    
+                                    {{-- Asumsi properti boolean pada model $item (true/false atau 1/0) --}}
+                                    
+                                    <div class="flex items-center">
+                                        <i class="fas {{ $item->rekom_dishub ? 'fa-check text-green-500' : 'fa-times text-red-500' }} w-4 mr-1"></i> Rekom Dishub
+                                    </div>
+                                    
+                                    <div class="flex items-center">
+                                        <i class="fas {{ $item->rekom_damkar ? 'fa-check text-green-500' : 'fa-times text-red-500' }} w-4 mr-1"></i> Rekom Damkar
+                                    </div>
+                                    
+                                    <div class="flex items-center">
+                                        <i class="fas {{ $item->andalalin ? 'fa-check text-green-500' : 'fa-times text-red-500' }} w-4 mr-1"></i> Andalalin
+                                    </div>
+                                    
+                                    <div class="flex items-center">
+                                        <i class="fas {{ $item->lingkungan ? 'fa-check text-green-500' : 'fa-times text-red-500' }} w-4 mr-1"></i> SPPL/UKL-UPL/AMDAL
+                                    </div>
+                                    
+                                    <div class="flex items-center">
+                                        <i class="fas {{ $item->nib ? 'fa-check text-green-500' : 'fa-times text-red-500' }} w-4 mr-1"></i> NIB
+                                    </div>
+                                    
+                                    <div class="flex items-center">
+                                        <i class="fas {{ $item->siup ? 'fa-check text-green-500' : 'fa-times text-red-500' }} w-4 mr-1"></i> SIUP
+                                    </div>
+                                    
+                                    {{-- Status Tanah (Biasanya string) --}}
+                                    <div class="col-span-1 md:col-span-2 mt-2">
+                                        <span class="font-semibold block border-t pt-1">Status Tanah:</span>
+                                        <span class="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs mt-1">
+                                            {{ $item->status_tanah ?? 'Belum Diisi' }}
+                                        </span>
+                                    </div>
+
+                                    {{-- Perizinan Lain-Lain (Text Area) --}}
+                                    @if($item->perizinan_lain)
+                                    <div class="col-span-1 md:col-span-2 mt-2">
+                                        <span class="font-semibold block">Lain-lain:</span>
+                                        <p class="text-gray-600 italic mt-1 bg-gray-50 p-2 rounded border border-gray-200">
+                                            {{ $item->perizinan_lain }}
+                                        </p>
+                                    </div>
+                                    @endif
+
+                                </div>
+                            </td>
+
+                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center align-top">
                                 <form action="{{ route('admin.perizinan.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Yakin hapus data ini?');">
                                     @csrf
                                     @method('DELETE')
@@ -86,7 +144,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="5" class="px-5 py-5 bg-white text-center text-gray-500">
+                            <td colspan="6" class="px-5 py-5 bg-white text-center text-gray-500">
                                 Belum ada data formulir masuk.
                             </td>
                         </tr>
