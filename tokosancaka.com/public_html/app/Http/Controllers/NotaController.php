@@ -7,9 +7,9 @@ use App\Models\NotaItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Barryvdh\DomPDF\Facade\Pdf; // Buka komentar ini jika package DomPDF sudah diinstal
-use Maatwebsite\Excel\Facades\Excel; // Buka komentar ini jika package Excel sudah diinstal
-use App\Exports\NotaExport; // Buka ini jika class Export sudah dibuat
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\NotaExport;
 
 class NotaController extends Controller
 {
@@ -18,7 +18,7 @@ class NotaController extends Controller
      */
     public function index()
     {
-        // Gunakan eager loading 'items' agar query lebih cepat (N+1 problem solved)
+        /* Gunakan eager loading 'items' agar query lebih cepat */
         $notas = Nota::with('items')->orderBy('created_at', 'desc')->paginate(10);
         return view('nota.index', compact('notas'));
     }
@@ -53,11 +53,11 @@ class NotaController extends Controller
         try {
             DB::beginTransaction();
 
-            // Handle Upload TTD
+            /* Handle Upload TTD */
             $path_ttd_pembeli = $request->hasFile('ttd_pembeli') ? $request->file('ttd_pembeli')->store('uploads/ttd', 'public') : null;
             $path_ttd_penjual = $request->hasFile('ttd_penjual') ? $request->file('ttd_penjual')->store('uploads/ttd', 'public') : null;
 
-            // Simpan Header Nota
+            /* Simpan Header Nota */
             $nota = Nota::create([
                 'no_nota'      => $request->no_nota,
                 'kepada'       => $request->kepada,
@@ -66,12 +66,12 @@ class NotaController extends Controller
                 'nama_penjual' => $request->nama_penjual,
                 'ttd_pembeli'  => $path_ttd_pembeli,
                 'ttd_penjual'  => $path_ttd_penjual,
-                'total_harga'  => 0, // Akan diupdate
+                'total_harga'  => 0, 
             ]);
 
             $total_harga = 0;
 
-            // Simpan Item
+            /* Simpan Detail Item */
             foreach ($request->barang as $item) {
                 $jumlah = $item['banyaknya'] * $item['harga'];
                 $total_harga += $jumlah;
@@ -85,7 +85,7 @@ class NotaController extends Controller
                 ]);
             }
 
-            // Update Grand Total
+            /* Update Grand Total */
             $nota->update(['total_harga' => $total_harga]);
 
             DB::commit();
@@ -98,7 +98,7 @@ class NotaController extends Controller
     }
 
     /**
-     * 4. SHOW: Menampilkan detail nota (biasanya untuk cetak halaman web)
+     * 4. SHOW: Menampilkan detail nota
      */
     public function show($id)
     {
@@ -136,27 +136,26 @@ class NotaController extends Controller
             DB::beginTransaction();
             $nota = Nota::findOrFail($id);
 
-            // Handle Update TTD Pembeli (Hapus gambar lama jika ada gambar baru)
+            /* Handle Update TTD Pembeli */
             if ($request->hasFile('ttd_pembeli')) {
                 if ($nota->ttd_pembeli) Storage::disk('public')->delete($nota->ttd_pembeli);
                 $nota->ttd_pembeli = $request->file('ttd_pembeli')->store('uploads/ttd', 'public');
             }
 
-            // Handle Update TTD Penjual
+            /* Handle Update TTD Penjual */
             if ($request->hasFile('ttd_penjual')) {
                 if ($nota->ttd_penjual) Storage::disk('public')->delete($nota->ttd_penjual);
                 $nota->ttd_penjual = $request->file('ttd_penjual')->store('uploads/ttd', 'public');
             }
 
-            // Update Field Lainnya
+            /* Update Field Header */
             $nota->kepada = $request->kepada;
             $nota->tanggal = $request->tanggal;
             $nota->nama_pembeli = $request->nama_pembeli;
             $nota->nama_penjual = $request->nama_penjual;
             $nota->save();
 
-            // Cara paling aman & bersih untuk update relasi One-to-Many: 
-            // Hapus semua item lama, lalu masukkan (insert) item yang baru dari form
+            /* Reset dan Masukkan Item Baru */
             $nota->items()->delete();
 
             $total_harga = 0;
@@ -191,11 +190,10 @@ class NotaController extends Controller
     {
         $nota = Nota::findOrFail($id);
 
-        // Hapus file gambar dari folder public/storage/uploads/ttd/
+        /* Hapus file gambar secara fisik dari storage */
         if ($nota->ttd_pembeli) Storage::disk('public')->delete($nota->ttd_pembeli);
         if ($nota->ttd_penjual) Storage::disk('public')->delete($nota->ttd_penjual);
 
-        // Hapus data dari database (otomatis hapus item karena cascade)
         $nota->delete();
 
         return redirect()->route('nota.index')->with('success', 'Nota beserta data gambarnya berhasil dihapus!');
@@ -209,23 +207,13 @@ class NotaController extends Controller
 
     public function exportPdf()
     {
-        // Pastikan Anda sudah menjalankan: composer require barryvdh/laravel-dompdf
         $notas = Nota::with('items')->orderBy('tanggal', 'desc')->get();
-        
-        // Buat file view baru di resources/views/nota/pdf.blade.php khusus untuk format cetak
         $pdf = Pdf::loadView('nota.pdf', compact('notas'));
         return $pdf->download('Laporan_Riwayat_Nota.pdf');
-        
-        return back()->with('error', 'Fitur Export PDF memerlukan instalasi barryvdh/laravel-dompdf terlebih dahulu.');
     }
 
     public function exportExcel()
     {
-        // Pastikan Anda sudah menjalankan: composer require maatwebsite/excel
-        // Lalu buat file export: php artisan make:export NotaExport --model=Nota
-        
         return Excel::download(new NotaExport, 'Laporan_Riwayat_Nota.xlsx');
-        
-        return back()->with('error', 'Fitur Export Excel memerlukan instalasi maatwebsite/excel terlebih dahulu.');
     }
 }
