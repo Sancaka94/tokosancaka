@@ -96,6 +96,8 @@
                focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md
                transition duration-150 ease-in-out"
     ></textarea>
+
+    <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.</p>
     </div>
 
                           <div class="md:col-span-2">
@@ -139,6 +141,8 @@
                             class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900
                             focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md
                             transition duration-150 ease-in-out" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
+
+                            <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.</p>
                         </div>
                           <div class="md:col-span-2">
                                 <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" checked class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data penerima ini</label>
@@ -614,6 +618,21 @@ document.addEventListener('DOMContentLoaded', function () {
     // Terapkan ke kolom Nama Pengirim dan Nama Penerima
     setupNameFormatting('sender_name');
     setupNameFormatting('receiver_name');
+
+    // --- FUNGSI FORMAT ALAMAT (OTOMATIS KAPITAL SEMUA) ---
+    function setupAddressFormatting(inputId) {
+        const addressInput = document.getElementById(inputId);
+        if (!addressInput) return;
+
+        addressInput.addEventListener('input', function () {
+            // Hanya mengubah menjadi huruf besar (kapital), karakter bebas tetap diperbolehkan
+            this.value = this.value.toUpperCase();
+        });
+    }
+
+    // Terapkan ke kolom Alamat Pengirim dan Alamat Penerima
+    setupAddressFormatting('sender_address');
+    setupAddressFormatting('receiver_address');
 
     document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
 

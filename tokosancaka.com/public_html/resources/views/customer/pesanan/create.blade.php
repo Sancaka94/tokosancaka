@@ -1068,6 +1068,21 @@ asuransiSelect.addEventListener('mousedown', function(e) {
     setupNameFormatting('sender_name');
     setupNameFormatting('receiver_name');
 
+    // --- FUNGSI FORMAT ALAMAT (OTOMATIS KAPITAL SEMUA) ---
+    function setupAddressFormatting(inputId) {
+        const addressInput = document.getElementById(inputId);
+        if (!addressInput) return;
+
+        addressInput.addEventListener('input', function () {
+            // Hanya mengubah menjadi huruf besar (kapital), karakter bebas tetap diperbolehkan
+            this.value = this.value.toUpperCase();
+        });
+    }
+
+    // Terapkan ke kolom Alamat Pengirim dan Alamat Penerima
+    setupAddressFormatting('sender_address');
+    setupAddressFormatting('receiver_address');
+
     const senderAddressInput = document.getElementById('sender_address');
     const senderAddressFeedback = document.getElementById('sender_address_feedback');
     const receiverAddressInput = document.getElementById('receiver_address');
