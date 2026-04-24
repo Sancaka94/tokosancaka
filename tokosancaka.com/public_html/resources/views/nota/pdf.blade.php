@@ -2,78 +2,54 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laporan Riwayat Nota</title>
     <style>
-        /* CSS Khusus agar rapi di DomPDF */
-        body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 12px;
-            color: #333;
-        }
-        .header {
-            text-align: center;
-            border-bottom: 2px solid #333;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
-        .header h2 {
-            margin: 0;
-            font-size: 20px;
-            font-weight: bold;
-        }
-        .header p {
-            margin: 5px 0 0 0;
-            font-size: 12px;
-            color: #555;
-        }
-        .title {
-            text-align: center;
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        table th, table td {
-            border: 1px solid #999;
-            padding: 8px;
-            text-align: left;
-        }
-        table th {
-            background-color: #f4f4f4;
-            font-weight: bold;
-            text-align: center;
-        }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; color: #333; }
+        .header { width: 100%; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
+        .header td { vertical-align: middle; }
+        .logo { max-height: 60px; }
+        .header h2 { margin: 0; font-size: 20px; font-weight: bold; }
+        .header p { margin: 5px 0 0 0; font-size: 12px; color: #555; }
+        .title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
+        table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        table.data-table th, table.data-table td { border: 1px solid #999; padding: 8px; text-align: left; }
+        table.data-table th { background-color: #f4f4f4; font-weight: bold; text-align: center; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .font-bold { font-weight: bold; }
         .text-success { color: #059669; }
-        .footer {
-            margin-top: 30px;
-            font-size: 10px;
-            color: #777;
-            text-align: right;
-            font-style: italic;
-        }
+        .footer { margin-top: 30px; font-size: 10px; color: #777; text-align: right; font-style: italic; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h2>SANCAKA KARYA HUTAMA</h2>
-        <p>Jl. Dr. Wahidin no. 18A (depan RSUD Soeroto Ngawi)<br>Telp: 0881-9435-180</p>
-    </div>
+    @php
+        $logoPath = public_path('storage/uploads/sancaka.png');
+        $logoBase64 = '';
+        if (file_exists($logoPath)) {
+            $type = pathinfo($logoPath, PATHINFO_EXTENSION);
+            $data = file_get_contents($logoPath);
+            $logoBase64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+        }
+    @endphp
 
-    <div class="title">
-        Laporan Riwayat Transaksi Nota
-    </div>
+    <table class="header">
+        <tr>
+            <td width="20%" class="text-center">
+                @if($logoBase64)
+                    <img src="{{ $logoBase64 }}" class="logo" alt="Logo">
+                @endif
+            </td>
+            <td width="80%" class="text-center" style="padding-right: 20%;">
+                <h2>SANCAKA KARYA HUTAMA</h2>
+                <p>Jl. Dr. Wahidin no. 18A (depan RSUD Soeroto Ngawi)<br>Telp: 0881-9435-180</p>
+            </td>
+        </tr>
+    </table>
 
-    <table>
+    <div class="title">Laporan Riwayat Transaksi Nota</div>
+
+    <table class="data-table">
         <thead>
             <tr>
                 <th width="5%">No</th>

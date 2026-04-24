@@ -6,42 +6,55 @@
     <style>
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; color: #333; line-height: 1.4; }
         .container { width: 100%; margin: 0 auto; }
-        
-        /* Header / Kop */
         .header { width: 100%; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
         .header td { vertical-align: middle; }
         .logo { max-height: 60px; }
         .company-title { font-size: 18px; font-weight: bold; margin: 0; }
         .company-sub { font-size: 11px; margin: 2px 0 0 0; color: #555; }
         .nota-title { font-size: 24px; font-weight: bold; text-align: right; text-transform: uppercase; }
-
-        /* Info Nota */
         .info-table { width: 100%; margin-bottom: 20px; }
         .info-table td { vertical-align: top; }
-
-        /* Tabel Barang */
         .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         .items-table th, .items-table td { border: 1px solid #000; padding: 6px; }
         .items-table th { background-color: #f4f4f4; text-align: center; }
-        
-        /* Utilitas */
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .fw-bold { font-weight: bold; }
-
-        /* Tanda Tangan */
         .ttd-table { width: 100%; margin-top: 30px; text-align: center; page-break-inside: avoid; }
-        .ttd-img { max-height: 80px; margin: 10px 0; }
+        .ttd-img { max-height: 70px; margin: 5px 0; }
         .ttd-name { text-decoration: underline; font-weight: bold; }
     </style>
 </head>
 <body>
+    @php
+        // Fungsi untuk mengubah gambar jadi Base64
+        function getBase64Image($path) {
+            if (file_exists($path)) {
+                $type = pathinfo($path, PATHINFO_EXTENSION);
+                $data = file_get_contents($path);
+                return 'data:image/' . $type . ';base64,' . base64_encode($data);
+            }
+            return '';
+        }
+
+        // Convert Logo Sancaka
+        $logoPath = public_path('storage/uploads/sancaka.png');
+        $logoBase64 = getBase64Image($logoPath);
+
+        // Convert TTD Pembeli & Penjual
+        $ttdPembeliBase64 = $nota->ttd_pembeli ? getBase64Image(public_path('storage/' . $nota->ttd_pembeli)) : '';
+        $ttdPenjualBase64 = $nota->ttd_penjual ? getBase64Image(public_path('storage/' . $nota->ttd_penjual)) : '';
+    @endphp
+
     <div class="container">
-        
         <table class="header">
             <tr>
                 <td width="15%">
-                    <img src="https://tokosancaka.com/storage/uploads/sancaka.png" class="logo" alt="Logo">
+                    @if($logoBase64)
+                        <img src="{{ $logoBase64 }}" class="logo" alt="Logo Sancaka">
+                    @else
+                        <strong>SANCAKA</strong>
+                    @endif
                 </td>
                 <td width="55%">
                     <h1 class="company-title">SANCAKA KARYA HUTAMA</h1>
@@ -98,8 +111,8 @@
                 <td width="50%">
                     <p>Tanda Terima,</p>
                     
-                    @if($nota->ttd_pembeli)
-                        <img src="{{ public_path('storage/' . $nota->ttd_pembeli) }}" class="ttd-img">
+                    @if($ttdPembeliBase64)
+                        <img src="{{ $ttdPembeliBase64 }}" class="ttd-img" alt="TTD Pembeli">
                     @else
                         <br><br><br><br>
                     @endif
@@ -109,8 +122,8 @@
                 <td width="50%">
                     <p>Hormat Kami,</p>
 
-                    @if($nota->ttd_penjual)
-                        <img src="{{ public_path('storage/' . $nota->ttd_penjual) }}" class="ttd-img">
+                    @if($ttdPenjualBase64)
+                        <img src="{{ $ttdPenjualBase64 }}" class="ttd-img" alt="TTD Penjual">
                     @else
                         <br><br><br><br>
                     @endif
@@ -119,7 +132,6 @@
                 </td>
             </tr>
         </table>
-
     </div>
 </body>
 </html>
