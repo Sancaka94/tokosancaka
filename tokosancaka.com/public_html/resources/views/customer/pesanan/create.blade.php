@@ -1045,6 +1045,24 @@ asuransiSelect.addEventListener('mousedown', function(e) {
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
 
+    // --- FUNGSI FORMAT NAMA OTOMATIS (HANYA HURUF BESAR & SPASI) ---
+    function setupNameFormatting(inputId) {
+        const nameInput = document.getElementById(inputId);
+        if (!nameInput) return;
+
+        nameInput.addEventListener('input', function (e) {
+            // Hapus semua karakter selain huruf (A-Z, a-z) dan spasi
+            let val = this.value.replace(/[^a-zA-Z\s]/g, '');
+            
+            // Paksa menjadi huruf besar semua (Kapital)
+            this.value = val.toUpperCase();
+        });
+    }
+
+    // Terapkan ke kolom Nama Pengirim dan Nama Penerima
+    setupNameFormatting('sender_name');
+    setupNameFormatting('receiver_name');
+
     const senderAddressInput = document.getElementById('sender_address');
     const senderAddressFeedback = document.getElementById('sender_address_feedback');
     const receiverAddressInput = document.getElementById('receiver_address');
