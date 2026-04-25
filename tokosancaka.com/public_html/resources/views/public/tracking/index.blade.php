@@ -128,6 +128,41 @@ if (!function_exists('getTrackingStatusIcon')) {
         return 'fas fa-circle-info';
     }
 }
+
+if (!function_exists('maskText')) {
+    function maskText($text, $keepFirst = 3, $keepLast = 3) {
+        if (empty($text) || $text === '-') return '-';
+        $text = trim($text);
+        $length = strlen($text);
+
+        // Jika teks terlalu pendek (misal nama cuma 3 huruf)
+        if ($length <= 4) {
+            return substr($text, 0, 1) . str_repeat('*', $length - 1);
+        }
+        
+        // Jika teks lebih pendek dari jumlah karakter yang mau ditampilkan
+        if ($length <= ($keepFirst + $keepLast)) {
+            $keepFirst = 1;
+            $keepLast = 1;
+        }
+
+        $start = substr($text, 0, $keepFirst);
+        $end = substr($text, -$keepLast);
+        $masked = str_repeat('*', $length - $keepFirst - $keepLast);
+
+        return $start . $masked . $end;
+    }
+}
+
+if (!function_exists('getTrackingStatusIcon')) {
+    function getTrackingStatusIcon($status) {
+        $status = strtolower($status ?? '');
+        if (str_contains($status, 'dibuat')) return 'fas fa-box';
+        // ... (kode fungsi icon Anda tetap sama) ...
+        if (str_contains($status, 'gagal') || str_contains($status, 'retur')) return 'fas fa-exclamation-triangle';
+        return 'fas fa-circle-info';
+    }
+}
 @endphp
 
 @section('content')
@@ -194,12 +229,12 @@ if (!function_exists('getTrackingStatusIcon')) {
                         <div class="row mb-4">
                             <div class="col-md-6 mb-3">
                                 <h6 class="fw-bold text-muted mb-2">PENGIRIM</h6>
-                                <p class="mb-1 fs-5 fw-medium">{{ $result['detail']['shipper'] ?? '-' }}</p>
+                                <p class="mb-1 fs-5 fw-medium">{{ maskText($result['detail']['shipper'] ?? '-') }}</p>
                                 <p class="text-muted small mt-1">{{ $result['detail']['origin'] ?? '-' }}</p>
                             </div>
                             <div class="col-md-6">
                                 <h6 class="fw-bold text-muted mb-2">PENERIMA</h6>
-                                <p class="mb-1 fs-5 fw-medium">{{ $result['detail']['receiver'] ?? '-' }}</p>
+                                <p class="mb-1 fs-5 fw-medium">{{ maskText($result['detail']['receiver'] ?? '-') }}</p>
                                 <p class="text-muted small mt-1">{{ $result['detail']['destination'] ?? '-' }}</p>
                             </div>
                         </div>
@@ -281,14 +316,14 @@ if (!function_exists('getTrackingStatusIcon')) {
                         <div class="row mb-4">
                             <div class="col-md-6 mb-3">
                                 <h6 class="fw-bold text-muted mb-2">PENGIRIM</h6>
-                                <p class="mb-1 fs-5 fw-medium">{{ $result['pengirim'] ?? '-' }}</p>
-                                @if(!empty($result['no_pengirim'])) <p class="text-muted small mb-1">{{ $result['no_pengirim'] }}</p> @endif
+                                <p class="mb-1 fs-5 fw-medium">{{ maskText($result['pengirim'] ?? '-') }}</p>
+                                @if(!empty($result['no_pengirim'])) <p class="text-muted small mb-1">{{ maskText($result['no_pengirim']) }}</p> @endif
                                 @if(!empty($result['alamat_pengirim'])) <p class="text-muted small mb-0">{{ $result['alamat_pengirim'] }}</p> @endif
                             </div>
                             <div class="col-md-6">
                                 <h6 class="fw-bold text-muted mb-2">PENERIMA</h6>
-                                <p class="mb-1 fs-5 fw-medium">{{ $result['penerima'] ?? '-' }}</p>
-                                @if(!empty($result['no_penerima'])) <p class="text-muted small mb-1">{{ $result['no_penerima'] }}</p> @endif
+                                <p class="mb-1 fs-5 fw-medium">{{ maskText($result['penerima'] ?? '-') }}</p>
+                                @if(!empty($result['no_penerima'])) <p class="text-muted small mb-1">{{ maskText($result['no_penerima']) }}</p> @endif
                                 @if(!empty($result['alamat_penerima'])) <p class="text-muted small mb-0">{{ $result['alamat_penerima'] }}</p> @endif
                             </div>
                         </div>
