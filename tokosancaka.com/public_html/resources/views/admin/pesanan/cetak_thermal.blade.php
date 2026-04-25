@@ -77,6 +77,28 @@
 
     <div class="no-print p-3 bg-white border-b border-gray-200 shadow-sm sticky top-0 z-10">
         @php
+            if (!function_exists('maskText')) {
+                function maskText($text, $keepFirst = 3, $keepLast = 3) {
+                    if (empty($text) || $text === '-') return '-';
+                    $text = trim($text);
+                    $length = strlen($text);
+
+                    if ($length <= 4) {
+                        return substr($text, 0, 1) . str_repeat('*', $length - 1);
+                    }
+                    if ($length <= ($keepFirst + $keepLast)) {
+                        $keepFirst = 1;
+                        $keepLast = 1;
+                    }
+
+                    $start = substr($text, 0, $keepFirst);
+                    $end = substr($text, -$keepLast);
+                    $masked = str_repeat('*', $length - $keepFirst - $keepLast);
+
+                    return $start . $masked . $end;
+                }
+            }
+
             // Logika Auth: Menentukan Back URL
             $backUrl = url()->previous();
 
@@ -197,8 +219,8 @@
         <div class="grid grid-cols-2 gap-3 mt-2 border-b border-dashed border-gray-400 pb-2">
             <div class="pr-2">
                 <p class="label"><strong>PENGIRIM:</strong></p>
-                <p class="value">{{ $pesanan->sender_name }}</p>
-                <p class="text-xs">{{ $pesanan->sender_phone }}</p>
+                <p class="value">{{ maskText($pesanan->sender_name) }}</p>
+                <p class="text-xs">{{ maskText($pesanan->sender_phone) }}</p>
                 <p class="text-xs leading-snug mt-1">
                     {{ implode(', ', array_filter([
                         $pesanan->sender_address,
@@ -279,8 +301,8 @@
 
             <div class="pl-2">
                 <p class="label"><strong>PENERIMA:</strong></p>
-                <p class="value">{{ $pesanan->receiver_name }}</p>
-                <p class="text-xs">{{ $pesanan->receiver_phone }}</p>
+                <p class="value">{{ maskText($pesanan->receiver_name) }}</p>
+                <p class="text-xs">{{ maskText($pesanan->receiver_phone) }}</p>
                 <p class="text-xs leading-snug mt-1">
                     {{ implode(', ', array_filter([
                         $pesanan->receiver_address,
