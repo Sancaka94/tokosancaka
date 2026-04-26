@@ -283,8 +283,6 @@
                             <strong>Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}</strong>
                         </p>
                     @endif
-
-                    <p class="value">CV. SANCAKA KARYA HUTAMA</p>
                      {{-- BAGIAN YANG DIPERBAIKI: LOGIKA COD ONGKIR vs COD BARANG --}}
                 </div>
             </div>
@@ -310,7 +308,8 @@
                     </div>
                 </div>
 
-                <p class="flex justify-center"><strong>TRACKING ME</strong></p>
+                <p class="flex justify-center mt-1 mb-1"><strong>TRACKING ME</strong></p>
+                <p class="value text-center">CV. SANCAKA KARYA HUTAMA</p>
 
             </div>
         </div>
