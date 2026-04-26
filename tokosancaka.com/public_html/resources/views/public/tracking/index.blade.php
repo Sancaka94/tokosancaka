@@ -206,7 +206,14 @@ if (!function_exists('getTrackingStatusIcon')) {
                             <div class="col-12 col-md-auto me-auto">
                                 <div class="d-flex align-items-center flex-wrap gap-2">
                                     <span class="fw-bold text-nowrap">Hasil untuk Resi:</span>
-                                    <span class="badge bg-primary fs-6">{{ $result['summary']['awb'] ?? request('resi') }}</span>
+                                    <span class="badge bg-primary fs-6 d-inline-flex align-items-center gap-2 pe-2">
+                                        {{ $result['summary']['awb'] ?? request('resi') }}
+                                        <span onclick="copyResi('{{ $result['summary']['awb'] ?? request('resi') }}', this)" 
+                                            style="cursor: pointer; padding-left: 5px; border-left: 1px solid rgba(255,255,255,0.3);" 
+                                            title="Salin Resi">
+                                            <i class="far fa-copy fa-fw"></i>
+                                        </span>
+                                    </span>
                                 </div>
                             </div>
 
@@ -297,7 +304,14 @@ if (!function_exists('getTrackingStatusIcon')) {
                             <div class="col-12 col-md-auto me-auto">
                                 <div class="d-flex align-items-center flex-wrap gap-2">
                                     <span class="fw-bold text-nowrap">Hasil untuk Resi:</span>
-                                    <span class="badge bg-primary fs-6">{{ $result['resi'] }}</span>
+                                    <span class="badge bg-primary fs-6 d-inline-flex align-items-center gap-2 pe-2">
+                                        {{ $result['resi'] }}
+                                        <span onclick="copyResi('{{ $result['resi'] }}', this)" 
+                                            style="cursor: pointer; padding-left: 5px; border-left: 1px solid rgba(255,255,255,0.3);" 
+                                            title="Salin Resi">
+                                            <i class="far fa-copy fa-fw"></i>
+                                        </span>
+                                    </span>
                                 </div>
                             </div>
                             <div class="col-12 col-md-auto">
@@ -419,5 +433,29 @@ if (!function_exists('getTrackingStatusIcon')) {
             }
         @endif
     });
+
+    // Fungsi untuk Copy Resi
+    function copyResi(text, element) {
+        // Gunakan API Clipboard bawaan browser
+        navigator.clipboard.writeText(text).then(function() {
+            // Ambil elemen ikon di dalam span yang diklik
+            const icon = element.querySelector('i');
+            
+            // Simpan class awal (ikon copy)
+            const originalClass = icon.className;
+            
+            // Ubah ikon menjadi centang (sukses)
+            icon.className = 'fas fa-check fa-fw text-warning';
+            
+            // Kembalikan ikon ke semula setelah 2 detik
+            setTimeout(function() {
+                icon.className = originalClass;
+            }, 2000);
+            
+        }).catch(function(err) {
+            console.error('Gagal menyalin teks: ', err);
+            alert('Gagal menyalin resi.');
+        });
+    }
 </script>
 @endpush
