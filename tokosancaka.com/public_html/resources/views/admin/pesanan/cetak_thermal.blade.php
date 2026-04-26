@@ -269,12 +269,12 @@
                     <p class="value">- Layanan: {{ strtoupper($expeditionService) }}</p><br>
                     @if($showCodBlock)
                         {{-- TAMPILAN JIKA PESANAN COD --}}
-                        <p class="label text-red-600"><strong>{{ $labelCod }}:</strong></p>
-                        <p class="value text-red-600 text-lg mb-0">
+                        <p class="label text-gray-500"><strong>{{ $labelCod }}:</strong></p>
+                        <p class="value text-gray-500 text-lg mb-0">
                             <strong>Rp {{ number_format($nilaiCodFinal, 0, ',', '.') }}</strong>
                         </p>
                         @if($isCodOngkir)
-                            <p class="text-[9px] italic mt-0 font-bold text-gray-500 mb-2">(JANGAN TAGIH HARGA BARANG)</p>
+                            <p class="text-[9px] italic mt-0 font-bold text-red-600 mb-2">(JANGAN TAGIH HARGA BARANG)</p>
                         @endif
                     @else
                         {{-- TAMPILAN JIKA BUKAN COD (REGULER) --}}
