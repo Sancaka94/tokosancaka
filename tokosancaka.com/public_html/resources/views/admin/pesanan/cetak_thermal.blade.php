@@ -308,7 +308,7 @@
 
         {{-- TAMPILAN COD FULL WIDTH BAWAH KOTAK UTAMA --}}
         @if($showCodBlock)
-        <div class="mt-1 pt-1 border-t border-dashed border-gray-400 flex flex-col items-center justify-center text-center">
+        <div class="mt-2 pt-2 border-t border-gray-400 flex flex-col items-center justify-center text-center">
             <p class="label text-[9px] mb-0"><strong>{{ $labelCod }}</strong></p>
             <p class="value text-red-600 font-bold text-[11px] mb-0">Rp {{ number_format($nilaiCodFinal, 0, ',', '.') }}</p>
             
