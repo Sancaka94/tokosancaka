@@ -201,7 +201,7 @@
             }
         @endphp
 
-        <div class="flex justify-between items-center border-b border-dashed border-gray-500 pb-2">
+        <div class="flex justify-between items-center border-b border-gray-700 pb-2">
             <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10" onerror="this.style.display='none'">
 
             <img src="{{ $finalLogoUrl }}" 
@@ -314,7 +314,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-2 text-center mt-2 border-b border-dashed border-gray-400 pb-2">
+        <div class="grid grid-cols-3 gap-2 text-center mt-2 border-b border-gray-700 pb-2">
             <div><p class="label"><strong>ORDER ID / RESI</strong></p><p class="value">{{ $pesanan->nomor_invoice }}</p></div>
             <div><p class="label"><strong>BERAT</strong></p><p class="value">{{ $pesanan->weight }} Gram</p></div>
             <div><p class="label"><strong>VOLUME (cm)</strong></p><p class="value">{{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }}</p></div>
@@ -323,7 +323,7 @@
             <div><p class="label"><strong>Pembayaran</strong></p><p class="value">{{ strtoupper($pesanan->payment_method) === 'POTONG SALDO' ? 'SALDO / CASH' : $pesanan->payment_method }}</p></div></div>
 
         @if($pesanan->resi_aktual)
-        <div class="text-center mt-3 pt-2 border-t border-dashed border-gray-400">
+        <div class="text-center mt-3 pt-2 border-t border-gray-700">
             <p class="label">RESI AKTUAL ({{ $pesanan->jasa_ekspedisi_aktual }})</p>
             {{-- Elemen SVG barcode aktual --}}
             <svg id="barcodeAktual" class="barcode"></svg>
