@@ -243,7 +243,7 @@
             }
         @endphp
 
-        <div class="grid grid-cols-2 gap-3 mt-2 border-b border-dashed border-gray-400 pb-2">
+        <div class="grid grid-cols-2 gap-3 mt-2 border-b border-gray-700 pb-2">
 
             <div class="pr-2">
                 <p class="label"><strong>PENGIRIM:</strong></p>
