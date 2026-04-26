@@ -238,7 +238,7 @@
                 $feeHitung = max($feeLayanan, floor($ongkirAsli * 0.03));
                 
                 $nilaiCodFinal = $ongkirAsli + $asuransiAsli + $feeHitung;
-                $labelCod = "NILAI COD (ONGKIR SAJA)";
+                $labelCod = "NILAI COD (ONGKIR)";
                 $showCodBlock = true;
             }
         @endphp
