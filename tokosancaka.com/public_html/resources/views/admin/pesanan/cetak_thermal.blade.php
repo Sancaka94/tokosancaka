@@ -216,7 +216,35 @@
             <svg id="barcodeSancaka" class="barcode"></svg>
         </div>
 
+        {{-- LOGIKA COD DIPINDAH KE ATAS AGAR BISA DIAKSES DI KANAN/KIRI --}}
+        @php
+            $pm = strtoupper($pesanan->payment_method);
+            $isCodBarang = ($pm === 'CODBARANG');
+            $isCodOngkir = ($pm === 'COD');
+            
+            // Variabel Default
+            $labelCod = "NILAI COD";
+            $nilaiCodFinal = 0;
+            $showCodBlock = false;
+
+            if ($isCodBarang) {
+                $nilaiCodFinal = $pesanan->price;
+                $labelCod = "NILAI COD (BARANG + ONGKIR)";
+                $showCodBlock = true;
+            } elseif ($isCodOngkir) {
+                $ongkirAsli = $pesanan->shipping_cost ?? 0;
+                $asuransiAsli = $pesanan->insurance_cost ?? 0;
+                $feeLayanan = 2500;
+                $feeHitung = max($feeLayanan, floor($ongkirAsli * 0.03));
+                
+                $nilaiCodFinal = $ongkirAsli + $asuransiAsli + $feeHitung;
+                $labelCod = "NILAI COD (ONGKIR SAJA)";
+                $showCodBlock = true;
+            }
+        @endphp
+
         <div class="grid grid-cols-2 gap-3 mt-2 border-b border-dashed border-gray-400 pb-2">
+
             <div class="pr-2">
                 <p class="label"><strong>PENGIRIM:</strong></p>
                 <p class="value">{{ maskText($pesanan->sender_name) }}</p>
@@ -241,61 +269,14 @@
                     <p class="value">- Layanan: {{ strtoupper($expeditionService) }}</p><br>
                     <p class="label text-green-600"><strong>Total Ongkir:</strong></p>
 
-<p class="value text-red-600 text-lg">
-    <strong>
-        Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
-    </strong>
-</p><br>
+                    <p class="value text-red-600 text-lg">
+                        <strong>
+                            Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
+                        </strong>
+                    </p><br>
 
                     <p class="value">CV. SANCAKA KARYA HUTAMA</p>
                      {{-- BAGIAN YANG DIPERBAIKI: LOGIKA COD ONGKIR vs COD BARANG --}}
-        @php
-            $pm = strtoupper($pesanan->payment_method);
-            $isCodBarang = ($pm === 'CODBARANG');
-            $isCodOngkir = ($pm === 'COD');
-            
-            // Variabel Default
-            $labelCod = "NILAI COD";
-            $nilaiCodFinal = 0;
-            $showCodBlock = false;
-
-            if ($isCodBarang) {
-                // KASUS 1: COD BARANG (User bayar Barang + Ongkir)
-                // Kita percaya angka di database ($pesanan->price) karena biasanya sudah benar totalnya
-                $nilaiCodFinal = $pesanan->price;
-                $labelCod = "NILAI COD (BARANG + ONGKIR)";
-                $showCodBlock = true;
-
-            } elseif ($isCodOngkir) {
-                // KASUS 2: COD ONGKIR (User CUMA bayar Ongkir)
-                // Kita lakukan HITUNG ULANG agar data lama yang salah (59rb) tidak muncul
-                // Rumus: Ongkir Asli + Asuransi + Fee (2500)
-                $ongkirAsli = $pesanan->shipping_cost ?? 0;
-                $asuransiAsli = $pesanan->insurance_cost ?? 0;
-                
-                // Hitung Fee Layanan (Logic sama dengan OrderService)
-                $feeLayanan = 2500;
-                $feeHitung = max($feeLayanan, floor($ongkirAsli * 0.03));
-                
-                $nilaiCodFinal = $ongkirAsli + $asuransiAsli + $feeHitung;
-                $labelCod = "NILAI COD (ONGKIR SAJA)";
-                $showCodBlock = true;
-            }
-        @endphp
-
-        @if($showCodBlock)
-        
-            <p class="label text-[8px] mb-1"><strong>{{ $labelCod }}</strong></p>
-            <p class="value text-red-600 font-bold" style="font-size: 8px;">Rp {{ number_format($nilaiCodFinal, 0, ',', '.') }}</p>
-            
-            @if($isCodOngkir)
-                <p class="text-[10px] italic mt-1 font-bold text-gray-500">(JANGAN TAGIH HARGA BARANG)</p>
-            @endif
-       
-        @endif
-        {{-- AKHIR PERBAIKAN --}}
-
-                    
                 </div>
             </div>
 
@@ -315,12 +296,25 @@
                 </p>
 
                 <div class="flex justify-center mt-4">
-    <div class="border border-gray-400 rounded-md p-3 inline-block">
-        <div id="qrcode"></div>
-    </div>
+                    <div class="border border-gray-400 rounded-md p-3 inline-block">
+                        <div id="qrcode"></div>
+                    </div>
                 </div>
 
                 <p class="flex justify-center"><strong>TRACKING ME</strong></p>
+
+                {{-- TAMPILAN COD PINDAH KE SINI BAWAH QR CODE --}}
+                @if($showCodBlock)
+                <div class="text-center mt-3 mb-2 p-2 border-2 border-red-500 rounded bg-red-50">
+                    <p class="label text-[10px] mb-1"><strong>{{ $labelCod }}</strong></p>
+                    <p class="value text-red-600 font-bold text-sm">Rp {{ number_format($nilaiCodFinal, 0, ',', '.') }}</p>
+                    
+                    @if($isCodOngkir)
+                        <p class="text-[10px] italic mt-1 font-bold text-red-700">(JANGAN TAGIH HARGA BARANG)</p>
+                    @endif
+                </div>
+                @endif
+                
             </div>
         </div>
 
