@@ -310,6 +310,7 @@
 
                 <p class="flex justify-center mt-1 mb-1"><strong>TRACKING ME</strong></p>
                 <p class="value text-center">CV. SANCAKA KARYA HUTAMA</p>
+                <p class="value text-center">Helpdesk 08574580809</p>
 
             </div>
         </div>
