@@ -267,13 +267,22 @@
                     <p class="value">- Isi Paket: {{ $pesanan->item_description }}</p>
                     <p class="value">- Dimensi: {{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }} cm</p>
                     <p class="value">- Layanan: {{ strtoupper($expeditionService) }}</p><br>
-                    <p class="label text-green-600"><strong>Total Ongkir:</strong></p>
-
-                    <p class="value text-red-600 text-lg">
-                        <strong>
-                            Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
-                        </strong>
-                    </p><br>
+                    @if($showCodBlock)
+                        {{-- TAMPILAN JIKA PESANAN COD --}}
+                        <p class="label text-red-600"><strong>{{ $labelCod }}:</strong></p>
+                        <p class="value text-red-600 text-lg mb-0">
+                            <strong>Rp {{ number_format($nilaiCodFinal, 0, ',', '.') }}</strong>
+                        </p>
+                        @if($isCodOngkir)
+                            <p class="text-[9px] italic mt-0 font-bold text-gray-500 mb-2">(JANGAN TAGIH HARGA BARANG)</p>
+                        @endif
+                    @else
+                        {{-- TAMPILAN JIKA BUKAN COD (REGULER) --}}
+                        <p class="label text-green-600"><strong>Total Ongkir:</strong></p>
+                        <p class="value text-red-600 text-lg mb-2">
+                            <strong>Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}</strong>
+                        </p>
+                    @endif
 
                     <p class="value">CV. SANCAKA KARYA HUTAMA</p>
                      {{-- BAGIAN YANG DIPERBAIKI: LOGIKA COD ONGKIR vs COD BARANG --}}
@@ -305,18 +314,6 @@
 
             </div>
         </div>
-
-        {{-- TAMPILAN COD FULL WIDTH BAWAH KOTAK UTAMA --}}
-        @if($showCodBlock)
-        <div class="mt-2 pt-2 border-b border-dashed border-gray-400 flex flex-col items-center justify-center text-center">
-            <p class="label text-[9px] mb-0"><strong>{{ $labelCod }}</strong></p>
-            <p class="value text-red-600 font-bold text-[11px] mb-0">Rp {{ number_format($nilaiCodFinal, 0, ',', '.') }}</p>
-            
-            @if($isCodOngkir)
-                <p class="text-[8px] italic mt-0.5 font-bold text-gray-600">(JANGAN TAGIH HARGA BARANG)</p>
-            @endif
-        </div>
-        @endif
 
         <div class="grid grid-cols-3 gap-2 text-center mt-2 border-b border-dashed border-gray-400 pb-2">
             <div><p class="label"><strong>ORDER ID / RESI</strong></p><p class="value">{{ $pesanan->nomor_invoice }}</p></div>
