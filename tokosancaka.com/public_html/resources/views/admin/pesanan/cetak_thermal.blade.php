@@ -308,7 +308,7 @@
 
         {{-- TAMPILAN COD FULL WIDTH BAWAH KOTAK UTAMA --}}
         @if($showCodBlock)
-        <div class="mt-2 pt-2 border-t border-gray-400 flex flex-col items-center justify-center text-center">
+        <div class="mt-2 pt-2 border-b border-dashed border-gray-400 flex flex-col items-center justify-center text-center">
             <p class="label text-[9px] mb-0"><strong>{{ $labelCod }}</strong></p>
             <p class="value text-red-600 font-bold text-[11px] mb-0">Rp {{ number_format($nilaiCodFinal, 0, ',', '.') }}</p>
             
@@ -324,13 +324,7 @@
             <div><p class="label"><strong>VOLUME (cm)</strong></p><p class="value">{{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }}</p></div>
             <div><p class="label"><strong>LAYANAN</strong></p><p class="value">{{ strtoupper($expeditionService) }}</p></div>
             <div><p class="label"><strong>EKSPEDISI</strong></p><p class="value">{{ strtoupper($expeditionName) }}</p></div>
-            <div>
-    <p class="label"><strong>Pembayaran</strong></p>
-    <p class="value">{{ strtoupper($pesanan->payment_method) === 'POTONG SALDO' ? 'SALDO / CASH' : $pesanan->payment_method }}</p></div>
-
-        </div>
-
-       
+            <div><p class="label"><strong>Pembayaran</strong></p><p class="value">{{ strtoupper($pesanan->payment_method) === 'POTONG SALDO' ? 'SALDO / CASH' : $pesanan->payment_method }}</p></div></div>
 
         @if($pesanan->resi_aktual)
         <div class="text-center mt-3 pt-2 border-t border-dashed border-gray-400">
