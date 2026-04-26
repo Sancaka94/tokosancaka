@@ -303,20 +303,20 @@
 
                 <p class="flex justify-center"><strong>TRACKING ME</strong></p>
 
-                {{-- TAMPILAN COD PINDAH KE SINI BAWAH QR CODE --}}
-                @if($showCodBlock)
-                <div class="text-center mt-3 mb-2 p-2 border-2 border-red-500 rounded bg-red-50">
-                    <p class="label text-[10px] mb-1"><strong>{{ $labelCod }}</strong></p>
-                    <p class="value text-red-600 font-bold text-sm">Rp {{ number_format($nilaiCodFinal, 0, ',', '.') }}</p>
-                    
-                    @if($isCodOngkir)
-                        <p class="text-[10px] italic mt-1 font-bold text-red-700">(JANGAN TAGIH HARGA BARANG)</p>
-                    @endif
-                </div>
-                @endif
-                
             </div>
         </div>
+
+        {{-- TAMPILAN COD FULL WIDTH BAWAH KOTAK UTAMA --}}
+        @if($showCodBlock)
+        <div class="mt-2 pt-2 border-t border-dashed border-gray-400 flex flex-col items-center justify-center text-center">
+            <p class="label text-[9px] mb-0"><strong>{{ $labelCod }}</strong></p>
+            <p class="value text-red-600 font-bold text-[11px] mb-0">Rp {{ number_format($nilaiCodFinal, 0, ',', '.') }}</p>
+            
+            @if($isCodOngkir)
+                <p class="text-[8px] italic mt-0.5 font-bold text-gray-600">(JANGAN TAGIH HARGA BARANG)</p>
+            @endif
+        </div>
+        @endif
 
         <div class="grid grid-cols-3 gap-2 text-center mt-2 border-b border-dashed border-gray-400 pb-2">
             <div><p class="label"><strong>ORDER ID / RESI</strong></p><p class="value">{{ $pesanan->nomor_invoice }}</p></div>
