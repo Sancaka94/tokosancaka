@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Http\Request;
 use App\Http\Middleware\RoleMiddleware;
 use App\Services\KiriminAjaService;
+use App\Models\Post;
 
 // =========================================================================
 // 1. IMPORT CONTROLLER (LENGKAP)
@@ -251,7 +252,7 @@ Route::get('/', function () {
     } catch (\Exception $e) {}
 
     return view('home', compact('latestPosts'));
-    
+
 });
 
 Route::get('/privacy-policy', function () { return view('privacy-policy'); })->name('privacy.policy');
