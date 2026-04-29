@@ -229,7 +229,30 @@ Route::get('/{resi}/cetak_thermal', [PesananController::class, 'cetakThermal'])
 // 2. PUBLIC ROUTES (GUEST / AKSES UMUM)
 // =========================================================================
 
-Route::get('/', function () { return view('home'); })->name('home');
+// Route::get('/', function () { return view('home'); })->name('home');
+
+Route::get('/', function () {
+    // Ambil parameter '?page=' dari URL karena Anda menggunakan fitur paginate()
+    $page = request()->get('page', 1);
+
+    $latestPosts = collect();
+    
+    try {
+        if (class_exists(Post::class)) {
+            // Simpan hasil query di Cache selama 60 menit (3600 detik)
+            // Nama cache dibedakan berdasarkan nomor halaman agar pagination tidak bentrok
+            $latestPosts = Cache::remember('landing_posts_page_' . $page, 3600, function () {
+                return Post::with(['category', 'author'])
+                    ->where('status', 'published')
+                    ->latest()
+                    ->paginate(8);
+            });
+        }
+    } catch (\Exception $e) {}
+
+    return view('home', compact('latestPosts'));
+});
+
 Route::get('/privacy-policy', function () { return view('privacy-policy'); })->name('privacy.policy');
 Route::get('/terms-and-conditions', function () { return view('terms'); })->name('terms.conditions');
 

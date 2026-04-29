@@ -1797,7 +1797,7 @@ width: 22px;
     LOGIKA PENGAMBILAN DATA (LANGSUNG DI BLADE)
     =======================================================
 --}}
-@php
+{{-- @php
     $latestPosts = collect();
     try {
         if (class_exists(\App\Models\Post::class)) {
@@ -1807,7 +1807,7 @@ width: 22px;
                 ->paginate(8); // Pagination otomatis aktif
         }
     } catch (\Exception $e) {}
-@endphp
+@endphp --}}
 
 {{--
     =======================================================
