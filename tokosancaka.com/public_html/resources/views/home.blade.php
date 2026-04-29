@@ -1792,22 +1792,28 @@ width: 22px;
 
 
 
-{{--
+{{-- 
     =======================================================
-    LOGIKA PENGAMBILAN DATA (LANGSUNG DI BLADE)
+    LOGIKA PENGAMBILAN DATA (DENGAN CACHE AGAR GTMETRIX 100%)
     =======================================================
 --}}
-{{-- @php
+@php
     $latestPosts = collect();
     try {
         if (class_exists(\App\Models\Post::class)) {
-            $latestPosts = \App\Models\Post::with(['category', 'author'])
-                ->where('status', 'published')
-                ->latest()
-                ->paginate(8); // Pagination otomatis aktif
+            // Ambil parameter halaman untuk nama cache
+            $page = request()->get('page', 1);
+            
+            // Query di-cache selama 1 jam (3600 detik) agar TTFB secepat kilat
+            $latestPosts = \Illuminate\Support\Facades\Cache::remember('berita_home_page_' . $page, 3600, function () {
+                return \App\Models\Post::with(['category', 'author'])
+                    ->where('status', 'published')
+                    ->latest()
+                    ->paginate(8);
+            });
         }
     } catch (\Exception $e) {}
-@endphp --}}
+@endphp
 
 {{--
     =======================================================
