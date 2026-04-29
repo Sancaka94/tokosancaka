@@ -251,6 +251,7 @@ Route::get('/', function () {
     } catch (\Exception $e) {}
 
     return view('home', compact('latestPosts'));
+    
 });
 
 Route::get('/privacy-policy', function () { return view('privacy-policy'); })->name('privacy.policy');
