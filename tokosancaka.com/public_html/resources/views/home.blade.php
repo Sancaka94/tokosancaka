@@ -2194,33 +2194,6 @@ width: 22px;
 document.addEventListener('DOMContentLoaded', function() {
 
 
-
-    // Logika Tombol Scroll to Top (tetap sama)
-
-    const scrollTopBtn = document.getElementById('scrollTopBtn');
-
-    window.onscroll = () => {
-
-        if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
-
-            scrollTopBtn.style.display = "block";
-
-        } else {
-
-            scrollTopBtn.style.display = "none";
-
-        }
-
-    };
-
-    scrollTopBtn.addEventListener('click', () => {
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    });
-
-
-
     // ==================================================
 
     // == LOGIKA BARU UNTUK PENCARIAN ALAMAT (JS STANDAR) ==
@@ -3043,61 +3016,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 </script>
-
-
-
-
-    <script>
-
-        // Ambil tombol
-
-        var mybutton = document.getElementById("scrollTopBtn");
-
-
-
-        // Ketika pengguna scroll ke bawah 20px dari atas dokumen, tampilkan tombol
-
-        window.onscroll = function() {
-
-            scrollFunction()
-
-        };
-
-
-
-        function scrollFunction() {
-
-            if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
-
-                mybutton.style.display = "block";
-
-            } else {
-
-                mybutton.style.display = "none";
-
-            }
-
-        }
-
-
-
-        // Ketika pengguna mengklik tombol, scroll ke atas dokumen
-
-        function scrollToTop() {
-
-            window.scrollTo({
-
-                top: 0,
-
-                behavior: 'smooth'
-
-            });
-
-        }
-
-    </script>
-
-
 
 <script>
 
