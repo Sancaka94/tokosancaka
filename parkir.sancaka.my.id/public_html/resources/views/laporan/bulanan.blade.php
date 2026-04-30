@@ -13,9 +13,19 @@
 
 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 no-print">
     <h1 class="text-2xl font-bold text-gray-800">Laporan Keuangan Bulanan</h1>
-    <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-bold flex items-center gap-2 shadow-md transition-colors w-full sm:w-auto justify-center">
-        🖨️ Cetak Laporan
-    </button>
+    
+    <!-- Wrapper untuk grup tombol agar rapi di mobile & desktop -->
+    <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+        <!-- Tombol Export PDF -->
+        <a href="{{ route('laporan.bulanan.pdf', ['bulan' => $bulan, 'tahun' => $tahun]) }}" target="_blank" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg font-bold flex items-center gap-2 shadow-md transition-colors w-full sm:w-auto justify-center">
+            📄 Export PDF
+        </a>
+        
+        <!-- Tombol Cetak Asli -->
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-bold flex items-center gap-2 shadow-md transition-colors w-full sm:w-auto justify-center">
+            🖨️ Cetak Laporan
+        </button>
+    </div>
 </div>
 
 <div class="bg-white rounded-xl mb-6 border-t-4 border-blue-600 shadow-sm no-print p-4 md:p-5">
