@@ -19,7 +19,7 @@
 </head>
 <body>
 
-    <h2>LAPORAN KEUANGAN BULANAN - CV SANCAKA KARYA HUTAMA</h2>
+    <h2>LAPORAN KEUANGAN BULANAN - AZKEN PARKIR</h2>
     <div class="subtitle">
         Periode: {{ date('F', mktime(0, 0, 0, $bulan, 1)) }} {{ $tahun }}
     </div>
