@@ -105,7 +105,7 @@
                 <td class="text-right font-bold text-red">- Rp {{ number_format($totalPengeluaranManual, 0, ',', '.') }}</td>
             </tr>
             <tr>
-                <td colspan="3" class="text-right font-bold" style="font-size: 14px; padding-top: 10px;">TOTAL PENDAPATAN BERSIH :</td>
+                <td colspan="3" class="text-right font-bold" style="font-size: 14px; padding-top: 10px;">TOTAL PENDAPATAN BERSIH (UANG SISA):</td>
                 <td class="text-right font-bold" style="font-size: 14px; padding-top: 10px;">
                     Rp {{ number_format($total + $totalPemasukanManual - $totalPengeluaranManual, 0, ',', '.') }}
                 </td>
