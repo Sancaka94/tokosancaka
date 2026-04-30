@@ -5,9 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Models\FinancialReport; // Tambahkan ini
+use App\Models\FinancialReport; 
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon; // Tambahkan ini
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon; 
 
 class DashboardController extends Controller
 {
@@ -299,4 +300,39 @@ class DashboardController extends Controller
             'kasManual', 'totalPemasukanManual', 'totalPengeluaranManual'
         ));
     }
+
+    public function exportBulananPdf(Request $request)
+{
+    $bulan = $request->bulan ?? date('m');
+    $tahun = $request->tahun ?? date('Y');
+
+    $transactions = Transaction::with('operator')
+                               ->whereMonth('exit_time', $bulan)
+                               ->whereYear('exit_time', $tahun)
+                               ->latest('exit_time')
+                               ->get();
+
+    $rekap = Transaction::select(
+        DB::raw('SUM(fee + IFNULL(toilet_fee, 0)) as total_semua')
+    )->whereMonth('exit_time', $bulan)
+     ->whereYear('exit_time', $tahun)->first();
+
+    $total = $rekap->total_semua ?? 0;
+
+    $kasManual = \App\Models\FinancialReport::whereMonth('tanggal', $bulan)
+                                            ->whereYear('tanggal', $tahun)
+                                            ->orderBy('tanggal', 'desc')
+                                            ->get();
+                                            
+    $totalPemasukanManual = $kasManual->where('jenis', 'pemasukan')->sum('nominal');
+    $totalPengeluaranManual = $kasManual->where('jenis', 'pengeluaran')->sum('nominal');
+
+    $pdf = Pdf::loadView('laporan.bulanan_pdf', compact(
+        'transactions', 'bulan', 'tahun', 'total',
+        'kasManual', 'totalPemasukanManual', 'totalPengeluaranManual'
+    ));
+
+    return $pdf->setPaper('a4', 'landscape')->stream('Laporan_Bulanan_'.$bulan.'_'.$tahun.'.pdf');
+}
+
 }

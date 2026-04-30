@@ -123,3 +123,5 @@ Route::post('/parkir-mandiri', [TransactionController::class, 'storePublic'])->n
 
 // Memuat rute otentikasi bawaan Breeze (Login, Register, Logout)
 require __DIR__.'/auth.php';
+
+Route::get('/laporan/bulanan/pdf', [App\Http\Controllers\DashboardController::class, 'exportBulananPdf'])->name('laporan.bulanan.pdf');
