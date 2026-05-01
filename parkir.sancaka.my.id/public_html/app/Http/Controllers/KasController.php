@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\KasLaporan;
 use App\Models\KasPengeluaran;
+use App\Models\Transaction; // Pastikan model Transaction Anda di-import
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -11,51 +12,88 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class KasController extends Controller
 {
-    // Menampilkan halaman riwayat (Index)
-    public function index()
+    /**
+     * ==========================================
+     * 1. INDEX: Menampilkan Riwayat & Filter
+     * ==========================================
+     */
+    public function index(Request $request)
     {
-        // Mengambil data beserta rincian pengeluarannya (Eager Loading)
-        $laporanKas = KasLaporan::with('pengeluaran')->orderBy('tanggal', 'desc')->get();
+        $query = KasLaporan::with('pengeluaran')->orderBy('tanggal_mulai', 'desc');
+
+        // Jika user melakukan filter rentang tanggal
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->where('tanggal_mulai', '>=', $request->start_date)
+                  ->where('tanggal_akhir', '<=', $request->end_date);
+        }
+
+        $laporanKas = $query->get();
+
         return view('kas.index', compact('laporanKas'));
     }
 
-    // Menampilkan form input baru
-    public function create()
+    /**
+     * ==========================================
+     * 2. AJAX: Ambil Pemasukan dari Sistem Parkir
+     * ==========================================
+     */
+    public function getPemasukan(Request $request)
     {
-        // Contoh: Mengambil pemasukan dari transaksi parkir hari ini
-        // $totalPemasukanParkir = Transaction::whereDate('exit_time', date('Y-m-d'))->sum(\DB::raw('fee + IFNULL(toilet_fee, 0)'));
-        
-        $totalPemasukanParkir = 150000; // HAPUS INI JIKA SUDAH TERHUBUNG KE DATABASE TRANSAKSI ASLI
-        return view('kas.create', compact('totalPemasukanParkir'));
+        $request->validate([
+            'tanggal_mulai' => 'required|date',
+            'tanggal_akhir' => 'required|date',
+        ]);
+
+        // Menjumlahkan kolom tarif dari tabel parkir sesuai rentang tanggal
+        $totalPemasukan = Transaction::whereDate('exit_time', '>=', $request->tanggal_mulai)
+                            ->whereDate('exit_time', '<=', $request->tanggal_akhir)
+                            ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
+
+        return response()->json(['total' => (float) $totalPemasukan]);
     }
 
-    // Menyimpan data ke database
+    /**
+     * ==========================================
+     * 3. CREATE & STORE: Input Kas Baru
+     * ==========================================
+     */
+    public function create()
+    {
+        // Tampilan form (pemasukan di-load otomatis via AJAX saat tanggal dipilih)
+        return view('kas.create');
+    }
+
     public function store(Request $request)
     {
         $request->validate([
-            'tanggal' => 'required|date',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_akhir' => 'required|date',
             'pengeluaran.*.keterangan' => 'required|string',
             'pengeluaran.*.nominal' => 'required|numeric',
+            'pemasukan_sistem' => 'required|numeric',
         ]);
 
         DB::beginTransaction();
         try {
-            // Hitung ulang dari backend untuk keamanan
+            // Hitung ulang total pengeluaran untuk keamanan backend
             $totalPengeluaran = 0;
-            foreach ($request->pengeluaran as $item) {
-                $totalPengeluaran += $item['nominal'];
+            if ($request->has('pengeluaran')) {
+                foreach ($request->pengeluaran as $item) {
+                    $totalPengeluaran += $item['nominal'];
+                }
             }
             
             $pemasukan = $request->pemasukan_sistem ?? 0;
             $saldoBersih = $pemasukan - $totalPengeluaran;
 
-            // Handle Upload Tanda Tangan
+            // Proses Upload Tanda Tangan
             $pathPembuat = $request->hasFile('ttd_pembuat') ? $request->file('ttd_pembuat')->store('ttd_kas', 'public') : null;
             $pathPimpinan = $request->hasFile('ttd_pimpinan') ? $request->file('ttd_pimpinan')->store('ttd_kas', 'public') : null;
 
-            // Simpan Induk Laporan
+            // Simpan Data Induk
             $kas = KasLaporan::create([
-                'tanggal' => $request->tanggal,
+                'tanggal_mulai' => $request->tanggal_mulai,
+                'tanggal_akhir' => $request->tanggal_akhir,
                 'pemasukan_sistem' => $pemasukan,
                 'total_pengeluaran' => $totalPengeluaran,
                 'saldo_bersih' => $saldoBersih,
@@ -66,12 +104,14 @@ class KasController extends Controller
             ]);
 
             // Simpan Rincian Pengeluaran Dinamis
-            foreach ($request->pengeluaran as $item) {
-                KasPengeluaran::create([
-                    'kas_laporan_id' => $kas->id,
-                    'keterangan' => $item['keterangan'],
-                    'nominal' => $item['nominal'],
-                ]);
+            if ($request->has('pengeluaran')) {
+                foreach ($request->pengeluaran as $item) {
+                    KasPengeluaran::create([
+                        'kas_laporan_id' => $kas->id,
+                        'keterangan' => $item['keterangan'],
+                        'nominal' => $item['nominal'],
+                    ]);
+                }
             }
 
             DB::commit();
@@ -82,54 +122,32 @@ class KasController extends Controller
         }
     }
 
-
-    // Menghapus Data
-    public function destroy($id)
-    {
-        $kas = KasLaporan::findOrFail($id);
-        
-        // Hapus file gambar dari storage jika ada
-        if ($kas->ttd_pembuat) Storage::disk('public')->delete($kas->ttd_pembuat);
-        if ($kas->ttd_pimpinan) Storage::disk('public')->delete($kas->ttd_pimpinan);
-        
-        $kas->delete(); // Pengeluaran akan otomatis terhapus karena ON DELETE CASCADE di database
-
-        return redirect()->route('kas.index')->with('success', 'Laporan Kas berhasil dihapus.');
-    }
-
-    // Untuk fitur Export PDF Single
-    public function exportPdfSingle($id)
-    {
-        $kas = KasLaporan::with('pengeluaran')->findOrFail($id);
-        // Buat view pdf_single (nanti kita buat di tahap selanjutnya jika dibutuhkan)
-        // $pdf = Pdf::loadView('kas.pdf_single', compact('kas'));
-        // return $pdf->stream('Laporan_Kas_'.$kas->tanggal.'.pdf');
-        return "Fungsi PDF untuk ID {$id} siap! Silakan siapkan view blade-nya.";
-    }
-
-    // Menampilkan halaman Edit
+    /**
+     * ==========================================
+     * 4. EDIT & UPDATE: Revisi Kas
+     * ==========================================
+     */
     public function edit($id)
     {
-        // Ambil data laporan beserta rincian pengeluarannya
         $kas = KasLaporan::with('pengeluaran')->findOrFail($id);
-        
         return view('kas.edit', compact('kas'));
     }
 
-    // Memproses update data ke database
     public function update(Request $request, $id)
     {
         $kas = KasLaporan::findOrFail($id);
 
         $request->validate([
-            'tanggal' => 'required|date',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_akhir' => 'required|date',
             'pengeluaran.*.keterangan' => 'required|string',
             'pengeluaran.*.nominal' => 'required|numeric',
+            'pemasukan_sistem' => 'required|numeric',
         ]);
 
         DB::beginTransaction();
         try {
-            // 1. Hitung ulang pengeluaran
+            // Kalkulasi ulang
             $totalPengeluaran = 0;
             if ($request->has('pengeluaran')) {
                 foreach ($request->pengeluaran as $item) {
@@ -137,25 +155,25 @@ class KasController extends Controller
                 }
             }
             
-            // Pemasukan tetap mengambil dari data lama yang sudah tersimpan
-            $pemasukan = $request->pemasukan_sistem ?? $kas->pemasukan_sistem;
+            $pemasukan = $request->pemasukan_sistem;
             $saldoBersih = $pemasukan - $totalPengeluaran;
 
-            // 2. Handle Update TTD Pembuat (Hapus lama, simpan baru)
+            // Handle Update TTD Pembuat
             if ($request->hasFile('ttd_pembuat')) {
                 if ($kas->ttd_pembuat) Storage::disk('public')->delete($kas->ttd_pembuat);
                 $kas->ttd_pembuat = $request->file('ttd_pembuat')->store('ttd_kas', 'public');
             }
 
-            // 3. Handle Update TTD Pimpinan
+            // Handle Update TTD Pimpinan
             if ($request->hasFile('ttd_pimpinan')) {
                 if ($kas->ttd_pimpinan) Storage::disk('public')->delete($kas->ttd_pimpinan);
                 $kas->ttd_pimpinan = $request->file('ttd_pimpinan')->store('ttd_kas', 'public');
             }
 
-            // 4. Update data Induk
+            // Update Data Induk
             $kas->update([
-                'tanggal' => $request->tanggal,
+                'tanggal_mulai' => $request->tanggal_mulai,
+                'tanggal_akhir' => $request->tanggal_akhir,
                 'pemasukan_sistem' => $pemasukan,
                 'total_pengeluaran' => $totalPengeluaran,
                 'saldo_bersih' => $saldoBersih,
@@ -163,7 +181,7 @@ class KasController extends Controller
                 'nama_pimpinan' => $request->nama_pimpinan,
             ]);
 
-            // 5. Hapus rincian pengeluaran lama, dan masukkan yang baru
+            // Hapus rincian pengeluaran lama, lalu simpan yang baru
             $kas->pengeluaran()->delete();
             if ($request->has('pengeluaran')) {
                 foreach ($request->pengeluaran as $item) {
@@ -183,19 +201,34 @@ class KasController extends Controller
         }
     }
 
-    // Fungsi AJAX untuk mengambil total pemasukan parkir berdasarkan rentang tanggal
-    public function getPemasukan(Request $request)
+    /**
+     * ==========================================
+     * 5. DESTROY: Hapus Data
+     * ==========================================
+     */
+    public function destroy($id)
     {
-        $request->validate([
-            'tanggal_mulai' => 'required|date',
-            'tanggal_akhir' => 'required|date',
-        ]);
+        $kas = KasLaporan::findOrFail($id);
+        
+        // Bersihkan foto tanda tangan di storage
+        if ($kas->ttd_pembuat) Storage::disk('public')->delete($kas->ttd_pembuat);
+        if ($kas->ttd_pimpinan) Storage::disk('public')->delete($kas->ttd_pimpinan);
+        
+        $kas->delete(); // Pengeluaran otomatis terhapus jika pakai cascade
 
-        $totalPemasukan = \App\Models\Transaction::whereDate('exit_time', '>=', $request->tanggal_mulai)
-                            ->whereDate('exit_time', '<=', $request->tanggal_akhir)
-                            ->sum(\DB::raw('fee + IFNULL(toilet_fee, 0)'));
-
-        return response()->json(['total' => (float) $totalPemasukan]);
+        return redirect()->route('kas.index')->with('success', 'Laporan Kas berhasil dihapus.');
     }
 
+    /**
+     * ==========================================
+     * 6. EXPORT PDF: Cetak Satu Laporan
+     * ==========================================
+     */
+    public function exportPdfSingle($id)
+    {
+        $kas = KasLaporan::with('pengeluaran')->findOrFail($id);
+        
+        $pdf = Pdf::loadView('kas.pdf_single', compact('kas'));
+        return $pdf->setPaper('a4', 'portrait')->stream('Laporan_Kas_'.$kas->tanggal_mulai.'_sd_'.$kas->tanggal_akhir.'.pdf');
+    }
 }
