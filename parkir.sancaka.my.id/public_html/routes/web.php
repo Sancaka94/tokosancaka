@@ -126,5 +126,4 @@ require __DIR__.'/auth.php';
 
 Route::get('/laporan/bulanan/pdf', [App\Http\Controllers\DashboardController::class, 'exportBulananPdf'])->name('laporan.bulanan.pdf');
 
-// Route BARU untuk PDF Umum (Ringkasan)
 Route::get('/laporan/bulanan/pdf-umum', [App\Http\Controllers\DashboardController::class, 'exportBulananPdfUmum'])->name('laporan.bulanan.pdf.umum');
