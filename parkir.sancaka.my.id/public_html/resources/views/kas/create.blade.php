@@ -8,6 +8,15 @@
         transition: all 0.3s ease-in-out;
         background-color: #f8f9fa;
         border: 2px dashed #adb5bd !important;
+        width: 100%;
+        height: 140px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
+        border-radius: 8px;
+        margin: 0 auto;
     }
     .signature-box:hover {
         background-color: #e2e6ea;
@@ -17,27 +26,30 @@
         background-color: #f1f3f5;
         color: #495057;
         font-weight: 600;
-        letter-spacing: 0.5px;
     }
 </style>
 
-<div class="container mt-4 mb-5">
-    <div class="card shadow-lg border-0 rounded-4">
-        <div class="card-body p-4 p-md-5">
+<div class="container-fluid mt-4 mb-5">
+    <div class="card shadow border-0 rounded-3">
+        <div class="card-body p-4">
             
-            <!-- HEADER PERUSAHAAN -->
-            <div class="row border-bottom pb-4 mb-4 align-items-center">
-                <div class="col-md-2 text-center text-md-start mb-3 mb-md-0">
-                    <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Logo Sancaka" class="img-fluid" style="max-height: 85px;">
+            <!-- HEADER PERUSAHAAN (BULLETPROOF FLEXBOX) -->
+            <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px;">
+                
+                <!-- Kiri: Logo & Nama -->
+                <div style="display: flex; align-items: center; gap: 20px; flex: 1; min-width: 350px;">
+                    <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Logo Sancaka" style="height: 85px; width: auto;">
+                    <div>
+                        <h4 style="font-weight: bold; margin: 0; color: #333; font-size: 1.2rem;">SANCAKA KARYA HUTAMA</h4>
+                        <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Jl. Dr. Wahidin no. 18A (depan RSUD Soeroto Ngawi)</p>
+                        <p style="margin: 0; color: #666; font-size: 14px;">Telp: 0881-9435-180</p>
+                    </div>
                 </div>
-                <div class="col-md-6 text-center text-md-start">
-                    <h4 class="fw-bolder mb-1 text-dark">SANCAKA KARYA HUTAMA</h4>
-                    <p class="mb-1 text-secondary"><i class="fas fa-map-marker-alt me-2"></i>Jl. Dr. Wahidin no. 18A (depan RSUD Soeroto Ngawi)</p>
-                    <p class="mb-0 text-secondary"><i class="fas fa-phone-alt me-2"></i>Telp: 0881-9435-180</p>
-                </div>
-                <div class="col-md-4 text-center text-md-end mt-4 mt-md-0">
-                    <h2 class="text-uppercase fw-black mb-1 text-primary">Input Kas</h2>
-                    <span class="badge bg-soft-primary text-primary border border-primary px-3 py-2 rounded-pill shadow-sm">Pengeluaran & Pemasukan</span>
+
+                <!-- Kanan: Judul Laporan -->
+                <div style="text-align: right; min-width: 200px; margin-top: 10px;">
+                    <h2 style="font-weight: 900; color: #0d6efd; margin: 0 0 10px 0; text-transform: uppercase; font-size: 1.8rem;">Input Kas</h2>
+                    <span style="background: #e7f1ff; color: #0d6efd; border: 1px solid #0d6efd; padding: 6px 15px; border-radius: 20px; font-weight: bold; font-size: 13px;">Pengeluaran & Pemasukan</span>
                 </div>
             </div>
 
@@ -45,47 +57,46 @@
                 @csrf
                 
                 <!-- BAGIAN INFORMASI & PEMASUKAN OTOMATIS -->
-                <div class="row mb-5 bg-light p-4 rounded-3 border mx-0 shadow-sm">
-                    <div class="col-lg-7 mb-3 mb-lg-0">
-                        <label class="fw-bold mb-2 text-dark"><i class="fas fa-calendar-alt me-2 text-primary"></i>Rentang Waktu Laporan</label>
-                        <div class="input-group shadow-sm">
-                            <span class="input-group-text bg-white fw-bold">Dari</span>
-                            <input type="date" class="form-control" name="tanggal_mulai" id="tanggal_mulai" value="{{ date('Y-m-d') }}" required>
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; background-color: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 30px;">
+                    
+                    <!-- Rentang Waktu -->
+                    <div style="flex: 1; min-width: 300px;">
+                        <label style="font-weight: bold; margin-bottom: 8px; display: block; color: #333;">Rentang Waktu Laporan</label>
+                        <div style="display: flex; align-items: stretch; border: 1px solid #ced4da; border-radius: 4px; overflow: hidden; background: #fff;">
+                            <span style="background: #e9ecef; padding: 8px 15px; border-right: 1px solid #ced4da; font-weight: bold; display: flex; align-items: center;">Dari</span>
+                            <input type="date" name="tanggal_mulai" id="tanggal_mulai" value="{{ date('Y-m-d') }}" style="border: none; padding: 8px 12px; flex: 1; outline: none;" required>
                             
-                            <span class="input-group-text bg-white border-start-0 border-end-0 fw-bold">s/d</span>
-                            
-                            <input type="date" class="form-control" name="tanggal_akhir" id="tanggal_akhir" value="{{ date('Y-m-d') }}" required>
+                            <span style="background: #e9ecef; padding: 8px 15px; border-left: 1px solid #ced4da; border-right: 1px solid #ced4da; font-weight: bold; display: flex; align-items: center;">s/d</span>
+                            <input type="date" name="tanggal_akhir" id="tanggal_akhir" value="{{ date('Y-m-d') }}" style="border: none; padding: 8px 12px; flex: 1; outline: none;" required>
                         </div>
                     </div>
-                    <div class="col-lg-5">
-                        <label class="fw-bold text-success mb-2"><i class="fas fa-coins me-2"></i>Pemasukan Parkiran (Sistem)</label>
-                        <div class="input-group shadow-sm">
-                            <span class="input-group-text bg-success text-white fw-bold">Rp</span>
-                            
-                            {{-- Input visual --}}
-                            <input type="text" id="displayPemasukan" class="form-control text-end fw-bold text-success bg-white fs-5" value="Menghitung..." readonly>
-                            
-                            {{-- Input hidden ke controller --}}
+
+                    <!-- Pemasukan Parkiran -->
+                    <div style="flex: 1; min-width: 300px;">
+                        <label style="font-weight: bold; margin-bottom: 8px; display: block; color: #198754;">Pemasukan Parkiran (Sistem)</label>
+                        <div style="display: flex; align-items: stretch; border: 1px solid #198754; border-radius: 4px; overflow: hidden; background: #fff;">
+                            <span style="background: #198754; color: white; padding: 8px 15px; font-weight: bold; display: flex; align-items: center;">Rp</span>
+                            <input type="text" id="displayPemasukan" style="border: none; padding: 8px 12px; flex: 1; text-align: right; font-weight: bold; color: #198754; font-size: 1.1rem; outline: none;" value="Menghitung..." readonly>
                             <input type="hidden" name="pemasukan_sistem" id="pemasukanOtomatis" value="0">
                         </div>
                     </div>
                 </div>
 
                 <!-- BAGIAN PENGELUARAN MANUAL -->
-                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
-                    <h5 class="fw-bold mb-0 text-dark"><i class="fas fa-receipt me-2 text-danger"></i>Rincian Pengeluaran</h5>
+                <div style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                    <h5 style="font-weight: bold; color: #333; margin: 0;">Rincian Pengeluaran</h5>
                 </div>
                 
-                <div class="table-responsive shadow-sm rounded-3 mb-5">
+                <div class="table-responsive shadow-sm rounded-3 mb-5" style="border: 1px solid #dee2e6;">
                     <table class="table table-hover table-bordered table-sm mb-0" id="pengeluaranTable">
                         <thead class="table-custom-header text-center align-middle">
                             <tr>
-                                <th width="5%" class="py-3">NO</th>
-                                <th width="55%" class="py-3">KETERANGAN PENGELUARAN</th>
-                                <th width="30%" class="py-3">NOMINAL (Rp)</th>
-                                <th width="10%" class="py-3">
+                                <th width="5%" style="padding: 12px;">NO</th>
+                                <th width="55%" style="padding: 12px;">KETERANGAN PENGELUARAN</th>
+                                <th width="30%" style="padding: 12px;">NOMINAL (Rp)</th>
+                                <th width="10%" style="padding: 12px;">
                                     <button type="button" class="btn btn-sm btn-primary w-100 fw-bold shadow-sm" onclick="addRow()">
-                                        <i class="fas fa-plus"></i> Tambah
+                                        + Tambah
                                     </button>
                                 </th>
                             </tr>
@@ -101,79 +112,71 @@
                                 </td>
                                 <td class="text-center align-middle">
                                     <button type="button" class="btn btn-sm btn-outline-danger w-75" onclick="removeRow(this)">
-                                        <i class="fas fa-trash"></i>
+                                        Hapus
                                     </button>
                                 </td>
                             </tr>
                         </tbody>
                         <tfoot>
-                            <tr class="bg-light">
-                                <th colspan="2" class="text-end align-middle text-danger fw-bold py-3">Total Pengeluaran Rp.</th>
-                                <th><input type="text" id="totalPengeluaran" class="form-control text-end fw-bold text-danger bg-transparent border-0 shadow-none fs-6" readonly value="0"></th>
+                            <tr style="background-color: #f8f9fa;">
+                                <th colspan="2" class="text-end align-middle text-danger fw-bold" style="padding: 15px;">Total Pengeluaran Rp.</th>
+                                <th style="padding: 0;"><input type="text" id="totalPengeluaran" class="form-control text-end fw-bold text-danger bg-transparent border-0 shadow-none h-100" style="font-size: 1.1rem;" readonly value="0"></th>
                                 <th></th>
                             </tr>
-                            <tr class="table-warning border-warning">
-                                <th colspan="2" class="text-end align-middle fs-5 fw-black py-3">SISA SALDO BERSIH Rp.</th>
-                                <th><input type="text" id="saldoBersih" class="form-control text-end fw-bold fs-5 bg-transparent border-0 shadow-none" readonly value="0"></th>
+                            <tr style="background-color: #fff3cd;">
+                                <th colspan="2" class="text-end align-middle fw-bold" style="padding: 15px; font-size: 1.2rem; color: #856404;">SISA SALDO BERSIH Rp.</th>
+                                <th style="padding: 0;"><input type="text" id="saldoBersih" class="form-control text-end fw-bold bg-transparent border-0 shadow-none h-100" style="font-size: 1.2rem; color: #856404;" readonly value="0"></th>
                                 <th></th>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
 
-                <!-- BAGIAN TANDA TANGAN (KIRI & KANAN RESPONSIVE) -->
-                <div class="row mt-5 pt-3">
+                <!-- BAGIAN TANDA TANGAN (KIRI & KANAN FIXED) -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 50px; padding-top: 20px; border-top: 1px solid #eee; flex-wrap: wrap; gap: 20px;">
+                    
                     <!-- Tanda Tangan Kiri (Pembuat) -->
-                    <div class="col-6 d-flex flex-column align-items-center align-items-md-start text-center text-md-start">
-                        <div style="width: 100%; max-width: 280px;">
-                            <p class="mb-2 fw-bold text-muted text-center">Dibuat Oleh,</p>
-                            <div class="signature-box rounded position-relative d-flex justify-content-center align-items-center mx-auto" style="height: 140px; cursor: pointer; overflow: hidden;">
-                                
-                                {{-- Input File --}}
-                                <input type="file" name="ttd_pembuat" accept="image/png, image/jpeg" class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0; z-index: 10; cursor: pointer;" onchange="previewSig(this, 'imgPembuat', 'textPembuat')">
-                                
-                                {{-- Teks Panduan Upload --}}
-                                <div id="textPembuat" class="text-muted small text-center" style="pointer-events: none;">
-                                    <i class="fas fa-cloud-upload-alt mb-2 fs-2 text-primary"></i><br>Klik Upload TTD<br><small class="text-secondary">(PNG/JPG)</small>
-                                </div>
-                                
-                                {{-- Preview Gambar --}}
-                                <img id="imgPembuat" src="#" alt="TTD Pembuat" class="position-absolute top-0 start-0 w-100 h-100" style="object-fit: contain; display: none; z-index: 5; padding: 10px;">
+                    <div style="width: 280px; text-align: center;">
+                        <p style="font-weight: bold; color: #6c757d; margin-bottom: 10px;">Dibuat Oleh,</p>
+                        <div class="signature-box">
+                            <input type="file" name="ttd_pembuat" accept="image/png, image/jpeg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;" onchange="previewSig(this, 'imgPembuat', 'textPembuat')">
+                            
+                            <div id="textPembuat" style="color: #6c757d; font-size: 14px; pointer-events: none;">
+                                <span style="font-size: 24px; color: #0d6efd; display: block; margin-bottom: 5px;">⬆️</span>
+                                Klik Upload TTD<br><small>(PNG/JPG)</small>
                             </div>
-                            <div class="mt-3">
-                                <input type="text" name="nama_pembuat" class="form-control text-center border-0 border-bottom border-2 border-dark bg-transparent fw-bold px-0 rounded-0 shadow-none" placeholder="Ketik Nama Admin..." value="{{ auth()->user()->name ?? '' }}" required>
-                            </div>
+                            
+                            <img id="imgPembuat" src="#" alt="TTD Pembuat" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; display: none; z-index: 5; padding: 10px;">
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <input type="text" name="nama_pembuat" class="form-control text-center bg-transparent shadow-none" style="border: none; border-bottom: 2px solid #333; font-weight: bold; border-radius: 0; padding: 5px 0;" placeholder="Ketik Nama Admin..." value="{{ auth()->user()->name ?? '' }}" required>
                         </div>
                     </div>
 
                     <!-- Tanda Tangan Kanan (Pimpinan) -->
-                    <div class="col-6 d-flex flex-column align-items-center align-items-md-end text-center text-md-end">
-                        <div style="width: 100%; max-width: 280px;">
-                            <p class="mb-2 fw-bold text-muted text-center">Diketahui Oleh,</p>
-                            <div class="signature-box rounded position-relative d-flex justify-content-center align-items-center mx-auto" style="height: 140px; cursor: pointer; overflow: hidden;">
-                                
-                                {{-- Input File --}}
-                                <input type="file" name="ttd_pimpinan" accept="image/png, image/jpeg" class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0; z-index: 10; cursor: pointer;" onchange="previewSig(this, 'imgPimpinan', 'textPimpinan')">
-                                
-                                {{-- Teks Panduan Upload --}}
-                                <div id="textPimpinan" class="text-muted small text-center" style="pointer-events: none;">
-                                    <i class="fas fa-cloud-upload-alt mb-2 fs-2 text-primary"></i><br>Klik Upload TTD<br><small class="text-secondary">(PNG/JPG)</small>
-                                </div>
-                                
-                                {{-- Preview Gambar --}}
-                                <img id="imgPimpinan" src="#" alt="TTD Pimpinan" class="position-absolute top-0 start-0 w-100 h-100" style="object-fit: contain; display: none; z-index: 5; padding: 10px;">
+                    <div style="width: 280px; text-align: center;">
+                        <p style="font-weight: bold; color: #6c757d; margin-bottom: 10px;">Diketahui Oleh,</p>
+                        <div class="signature-box">
+                            <input type="file" name="ttd_pimpinan" accept="image/png, image/jpeg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;" onchange="previewSig(this, 'imgPimpinan', 'textPimpinan')">
+                            
+                            <div id="textPimpinan" style="color: #6c757d; font-size: 14px; pointer-events: none;">
+                                <span style="font-size: 24px; color: #0d6efd; display: block; margin-bottom: 5px;">⬆️</span>
+                                Klik Upload TTD<br><small>(PNG/JPG)</small>
                             </div>
-                            <div class="mt-3">
-                                <input type="text" name="nama_pimpinan" class="form-control text-center border-0 border-bottom border-2 border-dark bg-transparent fw-bold px-0 rounded-0 shadow-none" value="Pimpinan AZKEN PARKIR" placeholder="Ketik Nama Pimpinan..." required>
-                            </div>
+                            
+                            <img id="imgPimpinan" src="#" alt="TTD Pimpinan" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; display: none; z-index: 5; padding: 10px;">
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <input type="text" name="nama_pimpinan" class="form-control text-center bg-transparent shadow-none" style="border: none; border-bottom: 2px solid #333; font-weight: bold; border-radius: 0; padding: 5px 0;" value="Pimpinan AZKEN PARKIR" placeholder="Ketik Nama Pimpinan..." required>
                         </div>
                     </div>
+                    
                 </div>
 
                 <!-- TOMBOL SIMPAN -->
-                <div class="d-flex justify-content-end mt-5 pt-4 border-top">
-                    <a href="{{ route('kas.index') }}" class="btn btn-light border px-4 py-2 me-3 fw-bold text-secondary">Batal</a>
-                    <button type="submit" class="btn btn-primary px-5 py-2 fw-bold shadow"><i class="fas fa-paper-plane me-2"></i> Simpan Laporan</button>
+                <div style="text-align: right; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee;">
+                    <a href="{{ route('kas.index') }}" class="btn btn-light" style="border: 1px solid #ccc; padding: 10px 25px; margin-right: 10px; font-weight: bold; color: #666; text-decoration: none;">Batal</a>
+                    <button type="submit" class="btn btn-primary" style="padding: 10px 30px; font-weight: bold; background-color: #0d6efd; border: none; color: white; border-radius: 4px;">Simpan Laporan</button>
                 </div>
 
             </form>
@@ -233,7 +236,7 @@
             <td class="text-center align-middle row-number fw-bold text-secondary"></td>
             <td><input type="text" name="pengeluaran[${rowIdx}][keterangan]" class="form-control border-0 bg-transparent shadow-none" placeholder="Keterangan pengeluaran..." required></td>
             <td><input type="number" name="pengeluaran[${rowIdx}][nominal]" class="form-control nominal text-end border-0 bg-transparent shadow-none" min="0" oninput="kalkulasi()" placeholder="0" required></td>
-            <td class="text-center align-middle"><button type="button" class="btn btn-sm btn-outline-danger w-75" onclick="removeRow(this)"><i class="fas fa-trash"></i></button></td>
+            <td class="text-center align-middle"><button type="button" class="btn btn-sm btn-outline-danger w-75" onclick="removeRow(this)">Hapus</button></td>
         </tr>`;
         document.getElementById('tbodyItem').insertAdjacentHTML('beforeend', tr);
         rowIdx++;
@@ -274,9 +277,9 @@
         document.getElementById('saldoBersih').value = formatRupiah(saldoBersih);
 
         if(saldoBersih < 0) {
-            document.getElementById('saldoBersih').classList.add('text-danger');
+            document.getElementById('saldoBersih').style.color = '#dc3545';
         } else {
-            document.getElementById('saldoBersih').classList.remove('text-danger');
+            document.getElementById('saldoBersih').style.color = '#856404';
         }
     }
 
