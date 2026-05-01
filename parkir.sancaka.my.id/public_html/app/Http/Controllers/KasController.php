@@ -182,17 +182,4 @@ class KasController extends Controller
         }
     }
 
-    // Menghapus Data
-    public function destroy($id)
-    {
-        $kas = KasLaporan::findOrFail($id);
-        
-        // Hapus file gambar dari storage server agar tidak penuh
-        if ($kas->ttd_pembuat) Storage::disk('public')->delete($kas->ttd_pembuat);
-        if ($kas->ttd_pimpinan) Storage::disk('public')->delete($kas->ttd_pimpinan);
-        
-        $kas->delete(); // Pengeluaran akan otomatis terhapus karena efek CASCADE di database
-
-        return redirect()->route('kas.index')->with('success', 'Laporan Kas berhasil dihapus.');
-    }
 }
