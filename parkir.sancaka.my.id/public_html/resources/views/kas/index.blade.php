@@ -156,7 +156,7 @@
                             <td>
                                 <div class="action-buttons">
                                     {{-- Tombol Detail --}}
-                                    <button type="button" class="btn btn-info text-white shadow-sm" data-bs-toggle="modal" data-bs-target="#modalDetail{{ $kas->id }}" title="Lihat Detail">
+                                    <button type="button" class="btn btn-light text-primary border shadow-sm" data-bs-toggle="modal" data-bs-target="#modalDetail{{ $kas->id }}" title="Lihat Detail">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                     
