@@ -46,7 +46,12 @@ protected function redirectTo()
      */
     public function showLoginForm()
     {
-        return view('auth.login');
+        // Generate angka acak untuk captcha
+        $angka1 = rand(1, 10);
+        $angka2 = rand(1, 10);
+        session(['captcha_jawaban' => $angka1 + $angka2]);
+
+        return view('auth.login', compact('angka1', 'angka2'));
     }
 
     /**
@@ -71,6 +76,10 @@ protected function redirectTo()
         $request->validate([
             $this->username() => 'required|string',
             'password' => 'required|string',
+            'captcha' => 'required|numeric|in:' . session('captcha_jawaban'), // Validasi Captcha
+        ], [
+            'captcha.required' => 'Captcha wajib diisi.',
+            'captcha.in' => 'Jawaban matematika salah, silakan coba lagi.',
         ]);
     }
 
