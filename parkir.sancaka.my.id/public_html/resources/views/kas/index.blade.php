@@ -41,13 +41,13 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert" style="border-left: 5px solid #198754; font-weight: bold;">
             <i class="fas fa-check-circle me-2 fs-5"></i> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" data-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert" style="border-left: 5px solid #dc3545; font-weight: bold;">
             <i class="fas fa-exclamation-triangle me-2 fs-5"></i> {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" data-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
 
@@ -110,7 +110,7 @@
             </div>
 
             <!-- TABEL DATA RIWAYAT -->
-            <div class="table-responsive shadow-sm border rounded-3">
+            <div class="table-responsive shadow-sm border rounded-3 mb-4">
                 <table class="table table-hover table-bordered text-center mb-0" id="kasTable">
                     <thead class="table-custom-header">
                         <tr>
@@ -155,8 +155,8 @@
                             
                             <td>
                                 <div class="action-buttons">
-                                    {{-- Tombol Detail --}}
-                                    <button type="button" class="btn btn-light text-primary border shadow-sm" data-bs-toggle="modal" data-bs-target="#modalDetail{{ $kas->id }}" title="Lihat Detail">
+                                    {{-- Tombol Detail (Dibuat support BS4 & BS5) --}}
+                                    <button type="button" class="btn btn-light text-primary border shadow-sm" data-toggle="modal" data-target="#modalDetail{{ $kas->id }}" data-bs-toggle="modal" data-bs-target="#modalDetail{{ $kas->id }}" title="Lihat Detail">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                     
@@ -180,105 +180,6 @@
                                 </div>
                             </td>
                         </tr>
-
-                        <!-- ================= MODAL DETAIL (FLEXBOX INSIDE) ================= -->
-                        <div class="modal fade" id="modalDetail{{ $kas->id }}" tabindex="-1" aria-labelledby="modalDetailLabel{{ $kas->id }}" aria-hidden="true">
-                            <div class="modal-dialog modal-lg modal-dialog-centered">
-                                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                                    <div class="modal-header bg-primary text-white border-0" style="padding: 20px;">
-                                        <h5 class="modal-title fw-bold m-0" id="modalDetailLabel{{ $kas->id }}">
-                                            <i class="fas fa-file-invoice-dollar me-2"></i> Detail Laporan Kas
-                                        </h5>
-                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body text-start p-4 p-md-5">
-                                        
-                                        <!-- Header Tanggal -->
-                                        <div class="text-center mb-4 pb-3 border-bottom">
-                                            <p class="mb-1 text-muted text-uppercase" style="font-weight: 600; font-size: 14px; letter-spacing: 1px;">Periode Laporan</p>
-                                            <h4 class="fw-bold text-dark m-0">
-                                                {{ \Carbon\Carbon::parse($kas->tanggal_mulai)->translatedFormat('d F Y') }} 
-                                                @if($kas->tanggal_mulai != $kas->tanggal_akhir)
-                                                    <span style="color: #adb5bd;"> - </span> {{ \Carbon\Carbon::parse($kas->tanggal_akhir)->translatedFormat('d F Y') }}
-                                                @endif
-                                            </h4>
-                                        </div>
-
-                                        <!-- Ringkasan Keuangan (Flexbox) -->
-                                        <div style="display: flex; flex-wrap: wrap; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 30px; overflow: hidden;">
-                                            <!-- Box 1 -->
-                                            <div style="flex: 1; min-width: 200px; text-align: center; padding: 20px; border-right: 1px solid #dee2e6;">
-                                                <small class="text-muted d-block mb-2 fw-bold text-uppercase" style="font-size: 12px;">Pemasukan Sistem</small>
-                                                <h4 class="text-success fw-bold mb-0">Rp {{ number_format($kas->pemasukan_sistem, 0, ',', '.') }}</h4>
-                                            </div>
-                                            <!-- Box 2 -->
-                                            <div style="flex: 1; min-width: 200px; text-align: center; padding: 20px; border-right: 1px solid #dee2e6;">
-                                                <small class="text-muted d-block mb-2 fw-bold text-uppercase" style="font-size: 12px;">Total Pengeluaran</small>
-                                                <h4 class="text-danger fw-bold mb-0">Rp {{ number_format($kas->total_pengeluaran, 0, ',', '.') }}</h4>
-                                            </div>
-                                            <!-- Box 3 -->
-                                            <div style="flex: 1; min-width: 200px; text-align: center; padding: 20px; background-color: {{ $kas->saldo_bersih < 0 ? '#fff5f5' : '#f0fdf4' }};">
-                                                <small class="text-muted d-block mb-2 fw-bold text-uppercase" style="font-size: 12px;">Saldo Bersih</small>
-                                                <h3 class="fw-black mb-0 {{ $kas->saldo_bersih < 0 ? 'text-danger' : 'text-success' }}">
-                                                    Rp {{ number_format($kas->saldo_bersih, 0, ',', '.') }}
-                                                </h3>
-                                            </div>
-                                        </div>
-
-                                        <!-- Rincian Tabel -->
-                                        <h6 class="fw-bold mb-3 text-dark"><i class="fas fa-list text-primary me-2"></i>Rincian Pengeluaran Manual</h6>
-                                        <div class="border rounded overflow-hidden mb-4">
-                                            <table class="table table-sm table-striped table-hover mb-0">
-                                                <thead class="bg-light text-center" style="font-size: 14px;">
-                                                    <tr>
-                                                        <th width="10%" class="py-2 text-muted">No</th>
-                                                        <th class="py-2 text-muted">Keterangan Pengeluaran</th>
-                                                        <th width="35%" class="py-2 text-muted">Nominal</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @forelse($kas->pengeluaran as $i => $item)
-                                                    <tr>
-                                                        <td class="text-center align-middle fw-bold text-secondary">{{ $i + 1 }}</td>
-                                                        <td class="align-middle px-3">{{ $item->keterangan }}</td>
-                                                        <td class="text-end align-middle fw-bold text-danger px-3">Rp {{ number_format($item->nominal, 0, ',', '.') }}</td>
-                                                    </tr>
-                                                    @empty
-                                                    <tr>
-                                                        <td colspan="3" class="text-center text-muted py-4">
-                                                            <i class="fas fa-ban fs-4 d-block mb-2 text-black-50"></i>
-                                                            <i>Tidak ada pengeluaran manual pada periode ini.</i>
-                                                        </td>
-                                                    </tr>
-                                                    @endforelse
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        <!-- Signatures in Modal (Flexbox) -->
-                                        <div style="display: flex; justify-content: space-around; text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px dashed #dee2e6;">
-                                            <div>
-                                                <p class="mb-1 text-muted" style="font-size: 14px;">Dibuat Oleh,</p>
-                                                <p class="fw-bold mt-5 mb-0 text-uppercase text-dark border-bottom border-dark pb-1 px-3">{{ $kas->nama_pembuat ?? '-' }}</p>
-                                            </div>
-                                            <div>
-                                                <p class="mb-1 text-muted" style="font-size: 14px;">Diketahui Oleh,</p>
-                                                <p class="fw-bold mt-5 mb-0 text-uppercase text-dark border-bottom border-dark pb-1 px-3">{{ $kas->nama_pimpinan ?? '-' }}</p>
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                    <div class="modal-footer bg-light" style="padding: 15px 25px;">
-                                        <button type="button" class="btn btn-outline-secondary fw-bold px-4" data-bs-dismiss="modal">Tutup</button>
-                                        <a href="{{ route('kas.pdf.single', $kas->id) }}" class="btn btn-danger shadow-sm fw-bold px-4" target="_blank">
-                                            <i class="fas fa-print me-1"></i> Cetak PDF
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- ================= END MODAL ================= -->
-
                         @empty
                         <tr>
                             <td colspan="7" class="text-center py-5 text-muted bg-light">
@@ -291,6 +192,90 @@
                     </tbody>
                 </table>
             </div>
+            
+            <!-- ================= MODAL DETAIL KITA PINDAHKAN KE LUAR TABEL ================= -->
+            @foreach($laporanKas as $kas)
+            <div class="modal fade" id="modalDetail{{ $kas->id }}" tabindex="-1" aria-labelledby="modalDetailLabel{{ $kas->id }}" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                        <div class="modal-header bg-primary text-white border-0" style="padding: 20px;">
+                            <h5 class="modal-title fw-bold m-0" id="modalDetailLabel{{ $kas->id }}">
+                                <i class="fas fa-file-invoice-dollar me-2"></i> Detail Laporan Kas
+                            </h5>
+                            <!-- Tombol Close Modal (Support BS4 & BS5) -->
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-start p-4 p-md-5">
+                            
+                            <!-- Header Tanggal -->
+                            <div class="text-center mb-4 pb-3 border-bottom">
+                                <p class="mb-1 text-muted text-uppercase" style="font-weight: 600; font-size: 14px; letter-spacing: 1px;">Periode Laporan</p>
+                                <h4 class="fw-bold text-dark m-0">
+                                    {{ \Carbon\Carbon::parse($kas->tanggal_mulai)->translatedFormat('d F Y') }} 
+                                    @if($kas->tanggal_mulai != $kas->tanggal_akhir)
+                                        <span style="color: #adb5bd;"> - </span> {{ \Carbon\Carbon::parse($kas->tanggal_akhir)->translatedFormat('d F Y') }}
+                                    @endif
+                                </h4>
+                            </div>
+
+                            <!-- Ringkasan Keuangan (Flexbox) -->
+                            <div style="display: flex; flex-wrap: wrap; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 30px; overflow: hidden;">
+                                <!-- Box 1 -->
+                                <div style="flex: 1; min-width: 200px; text-align: center; padding: 20px; border-right: 1px solid #dee2e6;">
+                                    <small class="text-muted d-block mb-2 fw-bold text-uppercase" style="font-size: 12px;">Pemasukan Sistem</small>
+                                    <h4 class="text-success fw-bold mb-0">Rp {{ number_format($kas->pemasukan_sistem, 0, ',', '.') }}</h4>
+                                </div>
+                                <!-- Box 2 -->
+                                <div style="flex: 1; min-width: 200px; text-align: center; padding: 20px; border-right: 1px solid #dee2e6;">
+                                    <small class="text-muted d-block mb-2 fw-bold text-uppercase" style="font-size: 12px;">Total Pengeluaran</small>
+                                    <h4 class="text-danger fw-bold mb-0">Rp {{ number_format($kas->total_pengeluaran, 0, ',', '.') }}</h4>
+                                </div>
+                                <!-- Box 3 -->
+                                <div style="flex: 1; min-width: 200px; text-align: center; padding: 20px; background-color: {{ $kas->saldo_bersih < 0 ? '#fff5f5' : '#f0fdf4' }};">
+                                    <small class="text-muted d-block mb-2 fw-bold text-uppercase" style="font-size: 12px;">Saldo Bersih</small>
+                                    <h3 class="fw-black mb-0 {{ $kas->saldo_bersih < 0 ? 'text-danger' : 'text-success' }}">
+                                        Rp {{ number_format($kas->saldo_bersih, 0, ',', '.') }}
+                                    </h3>
+                                </div>
+                            </div>
+
+                            <!-- Rincian Tabel -->
+                            <h6 class="fw-bold mb-3 text-dark"><i class="fas fa-list text-primary me-2"></i>Rincian Pengeluaran Manual</h6>
+                            <div class="border rounded overflow-hidden mb-0">
+                                <table class="table table-sm table-striped table-hover mb-0">
+                                    <thead class="bg-light text-center" style="font-size: 14px;">
+                                        <tr>
+                                            <th width="10%" class="py-2 text-muted">No</th>
+                                            <th class="py-2 text-muted">Keterangan Pengeluaran</th>
+                                            <th width="35%" class="py-2 text-muted">Nominal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($kas->pengeluaran as $i => $item)
+                                        <tr>
+                                            <td class="text-center align-middle fw-bold text-secondary">{{ $i + 1 }}</td>
+                                            <td class="align-middle px-3">{{ $item->keterangan }}</td>
+                                            <td class="text-end align-middle fw-bold text-danger px-3">Rp {{ number_format($item->nominal, 0, ',', '.') }}</td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="3" class="text-center text-muted py-4">
+                                                <i class="fas fa-ban fs-4 d-block mb-2 text-black-50"></i>
+                                                <i>Tidak ada pengeluaran manual pada periode ini.</i>
+                                            </td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+            <!-- ================= END MODAL ================= -->
+
         </div>
     </div>
 </div>
