@@ -46,13 +46,9 @@ protected function redirectTo()
      */
     public function showLoginForm()
     {
-        // Generate 5 karakter acak (huruf dan angka), jadikan huruf besar semua agar mudah dibaca
-        $captchaString = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::random(5));
-        session(['captcha_jawaban' => $captchaString]);
-
-        return view('auth.login', compact('captchaString'));
+        // Tidak perlu lagi generate string acak, package mews/captcha yang akan mengurusnya
+        return view('auth.login');
     }
-
     /**
      * Dapatkan guard yang digunakan untuk autentikasi.
      * Secara default, ini menggunakan guard 'web' atau guard default aplikasi.
@@ -64,7 +60,7 @@ protected function redirectTo()
         return Auth::guard('web'); // Asumsikan Anda menggunakan guard 'web' untuk customer
     }
 
-   /**
+ /**
      * Validasi input request login.
      *
      * @param \Illuminate\Http\Request $request
@@ -72,18 +68,14 @@ protected function redirectTo()
      */
     protected function validateLogin(Request $request)
     {
-        // Ubah input captcha user menjadi huruf besar agar tidak case-sensitive saat divalidasi
-        if ($request->has('captcha')) {
-            $request->merge(['captcha' => strtoupper($request->captcha)]);
-        }
-
+        // Tidak perlu lagi uppercase manual, package ini otomatis kebal huruf besar/kecil
         $request->validate([
             $this->username() => 'required|string',
             'password' => 'required|string',
-            'captcha' => 'required|string|in:' . session('captcha_jawaban'), // Cek kecocokan 5 karakter
+            'captcha' => 'required|captcha', // Gunakan rule 'captcha' bawaan package
         ], [
             'captcha.required' => 'Kode keamanan wajib diisi.',
-            'captcha.in' => 'Kode keamanan tidak cocok, silakan coba lagi.',
+            'captcha.captcha' => 'Kode pada gambar salah, silakan coba lagi.', // Pesan error jika salah
         ]);
     }
 
