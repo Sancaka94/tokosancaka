@@ -139,9 +139,9 @@
                 @endif
             </td>
             <td width="85%">
-                <h1 class="company-name">SANCAKA KARYA HUTAMA</h1>
+                <h1 class="company-name">PARKIR AZKEN</h1>
                 <p class="company-address">Jl. Dr. Wahidin no. 18A (depan RSUD Soeroto Ngawi)</p>
-                <p class="company-address">Telp: 0881-9435-180</p>
+                <p class="company-address">Telp: +62 899-8801-797 </p>
             </td>
         </tr>
     </table>
