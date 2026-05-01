@@ -121,7 +121,7 @@
                     {{-- Captcha Matematika --}}
                     <div class="mb-3">
                         <label for="captcha" class="form-label text-muted small">Keamanan: Berapa hasil dari <strong class="text-dark">{{ $angka1 }} + {{ $angka2 }}</strong>?</label>
-                        <input type="number" class="form-control @error('captcha') is-invalid @enderror" id="captcha" name="captcha" placeholder="Jawaban" required>
+                        <input type="number" class="form-control @error('captcha') is-invalid @enderror" id="captcha" name="captcha" placeholder="Ketik Jawaban Disini" required>
                         @error('captcha')
                             <div class="invalid-feedback">
                                 {{ $message }}
