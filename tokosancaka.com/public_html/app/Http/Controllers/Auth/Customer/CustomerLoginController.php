@@ -46,12 +46,11 @@ protected function redirectTo()
      */
     public function showLoginForm()
     {
-        // Generate angka acak untuk captcha
-        $angka1 = rand(1, 10);
-        $angka2 = rand(1, 10);
-        session(['captcha_jawaban' => $angka1 + $angka2]);
+        // Generate 5 karakter acak (huruf dan angka), jadikan huruf besar semua agar mudah dibaca
+        $captchaString = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::random(5));
+        session(['captcha_jawaban' => $captchaString]);
 
-        return view('auth.login', compact('angka1', 'angka2'));
+        return view('auth.login', compact('captchaString'));
     }
 
     /**
@@ -65,7 +64,7 @@ protected function redirectTo()
         return Auth::guard('web'); // Asumsikan Anda menggunakan guard 'web' untuk customer
     }
 
-    /**
+   /**
      * Validasi input request login.
      *
      * @param \Illuminate\Http\Request $request
@@ -73,13 +72,18 @@ protected function redirectTo()
      */
     protected function validateLogin(Request $request)
     {
+        // Ubah input captcha user menjadi huruf besar agar tidak case-sensitive saat divalidasi
+        if ($request->has('captcha')) {
+            $request->merge(['captcha' => strtoupper($request->captcha)]);
+        }
+
         $request->validate([
             $this->username() => 'required|string',
             'password' => 'required|string',
-            'captcha' => 'required|numeric|in:' . session('captcha_jawaban'), // Validasi Captcha
+            'captcha' => 'required|string|in:' . session('captcha_jawaban'), // Cek kecocokan 5 karakter
         ], [
-            'captcha.required' => 'Captcha wajib diisi.',
-            'captcha.in' => 'Jawaban matematika salah, silakan coba lagi.',
+            'captcha.required' => 'Kode keamanan wajib diisi.',
+            'captcha.in' => 'Kode keamanan tidak cocok, silakan coba lagi.',
         ]);
     }
 

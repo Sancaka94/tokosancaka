@@ -118,10 +118,22 @@
                         <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('password')"></i>
                     </div>
 
-                    {{-- Captcha Matematika --}}
+                  {{-- Captcha 5 Karakter --}}
                     <div class="mb-3">
-                        <label for="captcha" class="form-label text-muted small">Keamanan: Berapa hasil dari <strong class="text-dark">{{ $angka1 }} + {{ $angka2 }}</strong>?</label>
-                        <input type="number" class="form-control @error('captcha') is-invalid @enderror" id="captcha" name="captcha" placeholder="Ketik Jawaban Disini" required>
+                        <label for="captcha" class="form-label text-muted small d-block">
+                            Keamanan: Ketik ulang kode di bawah ini
+                        </label>
+                        
+                        {{-- Tampilan Kode Captcha --}}
+                        <div class="mb-2 user-select-none text-center rounded bg-light border border-secondary border-opacity-25 py-2" 
+                             style="font-family: monospace; font-size: 1.25rem; font-weight: bold; letter-spacing: 5px; color: #333;">
+                            {{ $captchaString }}
+                        </div>
+
+                        <input type="text" class="form-control @error('captcha') is-invalid @enderror" 
+                               id="captcha" name="captcha" placeholder="Masukkan 5 karakter kode" 
+                               required maxlength="5" autocomplete="off" style="text-transform: uppercase;">
+                        
                         @error('captcha')
                             <div class="invalid-feedback">
                                 {{ $message }}
