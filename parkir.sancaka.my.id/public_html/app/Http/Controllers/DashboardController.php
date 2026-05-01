@@ -205,6 +205,15 @@ class DashboardController extends Controller
         ));
     }
 
+    public function create()
+{
+    // Mengambil total pemasukan parkir hari ini (contoh)
+    $totalPemasukanParkir = Transaction::whereDate('exit_time', date('Y-m-d'))
+        ->sum(\DB::raw('fee + IFNULL(toilet_fee, 0)'));
+
+    return view('kas.create', compact('totalPemasukanParkir'));
+}
+
    public function harian(Request $request)
     {
         $tanggal = $request->tanggal ?? today()->toDateString();
