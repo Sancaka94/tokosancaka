@@ -24,7 +24,7 @@
             </a>
 
             {{-- Tombol Cetak PDF Rincian (Detail Lengkap) --}}
-            <a href="{{ route('laporan.export.rincian', ['bulan' => $bulan, 'tahun' => $tahun]) }}" class="btn btn-danger" target="_blank">
+            <a href="{{ route('laporan.bulanan.pdf', ['bulan' => $bulan, 'tahun' => $tahun]) }}" class="btn btn-danger" target="_blank">
                 <i class="fas fa-file-pdf"></i> Cetak PDF Rincian
             </a>
         </div>
