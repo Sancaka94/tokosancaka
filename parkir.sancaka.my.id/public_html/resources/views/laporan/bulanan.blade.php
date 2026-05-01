@@ -17,9 +17,17 @@
     <!-- Wrapper untuk grup tombol agar rapi di mobile & desktop -->
     <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
         <!-- Tombol Export PDF -->
-        <a href="{{ route('laporan.bulanan.pdf', ['bulan' => $bulan, 'tahun' => $tahun]) }}" target="_blank" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg font-bold flex items-center gap-2 shadow-md transition-colors w-full sm:w-auto justify-center">
-            📄 Export PDF
-        </a>
+        <div class="d-flex justify-content-end gap-2 mb-3">
+            {{-- Tombol Cetak PDF Umum (Ringkasan) --}}
+            <a href="{{ route('laporan.export.umum', ['bulan' => $bulan, 'tahun' => $tahun]) }}" class="btn btn-primary" target="_blank">
+                <i class="fas fa-file-alt"></i> Cetak PDF Umum
+            </a>
+
+            {{-- Tombol Cetak PDF Rincian (Detail Lengkap) --}}
+            <a href="{{ route('laporan.export.rincian', ['bulan' => $bulan, 'tahun' => $tahun]) }}" class="btn btn-danger" target="_blank">
+                <i class="fas fa-file-pdf"></i> Cetak PDF Rincian
+            </a>
+        </div>
         
         <!-- Tombol Cetak Asli -->
         <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-bold flex items-center gap-2 shadow-md transition-colors w-full sm:w-auto justify-center">
