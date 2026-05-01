@@ -19,7 +19,7 @@
         <!-- Tombol Export PDF -->
         <div class="d-flex justify-content-end gap-2 mb-3">
             {{-- Tombol Cetak PDF Umum (Ringkasan) --}}
-            <a href="{{ route('laporan.export.umum', ['bulan' => $bulan, 'tahun' => $tahun]) }}" class="btn btn-primary" target="_blank">
+            <a href="{{ route('laporan.bulanan.pdf.umum', ['bulan' => $bulan, 'tahun' => $tahun]) }}" class="btn btn-primary" target="_blank">
                 <i class="fas fa-file-alt"></i> Cetak PDF Umum
             </a>
 
