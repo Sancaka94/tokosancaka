@@ -118,15 +118,15 @@
                         <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('password')"></i>
                     </div>
 
-                  {{-- Captcha 5 Karakter --}}
+                 {{-- Captcha 5 Karakter --}}
                     <div class="mb-3">
                         <label for="captcha" class="form-label text-muted small d-block">
                             Keamanan: Ketik ulang kode di bawah ini
                         </label>
                         
-                        {{-- Tampilan Kode Captcha --}}
-                        <div class="mb-2 user-select-none text-center rounded bg-green border border-secondary border-opacity-25 py-2" 
-                             style="font-family: monospace; font-size: 1.25rem; font-weight: bold; letter-spacing: 5px; color: #333;">
+                        {{-- Tampilan Kode Captcha (Background Hijau Muda) --}}
+                        <div class="mb-2 user-select-none text-center rounded border border-success border-opacity-25 py-2" 
+                             style="background-color: #d1e7dd; font-family: monospace; font-size: 1.25rem; font-weight: bold; letter-spacing: 5px; color: #0f5132;">
                             {{ $captchaString }}
                         </div>
 
@@ -190,5 +190,25 @@
             icon.classList.add('fa-eye');
         }
     }
+
+    // Fungsi otomatis huruf besar untuk Captcha
+    document.addEventListener('DOMContentLoaded', function() {
+        const captchaInput = document.getElementById('captcha');
+        
+        if (captchaInput) {
+            captchaInput.addEventListener('input', function(e) {
+                // Simpan posisi kursor saat ini agar tidak loncat ke akhir
+                let start = this.selectionStart;
+                let end = this.selectionEnd;
+                
+                // Ubah nilai input menjadi huruf besar
+                this.value = this.value.toUpperCase();
+                
+                // Kembalikan posisi kursor
+                this.setSelectionRange(start, end);
+            });
+        }
+    });
+
 </script>
 @endpush
