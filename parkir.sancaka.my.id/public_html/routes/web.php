@@ -9,6 +9,8 @@ use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\PublicDashboardController;
 use App\Http\Controllers\DashboardSettingController; // Pastikan ini dipanggil
 use App\Http\Controllers\DashboardWidgetController; // <-- Tambahkan ini di atas
+use App\Http\Controllers\KasController;
+
 
 
 use App\Http\Middleware\IdentifyTenant;
@@ -127,3 +129,10 @@ require __DIR__.'/auth.php';
 Route::get('/laporan/bulanan/pdf', [App\Http\Controllers\DashboardController::class, 'exportBulananPdf'])->name('laporan.bulanan.pdf');
 
 Route::get('/laporan/bulanan/pdf-umum', [App\Http\Controllers\DashboardController::class, 'exportBulananPdfUmum'])->name('laporan.bulanan.pdf.umum');
+
+
+// Rute otomatis untuk CRUD
+Route::resource('kas', KasController::class);
+
+// Rute khusus untuk Export PDF 1 Laporan
+Route::get('kas/{id}/pdf', [KasController::class, 'exportPdfSingle'])->name('kas.pdf.single');
