@@ -125,7 +125,7 @@
                         </label>
                         
                         {{-- Tampilan Kode Captcha --}}
-                        <div class="mb-2 user-select-none text-center rounded bg-light border border-secondary border-opacity-25 py-2" 
+                        <div class="mb-2 user-select-none text-center rounded bg-green border border-secondary border-opacity-25 py-2" 
                              style="font-family: monospace; font-size: 1.25rem; font-weight: bold; letter-spacing: 5px; color: #333;">
                             {{ $captchaString }}
                         </div>
