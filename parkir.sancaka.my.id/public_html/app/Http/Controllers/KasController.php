@@ -81,6 +81,7 @@ class KasController extends Controller
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
+    
 
     // Menghapus Data
     public function destroy($id)
