@@ -335,4 +335,38 @@ class DashboardController extends Controller
     return $pdf->setPaper('a4', 'landscape')->stream('Laporan_Bulanan_'.$bulan.'_'.$tahun.'.pdf');
 }
 
+public function exportBulananPdfUmum(Request $request)
+{
+    $bulan = $request->bulan ?? date('m');
+    $tahun = $request->tahun ?? date('Y');
+
+    // 1. Hitung total pendapatan parkir
+    $rekap = Transaction::select(
+        DB::raw('SUM(fee + IFNULL(toilet_fee, 0)) as total_semua')
+    )->whereMonth('exit_time', $bulan)
+     ->whereYear('exit_time', $tahun)->first();
+
+    $total = $rekap->total_semua ?? 0;
+
+    // 2. Hitung kas manual (langsung di-SUM dari database agar query lebih ringan)
+    $totalPemasukanManual = \App\Models\FinancialReport::whereMonth('tanggal', $bulan)
+                                        ->whereYear('tanggal', $tahun)
+                                        ->where('jenis', 'pemasukan')
+                                        ->sum('nominal');
+
+    $totalPengeluaranManual = \App\Models\FinancialReport::whereMonth('tanggal', $bulan)
+                                        ->whereYear('tanggal', $tahun)
+                                        ->where('jenis', 'pengeluaran')
+                                        ->sum('nominal');
+
+    // 3. Load view khusus PDF Umum (pastikan nama file view-nya 'pdf_umum.blade.php')
+    $pdf = Pdf::loadView('laporan.pdf_umum', compact(
+        'bulan', 'tahun', 'total',
+        'totalPemasukanManual', 'totalPengeluaranManual'
+    ));
+
+    // 4. Cetak PDF (Portrait lebih cocok untuk laporan ringkasan)
+    return $pdf->setPaper('a4', 'portrait')->stream('Laporan_Umum_Bulanan_'.$bulan.'_'.$tahun.'.pdf');
+}
+
 }
