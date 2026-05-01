@@ -8,6 +8,7 @@ use App\Models\Transaction; // Pastikan model Transaction Anda di-import
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Models\FinancialReport;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class KasController extends Controller
@@ -32,9 +33,9 @@ class KasController extends Controller
         return view('kas.index', compact('laporanKas'));
     }
 
-    /**
+   /**
      * ==========================================
-     * 2. AJAX: Ambil Pemasukan dari Sistem Parkir
+     * AJAX: Ambil Pemasukan dari Sistem Parkir + Kas Manual
      * ==========================================
      */
     public function getPemasukan(Request $request)
@@ -44,12 +45,25 @@ class KasController extends Controller
             'tanggal_akhir' => 'required|date',
         ]);
 
-        // Menjumlahkan kolom tarif dari tabel parkir sesuai rentang tanggal
-        $totalPemasukan = Transaction::whereDate('exit_time', '>=', $request->tanggal_mulai)
-                            ->whereDate('exit_time', '<=', $request->tanggal_akhir)
+        $startDate = $request->tanggal_mulai;
+        $endDate = $request->tanggal_akhir;
+
+        // 1. Ambil Total dari Parkir + Toilet
+        $totalParkirToilet = Transaction::whereDate('exit_time', '>=', $startDate)
+                            ->whereDate('exit_time', '<=', $endDate)
                             ->sum(DB::raw('fee + IFNULL(toilet_fee, 0)'));
 
-        return response()->json(['total' => (float) $totalPemasukan]);
+        // 2. Ambil Total dari Buku Kas Manual (Hanya yang jenis = pemasukan)
+        $totalKasManualMasuk = FinancialReport::whereDate('tanggal', '>=', $startDate)
+                            ->whereDate('tanggal', '<=', $endDate)
+                            ->where('jenis', 'pemasukan')
+                            ->sum('nominal');
+
+        // 3. Gabungkan semua jadi Pendapatan Kotor (Pemasukan Sistem)
+        $totalPendapatanGabungan = $totalParkirToilet + $totalKasManualMasuk;
+
+        // Kembalikan datanya ke AJAX (Format JSON)
+        return response()->json(['total' => (float) $totalPendapatanGabungan]);
     }
 
     /**
