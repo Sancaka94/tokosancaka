@@ -16,7 +16,12 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(): View
     {
-        return view('auth.login');
+        // Generate angka acak untuk captcha
+        $angka1 = rand(1, 10);
+        $angka2 = rand(1, 10);
+        session(['captcha_jawaban' => $angka1 + $angka2]);
+
+        return view('auth.login', compact('angka1', 'angka2'));
     }
 
     /**
@@ -24,6 +29,14 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
+        // Validasi Captcha Matematika
+        $request->validate([
+            'captcha' => 'required|numeric|in:' . session('captcha_jawaban'),
+        ], [
+            'captcha.required' => 'Captcha wajib diisi.',
+            'captcha.in' => 'Jawaban matematika salah, silakan coba lagi.',
+        ]);
+        
         // 1. Proses Login (Cek Email & Password)
         $request->authenticate();
 

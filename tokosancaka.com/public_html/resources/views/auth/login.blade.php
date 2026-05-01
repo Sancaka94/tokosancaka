@@ -118,6 +118,17 @@
                         <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('password')"></i>
                     </div>
 
+                    {{-- Captcha Matematika --}}
+                    <div class="mb-3">
+                        <label for="captcha" class="form-label text-muted small">Keamanan: Berapa hasil dari <strong class="text-dark">{{ $angka1 }} + {{ $angka2 }}</strong>?</label>
+                        <input type="number" class="form-control @error('captcha') is-invalid @enderror" id="captcha" name="captcha" placeholder="Jawaban" required>
+                        @error('captcha')
+                            <div class="invalid-feedback">
+                                {{ $message }}
+                            </div>
+                        @enderror
+                    </div>
+
                     {{-- Remember Me & Forgot Password --}}
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <div class="form-check">
