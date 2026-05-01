@@ -111,6 +111,7 @@
         .ttd-image {
             max-height: 80px;
             margin: 10px 0;
+            object-fit: contain;
         }
         .signature-name {
             font-weight: bold;
@@ -122,12 +123,20 @@
 </head>
 <body>
 
-    <!-- KOP SURAT (Harus pakai tabel agar aman di PDF) -->
+    <!-- KOP SURAT -->
     <table class="header-table">
         <tr>
             <td width="15%" class="text-center">
-                <!-- Jika logo tidak muncul di PDF, ganti URL ini dengan path lokal, contoh: public_path('storage/uploads/sancaka.png') -->
-                <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Logo" class="logo">
+                @php
+                    // Convert URL Eksternal ke Base64 agar tembus di DomPDF
+                    $logoUrl = 'https://tokosancaka.com/storage/uploads/sancaka.png';
+                    $logoData = @file_get_contents($logoUrl);
+                    $logoBase64 = $logoData ? 'data:image/png;base64,' . base64_encode($logoData) : '';
+                @endphp
+                
+                @if($logoBase64)
+                    <img src="{{ $logoBase64 }}" alt="Logo" class="logo">
+                @endif
             </td>
             <td width="85%">
                 <h1 class="company-name">SANCAKA KARYA HUTAMA</h1>
@@ -202,21 +211,49 @@
     <table class="signature-table">
         <tr>
             <td>
-                <p style="margin-bottom: 60px;">Dibuat Oleh,</p>
+                <p style="margin-bottom: 10px;">Dibuat Oleh,</p>
                 
-                {{-- Jika ada sistem upload gambar TTD, tampilkan di sini. Jika tidak, biarkan kosong untuk TTD basah --}}
-                @if($kas->ttd_pembuat)
-                    <!-- <img src="{{ public_path('storage/' . $kas->ttd_pembuat) }}" class="ttd-image" alt="TTD"> -->
+                @php
+                    $base64TtdPembuat = '';
+                    if($kas->ttd_pembuat) {
+                        // Ambil path fisik file di server
+                        $pathTtd1 = public_path('storage/' . $kas->ttd_pembuat);
+                        if(file_exists($pathTtd1)) {
+                            $ext1 = pathinfo($pathTtd1, PATHINFO_EXTENSION);
+                            $data1 = file_get_contents($pathTtd1);
+                            $base64TtdPembuat = 'data:image/' . $ext1 . ';base64,' . base64_encode($data1);
+                        }
+                    }
+                @endphp
+
+                @if($base64TtdPembuat)
+                    <img src="{{ $base64TtdPembuat }}" class="ttd-image" alt="TTD Pembuat">
+                @else
+                    <div style="height: 80px;"></div> <!-- Spasi kosong jika tidak ada TTD -->
                 @endif
                 
                 <p class="signature-name">{{ $kas->nama_pembuat ?? '..................................' }}</p>
                 <p style="margin:0; font-size:10px;">Admin</p>
             </td>
             <td>
-                <p style="margin-bottom: 60px;">Diketahui Oleh,</p>
+                <p style="margin-bottom: 10px;">Diketahui Oleh,</p>
                 
-                @if($kas->ttd_pimpinan)
-                    <!-- <img src="{{ public_path('storage/' . $kas->ttd_pimpinan) }}" class="ttd-image" alt="TTD"> -->
+                @php
+                    $base64TtdPimpinan = '';
+                    if($kas->ttd_pimpinan) {
+                        $pathTtd2 = public_path('storage/' . $kas->ttd_pimpinan);
+                        if(file_exists($pathTtd2)) {
+                            $ext2 = pathinfo($pathTtd2, PATHINFO_EXTENSION);
+                            $data2 = file_get_contents($pathTtd2);
+                            $base64TtdPimpinan = 'data:image/' . $ext2 . ';base64,' . base64_encode($data2);
+                        }
+                    }
+                @endphp
+
+                @if($base64TtdPimpinan)
+                    <img src="{{ $base64TtdPimpinan }}" class="ttd-image" alt="TTD Pimpinan">
+                @else
+                    <div style="height: 80px;"></div> <!-- Spasi kosong jika tidak ada TTD -->
                 @endif
 
                 <p class="signature-name">{{ $kas->nama_pimpinan ?? 'PIMPINAN AZKEN PARKIR' }}</p>
