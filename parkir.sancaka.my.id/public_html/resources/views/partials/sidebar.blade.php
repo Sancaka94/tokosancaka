@@ -44,6 +44,14 @@
                     </a>
                 </li>
 
+                {{-- INI KODE BARU YANG DITAMBAHKAN UNTUK RIWAYAT KAS --}}
+                <li>
+                    <a href="{{ route('kas.index') }}" class="flex items-center gap-2 px-4 py-2 hover:bg-blue-700 transition-colors {{ request()->routeIs('kas.*') ? 'bg-blue-800 border-l-4 border-white' : '' }}">
+                        <span>🧾</span> Riwayat Kas Harian
+                    </a>
+                </li>
+                {{-- AKHIR KODE BARU --}}
+
                 @if(in_array(auth()->user()->role, ['superadmin', 'admin']))
                     <li class="px-4 py-2 mt-4 text-xs font-semibold text-blue-200 uppercase tracking-wider">Master Data</li>
                     <li>
