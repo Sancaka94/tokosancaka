@@ -86,36 +86,60 @@
                 </div>
 
                 <!-- BAGIAN TANDA TANGAN -->
-                <div class="row mt-5 text-center">
-                    <div class="col-md-4">
-                        <p class="mb-1">Dibuat Oleh,</p>
-                        <div class="signature-box bg-light border rounded position-relative d-flex justify-content-center align-items-center mx-auto" style="height: 120px; width: 80%; cursor: pointer;">
-                            <input type="file" name="ttd_pembuat" accept="image/png, image/jpeg" class="position-absolute w-100 h-100" style="opacity: 0; z-index: 2; cursor: pointer;" onchange="previewSig(this, 'imgPembuat', 'textPembuat')">
-                            <span id="textPembuat" class="text-muted small"><i class="fa-solid fa-cloud-arrow-up"></i> Upload TTD<br>(PNG/JPG)</span>
-                            <img id="imgPembuat" src="#" alt="TTD Pembuat" style="max-height: 100px; max-width: 100%; display: none; position: relative; z-index: 1;">
+                <div class="d-flex justify-content-between mt-5 px-3 text-center">
+                    
+                    <!-- Tanda Tangan Kiri (Pembuat) -->
+                    <div style="width: 280px;">
+                        <p class="mb-2 fw-bold text-muted">Dibuat Oleh,</p>
+                        <div class="bg-light border border-2 border-secondary border-opacity-25 rounded position-relative d-flex justify-content-center align-items-center mx-auto" style="height: 130px; cursor: pointer; overflow: hidden; border-style: dashed !important;">
+                            
+                            {{-- Input File (Z-index paling tinggi, w-100 h-100, top-0 start-0 agar menutupi seluruh kotak dan BISA DIKLIK) --}}
+                            <input type="file" name="ttd_pembuat" accept="image/png, image/jpeg" class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0; z-index: 10; cursor: pointer;" onchange="previewSig(this, 'imgPembuat', 'textPembuat')">
+                            
+                            {{-- Teks Panduan Upload --}}
+                            <div id="textPembuat" class="text-muted small" style="pointer-events: none;">
+                                <i class="fas fa-cloud-upload-alt mb-1 fs-3 text-primary"></i><br>Klik Upload TTD<br><small>(PNG/JPG)</small>
+                            </div>
+                            
+                            {{-- Preview Gambar --}}
+                            <img id="imgPembuat" src="#" alt="TTD Pembuat" class="position-absolute top-0 start-0 w-100 h-100" style="object-fit: contain; display: none; z-index: 5; padding: 5px;">
+                            
                         </div>
-                        <div class="mt-2 mx-auto" style="width: 80%;">
-                            <input type="text" name="nama_pembuat" class="form-control text-center border-0 border-bottom bg-transparent fw-bold" placeholder="Nama Admin..." required>
+                        <div class="mt-2">
+                            <input type="text" name="nama_pembuat" class="form-control text-center border-0 border-bottom border-dark bg-transparent fw-bold px-0 rounded-0" placeholder="Ketik Nama Admin..." value="{{ auth()->user()->name ?? '' }}" required>
                         </div>
                     </div>
 
-                    <div class="col-md-4 offset-md-4">
-                        <p class="mb-1">Diketahui Oleh,</p>
-                        <div class="signature-box bg-light border rounded position-relative d-flex justify-content-center align-items-center mx-auto" style="height: 120px; width: 80%; cursor: pointer;">
-                            <input type="file" name="ttd_pimpinan" accept="image/png, image/jpeg" class="position-absolute w-100 h-100" style="opacity: 0; z-index: 2; cursor: pointer;" onchange="previewSig(this, 'imgPimpinan', 'textPimpinan')">
-                            <span id="textPimpinan" class="text-muted small"><i class="fa-solid fa-cloud-arrow-up"></i> Upload TTD<br>(PNG/JPG)</span>
-                            <img id="imgPimpinan" src="#" alt="TTD Pimpinan" style="max-height: 100px; max-width: 100%; display: none; position: relative; z-index: 1;">
+                    <!-- Tanda Tangan Kanan (Pimpinan) -->
+                    <div style="width: 280px;">
+                        <p class="mb-2 fw-bold text-muted">Diketahui Oleh,</p>
+                        <div class="bg-light border border-2 border-secondary border-opacity-25 rounded position-relative d-flex justify-content-center align-items-center mx-auto" style="height: 130px; cursor: pointer; overflow: hidden; border-style: dashed !important;">
+                            
+                            {{-- Input File --}}
+                            <input type="file" name="ttd_pimpinan" accept="image/png, image/jpeg" class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0; z-index: 10; cursor: pointer;" onchange="previewSig(this, 'imgPimpinan', 'textPimpinan')">
+                            
+                            {{-- Teks Panduan Upload --}}
+                            <div id="textPimpinan" class="text-muted small" style="pointer-events: none;">
+                                <i class="fas fa-cloud-upload-alt mb-1 fs-3 text-primary"></i><br>Klik Upload TTD<br><small>(PNG/JPG)</small>
+                            </div>
+                            
+                            {{-- Preview Gambar --}}
+                            <img id="imgPimpinan" src="#" alt="TTD Pimpinan" class="position-absolute top-0 start-0 w-100 h-100" style="object-fit: contain; display: none; z-index: 5; padding: 5px;">
+                            
                         </div>
-                        <div class="mt-2 mx-auto" style="width: 80%;">
-                            <input type="text" name="nama_pimpinan" class="form-control text-center border-0 border-bottom bg-transparent fw-bold" value="Pimpinan Sancaka" placeholder="Nama Pimpinan..." required>
+                        <div class="mt-2">
+                            <input type="text" name="nama_pimpinan" class="form-control text-center border-0 border-bottom border-dark bg-transparent fw-bold px-0 rounded-0" value="Pimpinan AZKEN PARKIR" placeholder="Ketik Nama Pimpinan..." required>
                         </div>
                     </div>
+                    
                 </div>
 
-                <div class="text-end mt-5 border-top pt-3">
+                <!-- TOMBOL SIMPAN -->
+                <div class="text-end mt-5 border-top pt-4">
                     <a href="{{ route('kas.index') }}" class="btn btn-secondary px-4 btn-lg me-2">Batal</a>
-                    <button type="submit" class="btn btn-primary px-5 btn-lg">Simpan Laporan Kas</button>
+                    <button type="submit" class="btn btn-primary px-5 btn-lg fw-bold"><i class="fas fa-save me-2"></i> Simpan Laporan Kas</button>
                 </div>
+
             </form>
         </div>
     </div>
