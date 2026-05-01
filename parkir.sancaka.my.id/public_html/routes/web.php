@@ -130,6 +130,7 @@ Route::get('/laporan/bulanan/pdf', [App\Http\Controllers\DashboardController::cl
 
 Route::get('/laporan/bulanan/pdf-umum', [App\Http\Controllers\DashboardController::class, 'exportBulananPdfUmum'])->name('laporan.bulanan.pdf.umum');
 
+Route::post('/kas/get-pemasukan', [App\Http\Controllers\KasController::class, 'getPemasukan'])->name('kas.getPemasukan');
 
 // Rute otomatis untuk CRUD
 Route::resource('kas', KasController::class);

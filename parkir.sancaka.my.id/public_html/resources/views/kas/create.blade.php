@@ -25,23 +25,27 @@
                 
                 <!-- BAGIAN INFORMASI & PEMASUKAN OTOMATIS -->
                 <div class="row mb-4 bg-light p-3 rounded border">
-                    <div class="col-md-6">
-                        <div class="mb-2">
-                            <label class="fw-bold">Tanggal Laporan</label>
-                            <input type="date" class="form-control" name="tanggal" value="{{ date('Y-m-d') }}" required>
+                    <div class="col-md-7">
+                        <label class="fw-bold mb-2">Rentang Waktu Laporan</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white">Dari</span>
+                            <input type="date" class="form-control" name="tanggal_mulai" id="tanggal_mulai" required>
+                            
+                            <span class="input-group-text bg-white border-start-0 border-end-0">s/d</span>
+                            
+                            <input type="date" class="form-control" name="tanggal_akhir" id="tanggal_akhir" required>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="mb-2 text-md-end">
-                            <label class="fw-bold text-success">Pemasukan Parkiran (Otomatis dari Sistem)</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-success text-white">Rp</span>
-                                {{-- Variabel $totalPemasukanParkir harus dikirim dari Controller --}}
-                                <input type="text" class="form-control text-end fw-bold text-success bg-white" value="{{ number_format($totalPemasukanParkir ?? 0, 0, ',', '.') }}" readonly>
-                                
-                                {{-- Hidden input untuk perhitungan JavaScript --}}
-                                <input type="hidden" id="pemasukanOtomatis" value="{{ $totalPemasukanParkir ?? 0 }}">
-                            </div>
+                    <div class="col-md-5 mt-3 mt-md-0">
+                        <label class="fw-bold text-success mb-2">Pemasukan Parkiran (Otomatis)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-success text-white">Rp</span>
+                            
+                            {{-- Input ini hanya untuk tampilan visual (ada id="displayPemasukan") --}}
+                            <input type="text" id="displayPemasukan" class="form-control text-end fw-bold text-success bg-white" value="0" readonly placeholder="Pilih tanggal dulu">
+                            
+                            {{-- Input hidden ini yang akan dikirim ke Controller dan dihitung oleh JS --}}
+                            <input type="hidden" name="pemasukan_sistem" id="pemasukanOtomatis" value="0">
                         </div>
                     </div>
                 </div>
@@ -231,5 +235,46 @@
             document.getElementById(textId).style.display = 'block';
         }
     }
+
+    // === FITUR AJAX AMBIL DATA PEMASUKAN ===
+    document.getElementById('tanggal_mulai').addEventListener('change', fetchPemasukan);
+    document.getElementById('tanggal_akhir').addEventListener('change', fetchPemasukan);
+
+    function fetchPemasukan() {
+        let tglMulai = document.getElementById('tanggal_mulai').value;
+        let tglAkhir = document.getElementById('tanggal_akhir').value;
+
+        // Jika kedua tanggal sudah dipilih
+        if (tglMulai && tglAkhir) {
+            let displayInput = document.getElementById('displayPemasukan');
+            displayInput.value = 'Menghitung...'; // Beri indikator visual
+
+            fetch('{{ route("kas.getPemasukan") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    tanggal_mulai: tglMulai,
+                    tanggal_akhir: tglAkhir
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Update form tersembunyi
+                document.getElementById('pemasukanOtomatis').value = data.total;
+                // Update form tampilan
+                displayInput.value = formatRupiah(data.total);
+                // Langsung hitung ulang saldo bersih
+                kalkulasi(); 
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                displayInput.value = 'Gagal memuat';
+            });
+        }
+    }
+    
 </script>
 @endsection

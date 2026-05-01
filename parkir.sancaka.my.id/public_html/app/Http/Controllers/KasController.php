@@ -81,7 +81,7 @@ class KasController extends Controller
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
-    
+
 
     // Menghapus Data
     public function destroy($id)
@@ -181,6 +181,21 @@ class KasController extends Controller
             DB::rollBack();
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
+    }
+
+    // Fungsi AJAX untuk mengambil total pemasukan parkir berdasarkan rentang tanggal
+    public function getPemasukan(Request $request)
+    {
+        $request->validate([
+            'tanggal_mulai' => 'required|date',
+            'tanggal_akhir' => 'required|date',
+        ]);
+
+        $totalPemasukan = \App\Models\Transaction::whereDate('exit_time', '>=', $request->tanggal_mulai)
+                            ->whereDate('exit_time', '<=', $request->tanggal_akhir)
+                            ->sum(\DB::raw('fee + IFNULL(toilet_fee, 0)'));
+
+        return response()->json(['total' => (float) $totalPemasukan]);
     }
 
 }
