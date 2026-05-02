@@ -13,7 +13,8 @@
         <!-- Header -->
         <div class="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
             <h1 class="text-2xl font-semibold tracking-tight text-black">Data Kota</h1>
-            <a href="{{ route('dashboard') }}" class="text-sm text-gray-500 hover:text-black transition-colors">
+            <a href="{{ route('dashboard') }}" 
+            class="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors inline-flex items-center">
                 &larr; Kembali ke Dashboard
             </a>
         </div>
@@ -310,7 +311,7 @@
             <div class="mt-6 mb-10">
                 {{ $cities->links() }}
             </div>
-            
+
     </div>
 
 </body>
