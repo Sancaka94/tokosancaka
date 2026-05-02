@@ -36,7 +36,7 @@
                 </a>
 
                 <!-- Tombol Kembali ke Dashboard -->
-                <a href="{{ route('dashboard.index') }}" 
+                <a href="https://bolone.sancaka.my.id/dashboard" 
                    class="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors inline-flex items-center shadow-sm">
                     &larr; Kembali Ke Dashboard
                 </a>
