@@ -6,7 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CityController;
 use App\Http\Controllers\TransactionController;
 
-Route::get('/transaksi/input', [TransactionController::class, 'create'])->name('transactions.create');
+Route::get('/cities/create', [App\Http\Controllers\CityController::class, 'create'])->name('cities.create');
 Route::post('/transaksi/store', [TransactionController::class, 'store'])->name('transactions.store');
 
 Route::get('/', function () {

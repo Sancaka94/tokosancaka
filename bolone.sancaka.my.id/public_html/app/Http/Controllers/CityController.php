@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\City;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Facades\Excel; // Tambahan library Excel
+use Maatwebsite\Excel\Facades\Excel;
 
 class CityController extends Controller
 {
@@ -22,23 +22,46 @@ class CityController extends Controller
             });
         }
 
-        // 2. Filter Tanggal Mulai (Mencari data yang dibuat SETELAH atau PADA tanggal ini)
+        // 2. Filter Tanggal Mulai
         if ($request->filled('start_date')) {
             $query->whereDate('created_at', '>=', $request->start_date);
         }
 
-        // 3. Filter Tanggal Sampai (Mencari data yang dibuat SEBELUM atau PADA tanggal ini)
+        // 3. Filter Tanggal Sampai
         if ($request->filled('end_date')) {
             $query->whereDate('created_at', '<=', $request->end_date);
         }
 
-        // LOG LOG - Paginate 20 Data dan bawa parameter pencarian ke halaman berikutnya
+        // LOG LOG - Paginate 20 Data
         $cities = $query->orderBy('id', 'desc')->paginate(10);
         
-        // Memastikan saat pindah halaman 2,3, dst.. nilai filter di URL tidak hilang
         $cities->appends($request->all());
 
         return view('cities.index', compact('cities'));
+    }
+
+    // --- METODE BARU: create() ---
+    // Berfungsi menampilkan form tambah data manual
+    public function create()
+    {
+        return view('cities.create');
+    }
+
+    // --- METODE BARU: store() ---
+    // Berfungsi menyimpan data manual dari form ke database
+    public function store(Request $request)
+    {
+        $request->validate([
+            'nama_kota'  => 'required|string|max:255',
+            'keterangan' => 'nullable|string'
+        ]);
+
+        City::create([
+            'nama_kota'  => $request->nama_kota,
+            'keterangan' => $request->keterangan
+        ]);
+
+        return redirect()->route('cities.index')->with('success', 'Data kota berhasil ditambahkan secara manual.');
     }
 
     public function destroy($id)
@@ -47,7 +70,6 @@ class CityController extends Controller
         return redirect()->route('cities.index')->with('success', 'Data berhasil dihapus.');
     }
 
-    // LOG LOG - Fungsi untuk mengunduh template CSV
     public function downloadExample()
     {
         $headers = [
@@ -68,7 +90,6 @@ class CityController extends Controller
 
     public function import(Request $request)
     {
-        // Validasi diperluas untuk menerima Excel (.xlsx, .xls)
         $request->validate([
             'file' => 'required|file|mimes:csv,txt,xlsx,xls|max:5120',
         ]);
@@ -76,15 +97,11 @@ class CityController extends Controller
         $file = $request->file('file');
         $extension = $file->getClientOriginalExtension();
 
-        // LOG LOG - Percabangan deteksi format file
         if (in_array(strtolower($extension), ['csv', 'txt'])) {
-            
-            // --- LOGIKA 1: Jika file adalah CSV mentah (Super Cepat) ---
             $fileHandle = fopen($file->getPathname(), 'r');
-            fgetcsv($fileHandle); // Lewati baris 1 (Header)
+            fgetcsv($fileHandle); 
 
             while (($row = fgetcsv($fileHandle, 1000, ',')) !== false) {
-                // Pastikan kolom 0 (Nama) dan 1 (Keterangan) ada isinya
                 if(!empty($row[0]) && !empty($row[1])) {
                     City::create([
                         'nama_kota' => $row[0],
@@ -95,18 +112,13 @@ class CityController extends Controller
             fclose($fileHandle);
 
         } else {
-            
-            // --- LOGIKA 2: Jika file adalah XLSX / XLS asli (Menggunakan Library) ---
-            // Excel::toArray otomatis membaca seluruh isi file menjadi Array PHP
             $dataArray = Excel::toArray([], $file);
 
             if (!empty($dataArray) && isset($dataArray[0])) {
-                $sheet = $dataArray[0]; // Ambil Sheet Pertama
-                
-                array_shift($sheet); // Buang baris 1 (Header)
+                $sheet = $dataArray[0]; 
+                array_shift($sheet); 
 
                 foreach ($sheet as $row) {
-                    // Cek apakah data Excel di kolom A dan B tidak kosong
                     if(!empty($row[0]) && !empty($row[1])) {
                         City::create([
                             'nama_kota' => $row[0],
@@ -117,17 +129,14 @@ class CityController extends Controller
             }
         }
 
-        // LOG LOG - Respons untuk AJAX Progress Bar
         if ($request->ajax()) {
             session()->flash('success', 'File Spreadsheet (CSV/Excel) berhasil diunggah dan diproses!');
             return response()->json(['status' => 'success']);
         }
 
         return redirect()->route('cities.index')->with('success', 'File Spreadsheet (CSV/Excel) berhasil diunggah dan diproses!');
-
     }
 
-    // LOG LOG - Fungsi untuk memproses update data dari Modal
     public function update(Request $request, $id)
     {
         $request->validate([
