@@ -29,7 +29,7 @@
         <!-- Area Grafik -->
         <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm max-w-2xl">
             <h2 class="text-sm font-medium text-gray-500 mb-4">Grafik Berdasarkan Keterangan</h2>
-            <canvas id="myChart" height="400"></canvas>
+            <canvas id="myChart"></canvas>
         </div>
     </div>
 
