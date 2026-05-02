@@ -4,6 +4,10 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CityController;
+use App\Http\Controllers\TransactionController;
+
+Route::get('/transaksi/input', [TransactionController::class, 'create'])->name('transactions.create');
+Route::post('/transaksi/store', [TransactionController::class, 'store'])->name('transactions.store');
 
 Route::get('/', function () {
     return view('welcome');
