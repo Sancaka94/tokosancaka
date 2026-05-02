@@ -4,39 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Analitik</title>
-    <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans antialiased">
 
     <div class="max-w-7xl mx-auto p-8">
-        <!-- Header -->
         <div class="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
             <h1 class="text-2xl font-semibold tracking-tight text-black">Dashboard Analitik</h1>
-            <a href="{{ route('cities.index') }}" 
-            class="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 border border-black transition-colors">
-                Kelola Data Kota
-            </a>
+            
+            <div class="flex items-center space-x-3">
+                <a href="#" target="_blank"
+                   class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export PDF
+                </a>
+
+                <a href="{{ route('cities.index') }}" 
+                   class="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 border border-black transition-colors shadow-sm">
+                    Kelola Data Kota
+                </a>
+            </div>
         </div>
 
-        <!-- Stat Cards Section -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <!-- Total Data -->
             <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
                 <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Total Data Masuk</p>
                 <p class="text-3xl font-extrabold text-black mt-2">{{ $totalData }}</p>
                 <p class="text-xs text-gray-400 mt-1 italic">Semua Wilayah</p>
             </div>
 
-            <!-- Tertinggi -->
             <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-l-green-700">
                 <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Wilayah Tertinggi</p>
                 <p class="text-3xl font-extrabold text-black mt-2">{{ $chartData->max('total') }}</p>
                 <p class="text-sm font-medium text-gray-600 mt-1">{{ $chartData->sortByDesc('total')->first()->nama_kota ?? '-' }}</p>
             </div>
 
-            <!-- Terendah -->
             <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-l-red-700">
                 <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Wilayah Terendah</p>
                 <p class="text-3xl font-extrabold text-black mt-2">{{ $chartData->min('total') }}</p>
@@ -44,10 +49,8 @@
             </div>
         </div>
 
-        <!-- Area Grafik (Dua Kolom) -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <!-- Kolom Kiri: Grafik Bar (Mendatar) -->
             <div class="lg:col-span-2 bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
                 <h2 class="text-sm font-medium text-gray-500 mb-4 uppercase tracking-tighter">Grafik Berdasarkan Wilayah</h2>
                 <div class="relative h-[500px] w-full">
@@ -55,7 +58,6 @@
                 </div>
             </div>
 
-            <!-- Kolom Kanan: Grafik Bulat -->
             <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
                 <h2 class="text-sm font-medium text-gray-500 mb-4 uppercase tracking-tighter">Distribusi Persentase</h2>
                 <div class="relative h-[400px] w-full flex items-center justify-center">
