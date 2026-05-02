@@ -11,8 +11,8 @@ class DashboardController extends Controller
     {
         // dd('CONTROLLER BERHASIL TERPANGGIL!');
         // LOG LOG - Mengambil data untuk grafik (menghitung jumlah kota berdasarkan keterangan)
-        $chartData = City::selectRaw('keterangan, COUNT(*) as total')
-                         ->groupBy('keterangan')
+        $chartData = City::selectRaw('nama_kota, COUNT(*) as total')
+                         ->groupBy('nama_kota')
                          ->get();
 
         $totalData = City::count();
