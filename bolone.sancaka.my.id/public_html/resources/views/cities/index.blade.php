@@ -25,7 +25,7 @@
         @endif
 
        <!-- Form Upload Card -->
-        <div class="bg-green border border-gray-200 rounded-lg shadow-sm p-6 mb-8">
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-8">
             <div class="flex justify-between items-center mb-5">
                 <div>
                     <h2 class="text-sm font-semibold text-black">Upload File CSV / XLSX</h2>
@@ -44,8 +44,9 @@
                 
                 <!-- Area Drag & Drop -->
                 <div class="w-full">
-                    <label for="file-upload" id="drop-zone" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-all duration-200 ease-in-out group">
-                        <div class="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none">
+                    <!-- LOG LOG - Area Drag & Drop dengan Background Smooth Green -->
+                <label for="file-upload" id="drop-zone" class="flex flex-col items-center justify-center w-full h-32 border-2 border-green-300 border-dashed rounded-lg cursor-pointer bg-green-50 hover:bg-green-100 transition-all duration-200 ease-in-out group">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none">
                             <svg class="w-8 h-8 mb-3 text-gray-400 group-hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                             <p class="mb-2 text-sm text-gray-500"><span class="font-semibold text-black">Klik untuk memilih</span> atau drag and drop file ke sini</p>
                             <p class="text-xs text-gray-400">Format: CSV atau XLSX</p>
@@ -83,19 +84,19 @@
                     e.stopPropagation();
                 }
 
-                // Memberikan efek visual (border hitam) saat file berada di atas kotak
+                // Memberikan efek visual (hijau lebih gelap) saat file berada di atas kotak
                 ['dragenter', 'dragover'].forEach(eventName => {
                     dropZone.addEventListener(eventName, () => {
-                        dropZone.classList.add('bg-gray-200', 'border-black');
-                        dropZone.classList.remove('bg-gray-50', 'border-gray-300');
+                        dropZone.classList.add('bg-green-200', 'border-green-500');
+                        dropZone.classList.remove('bg-green-50', 'border-green-300');
                     }, false);
                 });
 
                 // Menghilangkan efek visual saat file keluar kotak
                 ['dragleave', 'drop'].forEach(eventName => {
                     dropZone.addEventListener(eventName, () => {
-                        dropZone.classList.remove('bg-gray-200', 'border-black');
-                        dropZone.classList.add('bg-gray-50', 'border-gray-300');
+                        dropZone.classList.remove('bg-green-200', 'border-green-500');
+                        dropZone.classList.add('bg-green-50', 'border-green-300');
                     }, false);
                 });
 
