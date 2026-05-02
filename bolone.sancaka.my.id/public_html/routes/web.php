@@ -10,6 +10,10 @@ Route::get('/cities/create', [App\Http\Controllers\CityController::class, 'creat
 Route::get('/transaksi/input', [TransactionController::class, 'create'])->name('transactions.create');
 Route::post('/transaksi/store', [TransactionController::class, 'store'])->name('transactions.store');
 
+// ROUTE BARU UNTUK UPLOAD EXCEL TRANSAKSI
+Route::get('/transaksi/example', [TransactionController::class, 'downloadExample'])->name('transactions.example');
+Route::post('/transaksi/import', [TransactionController::class, 'import'])->name('transactions.import');
+
 Route::get('/', function () {
     return view('welcome');
 });
