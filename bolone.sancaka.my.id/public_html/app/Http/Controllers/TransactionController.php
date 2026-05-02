@@ -124,7 +124,7 @@ class TransactionController extends Controller
             }
         }
 
-        $pesan = "Berhasil mengimpor $berhasil data transaksi.";
+        $pesan = "Berhasil mengimpor $berhasil data input.";
         if ($gagal > 0) {
             $pesan .= " Namun ada $gagal data yang gagal masuk karena Nama Kota tidak ditemukan di database.";
             return redirect()->back()->with('error', $pesan);
