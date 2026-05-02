@@ -9,7 +9,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        dd('CONTROLLER BERHASIL TERPANGGIL!');
+        // dd('CONTROLLER BERHASIL TERPANGGIL!');
         // LOG LOG - Mengambil data untuk grafik (menghitung jumlah kota berdasarkan keterangan)
         $chartData = City::selectRaw('keterangan, COUNT(*) as total')
                          ->groupBy('keterangan')
