@@ -13,6 +13,8 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::get('/dashboard/export-pdf', [DashboardController::class, 'exportPdf'])->name('dashboard.export-pdf');
+
 Route::get('/cities/example-csv', [CityController::class, 'downloadExample'])->name('cities.example');
 
 // Route CRUD & Upload City
