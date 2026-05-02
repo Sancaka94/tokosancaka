@@ -34,7 +34,7 @@
         <div class="mb-8 border-b border-gray-200 pb-4 flex justify-between items-center">
             
             <!-- Sisi Kiri: Judul -->
-            <h1 class="text-2xl font-semibold tracking-tight text-black">Input Data Transaksi Kota</h1>
+            <h1 class="text-2xl font-semibold tracking-tight text-black">Input Data Wilayah Kota</h1>
             
             <!-- Sisi Kanan: Kumpulan Aksi (Tombol Kembali & Logout) -->
             <div class="flex items-center gap-4">
