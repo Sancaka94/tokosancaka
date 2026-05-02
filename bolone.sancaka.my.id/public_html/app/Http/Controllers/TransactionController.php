@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\City;
 use App\Models\CityTransaction;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class TransactionController extends Controller
 {
@@ -131,5 +132,5 @@ class TransactionController extends Controller
 
         return redirect()->back()->with('success', $pesan);
     }
-    
+
 }
