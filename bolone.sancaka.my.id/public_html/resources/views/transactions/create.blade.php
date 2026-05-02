@@ -34,7 +34,7 @@
         <!-- Header -->
         <div class="mb-8 border-b border-gray-200 pb-4 flex justify-between items-center">
             <h1 class="text-2xl font-semibold tracking-tight text-black">Input Data Transaksi Kota</h1>
-            <a href="{{ route('dashboard.index') }}" class="text-sm text-blue-600 hover:underline">Kembali ke Dashboard</a>
+            <a href="{{ route('dashboard') }}" class="text-sm text-blue-600 hover:underline">Kembali ke Dashboard</a>
         </div>
 
         <!-- Alert Sukses -->
