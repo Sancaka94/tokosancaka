@@ -92,7 +92,6 @@
             </div>
         </div>
 
-
         <!-- ================= SECTION MASTER KOTA ================= -->
         <div>
             <h2 class="text-lg font-bold text-black mb-4 border-l-4 border-black pl-3">Statistik Master Data Kota (Frekuensi Input)</h2>
@@ -139,7 +138,7 @@
 
     <!-- Script Chart.js & Highmaps -->
     <script>
-    // Palet Warna Universal (Hanya untuk Pie Chart agar tetap berwarna)
+    // Palet Warna Universal
     const colors = [
         '#000000', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
         '#8b5cf6', '#ec4899', '#06b6d4', '#71717a', '#a855f7',
@@ -199,97 +198,76 @@
         options: pieOptions
     });
 
-   /* =========================================
-       2. DATA & GRAFIK MASTER KOTA (PETA & AUTO-GEOCODE)
+    /* =========================================
+       2. DATA & GRAFIK MASTER KOTA (PETA & PIE)
     ========================================= */
     const rawDataMaster = @json($chartData);
     const labelsMaster = rawDataMaster.map(item => item.nama_kota || 'Tanpa Nama');
     const dataCountsMaster = rawDataMaster.map(item => item.total);
+
+    // PENTING: Untuk menampilkan peta Choropleth ini berfungsi dengan baik, 
+    // pastikan Anda mengirim variabel $chartDataMap dari Controller Laravel Anda.
+    // Format yang dibutuhkan: 
+    // [ { "hc-key": "id-ji", "value": 150, "name": "Jawa Timur", "cities": [ { "name": "Surabaya", "count": 100 } ] } ]
     
-    // Pisahkan mana yang sudah punya koordinat, dan mana yang masih NULL
-    let mapDataMaster = [];
-    let citiesToGeocode = [];
+    // Fallback sementara jika data peta dari backend belum siap, gunakan array kosong
+    const mapDataMaster = @json($chartDataMap ?? []);
 
-    rawDataMaster.forEach((item, index) => {
-        if (item.latitude !== null && item.longitude !== null) {
-            // Jika sudah ada di DB, langsung masukkan ke peta
-            mapDataMaster.push({
-                name: item.nama_kota,
-                z: parseInt(item.total),
-                lat: parseFloat(item.latitude),
-                lon: parseFloat(item.longitude),
-                color: colors[index % colors.length]
-            });
-        } else {
-            // Jika NULL, antrikan untuk dicari otomatis oleh script
-            citiesToGeocode.push({
-                name: item.nama_kota,
-                z: parseInt(item.total),
-                indexColor: index
-            });
-        }
-    });
-
-    // Inisialisasi Peta
+    // Inisialisasi Peta (Choropleth Map)
     const mapChart = Highcharts.mapChart('mapChartMaster', {
-        chart: { map: 'countries/id/id-all', backgroundColor: 'transparent' },
+        chart: { 
+            map: 'countries/id/id-all', 
+            backgroundColor: 'transparent' 
+        },
         title: { text: null },
-        mapNavigation: { enabled: true, buttonOptions: { verticalAlign: 'bottom' } },
+        mapNavigation: { 
+            enabled: true, 
+            buttonOptions: { verticalAlign: 'bottom' } 
+        },
+        colorAxis: {
+            min: 0,
+            minColor: '#e0f2fe', // Warna biru muda
+            maxColor: '#0369a1'  // Warna biru tua
+        },
         tooltip: {
             useHTML: true,
-            pointFormat: '<span style="color:{point.color}">\u25CF</span> <b>{point.name}</b><br/>Frekuensi: <b>{point.z}</b>'
+            formatter: function () {
+                let html = `<div style="min-width: 150px; padding: 5px;">
+                                <strong style="font-size: 14px; border-bottom: 1px solid #ccc; display: block; padding-bottom: 5px; margin-bottom: 5px;">
+                                    ${this.point.name}
+                                </strong>`;
+                
+                if (this.point.cities && this.point.cities.length > 0) {
+                    html += `<ul style="margin: 0; padding-left: 15px; font-size: 12px; color: #333;">`;
+                    this.point.cities.forEach(city => {
+                        html += `<li>${city.name}: <b>${city.count}</b></li>`;
+                    });
+                    html += `</ul>`;
+                } else {
+                    html += `<span style="font-size: 12px; color: #666;">Tidak ada data terinci</span>`;
+                }
+                
+                html += `</div>`;
+                return html;
+            }
         },
         series: [
-            { name: 'Provinsi', borderColor: '#e5e7eb', nullColor: '#f9fafb', showInLegend: false }, 
-            { type: 'mapbubble', name: 'Frekuensi Wilayah', minSize: 10, maxSize: 40, data: mapDataMaster }
+            {
+                type: 'map',
+                name: 'Provinsi',
+                joinBy: 'hc-key',
+                data: mapDataMaster,
+                states: {
+                    hover: { color: '#fca5a5' } // Warna saat di-hover
+                },
+                dataLabels: { 
+                    enabled: true, 
+                    format: '{point.name}',
+                    style: { fontSize: '10px', fontWeight: 'normal', textOutline: 'none' }
+                }
+            }
         ]
     });
-
-    // ==============================================================
-    // AUTO-GEOCODE: Cari titik yang NULL dan kirim ke Database
-    // ==============================================================
-    if (citiesToGeocode.length > 0) {
-        console.log(`Ada ${citiesToGeocode.length} kota yang koordinatnya NULL. Mencari otomatis...`);
-        
-        citiesToGeocode.forEach((city, i) => {
-            // Beri jeda 1.5 detik per kota agar API Nominatim tidak memblokir browser user
-            setTimeout(async () => {
-                try {
-                    // 1. Cari titik via OpenStreetMap API
-                    let response = await fetch(`https://nominatim.openstreetmap.org/search?q=${city.name}, Indonesia&format=json&limit=1`);
-                    let data = await response.json();
-
-                    if (data.length > 0) {
-                        let lat = parseFloat(data[0].lat);
-                        let lon = parseFloat(data[0].lon);
-
-                        // 2. Tambahkan titik ke peta secara REAL-TIME tanpa refresh!
-                        mapChart.series[1].addPoint({
-                            name: city.name,
-                            z: city.z,
-                            lat: lat,
-                            lon: lon,
-                            color: colors[city.indexColor % colors.length]
-                        });
-
-                        // 3. Kirim data lat & lon ke Database via AJAX
-                        await fetch('{{ route("cities.update-coords") }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                            },
-                            body: JSON.stringify({ nama_kota: city.name, lat: lat, lon: lon })
-                        });
-
-                        console.log(`Berhasil menyimpan koordinat ${city.name} ke database!`);
-                    }
-                } catch (error) {
-                    console.error(`Gagal mencari koordinat untuk ${city.name}`, error);
-                }
-            }, i * 1500); // <-- Jeda 1500ms
-        });
-    }
 
     // Doughnut Chart Master
     new Chart(document.getElementById('pieChartMaster'), {

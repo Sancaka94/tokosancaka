@@ -34,6 +34,38 @@ class DashboardController extends Controller
         }
     }
 
+    // ==============================================================
+    // FUNGSI HELPER BARU: Memetakan Kota ke Provinsi (Untuk Highmaps)
+    // ==============================================================
+    // Catatan: Karena database saat ini sepertinya belum punya relasi ke tabel Provinsi,
+    // ini adalah fungsi mapping statis sementara. Idealnya, relasikan tabel kota -> provinsi di database.
+    private function mapCityToProvince(string $cityName): array
+    {
+        $cityName = strtolower(trim($cityName));
+        
+        // Contoh pemetaan dasar. Silakan lengkapi sesuai data master rute logistik Anda.
+        $jatim = ['surabaya', 'malang', 'sidoarjo', 'gresik', 'ngawi', 'madiun', 'kediri'];
+        $jabar = ['bandung', 'bogor', 'depok', 'bekasi', 'cirebon', 'garut'];
+        $jateng = ['semarang', 'solo', 'surakarta', 'magelang', 'tegal', 'klaten'];
+        $dki = ['jakarta', 'jakarta pusat', 'jakarta selatan', 'jakarta timur', 'jakarta barat', 'jakarta utara'];
+        $banten = ['tangerang', 'tangerang selatan', 'serang', 'cilegon'];
+
+        if (in_array($cityName, $jatim)) {
+            return ['hc-key' => 'id-ji', 'name' => 'Jawa Timur'];
+        } elseif (in_array($cityName, $jabar)) {
+            return ['hc-key' => 'id-jb', 'name' => 'Jawa Barat'];
+        } elseif (in_array($cityName, $jateng)) {
+            return ['hc-key' => 'id-jt', 'name' => 'Jawa Tengah'];
+        } elseif (in_array($cityName, $dki)) {
+            return ['hc-key' => 'id-jk', 'name' => 'DKI Jakarta'];
+        } elseif (in_array($cityName, $banten)) {
+            return ['hc-key' => 'id-bt', 'name' => 'Banten'];
+        }
+
+        // Jika kota belum terdaftar di atas
+        return ['hc-key' => 'unknown', 'name' => 'Belum Dipetakan'];
+    }
+
     public function index()
     {
         // ==========================================
@@ -76,7 +108,42 @@ class DashboardController extends Controller
             ->orderBy('total_jumlah', 'desc')
             ->get();
 
-        return view('dashboard', compact('chartData', 'totalData', 'totalTransaksi', 'chartDataTransaksi'));
+        // ==========================================
+        // 3. GROUPING DATA UNTUK PETA CHOROPLETH (BARU)
+        // ==========================================
+        $provinceGroups = [];
+
+        foreach ($chartData as $city) {
+            $provinceInfo = $this->mapCityToProvince($city->nama_kota);
+            
+            // Lewati jika kota tidak diketahui provinsinya (agar peta tidak error)
+            if ($provinceInfo['hc-key'] === 'unknown') continue;
+
+            $hcKey = $provinceInfo['hc-key'];
+
+            // Jika provinsi belum ada di array, inisialisasi dulu
+            if (!isset($provinceGroups[$hcKey])) {
+                $provinceGroups[$hcKey] = [
+                    'hc-key' => $hcKey,
+                    'name' => $provinceInfo['name'],
+                    'value' => 0, // Total value akan mempengaruhi kepekatan warna provinsi
+                    'cities' => [] // Array untuk memuat detail kota saat di-hover
+                ];
+            }
+
+            // Tambahkan data ke provinsi tersebut
+            $provinceGroups[$hcKey]['value'] += $city->total;
+            $provinceGroups[$hcKey]['cities'][] = [
+                'name' => $city->nama_kota,
+                'count' => $city->total
+            ];
+        }
+
+        // Reset Index Array agar format JSON valid saat dikirim ke Blade
+        $chartDataMap = array_values($provinceGroups);
+
+        // Tambahkan $chartDataMap ke function compact
+        return view('dashboard', compact('chartData', 'totalData', 'totalTransaksi', 'chartDataTransaksi', 'chartDataMap'));
     }
 
     public function exportPdf()
