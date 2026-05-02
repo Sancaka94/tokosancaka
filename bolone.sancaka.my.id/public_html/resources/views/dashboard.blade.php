@@ -32,27 +32,27 @@
         </div>
 
         <!-- ================= SECTION TRANSAKSI ================= -->
-        <div class="mb-10">
-            <h2 class="text-lg font-bold text-gray-800 mb-4 border-l-4 border-blue-600 pl-3">Statistik Transaksi (Berdasarkan Jumlah Input)</h2>
+        <div class="mb-12">
+            <h2 class="text-lg font-bold text-black mb-4 border-l-4 border-black pl-3">Statistik Transaksi (Berdasarkan Jumlah Input)</h2>
             
             <!-- Stat Cards Transaksi -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <!-- Total Transaksi -->
                 <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
                     <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Total Jumlah Transaksi</p>
-                    <p class="text-3xl font-extrabold text-blue-600 mt-2">{{ $totalTransaksi ?? 0 }}</p>
+                    <p class="text-3xl font-extrabold text-black mt-2">{{ $totalTransaksi ?? 0 }}</p>
                     <p class="text-xs text-gray-400 mt-1 italic">Akumulasi Semua Wilayah</p>
                 </div>
 
                 <!-- Transaksi Tertinggi -->
-                <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-l-blue-600">
+                <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-black">
                     <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Wilayah Transaksi Tertinggi</p>
                     <p class="text-3xl font-extrabold text-black mt-2">{{ $chartDataTransaksi->max('total_jumlah') ?? 0 }}</p>
                     <p class="text-sm font-medium text-gray-600 mt-1">{{ $chartDataTransaksi->sortByDesc('total_jumlah')->first()->nama_kota ?? '-' }}</p>
                 </div>
 
                 <!-- Transaksi Terendah -->
-                <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-l-orange-500">
+                <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-black">
                     <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Wilayah Transaksi Terendah</p>
                     <p class="text-3xl font-extrabold text-black mt-2">{{ $chartDataTransaksi->min('total_jumlah') ?? 0 }}</p>
                     <p class="text-sm font-medium text-gray-600 mt-1">{{ $chartDataTransaksi->sortBy('total_jumlah')->first()->nama_kota ?? '-' }}</p>
@@ -79,7 +79,7 @@
 
         <!-- ================= SECTION MASTER KOTA ================= -->
         <div>
-            <h2 class="text-lg font-bold text-gray-800 mb-4 border-l-4 border-green-600 pl-3">Statistik Master Data Kota (Frekuensi Input)</h2>
+            <h2 class="text-lg font-bold text-black mb-4 border-l-4 border-black pl-3">Statistik Master Data Kota (Frekuensi Input)</h2>
             
             <!-- Stat Cards Master Kota -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -89,13 +89,13 @@
                     <p class="text-xs text-gray-400 mt-1 italic">Frekuensi Terdaftar</p>
                 </div>
 
-                <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-l-green-700">
+                <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-black">
                     <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Frekuensi Tertinggi</p>
                     <p class="text-3xl font-extrabold text-black mt-2">{{ $chartData->max('total') }}</p>
                     <p class="text-sm font-medium text-gray-600 mt-1">{{ $chartData->sortByDesc('total')->first()->nama_kota ?? '-' }}</p>
                 </div>
 
-                <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-l-red-700">
+                <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-black">
                     <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Frekuensi Terendah</p>
                     <p class="text-3xl font-extrabold text-black mt-2">{{ $chartData->min('total') }}</p>
                     <p class="text-sm font-medium text-gray-600 mt-1">{{ $chartData->sortBy('total')->first()->nama_kota ?? '-' }}</p>
@@ -123,14 +123,14 @@
 
     <!-- Script Chart.js -->
     <script>
-    // Palet Warna Universal
+    // Palet Warna Universal (Hanya untuk Pie Chart agar tetap berwarna)
     const colors = [
-        '#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', 
-        '#000000', '#ec4899', '#06b6d4', '#71717a', '#a855f7',
+        '#000000', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
+        '#8b5cf6', '#ec4899', '#06b6d4', '#71717a', '#a855f7',
         '#4ade80', '#fb923c', '#2dd4bf', '#6366f1'
     ];
 
-    // Opsi Default Chart untuk Bar
+    // Opsi Default Chart untuk Bar (Agar proporsinya seragam)
     const barOptions = {
         indexAxis: 'y',
         maintainAspectRatio: false,
@@ -157,17 +157,24 @@
     const labelsTransaksi = rawDataTransaksi.map(item => item.nama_kota || 'Tanpa Nama');
     const dataCountsTransaksi = rawDataTransaksi.map(item => item.total_jumlah);
 
-    // Bar Chart Transaksi
+    // Bar Chart Transaksi (Hitam & Ukuran Disesuaikan)
     new Chart(document.getElementById('barChartTransaksi'), {
         type: 'bar',
         data: {
             labels: labelsTransaksi,
-            datasets: [{ label: 'Total Jumlah', data: dataCountsTransaksi, backgroundColor: '#2563eb', borderRadius: 4 }]
+            datasets: [{ 
+                label: 'Total Jumlah', 
+                data: dataCountsTransaksi, 
+                backgroundColor: '#000000', // Warna Hitam
+                borderRadius: 4,
+                barPercentage: 0.8, // Mengembalikan ukuran balok seperti semula
+                categoryPercentage: 0.8
+            }]
         },
         options: barOptions
     });
 
-    // Doughnut Chart Transaksi
+    // Doughnut Chart Transaksi (Berwarna)
     new Chart(document.getElementById('pieChartTransaksi'), {
         type: 'doughnut',
         data: {
@@ -185,17 +192,24 @@
     const labelsMaster = rawDataMaster.map(item => item.nama_kota || 'Tanpa Nama');
     const dataCountsMaster = rawDataMaster.map(item => item.total);
 
-    // Bar Chart Master
+    // Bar Chart Master (Hitam & Ukuran Disesuaikan)
     new Chart(document.getElementById('barChartMaster'), {
         type: 'bar',
         data: {
             labels: labelsMaster,
-            datasets: [{ label: 'Frekuensi', data: dataCountsMaster, backgroundColor: '#000000', borderRadius: 4 }]
+            datasets: [{ 
+                label: 'Frekuensi', 
+                data: dataCountsMaster, 
+                backgroundColor: '#000000', // Warna Hitam
+                borderRadius: 4,
+                barPercentage: 0.8, // Mengembalikan ukuran balok seperti semula
+                categoryPercentage: 0.8
+            }]
         },
         options: barOptions
     });
 
-    // Doughnut Chart Master
+    // Doughnut Chart Master (Berwarna)
     new Chart(document.getElementById('pieChartMaster'), {
         type: 'doughnut',
         data: {
