@@ -222,4 +222,18 @@ class CityController extends Controller
 
         return redirect()->route('cities.index')->with('success', 'Data kota dan koordinat berhasil diperbarui.');
     }
+
+    // --- METODE BARU: bulkDelete() ---
+    // Berfungsi untuk menghapus beberapa data kota sekaligus berdasarkan ID yang dipilih
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:cities,id'
+        ]);
+
+        City::whereIn('id', $request->ids)->delete();
+
+        return redirect()->route('cities.index')->with('success', 'Data kota terpilih berhasil dihapus.');
+    }
 }

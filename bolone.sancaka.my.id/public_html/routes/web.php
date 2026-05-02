@@ -25,6 +25,7 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 Route::get('/dashboard/export-pdf', [DashboardController::class, 'exportPdf'])->name('dashboard.export-pdf');
 
 Route::get('/cities/example-csv', [CityController::class, 'downloadExample'])->name('cities.example');
+Route::delete('/cities/bulk-delete', [CityController::class, 'bulkDelete'])->name('cities.bulk-delete');
 
 // Route CRUD & Upload City
 Route::post('/cities/import', [CityController::class, 'import'])->name('cities.import');
