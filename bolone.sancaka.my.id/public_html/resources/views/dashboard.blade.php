@@ -201,21 +201,20 @@
     /* =========================================
        2. DATA & GRAFIK MASTER KOTA (PETA INDONESIA & DOUGHNUT)
     ========================================= */
-    // Hanya deklrasi 1 kali untuk menghindari Syntax Error
     const rawDataMaster = @json($chartData);
     const labelsMaster = rawDataMaster.map(item => item.nama_kota || 'Tanpa Nama');
     const dataCountsMaster = rawDataMaster.map(item => item.total);
     
-    // Siapkan data dinamis untuk peta.
-    // Script akan mem-filter hanya data kota yang memiliki latitude & longitude (bukan null)
-    const mapDataMaster = rawDataMaster.map(item => {
+    // Perbaikan: Konversi string menjadi Number (Float) dan tambahkan warna dinamis
+    const mapDataMaster = rawDataMaster.map((item, index) => {
         return {
             name: item.nama_kota || 'Tanpa Nama',
-            z: item.total, // Nilai frekuensi untuk ukuran titik
-            lat: item.latitude || null,  // Pastikan kolom latitude tersedia
-            lon: item.longitude || null  // Pastikan kolom longitude tersedia
+            z: parseFloat(item.total) || 0, // Pastikan angka
+            lat: item.latitude ? parseFloat(item.latitude) : null, // WAJIB Float agar peta terbaca
+            lon: item.longitude ? parseFloat(item.longitude) : null, // WAJIB Float agar peta terbaca
+            color: colors[index % colors.length] // Terapkan warna-warni dari palet Doughnut
         };
-    }).filter(item => item.lat !== null && item.lon !== null);
+    }).filter(item => item.lat !== null && item.lon !== null && !isNaN(item.lat) && !isNaN(item.lon));
 
     // Inisialisasi Peta Indonesia
     Highcharts.mapChart('mapChartMaster', {
@@ -229,7 +228,8 @@
             buttonOptions: { verticalAlign: 'bottom' }
         },
         tooltip: {
-            pointFormat: '{point.name} <br>Frekuensi: <b>{point.z}</b>'
+            useHTML: true,
+            pointFormat: '<b>{point.name}</b><br/>Frekuensi: <b>{point.z}</b>'
         },
         series: [{
             // Layer 1: Peta Dasar Indonesia
@@ -240,17 +240,11 @@
         }, {
             // Layer 2: Titik Kota
             type: 'mapbubble',
-            name: 'Frekuensi Kota',
-            color: '#000000', 
-            maxSize: '10%',
-            // Logika Fallback: Jika database sudah ada data lat/lon, gunakan "mapDataMaster". 
-            // Jika kosong, tampilkan data simulasi ini agar peta tidak kosong sementara.
-            data: mapDataMaster.length > 0 ? mapDataMaster : [
-                { name: 'Ngawi', lat: -7.4048, lon: 111.4423, z: 100 },
-                { name: 'Magetan', lat: -7.6534, lon: 111.3323, z: 80 },
-                { name: 'Surabaya', lat: -7.2504, lon: 112.7688, z: 95 },
-                { name: 'Jakarta Selatan', lat: -6.2615, lon: 106.8106, z: 90 }
-            ]
+            name: 'Titik Sebaran Kota',
+            minSize: 10, // Tambahkan ini agar titik kota terkecil tetap terlihat
+            maxSize: 35, // Batasi ukuran maksimal gelembung
+            data: mapDataMaster
+            // Catatan: color: '#000000' sudah Dihapus agar warna-warni dari 'mapDataMaster' bisa aktif
         }]
     });
 
@@ -263,6 +257,7 @@
         },
         options: pieOptions
     });
+
     </script>
 </body>
 </html>
