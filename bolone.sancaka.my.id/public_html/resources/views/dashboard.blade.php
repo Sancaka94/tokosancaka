@@ -29,39 +29,48 @@
         <!-- Area Grafik -->
         <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm max-w-2xl">
             <h2 class="text-sm font-medium text-gray-500 mb-4">Grafik Berdasarkan Keterangan</h2>
-            <canvas id="myChart" height="150"></canvas>
+            <canvas id="myChart" height="400"></canvas>
         </div>
     </div>
 
     <script>
-        // LOG LOG - Inisialisasi Chart monokrom
-        const rawData = @json($chartData);
-        const labels = rawData.map(item => item.keterangan || 'Tanpa Keterangan');
-        const dataCounts = rawData.map(item => item.total);
+    // LOG LOG - Inisialisasi Chart monokrom
+    const rawData = @json($chartData);
+    const labels = rawData.map(item => item.keterangan || 'Tanpa Keterangan');
+    const dataCounts = rawData.map(item => item.total);
 
-        const ctx = document.getElementById('myChart');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Jumlah Data',
-                    data: dataCounts,
-                    // Desain Hitam/Abu-abu ala NextJS
-                    backgroundColor: '#000000', 
-                    hoverBackgroundColor: '#404040',
-                    borderRadius: 4,
-                    barPercentage: 0.6
-                }]
-            },
-            options: {
-                scales: {
-                    y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
-                    x: { grid: { display: false } }
+    const ctx = document.getElementById('myChart');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Jumlah Data',
+                data: dataCounts,
+                // Desain Hitam/Abu-abu ala NextJS
+                backgroundColor: '#000000', 
+                hoverBackgroundColor: '#404040',
+                borderRadius: 4,
+                barPercentage: 0.6
+            }]
+        },
+        options: {
+            indexAxis: 'y', // <--- KUNCI: Membuat grafik menjadi mendatar (Horizontal Bar)
+            maintainAspectRatio: false, // Menjaga grafik tidak gepeng jika canvas ditinggikan
+            scales: {
+                x: { 
+                    beginAtZero: true, 
+                    grid: { color: '#f3f4f6' } // Garis vertikal
                 },
-                plugins: { legend: { display: false } }
+                y: { 
+                    grid: { display: false } // Sembunyikan garis horizontal
+                }
+            },
+            plugins: { 
+                legend: { display: false } 
             }
-        });
-    </script>
+        }
+    });
+</script>
 </body>
 </html>
