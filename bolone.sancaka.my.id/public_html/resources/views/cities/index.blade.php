@@ -33,9 +33,12 @@
                     <p class="text-xs text-gray-500 mt-1">Tarik dan lepas file Anda ke dalam kotak putus-putus di bawah.</p>
                 </div>
                 
-                <!-- LOG LOG - Tombol Download Contoh CSV (Next.js Secondary Button Style) -->
-                <a href="{{ route('cities.example') }}" class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-black bg-white border border-gray-200 rounded-md hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm">
-                    <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                <!-- Tombol Download Contoh CSV (Red Style) -->
+                <a href="{{ route('cities.example') }}" 
+                class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-red-600 border border-red-600 rounded-md hover:bg-red-700 transition-all shadow-sm">
+                    <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
                     Contoh CSV
                 </a>
             </div>
