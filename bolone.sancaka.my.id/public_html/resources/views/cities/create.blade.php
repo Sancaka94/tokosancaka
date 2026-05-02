@@ -11,27 +11,33 @@
 
     <div class="max-w-3xl mx-auto p-8 mt-10 bg-white border border-gray-200 rounded-lg shadow-sm">
         
-        <!-- Header -->
+       <!-- Header -->
         <div class="mb-8 border-b border-gray-200 pb-4 flex justify-between items-center">
+            
+            <!-- Sisi Kiri: Judul -->
             <h1 class="text-2xl font-semibold tracking-tight text-black">Tambah Data Kota Baru</h1>
             
-            <!-- Perbaikan rute kembali ke halaman list kota -->
-            <a href="{{ route('cities.index') }}" class="text-sm text-blue-600 hover:underline">
-                Kembali ke Data Kota
-            </a>
+            <!-- Sisi Kanan: Kumpulan Aksi (Link & Logout dibungkus dalam satu div) -->
+            <div class="flex items-center gap-6">
+                <!-- Link Kembali -->
+                <a href="{{ route('cities.index') }}" class="text-sm text-blue-600 hover:underline">
+                    Kembali ke Data Kota
+                </a>
 
-            <!-- Tombol Logout -->
-            <form method="POST" action="{{ route('logout') }}" class="inline-block m-0">
-                @csrf
-                <button type="submit" 
-                        onclick="return confirm('Apakah Anda yakin ingin keluar?');" 
-                        class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-all shadow-sm inline-flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                    </svg>
-                    Logout
-                </button>
-            </form>
+                <!-- Tombol Logout -->
+                <form method="POST" action="{{ route('logout') }}" class="inline-block m-0">
+                    @csrf
+                    <button type="submit" 
+                            onclick="return confirm('Apakah Anda yakin ingin keluar?');" 
+                            class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-all shadow-sm inline-flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                        Logout
+                    </button>
+                </form>
+            </div>
+
         </div>
 
         <!-- Menampilkan Error Validasi (jika ada form yang kosong) -->
