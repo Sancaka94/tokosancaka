@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tambah Data Kota</title>
     <!-- Tailwind CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans antialiased">
 
@@ -73,7 +73,7 @@
                     <tr>
                         <!-- HEADER CHECKBOX ALL -->
                         <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
-                            <input type="checkbox" id="checkAll" class="rounded border-gray-300 text-red-600 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50 cursor-pointer">
+                            <input type="checkbox" id="checkAll" class="w-4 h-4 rounded border-gray-300 text-red-600 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50 cursor-pointer">
                         </th>
                         <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
                         <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Kota</th>
@@ -87,7 +87,7 @@
                     <tr class="hover:bg-gray-50 transition-colors">
                         <!-- CHECKBOX PER BARIS -->
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <input type="checkbox" name="ids[]" value="{{ $city->id }}" class="city-checkbox rounded border-gray-300 text-red-600 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50 cursor-pointer">
+                            <input type="checkbox" name="ids[]" value="{{ $city->id }}" class="w-4 h-4 city-checkbox rounded border-gray-300 text-red-600 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50 cursor-pointer">
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $cities->firstItem() + $index }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $city->nama_kota }}</td>
