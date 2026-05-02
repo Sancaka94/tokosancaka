@@ -33,7 +33,7 @@ class CityController extends Controller
         }
 
         // LOG LOG - Paginate 20 Data dan bawa parameter pencarian ke halaman berikutnya
-        $cities = $query->orderBy('id', 'desc')->paginate(20);
+        $cities = $query->orderBy('id', 'desc')->paginate(10);
         
         // Memastikan saat pindah halaman 2,3, dst.. nilai filter di URL tidak hilang
         $cities->appends($request->all());
