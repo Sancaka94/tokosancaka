@@ -25,7 +25,7 @@
         @endif
 
        <!-- Form Upload Card -->
-        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-8">
+        <div class="bg-green border border-gray-200 rounded-lg shadow-sm p-6 mb-8">
             <div class="flex justify-between items-center mb-5">
                 <div>
                     <h2 class="text-sm font-semibold text-black">Upload File CSV / XLSX</h2>
