@@ -73,7 +73,7 @@
                     </button>
                 </div>
             </form>
-            
+
         </div>
 
         <!-- Tambahkan Script ini tepat di atas tag penutup </body> pada file yang sama -->
@@ -130,6 +130,95 @@
                         fileNameDisplay.classList.remove('hidden');
                     }
                 }
+
+                // LOG LOG - Intersep Form Submit untuk Progress Bar Realtime
+                const form = document.getElementById('upload-form');
+                const progressBarContainer = document.getElementById('progress-container');
+                const progressBar = document.getElementById('progress-bar');
+                const progressText = document.getElementById('progress-text');
+                const timeText = document.getElementById('time-text');
+                const submitBtn = document.getElementById('submit-btn');
+
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault(); // Mencegah loading halaman standar
+
+                    if (fileInput.files.length === 0) return;
+
+                    // Tampilkan UI Loading
+                    progressBarContainer.classList.remove('hidden');
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    submitBtn.innerText = "Memproses...";
+
+                    const formData = new FormData(form);
+                    const xhr = new XMLHttpRequest();
+                    let startTime = new Date().getTime();
+
+                    // Event saat proses upload berjalan
+                    xhr.upload.addEventListener('progress', function(e) {
+                        if (e.lengthComputable) {
+                            let percentComplete = Math.round((e.loaded / e.total) * 100);
+                            
+                            // Animasi Lebar Bar
+                            progressBar.style.width = percentComplete + '%';
+
+                            if (percentComplete < 100) {
+                                // Warna Merah jika belum 100%
+                                progressBar.classList.remove('bg-green-500');
+                                progressBar.classList.add('bg-red-500');
+                                progressText.classList.remove('text-green-600');
+                                progressText.classList.add('text-red-600');
+                                progressText.innerText = 'Mengunggah... ' + percentComplete + '%';
+
+                                // Kalkulasi Sisa Waktu Nyata
+                                let currentTime = new Date().getTime();
+                                let elapsedSeconds = (currentTime - startTime) / 1000;
+                                
+                                if (elapsedSeconds > 0) {
+                                    let bytesPerSecond = e.loaded / elapsedSeconds;
+                                    let remainingBytes = e.total - e.loaded;
+                                    let remainingSeconds = Math.round(remainingBytes / bytesPerSecond);
+                                    
+                                    let minutes = Math.floor(remainingSeconds / 60);
+                                    let seconds = remainingSeconds % 60;
+                                    
+                                    // Format menit dan detik
+                                    let timeString = '';
+                                    if (minutes > 0) timeString += minutes + 'm ';
+                                    timeString += seconds + 's';
+                                    timeText.innerText = 'Sisa durasi: ' + timeString;
+                                }
+                            } else {
+                                // Warna Hijau saat 100% dan menunggu respons server database
+                                progressBar.classList.remove('bg-red-500');
+                                progressBar.classList.add('bg-green-500');
+                                progressText.classList.remove('text-red-600');
+                                progressText.classList.add('text-green-600');
+                                progressText.innerText = 'Selesai 100% - Memproses ke Database...';
+                                timeText.innerText = 'Mohon tunggu...';
+                            }
+                        }
+                    });
+
+                    // Event saat selesai dan dapat respon dari Laravel
+                    xhr.onload = function() {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            // Sukses! Refresh halaman untuk memunculkan flash message Laravel
+                            window.location.reload();
+                        } else {
+                            alert('Terjadi kesalahan saat memproses file Anda.');
+                            submitBtn.disabled = false;
+                            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                            submitBtn.innerText = "Upload & Proses";
+                            progressBarContainer.classList.add('hidden');
+                        }
+                    };
+
+                    xhr.open('POST', form.action, true);
+                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest'); // Beritahu Laravel ini AJAX
+                    xhr.send(formData);
+                });
+                
             });
         </script>
 
