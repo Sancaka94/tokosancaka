@@ -1,47 +1,114 @@
-<x-guest-layout>
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sancaka Express</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons (Untuk Icon Mata) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <style>
+        body { background-color: #f8f9fa; }
+        .input-group-text { cursor: pointer; }
+    </style>
+</head>
+<body class="d-flex align-items-center justify-content-center vh-100">
 
-    <form method="POST" action="{{ route('login') }}">
-        @csrf
+    <div class="card shadow-sm border-0" style="width: 100%; max-width: 420px;">
+        <div class="card-body p-5">
+            <h4 class="card-title text-center mb-4 fw-bold">Log In</h4>
 
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
-        </div>
-
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
-
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox" class="rounded dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:focus:ring-offset-gray-800" name="remember">
-                <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Remember me') }}</span>
-            </label>
-        </div>
-
-        <div class="flex items-center justify-end mt-4">
-            @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="{{ route('password.request') }}">
-                    {{ __('Forgot your password?') }}
-                </a>
+            <!-- LOG LOG - Menampilkan Pesan Status -->
+            @if (session('status'))
+                <div class="alert alert-success mb-4 text-sm" role="alert">
+                    {{ session('status') }}
+                </div>
             @endif
 
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
-            </x-primary-button>
+            <form method="POST" action="{{ route('login') }}">
+                @csrf
+
+                <!-- LOG LOG - Email Address -->
+                <div class="mb-3">
+                    <label for="email" class="form-label small fw-semibold">Email</label>
+                    <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autofocus autocomplete="username" placeholder="Masukkan email anda">
+                    @error('email')
+                        <div class="invalid-feedback">
+                            {{ $message }}
+                        </div>
+                    @enderror
+                </div>
+
+                <!-- LOG LOG - Password dengan Icon Mata -->
+                <div class="mb-3">
+                    <label for="password" class="form-label small fw-semibold">Password</label>
+                    <div class="input-group">
+                        <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="current-password" placeholder="Masukkan password">
+                        
+                        <!-- Tombol Icon Mata -->
+                        <span class="input-group-text bg-white" id="togglePassword">
+                            <i class="bi bi-eye-slash" id="eyeIcon"></i>
+                        </span>
+
+                        @error('password')
+                            <div class="invalid-feedback">
+                                {{ $message }}
+                            </div>
+                        @enderror
+                    </div>
+                </div>
+
+                <!-- Remember Me & Forgot Password -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="form-check">
+                        <input class="form-check-input shadow-none" type="checkbox" name="remember" id="remember_me">
+                        <label class="form-check-label text-secondary small" for="remember_me">
+                            Ingat saya
+                        </label>
+                    </div>
+                    @if (Route::has('password.request'))
+                        <a class="text-decoration-none text-dark small fw-semibold" href="{{ route('password.request') }}">
+                            Lupa password?
+                        </a>
+                    @endif
+                </div>
+
+                <!-- LOG LOG - Tombol Aksi (Login & Daftar) -->
+                <div class="d-grid gap-2 mt-2">
+                    <button type="submit" class="btn btn-dark py-2 fw-semibold">
+                        Log in
+                    </button>
+                    
+                    @if (Route::has('register'))
+                        <a href="{{ route('register') }}" class="btn btn-outline-secondary py-2 fw-semibold">
+                            Daftar Akun Baru
+                        </a>
+                    @endif
+                </div>
+            </form>
         </div>
-    </form>
-</x-guest-layout>
+    </div>
+
+    <!-- Bootstrap JS & Custom Script -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // LOG LOG - Script JavaScript untuk fitur Show/Hide Password
+        const togglePassword = document.querySelector('#togglePassword');
+        const password = document.querySelector('#password');
+        const eyeIcon = document.querySelector('#eyeIcon');
+
+        togglePassword.addEventListener('click', function () {
+            // Ubah tipe input dari 'password' ke 'text' atau sebaliknya
+            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+            password.setAttribute('type', type);
+            
+            // Ganti icon dari mata tertutup (eye-slash) ke mata terbuka (eye)
+            eyeIcon.classList.toggle('bi-eye-slash');
+            eyeIcon.classList.toggle('bi-eye');
+        });
+    </script>
+</body>
+</html>
