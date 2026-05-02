@@ -13,7 +13,7 @@
         
         <!-- Header -->
         <div class="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
-            <h1 class="text-2xl font-semibold tracking-tight text-black">Data Kota</h1>
+            <h1 class="text-2xl font-semibold tracking-tight text-black">Menajemen Data Wilayah Kota / Kab</h1>
             
             <!-- Wrapper untuk grup tombol -->
             <div class="flex items-center gap-3">
