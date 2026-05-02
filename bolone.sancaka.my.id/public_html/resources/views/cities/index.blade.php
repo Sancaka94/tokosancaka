@@ -24,20 +24,28 @@
             </div>
         @endif
 
-        <!-- Form Upload Card -->
+       <!-- Form Upload Card -->
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-8">
-            <h2 class="text-sm font-semibold text-black mb-4">Upload File CSV</h2>
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-sm font-semibold text-black">Upload File CSV</h2>
+                
+                <!-- LOG LOG - Tombol Download Contoh CSV (Next.js Secondary Button Style) -->
+                <a href="{{ route('cities.example') }}" class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-black bg-white border border-gray-200 rounded-md hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm">
+                    <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Contoh CSV
+                </a>
+            </div>
+
             <form action="{{ route('cities.import') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-4">
                 @csrf
                 <input type="file" name="file" required accept=".csv"
-                    class="block w-full max-w-sm text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-black hover:file:bg-gray-200 transition-colors">
+                    class="block w-full max-w-sm text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-black hover:file:bg-gray-200 transition-colors cursor-pointer">
                 
-                <!-- LOG LOG - Tombol Hitam Solid NextJS -->
                 <button type="submit" class="px-5 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors shadow-sm">
                     Upload & Proses
                 </button>
             </form>
-            <p class="text-xs text-gray-400 mt-2">Format CSV harus memiliki urutan kolom: [Nama Kota], [Keterangan]</p>
+            <p class="text-xs text-gray-400 mt-3">Format CSV harus memiliki urutan kolom: [Nama Kota], [Keterangan]</p>
         </div>
 
         <!-- Tabel Data -->
