@@ -218,7 +218,7 @@
                     xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest'); // Beritahu Laravel ini AJAX
                     xhr.send(formData);
                 });
-                
+
             });
         </script>
 
@@ -239,12 +239,21 @@
                             <td class="px-6 py-4 text-gray-500">{{ $index + 1 }}</td>
                             <td class="px-6 py-4 font-medium text-black">{{ $city->nama_kota }}</td>
                             <td class="px-6 py-4 text-gray-600">{{ $city->keterangan }}</td>
-                            <td class="px-6 py-4 text-right">
-                                <form action="{{ route('cities.destroy', $city->id) }}" method="POST" onsubmit="return confirm('Hapus data ini?');">
+                            <!-- LOG LOG - Kolom Aksi dengan Icon SVG -->
+                            <td class="px-6 py-4 text-right flex justify-end gap-3 items-center">
+                                <!-- Tombol Edit (Icon Hijau) memanggil fungsi JS -->
+                                <button type="button" 
+                                    onclick="openEditModal({{ $city->id }}, '{{ addslashes($city->nama_kota) }}', '{{ addslashes($city->keterangan) }}')" 
+                                    class="text-green-500 hover:text-green-700 transition-colors" title="Edit">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+
+                                <!-- Tombol Hapus (Icon Merah) -->
+                                <form action="{{ route('cities.destroy', $city->id) }}" method="POST" onsubmit="return confirm('Hapus data ini secara permanen?');" class="inline-block m-0">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="text-gray-400 hover:text-black font-medium transition-colors">
-                                        Hapus
+                                    <button type="submit" class="text-red-500 hover:text-red-700 transition-colors pt-1" title="Hapus">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                     </button>
                                 </form>
                             </td>

@@ -99,4 +99,21 @@ class CityController extends Controller
         return redirect()->route('cities.index')->with('success', 'File Spreadsheet (CSV/Excel) berhasil diunggah dan diproses!');
 
     }
+
+    // LOG LOG - Fungsi untuk memproses update data dari Modal
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'nama_kota' => 'required|string|max:255',
+            'keterangan' => 'nullable|string'
+        ]);
+
+        $city = City::findOrFail($id);
+        $city->update([
+            'nama_kota' => $request->nama_kota,
+            'keterangan' => $request->keterangan
+        ]);
+
+        return redirect()->route('cities.index')->with('success', 'Data kota berhasil diperbarui.');
+    }
 }
