@@ -52,35 +52,96 @@
             </div>
         @endif
 
-        <!-- Form Input Kota (Mengarah ke cities.store di CityController) -->
-        <form action="{{ route('cities.store') }}" method="POST">
+       <!-- Form untuk Bulk Delete -->
+        <form action="{{ route('cities.bulk-delete') }}" method="POST" id="bulkDeleteForm">
             @csrf
-            
-            <div class="grid grid-cols-1 gap-6">
-                <!-- Input Nama Kota -->
-                <div>
-                    <label for="nama_kota" class="block text-sm font-medium text-gray-700 mb-1">Nama Kota / Wilayah</label>
-                    <input type="text" name="nama_kota" id="nama_kota" placeholder="Contoh: Jakarta Pusat" required value="{{ old('nama_kota') }}"
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-black focus:border-black outline-none transition-colors">
-                </div>
+            @method('DELETE')
 
-                <!-- Input Keterangan -->
-                <div>
-                    <label for="keterangan" class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
-                    <textarea name="keterangan" id="keterangan" rows="4" placeholder="Contoh: Area pengiriman VIP..."
-                              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-black focus:border-black outline-none transition-colors">{{ old('keterangan') }}</textarea>
-                </div>
+            <!-- Tombol Hapus Banyak (Sembunyi secara default, muncul jika ada yang dicentang) -->
+            <div class="mb-4 hidden" id="bulkActionContainer">
+                <button type="submit" onclick="return confirm('Yakin ingin menghapus semua data yang dipilih?')" 
+                        class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors shadow-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    Hapus yang Dipilih (<span id="selectedCount">0</span>)
+                </button>
             </div>
 
-            <!-- Tombol Submit -->
-            <div class="mt-8 flex justify-end">
-                <button type="submit" class="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors shadow-sm">
-                    Simpan Kota
-                </button>
+            <!-- Struktur Tabel Anda -->
+            <div class="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <!-- CHECKBOX ALL -->
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                                <input type="checkbox" id="checkAll" class="rounded border-gray-300 text-red-600 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50 cursor-pointer">
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Kota</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        
+                        {{-- Contoh Looping Data Anda --}}
+                        @foreach($cities as $city)
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <!-- CHECKBOX PER BARIS -->
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="checkbox" name="ids[]" value="{{ $city->id }}" class="city-checkbox rounded border-gray-300 text-red-600 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50 cursor-pointer">
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loop->iteration }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $city->nama_kota }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $city->keterangan }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                {{-- Tombol Edit & Delete Individual Anda di sini --}}
+                            </td>
+                        </tr>
+                        @endforeach
+
+                    </tbody>
+                </table>
             </div>
         </form>
 
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkAll = document.getElementById('checkAll');
+        const checkboxes = document.querySelectorAll('.city-checkbox');
+        const bulkActionContainer = document.getElementById('bulkActionContainer');
+        const selectedCountSpan = document.getElementById('selectedCount');
+
+        // Fungsi untuk mengecek apakah tombol hapus perlu ditampilkan
+        function toggleBulkAction() {
+            const checkedCount = document.querySelectorAll('.city-checkbox:checked').length;
+            
+            if (checkedCount > 0) {
+                bulkActionContainer.classList.remove('hidden');
+                selectedCountSpan.textContent = checkedCount;
+            } else {
+                bulkActionContainer.classList.add('hidden');
+            }
+
+            // Atur status Check All jika semua dicentang manual satu per satu
+            checkAll.checked = checkedCount === checkboxes.length && checkboxes.length > 0;
+        }
+
+        // Event listener untuk Checkbox "Pilih Semua"
+        checkAll.addEventListener('change', function() {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            toggleBulkAction();
+        });
+
+        // Event listener untuk setiap Checkbox di baris tabel
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', toggleBulkAction);
+        });
+    });
+</script>
 
 </body>
 </html>
