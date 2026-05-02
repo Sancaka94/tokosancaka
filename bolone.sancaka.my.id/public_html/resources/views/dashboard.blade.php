@@ -30,9 +30,9 @@
         <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm max-w-2xl">
             <h2 class="text-sm font-medium text-gray-500 mb-4">Grafik Berdasarkan Wilayah</h2>
             
-            <!-- KUNCI: Div wrapper dengan relative dan tinggi tetap (h-80) -->
-            <div class="relative h-80 w-full">
-                <canvas id="myChart"></canvas> <!-- Hapus atribut height di sini -->
+            <!-- Ubah h-80 menjadi lebih tinggi sesuai jumlah data -->
+            <div class="relative h-[500px] w-full">
+                <canvas id="myChart"></canvas>
             </div>
         </div>
     </div>
@@ -51,11 +51,10 @@
             datasets: [{
                 label: 'Jumlah Data',
                 data: dataCounts,
-                // Desain Hitam/Abu-abu ala NextJS
                 backgroundColor: '#000000', 
-                hoverBackgroundColor: '#404040',
                 borderRadius: 4,
-                barPercentage: 0.6
+                barPercentage: 0.9, // Naikkan ini dari 0.6 ke 0.9
+                categoryPercentage: 0.8 // Tambahkan ini juga jika perlu
             }]
         },
         options: {
