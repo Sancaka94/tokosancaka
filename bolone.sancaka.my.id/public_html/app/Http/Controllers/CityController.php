@@ -4,12 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\City;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel; // Tambahan library Excel
 
 class CityController extends Controller
 {
     public function index()
     {
-        // Mengambil semua data diurutkan dari yang terbaru
         $cities = City::orderBy('id', 'desc')->get();
         return view('cities.index', compact('cities'));
     }
@@ -18,32 +18,6 @@ class CityController extends Controller
     {
         City::findOrFail($id)->delete();
         return redirect()->route('cities.index')->with('success', 'Data berhasil dihapus.');
-    }
-
-    public function import(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|mimes:csv,txt|max:2048',
-        ]);
-
-        $file = $request->file('file');
-        $fileHandle = fopen($file->getPathname(), 'r');
-        
-        // Lewati baris pertama jika itu adalah Header (Nama Kota, Keterangan)
-        fgetcsv($fileHandle); 
-
-        // LOG LOG - Looping data CSV dan masukkan ke database
-        while (($row = fgetcsv($fileHandle, 1000, ',')) !== false) {
-            if(isset($row[0]) && isset($row[1])) {
-                City::create([
-                    'nama_kota' => $row[0],
-                    'keterangan' => $row[1]
-                ]);
-            }
-        }
-        fclose($fileHandle);
-
-        return redirect()->route('cities.index')->with('success', 'Data CSV berhasil diunggah!');
     }
 
     // LOG LOG - Fungsi untuk mengunduh template CSV
@@ -56,17 +30,66 @@ class CityController extends Controller
 
         $callback = function() {
             $file = fopen('php://output', 'w');
-            
-            // Baris 1: Header Kolom
             fputcsv($file, ['Nama Kota', 'Keterangan']);
-            
-            // Baris 2 & 3: Contoh Data
             fputcsv($file, ['Jakarta Selatan', 'Area pengiriman VIP']);
             fputcsv($file, ['Surabaya', 'Cabang Jawa Timur']);
-            
             fclose($file);
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    public function import(Request $request)
+    {
+        // Validasi diperluas untuk menerima Excel (.xlsx, .xls)
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt,xlsx,xls|max:5120',
+        ]);
+
+        $file = $request->file('file');
+        $extension = $file->getClientOriginalExtension();
+
+        // LOG LOG - Percabangan deteksi format file
+        if (in_array(strtolower($extension), ['csv', 'txt'])) {
+            
+            // --- LOGIKA 1: Jika file adalah CSV mentah (Super Cepat) ---
+            $fileHandle = fopen($file->getPathname(), 'r');
+            fgetcsv($fileHandle); // Lewati baris 1 (Header)
+
+            while (($row = fgetcsv($fileHandle, 1000, ',')) !== false) {
+                // Pastikan kolom 0 (Nama) dan 1 (Keterangan) ada isinya
+                if(!empty($row[0]) && !empty($row[1])) {
+                    City::create([
+                        'nama_kota' => $row[0],
+                        'keterangan' => $row[1]
+                    ]);
+                }
+            }
+            fclose($fileHandle);
+
+        } else {
+            
+            // --- LOGIKA 2: Jika file adalah XLSX / XLS asli (Menggunakan Library) ---
+            // Excel::toArray otomatis membaca seluruh isi file menjadi Array PHP
+            $dataArray = Excel::toArray([], $file);
+
+            if (!empty($dataArray) && isset($dataArray[0])) {
+                $sheet = $dataArray[0]; // Ambil Sheet Pertama
+                
+                array_shift($sheet); // Buang baris 1 (Header)
+
+                foreach ($sheet as $row) {
+                    // Cek apakah data Excel di kolom A dan B tidak kosong
+                    if(!empty($row[0]) && !empty($row[1])) {
+                        City::create([
+                            'nama_kota' => $row[0],
+                            'keterangan' => $row[1]
+                        ]);
+                    }
+                }
+            }
+        }
+
+        return redirect()->route('cities.index')->with('success', 'File Spreadsheet (CSV/Excel) berhasil diunggah dan diproses!');
     }
 }
