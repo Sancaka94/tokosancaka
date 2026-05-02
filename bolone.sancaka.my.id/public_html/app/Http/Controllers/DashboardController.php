@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\City;
-use App\Models\CityTransaction; // Tambahkan baris ini untuk memanggil model transaksi
+use App\Models\CityTransaction;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -14,8 +14,9 @@ class DashboardController extends Controller
         // ==========================================
         // 1. DATA MASTER KOTA (Berdasarkan frekuensi)
         // ==========================================
-        $chartData = City::selectRaw('nama_kota, COUNT(*) as total')
-                         ->groupBy('nama_kota')
+        // Menambahkan kolom latitude dan longitude agar dapat dipanggil di Peta Blade
+        $chartData = City::selectRaw('nama_kota, latitude, longitude, COUNT(*) as total')
+                         ->groupBy('nama_kota', 'latitude', 'longitude')
                          ->orderBy('total', 'desc')
                          ->get();
 
@@ -24,13 +25,12 @@ class DashboardController extends Controller
         // ==========================================
         // 2. DATA TRANSAKSI (Berdasarkan jumlah input)
         // ==========================================
-        // Menjumlahkan seluruh angka di kolom 'jumlah' pada tabel city_transactions
         $totalTransaksi = CityTransaction::sum('jumlah');
 
-        // Melakukan Join tabel agar mendapatkan nama_kota berdasarkan city_id
-        $chartDataTransaksi = CityTransaction::selectRaw('cities.nama_kota, SUM(city_transactions.jumlah) as total_jumlah')
+        // Menambahkan cities.latitude dan cities.longitude pada query join
+        $chartDataTransaksi = CityTransaction::selectRaw('cities.nama_kota, cities.latitude, cities.longitude, SUM(city_transactions.jumlah) as total_jumlah')
             ->join('cities', 'city_transactions.city_id', '=', 'cities.id')
-            ->groupBy('cities.nama_kota')
+            ->groupBy('cities.nama_kota', 'cities.latitude', 'cities.longitude')
             ->orderBy('total_jumlah', 'desc')
             ->get();
 
@@ -42,8 +42,8 @@ class DashboardController extends Controller
     public function exportPdf()
     {
         // Ambil data yang sama persis seperti di method index agar isi PDF sinkron
-        $chartData = City::selectRaw('nama_kota, COUNT(*) as total')
-                         ->groupBy('nama_kota')
+        $chartData = City::selectRaw('nama_kota, latitude, longitude, COUNT(*) as total')
+                         ->groupBy('nama_kota', 'latitude', 'longitude')
                          ->orderBy('total', 'desc')
                          ->get();
 
@@ -51,9 +51,9 @@ class DashboardController extends Controller
 
         $totalTransaksi = CityTransaction::sum('jumlah');
 
-        $chartDataTransaksi = CityTransaction::selectRaw('cities.nama_kota, SUM(city_transactions.jumlah) as total_jumlah')
+        $chartDataTransaksi = CityTransaction::selectRaw('cities.nama_kota, cities.latitude, cities.longitude, SUM(city_transactions.jumlah) as total_jumlah')
             ->join('cities', 'city_transactions.city_id', '=', 'cities.id')
-            ->groupBy('cities.nama_kota')
+            ->groupBy('cities.nama_kota', 'cities.latitude', 'cities.longitude')
             ->orderBy('total_jumlah', 'desc')
             ->get();
 
