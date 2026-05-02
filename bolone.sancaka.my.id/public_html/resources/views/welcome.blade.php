@@ -9,7 +9,7 @@
 <body class="bg-white text-black font-sans min-h-screen flex items-center justify-center">
     <div class="text-center">
         <h1 class="text-4xl font-bold tracking-tighter mb-4">SANCAKA <span class="text-gray-400">EXPRESS</span></h1>
-        <p class="text-gray-500 mb-8">Sistem Manajemen Logistik & Data Kota Matraman.</p>
+        <p class="text-gray-500 mb-8">Sistem Manajemen Statistik Wilayah</p>
         
         <div class="flex gap-4 justify-center">
             @auth
