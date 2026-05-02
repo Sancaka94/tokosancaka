@@ -46,14 +46,14 @@
 
                 <!-- Transaksi Tertinggi -->
                 <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-black">
-                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Wilayah Transaksi Tertinggi</p>
+                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Wilayah Input Tertinggi</p>
                     <p class="text-3xl font-extrabold text-black mt-2">{{ $chartDataTransaksi->max('total_jumlah') ?? 0 }}</p>
                     <p class="text-sm font-medium text-gray-600 mt-1">{{ $chartDataTransaksi->sortByDesc('total_jumlah')->first()->nama_kota ?? '-' }}</p>
                 </div>
 
                 <!-- Transaksi Terendah -->
                 <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-black">
-                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Wilayah Transaksi Terendah</p>
+                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Wilayah Input Terendah</p>
                     <p class="text-3xl font-extrabold text-black mt-2">{{ $chartDataTransaksi->min('total_jumlah') ?? 0 }}</p>
                     <p class="text-sm font-medium text-gray-600 mt-1">{{ $chartDataTransaksi->sortBy('total_jumlah')->first()->nama_kota ?? '-' }}</p>
                 </div>
@@ -62,13 +62,13 @@
             <!-- Area Grafik Transaksi -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
-                    <h3 class="text-sm font-medium text-gray-500 mb-4 uppercase tracking-tighter">Grafik Bar Transaksi Wilayah</h3>
+                    <h3 class="text-sm font-medium text-gray-500 mb-4 uppercase tracking-tighter">Grafik Bar Input Wilayah</h3>
                     <div class="relative h-[400px] w-full">
                         <canvas id="barChartTransaksi"></canvas>
                     </div>
                 </div>
                 <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
-                    <h3 class="text-sm font-medium text-gray-500 mb-4 uppercase tracking-tighter">Distribusi Transaksi</h3>
+                    <h3 class="text-sm font-medium text-gray-500 mb-4 uppercase tracking-tighter">Distribusi Data</h3>
                     <div class="relative h-[350px] w-full flex items-center justify-center">
                         <canvas id="pieChartTransaksi"></canvas>
                     </div>
