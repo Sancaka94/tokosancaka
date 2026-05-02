@@ -30,9 +30,10 @@
 
     <div class="max-w-4xl mx-auto p-8 mt-6">
         
-        <!-- Header -->
+       <!-- Header -->
         <div class="mb-8 border-b border-gray-200 pb-4 flex justify-between items-center">
             <h1 class="text-2xl font-semibold tracking-tight text-black">Input Data Transaksi Kota</h1>
+            
             <a href="{{ route('cities.index') }}" class="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors shadow-sm inline-flex items-center">
                 &larr; Kembali
             </a>
@@ -40,7 +41,8 @@
             <!-- Tombol Logout -->
             <form method="POST" action="{{ route('logout') }}" class="inline-block m-0">
                 @csrf
-                <button type="submit" onclick="return confirm('Apakah Anda yakin ingin keluar?');" 
+                <button type="submit" 
+                        onclick="return confirm('Apakah Anda yakin ingin keluar?');" 
                         class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-all shadow-sm inline-flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
