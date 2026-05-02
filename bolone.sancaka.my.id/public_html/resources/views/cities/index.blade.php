@@ -27,7 +27,10 @@
        <!-- Form Upload Card -->
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-8">
             <div class="flex justify-between items-center mb-5">
-                <h2 class="text-sm font-semibold text-black">Upload File CSV</h2>
+                <div>
+                    <h2 class="text-sm font-semibold text-black">Upload File CSV / XLSX</h2>
+                    <p class="text-xs text-gray-500 mt-1">Tarik dan lepas file Anda ke dalam kotak putus-putus di bawah.</p>
+                </div>
                 
                 <!-- LOG LOG - Tombol Download Contoh CSV (Next.js Secondary Button Style) -->
                 <a href="{{ route('cities.example') }}" class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-black bg-white border border-gray-200 rounded-md hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm">
@@ -36,17 +39,88 @@
                 </a>
             </div>
 
-            <form action="{{ route('cities.import') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-4">
+            <form action="{{ route('cities.import') }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-4">
                 @csrf
-                <input type="file" name="file" required accept=".csv"
-                    class="block w-full max-w-sm text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-black hover:file:bg-gray-200 transition-colors cursor-pointer">
                 
-                <button type="submit" class="px-5 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors shadow-sm">
-                    Upload & Proses
-                </button>
+                <!-- Area Drag & Drop -->
+                <div class="w-full">
+                    <label for="file-upload" id="drop-zone" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-all duration-200 ease-in-out group">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none">
+                            <svg class="w-8 h-8 mb-3 text-gray-400 group-hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                            <p class="mb-2 text-sm text-gray-500"><span class="font-semibold text-black">Klik untuk memilih</span> atau drag and drop file ke sini</p>
+                            <p class="text-xs text-gray-400">Format: CSV atau XLSX</p>
+                            
+                            <!-- Tempat munculnya nama file -->
+                            <p id="file-name" class="mt-3 px-3 py-1 bg-gray-200 text-black text-xs font-semibold rounded-md hidden"></p>
+                        </div>
+                        <input id="file-upload" name="file" type="file" class="hidden" accept=".csv, .xlsx" required />
+                    </label>
+                </div>
+
+                <div class="flex justify-end border-t border-gray-100 pt-4 mt-2">
+                    <button type="submit" class="px-6 py-2.5 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-black">
+                        Upload & Proses
+                    </button>
+                </div>
             </form>
-            <p class="text-xs text-gray-400 mt-3">Format CSV harus memiliki urutan kolom: [Nama Kota], [Keterangan]</p>
         </div>
+
+        <!-- Tambahkan Script ini tepat di atas tag penutup </body> pada file yang sama -->
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const dropZone = document.getElementById('drop-zone');
+                const fileInput = document.getElementById('file-upload');
+                const fileNameDisplay = document.getElementById('file-name');
+
+                // Mencegah browser membuka file secara default saat di-drag
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, preventDefaults, false);
+                    document.body.addEventListener(eventName, preventDefaults, false);
+                });
+
+                function preventDefaults (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+
+                // Memberikan efek visual (border hitam) saat file berada di atas kotak
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => {
+                        dropZone.classList.add('bg-gray-200', 'border-black');
+                        dropZone.classList.remove('bg-gray-50', 'border-gray-300');
+                    }, false);
+                });
+
+                // Menghilangkan efek visual saat file keluar kotak
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => {
+                        dropZone.classList.remove('bg-gray-200', 'border-black');
+                        dropZone.classList.add('bg-gray-50', 'border-gray-300');
+                    }, false);
+                });
+
+                // Menangkap file yang di-drop
+                dropZone.addEventListener('drop', (e) => {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    handleFiles(files);
+                }, false);
+
+                // Menangkap file yang dipilih lewat klik
+                fileInput.addEventListener('change', function(e) {
+                    handleFiles(this.files);
+                });
+
+                // Menampilkan nama file ke layar
+                function handleFiles(files) {
+                    if (files.length > 0) {
+                        fileInput.files = files; // Memasukkan file ke input tersembunyi
+                        fileNameDisplay.textContent = 'File siap: ' + files[0].name;
+                        fileNameDisplay.classList.remove('hidden');
+                    }
+                }
+            });
+        </script>
 
         <!-- Tabel Data -->
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
