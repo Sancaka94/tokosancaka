@@ -36,4 +36,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+Route::post('/cities/update-coordinates', [App\Http\Controllers\DashboardController::class, 'updateCoordinates'])->name('cities.update-coords');
+
 require __DIR__.'/auth.php';

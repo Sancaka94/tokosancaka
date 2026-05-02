@@ -98,4 +98,22 @@ class DashboardController extends Controller
         $pdf = Pdf::loadView('dashboard-pdf', compact('chartData', 'totalData', 'totalTransaksi', 'chartDataTransaksi'));
         return $pdf->stream('laporan-data-analitik.pdf');
     }
+
+    // Fungsi untuk menerima update koordinat dari Frontend (Blade)
+    public function updateCoordinates(Request $request)
+    {
+        $request->validate([
+            'nama_kota' => 'required|string',
+            'lat' => 'required|numeric',
+            'lon' => 'required|numeric',
+        ]);
+
+        // Update latitude dan longitude berdasarkan nama kota
+        \App\Models\City::where('nama_kota', $request->nama_kota)->update([
+            'latitude' => $request->lat,
+            'longitude' => $request->lon
+        ]);
+
+        return response()->json(['status' => 'success', 'message' => 'Koordinat tersimpan!']);
+    }
 }
