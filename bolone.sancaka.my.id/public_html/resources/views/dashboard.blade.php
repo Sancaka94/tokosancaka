@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <!-- TANPA VITE: Menggunakan Tailwind CDN -->
+    <title>Dashboard Analitik</title>
+    <!-- Menggunakan Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans antialiased">
 
-    <div class="max-w-6xl mx-auto p-8">
+    <div class="max-w-7xl mx-auto p-8">
         <!-- Header -->
         <div class="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
             <h1 class="text-2xl font-semibold tracking-tight text-black">Dashboard Analitik</h1>
@@ -19,6 +19,7 @@
             </a>
         </div>
 
+        <!-- Stat Card -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
                 <p class="text-sm text-gray-500 font-medium">Total Data Masuk</p>
@@ -26,25 +27,43 @@
             </div>
         </div>
 
-        <!-- Area Grafik -->
-        <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm max-w-2xl">
-            <h2 class="text-sm font-medium text-gray-500 mb-4">Grafik Berdasarkan Wilayah</h2>
+        <!-- Area Grafik (Dua Kolom) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <!-- Ubah h-80 menjadi lebih tinggi sesuai jumlah data -->
-            <div class="relative h-[500px] w-full">
-                <canvas id="myChart"></canvas>
+            <!-- Kolom Kiri: Grafik Bar (Mengambil 2/3 ruang) -->
+            <div class="lg:col-span-2 bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
+                <h2 class="text-sm font-medium text-gray-500 mb-4">Grafik Berdasarkan Wilayah</h2>
+                <div class="relative h-[500px] w-full">
+                    <canvas id="barChart"></canvas>
+                </div>
             </div>
+
+            <!-- Kolom Kanan: Grafik Bulat (Mengambil 1/3 ruang) -->
+            <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
+                <h2 class="text-sm font-medium text-gray-500 mb-4">Distribusi Persentase</h2>
+                <div class="relative h-[400px] w-full flex items-center justify-center">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <script>
-    // LOG LOG - Inisialisasi Chart monokrom
+    // Data dari Laravel
     const rawData = @json($chartData);
     const labels = rawData.map(item => item.nama_kota || 'Tanpa Keterangan');
     const dataCounts = rawData.map(item => item.total);
 
-    const ctx = document.getElementById('myChart');
-    new Chart(ctx, {
+    // Palet Warna untuk Chart Bulat
+    const colors = [
+        '#000000', '#4f46e5', '#10b981', '#f59e0b', '#ef4444', 
+        '#8b5cf6', '#ec4899', '#06b6d4', '#71717a', '#a855f7'
+    ];
+
+    // 1. Inisialisasi BAR CHART (Mendatar)
+    const ctxBar = document.getElementById('barChart');
+    new Chart(ctxBar, {
         type: 'bar',
         data: {
             labels: labels,
@@ -53,25 +72,48 @@
                 data: dataCounts,
                 backgroundColor: '#000000', 
                 borderRadius: 4,
-                barPercentage: 0.9, // Naikkan ini dari 0.6 ke 0.9
-                categoryPercentage: 0.8 // Tambahkan ini juga jika perlu
+                barPercentage: 0.8,
+                categoryPercentage: 0.8
             }]
         },
         options: {
-            indexAxis: 'y', // <--- KUNCI: Membuat grafik menjadi mendatar (Horizontal Bar)
-            maintainAspectRatio: false, // Menjaga grafik tidak gepeng jika canvas ditinggikan
+            indexAxis: 'y',
+            maintainAspectRatio: false,
             scales: {
-                x: { 
-                    beginAtZero: true, 
-                    grid: { color: '#f3f4f6' } // Garis vertikal
-                },
-                y: { 
-                    grid: { display: false } // Sembunyikan garis horizontal
+                x: { beginAtZero: true, grid: { color: '#f3f4f6' } },
+                y: { grid: { display: false } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // 2. Inisialisasi PIE/DOUGHNUT CHART (Bulat)
+    const ctxPie = document.getElementById('pieChart');
+    new Chart(ctxPie, {
+        type: 'doughnut', // 'doughnut' lebih modern daripada 'pie'
+        data: {
+            labels: labels,
+            datasets: [{
+                data: dataCounts,
+                backgroundColor: colors,
+                hoverOffset: 15,
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 15,
+                        font: { size: 10 }
+                    }
                 }
             },
-            plugins: { 
-                legend: { display: false } 
-            }
+            cutout: '60%' // Membuat lubang di tengah agar jadi Doughnut
         }
     });
 </script>
