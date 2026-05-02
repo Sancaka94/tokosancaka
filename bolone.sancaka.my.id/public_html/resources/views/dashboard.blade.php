@@ -36,7 +36,7 @@
             </div>
 
             <!-- Terendah -->
-            <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-l-gred-700">
+            <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-l-red-700">
                 <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Wilayah Terendah</p>
                 <p class="text-3xl font-extrabold text-black mt-2">{{ $chartData->min('total') }}</p>
                 <p class="text-sm font-medium text-gray-600 mt-1">{{ $chartData->sortBy('total')->first()->nama_kota ?? '-' }}</p>
