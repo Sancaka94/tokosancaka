@@ -13,6 +13,8 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::get('/cities/example-csv', [CityController::class, 'downloadExample'])->name('cities.example');
+
 // Route CRUD & Upload City
 Route::post('/cities/import', [CityController::class, 'import'])->name('cities.import');
 Route::resource('cities', CityController::class);

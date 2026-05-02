@@ -45,4 +45,28 @@ class CityController extends Controller
 
         return redirect()->route('cities.index')->with('success', 'Data CSV berhasil diunggah!');
     }
+
+    // LOG LOG - Fungsi untuk mengunduh template CSV
+    public function downloadExample()
+    {
+        $headers = [
+            'Content-type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="contoh_format_kota.csv"',
+        ];
+
+        $callback = function() {
+            $file = fopen('php://output', 'w');
+            
+            // Baris 1: Header Kolom
+            fputcsv($file, ['Nama Kota', 'Keterangan']);
+            
+            // Baris 2 & 3: Contoh Data
+            fputcsv($file, ['Jakarta Selatan', 'Area pengiriman VIP']);
+            fputcsv($file, ['Surabaya', 'Cabang Jawa Timur']);
+            
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }
