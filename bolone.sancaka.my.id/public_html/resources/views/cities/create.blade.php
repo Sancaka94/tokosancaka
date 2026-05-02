@@ -132,7 +132,7 @@
         const bulkActionContainer = document.getElementById('bulkActionContainer');
         const selectedCountSpan = document.getElementById('selectedCount');
 
-        // Fungsi untuk mengecek apakah tombol hapus perlu ditampilkan
+        // Fungsi mengecek apakah tombol "Hapus yang Dipilih" perlu ditampilkan
         function toggleBulkAction() {
             const checkedCount = document.querySelectorAll('.city-checkbox:checked').length;
             
@@ -143,11 +143,11 @@
                 bulkActionContainer.classList.add('hidden');
             }
 
-            // Atur status Check All jika semua dicentang manual satu per satu
-            checkAll.checked = checkedCount === checkboxes.length && checkboxes.length > 0;
+            // Atur status Check All jika semua dicentang satu per satu
+            checkAll.checked = (checkedCount === checkboxes.length && checkboxes.length > 0);
         }
 
-        // Event listener untuk Checkbox "Pilih Semua"
+        // Event listener saat Check All di-klik
         checkAll.addEventListener('change', function() {
             checkboxes.forEach(checkbox => {
                 checkbox.checked = this.checked;
@@ -155,7 +155,7 @@
             toggleBulkAction();
         });
 
-        // Event listener untuk setiap Checkbox di baris tabel
+        // Event listener saat tiap checkbox baris di-klik
         checkboxes.forEach(checkbox => {
             checkbox.addEventListener('change', toggleBulkAction);
         });
