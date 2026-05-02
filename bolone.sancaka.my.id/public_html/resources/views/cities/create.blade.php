@@ -19,9 +19,10 @@
             
             <!-- Sisi Kanan: Kumpulan Aksi (Link & Logout dibungkus dalam satu div) -->
             <div class="flex items-center gap-6">
+                
                 <!-- Link Kembali -->
-                <a href="{{ route('cities.index') }}" class="text-sm text-blue-600 hover:underline">
-                    Kembali ke Data Kota
+                <a href="{{ route('cities.index') }}" class="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors shadow-sm inline-flex items-center gap-2">
+                    &larr; Kembali ke Data Kota
                 </a>
 
                 <!-- Tombol Logout -->
