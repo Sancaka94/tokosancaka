@@ -76,6 +76,42 @@
 
         </div>
 
+        <!-- LOG LOG - Filter & Pencarian Box -->
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-8">
+            <h2 class="text-sm font-semibold text-black mb-4">Filter Data</h2>
+            <form action="{{ route('cities.index') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-end">
+                
+                <!-- Input Pencarian -->
+                <div class="flex-1 w-full">
+                    <label for="search" class="block text-xs font-medium text-gray-700 mb-1">Cari Kota / Kabupaten</label>
+                    <input type="text" name="search" id="search" value="{{ request('search') }}" placeholder="Contoh: Surabaya atau Jawa Timur..." class="w-full border border-gray-300 rounded-md shadow-sm focus:ring-1 focus:ring-black focus:border-black text-sm px-3 py-2 outline-none transition-all">
+                </div>
+
+                <!-- Input Tanggal Mulai -->
+                <div class="w-full md:w-48">
+                    <label for="start_date" class="block text-xs font-medium text-gray-700 mb-1">Dari Tanggal</label>
+                    <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}" class="w-full border border-gray-300 rounded-md shadow-sm focus:ring-1 focus:ring-black focus:border-black text-sm px-3 py-2 outline-none transition-all">
+                </div>
+
+                <!-- Input Tanggal Sampai -->
+                <div class="w-full md:w-48">
+                    <label for="end_date" class="block text-xs font-medium text-gray-700 mb-1">Sampai Tanggal</label>
+                    <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}" class="w-full border border-gray-300 rounded-md shadow-sm focus:ring-1 focus:ring-black focus:border-black text-sm px-3 py-2 outline-none transition-all">
+                </div>
+
+                <!-- Tombol Aksi -->
+                <div class="flex gap-2 w-full md:w-auto">
+                    <button type="submit" class="px-5 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-black">
+                        Terapkan
+                    </button>
+                    <!-- Tombol Reset akan mengembalikan ke halaman index tanpa parameter -->
+                    <a href="{{ route('cities.index') }}" class="px-5 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors shadow-sm text-center">
+                        Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+
         <!-- Tambahkan Script ini tepat di atas tag penutup </body> pada file yang sama -->
         <script>
             document.addEventListener('DOMContentLoaded', function() {

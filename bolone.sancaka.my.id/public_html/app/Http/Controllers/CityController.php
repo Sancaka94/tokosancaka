@@ -8,9 +8,36 @@ use Maatwebsite\Excel\Facades\Excel; // Tambahan library Excel
 
 class CityController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $cities = City::orderBy('id', 'desc')->get();
+        // LOG LOG - Inisialisasi Query
+        $query = City::query();
+
+        // 1. Filter Pencarian (Nama Kota atau Keterangan)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nama_kota', 'like', "%{$search}%")
+                  ->orWhere('keterangan', 'like', "%{$search}%");
+            });
+        }
+
+        // 2. Filter Tanggal Mulai (Mencari data yang dibuat SETELAH atau PADA tanggal ini)
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+
+        // 3. Filter Tanggal Sampai (Mencari data yang dibuat SEBELUM atau PADA tanggal ini)
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        // LOG LOG - Paginate 20 Data dan bawa parameter pencarian ke halaman berikutnya
+        $cities = $query->orderBy('id', 'desc')->paginate(20);
+        
+        // Memastikan saat pindah halaman 2,3, dst.. nilai filter di URL tidak hilang
+        $cities->appends($request->all());
+
         return view('cities.index', compact('cities'));
     }
 
