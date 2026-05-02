@@ -11,8 +11,16 @@ Route::get('/transaksi/input', [TransactionController::class, 'create'])->name('
 Route::post('/transaksi/store', [TransactionController::class, 'store'])->name('transactions.store');
 
 // ROUTE BARU UNTUK UPLOAD EXCEL TRANSAKSI
-Route::get('/transaksi/example', [TransactionController::class, 'downloadExample'])->name('transactions.example');
-Route::post('/transaksi/import', [TransactionController::class, 'import'])->name('transactions.import');
+Route::get('/transactions/example', [TransactionController::class, 'downloadExample'])->name('transactions.example');
+Route::post('/transactions/import', [TransactionController::class, 'import'])->name('transactions.import');
+
+// ROUTE CRUD TRANSAKSI MANUAL & TABEL
+Route::get('/transactions/create', [TransactionController::class, 'create'])->name('transactions.create');
+Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
+Route::get('/transactions/{transaction}/edit', [TransactionController::class, 'edit'])->name('transactions.edit');
+Route::put('/transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
+Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
+Route::delete('/transactions-bulk-delete', [TransactionController::class, 'bulkDelete'])->name('transactions.bulk-delete');
 
 Route::get('/', function () {
     return view('welcome');

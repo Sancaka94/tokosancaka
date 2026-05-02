@@ -5,20 +5,27 @@ namespace App\Http\Controllers;
 use App\Models\City;
 use App\Models\CityTransaction;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 
 class TransactionController extends Controller
 {
-    // Menampilkan halaman form
+    // Menampilkan halaman form input & tabel riwayat hari ini
     public function create()
     {
-        // Mengambil data kota untuk di dropdown
-        // Menggunakan groupBy/unique jika ada nama kota duplikat (seperti Jakarta Selatan di DB Anda)
+        // Mengambil data kota untuk dropdown
         $cities = City::select('id', 'nama_kota')->get()->unique('nama_kota'); 
-        return view('transactions.create', compact('cities'));
+        
+        // Mengambil riwayat transaksi khusus HARI INI
+        $transactions = CityTransaction::with('city')
+                        ->whereDate('created_at', Carbon::today()) // Asumsi menggunakan created_at untuk waktu input
+                        ->latest()
+                        ->paginate(10);
+
+        return view('transactions.create', compact('cities', 'transactions'));
     }
 
-    // Menyimpan data ke database
+    // Menyimpan data manual ke database
     public function store(Request $request)
     {
         $request->validate([
@@ -34,6 +41,57 @@ class TransactionController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Data transaksi berhasil disimpan!');
+    }
+
+    // Menampilkan form edit untuk satu transaksi
+    public function edit($id)
+    {
+        $transaction = CityTransaction::findOrFail($id);
+        $cities = City::select('id', 'nama_kota')->get()->unique('nama_kota');
+        
+        return view('transactions.edit', compact('transaction', 'cities'));
+    }
+
+    // Menyimpan pembaruan data transaksi
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'city_id' => 'required|exists:cities,id',
+            'jumlah'  => 'required|integer|min:1',
+            'tanggal' => 'required|date',
+        ]);
+
+        $transaction = CityTransaction::findOrFail($id);
+        $transaction->update([
+            'city_id' => $request->city_id,
+            'jumlah'  => $request->jumlah,
+            'tanggal' => $request->tanggal,
+        ]);
+
+        // Karena kita mengedit dari halaman riwayat (create), kita kembali ke sana
+        return redirect()->route('transactions.create')->with('success', 'Data transaksi berhasil diperbarui!');
+    }
+
+    // Menghapus satu data transaksi
+    public function destroy($id)
+    {
+        $transaction = CityTransaction::findOrFail($id);
+        $transaction->delete();
+
+        return redirect()->back()->with('success', 'Data transaksi berhasil dihapus!');
+    }
+
+    // Menghapus banyak data sekaligus (Bulk Delete)
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'ids'   => 'required|array',
+            'ids.*' => 'exists:city_transactions,id',
+        ]);
+
+        CityTransaction::whereIn('id', $request->ids)->delete();
+
+        return redirect()->back()->with('success', count($request->ids) . ' data riwayat berhasil dihapus!');
     }
 
     // Fungsi mendownload contoh format Excel/CSV Transaksi
