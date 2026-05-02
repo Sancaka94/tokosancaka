@@ -130,7 +130,7 @@
         '#4ade80', '#fb923c', '#2dd4bf', '#6366f1'
     ];
 
-    // Opsi Default Chart untuk Bar (Agar proporsinya seragam)
+    // Opsi Default Chart untuk Bar
     const barOptions = {
         indexAxis: 'y',
         maintainAspectRatio: false,
@@ -157,7 +157,7 @@
     const labelsTransaksi = rawDataTransaksi.map(item => item.nama_kota || 'Tanpa Nama');
     const dataCountsTransaksi = rawDataTransaksi.map(item => item.total_jumlah);
 
-    // Bar Chart Transaksi (Hitam & Ukuran Disesuaikan)
+    // Bar Chart Transaksi
     new Chart(document.getElementById('barChartTransaksi'), {
         type: 'bar',
         data: {
@@ -165,16 +165,15 @@
             datasets: [{ 
                 label: 'Total Jumlah', 
                 data: dataCountsTransaksi, 
-                backgroundColor: '#000000', // Warna Hitam
+                backgroundColor: '#000000',
                 borderRadius: 4,
-                barPercentage: 0.8, // Mengembalikan ukuran balok seperti semula
-                categoryPercentage: 0.8
+                maxBarThickness: 40 // <--- INI KUNCI AGAR BALOK TIDAK RAKSASA
             }]
         },
         options: barOptions
     });
 
-    // Doughnut Chart Transaksi (Berwarna)
+    // Doughnut Chart Transaksi
     new Chart(document.getElementById('pieChartTransaksi'), {
         type: 'doughnut',
         data: {
@@ -192,7 +191,7 @@
     const labelsMaster = rawDataMaster.map(item => item.nama_kota || 'Tanpa Nama');
     const dataCountsMaster = rawDataMaster.map(item => item.total);
 
-    // Bar Chart Master (Hitam & Ukuran Disesuaikan)
+    // Bar Chart Master
     new Chart(document.getElementById('barChartMaster'), {
         type: 'bar',
         data: {
@@ -200,16 +199,15 @@
             datasets: [{ 
                 label: 'Frekuensi', 
                 data: dataCountsMaster, 
-                backgroundColor: '#000000', // Warna Hitam
+                backgroundColor: '#000000',
                 borderRadius: 4,
-                barPercentage: 0.8, // Mengembalikan ukuran balok seperti semula
-                categoryPercentage: 0.8
+                maxBarThickness: 40 // <--- INI KUNCI AGAR BALOK TIDAK RAKSASA
             }]
         },
         options: barOptions
     });
 
-    // Doughnut Chart Master (Berwarna)
+    // Doughnut Chart Master
     new Chart(document.getElementById('pieChartMaster'), {
         type: 'doughnut',
         data: {
