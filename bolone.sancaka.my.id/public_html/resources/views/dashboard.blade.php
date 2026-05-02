@@ -197,7 +197,6 @@
         options: pieOptions
     });
 
-
     /* =========================================
        2. DATA & GRAFIK MASTER KOTA (PETA INDONESIA & DOUGHNUT)
     ========================================= */
@@ -205,16 +204,16 @@
     const labelsMaster = rawDataMaster.map(item => item.nama_kota || 'Tanpa Nama');
     const dataCountsMaster = rawDataMaster.map(item => item.total);
     
-    // Perbaikan: Konversi string menjadi Number (Float) dan tambahkan warna dinamis
+    // Looping data, ubah latitude/longitude ke format desimal (float), berikan warna dinamis
     const mapDataMaster = rawDataMaster.map((item, index) => {
         return {
             name: item.nama_kota || 'Tanpa Nama',
-            z: parseFloat(item.total) || 0, // Pastikan angka
-            lat: item.latitude ? parseFloat(item.latitude) : null, // WAJIB Float agar peta terbaca
-            lon: item.longitude ? parseFloat(item.longitude) : null, // WAJIB Float agar peta terbaca
-            color: colors[index % colors.length] // Terapkan warna-warni dari palet Doughnut
+            z: parseInt(item.total) || 0, 
+            lat: parseFloat(item.latitude),
+            lon: parseFloat(item.longitude),
+            color: colors[index % colors.length] // Ngambil warna-warni dari palet Doughnut
         };
-    }).filter(item => item.lat !== null && item.lon !== null && !isNaN(item.lat) && !isNaN(item.lon));
+    }).filter(item => !isNaN(item.lat) && !isNaN(item.lon)); // Buang data yang lat/lon nya gagal terbaca
 
     // Inisialisasi Peta Indonesia
     Highcharts.mapChart('mapChartMaster', {
@@ -229,7 +228,8 @@
         },
         tooltip: {
             useHTML: true,
-            pointFormat: '<b>{point.name}</b><br/>Frekuensi: <b>{point.z}</b>'
+            // Format saat di hover (muncul nama kota & jumlah frekuensi)
+            pointFormat: '<span style="color:{point.color}">\u25CF</span> <b>{point.name}</b><br/>Frekuensi: <b>{point.z}</b>'
         },
         series: [{
             // Layer 1: Peta Dasar Indonesia
@@ -238,13 +238,12 @@
             nullColor: '#f9fafb',
             showInLegend: false
         }, {
-            // Layer 2: Titik Kota
+            // Layer 2: Titik Kota Warna-warni
             type: 'mapbubble',
-            name: 'Titik Sebaran Kota',
-            minSize: 10, // Tambahkan ini agar titik kota terkecil tetap terlihat
-            maxSize: 35, // Batasi ukuran maksimal gelembung
+            name: 'Frekuensi Wilayah',
+            minSize: 10, // Biar kotanya ga terlalu kecil di peta
+            maxSize: 40,
             data: mapDataMaster
-            // Catatan: color: '#000000' sudah Dihapus agar warna-warni dari 'mapDataMaster' bisa aktif
         }]
     });
 
