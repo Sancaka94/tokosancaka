@@ -33,13 +33,13 @@
 
         <!-- ================= SECTION TRANSAKSI ================= -->
         <div class="mb-12">
-            <h2 class="text-lg font-bold text-black mb-4 border-l-4 border-black pl-3">Statistik Transaksi (Berdasarkan Jumlah Input)</h2>
+            <h2 class="text-lg font-bold text-black mb-4 border-l-4 border-black pl-3">Statistik Data (Berdasarkan Jumlah Input)</h2>
             
             <!-- Stat Cards Transaksi -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <!-- Total Transaksi -->
                 <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
-                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Total Jumlah Transaksi</p>
+                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Total Jumlah Input</p>
                     <p class="text-3xl font-extrabold text-black mt-2">{{ $totalTransaksi ?? 0 }}</p>
                     <p class="text-xs text-gray-400 mt-1 italic">Akumulasi Semua Wilayah</p>
                 </div>
