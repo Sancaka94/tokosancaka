@@ -16,20 +16,29 @@
             
             <!-- Wrapper untuk grup tombol -->
             <div class="flex items-center gap-3">
-                <!-- Tombol Tambah Data Manual -->
-                <!-- Pastikan route 'cities.create' sudah ada di web.php Anda -->
+                
+                <!-- Tombol Input Transaksi (BARU) -->
+                <a href="{{ route('transactions.create') }}" 
+                   class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors inline-flex items-center shadow-sm">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Input Count
+                </a>
+
+                <!-- Tombol Tambah Data Manual Kota -->
                 <a href="{{ route('cities.create') }}" 
                    class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors inline-flex items-center shadow-sm">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>
-                    Tambah Data
+                    Tambah Kota
                 </a>
 
                 <!-- Tombol Kembali ke Dashboard -->
-                <a href="{{ route('dashboard') }}" 
+                <a href="{{ route('dashboard.index') }}" 
                    class="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors inline-flex items-center shadow-sm">
-                    &larr; Kembali ke Dashboard
+                    &larr; Kembali Ke Dashboard
                 </a>
             </div>
         </div>
