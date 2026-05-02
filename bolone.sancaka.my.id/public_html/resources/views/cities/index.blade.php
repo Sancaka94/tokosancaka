@@ -303,13 +303,14 @@
                     @endforelse
                 </tbody>
             </table>
-
-            <!-- LOG LOG - Area Pagination Tailwind -->
-        <div class="mt-6 mb-10">
-            {{ $cities->links() }}
-        </div>
         
         </div>
+
+        <!-- LOG LOG - Area Pagination Tailwind -->
+            <div class="mt-6 mb-10">
+                {{ $cities->links() }}
+            </div>
+            
     </div>
 
 </body>
