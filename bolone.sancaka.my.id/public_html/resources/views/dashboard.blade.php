@@ -28,7 +28,7 @@
 
         <!-- Area Grafik -->
         <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm max-w-2xl">
-            <h2 class="text-sm font-medium text-gray-500 mb-4">Grafik Berdasarkan Keterangan</h2>
+            <h2 class="text-sm font-medium text-gray-500 mb-4">Grafik Berdasarkan Wilayah</h2>
             
             <!-- KUNCI: Div wrapper dengan relative dan tinggi tetap (h-80) -->
             <div class="relative h-80 w-full">
@@ -40,7 +40,7 @@
     <script>
     // LOG LOG - Inisialisasi Chart monokrom
     const rawData = @json($chartData);
-    const labels = rawData.map(item => item.keterangan || 'Tanpa Keterangan');
+    const labels = rawData.map(item => item.nama_kota || 'Tanpa Keterangan');
     const dataCounts = rawData.map(item => item.total);
 
     const ctx = document.getElementById('myChart');
