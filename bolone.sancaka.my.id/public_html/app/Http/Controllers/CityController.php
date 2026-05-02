@@ -90,6 +90,13 @@ class CityController extends Controller
             }
         }
 
+        // LOG LOG - Respons untuk AJAX Progress Bar
+        if ($request->ajax()) {
+            session()->flash('success', 'File Spreadsheet (CSV/Excel) berhasil diunggah dan diproses!');
+            return response()->json(['status' => 'success']);
+        }
+
         return redirect()->route('cities.index')->with('success', 'File Spreadsheet (CSV/Excel) berhasil diunggah dan diproses!');
+
     }
 }

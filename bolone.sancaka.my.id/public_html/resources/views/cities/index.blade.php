@@ -39,31 +39,41 @@
                 </a>
             </div>
 
-            <form action="{{ route('cities.import') }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-4">
+            <!-- Tambahkan id="upload-form" di sini -->
+            <form id="upload-form" action="{{ route('cities.import') }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-4">
                 @csrf
                 
                 <!-- Area Drag & Drop -->
                 <div class="w-full">
-                    <!-- LOG LOG - Area Drag & Drop dengan Background Smooth Green -->
-                <label for="file-upload" id="drop-zone" class="flex flex-col items-center justify-center w-full h-32 border-2 border-green-300 border-dashed rounded-lg cursor-pointer bg-green-50 hover:bg-green-100 transition-all duration-200 ease-in-out group">
-                    <div class="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none">
+                    <label for="file-upload" id="drop-zone" class="flex flex-col items-center justify-center w-full h-32 border-2 border-green-300 border-dashed rounded-lg cursor-pointer bg-green-50 hover:bg-green-100 transition-all duration-200 ease-in-out group">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none">
                             <svg class="w-8 h-8 mb-3 text-gray-400 group-hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                             <p class="mb-2 text-sm text-gray-500"><span class="font-semibold text-black">Klik untuk memilih</span> atau drag and drop file ke sini</p>
                             <p class="text-xs text-gray-400">Format: CSV atau XLSX</p>
-                            
-                            <!-- Tempat munculnya nama file -->
-                            <p id="file-name" class="mt-3 px-3 py-1 bg-gray-200 text-black text-xs font-semibold rounded-md hidden"></p>
+                            <p id="file-name" class="mt-3 px-3 py-1 bg-green-200 text-black text-xs font-semibold rounded-md hidden"></p>
                         </div>
                         <input id="file-upload" name="file" type="file" class="hidden" accept=".csv, .xlsx" required />
                     </label>
                 </div>
 
+                <!-- LOG LOG - Container Progress Bar (Sembunyi secara default) -->
+                <div id="progress-container" class="hidden w-full mt-2">
+                    <div class="flex justify-between items-center mb-1.5 text-xs font-medium">
+                        <span id="progress-text" class="text-red-600">Mengunggah... 0%</span>
+                        <span id="time-text" class="text-gray-500 tracking-tight">Menghitung durasi...</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                        <div id="progress-bar" class="bg-red-500 h-2.5 rounded-full transition-all duration-200 ease-out" style="width: 0%"></div>
+                    </div>
+                </div>
+
                 <div class="flex justify-end border-t border-gray-100 pt-4 mt-2">
-                    <button type="submit" class="px-6 py-2.5 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-black">
+                    <button type="submit" id="submit-btn" class="px-6 py-2.5 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-black">
                         Upload & Proses
                     </button>
                 </div>
             </form>
+            
         </div>
 
         <!-- Tambahkan Script ini tepat di atas tag penutup </body> pada file yang sama -->
