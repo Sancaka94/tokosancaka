@@ -119,7 +119,7 @@
             <!-- Area Grafik Master Kota -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
-                    <h3 class="text-sm font-medium text-gray-500 mb-4 uppercase tracking-tighter">Grafik Bar Master Wilayah</h3>
+                    <h3 class="text-sm font-medium text-gray-500 mb-4 uppercase tracking-tighter">Peta Master Wilayah</h3>
                     <div class="relative h-[400px] w-full">
                         <div id="mapChartMaster" class="h-full w-full rounded-md" style="min-height: 400px;"></div>
                     </div>
@@ -135,7 +135,7 @@
 
     </div>
 
-    <!-- Script Chart.js -->
+    <!-- Script Chart.js & Highmaps -->
     <script>
     // Palet Warna Universal (Hanya untuk Pie Chart agar tetap berwarna)
     const colors = [
@@ -181,7 +181,7 @@
                 data: dataCountsTransaksi, 
                 backgroundColor: '#000000',
                 borderRadius: 4,
-                maxBarThickness: 40 // <--- INI KUNCI AGAR BALOK TIDAK RAKSASA
+                maxBarThickness: 40 
             }]
         },
         options: barOptions
@@ -199,28 +199,23 @@
 
 
     /* =========================================
-       2. DATA & GRAFIK MASTER KOTA
+       2. DATA & GRAFIK MASTER KOTA (PETA INDONESIA & DOUGHNUT)
     ========================================= */
+    // Hanya deklrasi 1 kali untuk menghindari Syntax Error
     const rawDataMaster = @json($chartData);
     const labelsMaster = rawDataMaster.map(item => item.nama_kota || 'Tanpa Nama');
     const dataCountsMaster = rawDataMaster.map(item => item.total);
-
-    /* =========================================
-       2. DATA & GRAFIK MASTER KOTA (PETA INDONESIA)
-    ========================================= */
-    const rawDataMaster = @json($chartData);
     
-    // Catatan: Untuk memetakan kota secara akurat, Anda idealnya membutuhkan 
-    // data Latitude dan Longitude dari database.
-    // Di bawah ini adalah contoh mapping dinamis jika Anda menambahkan lat/lon.
+    // Siapkan data dinamis untuk peta.
+    // Script akan mem-filter hanya data kota yang memiliki latitude & longitude (bukan null)
     const mapDataMaster = rawDataMaster.map(item => {
         return {
             name: item.nama_kota || 'Tanpa Nama',
             z: item.total, // Nilai frekuensi untuk ukuran titik
-            // lat: item.latitude,   <-- Aktifkan ini jika DB sudah ada lat
-            // lon: item.longitude   <-- Aktifkan ini jika DB sudah ada lon
+            lat: item.latitude || null,  // Pastikan kolom latitude tersedia
+            lon: item.longitude || null  // Pastikan kolom longitude tersedia
         };
-    });
+    }).filter(item => item.lat !== null && item.lon !== null);
 
     // Inisialisasi Peta Indonesia
     Highcharts.mapChart('mapChartMaster', {
@@ -243,18 +238,18 @@
             nullColor: '#f9fafb',
             showInLegend: false
         }, {
-            // Layer 2: Titik Kota (Contoh Data Sementara)
+            // Layer 2: Titik Kota
             type: 'mapbubble',
             name: 'Frekuensi Kota',
-            color: '#000000', // Warna hitam menyesuaikan tema Anda
+            color: '#000000', 
             maxSize: '10%',
-            data: [
-                // CONTOH: Jika DB belum ada lat/lon, ini adalah simulasi titiknya
+            // Logika Fallback: Jika database sudah ada data lat/lon, gunakan "mapDataMaster". 
+            // Jika kosong, tampilkan data simulasi ini agar peta tidak kosong sementara.
+            data: mapDataMaster.length > 0 ? mapDataMaster : [
                 { name: 'Ngawi', lat: -7.4048, lon: 111.4423, z: 100 },
                 { name: 'Magetan', lat: -7.6534, lon: 111.3323, z: 80 },
                 { name: 'Surabaya', lat: -7.2504, lon: 112.7688, z: 95 },
                 { name: 'Jakarta Selatan', lat: -6.2615, lon: 106.8106, z: 90 }
-                // Hapus array data statis ini jika data mapDataMaster di atas sudah memiliki lat/lon
             ]
         }]
     });
