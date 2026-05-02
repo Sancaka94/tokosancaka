@@ -29,7 +29,11 @@
         <!-- Area Grafik -->
         <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm max-w-2xl">
             <h2 class="text-sm font-medium text-gray-500 mb-4">Grafik Berdasarkan Keterangan</h2>
-            <canvas id="myChart"></canvas>
+            
+            <!-- KUNCI: Div wrapper dengan relative dan tinggi tetap (h-80) -->
+            <div class="relative h-80 w-full">
+                <canvas id="myChart"></canvas> <!-- Hapus atribut height di sini -->
+            </div>
         </div>
     </div>
 
