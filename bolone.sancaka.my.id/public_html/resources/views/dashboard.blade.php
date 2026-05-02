@@ -14,7 +14,7 @@
         <!-- Header -->
         <div class="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
             <h1 class="text-2xl font-semibold tracking-tight text-black">Dashboard Analitik</h1>
-            <a href="{{ route('cities.index') }}" class="px-4 py-2 bg-white border border-gray-300 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
+            <a href="{{ route('cities.index') }}" class="px-4 py-2 bg-green-50 border border-gray-300 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
                 Kelola Data Kota
             </a>
         </div>
@@ -30,14 +30,14 @@
 
             <!-- Tertinggi -->
             <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-l-black">
-                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Count Tertinggi</p>
+                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Wilayah Tertinggi</p>
                 <p class="text-3xl font-extrabold text-black mt-2">{{ $chartData->max('total') }}</p>
                 <p class="text-sm font-medium text-gray-600 mt-1">{{ $chartData->sortByDesc('total')->first()->nama_kota ?? '-' }}</p>
             </div>
 
             <!-- Terendah -->
             <div class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm border-l-4 border-l-gray-300">
-                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Count Terendah</p>
+                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Wilayah Terendah</p>
                 <p class="text-3xl font-extrabold text-black mt-2">{{ $chartData->min('total') }}</p>
                 <p class="text-sm font-medium text-gray-600 mt-1">{{ $chartData->sortBy('total')->first()->nama_kota ?? '-' }}</p>
             </div>
