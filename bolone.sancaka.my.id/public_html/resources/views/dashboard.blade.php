@@ -14,7 +14,8 @@
         <!-- Header -->
         <div class="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
             <h1 class="text-2xl font-semibold tracking-tight text-black">Dashboard Analitik</h1>
-            <a href="{{ route('cities.index') }}" class="px-4 py-2 bg-green-50 border border-gray-300 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
+            <a href="{{ route('cities.index') }}" 
+            class="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 border border-black transition-colors">
                 Kelola Data Kota
             </a>
         </div>
