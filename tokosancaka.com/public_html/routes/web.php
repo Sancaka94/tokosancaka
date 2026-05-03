@@ -1253,20 +1253,25 @@ Route::get('nota/{id}/download', [App\Http\Controllers\NotaController::class, 'd
 
 Route::resource('nota', NotaController::class);
 
-// 1. ROUTE SPESIFIK HARUS DI ATAS!
-Route::get('/admin/api/email/search-users', [App\Http\Controllers\Admin\EmailController::class, 'searchUsers']);
+// =========================================================
+// ROUTE EMAIL APP (ADMIN)
+// =========================================================
 
+// 1. Rute untuk menampilkan halaman User Interface (Blade)
+Route::get('/admin/email-app', [App\Http\Controllers\Admin\EmailController::class, 'index'])->name('admin.email.index');
 
-// Rute untuk menampilkan halaman (UI)
-Route::get('/admin/email-app', [EmailController::class, 'index'])->name('admin.email.index');
-// Route search HARUS diletakkan SEBELUM route {id}
-
-// 2. ROUTE DINAMIS (ADA PARAMETER {id}) HARUS DI BAWAHNYA
-Route::get('/admin/api/email/{id}', [App\Http\Controllers\Admin\EmailController::class, 'show']);
-Route::patch('/admin/api/email/{id}', [App\Http\Controllers\Admin\EmailController::class, 'update']);
-
-// Rute API untuk JavaScript (AJAX)
+// 2. Rute API untuk JavaScript (AJAX)
 Route::prefix('admin/api/email')->group(function () {
-    Route::get('/', [EmailController::class, 'fetch']);           // Ambil daftar
-    Route::post('/send', [EmailController::class, 'send']);       // Kirim email baru
+    
+    // a. GET ALL DATA / LIST
+    Route::get('/', [App\Http\Controllers\Admin\EmailController::class, 'fetch']);
+    
+    // b. ROUTE SPESIFIK: Search (Wajib di atas route dinamis {id})
+    Route::get('/search-users', [App\Http\Controllers\Admin\EmailController::class, 'searchUsers']);
+    Route::post('/send', [App\Http\Controllers\Admin\EmailController::class, 'send']);
+    
+    // c. ROUTE DINAMIS: Ada parameter {id} (Wajib di bawah route spesifik)
+    Route::get('/{id}', [App\Http\Controllers\Admin\EmailController::class, 'show']);
+    Route::patch('/{id}', [App\Http\Controllers\Admin\EmailController::class, 'update']);
+    
 });
