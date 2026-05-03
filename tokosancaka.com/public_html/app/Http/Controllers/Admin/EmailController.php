@@ -164,7 +164,9 @@ class EmailController extends Controller
 
             // Eksekusi Kirim SMTP
             Mail::html($bodyHtml, function ($message) use ($to, $subject) {
-                $message->to($to)->subject($subject);
+                $message->to($to)
+                        ->subject($subject)
+                        ->from(config('mail.from.address'), config('mail.from.name')); // Tambahkan baris ini
             });
 
             // Simpan Riwayat ke DB
