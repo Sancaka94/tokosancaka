@@ -13,15 +13,25 @@
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans antialiased">
 
-    <div class="max-w-7xl mx-auto p-8">
+    <!-- Diubah ke p-4 md:p-8 agar tidak terlalu ke tengah saat di HP -->
+    <div class="max-w-7xl mx-auto p-4 md:p-8">
         
         <!-- Header -->
-        <div class="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
-            <h1 class="text-2xl font-semibold tracking-tight text-black">Dashboard Analitik</h1>
+        <div class="flex justify-between items-center mb-8 border-b border-gray-200 pb-4 relative">
+            <h1 class="text-xl md:text-2xl font-semibold tracking-tight text-black">Dashboard Analitik</h1>
             
-            <div class="flex items-center space-x-3">
+            <!-- Tombol Titik Tiga (Hanya Tampil di Mobile) -->
+            <button id="mobileMenuBtn" class="md:hidden p-2 text-gray-600 hover:text-black focus:outline-none">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path>
+                </svg>
+            </button>
+
+            <!-- Container Tombol (Dropdown di Mobile, Flex Normal di PC) -->
+            <div id="actionMenu" class="hidden absolute top-12 right-0 z-50 w-56 p-4 flex-col gap-3 bg-white border border-gray-200 rounded-lg shadow-xl md:flex md:static md:w-auto md:p-0 md:flex-row md:items-center md:gap-3 md:bg-transparent md:border-none md:shadow-none">
+                
                 <a href="{{ route('dashboard.export-pdf') }}" target="_blank" 
-                   class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors shadow-sm">
+                   class="inline-flex justify-center items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors shadow-sm w-full md:w-auto">
                     <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
@@ -29,15 +39,15 @@
                 </a>
 
                 <a href="{{ route('cities.index') }}" 
-                   class="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 border border-black transition-colors shadow-sm">
+                   class="flex justify-center px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 border border-black transition-colors shadow-sm w-full md:w-auto">
                     Kelola Data Kota
                 </a>
 
                 <!-- Tombol Logout -->
-                <form method="POST" action="{{ route('logout') }}" class="inline-block m-0">
+                <form method="POST" action="{{ route('logout') }}" class="inline-block m-0 w-full md:w-auto">
                     @csrf
                     <button type="submit" onclick="return confirm('Apakah Anda yakin ingin keluar?');" 
-                            class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-all shadow-sm inline-flex items-center gap-2">
+                            class="w-full justify-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-all shadow-sm inline-flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                         </svg>
@@ -279,6 +289,26 @@
         options: pieOptions
     });
 
+    /* =========================================
+       3. SCRIPT TOGGLE MENU MOBILE
+    ========================================= */
+    const mobileBtn = document.getElementById('mobileMenuBtn');
+    const actionMenu = document.getElementById('actionMenu');
+
+    // Toggle menu saat tombol titik tiga di klik
+    mobileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        actionMenu.classList.toggle('hidden');
+        actionMenu.classList.toggle('flex');
+    });
+
+    // Otomatis menutup dropdown menu jika klik di luar area menu
+    document.addEventListener('click', (e) => {
+        if (!mobileBtn.contains(e.target) && !actionMenu.contains(e.target)) {
+            actionMenu.classList.add('hidden');
+            actionMenu.classList.remove('flex');
+        }
+    });
     </script>
 </body>
 </html>
