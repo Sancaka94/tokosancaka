@@ -13,7 +13,8 @@
         .subtitle { text-align: center; color: #666; margin-top: 0; margin-bottom: 20px; font-size: 10px; }
         
         /* Grid Layout menggunakan Tabel untuk kompatibilitas DOMPDF */
-        .grid-container { width: 100%; border-collapse: separate; border-spacing: 10px 0; margin-bottom: 20px; }
+        /* Mengubah border-spacing menjadi 10px agar ada jarak vertikal antar baris */
+        .grid-container { width: 100%; border-collapse: separate; border-spacing: 10px; margin-bottom: 20px; margin-top: -10px;}
         .grid-container td { 
             width: 50%; 
             vertical-align: top; 
@@ -26,14 +27,15 @@
         /* Typography */
         .stat-label { font-size: 10px; color: #777; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;}
         .stat-value { font-size: 24px; font-weight: bold; color: #000; margin: 0; }
-        .section-title { font-size: 14px; font-weight: bold; color: #000; border-bottom: 2px solid #000; padding-bottom: 5px; margin-top: 30px; margin-bottom: 15px; }
+        .city-name { font-size: 11px; color: #555; margin-top: 4px; font-weight: normal; }
+        
+        .section-title { font-size: 14px; font-weight: bold; color: #000; border-bottom: 2px solid #000; padding-bottom: 5px; margin-top: 10px; margin-bottom: 15px; }
         
         /* Tabel Data */
         .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .data-table th, .data-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         .data-table th { background-color: #f2f2f2; color: #000; font-weight: bold; }
         .text-center { text-align: center; }
-        .text-right { text-align: right; }
         
         /* CSS Bar Chart */
         .bar-container {
@@ -46,7 +48,7 @@
         }
         .bar-fill {
             height: 100%;
-            background-color: #000; /* Hitam agar match dengan desain minimalis */
+            background-color: #000;
         }
     </style>
 </head>
@@ -55,8 +57,9 @@
     <h2>LAPORAN ANALITIK DASHBOARD</h2>
     <p class="subtitle">Dicetak pada: {{ date('d/m/Y H:i') }}</p>
 
-    <!-- KOTAK STATISTIK (SUMMARY CARDS) -->
+    <!-- KOTAK STATISTIK (SUMMARY CARDS) GRID 2x2 -->
     <table class="grid-container">
+        <!-- Baris Pertama -->
         <tr>
             <!-- Card 1 -->
             <td>
@@ -69,12 +72,27 @@
                 <div class="stat-value">{{ number_format($totalData ?? 0, 0, ',', '.') }}</div>
             </td>
         </tr>
+        <!-- Baris Kedua -->
+        <tr>
+            <!-- Card 3 -->
+            <td>
+                <div class="stat-label">Wilayah Input Tertinggi</div>
+                <div class="stat-value">{{ number_format($chartDataTransaksi->max('total_jumlah') ?? 0, 0, ',', '.') }}</div>
+                <div class="city-name">{{ $chartDataTransaksi->sortByDesc('total_jumlah')->first()->nama_kota ?? '-' }}</div>
+            </td>
+            <!-- Card 4 -->
+            <td>
+                <div class="stat-label">Wilayah Input Terendah</div>
+                <div class="stat-value">{{ number_format($chartDataTransaksi->min('total_jumlah') ?? 0, 0, ',', '.') }}</div>
+                <div class="city-name">{{ $chartDataTransaksi->sortBy('total_jumlah')->first()->nama_kota ?? '-' }}</div>
+            </td>
+        </tr>
     </table>
 
     <!-- MENGHITUNG NILAI MAKSIMAL UNTUK LEBAR GRAFIK BAR TRANSAKSI -->
     @php 
         $maxTransaksi = $chartDataTransaksi->max('total_jumlah'); 
-        $maxTransaksi = $maxTransaksi > 0 ? $maxTransaksi : 1; // Hindari pembagian dengan 0
+        $maxTransaksi = $maxTransaksi > 0 ? $maxTransaksi : 1; 
     @endphp
 
     <!-- SECTION 1: STATISTIK TRANSAKSI -->
@@ -99,7 +117,6 @@
                     <td>{{ $trx->nama_kota ?? '-' }}</td>
                     <td class="text-center"><strong>{{ number_format($trx->total_jumlah, 0, ',', '.') }}</strong></td>
                     <td>
-                        <!-- CSS Bar Chart -->
                         <div style="font-size: 9px; color: #666; text-align: right; margin-bottom: 2px;">{{ number_format($percentage, 1) }}%</div>
                         <div class="bar-container">
                             <div class="bar-fill" style="width: {{ $percentage }}%;"></div>
@@ -109,7 +126,6 @@
             @endforeach
         </tbody>
     </table>
-
 
     <!-- MENGHITUNG NILAI MAKSIMAL UNTUK LEBAR GRAFIK BAR MASTER -->
     @php 
@@ -139,7 +155,6 @@
                     <td>{{ $data->nama_kota ?? '-' }}</td>
                     <td class="text-center"><strong>{{ $data->total }}</strong></td>
                     <td>
-                        <!-- CSS Bar Chart -->
                         <div style="font-size: 9px; color: #666; text-align: right; margin-bottom: 2px;">{{ number_format($percentageMaster, 1) }}%</div>
                         <div class="bar-container">
                             <div class="bar-fill" style="width: {{ $percentageMaster }}%; background-color: #4b5563;"></div>
