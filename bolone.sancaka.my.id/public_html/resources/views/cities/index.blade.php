@@ -47,7 +47,7 @@
                 <!-- Tombol Kembali ke Dashboard -->
                 <a href="https://bolone.sancaka.my.id/dashboard" 
                    class="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors flex items-center justify-center shadow-sm w-full md:w-auto">
-                    &larr; Kembali Ke Dashboard
+                    &larr; Dashboard
                 </a>
 
                 <!-- Tombol Logout -->
