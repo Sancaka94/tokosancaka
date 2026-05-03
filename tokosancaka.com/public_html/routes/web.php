@@ -1253,14 +1253,17 @@ Route::get('nota/{id}/download', [App\Http\Controllers\NotaController::class, 'd
 
 Route::resource('nota', NotaController::class);
 
+// 1. ROUTE SPESIFIK HARUS DI ATAS!
+Route::get('/admin/api/email/search-users', [App\Http\Controllers\Admin\EmailController::class, 'searchUsers']);
+
+
 // Rute untuk menampilkan halaman (UI)
 Route::get('/admin/email-app', [EmailController::class, 'index'])->name('admin.email.index');
 // Route search HARUS diletakkan SEBELUM route {id}
-Route::get('/admin/api/email/search-users', [\App\Http\Controllers\Admin\EmailController::class, 'searchUsers']);
 
-// Route dengan parameter {id} diletakkan di bawahnya
-Route::get('/admin/api/email/{id}', [\App\Http\Controllers\Admin\EmailController::class, 'show']);
-Route::patch('/admin/api/email/{id}', [\App\Http\Controllers\Admin\EmailController::class, 'update']);
+// 2. ROUTE DINAMIS (ADA PARAMETER {id}) HARUS DI BAWAHNYA
+Route::get('/admin/api/email/{id}', [App\Http\Controllers\Admin\EmailController::class, 'show']);
+Route::patch('/admin/api/email/{id}', [App\Http\Controllers\Admin\EmailController::class, 'update']);
 
 // Rute API untuk JavaScript (AJAX)
 Route::prefix('admin/api/email')->group(function () {
