@@ -49,7 +49,7 @@ return [
         'default' => [// account identifier
             // Sesuaikan nama env() di bawah ini dengan nama di file .env Anda
             'host'  => env('IMAP_ACCOUNT_DEFAULT_HOST', '127.0.0.1'),
-            'port'  => env('IMAP_ACCOUNT_DEFAULT_PORT', 143),
+            'port'  => env('IMAP_ACCOUNT_DEFAULT_PORT', 993),
             'protocol'  => env('IMAP_ACCOUNT_DEFAULT_PROTOCOL', 'imap'),
             'encryption'    => env('IMAP_ACCOUNT_DEFAULT_ENCRYPTION', false),
             'validate_cert' => env('IMAP_ACCOUNT_DEFAULT_VALIDATE_CERT', false),
