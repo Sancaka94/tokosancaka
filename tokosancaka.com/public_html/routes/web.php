@@ -1252,3 +1252,14 @@ Route::get('nota/export-excel', [NotaController::class, 'exportExcel'])->name('n
 Route::get('nota/{id}/download', [App\Http\Controllers\NotaController::class, 'downloadNota'])->name('nota.download');
 
 Route::resource('nota', NotaController::class);
+
+// Rute untuk menampilkan halaman (UI)
+Route::get('/admin/email-app', [EmailController::class, 'index'])->name('admin.email.index');
+
+// Rute API untuk JavaScript (AJAX)
+Route::prefix('admin/api/email')->group(function () {
+    Route::get('/', [EmailController::class, 'fetch']);           // Ambil daftar
+    Route::post('/send', [EmailController::class, 'send']);       // Kirim email baru
+    Route::get('/{id}', [EmailController::class, 'show']);        // Ambil detail
+    Route::patch('/{id}', [EmailController::class, 'update']);    // Update bintang/folder
+});
