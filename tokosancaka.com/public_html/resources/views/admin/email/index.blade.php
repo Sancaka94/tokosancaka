@@ -16,9 +16,10 @@
             width: 24px; height: 24px; animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Style untuk body email dari server agar tidak tembus container */
         #email-body iframe, #email-body img { max-width: 100%; height: auto; }
         
-        /* Customisasi tinggi editor Quill agar pas di modal */
+        /* Customisasi Quill agar pas di modal */
         .ql-container { min-height: 200px; flex: 1; font-family: inherit; font-size: 14px; }
         .ql-toolbar { border-radius: 0.5rem 0.5rem 0 0; background: #f8fafc; }
         .ql-container { border-radius: 0 0 0.5rem 0.5rem; }
@@ -55,7 +56,7 @@
         <!-- Daftar Email -->
         <main class="w-[300px] lg:w-[360px] flex-shrink-0 flex flex-col h-full border-r border-gray-200 bg-white shadow-[4px_0_10px_rgba(0,0,0,0.02)] z-10">
             <header class="h-16 flex items-center px-4 border-b border-gray-200 flex-shrink-0 bg-white">
-                <form id="search-form" class="w-full relative">
+                <form id="search-form" class="w-full relative" onsubmit="event.preventDefault();">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-search text-gray-400 text-sm"></i></span>
                     <input type="search" id="search-input" placeholder="Cari pesan..." class="w-full bg-gray-100/80 focus:bg-white focus:ring-2 focus:ring-blue-200 rounded-lg py-2 pl-9 pr-4 text-sm outline-none transition-all">
                 </form>
@@ -84,7 +85,7 @@
                         <div class="text-xs text-gray-400 font-medium bg-gray-50 px-2.5 py-1 rounded-md" id="email-timestamp"></div>
                     </div>
                 </header>
-                <!-- Menampilkan HTML langsung dari IMAP -->
+                <!-- Menampilkan HTML langsung -->
                 <div class="flex-1 p-8 overflow-y-auto text-gray-800 text-sm" id="email-body"></div>
             </div>
         </section>
@@ -99,19 +100,22 @@
             </header>
             
             <form id="compose-form" class="p-4 flex-1 flex flex-col gap-3 overflow-y-auto">
-                <!-- Wrapper untuk input Tujuan -->
+                <!-- Autocomplete Input Kepada -->
                 <div class="relative w-full">
-                    <input type="text" id="compose-to" placeholder="Ketik nama atau email tujuan..." class="w-full pb-2 text-sm border-b border-gray-200 focus:outline-none focus:border-blue-500" required autocomplete="off">
-                    
+                    <div class="flex items-center border-b border-gray-200 focus-within:border-blue-500 pb-2">
+                        <span class="text-gray-400 mr-2 text-sm">Kepada:</span>
+                        <input type="text" id="compose-to" placeholder="Cari nama, email, atau no. WA pengguna..." class="w-full text-sm focus:outline-none bg-transparent" required autocomplete="off">
+                    </div>
                     <!-- Dropdown List Hasil Pencarian -->
-                    <div id="user-suggestions" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden max-h-48 overflow-y-auto">
+                    <div id="user-suggestions" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden max-h-56 overflow-y-auto">
                         <!-- Isi dropdown akan di-generate via JS -->
                     </div>
                 </div>
 
+                <!-- Input Subjek -->
                 <input type="text" id="compose-subject" placeholder="Subjek email..." class="w-full pb-2 text-sm border-b border-gray-200 focus:outline-none focus:border-blue-500" required>
                 
-                <!-- Container untuk Rich Text Editor -->
+                <!-- Container untuk Rich Text Editor (Quill) -->
                 <div class="flex-1 flex flex-col mt-2">
                     <div id="editor-container"></div>
                 </div>
@@ -127,22 +131,19 @@
                 <button type="button" id="btn-attach" class="text-gray-500 hover:text-blue-600 p-2 rounded-full hover:bg-blue-50 transition-colors flex items-center justify-center" title="Lampirkan File">
                     <i class="fa-solid fa-paperclip text-lg"></i>
                 </button>
-                
+
+                <!-- Tombol Kirim -->
                 <button id="send-email-btn" class="bg-blue-600 text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2">
                     Kirim Pesan <i class="fa-solid fa-location-arrow"></i>
                 </button>
             </footer>
         </div>
     </div>
-
 @endsection
 
 @push('scripts')
-<!-- SweetAlert2 untuk Notifikasi -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<!-- Quill JS untuk Pengaturan Text (WYSIWYG) -->
 <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = '/admin/api/email';
@@ -164,11 +165,11 @@ document.addEventListener('DOMContentLoaded', () => {
         placeholder: 'Tulis email Anda di sini...',
         modules: {
             toolbar: [
-                ['bold', 'italic', 'underline', 'strike'],        // Toggled buttons
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }], // Lists
-                [{ 'align': [] }],                            // Text align
-                ['link', 'image'],                            // Media
-                ['clean']                                     // Remove formatting
+                ['bold', 'italic', 'underline', 'strike'], 
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }], 
+                [{ 'align': [] }],                            
+                ['link', 'image'],                            
+                ['clean']                                     
             ]
         }
     });
@@ -178,10 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const attachBtn = document.getElementById('btn-attach');
     const attachmentList = document.getElementById('attachment-list');
 
-    // Buka dialog file saat tombol paperclip diklik
     attachBtn.onclick = () => fileInput.click();
 
-    // Tampilkan nama file yang dipilih
     fileInput.addEventListener('change', function() {
         attachmentList.innerHTML = '';
         Array.from(this.files).forEach(file => {
@@ -190,6 +189,72 @@ document.addEventListener('DOMContentLoaded', () => {
                     <i class="fa-solid fa-file-lines"></i> <span class="truncate max-w-[150px]">${file.name}</span>
                 </span>`;
         });
+    });
+
+    // --- FITUR AUTOCOMPLETE PENGGUNA (CARI NAMA / EMAIL / WA) ---
+    const inputTo = document.getElementById('compose-to');
+    const suggestionsBox = document.getElementById('user-suggestions');
+    let searchTimeout;
+
+    inputTo.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+
+        if (query.length < 2) {
+            suggestionsBox.classList.add('hidden');
+            return;
+        }
+
+        searchTimeout = setTimeout(async () => {
+            try {
+                suggestionsBox.innerHTML = '<div class="p-3 text-xs text-gray-400 text-center"><i class="fa-solid fa-spinner fa-spin"></i> Mencari...</div>';
+                suggestionsBox.classList.remove('hidden');
+
+                const res = await fetch(`${API_BASE_URL}/search-users?q=${encodeURIComponent(query)}`);
+                const users = await res.json();
+
+                suggestionsBox.innerHTML = '';
+
+                if (users.length > 0) {
+                    users.forEach(user => {
+                        const item = document.createElement('div');
+                        item.className = 'p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors';
+                        
+                        item.innerHTML = `
+                            <div class="flex justify-between items-center">
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-semibold text-gray-800">
+                                        ${user.nama_lengkap} 
+                                        <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full ml-1 font-normal">${user.role}</span>
+                                    </span>
+                                    <span class="text-xs text-gray-500 mt-0.5"><i class="fa-solid fa-envelope text-gray-400 mr-1"></i> ${user.email}</span>
+                                </div>
+                                <div class="text-xs text-green-600 font-medium">
+                                    <i class="fa-brands fa-whatsapp"></i> ${user.no_wa || '-'}
+                                </div>
+                            </div>
+                        `;
+                        
+                        item.onclick = () => {
+                            inputTo.value = user.email;
+                            suggestionsBox.classList.add('hidden');
+                        };
+                        suggestionsBox.appendChild(item);
+                    });
+                } else {
+                    suggestionsBox.innerHTML = '<div class="p-3 text-xs text-red-400 text-center">Pengguna tidak ditemukan</div>';
+                }
+            } catch (e) {
+                console.error("Gagal mengambil data user:", e);
+                suggestionsBox.innerHTML = '<div class="p-3 text-xs text-red-500 text-center">Terjadi kesalahan koneksi</div>';
+            }
+        }, 400); 
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!inputTo.contains(e.target) && !suggestionsBox.contains(e.target)) {
+            suggestionsBox.classList.add('hidden');
+        }
     });
 
     // --- FUNGSI MENGAMBIL DAFTAR EMAIL ---
@@ -230,10 +295,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('email-sender-name').textContent = data.from_name;
             document.getElementById('email-sender-address').textContent = `<${data.from_address}>`;
             document.getElementById('email-timestamp').textContent = new Date(data.created_at).toLocaleString('id-ID');
-            document.getElementById('email-body').innerHTML = data.body; // Render HTML dari server
+            document.getElementById('email-body').innerHTML = data.body;
             document.getElementById('email-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.from_name)}&background=random&color=fff&size=128`;
             
-            fetchEmails(currentFolder, ui.search.value); // Update status badge background jika ada email yang baru dibaca
+            fetchEmails(currentFolder, ui.search.value);
         } catch {
             document.getElementById('email-body').innerHTML = '<p class="text-red-500 text-center mt-10">Gagal memuat isi pesan.</p>';
         }
@@ -271,73 +336,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('compose-btn').onclick = () => modal.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-8');
     document.getElementById('close-compose-btn').onclick = () => modal.classList.add('opacity-0', 'pointer-events-none', 'translate-y-8');
 
-    // --- MENGIRIM EMAIL (DENGAN FORMDATA UNTUK FILE & HTML) ---
+    // --- MENGIRIM EMAIL ---
     document.getElementById('send-email-btn').onclick = async function(e) {
-        e.preventDefault(); // Mencegah form reload jika diletakkan dalam tag form
+        e.preventDefault();
 
         const to = document.getElementById('compose-to').value;
         const subject = document.getElementById('compose-subject').value;
-        const bodyHTML = quill.root.innerHTML; // Mengambil text HTML dari Quill
+        const bodyHTML = quill.root.innerHTML;
 
-        // --- FITUR AUTOCOMPLETE PENGGUNA ---
-        const inputTo = document.getElementById('compose-to');
-        const suggestionsBox = document.getElementById('user-suggestions');
-        let searchTimeout;
-
-        inputTo.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            const query = this.value.trim();
-
-            if (query.length < 2) {
-                suggestionsBox.classList.add('hidden');
-                return;
-            }
-
-            searchTimeout = setTimeout(async () => {
-                try {
-                    // Panggil API pencarian user (sesuaikan URL dengan route di web.php)
-                    const res = await fetch(`/admin/api/email/search-users?q=${encodeURIComponent(query)}`);
-                    const users = await res.json();
-
-                    suggestionsBox.innerHTML = ''; // Kosongkan hasil sebelumnya
-
-                    if (users.length > 0) {
-                        users.forEach(user => {
-                            const item = document.createElement('div');
-                            item.className = 'p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0 flex flex-col transition-colors';
-                            
-                            // Menampilkan Nama di atas, Email di bawahnya (lebih kecil)
-                            item.innerHTML = `
-                                <span class="text-sm font-semibold text-gray-800">${user.nama_lengkap}</span>
-                                <span class="text-xs text-gray-500"><i class="fa-solid fa-envelope mr-1"></i>${user.email}</span>
-                            `;
-                            
-                            // Jika diklik, masukkan email ke input "Kepada"
-                            item.onclick = () => {
-                                inputTo.value = user.email; // Isi input dengan email
-                                suggestionsBox.classList.add('hidden'); // Tutup dropdown
-                            };
-                            suggestionsBox.appendChild(item);
-                        });
-                        suggestionsBox.classList.remove('hidden');
-                    } else {
-                        suggestionsBox.innerHTML = '<div class="p-3 text-xs text-gray-400 text-center">Tidak ditemukan...</div>';
-                        suggestionsBox.classList.remove('hidden');
-                    }
-                } catch (e) {
-                    console.error("Gagal mengambil data user:", e);
-                }
-            }, 300); // Tunggu 300ms setelah selesai ngetik
-        });
-
-        // Sembunyikan dropdown jika klik di luar area
-        document.addEventListener('click', function(e) {
-            if (!inputTo.contains(e.target) && !suggestionsBox.contains(e.target)) {
-                suggestionsBox.classList.add('hidden');
-            }
-        });
-
-        // Validasi simpel
         if(!to || !subject || quill.getText().trim().length === 0) {
             Swal.fire('Peringatan', 'Kepada, Subjek, dan Isi Pesan tidak boleh kosong!', 'warning');
             return;
@@ -347,13 +353,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.disabled = true; 
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim...';
         
-        // Menggunakan FormData agar bisa kirim file
         const formData = new FormData();
         formData.append('to', to);
         formData.append('subject', subject);
         formData.append('body', bodyHTML);
         
-        // Append file lampiran jika ada
         for (let i = 0; i < fileInput.files.length; i++) {
             formData.append('attachments[]', fileInput.files[i]);
         }
@@ -361,8 +365,6 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch(`${API_BASE_URL}/send`, {
                 method: 'POST',
-                // Ingat: Jangan tambahkan 'Content-Type': 'application/json' 
-                // Biarkan browser menentukan boundary otomatis untuk multipart/form-data
                 headers: { 
                     'X-CSRF-TOKEN': CSRF_TOKEN,
                     'Accept': 'application/json'
@@ -374,15 +376,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if(res.ok) {
                 Swal.fire({icon: 'success', title: 'Pesan Terkirim', showConfirmButton: false, timer: 1500});
-                
-                // Tutup modal
                 modal.classList.add('opacity-0', 'pointer-events-none', 'translate-y-8');
-                
-                // Reset semua isian form
                 document.getElementById('compose-form').reset();
-                quill.setContents([]); // Reset isi Quill editor
-                attachmentList.innerHTML = ''; // Reset tampilan list file
-                fileInput.value = ''; // Reset input file tersembunyi
+                quill.setContents([]); 
+                attachmentList.innerHTML = ''; 
+                fileInput.value = ''; 
             } else {
                 throw new Error(data.message || 'Gagal mengirim pesan.');
             }
@@ -390,12 +388,11 @@ document.addEventListener('DOMContentLoaded', () => {
             Swal.fire('Error', err.message, 'error'); 
         }
         
-        // Kembalikan status tombol
         btn.disabled = false; 
         btn.innerHTML = 'Kirim Pesan <i class="fa-solid fa-location-arrow"></i>';
     };
 
-    // --- NAVIGASI FOLDER (Kiri) ---
+    // --- NAVIGASI FOLDER ---
     document.querySelectorAll('.folder-link').forEach(link => {
         link.onclick = (e) => {
             e.preventDefault();
@@ -413,9 +410,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- KLIK LIST EMAIL (Bintang & Buka Detail) ---
+    // --- KLIK LIST EMAIL ---
     ui.list.onclick = (e) => {
-        // Jika klik bintang
         const star = e.target.closest('.star-btn');
         if(star) {
             e.stopPropagation();
@@ -427,7 +423,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Jika klik isi item email
         const item = e.target.closest('.email-item');
         if(item) {
             document.querySelectorAll('.email-item').forEach(el => el.classList.remove('active'));
@@ -436,14 +431,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- FITUR PENCARIAN DENGAN DEBOUNCE ---
-    let to; 
+    // --- PENCARIAN EMAIL ---
+    let toSearch; 
     ui.search.oninput = () => { 
-        clearTimeout(to); 
-        to = setTimeout(() => fetchEmails(currentFolder, ui.search.value), 500); 
+        clearTimeout(toSearch); 
+        toSearch = setTimeout(() => fetchEmails(currentFolder, ui.search.value), 500); 
     };
     
-    // --- JALANKAN SAAT HALAMAN DIMUAT ---
+    // Inisialisasi awal
     fetchEmails(); 
 });
 </script>

@@ -239,7 +239,7 @@ class EmailController extends Controller
         return response()->json(['error' => 'Gagal memproses'], 500);
     }
 
-    /**
+   /**
      * Mencari pengguna untuk auto-complete tujuan email
      */
     public function searchUsers(Request $request)
@@ -250,11 +250,13 @@ class EmailController extends Controller
             return response()->json([]);
         }
 
-        // Cari berdasarkan nama atau email dari tabel Pengguna
-        $users = \App\Models\User::where('nama_lengkap', 'like', "%{$term}%")
+        // Cari berdasarkan nama, email, ATAU no_wa
+        // Catatan: Pastikan nama modelnya benar (misal: \App\Models\Pengguna)
+        $users = clone \App\Models\Pengguna::where('nama_lengkap', 'like', "%{$term}%")
                     ->orWhere('email', 'like', "%{$term}%")
-                    ->select('id_pengguna', 'nama_lengkap', 'email')
-                    ->limit(10) // Batasi maksimal 10 biar nggak berat
+                    ->orWhere('no_wa', 'like', "%{$term}%")
+                    ->select('id_pengguna', 'nama_lengkap', 'email', 'no_wa', 'role')
+                    ->limit(10)
                     ->get();
 
         return response()->json($users);
