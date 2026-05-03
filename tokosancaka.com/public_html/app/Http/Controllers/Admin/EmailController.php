@@ -146,30 +146,48 @@ class EmailController extends Controller
         }
     }
 
-    /**
+   /**
      * Mengirim Email (via SMTP Server)
      */
     public function send(Request $request)
     {
+        // 1. Tambahkan validasi untuk attachments (opsional batas ukuran per file 10MB)
         $validated = $request->validate([
-            'to'      => 'required|email',
-            'subject' => 'required|string|max:255',
-            'body'    => 'required|string',
+            'to'            => 'required|email',
+            'subject'       => 'required|string|max:255',
+            'body'          => 'required|string',
+            'attachments.*' => 'nullable|file|max:10240', 
         ]);
 
         try {
-            $bodyHtml = nl2br(htmlspecialchars($validated['body']));
+            // 2. HAPUS htmlspecialchars() & nl2br(). 
+            // Biarkan $bodyHtml berisi tag HTML asli bawaan Quill.js
+            $bodyHtml = $validated['body'];
+            
             $subject = $validated['subject'];
             $to = $validated['to'];
+            
+            // Tangkap file lampiran dari frontend
+            $attachments = $request->file('attachments'); 
 
-            // Eksekusi Kirim SMTP
-            Mail::html($bodyHtml, function ($message) use ($to, $subject) {
+            // 3. Eksekusi Kirim SMTP dengan Lampiran
+            Mail::html($bodyHtml, function ($message) use ($to, $subject, $attachments) {
                 $message->to($to)
                         ->subject($subject)
-                        ->from(config('mail.from.address'), config('mail.from.name')); // Tambahkan baris ini
+                        ->from(config('mail.from.address'), config('mail.from.name'));
+                
+                // Jika ada file lampiran, loop dan attach ke email
+                if (!empty($attachments)) {
+                    foreach ($attachments as $file) {
+                        $message->attach($file->getRealPath(), [
+                            'as' => $file->getClientOriginalName(),
+                            'mime' => $file->getClientMimeType(),
+                        ]);
+                    }
+                }
             });
 
-            // Simpan Riwayat ke DB
+            // 4. Simpan Riwayat ke DB lokal
             $email = Email::create([
                 'user_id'      => Auth::id(),
                 'folder'       => 'sent', 
@@ -182,7 +200,7 @@ class EmailController extends Controller
                 'read_at'      => now(), 
             ]);
 
-            Log::info('Email sukses dikirim via SMTP.', ['to' => $to]);
+            Log::info('Email sukses dikirim via SMTP dengan lampiran.', ['to' => $to]);
             return response()->json(['success' => true, 'message' => 'Email berhasil dikirim!']);
 
         } catch (\Exception $e) {
