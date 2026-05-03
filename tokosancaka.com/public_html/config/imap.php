@@ -44,16 +44,17 @@ return [
     | array below.
     |
     */
-    'accounts' => [
+   'accounts' => [
 
         'default' => [// account identifier
-            'host'  => env('IMAP_HOST', 'localhost'),
-            'port'  => env('IMAP_PORT', 993),
-            'protocol'  => env('IMAP_PROTOCOL', 'imap'), //might also use imap, [pop3 or nntp (untested)]
-            'encryption'    => env('IMAP_ENCRYPTION', 'ssl'), // Supported: false, 'ssl', 'tls', 'notls', 'starttls'
-            'validate_cert' => env('IMAP_VALIDATE_CERT', true),
-            'username' => env('IMAP_USERNAME', 'root@example.com'),
-            'password' => env('IMAP_PASSWORD', ''),
+            // Sesuaikan nama env() di bawah ini dengan nama di file .env Anda
+            'host'  => env('IMAP_ACCOUNT_DEFAULT_HOST', '127.0.0.1'),
+            'port'  => env('IMAP_ACCOUNT_DEFAULT_PORT', 143),
+            'protocol'  => env('IMAP_ACCOUNT_DEFAULT_PROTOCOL', 'imap'),
+            'encryption'    => env('IMAP_ACCOUNT_DEFAULT_ENCRYPTION', false),
+            'validate_cert' => env('IMAP_ACCOUNT_DEFAULT_VALIDATE_CERT', false),
+            'username' => env('IMAP_ACCOUNT_DEFAULT_USERNAME', 'admin@tokosancaka.com'),
+            'password' => env('IMAP_ACCOUNT_DEFAULT_PASSWORD', ''),
             'authentication' => env('IMAP_AUTHENTICATION', null),
             'proxy' => [
                 'socket' => null,
