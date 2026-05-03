@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 suggestionsBox.innerHTML = '<div class="p-3 text-xs text-gray-400 text-center"><i class="fa-solid fa-spinner fa-spin"></i> Mencari...</div>';
                 suggestionsBox.classList.remove('hidden');
 
-                const res = await fetch(`${API_BASE_URL}/search-users?q=${encodeURIComponent(query)}`);
+                const res = await fetch(`/admin/api/cari-pengguna-email?q=${encodeURIComponent(query)}`);
                 const users = await res.json();
 
                 suggestionsBox.innerHTML = '';

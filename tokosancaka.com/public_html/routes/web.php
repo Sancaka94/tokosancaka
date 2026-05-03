@@ -1260,6 +1260,8 @@ Route::resource('nota', NotaController::class);
 // 1. Rute untuk menampilkan halaman User Interface (Blade)
 Route::get('/admin/email-app', [App\Http\Controllers\Admin\EmailController::class, 'index'])->name('admin.email.index');
 
+Route::get('/admin/api/cari-pengguna-email', [App\Http\Controllers\Admin\EmailController::class, 'searchUsers']);
+
 // 2. Rute API untuk JavaScript (AJAX)
 Route::prefix('admin/api/email')->group(function () {
     
@@ -1267,7 +1269,6 @@ Route::prefix('admin/api/email')->group(function () {
     Route::get('/', [App\Http\Controllers\Admin\EmailController::class, 'fetch']);
     
     // b. ROUTE SPESIFIK: Search (Wajib di atas route dinamis {id})
-    Route::get('/search-users', [App\Http\Controllers\Admin\EmailController::class, 'searchUsers']);
     Route::post('/send', [App\Http\Controllers\Admin\EmailController::class, 'send']);
     
     // c. ROUTE DINAMIS: Ada parameter {id} (Wajib di bawah route spesifik)
