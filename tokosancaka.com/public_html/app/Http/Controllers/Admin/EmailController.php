@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log; // Tambahkan facade Log
 use App\Models\Email; // Pastikan Anda memiliki model Email
 
 class EmailController extends Controller
@@ -14,6 +15,8 @@ class EmailController extends Controller
      */
     public function index()
     {
+        Log::info('Akses halaman Kotak Masuk Email.', ['user_id' => Auth::id()]);
+        
         // Sesuaikan dengan nama file blade Anda, misalnya resources/views/admin/email/index.blade.php
         return view('admin.email.index'); 
     }
@@ -25,6 +28,12 @@ class EmailController extends Controller
     {
         $folder = $request->query('folder', 'inbox');
         $search = $request->query('search', '');
+
+        Log::info('Memuat daftar email.', [
+            'user_id' => Auth::id(), 
+            'folder' => $folder, 
+            'search' => $search
+        ]);
 
         // Query dasar: Hanya ambil email milik user yang sedang login
         $query = Email::where('user_id', Auth::id());
@@ -71,7 +80,10 @@ class EmailController extends Controller
         // Jika email belum pernah dibaca, catat waktu bacanya (Read Receipt)
         if (is_null($email->read_at)) {
             $email->update(['read_at' => now()]);
+            Log::info('Email ditandai telah dibaca.', ['user_id' => Auth::id(), 'email_id' => $id]);
         }
+
+        Log::info('Melihat detail email.', ['user_id' => Auth::id(), 'email_id' => $id]);
 
         return response()->json($email);
     }
@@ -86,6 +98,11 @@ class EmailController extends Controller
             'to'      => 'required|email',
             'subject' => 'required|string|max:255',
             'body'    => 'required|string',
+        ]);
+
+        Log::info('Mencoba mengirim email baru.', [
+            'user_id' => Auth::id(), 
+            'to' => $validated['to']
         ]);
 
         try {
@@ -106,6 +123,8 @@ class EmailController extends Controller
             // Jika Anda ingin email benar-benar terkirim ke Gmail/Yahoo, gunakan Facade Mail Laravel:
             // \Illuminate\Support\Facades\Mail::to($validated['to'])->send(new \App\Mail\YourMailClass($email));
 
+            Log::info('Email berhasil disimpan ke folder terkirim.', ['user_id' => Auth::id(), 'email_id' => $email->id]);
+
             // Kembalikan respons sukses ke SweetAlert
             return response()->json([
                 'success' => true,
@@ -113,6 +132,12 @@ class EmailController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Gagal mengirim/menyimpan email.', [
+                'user_id' => Auth::id(), 
+                'error_message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menyimpan email: ' . $e->getMessage()
@@ -126,18 +151,27 @@ class EmailController extends Controller
     public function update(Request $request, $id)
     {
         $email = Email::where('user_id', Auth::id())->findOrFail($id);
+        $changes = [];
 
         // Jika request membawa data is_starred, update field tersebut
         if ($request->has('is_starred')) {
             $email->is_starred = $request->is_starred;
+            $changes['is_starred'] = $request->is_starred;
         }
 
         // Jika dipindah ke tempat sampah (trash)
         if ($request->has('folder')) {
             $email->folder = $request->folder;
+            $changes['folder'] = $request->folder;
         }
 
         $email->save();
+
+        Log::info('Data email diperbarui.', [
+            'user_id' => Auth::id(), 
+            'email_id' => $id, 
+            'changes' => $changes
+        ]);
 
         return response()->json(['success' => true]);
     }
