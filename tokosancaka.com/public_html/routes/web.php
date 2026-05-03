@@ -1255,12 +1255,15 @@ Route::resource('nota', NotaController::class);
 
 // Rute untuk menampilkan halaman (UI)
 Route::get('/admin/email-app', [EmailController::class, 'index'])->name('admin.email.index');
-Route::get('/admin/api/email/search-users', [EmailController::class, 'searchUsers']);
+// Route search HARUS diletakkan SEBELUM route {id}
+Route::get('/admin/api/email/search-users', [\App\Http\Controllers\Admin\EmailController::class, 'searchUsers']);
+
+// Route dengan parameter {id} diletakkan di bawahnya
+Route::get('/admin/api/email/{id}', [\App\Http\Controllers\Admin\EmailController::class, 'show']);
+Route::patch('/admin/api/email/{id}', [\App\Http\Controllers\Admin\EmailController::class, 'update']);
 
 // Rute API untuk JavaScript (AJAX)
 Route::prefix('admin/api/email')->group(function () {
     Route::get('/', [EmailController::class, 'fetch']);           // Ambil daftar
     Route::post('/send', [EmailController::class, 'send']);       // Kirim email baru
-    Route::get('/{id}', [EmailController::class, 'show']);        // Ambil detail
-    Route::patch('/{id}', [EmailController::class, 'update']);    // Update bintang/folder
 });

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Webklex\IMAP\Facades\Client; // Facade Webklex IMAP
 use App\Models\Email;
+use Illuminate\Support\Facades\DB;
 
 class EmailController extends Controller
 {
