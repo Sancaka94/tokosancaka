@@ -251,9 +251,9 @@ class EmailController extends Controller
             return response()->json([]);
         }
 
-        // Cari berdasarkan nama, email, ATAU no_wa
-        // Catatan: Pastikan nama modelnya benar (misal: \App\Models\Pengguna)
-        $users = clone \App\Models\Pengguna::where('nama_lengkap', 'like', "%{$term}%")
+        // Pakai DB::table dijamin langsung tembus ke database PMA kamu
+        $users = DB::table('Pengguna')
+                    ->where('nama_lengkap', 'like', "%{$term}%")
                     ->orWhere('email', 'like', "%{$term}%")
                     ->orWhere('no_wa', 'like', "%{$term}%")
                     ->select('id_pengguna', 'nama_lengkap', 'email', 'no_wa', 'role')
