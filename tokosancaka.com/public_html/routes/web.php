@@ -1255,6 +1255,7 @@ Route::resource('nota', NotaController::class);
 
 // Rute untuk menampilkan halaman (UI)
 Route::get('/admin/email-app', [EmailController::class, 'index'])->name('admin.email.index');
+Route::get('/admin/api/email/search-users', [EmailController::class, 'searchUsers']);
 
 // Rute API untuk JavaScript (AJAX)
 Route::prefix('admin/api/email')->group(function () {

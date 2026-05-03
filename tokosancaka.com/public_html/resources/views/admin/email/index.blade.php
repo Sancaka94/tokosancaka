@@ -99,7 +99,16 @@
             </header>
             
             <form id="compose-form" class="p-4 flex-1 flex flex-col gap-3 overflow-y-auto">
-                <input type="email" id="compose-to" placeholder="Kepada email tujuan..." class="w-full pb-2 text-sm border-b border-gray-200 focus:outline-none focus:border-blue-500" required>
+                <!-- Wrapper untuk input Tujuan -->
+                <div class="relative w-full">
+                    <input type="text" id="compose-to" placeholder="Ketik nama atau email tujuan..." class="w-full pb-2 text-sm border-b border-gray-200 focus:outline-none focus:border-blue-500" required autocomplete="off">
+                    
+                    <!-- Dropdown List Hasil Pencarian -->
+                    <div id="user-suggestions" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden max-h-48 overflow-y-auto">
+                        <!-- Isi dropdown akan di-generate via JS -->
+                    </div>
+                </div>
+
                 <input type="text" id="compose-subject" placeholder="Subjek email..." class="w-full pb-2 text-sm border-b border-gray-200 focus:outline-none focus:border-blue-500" required>
                 
                 <!-- Container untuk Rich Text Editor -->
@@ -269,6 +278,64 @@ document.addEventListener('DOMContentLoaded', () => {
         const to = document.getElementById('compose-to').value;
         const subject = document.getElementById('compose-subject').value;
         const bodyHTML = quill.root.innerHTML; // Mengambil text HTML dari Quill
+
+        // --- FITUR AUTOCOMPLETE PENGGUNA ---
+        const inputTo = document.getElementById('compose-to');
+        const suggestionsBox = document.getElementById('user-suggestions');
+        let searchTimeout;
+
+        inputTo.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+
+            if (query.length < 2) {
+                suggestionsBox.classList.add('hidden');
+                return;
+            }
+
+            searchTimeout = setTimeout(async () => {
+                try {
+                    // Panggil API pencarian user (sesuaikan URL dengan route di web.php)
+                    const res = await fetch(`/admin/api/email/search-users?q=${encodeURIComponent(query)}`);
+                    const users = await res.json();
+
+                    suggestionsBox.innerHTML = ''; // Kosongkan hasil sebelumnya
+
+                    if (users.length > 0) {
+                        users.forEach(user => {
+                            const item = document.createElement('div');
+                            item.className = 'p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0 flex flex-col transition-colors';
+                            
+                            // Menampilkan Nama di atas, Email di bawahnya (lebih kecil)
+                            item.innerHTML = `
+                                <span class="text-sm font-semibold text-gray-800">${user.nama_lengkap}</span>
+                                <span class="text-xs text-gray-500"><i class="fa-solid fa-envelope mr-1"></i>${user.email}</span>
+                            `;
+                            
+                            // Jika diklik, masukkan email ke input "Kepada"
+                            item.onclick = () => {
+                                inputTo.value = user.email; // Isi input dengan email
+                                suggestionsBox.classList.add('hidden'); // Tutup dropdown
+                            };
+                            suggestionsBox.appendChild(item);
+                        });
+                        suggestionsBox.classList.remove('hidden');
+                    } else {
+                        suggestionsBox.innerHTML = '<div class="p-3 text-xs text-gray-400 text-center">Tidak ditemukan...</div>';
+                        suggestionsBox.classList.remove('hidden');
+                    }
+                } catch (e) {
+                    console.error("Gagal mengambil data user:", e);
+                }
+            }, 300); // Tunggu 300ms setelah selesai ngetik
+        });
+
+        // Sembunyikan dropdown jika klik di luar area
+        document.addEventListener('click', function(e) {
+            if (!inputTo.contains(e.target) && !suggestionsBox.contains(e.target)) {
+                suggestionsBox.classList.add('hidden');
+            }
+        });
 
         // Validasi simpel
         if(!to || !subject || quill.getText().trim().length === 0) {

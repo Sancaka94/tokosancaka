@@ -238,4 +238,25 @@ class EmailController extends Controller
         }
         return response()->json(['error' => 'Gagal memproses'], 500);
     }
+
+    /**
+     * Mencari pengguna untuk auto-complete tujuan email
+     */
+    public function searchUsers(Request $request)
+    {
+        $term = $request->query('q');
+
+        if (empty($term)) {
+            return response()->json([]);
+        }
+
+        // Cari berdasarkan nama atau email dari tabel Pengguna
+        $users = \App\Models\User::where('nama_lengkap', 'like', "%{$term}%")
+                    ->orWhere('email', 'like', "%{$term}%")
+                    ->select('id_pengguna', 'nama_lengkap', 'email')
+                    ->limit(10) // Batasi maksimal 10 biar nggak berat
+                    ->get();
+
+        return response()->json($users);
+    }
 }
