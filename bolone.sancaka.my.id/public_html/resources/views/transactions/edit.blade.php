@@ -29,19 +29,31 @@
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans antialiased">
 
-    <div class="max-w-3xl mx-auto p-8 mt-10 bg-white border border-gray-200 rounded-lg shadow-sm">
+    <!-- Ditambahkan mx-4 md:mx-auto, penyesuaian p-4 md:p-8 dan mt-4 md:mt-10 agar responsif di layar kecil -->
+    <div class="max-w-3xl mx-4 md:mx-auto p-4 md:p-8 mt-4 md:mt-10 bg-white border border-gray-200 rounded-lg shadow-sm">
         
         <!-- Header -->
-        <div class="mb-8 border-b border-gray-200 pb-4 flex justify-between items-center">
+        <!-- Ditambahkan relative untuk dropdown absolute di mobile -->
+        <div class="mb-8 border-b border-gray-200 pb-4 flex justify-between items-center relative">
             
             <!-- Judul -->
-            <h1 class="text-2xl font-semibold tracking-tight text-black">Edit Data Transaksi</h1>
+            <h1 class="text-xl md:text-2xl font-semibold tracking-tight text-black">Edit Data Transaksi</h1>
             
-            <!-- Tombol Kembali (Hitam Next.js Style) -->
-            <!-- Catatan: Mengarah kembali ke 'transactions.create' karena di sanalah tabel master Anda berada -->
-            <a href="{{ route('transactions.create') }}" class="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors shadow-sm inline-flex items-center gap-2">
-                &larr; Kembali
-            </a>
+            <!-- Tombol Titik Tiga (Hanya Tampil di Mobile) -->
+            <button id="mobileMenuBtn" class="md:hidden p-2 text-gray-600 hover:text-black focus:outline-none">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path>
+                </svg>
+            </button>
+
+            <!-- Menu Aksi (Dropdown di Mobile, Normal di PC) -->
+            <div id="actionMenu" class="hidden absolute top-12 right-0 z-50 w-48 p-4 flex-col gap-3 bg-white border border-gray-200 rounded-lg shadow-xl md:flex md:static md:w-auto md:p-0 md:flex-row md:items-center md:gap-4 md:bg-transparent md:border-none md:shadow-none">
+                <!-- Tombol Kembali (Hitam Next.js Style) -->
+                <!-- Catatan: Mengarah kembali ke 'transactions.create' karena di sanalah tabel master Anda berada -->
+                <a href="{{ route('transactions.create') }}" class="w-full md:w-auto justify-center px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors shadow-sm inline-flex items-center gap-2">
+                    &larr; Kembali
+                </a>
+            </div>
         </div>
 
         <!-- Menampilkan Error Validasi -->
@@ -92,14 +104,14 @@
                 </div>
             </div>
 
-            <!-- Tombol Aksi Bawah -->
-            <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 mt-8">
+            <!-- Tombol Aksi Bawah: Diubah menjadi flex-col-reverse agar Batal di bawah saat di HP -->
+            <div class="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-6 border-t border-gray-100 mt-8">
                 <!-- Tombol Batal -->
-                <a href="{{ route('transactions.create') }}" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 hover:text-black transition-colors shadow-sm">
+                <a href="{{ route('transactions.create') }}" class="w-full sm:w-auto text-center px-5 py-2.5 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 hover:text-black transition-colors shadow-sm">
                     Batal
                 </a>
                 <!-- Tombol Update (Hitam Next.js Style) -->
-                <button type="submit" class="px-6 py-2.5 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-black">
+                <button type="submit" class="w-full sm:w-auto text-center px-6 py-2.5 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-black">
                     Update Data
                 </button>
             </div>
@@ -107,12 +119,34 @@
         </form>
     </div>
 
-    <!-- Script Inisialisasi Dropdown Select2 -->
+    <!-- Script Inisialisasi Dropdown Select2 & Menu Mobile -->
     <script>
         $(document).ready(function() {
+            // Inisialisasi Select2
             $('.select2').select2({ 
                 width: '100%',
                 placeholder: "Ketik untuk mencari..."
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Logika Dropdown Titik Tiga
+            const mobileBtn = document.getElementById('mobileMenuBtn');
+            const actionMenu = document.getElementById('actionMenu');
+
+            // Toggle menu saat tombol titik tiga di klik
+            mobileBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                actionMenu.classList.toggle('hidden');
+                actionMenu.classList.toggle('flex');
+            });
+
+            // Otomatis menutup dropdown menu jika klik di luar area menu
+            document.addEventListener('click', (e) => {
+                if (!mobileBtn.contains(e.target) && !actionMenu.contains(e.target)) {
+                    actionMenu.classList.add('hidden');
+                    actionMenu.classList.remove('flex');
+                }
             });
         });
     </script>
