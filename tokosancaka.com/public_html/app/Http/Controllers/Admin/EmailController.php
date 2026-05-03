@@ -121,7 +121,7 @@ class EmailController extends Controller
             $client = Client::account('default');
             $client->connect();
             $inboxFolder = $client->getFolder('INBOX');
-            $message = $inboxFolder->query()->getMessageByUid($id);
+            $message = $inboxFolder->query()->getMessageByUid((int) $id);
 
             if (!$message) {
                 return response()->json(['error' => 'Email tidak ditemukan'], 404);
@@ -227,7 +227,7 @@ class EmailController extends Controller
             try {
                 $client = Client::account('default');
                 $client->connect();
-                $message = $client->getFolder('INBOX')->query()->getMessageByUid($id);
+                $message = $client->getFolder('INBOX')->query()->getMessageByUid((int) $id);
                 if ($message && $request->has('is_starred')) {
                     $request->is_starred ? $message->setFlag('FLAGGED') : $message->unsetFlag('FLAGGED');
                     return response()->json(['success' => true]);
