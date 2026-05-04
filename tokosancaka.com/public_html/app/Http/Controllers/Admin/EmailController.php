@@ -264,47 +264,45 @@ class EmailController extends Controller
     }
 
     /**
-     * Menghapus email secara masal (Mendukung IMAP & Lokal)
+     * Menghapus email secara masal (Mendukung IMAP & Lokal secara terpisah)
      */
     public function destroy(Request $request)
     {
+        // Tangkap data ids dan folder dari frontend
         $request->validate([
             'ids' => 'required|array',
+            'folder' => 'required|string', 
         ]);
 
         $deletedCount = 0;
-        $imapClient = null;
-        $inboxFolder = null;
+        $folder = $request->folder;
 
         try {
-            foreach ($request->ids as $id) {
-                // 1. Cek apakah email ada di DB Lokal (Terkirim, Berbintang Lokal, dsb)
-                $localEmail = Email::where('user_id', Auth::id())->find($id);
+            // === JALUR 1: HAPUS DI SERVER IMAP (KHUSUS INBOX) ===
+            if ($folder === 'inbox') {
+                $client = Client::account('default');
+                $client->connect();
+                $inboxFolder = $client->getFolder('INBOX');
 
-                if ($localEmail) {
-                    $localEmail->delete();
-                    $deletedCount++;
-                } else {
-                    // 2. Jika tidak ada di DB Lokal, asumsikan itu adalah pesan dari IMAP (Inbox)
-                    if (!$imapClient) {
-                        $imapClient = Client::account('default');
-                        $imapClient->connect();
-                        $inboxFolder = $imapClient->getFolder('INBOX');
-                    }
-
+                foreach ($request->ids as $id) {
                     $message = $inboxFolder->query()->getMessageByUid((int) $id);
-                    
                     if ($message) {
-                        // Tandai pesan sebagai Deleted di server email asli (Gmail/Hosting)
-                        $message->setFlag('DELETED'); 
+                        // Beri tanda hapus (Deleted) pada pesan di server asli
+                        $message->setFlag('Deleted'); 
                         $deletedCount++;
                     }
                 }
-            }
+                
+                // Bersihkan pesan yang berstatus Deleted dari server
+                $inboxFolder->expunge(); 
 
-            // Eksekusi penghapusan permanen pesan yang ditandai hapus di server IMAP
-            if ($imapClient && $inboxFolder) {
-                $imapClient->expunge(); 
+            } 
+            // === JALUR 2: HAPUS DI DATABASE LOKAL (TERKIRIM, BERBINTANG, DLL) ===
+            else {
+                // Bisa hapus banyak ID sekaligus (jauh lebih cepat dan efisien)
+                $deletedCount = Email::where('user_id', Auth::id())
+                                     ->whereIn('id', $request->ids)
+                                     ->delete();
             }
 
             return response()->json([

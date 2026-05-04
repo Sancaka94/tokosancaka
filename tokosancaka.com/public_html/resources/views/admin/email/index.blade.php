@@ -327,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         'X-CSRF-TOKEN': CSRF_TOKEN,
                         'Accept': 'application/json'
                     },
-                    body: JSON.stringify({ ids: ids })
+                    body: JSON.stringify({ ids: ids, folder: currentFolder })
                 });
 
                 const data = await res.json();
