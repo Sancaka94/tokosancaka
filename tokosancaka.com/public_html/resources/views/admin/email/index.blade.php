@@ -298,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleDeleteButton();
     });
 
-    // --- EVENT LISTENER HAPUS MASAL ---
+   // --- EVENT LISTENER HAPUS MASAL ---
     ui.deleteBtn.addEventListener('click', async () => {
         const checkedBoxes = document.querySelectorAll('.email-checkbox:checked');
         const ids = Array.from(checkedBoxes).map(cb => cb.value);
@@ -319,15 +319,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.isConfirmed) {
             ui.deleteBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
             try {
-                const res = await fetch(`${API_BASE_URL}`, { 
-                    method: 'POST', // Ubah jadi POST
+                // UBAH URL DITAMBAH /destroy DAN METHOD JADI POST
+                const res = await fetch(`${API_BASE_URL}/destroy`, { 
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': CSRF_TOKEN,
                         'Accept': 'application/json'
                     },
-                    // Tambahkan _method: 'DELETE' di dalam body JSON
-                    body: JSON.stringify({ _method: 'DELETE', ids: ids }) 
+                    body: JSON.stringify({ ids: ids })
                 });
 
                 const data = await res.json();
