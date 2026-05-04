@@ -1270,7 +1270,7 @@ Route::prefix('admin/api/email')->group(function () {
     
     // b. ROUTE SPESIFIK: Search (Wajib di atas route dinamis {id})
     Route::post('/send', [App\Http\Controllers\Admin\EmailController::class, 'send']);
-    Route::delete('/email', [EmailController::class, 'destroy']);      // Hapus masal (harus di atas {id} agar tidak tertukar)
+    Route::delete('/email', [App\Http\Controllers\Admin\EmailController::class, 'destroy']);      // Hapus masal (harus di atas {id} agar tidak tertukar)
     
     // c. ROUTE DINAMIS: Ada parameter {id} (Wajib di bawah route spesifik)
     Route::get('/{id}', [App\Http\Controllers\Admin\EmailController::class, 'show']);
