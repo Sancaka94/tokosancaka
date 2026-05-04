@@ -320,13 +320,14 @@ document.addEventListener('DOMContentLoaded', () => {
             ui.deleteBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
             try {
                 const res = await fetch(`${API_BASE_URL}`, { 
-                    method: 'DELETE',
+                    method: 'POST', // Ubah jadi POST
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': CSRF_TOKEN,
                         'Accept': 'application/json'
                     },
-                    body: JSON.stringify({ ids: ids })
+                    // Tambahkan _method: 'DELETE' di dalam body JSON
+                    body: JSON.stringify({ _method: 'DELETE', ids: ids }) 
                 });
 
                 const data = await res.json();
