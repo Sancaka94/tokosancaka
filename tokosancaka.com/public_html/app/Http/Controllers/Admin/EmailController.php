@@ -263,7 +263,7 @@ class EmailController extends Controller
         return response()->json($users);
     }
 
-    /**
+   /**
      * Menghapus email secara masal (Mendukung IMAP & Lokal secara terpisah)
      */
     public function destroy(Request $request)
@@ -285,21 +285,32 @@ class EmailController extends Controller
                 $inboxFolder = $client->getFolder('INBOX');
 
                 foreach ($request->ids as $id) {
-                    $message = $inboxFolder->query()->getMessageByUid((int) $id);
-                    if ($message) {
-                        // Beri tanda hapus (Deleted) pada pesan di server asli
-                        $message->setFlag('Deleted'); 
-                        $deletedCount++;
+                    try {
+                        $message = $inboxFolder->query()->getMessageByUid((int) $id);
+                        if ($message) {
+                            // Coba tandai sebagai deleted dengan format yang didukung banyak server
+                            $message->setFlag(['\Deleted', 'Deleted']); 
+                            $deletedCount++;
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning("Gagal menandai hapus UID $id: " . $e->getMessage());
                     }
                 }
                 
-                // Bersihkan pesan yang berstatus Deleted dari server
-                $inboxFolder->expunge(); 
+                // Coba bersihkan server. Jika metode ini tidak ada di versi Webklex Anda, abaikan saja
+                try {
+                    $client->expunge(); 
+                } catch (\Exception $e) {
+                    try {
+                        $inboxFolder->expunge();
+                    } catch (\Exception $e2) {
+                        Log::warning("Fungsi Expunge tidak didukung oleh versi Webklex atau Server ini.");
+                    }
+                }
 
             } 
             // === JALUR 2: HAPUS DI DATABASE LOKAL (TERKIRIM, BERBINTANG, DLL) ===
             else {
-                // Bisa hapus banyak ID sekaligus (jauh lebih cepat dan efisien)
                 $deletedCount = Email::where('user_id', Auth::id())
                                      ->whereIn('id', $request->ids)
                                      ->delete();
@@ -311,10 +322,11 @@ class EmailController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Hapus Email Masal Error.', ['error' => $e->getMessage()]);
+            // Ini akan memastikan errornya terlihat di pop-up SweetAlert, BUKAN cuma Error 500 blank
+            Log::error('Hapus Email Masal Error.', ['error' => $e->getMessage(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
-                'error' => 'Gagal menghapus pesan: ' . $e->getMessage()
+                'error' => 'Gagal menghapus: ' . $e->getMessage()
             ], 500);
         }
     }
