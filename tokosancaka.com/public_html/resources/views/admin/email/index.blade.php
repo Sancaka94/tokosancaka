@@ -55,11 +55,22 @@
 
         <!-- Daftar Email -->
         <main class="w-[300px] lg:w-[360px] flex-shrink-0 flex flex-col h-full border-r border-gray-200 bg-white shadow-[4px_0_10px_rgba(0,0,0,0.02)] z-10">
-            <header class="h-16 flex items-center px-4 border-b border-gray-200 flex-shrink-0 bg-white">
+            <header class="h-auto flex flex-col px-4 py-3 border-b border-gray-200 flex-shrink-0 bg-white gap-3">
                 <form id="search-form" class="w-full relative" onsubmit="event.preventDefault();">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-search text-gray-400 text-sm"></i></span>
                     <input type="search" id="search-input" placeholder="Cari pesan..." class="w-full bg-gray-100/80 focus:bg-white focus:ring-2 focus:ring-blue-200 rounded-lg py-2 pl-9 pr-4 text-sm outline-none transition-all">
                 </form>
+                
+                <!-- Aksi Masal: Checkbox Pilih Semua & Tombol Hapus -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="select-all" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                        <label for="select-all" class="text-xs text-gray-600 cursor-pointer font-medium">Pilih Semua</label>
+                    </div>
+                    <button id="btn-delete-selected" class="hidden text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-colors" title="Hapus Terpilih">
+                        <i class="fa-solid fa-trash-can"></i> Hapus
+                    </button>
+                </div>
             </header>
             <div id="email-list" class="flex-1 overflow-y-auto bg-white"></div>
         </main>
@@ -156,7 +167,9 @@ document.addEventListener('DOMContentLoaded', () => {
         content: document.getElementById('email-content'),
         placeholder: document.getElementById('email-placeholder'), 
         unreadBadge: document.getElementById('unread-count'),
-        search: document.getElementById('search-input')
+        search: document.getElementById('search-input'),
+        selectAll: document.getElementById('select-all'),
+        deleteBtn: document.getElementById('btn-delete-selected')
     };
 
     // --- INISIALISASI QUILL EDITOR ---
@@ -191,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --- FITUR AUTOCOMPLETE PENGGUNA (CARI NAMA / EMAIL / WA) ---
+    // --- FITUR AUTOCOMPLETE PENGGUNA ---
     const inputTo = document.getElementById('compose-to');
     const suggestionsBox = document.getElementById('user-suggestions');
     let searchTimeout;
@@ -257,10 +270,92 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- MENGATUR VISIBILITAS TOMBOL HAPUS MASAL ---
+    function toggleDeleteButton() {
+        const checkedBoxes = document.querySelectorAll('.email-checkbox:checked');
+        const allBoxes = document.querySelectorAll('.email-checkbox');
+        
+        if (checkedBoxes.length > 0) {
+            ui.deleteBtn.classList.remove('hidden');
+        } else {
+            ui.deleteBtn.classList.add('hidden');
+        }
+
+        // Sinkronisasi status checkbox 'Pilih Semua'
+        if(allBoxes.length > 0 && checkedBoxes.length === allBoxes.length) {
+            ui.selectAll.checked = true;
+        } else {
+            ui.selectAll.checked = false;
+        }
+    }
+
+    // --- EVENT LISTENER PILIH SEMUA ---
+    ui.selectAll.addEventListener('change', function() {
+        const isChecked = this.checked;
+        document.querySelectorAll('.email-checkbox').forEach(cb => {
+            cb.checked = isChecked;
+        });
+        toggleDeleteButton();
+    });
+
+    // --- EVENT LISTENER HAPUS MASAL ---
+    ui.deleteBtn.addEventListener('click', async () => {
+        const checkedBoxes = document.querySelectorAll('.email-checkbox:checked');
+        const ids = Array.from(checkedBoxes).map(cb => cb.value);
+
+        if (ids.length === 0) return;
+
+        const result = await Swal.fire({
+            title: 'Hapus Pesan?',
+            text: `${ids.length} pesan terpilih akan dihapus permanen.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        });
+
+        if (result.isConfirmed) {
+            ui.deleteBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            try {
+                const res = await fetch(`${API_BASE_URL}`, { 
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF_TOKEN,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ ids: ids })
+                });
+
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Gagal menghapus pesan.');
+
+                Swal.fire('Terhapus!', data.message, 'success');
+                
+                // Reset UI
+                ui.selectAll.checked = false;
+                toggleDeleteButton();
+                ui.content.classList.add('hidden');
+                ui.placeholder.classList.remove('hidden');
+                
+                // Refresh list
+                fetchEmails(currentFolder, ui.search.value);
+
+            } catch (err) {
+                Swal.fire('Error', err.message, 'error');
+                ui.deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Hapus';
+            }
+        }
+    });
+
     // --- FUNGSI MENGAMBIL DAFTAR EMAIL ---
     async function fetchEmails(folder = 'inbox', query = '') {
         ui.list.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400"><div class="loader mb-3"></div><p class="text-xs">Sinkronisasi ${folder}...</p></div>`;
-        
+        ui.selectAll.checked = false;
+        toggleDeleteButton();
+
         try {
             const res = await fetch(`${API_BASE_URL}?folder=${folder}&search=${encodeURIComponent(query)}`, { 
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'} 
@@ -304,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- FUNGSI RENDER LIST EMAIL ---
+    // --- FUNGSI RENDER LIST EMAIL (Dengan Checkbox) ---
     function renderList(emails) {
         ui.list.innerHTML = '';
         if(emails.length === 0) return ui.list.innerHTML = `<div class="p-10 text-center text-gray-400 text-sm">Kosong.</div>`;
@@ -316,10 +411,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             ui.list.innerHTML += `
                 <div class="email-item flex items-start gap-3 p-3.5 border-b cursor-pointer ${isUnread ? 'bg-[#f4f8ff] font-semibold border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'}" data-id="${em.id}">
+                    <!-- Checkbox -->
+                    <div class="flex items-center h-full pt-1.5 z-10">
+                        <input type="checkbox" value="${em.id}" class="email-checkbox w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                    </div>
+
                     <div class="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full ${color} text-white flex items-center justify-center text-xs font-bold">${em.from_name.charAt(0).toUpperCase()}</div>
                     <div class="flex-1 min-w-0">
                         <div class="flex justify-between items-baseline mb-1">
-                            <span class="truncate w-36 lg:w-48 text-[13px]">${em.from_name}</span>
+                            <span class="truncate w-32 lg:w-44 text-[13px]">${em.from_name}</span>
                             <span class="text-[11px] ${isUnread ? 'text-blue-600' : 'text-gray-400'}">${new Date(em.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'short'})}</span>
                         </div>
                         <div class="flex items-center gap-2">
@@ -412,6 +512,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- KLIK LIST EMAIL ---
     ui.list.onclick = (e) => {
+        // Cegah klik checkbox agar tidak membuka detail email
+        if(e.target.classList.contains('email-checkbox')) {
+            toggleDeleteButton();
+            return;
+        }
+
         const star = e.target.closest('.star-btn');
         if(star) {
             e.stopPropagation();

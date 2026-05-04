@@ -262,4 +262,62 @@ class EmailController extends Controller
 
         return response()->json($users);
     }
+
+    /**
+     * Menghapus email secara masal (Mendukung IMAP & Lokal)
+     */
+    public function destroy(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+        ]);
+
+        $deletedCount = 0;
+        $imapClient = null;
+        $inboxFolder = null;
+
+        try {
+            foreach ($request->ids as $id) {
+                // 1. Cek apakah email ada di DB Lokal (Terkirim, Berbintang Lokal, dsb)
+                $localEmail = Email::where('user_id', Auth::id())->find($id);
+
+                if ($localEmail) {
+                    $localEmail->delete();
+                    $deletedCount++;
+                } else {
+                    // 2. Jika tidak ada di DB Lokal, asumsikan itu adalah pesan dari IMAP (Inbox)
+                    if (!$imapClient) {
+                        $imapClient = Client::account('default');
+                        $imapClient->connect();
+                        $inboxFolder = $imapClient->getFolder('INBOX');
+                    }
+
+                    $message = $inboxFolder->query()->getMessageByUid((int) $id);
+                    
+                    if ($message) {
+                        // Tandai pesan sebagai Deleted di server email asli (Gmail/Hosting)
+                        $message->setFlag('DELETED'); 
+                        $deletedCount++;
+                    }
+                }
+            }
+
+            // Eksekusi penghapusan permanen pesan yang ditandai hapus di server IMAP
+            if ($imapClient && $inboxFolder) {
+                $imapClient->expunge(); 
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $deletedCount . ' pesan berhasil dihapus.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Hapus Email Masal Error.', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Gagal menghapus pesan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
