@@ -223,10 +223,12 @@
             @endforeach
         </div>
 
-        {{-- === CARD MONITOR (PENDAPATAN & JUMLAH) === --}}
+       {{-- === CARD MONITOR (PENDAPATAN & JUMLAH) === --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
-            {{-- ROW 1: MONITOR PENDAPATAN (RP) --}}
+            {{-- ======================================================= --}}
+            {{-- ROW 1: MONITOR PENDAPATAN (RP) DENGAN EFEK HOVER        --}}
+            {{-- ======================================================= --}}
             
             {{-- CARD 1: SELESAI --}}
             <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg group cursor-help transition-all duration-300">
@@ -298,6 +300,46 @@
                         <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeGagalSaldo ?? 0, 0, ',', '.') }}</span></div>
                     </div>
                 </div>
+            </div>
+
+            {{-- ======================================================= --}}
+            {{-- ROW 2: MONITOR JUMLAH TRANSAKSI (QTY) - TETAP SAMA      --}}
+            {{-- ======================================================= --}}
+
+            <div class="relative overflow-hidden rounded-lg bg-green-400 p-5 shadow-lg">
+                <div class="relative z-10 text-white">
+                    <p class="text-3xl font-bold">{{ number_format($countSelesai ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Resi</span></p>
+                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Jumlah Terkirim</p>
+                    <p class="text-xs opacity-75 mt-0.5">Total paket berhasil sampai</p>
+                </div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-check-circle fa-5x text-white"></i></div>
+            </div>
+
+            <div class="relative overflow-hidden rounded-lg bg-cyan-500 p-5 shadow-lg">
+                <div class="relative z-10 text-white">
+                    <p class="text-3xl font-bold">{{ number_format($countPickup ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Paket</span></p>
+                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Menunggu Pickup</p>
+                    <p class="text-xs opacity-75 mt-0.5">Paket siap diambil kurir</p>
+                </div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-clock fa-5x text-white"></i></div>
+            </div>
+
+            <div class="relative overflow-hidden rounded-lg bg-blue-500 p-5 shadow-lg">
+                <div class="relative z-10 text-white">
+                    <p class="text-3xl font-bold">{{ number_format($countDikirim ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Paket</span></p>
+                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Sedang Dikirim</p>
+                    <p class="text-xs opacity-75 mt-0.5">Paket dalam perjalanan</p>
+                </div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-truck-moving fa-5x text-white"></i></div>
+            </div>
+
+            <div class="relative overflow-hidden rounded-lg bg-red-400 p-5 shadow-lg">
+                <div class="relative z-10 text-white">
+                    <p class="text-3xl font-bold">{{ number_format($countGagal ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Trx</span></p>
+                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Gagal / Batal</p>
+                    <p class="text-xs opacity-75 mt-0.5">Transaksi dibatalkan/retur</p>
+                </div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-ban fa-5x text-white"></i></div>
             </div>
 
         </div>
