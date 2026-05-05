@@ -101,17 +101,31 @@ class PesananController extends Controller
         $statusDikirim = ['Diproses', 'Terkirim', 'Sedang Dikirim'];
         $statusGagal   = ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'];
 
-        // --- A. CARD PENDAPATAN (Rp) ---
-        $incomeSelesai = (clone $cardQuery)->where('status_pesanan', 'Selesai')->sum('price');
-        
-        // TAMBAHAN BARU: Rincian Metode Pembayaran untuk Card "Pendapatan Selesai"
-        $incomeCash  = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'Cash')->sum('price');
-        $incomeCod   = (clone $cardQuery)->where('status_pesanan', 'Selesai')->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
-        $incomeSaldo = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'Potong Saldo')->sum('price');
+       // --- A. CARD PENDAPATAN (Rp) ---
 
+        // 1. PENDAPATAN SELESAI
+        $incomeSelesai = (clone $cardQuery)->where('status_pesanan', 'Selesai')->sum('price');
+        $incomeSelesaiCash  = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'Cash')->sum('price');
+        $incomeSelesaiCod   = (clone $cardQuery)->where('status_pesanan', 'Selesai')->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
+        $incomeSelesaiSaldo = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'Potong Saldo')->sum('price');
+
+        // 2. MENUNGGU PICKUP
         $incomePickup  = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->sum('price');
+        $incomePickupCash  = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->where('payment_method', 'Cash')->sum('price');
+        $incomePickupCod   = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
+        $incomePickupSaldo = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->where('payment_method', 'Potong Saldo')->sum('price');
+
+        // 3. SEDANG DIKIRIM
         $incomeDikirim = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->sum('price');
+        $incomeDikirimCash  = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->where('payment_method', 'Cash')->sum('price');
+        $incomeDikirimCod   = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
+        $incomeDikirimSaldo = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->where('payment_method', 'Potong Saldo')->sum('price');
+
+        // 4. GAGAL / BATAL
         $incomeGagal   = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->sum('price');
+        $incomeGagalCash  = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->where('payment_method', 'Cash')->sum('price');
+        $incomeGagalCod   = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
+        $incomeGagalSaldo = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->where('payment_method', 'Potong Saldo')->sum('price');
 
         // --- B. CARD JUMLAH (Qty) ---
         $countSelesai = (clone $cardQuery)->where('status_pesanan', 'Selesai')->count();
@@ -119,26 +133,25 @@ class PesananController extends Controller
         $countDikirim = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->count();
         $countGagal   = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->count();
 
-
         // =================================================================
         // STEP 4: LANJUTKAN QUERY UNTUK TABEL BAWAH
         // =================================================================
-        // Filter "Status" (Tab Menu: Semua, Menunggu Pickup, dll) hanya berlaku untuk Tabel,
-        // TIDAK BOLEH mengubah Card (supaya Card tetap jadi Summary utuh).
-
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
 
-        // Ambil Data Tabel (Pagination)
         $orders = $query->orderBy('tanggal_pesanan', 'desc')->paginate(15);
-        $orders->appends($request->all()); // Agar filter tidak hilang saat pindah halaman
+        $orders->appends($request->all());
 
-        // STEP 5: RETURN VIEW
+        // =================================================================
+        // STEP 5: RETURN VIEW (Pastikan variabel baru dimasukkan ke compact)
+        // =================================================================
         return view('admin.pesanan.index', compact(
             'orders',
-            'incomeSelesai', 'incomeCash', 'incomeCod', 'incomeSaldo', // <--- Tambahkan di sini
-            'incomePickup', 'incomeDikirim', 'incomeGagal',
+            'incomeSelesai', 'incomeSelesaiCash', 'incomeSelesaiCod', 'incomeSelesaiSaldo',
+            'incomePickup', 'incomePickupCash', 'incomePickupCod', 'incomePickupSaldo',
+            'incomeDikirim', 'incomeDikirimCash', 'incomeDikirimCod', 'incomeDikirimSaldo',
+            'incomeGagal', 'incomeGagalCash', 'incomeGagalCod', 'incomeGagalSaldo',
             'countSelesai', 'countPickup', 'countDikirim', 'countGagal'
         ));
     }

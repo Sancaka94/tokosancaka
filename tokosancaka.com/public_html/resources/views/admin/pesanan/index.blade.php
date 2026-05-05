@@ -227,103 +227,77 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
             {{-- ROW 1: MONITOR PENDAPATAN (RP) --}}
+            
+            {{-- CARD 1: SELESAI --}}
             <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg group cursor-help transition-all duration-300">
-                
-                {{-- Konten Utama (Tampil Default, Menghilang saat di-hover) --}}
                 <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
                     <p class="text-3xl font-bold">Rp{{ number_format($incomeSelesai ?? 0, 0, ',', '.') }}</p>
                     <p class="text-sm font-bold uppercase opacity-90 mt-1">Pendapatan Selesai</p>
-                    <p class="text-xs opacity-75 mt-0.5">Hover/Sorot untuk lihat rincian</p>
+                    <p class="text-xs opacity-75 mt-0.5">Total nilai pesanan sukses</p>
                 </div>
-                
-                {{-- Icon Latar Belakang --}}
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5">
-                    <i class="fas fa-store fa-5x text-white"></i>
-                </div>
-
-                {{-- Overlay Rincian Pembayaran (Tampil hanya saat di-hover) --}}
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-store fa-5x text-white"></i></div>
                 <div class="absolute inset-0 bg-green-600 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
                     <p class="text-xs font-bold uppercase border-b border-green-400 pb-1 mb-2">Rincian Pembayaran</p>
                     <div class="space-y-1 text-sm font-medium">
-                        <div class="flex justify-between items-center">
-                            <span>Cash</span>
-                            <span>Rp{{ number_format($incomeCash ?? 0, 0, ',', '.') }}</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span>COD / Ongkir</span>
-                            <span>Rp{{ number_format($incomeCod ?? 0, 0, ',', '.') }}</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span>Potong Saldo</span>
-                            <span>Rp{{ number_format($incomeSaldo ?? 0, 0, ',', '.') }}</span>
-                        </div>
+                        <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeSelesaiCash ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomeSelesaiCod ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeSelesaiSaldo ?? 0, 0, ',', '.') }}</span></div>
                     </div>
                 </div>
-
             </div>
 
-            <div class="relative overflow-hidden rounded-lg bg-cyan-600 p-5 shadow-lg">
-                <div class="relative z-10 text-white">
+            {{-- CARD 2: MENUNGGU PICKUP --}}
+            <div class="relative overflow-hidden rounded-lg bg-cyan-600 p-5 shadow-lg group cursor-help transition-all duration-300">
+                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
                     <p class="text-3xl font-bold">Rp{{ number_format($incomePickup ?? 0, 0, ',', '.') }}</p>
                     <p class="text-sm font-bold uppercase opacity-90 mt-1">Menunggu Pickup</p>
                     <p class="text-xs opacity-75 mt-0.5">Sudah lunas, belum kirim</p>
                 </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-box-open fa-5x text-white"></i></div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-box-open fa-5x text-white"></i></div>
+                <div class="absolute inset-0 bg-cyan-700 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+                    <p class="text-xs font-bold uppercase border-b border-cyan-500 pb-1 mb-2">Rincian Pembayaran</p>
+                    <div class="space-y-1 text-sm font-medium">
+                        <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomePickupCash ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomePickupCod ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomePickupSaldo ?? 0, 0, ',', '.') }}</span></div>
+                    </div>
+                </div>
             </div>
 
-            <div class="relative overflow-hidden rounded-lg bg-blue-600 p-5 shadow-lg">
-                <div class="relative z-10 text-white">
+            {{-- CARD 3: SEDANG DIKIRIM --}}
+            <div class="relative overflow-hidden rounded-lg bg-blue-600 p-5 shadow-lg group cursor-help transition-all duration-300">
+                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
                     <p class="text-3xl font-bold">Rp{{ number_format($incomeDikirim ?? 0, 0, ',', '.') }}</p>
                     <p class="text-sm font-bold uppercase opacity-90 mt-1">Sedang Dikirim</p>
                     <p class="text-xs opacity-75 mt-0.5">Sedang dalam perjalanan</p>
                 </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-shipping-fast fa-5x text-white"></i></div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-shipping-fast fa-5x text-white"></i></div>
+                <div class="absolute inset-0 bg-blue-700 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+                    <p class="text-xs font-bold uppercase border-b border-blue-500 pb-1 mb-2">Rincian Pembayaran</p>
+                    <div class="space-y-1 text-sm font-medium">
+                        <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeDikirimCash ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomeDikirimCod ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeDikirimSaldo ?? 0, 0, ',', '.') }}</span></div>
+                    </div>
+                </div>
             </div>
 
-            <div class="relative overflow-hidden rounded-lg bg-red-500 p-5 shadow-lg">
-                <div class="relative z-10 text-white">
+            {{-- CARD 4: GAGAL / BATAL --}}
+            <div class="relative overflow-hidden rounded-lg bg-red-500 p-5 shadow-lg group cursor-help transition-all duration-300">
+                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
                     <p class="text-3xl font-bold">Rp{{ number_format($incomeGagal ?? 0, 0, ',', '.') }}</p>
                     <p class="text-sm font-bold uppercase opacity-90 mt-1">Gagal / Batal</p>
                     <p class="text-xs opacity-75 mt-0.5">Potensi pendapatan hilang</p>
                 </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-arrow-up fa-5x text-white"></i></div>
-            </div>
-
-            {{-- ROW 2: MONITOR JUMLAH TRANSAKSI (QTY) --}}
-            <div class="relative overflow-hidden rounded-lg bg-green-400 p-5 shadow-lg">
-                <div class="relative z-10 text-white">
-                    <p class="text-3xl font-bold">{{ number_format($countSelesai ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Resi</span></p>
-                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Jumlah Terkirim</p>
-                    <p class="text-xs opacity-75 mt-0.5">Total paket berhasil sampai</p>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-arrow-up fa-5x text-white"></i></div>
+                <div class="absolute inset-0 bg-red-600 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+                    <p class="text-xs font-bold uppercase border-b border-red-400 pb-1 mb-2">Rincian Pembayaran</p>
+                    <div class="space-y-1 text-sm font-medium">
+                        <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeGagalCash ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomeGagalCod ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeGagalSaldo ?? 0, 0, ',', '.') }}</span></div>
+                    </div>
                 </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-check-circle fa-5x text-white"></i></div>
-            </div>
-
-            <div class="relative overflow-hidden rounded-lg bg-cyan-500 p-5 shadow-lg">
-                <div class="relative z-10 text-white">
-                    <p class="text-3xl font-bold">{{ number_format($countPickup ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Paket</span></p>
-                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Menunggu Pickup</p>
-                    <p class="text-xs opacity-75 mt-0.5">Paket siap diambil kurir</p>
-                </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-clock fa-5x text-white"></i></div>
-            </div>
-
-            <div class="relative overflow-hidden rounded-lg bg-blue-500 p-5 shadow-lg">
-                <div class="relative z-10 text-white">
-                    <p class="text-3xl font-bold">{{ number_format($countDikirim ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Paket</span></p>
-                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Sedang Dikirim</p>
-                    <p class="text-xs opacity-75 mt-0.5">Paket dalam perjalanan</p>
-                </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-truck-moving fa-5x text-white"></i></div>
-            </div>
-
-            <div class="relative overflow-hidden rounded-lg bg-red-400 p-5 shadow-lg">
-                <div class="relative z-10 text-white">
-                    <p class="text-3xl font-bold">{{ number_format($countGagal ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Trx</span></p>
-                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Gagal / Batal</p>
-                    <p class="text-xs opacity-75 mt-0.5">Transaksi dibatalkan/retur</p>
-                </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-ban fa-5x text-white"></i></div>
             </div>
 
         </div>
