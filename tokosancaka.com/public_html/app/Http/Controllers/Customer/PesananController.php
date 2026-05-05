@@ -37,9 +37,6 @@ use App\Notifications\NotifikasiUmum;
 
 class PesananController extends Controller
 {
-    /**
-     * Menampilkan daftar semua pesanan milik pelanggan dengan fitur Filter & Search.
-     */
     public function index(Request $request)
     {
         // Ambil ID Customer yang sedang login
@@ -58,37 +55,76 @@ class PesananController extends Controller
                   ->orWhere('receiver_name', 'like', "%{$search}%")
                   ->orWhere('sender_phone', 'like', "%{$search}%")
                   ->orWhere('receiver_phone', 'like', "%{$search}%")
-                  // Tambahan: Agar bisa mencari nama ekspedisi manual (misal ketik "lion")
                   ->orWhere('expedition', 'like', "%{$search}%");
             });
         }
 
-        // 3. LOGIKA FILTER EKSPEDISI (Dari Klik Tombol Detail Dashboard)
-        // Menangkap parameter url: ?ekspedisi=lion
+        // 3. LOGIKA FILTER EKSPEDISI
         if ($request->has('ekspedisi') && $request->ekspedisi != '') {
             $filterKurir = $request->ekspedisi;
-
-            // Bungkus dalam where closure agar aman
             $query->where(function($q) use ($filterKurir) {
-                // Mencari format "-jne-" (di tengah string)
                 $q->where('expedition', 'LIKE', '%-' . $filterKurir . '-%')
-                  // ATAU format "jne-" (di awal string)
                   ->orWhere('expedition', 'LIKE', $filterKurir . '-%');
             });
         }
 
-        // 4. Filter Status (Opsional, jika ada dropdown status)
+        // =================================================================
+        // STEP TAMBAHAN: HITUNG DATA CARD KHUSUS CUSTOMER INI
+        // =================================================================
+        $cardQuery = clone $query;
+
+        $statusPickup  = ['Menunggu Pickup', 'Pembayaran Lunas (Gagal Auto-Resi)', 'Pembayaran Lunas (Error Kirim API)'];
+        $statusDikirim = ['Diproses', 'Terkirim', 'Sedang Dikirim'];
+        $statusGagal   = ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'];
+
+        // --- A. CARD PENGELUARAN CUSTOMER (Rp) ---
+        // 1. SELESAI
+        $incomeSelesai = (clone $cardQuery)->where('status_pesanan', 'Selesai')->sum('price');
+        $incomeSelesaiCash  = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'Cash')->sum('price');
+        $incomeSelesaiCod   = (clone $cardQuery)->where('status_pesanan', 'Selesai')->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
+        $incomeSelesaiSaldo = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'Potong Saldo')->sum('price');
+
+        // 2. MENUNGGU PICKUP
+        $incomePickup  = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->sum('price');
+        $incomePickupCash  = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->where('payment_method', 'Cash')->sum('price');
+        $incomePickupCod   = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
+        $incomePickupSaldo = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->where('payment_method', 'Potong Saldo')->sum('price');
+
+        // 3. SEDANG DIKIRIM
+        $incomeDikirim = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->sum('price');
+        $incomeDikirimCash  = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->where('payment_method', 'Cash')->sum('price');
+        $incomeDikirimCod   = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
+        $incomeDikirimSaldo = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->where('payment_method', 'Potong Saldo')->sum('price');
+
+        // 4. GAGAL / BATAL
+        $incomeGagal   = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->sum('price');
+        $incomeGagalCash  = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->where('payment_method', 'Cash')->sum('price');
+        $incomeGagalCod   = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
+        $incomeGagalSaldo = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->where('payment_method', 'Potong Saldo')->sum('price');
+
+        // --- B. CARD JUMLAH (Qty) ---
+        $countSelesai = (clone $cardQuery)->where('status_pesanan', 'Selesai')->count();
+        $countPickup  = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->count();
+        $countDikirim = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->count();
+        $countGagal   = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->count();
+
+        // 4. Filter Status (Tabel Bawah)
         if ($request->filled('status')) {
             $query->where('status_pesanan', $request->input('status'));
         }
 
-        // 5. Eksekusi Query, Sorting, dan Pagination
+        // 5. Eksekusi Query
         $pesanans = $query->latest('tanggal_pesanan')->paginate(15);
-
-        // PENTING: Tambahkan appends agar filter tidak hilang saat pindah halaman (Page 2, dst)
         $pesanans->appends($request->all());
 
-        return view('customer.pesanan.index', compact('pesanans'));
+        return view('customer.pesanan.index', compact(
+            'pesanans',
+            'incomeSelesai', 'incomeSelesaiCash', 'incomeSelesaiCod', 'incomeSelesaiSaldo',
+            'incomePickup', 'incomePickupCash', 'incomePickupCod', 'incomePickupSaldo',
+            'incomeDikirim', 'incomeDikirimCash', 'incomeDikirimCod', 'incomeDikirimSaldo',
+            'incomeGagal', 'incomeGagalCash', 'incomeGagalCod', 'incomeGagalSaldo',
+            'countSelesai', 'countPickup', 'countDikirim', 'countGagal'
+        ));
     }
 
     /**
