@@ -37,26 +37,26 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
         </div>
 
         {{-- FILTER & PENCARIAN SECTION --}}
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6">
-            <form action="{{ route('customer.pesanan.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-6">
+            <form action="{{ route('customer.pesanan.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
 
                 {{-- Input Pencarian --}}
                 <div class="md:col-span-4">
-                    <label for="search" class="block text-xs font-semibold text-slate-500 uppercase mb-1">Cari Data</label>
+                    <label for="search" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Cari Data</label>
                     <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                             <i class="fas fa-search text-slate-400"></i>
                         </div>
                         <input type="text" name="search" id="search" value="{{ request('search') }}"
-                               class="pl-10 block w-full rounded-lg border-slate-300 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm"
+                               class="pl-10 pr-4 py-2.5 block w-full rounded-lg border border-slate-300 bg-white text-slate-700 text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm transition-all duration-200"
                                placeholder="Resi, Nama, No HP, atau Invoice...">
                     </div>
                 </div>
 
                 {{-- Filter Status --}}
                 <div class="md:col-span-2">
-                    <label for="status" class="block text-xs font-semibold text-slate-500 uppercase mb-1">Status</label>
-                    <select name="status" id="status" class="block w-full rounded-lg border-slate-300 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm">
+                    <label for="status" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Status</label>
+                    <select name="status" id="status" class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm transition-all duration-200 cursor-pointer">
                         <option value="">Semua Status</option>
                         <option value="Menunggu Pembayaran" {{ request('status') == 'Menunggu Pembayaran' ? 'selected' : '' }}>Menunggu Pembayaran</option>
                         <option value="Menunggu Pickup" {{ request('status') == 'Menunggu Pickup' ? 'selected' : '' }}>Menunggu Pickup</option>
@@ -68,27 +68,26 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
 
                 {{-- Filter Tanggal Mulai --}}
                 <div class="md:col-span-2">
-                    <label for="start_date" class="block text-xs font-semibold text-slate-500 uppercase mb-1">Dari Tanggal</label>
+                    <label for="start_date" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Dari Tanggal</label>
                     <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}"
-                           class="block w-full rounded-lg border-slate-300 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm">
+                           class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm transition-all duration-200 cursor-pointer">
                 </div>
 
                 {{-- Filter Tanggal Akhir --}}
                 <div class="md:col-span-2">
-                    <label for="end_date" class="block text-xs font-semibold text-slate-500 uppercase mb-1">Sampai Tanggal</label>
+                    <label for="end_date" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Sampai Tanggal</label>
                     <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}"
-                           class="block w-full rounded-lg border-slate-300 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm">
+                           class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm transition-all duration-200 cursor-pointer">
                 </div>
 
                 {{-- Tombol Aksi --}}
-                <div class="md:col-span-2 flex gap-2">
-                    <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-2 px-4 rounded-lg shadow transition">
-                        Filter
+                <div class="md:col-span-2 flex gap-2 mt-4 md:mt-0">
+                    <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex justify-center items-center gap-2">
+                        <i class="fas fa-filter"></i> Filter
                     </button>
 
-                    {{-- Tombol Export PDF (Mengirim parameter filter saat ini) --}}
-                    {{-- Pastikan Anda sudah membuat route 'customer.pesanan.export_pdf' --}}
-                    <a href="{{ route('customer.pesanan.export_pdf', request()->all()) }}" target="_blank" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-sm font-bold py-2 px-3 rounded-lg shadow-sm transition" title="Export PDF">
+                    {{-- Tombol Export PDF --}}
+                    <a href="{{ route('customer.pesanan.export_pdf', request()->all()) }}" target="_blank" class="bg-red-50 hover:bg-red-500 hover:text-white text-red-600 border border-red-200 font-bold py-2.5 px-4 rounded-lg shadow-sm transition-all duration-200 flex justify-center items-center" title="Export PDF">
                         <i class="fas fa-file-pdf fa-lg"></i>
                     </a>
                 </div>
