@@ -40,18 +40,49 @@ class DashboardController extends Controller
             $pesananQuery->whereBetween('created_at', $range);
         }
 
-        return [
-            'totalPendapatan' => $topUpQuery->sum('amount') + $pesananQuery->sum('shipping_cost'),
-            'totalPesanan'    => $pesananQuery->count(),
-            'jumlahToko'      => User::where('role', 'Seller')->count(),
-            'penggunaBaru'    => User::where('role', 'Pelanggan')->where('created_at', '>=', now()->subDays(30))->count(),
+        // Tambahkan ini sebelum "return ["
+            $nonPgMethods = ['COD', 'CODBARANG', 'Potong Saldo', 'Cash', 'cash'];
+
+            return [
+                'totalPendapatan' => $topUpQuery->sum('amount') + (clone $pesananQuery)->sum('shipping_cost'),
+                'totalPesanan'    => $pesananQuery->count(),
+                'jumlahToko'      => User::where('role', 'Seller')->count(),
+                'penggunaBaru'    => User::where('role', 'Pelanggan')->where('created_at', '>=', now()->subDays(30))->count(),
+                
+                'totalTerkirim'       => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->count(),
+                'totalSedangDikirim'  => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->count(),
+                'totalMenungguPickup' => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->count(),
+                'totalGagal'          => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->count(),
+
+                'incomeSelesai'          => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->sum('price'),
+                'incomeSelesaiCash'      => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->whereIn('payment_method', ['Cash', 'cash'])->sum('price'),
+                'incomeSelesaiSaldo'     => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'Potong Saldo')->sum('price'),
+                'incomeSelesaiPg'        => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->whereNotIn('payment_method', $nonPgMethods)->sum('price'),
+                'incomeSelesaiCodOngkir' => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'COD')->sum('price'),
+                'incomeSelesaiCodBarang' => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'CODBARANG')->sum('price'),
+
+                'incomePickup'          => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->sum('price'),
+                'incomePickupCash'      => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->whereIn('payment_method', ['Cash', 'cash'])->sum('price'),
+                'incomePickupSaldo'     => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->where('payment_method', 'Potong Saldo')->sum('price'),
+                'incomePickupPg'        => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->whereNotIn('payment_method', $nonPgMethods)->sum('price'),
+                'incomePickupCodOngkir' => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->where('payment_method', 'COD')->sum('price'),
+                'incomePickupCodBarang' => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->where('payment_method', 'CODBARANG')->sum('price'),
+
+                'incomeDikirim'          => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->sum('price'),
+                'incomeDikirimCash'      => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->whereIn('payment_method', ['Cash', 'cash'])->sum('price'),
+                'incomeDikirimSaldo'     => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->where('payment_method', 'Potong Saldo')->sum('price'),
+                'incomeDikirimPg'        => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->whereNotIn('payment_method', $nonPgMethods)->sum('price'),
+                'incomeDikirimCodOngkir' => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->where('payment_method', 'COD')->sum('price'),
+                'incomeDikirimCodBarang' => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->where('payment_method', 'CODBARANG')->sum('price'),
+
+                'incomeGagal'          => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->sum('price'),
+                'incomeGagalCash'      => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->whereIn('payment_method', ['Cash', 'cash'])->sum('price'),
+                'incomeGagalSaldo'     => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->where('payment_method', 'Potong Saldo')->sum('price'),
+                'incomeGagalPg'        => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->whereNotIn('payment_method', $nonPgMethods)->sum('price'),
+                'incomeGagalCodOngkir' => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->where('payment_method', 'COD')->sum('price'),
+                'incomeGagalCodBarang' => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->where('payment_method', 'CODBARANG')->sum('price'),
             
-            // Card Status Tambahan
-            'totalTerkirim'       => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->count(),
-            'totalSedangDikirim'  => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->count(),
-            'totalMenungguPickup' => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->count(),
-            'totalGagal'          => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->count(),
-        ];
+            ];
     });
 
         // --- Mengambil Notifikasi untuk Flasher (dengan Caching) ---

@@ -174,8 +174,133 @@
 
 </div><br>
 
+{{-- GRID 8 CARD (PENDAPATAN HOVER + JUMLAH QTY) --}}
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    
+
+    {{-- ======================================================= --}}
+    {{-- ROW 1: MONITOR PENDAPATAN (RP) DENGAN EFEK HOVER LENGKAP--}}
+    {{-- ======================================================= --}}
+
+    {{-- CARD 1: SELESAI --}}
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-6 shadow-lg shadow-emerald-200 group cursor-help transition-all hover:scale-[1.02] duration-300">
+        <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0 flex flex-col justify-between h-full">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Pendapatan Selesai</p>
+                <h3 class="text-2xl font-black truncate">Rp{{ number_format($incomeSelesai ?? 0, 0, ',', '.') }}</h3>
+            </div>
+            <div class="flex justify-between items-end mt-3">
+                <p class="text-[10px] bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                    <i class="fas fa-check-double mr-1"></i> Sukses
+                </p>
+                <i class="fas fa-store text-3xl opacity-50"></i>
+            </div>
+        </div>
+        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-box-check"></i></div>
+        
+        {{-- OVERLAY RINCIAN --}}
+        <div class="absolute inset-0 bg-emerald-700/95 backdrop-blur-sm p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+            <p class="text-[10px] font-bold uppercase border-b border-emerald-400 pb-1 mb-1">Rincian Pembayaran</p>
+            <div class="space-y-0.5 text-[11px] font-medium">
+                <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeSelesaiCash ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeSelesaiSaldo ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeSelesaiPg ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeSelesaiCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeSelesaiCodBarang ?? 0, 0, ',', '.') }}</span></div>
+            </div>
+        </div>
+    </div>
+
+    {{-- CARD 2: MENUNGGU PICKUP --}}
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-400 to-orange-500 p-6 shadow-lg shadow-orange-200 group cursor-help transition-all hover:scale-[1.02] duration-300">
+        <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0 flex flex-col justify-between h-full">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Menunggu Pickup</p>
+                <h3 class="text-2xl font-black truncate">Rp{{ number_format($incomePickup ?? 0, 0, ',', '.') }}</h3>
+            </div>
+            <div class="flex justify-between items-end mt-3">
+                <p class="text-[10px] bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                    <i class="fas fa-clock mr-1"></i> Belum Kirim
+                </p>
+                <i class="fas fa-box-open text-3xl opacity-50"></i>
+            </div>
+        </div>
+        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-hand-holding-box"></i></div>
+        
+        {{-- OVERLAY RINCIAN --}}
+        <div class="absolute inset-0 bg-orange-600/95 backdrop-blur-sm p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+            <p class="text-[10px] font-bold uppercase border-b border-orange-400 pb-1 mb-1">Rincian Pembayaran</p>
+            <div class="space-y-0.5 text-[11px] font-medium">
+                <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomePickupCash ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomePickupSaldo ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomePickupPg ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomePickupCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomePickupCodBarang ?? 0, 0, ',', '.') }}</span></div>
+            </div>
+        </div>
+    </div>
+
+    {{-- CARD 3: SEDANG DIKIRIM --}}
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 p-6 shadow-lg shadow-blue-200 group cursor-help transition-all hover:scale-[1.02] duration-300">
+        <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0 flex flex-col justify-between h-full">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Sedang Dikirim</p>
+                <h3 class="text-2xl font-black truncate">Rp{{ number_format($incomeDikirim ?? 0, 0, ',', '.') }}</h3>
+            </div>
+            <div class="flex justify-between items-end mt-3">
+                <p class="text-[10px] bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                    <i class="fas fa-road mr-1"></i> Perjalanan
+                </p>
+                <i class="fas fa-shipping-fast text-3xl opacity-50"></i>
+            </div>
+        </div>
+        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-route"></i></div>
+        
+        {{-- OVERLAY RINCIAN --}}
+        <div class="absolute inset-0 bg-blue-800/95 backdrop-blur-sm p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+            <p class="text-[10px] font-bold uppercase border-b border-blue-500 pb-1 mb-1">Rincian Pembayaran</p>
+            <div class="space-y-0.5 text-[11px] font-medium">
+                <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeDikirimCash ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeDikirimSaldo ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeDikirimPg ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeDikirimCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeDikirimCodBarang ?? 0, 0, ',', '.') }}</span></div>
+            </div>
+        </div>
+    </div>
+
+    {{-- CARD 4: GAGAL / BATAL --}}
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-500 to-red-800 p-6 shadow-lg shadow-red-200 group cursor-help transition-all hover:scale-[1.02] duration-300">
+        <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0 flex flex-col justify-between h-full">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Gagal / Batal</p>
+                <h3 class="text-2xl font-black truncate">Rp{{ number_format($incomeGagal ?? 0, 0, ',', '.') }}</h3>
+            </div>
+            <div class="flex justify-between items-end mt-3">
+                <p class="text-[10px] bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                    <i class="fas fa-exclamation-triangle mr-1"></i> Rugi
+                </p>
+                <i class="fas fa-arrow-up text-3xl opacity-50"></i>
+            </div>
+        </div>
+        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-times-circle"></i></div>
+        
+        {{-- OVERLAY RINCIAN --}}
+        <div class="absolute inset-0 bg-red-900/95 backdrop-blur-sm p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+            <p class="text-[10px] font-bold uppercase border-b border-red-500 pb-1 mb-1">Rincian Pembayaran</p>
+            <div class="space-y-0.5 text-[11px] font-medium">
+                <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeGagalCash ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeGagalSaldo ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeGagalPg ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeGagalCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeGagalCodBarang ?? 0, 0, ',', '.') }}</span></div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ======================================================= --}}
+    {{-- ROW 2: JUMLAH (QTY) (KEMBALIKAN DESAIN ORIGINAL)        --}}
+    {{-- ======================================================= --}}
+
     <div class="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-700 p-6 rounded-2xl shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02] duration-300 group">
         <div class="relative z-10 flex justify-between items-start text-white">
             <div>
@@ -189,27 +314,7 @@
                 <i class="fas fa-shipping-fast text-2xl text-white"></i>
             </div>
         </div>
-        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform">
-            <i class="fas fa-box-check"></i>
-        </div>
-    </div>
-
-    <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 p-6 rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] duration-300 group">
-        <div class="relative z-10 flex justify-between items-start text-white">
-            <div>
-                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Sedang Dikirim</p>
-                <h3 class="text-3xl font-black">{{ number_format($totalSedangDikirim ?? 0) }}</h3>
-                <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
-                    <i class="fas fa-road mr-1"></i> On Process
-                </p>
-            </div>
-            <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
-                <i class="fas fa-truck-moving text-2xl text-white"></i>
-            </div>
-        </div>
-        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform">
-            <i class="fas fa-route"></i>
-        </div>
+        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-box-check"></i></div>
     </div>
 
     <div class="relative overflow-hidden bg-gradient-to-br from-orange-400 to-orange-500 p-6 rounded-2xl shadow-lg shadow-orange-200 transition-all hover:scale-[1.02] duration-300 group">
@@ -225,9 +330,23 @@
                 <i class="fas fa-user-ninja text-2xl text-white"></i>
             </div>
         </div>
-        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform">
-            <i class="fas fa-hand-holding-box"></i>
+        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-hand-holding-box"></i></div>
+    </div>
+
+    <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 p-6 rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] duration-300 group">
+        <div class="relative z-10 flex justify-between items-start text-white">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Sedang Dikirim</p>
+                <h3 class="text-3xl font-black">{{ number_format($totalSedangDikirim ?? 0) }}</h3>
+                <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                    <i class="fas fa-road mr-1"></i> On Process
+                </p>
+            </div>
+            <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
+                <i class="fas fa-truck-moving text-2xl text-white"></i>
+            </div>
         </div>
+        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-route"></i></div>
     </div>
 
     <div class="relative overflow-hidden bg-gradient-to-br from-rose-500 to-red-800 p-6 rounded-2xl shadow-lg shadow-red-200 transition-all hover:scale-[1.02] duration-300 group">
@@ -243,10 +362,9 @@
                 <i class="fas fa-ban text-2xl text-white"></i>
             </div>
         </div>
-        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform">
-            <i class="fas fa-times-circle"></i>
-        </div>
+        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-times-circle"></i></div>
     </div>
+
 </div>
 
     {{-- Grafik --}}
