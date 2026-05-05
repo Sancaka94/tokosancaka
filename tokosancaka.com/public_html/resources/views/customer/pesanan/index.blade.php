@@ -110,11 +110,12 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
                 </div>
                 <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-store fa-5x text-white"></i></div>
                 <div class="absolute inset-0 bg-green-600 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
-                    <p class="text-xs font-bold uppercase border-b border-green-400 pb-1 mb-2">Rincian Pembayaran</p>
-                    <div class="space-y-1 text-sm font-medium">
-                        <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeSelesaiCash ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomeSelesaiCod ?? 0, 0, ',', '.') }}</span></div>
+                    <p class="text-[10px] font-bold uppercase border-b border-green-400 pb-1 mb-2">Rincian Pembayaran</p>
+                    <div class="space-y-1 text-[11px] font-medium">
                         <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeSelesaiSaldo ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeSelesaiPg ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeSelesaiCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeSelesaiCodBarang ?? 0, 0, ',', '.') }}</span></div>
                     </div>
                 </div>
             </div>
@@ -128,11 +129,12 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
                 </div>
                 <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-box-open fa-5x text-white"></i></div>
                 <div class="absolute inset-0 bg-cyan-700 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
-                    <p class="text-xs font-bold uppercase border-b border-cyan-500 pb-1 mb-2">Rincian Pembayaran</p>
-                    <div class="space-y-1 text-sm font-medium">
-                        <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomePickupCash ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomePickupCod ?? 0, 0, ',', '.') }}</span></div>
+                    <p class="text-[10px] font-bold uppercase border-b border-cyan-500 pb-1 mb-2">Rincian Pembayaran</p>
+                    <div class="space-y-1 text-[11px] font-medium">
                         <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomePickupSaldo ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomePickupPg ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomePickupCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomePickupCodBarang ?? 0, 0, ',', '.') }}</span></div>
                     </div>
                 </div>
             </div>
@@ -146,11 +148,12 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
                 </div>
                 <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-shipping-fast fa-5x text-white"></i></div>
                 <div class="absolute inset-0 bg-blue-700 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
-                    <p class="text-xs font-bold uppercase border-b border-blue-500 pb-1 mb-2">Rincian Pembayaran</p>
-                    <div class="space-y-1 text-sm font-medium">
-                        <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeDikirimCash ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomeDikirimCod ?? 0, 0, ',', '.') }}</span></div>
+                    <p class="text-[10px] font-bold uppercase border-b border-blue-500 pb-1 mb-2">Rincian Pembayaran</p>
+                    <div class="space-y-1 text-[11px] font-medium">
                         <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeDikirimSaldo ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeDikirimPg ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeDikirimCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeDikirimCodBarang ?? 0, 0, ',', '.') }}</span></div>
                     </div>
                 </div>
             </div>
@@ -164,11 +167,12 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
                 </div>
                 <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-arrow-up fa-5x text-white"></i></div>
                 <div class="absolute inset-0 bg-red-600 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
-                    <p class="text-xs font-bold uppercase border-b border-red-400 pb-1 mb-2">Rincian Pembayaran</p>
-                    <div class="space-y-1 text-sm font-medium">
-                        <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeGagalCash ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomeGagalCod ?? 0, 0, ',', '.') }}</span></div>
+                    <p class="text-[10px] font-bold uppercase border-b border-red-400 pb-1 mb-2">Rincian Pembayaran</p>
+                    <div class="space-y-1 text-[11px] font-medium">
                         <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeGagalSaldo ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeGagalPg ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeGagalCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeGagalCodBarang ?? 0, 0, ',', '.') }}</span></div>
                     </div>
                 </div>
             </div>

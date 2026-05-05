@@ -68,7 +68,7 @@ class PesananController extends Controller
             });
         }
 
-        // =================================================================
+       // =================================================================
         // STEP TAMBAHAN: HITUNG DATA CARD KHUSUS CUSTOMER INI
         // =================================================================
         $cardQuery = clone $query;
@@ -77,30 +77,38 @@ class PesananController extends Controller
         $statusDikirim = ['Diproses', 'Terkirim', 'Sedang Dikirim'];
         $statusGagal   = ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'];
 
+        // Pengecualian untuk menghitung total Payment Gateway (Tripay/Doku/dll)
+        $nonPgMethods = ['COD', 'CODBARANG', 'Potong Saldo', 'Cash', 'cash'];
+
         // --- A. CARD PENGELUARAN CUSTOMER (Rp) ---
+        
         // 1. SELESAI
         $incomeSelesai = (clone $cardQuery)->where('status_pesanan', 'Selesai')->sum('price');
-        $incomeSelesaiCash  = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'Cash')->sum('price');
-        $incomeSelesaiCod   = (clone $cardQuery)->where('status_pesanan', 'Selesai')->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
-        $incomeSelesaiSaldo = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'Potong Saldo')->sum('price');
+        $incomeSelesaiSaldo     = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'Potong Saldo')->sum('price');
+        $incomeSelesaiPg        = (clone $cardQuery)->where('status_pesanan', 'Selesai')->whereNotIn('payment_method', $nonPgMethods)->sum('price');
+        $incomeSelesaiCodOngkir = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'COD')->sum('price');
+        $incomeSelesaiCodBarang = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'CODBARANG')->sum('price');
 
         // 2. MENUNGGU PICKUP
         $incomePickup  = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->sum('price');
-        $incomePickupCash  = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->where('payment_method', 'Cash')->sum('price');
-        $incomePickupCod   = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
-        $incomePickupSaldo = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->where('payment_method', 'Potong Saldo')->sum('price');
+        $incomePickupSaldo     = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->where('payment_method', 'Potong Saldo')->sum('price');
+        $incomePickupPg        = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->whereNotIn('payment_method', $nonPgMethods)->sum('price');
+        $incomePickupCodOngkir = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->where('payment_method', 'COD')->sum('price');
+        $incomePickupCodBarang = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->where('payment_method', 'CODBARANG')->sum('price');
 
         // 3. SEDANG DIKIRIM
         $incomeDikirim = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->sum('price');
-        $incomeDikirimCash  = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->where('payment_method', 'Cash')->sum('price');
-        $incomeDikirimCod   = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
-        $incomeDikirimSaldo = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->where('payment_method', 'Potong Saldo')->sum('price');
+        $incomeDikirimSaldo     = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->where('payment_method', 'Potong Saldo')->sum('price');
+        $incomeDikirimPg        = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->whereNotIn('payment_method', $nonPgMethods)->sum('price');
+        $incomeDikirimCodOngkir = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->where('payment_method', 'COD')->sum('price');
+        $incomeDikirimCodBarang = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->where('payment_method', 'CODBARANG')->sum('price');
 
         // 4. GAGAL / BATAL
         $incomeGagal   = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->sum('price');
-        $incomeGagalCash  = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->where('payment_method', 'Cash')->sum('price');
-        $incomeGagalCod   = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
-        $incomeGagalSaldo = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->where('payment_method', 'Potong Saldo')->sum('price');
+        $incomeGagalSaldo     = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->where('payment_method', 'Potong Saldo')->sum('price');
+        $incomeGagalPg        = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->whereNotIn('payment_method', $nonPgMethods)->sum('price');
+        $incomeGagalCodOngkir = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->where('payment_method', 'COD')->sum('price');
+        $incomeGagalCodBarang = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->where('payment_method', 'CODBARANG')->sum('price');
 
         // --- B. CARD JUMLAH (Qty) ---
         $countSelesai = (clone $cardQuery)->where('status_pesanan', 'Selesai')->count();
@@ -119,10 +127,10 @@ class PesananController extends Controller
 
         return view('customer.pesanan.index', compact(
             'pesanans',
-            'incomeSelesai', 'incomeSelesaiCash', 'incomeSelesaiCod', 'incomeSelesaiSaldo',
-            'incomePickup', 'incomePickupCash', 'incomePickupCod', 'incomePickupSaldo',
-            'incomeDikirim', 'incomeDikirimCash', 'incomeDikirimCod', 'incomeDikirimSaldo',
-            'incomeGagal', 'incomeGagalCash', 'incomeGagalCod', 'incomeGagalSaldo',
+            'incomeSelesai', 'incomeSelesaiSaldo', 'incomeSelesaiPg', 'incomeSelesaiCodOngkir', 'incomeSelesaiCodBarang',
+            'incomePickup', 'incomePickupSaldo', 'incomePickupPg', 'incomePickupCodOngkir', 'incomePickupCodBarang',
+            'incomeDikirim', 'incomeDikirimSaldo', 'incomeDikirimPg', 'incomeDikirimCodOngkir', 'incomeDikirimCodBarang',
+            'incomeGagal', 'incomeGagalSaldo', 'incomeGagalPg', 'incomeGagalCodOngkir', 'incomeGagalCodBarang',
             'countSelesai', 'countPickup', 'countDikirim', 'countGagal'
         ));
     }
