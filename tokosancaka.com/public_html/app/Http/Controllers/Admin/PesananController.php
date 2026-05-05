@@ -102,8 +102,13 @@ class PesananController extends Controller
         $statusGagal   = ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'];
 
         // --- A. CARD PENDAPATAN (Rp) ---
-        // (clone $cardQuery) -> Ambil query JNE tadi -> Tambahkan syarat status -> Hitung Total
         $incomeSelesai = (clone $cardQuery)->where('status_pesanan', 'Selesai')->sum('price');
+        
+        // TAMBAHAN BARU: Rincian Metode Pembayaran untuk Card "Pendapatan Selesai"
+        $incomeCash  = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'Cash')->sum('price');
+        $incomeCod   = (clone $cardQuery)->where('status_pesanan', 'Selesai')->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('price');
+        $incomeSaldo = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'Potong Saldo')->sum('price');
+
         $incomePickup  = (clone $cardQuery)->whereIn('status_pesanan', $statusPickup)->sum('price');
         $incomeDikirim = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->sum('price');
         $incomeGagal   = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->sum('price');
@@ -129,12 +134,11 @@ class PesananController extends Controller
         $orders = $query->orderBy('tanggal_pesanan', 'desc')->paginate(15);
         $orders->appends($request->all()); // Agar filter tidak hilang saat pindah halaman
 
-        // =================================================================
         // STEP 5: RETURN VIEW
-        // =================================================================
         return view('admin.pesanan.index', compact(
             'orders',
-            'incomeSelesai', 'incomePickup', 'incomeDikirim', 'incomeGagal',
+            'incomeSelesai', 'incomeCash', 'incomeCod', 'incomeSaldo', // <--- Tambahkan di sini
+            'incomePickup', 'incomeDikirim', 'incomeGagal',
             'countSelesai', 'countPickup', 'countDikirim', 'countGagal'
         ));
     }

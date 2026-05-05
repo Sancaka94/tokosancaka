@@ -227,13 +227,39 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
             {{-- ROW 1: MONITOR PENDAPATAN (RP) --}}
-            <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg">
-                <div class="relative z-10 text-white">
+            <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg group cursor-help transition-all duration-300">
+                
+                {{-- Konten Utama (Tampil Default, Menghilang saat di-hover) --}}
+                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
                     <p class="text-3xl font-bold">Rp{{ number_format($incomeSelesai ?? 0, 0, ',', '.') }}</p>
                     <p class="text-sm font-bold uppercase opacity-90 mt-1">Pendapatan Selesai</p>
-                    <p class="text-xs opacity-75 mt-0.5">Total nilai pesanan sukses</p>
+                    <p class="text-xs opacity-75 mt-0.5">Hover/Sorot untuk lihat rincian</p>
                 </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-store fa-5x text-white"></i></div>
+                
+                {{-- Icon Latar Belakang --}}
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5">
+                    <i class="fas fa-store fa-5x text-white"></i>
+                </div>
+
+                {{-- Overlay Rincian Pembayaran (Tampil hanya saat di-hover) --}}
+                <div class="absolute inset-0 bg-green-600 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+                    <p class="text-xs font-bold uppercase border-b border-green-400 pb-1 mb-2">Rincian Pembayaran</p>
+                    <div class="space-y-1 text-sm font-medium">
+                        <div class="flex justify-between items-center">
+                            <span>Cash</span>
+                            <span>Rp{{ number_format($incomeCash ?? 0, 0, ',', '.') }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>COD / Ongkir</span>
+                            <span>Rp{{ number_format($incomeCod ?? 0, 0, ',', '.') }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>Potong Saldo</span>
+                            <span>Rp{{ number_format($incomeSaldo ?? 0, 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <div class="relative overflow-hidden rounded-lg bg-cyan-600 p-5 shadow-lg">
