@@ -132,19 +132,32 @@ class LicenseController extends Controller
             Log::info("📅 Tanggal expired baru: {$newExpiredDate->format('Y-m-d H:i:s')} (+{$durationDays} hari)");
 
             // Update tabel tenants menggunakan Model agar Cache sistem ter-refresh
-        $tenantModel = \App\Models\Tenant::find($tenant->id);
+            $tenantModel = \App\Models\Tenant::find($tenant->id);
 
-        if ($tenantModel) {
-            $tenantModel->status = 'active';
-            $tenantModel->package = $license->package_type ?? 'monthly';
-            $tenantModel->expired_at = $newExpiredDate;
-            $tenantModel->save(); // Perintah save() ini akan otomatis memicu sistem menghapus memori/cache lama
+            if ($tenantModel) {
+                $tenantModel->status = 'active';
+                
+                // ==============================================================
+                // [PERBAIKAN LOGIKA PAKET]
+                // Terjemahkan lisensi menjadi format yang diterima database
+                // ==============================================================
+                if (in_array($license->package_type, ['trial', 'monthly', 'yearly'])) {
+                    // Jika tipe lisensi sudah sesuai, langsung gunakan
+                    $tenantModel->package = $license->package_type;
+                } else {
+                    // Jika tipe lisensinya '1_device_1_ip' atau yang lain, 
+                    // ubah menjadi 'yearly' atau 'monthly' berdasarkan durasi harinya.
+                    $tenantModel->package = ($durationDays >= 365) ? 'yearly' : 'monthly';
+                }
+                
+                $tenantModel->expired_at = $newExpiredDate;
+                $tenantModel->save(); // Perintah save() ini akan otomatis memicu sistem menghapus memori/cache lama
 
-            Log::info("✅ Tabel 'tenants' berhasil diupdate via Eloquent Model.");
-        } else {
-            Log::error("❌ Gagal menemukan Tenant dengan ID: {$tenant->id} untuk diupdate.");
-            return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat memproses aktivasi. Silakan hubungi admin.');
-        }
+                Log::info("✅ Tabel 'tenants' berhasil diupdate via Eloquent Model (Paket ter-refresh menjadi: {$tenantModel->package}).");
+            } else {
+                Log::error("❌ Gagal menemukan Tenant dengan ID: {$tenant->id} untuk diupdate.");
+                return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat memproses aktivasi. Silakan hubungi admin.');
+            }
 
             // Update tabel licenses
             $license->update([
