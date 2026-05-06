@@ -93,7 +93,7 @@ class RegisterTenantController extends Controller
                 License::create([
                     'license_code'  => 'TRIAL-' . strtoupper(Str::random(8)),
                     'tenant_id'     => $tenant->id,
-                    'package_type'  => '1_device_1_ip',
+                    'package_type'  => 'trial',
                     'max_devices'   => 1,
                     'max_ips'       => 1,
                     'duration_days' => $days,
