@@ -41,7 +41,7 @@
             {{-- 3. BAGIAN KANAN (MENU, CART, LOGIN/DASHBOARD) --}}
             <div class="flex items-center gap-2 md:gap-4">
 
-                {{-- KODE BARU: MEGA MENU KATEGORI --}}
+                {{-- MEGA MENU KATEGORI --}}
                 <div x-data="{ openCategory: false }" class="relative">
                     <button @click="openCategory = !openCategory" @click.away="openCategory = false"
                             class="flex items-center gap-1.5 p-2 text-gray-600 hover:text-red-600 transition font-semibold text-sm">
@@ -72,7 +72,7 @@
                                 // AMBIL KATEGORI BESERTA JUMLAH PRODUKNYA
                                 $navCategories = \App\Models\Category::where('tenant_id', $tenant->id)
                                                     ->where('is_active', true)
-                                                    ->withCount('products') // <--- Kode penentu untuk menghitung jumlah produk
+                                                    ->withCount('products')
                                                     ->orderBy('name', 'asc')
                                                     ->get();
                             @endphp
@@ -121,7 +121,8 @@
                         <span>Dashboard</span>
                     </a>
                 @else
-                    <a href="{{ route('login') }}" class="flex items-center gap-1.5 bg-white border border-red-600 text-red-600 px-3 py-1.5 sm:px-4 sm:py-2 rounded-[12px] text-xs sm:text-sm font-bold hover:bg-red-50 transition active:scale-95">
+                    {{-- DI SINI PERUBAHANNYA: Menambahkan parameter $subdomain atau ['subdomain' => $subdomain] --}}
+                    <a href="{{ route('login', ['subdomain' => $subdomain]) }}" class="flex items-center gap-1.5 bg-white border border-red-600 text-red-600 px-3 py-1.5 sm:px-4 sm:py-2 rounded-[12px] text-xs sm:text-sm font-bold hover:bg-red-50 transition active:scale-95">
                         <i data-lucide="log-in" class="w-4 h-4 hidden sm:block"></i>
                         <span>Login</span>
                     </a>
