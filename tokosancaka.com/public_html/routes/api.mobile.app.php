@@ -13,6 +13,8 @@ use App\Http\Controllers\Api\Mobile\AuthController; // 2. Pastikan Import ini ad
 use App\Http\Controllers\Api\Mobile\MarketplaceMobileController;
 use App\Http\Controllers\Api\Mobile\LaporanKeuanganMobileController;
 use App\Http\Controllers\Api\Mobile\ProdukSellerMobileController;
+use App\Http\Controllers\Api\Mobile\ChatController; // <-- Tambahkan import ini
+use App\Http\Controllers\Admin\DashboardController; // <-- Tambahkan import ini untuk Broadcast
 /*
 |--------------------------------------------------------------------------
 | API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)
