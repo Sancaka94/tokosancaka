@@ -12,43 +12,46 @@ use App\Models\User;
 
 class ChatController extends Controller
 {
-    public function index(Request $request)
+   public function index(Request $request)
     {
+        // Deteksi ID yang sedang login
         $userId = Auth::user()->id_pengguna ?? Auth::id();
 
-        // Menggunakan tabel Pengguna sesuai skema database Anda
-        $query = DB::table('Pengguna');
+        $query = \Illuminate\Support\Facades\DB::table('Pengguna');
 
-        // 1. Logika Pencarian (Jika ada input dari React Native)
+        // 1. Logika Pencarian (Mencari di semua kemungkinan nama kolom)
         if ($request->has('search') && $request->search != '') {
             $searchTerm = $request->search;
 
             $query->where(function($q) use ($searchTerm) {
-                // Mencari berdasarkan nama_lengkap ATAU no_wa
                 $q->where('nama_lengkap', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('no_wa', 'LIKE', '%' . $searchTerm . '%');
+                  ->orWhere('name', 'LIKE', '%' . $searchTerm . '%') // Jaga-jaga kalau namanya 'name'
+                  ->orWhere('no_wa', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('whatsapp', 'LIKE', '%' . $searchTerm . '%') // Jaga-jaga namanya 'whatsapp'
+                  ->orWhere('phone', 'LIKE', '%' . $searchTerm . '%');
             });
         }
 
-        // 2. Kecualikan diri sendiri agar tidak muncul di hasil pencarian
-        $query->where('id_pengguna', '!=', $userId);
+        // 2. Jangan munculkan diri sendiri di pencarian
+        if ($userId) {
+            $query->where('id_pengguna', '!=', $userId);
+        }
 
-        // 3. Batasi hasil maksimal 20 orang agar aplikasi tidak lemot
         $users = $query->limit(20)->get();
 
-        // 4. Format data agar rapi saat diterima React Native
+        // 3. Format output agar selalu konsisten dibaca React Native
         $formattedUsers = $users->map(function($user) {
             return [
-                'id' => $user->id_pengguna,
-                'nama_lengkap' => $user->nama_lengkap ?? 'User',
-                'no_wa' => $user->no_wa ?? '-',
+                'id'           => $user->id_pengguna ?? $user->id,
+                'nama_lengkap' => $user->nama_lengkap ?? $user->name ?? 'User',
+                'no_wa'        => $user->no_wa ?? $user->whatsapp ?? $user->phone ?? '-',
                 'store_logo_path' => $user->store_logo_path ?? null,
             ];
         });
 
         return response()->json([
             'success' => true,
-            'data' => $formattedUsers
+            'data'    => $formattedUsers
         ]);
     }
 
