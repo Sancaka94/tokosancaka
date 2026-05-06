@@ -1251,4 +1251,7 @@ Route::get('nota/export-pdf', [NotaController::class, 'exportPdf'])->name('nota.
 Route::get('nota/export-excel', [NotaController::class, 'exportExcel'])->name('nota.export-excel');
 Route::get('nota/{id}/download', [App\Http\Controllers\NotaController::class, 'downloadNota'])->name('nota.download');
 
+
+
 Route::resource('nota', NotaController::class);
+
