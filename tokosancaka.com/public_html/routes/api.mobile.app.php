@@ -299,6 +299,8 @@ Route::prefix('seller')->group(function () {
         // Pencairan Dana / Escrow
         Route::get('/escrow/pending', [\App\Http\Controllers\Api\Mobile\AdminEscrowController::class, 'pending']);
         Route::post('/escrow/{id}/cairkan', [\App\Http\Controllers\Api\Mobile\AdminEscrowController::class, 'cairkan']);
+
+        Route::post('/broadcast/send', [DashboardController::class, 'sendBroadcast']);
     });
 
 
