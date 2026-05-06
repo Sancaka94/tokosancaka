@@ -185,6 +185,8 @@ Route::prefix('seller')->group(function () {
     // --- B. DASHBOARD (Otomatis menyesuaikan Role) ---
     Route::get('/dashboard', [\App\Http\Controllers\Api\Mobile\DashboardController::class, 'index']);
 
+    Route::post('/save-push-token', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'savePushToken']);
+
     // --- C. CUSTOMER ROUTES (PELANGGAN) ---
     Route::prefix('customer')->group(function () {
 
@@ -338,9 +340,6 @@ Route::post('/customer/pesanan/cancel', [App\Http\Controllers\Api\Mobile\Pesanan
 
 // Rute untuk mendapatkan semua notifikasi milik user di HP
     Route::get('/notifications', [ChatController::class, 'getUnreadCount']); // Sesuaikan jika ada method list
-
-    // Rute untuk menyimpan token dari HP ke database agar bisa dikirimi broadcast
-    Route::post('/save-push-token', [ChatController::class, 'savePushToken']);
 
     // Rute untuk menandai notifikasi sebagai sudah dibaca (Centang 2)
     Route::post('/notifications/mark-read', [ChatController::class, 'deleteSelectedMessages']);
