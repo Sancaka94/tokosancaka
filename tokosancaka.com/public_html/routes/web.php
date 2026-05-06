@@ -1261,3 +1261,23 @@ Route::resource('nota', NotaController::class);
 
     // Rute untuk menandai notifikasi sebagai sudah dibaca (Centang 2)
     Route::post('/notifications/mark-read', [ChatController::class, 'deleteSelectedMessages']);
+
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+
+    // --- Rute Halaman List Notifikasi (Yang Anda buat tadi) ---
+    Route::get('/notifications', [DashboardController::class, 'index'])->name('notifications.index');
+
+    // Rute untuk tombol "Tandai Semua Sudah Dibaca" di web
+    Route::post('/notifications/mark-all-read', [DashboardController::class, 'markAllRead'])->name('notifications.markAllAsRead');
+
+    // --- Rute Fitur Broadcast (Kirim Pesan ke Semua HP) ---
+
+    // Menampilkan Form Create Broadcast (Tampilan Tailwind yang baru dibuat)
+    Route::get('/broadcast/create', function() {
+        return view('admin.broadcast.create');
+    })->name('broadcast.create');
+
+    // Proses kirim broadcast (Menembak API Expo)
+    Route::post('/broadcast/send', [DashboardController::class, 'sendBroadcast'])->name('broadcast.send');
+
+});
