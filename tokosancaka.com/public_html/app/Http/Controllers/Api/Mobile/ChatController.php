@@ -333,21 +333,29 @@ class ChatController extends Controller
         return response()->json(['success' => true, 'message' => 'Pesan berhasil dihapus']);
     }
 
-    /**
-     * 6. MENYIMPAN EXPO PUSH TOKEN DARI HP USER
-     */
     public function savePushToken(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [Token] Memulai proses simpan token.', $request->all());
+
         $request->validate([
             'push_token' => 'required|string'
         ]);
 
-        $userId = Auth::user()->id_pengguna ?? Auth::id();
+        $user = \Illuminate\Support\Facades\Auth::user();
+        $userId = $user->id_pengguna ?? $user->id;
 
-        // Update token ke database (tabel Pengguna/Users)
-        \DB::table('Pengguna')->where('id_pengguna', $userId)->update([
-            'expo_token' => $request->push_token
-        ]);
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [Token] Mencoba simpan token untuk User ID: ' . $userId);
+
+        // Update token ke database
+        $update = \Illuminate\Support\Facades\DB::table('Pengguna')
+            ->where('id_pengguna', $userId)
+            ->update(['expo_token' => $request->push_token]);
+
+        if ($update) {
+            \Illuminate\Support\Facades\Log::info('LOG LOG: [Token] Berhasil disimpan ke database.');
+        } else {
+            \Illuminate\Support\Facades\Log::warning('LOG LOG: [Token] Gagal update (mungkin token sudah sama atau ID tidak ditemukan).');
+        }
 
         return response()->json([
             'success' => true,
