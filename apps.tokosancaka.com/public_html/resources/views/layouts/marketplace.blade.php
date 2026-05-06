@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Toko Online') - {{ $tenant->name ?? 'SancakaPOS' }}</title>
 
-    @if($tokoAdmin && !empty($tokoAdmin->logo))
+    @if(isset($tokoAdmin) && !empty($tokoAdmin->logo))
         {{-- Tambahkan ?v={{ time() }} di akhir URL --}}
         <link rel="icon" type="image/png" href="{{ asset('storage/' . $tokoAdmin->logo) }}?v={{ time() }}">
     @else
