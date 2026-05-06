@@ -41,6 +41,9 @@ class DashboardController extends Controller
             $pesananQuery->whereBetween('created_at', $range);
         }
 
+        // Tambahkan ini sebelum "return ["
+            $nonPgMethods = ['COD', 'CODBARANG', 'Potong Saldo', 'Cash', 'cash'];
+
         return [
             'totalPendapatan' => $topUpQuery->sum('amount') + $pesananQuery->sum('shipping_cost'),
             'totalPesanan'    => $pesananQuery->count(),

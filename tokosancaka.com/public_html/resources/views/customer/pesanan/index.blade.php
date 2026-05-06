@@ -37,26 +37,26 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
         </div>
 
         {{-- FILTER & PENCARIAN SECTION --}}
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6">
-            <form action="{{ route('customer.pesanan.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-6">
+            <form action="{{ route('customer.pesanan.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
 
                 {{-- Input Pencarian --}}
                 <div class="md:col-span-4">
-                    <label for="search" class="block text-xs font-semibold text-slate-500 uppercase mb-1">Cari Data</label>
+                    <label for="search" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Cari Data</label>
                     <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                             <i class="fas fa-search text-slate-400"></i>
                         </div>
                         <input type="text" name="search" id="search" value="{{ request('search') }}"
-                               class="pl-10 block w-full rounded-lg border-slate-300 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm"
+                               class="pl-10 pr-4 py-2.5 block w-full rounded-lg border border-slate-300 bg-white text-slate-700 text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm transition-all duration-200"
                                placeholder="Resi, Nama, No HP, atau Invoice...">
                     </div>
                 </div>
 
                 {{-- Filter Status --}}
                 <div class="md:col-span-2">
-                    <label for="status" class="block text-xs font-semibold text-slate-500 uppercase mb-1">Status</label>
-                    <select name="status" id="status" class="block w-full rounded-lg border-slate-300 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm">
+                    <label for="status" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Status</label>
+                    <select name="status" id="status" class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm transition-all duration-200 cursor-pointer">
                         <option value="">Semua Status</option>
                         <option value="Menunggu Pembayaran" {{ request('status') == 'Menunggu Pembayaran' ? 'selected' : '' }}>Menunggu Pembayaran</option>
                         <option value="Menunggu Pickup" {{ request('status') == 'Menunggu Pickup' ? 'selected' : '' }}>Menunggu Pickup</option>
@@ -68,31 +68,152 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
 
                 {{-- Filter Tanggal Mulai --}}
                 <div class="md:col-span-2">
-                    <label for="start_date" class="block text-xs font-semibold text-slate-500 uppercase mb-1">Dari Tanggal</label>
+                    <label for="start_date" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Dari Tanggal</label>
                     <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}"
-                           class="block w-full rounded-lg border-slate-300 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm">
+                           class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm transition-all duration-200 cursor-pointer">
                 </div>
 
                 {{-- Filter Tanggal Akhir --}}
                 <div class="md:col-span-2">
-                    <label for="end_date" class="block text-xs font-semibold text-slate-500 uppercase mb-1">Sampai Tanggal</label>
+                    <label for="end_date" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Sampai Tanggal</label>
                     <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}"
-                           class="block w-full rounded-lg border-slate-300 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm">
+                           class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm transition-all duration-200 cursor-pointer">
                 </div>
 
                 {{-- Tombol Aksi --}}
-                <div class="md:col-span-2 flex gap-2">
-                    <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-2 px-4 rounded-lg shadow transition">
-                        Filter
+                <div class="md:col-span-2 flex gap-2 mt-4 md:mt-0">
+                    <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex justify-center items-center gap-2">
+                        <i class="fas fa-filter"></i> Filter
                     </button>
 
-                    {{-- Tombol Export PDF (Mengirim parameter filter saat ini) --}}
-                    {{-- Pastikan Anda sudah membuat route 'customer.pesanan.export_pdf' --}}
-                    <a href="{{ route('customer.pesanan.export_pdf', request()->all()) }}" target="_blank" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-sm font-bold py-2 px-3 rounded-lg shadow-sm transition" title="Export PDF">
+                    {{-- Tombol Export PDF --}}
+                    <a href="{{ route('customer.pesanan.export_pdf', request()->all()) }}" target="_blank" class="bg-red-50 hover:bg-red-500 hover:text-white text-red-600 border border-red-200 font-bold py-2.5 px-4 rounded-lg shadow-sm transition-all duration-200 flex justify-center items-center" title="Export PDF">
                         <i class="fas fa-file-pdf fa-lg"></i>
                     </a>
                 </div>
             </form>
+        </div>
+
+        {{-- ======================================================= --}}
+        {{-- CARD MONITOR (PENDAPATAN & JUMLAH) KHUSUS CUSTOMER      --}}
+        {{-- ======================================================= --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+            {{-- ROW 1: MONITOR PENGELUARAN (RP) DENGAN EFEK HOVER --}}
+            
+            {{-- CARD 1: SELESAI --}}
+            <div class="relative overflow-hidden rounded-xl bg-green-500 p-5 shadow-sm border border-green-600 group cursor-help transition-all duration-300">
+                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
+                    <p class="text-2xl sm:text-3xl font-bold">Rp{{ number_format($incomeSelesai ?? 0, 0, ',', '.') }}</p>
+                    <p class="text-xs sm:text-sm font-bold uppercase opacity-90 mt-1">Pengeluaran Selesai</p>
+                    <p class="text-[10px] sm:text-xs opacity-75 mt-0.5">Total pesanan sukses</p>
+                </div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-store fa-5x text-white"></i></div>
+                <div class="absolute inset-0 bg-green-600 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+                    <p class="text-[10px] font-bold uppercase border-b border-green-400 pb-1 mb-2">Rincian Pembayaran</p>
+                    <div class="space-y-1 text-[11px] font-medium">
+                        <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeSelesaiSaldo ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeSelesaiPg ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeSelesaiCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeSelesaiCodBarang ?? 0, 0, ',', '.') }}</span></div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- CARD 2: MENUNGGU PICKUP --}}
+            <div class="relative overflow-hidden rounded-xl bg-cyan-600 p-5 shadow-sm border border-cyan-700 group cursor-help transition-all duration-300">
+                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
+                    <p class="text-2xl sm:text-3xl font-bold">Rp{{ number_format($incomePickup ?? 0, 0, ',', '.') }}</p>
+                    <p class="text-xs sm:text-sm font-bold uppercase opacity-90 mt-1">Menunggu Pickup</p>
+                    <p class="text-[10px] sm:text-xs opacity-75 mt-0.5">Sudah lunas, belum kirim</p>
+                </div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-box-open fa-5x text-white"></i></div>
+                <div class="absolute inset-0 bg-cyan-700 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+                    <p class="text-[10px] font-bold uppercase border-b border-cyan-500 pb-1 mb-2">Rincian Pembayaran</p>
+                    <div class="space-y-1 text-[11px] font-medium">
+                        <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomePickupSaldo ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomePickupPg ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomePickupCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomePickupCodBarang ?? 0, 0, ',', '.') }}</span></div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- CARD 3: SEDANG DIKIRIM --}}
+            <div class="relative overflow-hidden rounded-xl bg-blue-600 p-5 shadow-sm border border-blue-700 group cursor-help transition-all duration-300">
+                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
+                    <p class="text-2xl sm:text-3xl font-bold">Rp{{ number_format($incomeDikirim ?? 0, 0, ',', '.') }}</p>
+                    <p class="text-xs sm:text-sm font-bold uppercase opacity-90 mt-1">Sedang Dikirim</p>
+                    <p class="text-[10px] sm:text-xs opacity-75 mt-0.5">Sedang dalam perjalanan</p>
+                </div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-shipping-fast fa-5x text-white"></i></div>
+                <div class="absolute inset-0 bg-blue-700 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+                    <p class="text-[10px] font-bold uppercase border-b border-blue-500 pb-1 mb-2">Rincian Pembayaran</p>
+                    <div class="space-y-1 text-[11px] font-medium">
+                        <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeDikirimSaldo ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeDikirimPg ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeDikirimCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeDikirimCodBarang ?? 0, 0, ',', '.') }}</span></div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- CARD 4: GAGAL / BATAL --}}
+            <div class="relative overflow-hidden rounded-xl bg-red-500 p-5 shadow-sm border border-red-600 group cursor-help transition-all duration-300">
+                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
+                    <p class="text-2xl sm:text-3xl font-bold">Rp{{ number_format($incomeGagal ?? 0, 0, ',', '.') }}</p>
+                    <p class="text-xs sm:text-sm font-bold uppercase opacity-90 mt-1">Gagal / Batal</p>
+                    <p class="text-[10px] sm:text-xs opacity-75 mt-0.5">Pengeluaran dikembalikan</p>
+                </div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-arrow-up fa-5x text-white"></i></div>
+                <div class="absolute inset-0 bg-red-600 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+                    <p class="text-[10px] font-bold uppercase border-b border-red-400 pb-1 mb-2">Rincian Pembayaran</p>
+                    <div class="space-y-1 text-[11px] font-medium">
+                        <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeGagalSaldo ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeGagalPg ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeGagalCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeGagalCodBarang ?? 0, 0, ',', '.') }}</span></div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ROW 2: MONITOR JUMLAH TRANSAKSI (QTY) --}}
+            <div class="relative overflow-hidden rounded-xl bg-green-400 p-5 shadow-sm border border-green-500">
+                <div class="relative z-10 text-white">
+                    <p class="text-2xl sm:text-3xl font-bold">{{ number_format($countSelesai ?? 0, 0, ',', '.') }} <span class="text-base font-normal">Resi</span></p>
+                    <p class="text-xs sm:text-sm font-bold uppercase opacity-90 mt-1">Jumlah Terkirim</p>
+                    <p class="text-[10px] sm:text-xs opacity-75 mt-0.5">Total paket berhasil sampai</p>
+                </div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-check-circle fa-5x text-white"></i></div>
+            </div>
+
+            <div class="relative overflow-hidden rounded-xl bg-cyan-500 p-5 shadow-sm border border-cyan-600">
+                <div class="relative z-10 text-white">
+                    <p class="text-2xl sm:text-3xl font-bold">{{ number_format($countPickup ?? 0, 0, ',', '.') }} <span class="text-base font-normal">Paket</span></p>
+                    <p class="text-xs sm:text-sm font-bold uppercase opacity-90 mt-1">Jml. Menunggu Pickup</p>
+                    <p class="text-[10px] sm:text-xs opacity-75 mt-0.5">Paket siap diambil kurir</p>
+                </div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-clock fa-5x text-white"></i></div>
+            </div>
+
+            <div class="relative overflow-hidden rounded-xl bg-blue-500 p-5 shadow-sm border border-blue-600">
+                <div class="relative z-10 text-white">
+                    <p class="text-2xl sm:text-3xl font-bold">{{ number_format($countDikirim ?? 0, 0, ',', '.') }} <span class="text-base font-normal">Paket</span></p>
+                    <p class="text-xs sm:text-sm font-bold uppercase opacity-90 mt-1">Jml. Sedang Dikirim</p>
+                    <p class="text-[10px] sm:text-xs opacity-75 mt-0.5">Paket dalam perjalanan</p>
+                </div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-truck-moving fa-5x text-white"></i></div>
+            </div>
+
+            <div class="relative overflow-hidden rounded-xl bg-red-400 p-5 shadow-sm border border-red-500">
+                <div class="relative z-10 text-white">
+                    <p class="text-2xl sm:text-3xl font-bold">{{ number_format($countGagal ?? 0, 0, ',', '.') }} <span class="text-base font-normal">Trx</span></p>
+                    <p class="text-xs sm:text-sm font-bold uppercase opacity-90 mt-1">Jml. Gagal / Batal</p>
+                    <p class="text-[10px] sm:text-xs opacity-75 mt-0.5">Transaksi dibatalkan/retur</p>
+                </div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-ban fa-5x text-white"></i></div>
+            </div>
+
         </div>
 
         {{-- TABEL DATA --}}

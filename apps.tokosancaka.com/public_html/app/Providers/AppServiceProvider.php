@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\View; // <--- Wajib
 use Illuminate\Support\Facades\File; // <--- Wajib
+use App\Models\User; // <--- Digunakan untuk $tokoAdmin
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useTailwind();
 
         // 2. Force HTTPS
+        // Catatan: Pastikan environment 'local' Anda mendukung HTTPS. 
+        // Jika saat "php artisan serve" terjadi error SSL/koneksi ditolak, hapus "|| $this->app->environment('local')"
         if($this->app->environment('production') || $this->app->environment('local')) {
             URL::forceScheme('https');
         }
@@ -64,5 +67,21 @@ class AppServiceProvider extends ServiceProvider
         // Bagikan variabel ini ke SEMUA View (termasuk Sidebar)
         View::share('app_version', $fullVersion);
         View::share('app_last_update', $lastUpdate);
+
+
+        // =================================================================
+        // 5. GLOBAL VIEW COMPOSER (SOLUSI ERROR $tokoAdmin)
+        // =================================================================
+        View::composer('*', function ($view) {
+            // Menggunakan static agar query ke database hanya dilakukan 1x per request,
+            // sangat menghemat resource jika halaman memuat banyak sub-view/komponen.
+            static $tokoAdmin = null;
+
+            if (is_null($tokoAdmin)) {
+                $tokoAdmin = User::where('role', 'admin')->first();
+            }
+
+            $view->with('tokoAdmin', $tokoAdmin);
+        });
     }
 }
