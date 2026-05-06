@@ -1253,14 +1253,7 @@ Route::get('nota/{id}/download', [App\Http\Controllers\NotaController::class, 'd
 
 Route::resource('nota', NotaController::class);
 
-// Rute untuk mendapatkan semua notifikasi milik user di HP
-    Route::get('/notifications', [ChatController::class, 'getUnreadCount']); // Sesuaikan jika ada method list
 
-    // Rute untuk menyimpan token dari HP ke database agar bisa dikirimi broadcast
-    Route::post('/save-push-token', [ChatController::class, 'savePushToken']);
-
-    // Rute untuk menandai notifikasi sebagai sudah dibaca (Centang 2)
-    Route::post('/notifications/mark-read', [ChatController::class, 'deleteSelectedMessages']);
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
 
