@@ -84,6 +84,7 @@ class User extends Authenticatable
         'longitude',
         'last_seen_at',
         'last_seen',
+        'expo_token',
         // 'created_at' DIHAPUS DARI SINI. Seharusnya tidak di-fillable,
         // karena dihandle otomatis oleh Eloquent/DB.
     ];

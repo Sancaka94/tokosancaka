@@ -323,12 +323,16 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
 
     public function sendBroadcast(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Memulai eksekusi sendBroadcast.', $request->all());
+
         // Validasi input dari form Admin
         $request->validate([
             'judul' => 'required|string',
             'pesan' => 'required|string',
             'jenis_aksi' => 'required|string'
         ]);
+
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Validasi input berhasil dilewati.');
 
         // 1. Ambil semua token HP user yang tidak kosong dari tabel Pengguna
         $tokens = DB::table('Pengguna')
@@ -337,8 +341,16 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
                     ->pluck('expo_token')
                     ->toArray();
 
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Query token selesai. Jumlah token yang ditemukan: ' . count($tokens));
+
         if (empty($tokens)) {
-            return back()->with('error', 'Tidak ada user dengan token notifikasi aktif.');
+            \Illuminate\Support\Facades\Log::warning('LOG LOG: [Broadcast] Dibatalkan. Tidak ada user dengan expo_token aktif di database.');
+
+            // PERBAIKAN: Kembalikan respon berformat JSON (Gagal)
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada user dengan token notifikasi aktif.'
+            ], 400);
         }
 
         // 2. Siapkan Data Notifikasi
@@ -352,18 +364,35 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
             ]
         ];
 
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Payload notificationData berhasil disiapkan.', $notificationData);
+
         // 3. Format payload sesuai standar Expo Push API
         $messages = [];
         foreach ($tokens as $token) {
             $messages[] = array_merge(['to' => $token], $notificationData);
         }
 
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Array messages siap ditembakkan ke Expo.', ['total_messages' => count($messages)]);
+
         // 4. Tembakkan ke Server Expo
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Melakukan HTTP POST ke https://exp.host/--/api/v2/push/send...');
+
         $response = Http::withHeaders([
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',
         ])->post('https://exp.host/--/api/v2/push/send', $messages);
 
-        return back()->with('success', 'Broadcast berhasil dikirim ke ' . count($tokens) . ' pengguna!');
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Response diterima dari server Expo.', [
+            'status_code' => $response->status(),
+            'response_body' => $response->json()
+        ]);
+
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Eksekusi selesai, mengembalikan response ke klien.');
+
+        // PERBAIKAN: Kembalikan respon berformat JSON (Sukses)
+        return response()->json([
+            'success' => true,
+            'message' => 'Broadcast berhasil dikirim ke ' . count($tokens) . ' pengguna!'
+        ]);
     }
 }
