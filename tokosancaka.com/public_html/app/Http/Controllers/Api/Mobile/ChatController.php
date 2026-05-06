@@ -407,37 +407,31 @@ class ChatController extends Controller
         ]);
     }
 
-    /**
-     * MENCARI SEMUA USER UNTUK CHAT BARU
-     */
     public function searchUsers(Request $request)
     {
         $userId = Auth::user()->id_pengguna ?? Auth::id();
         $searchTerm = $request->search;
 
-        // Cegah pencarian jika kurang dari 3 huruf untuk meringankan server
         if (!$searchTerm || strlen($searchTerm) < 3) {
             return response()->json(['success' => true, 'data' => []]);
         }
 
-        // Cari di tabel Pengguna
+        // Cari di tabel Pengguna (Hanya pakai kolom yang benar-benar ada)
         $users = \Illuminate\Support\Facades\DB::table('Pengguna')
-            ->where('id_pengguna', '!=', $userId) // Jangan cari diri sendiri
+            ->where('id_pengguna', '!=', $userId)
             ->where(function($q) use ($searchTerm) {
+                // 👇 HANYA GUNAKAN NAMA KOLOM YANG PASTI ADA DI TABEL PENGGUNA
                 $q->where('nama_lengkap', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('name', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('no_wa', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('whatsapp', 'LIKE', '%' . $searchTerm . '%');
+                  ->orWhere('no_wa', 'LIKE', '%' . $searchTerm . '%');
             })
-            ->limit(20) // Maksimal 20 hasil
+            ->limit(20)
             ->get();
 
-        // Format data agar sesuai dengan React Native
         $formattedUsers = $users->map(function($user) {
             return [
-                'id' => $user->id_pengguna ?? $user->id,
-                'nama_lengkap' => $user->nama_lengkap ?? $user->name ?? 'User Sancaka',
-                'no_wa' => $user->no_wa ?? $user->whatsapp ?? '-',
+                'id' => $user->id_pengguna,
+                'nama_lengkap' => $user->nama_lengkap ?? 'User Sancaka',
+                'no_wa' => $user->no_wa ?? '-',
                 'store_logo_path' => $user->store_logo_path ?? null,
             ];
         });
