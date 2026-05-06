@@ -407,4 +407,45 @@ class ChatController extends Controller
         ]);
     }
 
+    /**
+     * MENCARI SEMUA USER UNTUK CHAT BARU
+     */
+    public function searchUsers(Request $request)
+    {
+        $userId = Auth::user()->id_pengguna ?? Auth::id();
+        $searchTerm = $request->search;
+
+        // Cegah pencarian jika kurang dari 3 huruf untuk meringankan server
+        if (!$searchTerm || strlen($searchTerm) < 3) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
+        // Cari di tabel Pengguna
+        $users = \Illuminate\Support\Facades\DB::table('Pengguna')
+            ->where('id_pengguna', '!=', $userId) // Jangan cari diri sendiri
+            ->where(function($q) use ($searchTerm) {
+                $q->where('nama_lengkap', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('name', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('no_wa', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('whatsapp', 'LIKE', '%' . $searchTerm . '%');
+            })
+            ->limit(20) // Maksimal 20 hasil
+            ->get();
+
+        // Format data agar sesuai dengan React Native
+        $formattedUsers = $users->map(function($user) {
+            return [
+                'id' => $user->id_pengguna ?? $user->id,
+                'nama_lengkap' => $user->nama_lengkap ?? $user->name ?? 'User Sancaka',
+                'no_wa' => $user->no_wa ?? $user->whatsapp ?? '-',
+                'store_logo_path' => $user->store_logo_path ?? null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $formattedUsers
+        ]);
+    }
+
 }
