@@ -258,6 +258,8 @@ Route::prefix('seller')->group(function () {
         Route::get('/chat/messages', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'fetchMessages']);
         Route::post('/chat/send', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'sendMessage']);
 
+        Route::get('/chat/search-users', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'searchUsers']);
+
         // Notifikasi
         Route::get('/notifications', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'index']);
         Route::post('/notifications/read-all', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'markAllRead']);
@@ -306,6 +308,9 @@ Route::prefix('seller')->group(function () {
         Route::post('/escrow/{id}/cairkan', [\App\Http\Controllers\Api\Mobile\AdminEscrowController::class, 'cairkan']);
 
         Route::post('/broadcast/send', [DashboardController::class, 'sendBroadcast']);
+
+        Route::get('/get-system-mode', [DashboardController::class, 'getSystemMode']);
+        Route::post('/toggle-system-mode', [DashboardController::class, 'toggleSystemMode']);
     });
 
 
