@@ -5,8 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Toko Online') - {{ $tenant->name ?? 'SancakaPOS' }}</title>
 
-    @if(isset($tokoAdmin) && !empty($tokoAdmin->logo))
-        {{-- Tambahkan ?v={{ time() }} di akhir URL --}}
+    @php
+        // Cek dan ambil data admin toko untuk dijadikan favicon
+        $tokoAdmin = null;
+        if(isset($tenant)) {
+            $tokoAdmin = \App\Models\User::where('tenant_id', $tenant->id)->first();
+        }
+    @endphp
+
+    @if($tokoAdmin && !empty($tokoAdmin->logo))
+        {{-- Tambahkan ?v={{ time() }} di akhir URL untuk mencegah cache browser --}}
         <link rel="icon" type="image/png" href="{{ asset('storage/' . $tokoAdmin->logo) }}?v={{ time() }}">
     @else
         <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ time() }}">
