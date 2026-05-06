@@ -1252,3 +1252,13 @@ Route::get('nota/export-excel', [NotaController::class, 'exportExcel'])->name('n
 Route::get('nota/{id}/download', [App\Http\Controllers\NotaController::class, 'downloadNota'])->name('nota.download');
 
 Route::resource('nota', NotaController::class);
+
+Route::post('/admin/broadcast/send', [\App\Http\Controllers\Admin\DashboardController::class, 'sendBroadcast'])->name('admin.broadcast.send');
+Route::post('/mobile/save-push-token', [ChatController::class, 'savePushToken'])->middleware('auth:sanctum');
+
+
+Route::get('/admin/broadcast/create', function() {
+    return view('admin.broadcast.create'); // Sesuaikan dengan lokasi file create.blade.php Anda
+})->name('admin.broadcast.create');
+
+Route::post('/admin/broadcast/send', [\App\Http\Controllers\Admin\DashboardController::class, 'sendBroadcast'])->name('admin.broadcast.send');

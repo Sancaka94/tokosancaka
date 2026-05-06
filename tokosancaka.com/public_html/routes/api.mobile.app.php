@@ -43,35 +43,32 @@ Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendR
 Route::post('/verify-token', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'verifyToken']);
 Route::post('/resend-token', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'resendToken']);
 
-/*
-// --- ENDPOINT UPDATE APLIKASI (SELF-HOSTED PLAYSTORE) ---
+// --- ENDPOINT UPDATE APLIKASI (GOOGLE PLAY STORE) ---
 Route::get('/check-update', function(Request $request) {
     // 1. Tentukan versi rilis terbaru di server
-    $latestVersion = '1.0.0'; // Ubah ini setiap kali ada update baru, bisa juga diambil dari database jika ingin lebih dinamis
+    $latestVersion = '1.1.7'; // Ubah ini setiap kali ada rilis versi baru di Play Store
 
     // 2. Tangkap versi aplikasi yang sedang dipakai user dari parameter URL
     $appVersion = $request->query('app_version');
 
-    // 3. Logika perbandingan versi (PHP otomatis tahu 1.0.5 itu lebih besar dari 1.0.3)
+    // 3. Logika perbandingan versi
     $needsUpdate = false;
     if ($appVersion) {
-        // Jika versi HP (<) lebih kecil dari versi Server, maka butuh update
         $needsUpdate = version_compare($appVersion, $latestVersion, '<');
     } else {
-        // Jika HP tidak mengirim versi (misal versi lama), paksa suruh cek update
         $needsUpdate = true;
     }
 
     return response()->json([
         'success'        => true,
         'received_version' => $appVersion,
-        'needs_update'   => $needsUpdate, // <-- Kunci utamanya di sini
+        'needs_update'   => $needsUpdate,
         'latest_version' => $latestVersion,
-        'download_url'   => 'https://tokosancaka.com/public/assets/app/SancakaExpress.apk',
+        'download_url'   => 'https://play.google.com/store/apps/details?id=com.sancaka.express.app',
         'force_update'   => true,
         'notes'          => 'Fix bug dan peningkatan performa. Tambah Fitur Kirim Paket Banyak!'
     ]);
-}); */
+});
 
 Route::prefix('public')->group(function () {
     // Tracking & Ekspedisi

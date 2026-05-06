@@ -5,10 +5,10 @@
 @section('content')
 <div class="w-full max-w-7xl mx-auto"> {{-- Dibuat lebih lebar (max-w-7xl) untuk tabel --}}
     <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-        
-        {{-- Header Halaman --}}
+
+       {{-- Header Halaman --}}
         <div class="p-6 border-b border-gray-200">
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center flex-wrap gap-4">
                 <div>
                     <h2 class="text-2xl font-semibold text-gray-900">
                         Semua Notifikasi
@@ -17,27 +17,35 @@
                         Menampilkan semua notifikasi yang telah Anda terima.
                     </p>
                 </div>
-                
-                @if($notifications->whereNull('read_at')->count() > 0)
-                    <form action="{{ route('admin.notifications.markAllAsRead') }}" method="POST">
-                        @csrf
-                        <button type="submit"
-    class="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded font-medium">
-    Tandai semua sudah dibaca
-                        </button>
 
-                    </form>
-                @endif
+                {{-- Kumpulan Tombol Aksi --}}
+                <div class="flex items-center gap-3">
+                    {{-- TOMBOL BARU: KIRIM BROADCAST --}}
+                    <a href="{{ route('admin.broadcast.create') }}"
+                       class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium shadow-sm flex items-center gap-2">
+                        <i class="fas fa-paper-plane"></i> Kirim Broadcast
+                    </a>
+
+                    @if($notifications->whereNull('read_at')->count() > 0)
+                        <form action="{{ route('admin.notifications.markAllAsRead') }}" method="POST">
+                            @csrf
+                            <button type="submit"
+                                class="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium shadow-sm">
+                                Tandai semua sudah dibaca
+                            </button>
+                        </form>
+                    @endif
+                </div>
             </div>
         </div>
 
-        {{-- 
-          Konten Tabel 
+        {{--
+          Konten Tabel
           Wrapper 'overflow-x-auto' sangat penting untuk responsivitas di layar kecil.
         --}}
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
-                
+
                 {{-- Table Header (thead) --}}
                 <thead class="bg-gray-50">
                     <tr>
@@ -58,7 +66,7 @@
 
                 {{-- Table Body (tbody) --}}
                 <tbody class="bg-white divide-y divide-gray-200">
-                    
+
                     @forelse($notifications as $notification)
                         @php
                             $data = $notification->data;
@@ -69,7 +77,7 @@
                             $isUnread = !$notification->read_at;
                         @endphp
 
-                        {{-- 
+                        {{--
                           Baris Tabel (tr)
                           - Dibuat 'cursor-pointer' dan 'hover:bg-gray-50'
                           - Diberi 'onclick' untuk navigasi.
@@ -77,7 +85,7 @@
                         --}}
                         <tr class="hover:bg-gray-50 cursor-pointer {{ !$isUnread ? 'text-gray-500' : 'text-gray-900' }}"
                             onclick="window.location.href='{{ $url }}';">
-                            
+
                             {{-- Kolom 1: Ikon --}}
                             <td class="px-6 py-4">
                                 <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center {{ $isUnread ? 'bg-indigo-100' : 'bg-gray-100' }} rounded-full">

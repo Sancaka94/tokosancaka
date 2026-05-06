@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 use Illuminate\Notifications\DatabaseNotification;
 use App\Helpers\ShippingHelper;
+use Illuminate\Support\Facades\Http;
 
 class DashboardController extends Controller
 {
@@ -45,7 +46,7 @@ class DashboardController extends Controller
             'totalPesanan'    => $pesananQuery->count(),
             'jumlahToko'      => User::where('role', 'Seller')->count(),
             'penggunaBaru'    => User::where('role', 'Pelanggan')->where('created_at', '>=', now()->subDays(30))->count(),
-            
+
             // Card Status Tambahan
             'totalTerkirim'       => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->count(),
             'totalSedangDikirim'  => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->count(),
@@ -60,7 +61,7 @@ class DashboardController extends Controller
                 'pendaftaranBaru' => User::where('role', 'Pelanggan')->where('status', 'pending')->count(),
                 'pesananBaru' => Pesanan::where('status_pesanan', 'Menunggu Pickup')->count(),
                 'spxScanBaru' => ScannedPackage::whereDate('created_at', today())->count(),
-                'riwayatScanBaru' => ScannedPackage::whereDate('created_at', today())->count(), 
+                'riwayatScanBaru' => ScannedPackage::whereDate('created_at', today())->count(),
             ];
         });
 
@@ -82,7 +83,7 @@ class DashboardController extends Controller
                 $dates->put($date, 0);
             }
             $dailySales = $dates->merge($salesData);
-            
+
             return [
                 'labels' => $dailySales->keys()->map(fn($date) => Carbon::parse($date)->format('d M'))->toArray(),
                 'data' => $dailySales->values()->toArray(),
@@ -116,7 +117,7 @@ class DashboardController extends Controller
         $parts = explode('-', $order->expedition);
         // Menyesuaikan mapping nama seperti grafik sebelumnya
         $name = strtoupper($parts[1] ?? 'LAINNYA');
-        
+
         if (isset($processed[$name])) {
             $processed[$name] += $order->total_omzet;
         } else {
@@ -131,7 +132,7 @@ class DashboardController extends Controller
         'data' => array_values($processed),
     ];
 });
-        
+
 
         // --- Mengambil Data Grafik Scan SPX (dengan Caching) ---
         $spxChartData = Cache::remember('admin_dashboard_spx_chart_v5', $cacheDuration, function () {
@@ -144,7 +145,7 @@ class DashboardController extends Controller
             ->orderBy('date', 'asc')
             ->get()
             ->pluck('total', 'date');
-            
+
             $dates = collect();
             for ($i = 29; $i >= 0; $i--) {
                 $date = Carbon::now()->subDays($i)->format('Y-m-d');
@@ -176,7 +177,7 @@ $rekapCacheKey = 'admin_rekap_exp_v_' . ($startDate ?? 'all') . '_' . ($endDate 
 
 // 3. Tambahkan "use ($startDate, $endDate)" agar variabel bisa dibaca di dalam cache
 $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () use ($startDate, $endDate) {
-    
+
     // 2. MASTER DATA COURIER
     $courierMap = [
         'jne' => ['name' => 'JNE', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
@@ -209,11 +210,11 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
             'filter_code' => $code,
             'total_order' => 0,
             'total_profit' => 0,
-            'customers' => [], 
-            'senders' => [],   
-            'receivers' => [], 
-            'cities_origin' => [], 
-            'cities_dest' => [],   
+            'customers' => [],
+            'senders' => [],
+            'receivers' => [],
+            'cities_origin' => [],
+            'cities_dest' => [],
             'status_selesai' => 0,
             'status_gagal' => 0,
             'status_dikirim' => 0,
@@ -243,13 +244,13 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
     foreach ($orders as $order) {
         $parts = explode('-', $order->expedition);
         if (count($parts) >= 2) {
-            $dbCode = strtolower($parts[1]); 
+            $dbCode = strtolower($parts[1]);
             if (isset($courierMap[$dbCode])) {
                 $displayName = $courierMap[$dbCode]['name'];
-                
+
                 $stats[$displayName]['total_order']++;
                 $stats[$displayName]['total_profit'] += $order->shipping_cost;
-                
+
                 // Hitung Unik (Menggunakan Array Key agar otomatis distinct)
                 $cid = $order->customer_id ?? $order->sender_phone;
                 if ($cid) $stats[$displayName]['customers'][$cid] = true;
@@ -291,7 +292,7 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
             'status_dikirim' => $item['status_dikirim'],
             'status_pickup' => $item['status_pickup'],
         ];
-    })->sortByDesc('total_order')->values(); 
+    })->sortByDesc('total_order')->values();
 });
 
         // --- Mengambil data notifikasi terbaru untuk tabel ---
@@ -312,10 +313,54 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
             'expeditionOmzetData' => $expeditionOmzetData,
             'recentNotifications' => $recentNotifications,
             'slides' => $slides,
-            'startDate' => $startDate, 
+            'startDate' => $startDate,
             'endDate' => $endDate,
         ]));
     }
 
-    
+    public function sendBroadcast(Request $request)
+    {
+        // Validasi input dari form Admin
+        $request->validate([
+            'judul' => 'required|string',
+            'pesan' => 'required|string',
+            'jenis_aksi' => 'required|string'
+        ]);
+
+        // 1. Ambil semua token HP user yang tidak kosong dari tabel Pengguna
+        $tokens = DB::table('Pengguna')
+                    ->whereNotNull('expo_token')
+                    ->where('expo_token', '!=', '')
+                    ->pluck('expo_token')
+                    ->toArray();
+
+        if (empty($tokens)) {
+            return back()->with('error', 'Tidak ada user dengan token notifikasi aktif.');
+        }
+
+        // 2. Siapkan Data Notifikasi
+        $notificationData = [
+            'title' => $request->judul,
+            'body'  => $request->pesan,
+            'sound' => 'default',
+            'data'  => [
+                // Jika admin pilih aksi 'playstore', kirim instruksi ke aplikasi
+                'action' => $request->jenis_aksi == 'playstore' ? 'rate_playstore' : 'info_biasa'
+            ]
+        ];
+
+        // 3. Format payload sesuai standar Expo Push API
+        $messages = [];
+        foreach ($tokens as $token) {
+            $messages[] = array_merge(['to' => $token], $notificationData);
+        }
+
+        // 4. Tembakkan ke Server Expo
+        $response = Http::withHeaders([
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+        ])->post('https://exp.host/--/api/v2/push/send', $messages);
+
+        return back()->with('success', 'Broadcast berhasil dikirim ke ' . count($tokens) . ' pengguna!');
+    }
 }

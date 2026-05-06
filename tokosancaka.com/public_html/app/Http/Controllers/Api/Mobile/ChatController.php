@@ -332,4 +332,27 @@ class ChatController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Pesan berhasil dihapus']);
     }
+
+    /**
+     * 6. MENYIMPAN EXPO PUSH TOKEN DARI HP USER
+     */
+    public function savePushToken(Request $request)
+    {
+        $request->validate([
+            'push_token' => 'required|string'
+        ]);
+
+        $userId = Auth::user()->id_pengguna ?? Auth::id();
+
+        // Update token ke database (tabel Pengguna/Users)
+        \DB::table('Pengguna')->where('id_pengguna', $userId)->update([
+            'expo_token' => $request->push_token
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Token notifikasi berhasil disimpan'
+        ]);
+    }
+
 }
