@@ -1,5 +1,5 @@
 <?php
-// LOG LOG: Lengkap dan Fix Bug - Kontak Controller Sinkron Mobile & Admin
+// LOG LOG: Final Fix Database Sync (Hitung Repeat Order dari tabel Pesanan via Nomor HP)
 
 namespace App\Http\Controllers\Api\Mobile;
 
@@ -19,27 +19,19 @@ class KontakController extends Controller
     public function index(Request $request)
     {
         $user = auth('sanctum')->user();
-
         if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Sesi login tidak valid. Silakan login ulang.'
-            ], 401);
+            return response()->json(['success' => false, 'message' => 'Sesi login tidak valid. Silakan login ulang.'], 401);
         }
 
         $query = Kontak::query();
 
-        // ==========================================
-        // FIX BUG: CEK ADMIN YANG AMAN
-        // ==========================================
+        // CEK ADMIN
         $userId = $user->id_pengguna ?? $user->id;
         $isAdmin = ($userId == 4 && !empty($user->role) && strtolower($user->role) === 'admin');
 
-        // Jika bukan admin, hanya bisa melihat kontaknya sendiri
         if (!$isAdmin) {
             $query->where(function($q) use ($userId) {
-                $q->where('user_id', $userId)
-                  ->orWhere('id_Pengguna', $userId);
+                $q->where('user_id', $userId)->orWhere('id_Pengguna', $userId);
             });
         }
 
@@ -53,36 +45,48 @@ class KontakController extends Controller
             });
         }
 
-        // B. Filter Berdasarkan Tipe Tab (Pengirim / Penerima / Keduanya)
+        // B. Filter Tipe
         $filter = $request->query('filter', 'Semua');
         if ($filter !== 'Semua') {
             $query->where('tipe', $filter);
         }
 
-        // C. Filter Berdasarkan Status (Baru, Repeat, Loyal)
+        // =========================================================
+        // FIX BUG SINKRONISASI: HITUNG TOTAL ORDER SECARA DINAMIS
+        // =========================================================
+        // Karena kolom total_pengiriman di database mungkin belum akurat/kosong,
+        // kita akan menghitung langsung dari tabel pesanans saat itu juga.
+
+        $kontaksList = $query->latest()->get(); // Ambil semua data (tanpa paginasi dulu) untuk diolah
+
+        // Menggabungkan total order ke dalam masing-masing kontak
+        $processedKontaks = $kontaksList->map(function($k) {
+            $total_order = DB::table('pesanans')
+                ->where('sender_phone', $k->no_hp)
+                ->orWhere('receiver_phone', $k->no_hp)
+                ->count();
+
+            $k->total_pengiriman = $total_order;
+            return $k;
+        });
+
+        // C. Filter Status berdasarkan hasil perhitungan dinamis
         $status = $request->query('status', '');
         if (!empty($status)) {
             if ($status === 'baru') {
-                $query->where(function($q) {
-                    $q->whereNull('total_pengiriman')->orWhere('total_pengiriman', '<=', 1);
-                });
+                $processedKontaks = $processedKontaks->where('total_pengiriman', '<=', 1);
             } elseif ($status === 'repeat') {
-                $query->where('total_pengiriman', 2);
+                $processedKontaks = $processedKontaks->where('total_pengiriman', 2);
             } elseif ($status === 'loyal') {
-                $query->where('total_pengiriman', '>', 2);
+                $processedKontaks = $processedKontaks->where('total_pengiriman', '>', 2);
             }
         }
 
-        // D. GENERATE STATISTIK (Dihitung sebelum dipaginasi untuk Dashboard Kontak)
-        $statsQuery = clone $query;
-        $total = $statsQuery->count();
-
-        $count_baru = (clone $statsQuery)->where(function($q) {
-            $q->whereNull('total_pengiriman')->orWhere('total_pengiriman', '<=', 1);
-        })->count();
-
-        $count_repeat = (clone $statsQuery)->where('total_pengiriman', 2)->count();
-        $count_loyal = (clone $statsQuery)->where('total_pengiriman', '>', 2)->count();
+        // D. GENERATE STATISTIK DARI DATA YANG SUDAH DIPROSES
+        $total = $processedKontaks->count();
+        $count_baru = $processedKontaks->where('total_pengiriman', '<=', 1)->count();
+        $count_repeat = $processedKontaks->where('total_pengiriman', 2)->count();
+        $count_loyal = $processedKontaks->where('total_pengiriman', '>', 2)->count();
 
         $stats = [
             'total'         => $total,
@@ -94,17 +98,19 @@ class KontakController extends Controller
             'persen_loyal'  => $total > 0 ? round(($count_loyal / $total) * 100) : 0,
         ];
 
-        // E. Eksekusi dengan Paginasi
-        $kontaks = $query->latest()->paginate(15);
+        // E. Paginasi Manual Koleksi (Karena tadi kita ambil pakai get())
+        $page = $request->query('page', 1);
+        $perPage = 15;
+        $paginatedItems = $processedKontaks->slice(($page - 1) * $perPage, $perPage)->values();
 
         return response()->json([
             'success'      => true,
             'message'      => 'Data kontak berhasil diambil',
-            'data'         => $kontaks->items(),
+            'data'         => $paginatedItems,
             'stats'        => $stats,
-            'current_page' => $kontaks->currentPage(),
-            'last_page'    => $kontaks->lastPage(),
-            'total'        => $kontaks->total()
+            'current_page' => (int) $page,
+            'last_page'    => ceil($total / $perPage),
+            'total'        => $total
         ], 200);
     }
 
@@ -128,11 +134,10 @@ class KontakController extends Controller
         $validatedData['no_hp'] = $this->_sanitizePhoneNumber($validatedData['no_hp']);
         $validatedData['nama']  = trim(preg_replace('/[^a-zA-Z0-9\s]/', '', $validatedData['nama']));
 
-        // Ambil User ID dengan aman
         $userId = $user->id_pengguna ?? $user->id;
         $validatedData['user_id']     = $userId;
         $validatedData['id_Pengguna'] = $userId;
-        $validatedData['total_pengiriman'] = 0;
+        $validatedData['total_pengiriman'] = 0; // Kolom statis dibiarkan 0, perhitungan akan pakai query dinamis
 
         try {
             $kontak = Kontak::create($validatedData);
@@ -225,7 +230,7 @@ class KontakController extends Controller
             return response()->json(['success' => false, 'message' => 'Kontak tidak ditemukan'], 404);
         }
 
-        // Keamanan: Cek apakah user berhak melihat history kontak ini
+        // Keamanan
         $userId = $user->id_pengguna ?? $user->id;
         $isAdmin = ($userId == 4 && !empty($user->role) && strtolower($user->role) === 'admin');
         $isOwner = ($kontak->user_id == $userId || $kontak->id_Pengguna == $userId);
@@ -234,13 +239,14 @@ class KontakController extends Controller
             return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
         }
 
-        // Ambil history dari tabel 'pesanans' berdasarkan nomor HP kontak
+        // SINKRONISASI DATABASE: Menggunakan tabel 'pesanans' dan mencocokkan 'sender_phone' atau 'receiver_phone'
         $riwayat = DB::table('pesanans')
                     ->where('sender_phone', $kontak->no_hp)
                     ->orWhere('receiver_phone', $kontak->no_hp)
                     ->orderBy('created_at', 'desc')
                     ->paginate(10);
 
+        // Menghitung omzet dari ongkir (shipping_cost)
         $total_omzet = DB::table('pesanans')
                     ->where('sender_phone', $kontak->no_hp)
                     ->orWhere('receiver_phone', $kontak->no_hp)
@@ -257,7 +263,7 @@ class KontakController extends Controller
 
     /**
      * ==========================================================
-     * FUNGSI BANTUAN (PRIVATE HELPER): MERAPIKAN NOMOR HP
+     * FUNGSI BANTUAN (PRIVATE HELPER)
      * ==========================================================
      */
     private function _sanitizePhoneNumber(string $phone): string
