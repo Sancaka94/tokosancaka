@@ -164,18 +164,10 @@ Route::prefix('seller')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile/update', [ProfileController::class, 'update']);
 
-    // ==========================================
-    // RUTE MANAJEMEN KONTAK MOBILE
-    // ==========================================
-    Route::get('/customer/kontak', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'index']);
-    Route::post('/customer/kontak', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'store']);
-    Route::delete('/customer/kontak/{id}', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'destroy']);
-    Route::get('/customer/kontak/{id}/history', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'history']);
 
     Route::get('/customer/pesanan/riwayat', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'riwayat']);
 
-    // Rute Pencarian Kontak Mobile
-    Route::get('/customer/kontak', [KontakController::class, 'index']);
+
 
     // --- A. GENERAL AUTH & USER ---
     Route::get('/user/profile', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'user']);
@@ -189,6 +181,15 @@ Route::prefix('seller')->group(function () {
 
     // --- C. CUSTOMER ROUTES (PELANGGAN) ---
     Route::prefix('customer')->group(function () {
+
+        // ==========================================
+        // BUKU ALAMAT / KONTAK (SUDAH LENGKAP & SINKRON)
+        // ==========================================
+        Route::get('/kontak', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'index']);
+        Route::post('/kontak', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'store']);
+        Route::put('/kontak/{id}', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'update']); // <--- INI PENTING UNTUK EDIT
+        Route::delete('/kontak/{id}', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'destroy']);
+        Route::get('/kontak/{id}/history', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'history']);
 
         // ==========================================
         // SCAN SPX & SURAT JALAN (FITUR BARU)
