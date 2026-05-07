@@ -12,39 +12,33 @@ use App\Models\User;
 
 class ChatController extends Controller
 {
-   public function index(Request $request)
+    public function index(Request $request)
     {
-        // Deteksi ID yang sedang login
         $userId = Auth::user()->id_pengguna ?? Auth::id();
+        $query = DB::table('Pengguna');
 
-        $query = \Illuminate\Support\Facades\DB::table('Pengguna');
-
-        // 1. Logika Pencarian (Mencari di semua kemungkinan nama kolom)
         if ($request->has('search') && $request->search != '') {
             $searchTerm = $request->search;
-
             $query->where(function($q) use ($searchTerm) {
                 $q->where('nama_lengkap', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('name', 'LIKE', '%' . $searchTerm . '%') // Jaga-jaga kalau namanya 'name'
+                  ->orWhere('name', 'LIKE', '%' . $searchTerm . '%')
                   ->orWhere('no_wa', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('whatsapp', 'LIKE', '%' . $searchTerm . '%') // Jaga-jaga namanya 'whatsapp'
+                  ->orWhere('whatsapp', 'LIKE', '%' . $searchTerm . '%')
                   ->orWhere('phone', 'LIKE', '%' . $searchTerm . '%');
             });
         }
 
-        // 2. Jangan munculkan diri sendiri di pencarian
         if ($userId) {
             $query->where('id_pengguna', '!=', $userId);
         }
 
         $users = $query->limit(20)->get();
 
-        // 3. Format output agar selalu konsisten dibaca React Native
         $formattedUsers = $users->map(function($user) {
             return [
-                'id'           => $user->id_pengguna ?? $user->id,
-                'nama_lengkap' => $user->nama_lengkap ?? $user->name ?? 'User',
-                'no_wa'        => $user->no_wa ?? $user->whatsapp ?? $user->phone ?? '-',
+                'id'              => $user->id_pengguna ?? $user->id,
+                'nama_lengkap'    => $user->nama_lengkap ?? $user->name ?? 'User',
+                'no_wa'           => $user->no_wa ?? $user->whatsapp ?? $user->phone ?? '-',
                 'store_logo_path' => $user->store_logo_path ?? null,
             ];
         });
@@ -69,12 +63,12 @@ class ChatController extends Controller
             $contactId = $store ? $store->user_id : $request->store_id;
         }
 
-        \App\Models\Message::where('from_id', $contactId)
+        Message::where('from_id', $contactId)
             ->where('to_id', $userId)
             ->whereNull('read_at')
             ->update(['read_at' => \Carbon\Carbon::now()]);
 
-        $query = \App\Models\Message::where(function($q) use ($userId, $contactId) {
+        $query = Message::where(function($q) use ($userId, $contactId) {
                 $q->where('from_id', $userId)->where('to_id', $contactId);
             })->orWhere(function($q) use ($userId, $contactId) {
                 $q->where('from_id', $contactId)->where('to_id', $userId);
@@ -83,8 +77,6 @@ class ChatController extends Controller
         $rawMessages = $query->orderBy('created_at', 'desc')->limit(150)->get();
 
         $formattedMessages = $rawMessages->map(function($msg) use ($userId) {
-
-            // ✅ PERBAIKAN URL GAMBAR: Tangani URL lama (http) maupun data path baru
             $finalImageUrl = null;
             if ($msg->image_url) {
                 $finalImageUrl = str_starts_with($msg->image_url, 'http')
@@ -92,7 +84,6 @@ class ChatController extends Controller
                     : 'https://tokosancaka.com/storage/' . $msg->image_url;
             }
 
-             // 👇 TAMBAHKAN FORMAT URL AUDIO
             $finalAudioUrl = null;
             if ($msg->audio_url) {
                 $finalAudioUrl = str_starts_with($msg->audio_url, 'http')
@@ -105,42 +96,43 @@ class ChatController extends Controller
                 'sender'     => ($msg->from_id == $userId) ? 'user' : 'store',
                 'message'    => $msg->message,
                 'product_id' => $msg->product_id,
-                'image_url'  => $finalImageUrl, // <-- Terapkan URL yang sudah aman
+                'image_url'  => $finalImageUrl,
                 'created_at' => $msg->created_at,
                 'audio_url'  => $finalAudioUrl,
                 'is_read'    => $msg->read_at ? true : false,
             ];
         });
 
-        // ... (Kode Status Online di bawahnya biarkan sama persis seperti milik Anda)
-        $contactUser = \App\Models\User::find($contactId);
+        $contactUser = DB::table('Pengguna')->where('id_pengguna', $contactId)->first();
         $isOnline = false;
         $lastSeen = null;
 
-        if ($contactUser && $contactUser->last_seen) {
-            $lastSeenTime = \Carbon\Carbon::parse($contactUser->last_seen);
-            if ($lastSeenTime->diffInMinutes(\Carbon\Carbon::now()) < 3) {
-                $isOnline = true;
-            } else {
-                if ($lastSeenTime->isToday()) {
-                    $lastSeen = "Hari ini " . $lastSeenTime->format('H:i');
-                } elseif ($lastSeenTime->isYesterday()) {
-                    $lastSeen = "Kemarin " . $lastSeenTime->format('H:i');
+        if ($contactUser) {
+            $waktu_terakhir = $contactUser->last_seen ?? $contactUser->last_seen_at ?? null;
+            if ($waktu_terakhir) {
+                $lastSeenTime = \Carbon\Carbon::parse($waktu_terakhir);
+                if (abs($lastSeenTime->diffInMinutes(\Carbon\Carbon::now())) < 3) {
+                    $isOnline = true;
                 } else {
-                    $lastSeen = $lastSeenTime->format('d M H:i');
+                    if ($lastSeenTime->isToday()) {
+                        $lastSeen = "Hari ini " . $lastSeenTime->format('H:i');
+                    } elseif ($lastSeenTime->isYesterday()) {
+                        $lastSeen = "Kemarin " . $lastSeenTime->format('H:i');
+                    } else {
+                        $lastSeen = $lastSeenTime->format('d M H:i');
+                    }
                 }
+            } else {
+                $lastSeen = "Beberapa waktu lalu";
             }
         } else {
-            $isOnline = false;
-            $lastSeen = "Beberapa waktu lalu";
+            $lastSeen = "Offline";
         }
-
-
 
         return response()->json([
             'success' => true,
             'data' => [
-                'messages' => $formattedMessages,
+                'messages'        => $formattedMessages,
                 'store_is_online' => $isOnline,
                 'store_last_seen' => $lastSeen,
                 'store_is_typing' => false
@@ -153,9 +145,10 @@ class ChatController extends Controller
      */
     public function sendMessage(Request $request)
     {
-        // ✅ PERBAIKAN VALIDASI: Gunakan file|mimes agar ramah dengan React Native
         $request->validate([
-            'store_id'   => 'required',
+            // Bikin store_id tidak wajib kalau contact_id ada (dan sebaliknya)
+            'store_id'   => 'required_without:contact_id|nullable',
+            'contact_id' => 'required_without:store_id|nullable',
             'message'    => 'nullable|string|max:1000',
             'image'      => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120',
             'audio'      => 'nullable|file|mimes:m4a,mp3,wav,ogg,aac,mp4,3gp,webm|max:10240',
@@ -165,7 +158,7 @@ class ChatController extends Controller
         $userId = Auth::user()->id_pengguna ?? Auth::id();
 
         $contactId = $request->contact_id;
-        if (!$contactId) {
+        if (!$contactId && $request->store_id) {
             $store = Store::find($request->store_id);
             $contactId = $store ? $store->user_id : $request->store_id;
         }
@@ -174,25 +167,20 @@ class ChatController extends Controller
             $imageUrl = null;
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
-                $path = $file->store('uploads/chat', 'public');
-
-                // ✅ PERBAIKAN PATH: Simpan direktori path-nya saja, jangan dibungkus asset()
-                $imageUrl = $path;
+                $imageUrl = $file->store('uploads/chat', 'public');
             }
 
-            // 👇 TAMBAHKAN LOGIKA UPLOAD AUDIO DI SINI
             $audioUrl = null;
             if ($request->hasFile('audio')) {
                 $file = $request->file('audio');
-                $path = $file->store('uploads/chat_audio', 'public'); // Folder khusus audio
-                $audioUrl = $path;
+                $audioUrl = $file->store('uploads/chat_audio', 'public');
             }
 
-            if (empty($request->message) && empty($imageUrl)) {
+            if (empty($request->message) && empty($imageUrl) && empty($audioUrl)) {
                 return response()->json(['success' => false, 'message' => 'Pesan tidak boleh kosong.'], 400);
             }
 
-            $message = \App\Models\Message::create([
+            $message = Message::create([
                 'from_id'    => $userId,
                 'to_id'      => $contactId,
                 'message'    => $request->message ?? '',
@@ -229,12 +217,7 @@ class ChatController extends Controller
         $userId = $user->id_pengguna ?? $user->id;
         $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'superadmin']);
 
-        // ==================================================
-        // 1. UPDATE STATUS KITA SENDIRI SAAT BUKA DAFTAR CHAT
-        // Supaya saat kita buka halaman ini, orang lain melihat kita Hijau (Online)
-        // ==================================================
-        \DB::table('Pengguna')->where('id_pengguna', $userId)->update([
-            // Kita update dua-duanya jaga-jaga kalau ada sisa kolom lama
+        DB::table('Pengguna')->where('id_pengguna', $userId)->update([
             'last_seen' => \Carbon\Carbon::now(),
             'last_seen_at' => \Carbon\Carbon::now(),
         ]);
@@ -254,8 +237,6 @@ class ChatController extends Controller
             $contactId = ($msg->from_id == $userId) ? $msg->to_id : $msg->from_id;
 
             if (!isset($conversationsMap[$contactId])) {
-
-                // 👇 PERBAIKI LOGIKA LAST_MESSAGE
                 $lastMsgText = $msg->message;
                 if (empty($lastMsgText)) {
                     if ($msg->audio_url) {
@@ -267,7 +248,7 @@ class ChatController extends Controller
 
                 $conversationsMap[$contactId] = [
                     'contact_id'   => $contactId,
-                    'last_message' => $lastMsgText, // <-- Gunakan variabel baru ini
+                    'last_message' => $lastMsgText,
                     'last_time'    => $msg->created_at,
                     'unread_count' => 0
                 ];
@@ -280,33 +261,24 @@ class ChatController extends Controller
 
         $finalConversations = [];
         foreach ($conversationsMap as $conv) {
-            $contactUser = \DB::table('Pengguna')->where('id_pengguna', $conv['contact_id'])->first();
+            $contactUser = DB::table('Pengguna')->where('id_pengguna', $conv['contact_id'])->first();
             if (!$contactUser) continue;
 
             $store = Store::where('user_id', $conv['contact_id'])->first();
             $conv['name'] = $store ? $store->name : ($contactUser->nama_lengkap ?? 'Pengguna');
-            $conv['logo'] = $contactUser->store_logo_path;
+            $conv['logo'] = $store ? $store->logo : $contactUser->store_logo_path;
             $conv['store_id'] = $store ? $store->id : $conv['contact_id'];
 
-            // ==========================================
-            // 2. LOGIKA BACA STATUS ONLINE ANTI-GAGAL
-            // ==========================================
             $isOnline = false;
-
-            // Baca dari last_seen, kalau kosong cari last_seen_at
             $waktu_terakhir = $contactUser->last_seen ?? $contactUser->last_seen_at ?? null;
 
             if ($waktu_terakhir) {
                 $lastSeenTime = \Carbon\Carbon::parse($waktu_terakhir);
-
-                // Gunakan abs() agar tidak error jika jam server lebih lambat dari DB
-                // Jika selisih kurang dari 3 menit = Online (Hijau)
                 if (abs($lastSeenTime->diffInMinutes(\Carbon\Carbon::now())) < 3) {
                     $isOnline = true;
                 }
             }
 
-            // Masukkan true/false ke respon JSON
             $conv['is_online'] = $isOnline;
             $finalConversations[] = $conv;
         }
@@ -322,7 +294,7 @@ class ChatController extends Controller
     }
 
     /**
-     * 4. MENGHITUNG TOTAL PESAN BELUM DIBACA UNTUK DASHBOARD BADGE
+     * 4. MENGHITUNG TOTAL PESAN BELUM DIBACA
      */
     public function getUnreadCount(Request $request)
     {
@@ -347,7 +319,7 @@ class ChatController extends Controller
             $contactId = $store ? $store->user_id : $request->store_id;
         }
 
-        \App\Models\Message::where(function($q) use ($userId, $contactId) {
+        Message::where(function($q) use ($userId, $contactId) {
             $q->where('from_id', $userId)->where('to_id', $contactId);
         })->orWhere(function($q) use ($userId, $contactId) {
             $q->where('from_id', $contactId)->where('to_id', $userId);
@@ -367,8 +339,7 @@ class ChatController extends Controller
 
         $userId = Auth::user()->id_pengguna ?? Auth::id();
 
-        // Pastikan hanya bisa menghapus pesan di mana User adalah pengirim atau penerimanya
-        \App\Models\Message::whereIn('id', $request->message_ids)
+        Message::whereIn('id', $request->message_ids)
             ->where(function($q) use ($userId) {
                 $q->where('from_id', $userId)->orWhere('to_id', $userId);
             })
@@ -385,21 +356,12 @@ class ChatController extends Controller
             'push_token' => 'required|string'
         ]);
 
-        $user = \Illuminate\Support\Facades\Auth::user();
+        $user = Auth::user();
         $userId = $user->id_pengguna ?? $user->id;
 
-        \Illuminate\Support\Facades\Log::info('LOG LOG: [Token] Mencoba simpan token untuk User ID: ' . $userId);
-
-        // Update token ke database
-        $update = \Illuminate\Support\Facades\DB::table('Pengguna')
+        $update = DB::table('Pengguna')
             ->where('id_pengguna', $userId)
             ->update(['expo_token' => $request->push_token]);
-
-        if ($update) {
-            \Illuminate\Support\Facades\Log::info('LOG LOG: [Token] Berhasil disimpan ke database.');
-        } else {
-            \Illuminate\Support\Facades\Log::warning('LOG LOG: [Token] Gagal update (mungkin token sudah sama atau ID tidak ditemukan).');
-        }
 
         return response()->json([
             'success' => true,
@@ -407,6 +369,9 @@ class ChatController extends Controller
         ]);
     }
 
+    /**
+     * ✅ PERBAIKAN PENTING: MENCARI USER & TOKO SEKALIGUS
+     */
     public function searchUsers(Request $request)
     {
         $userId = Auth::user()->id_pengguna ?? Auth::id();
@@ -416,29 +381,44 @@ class ChatController extends Controller
             return response()->json(['success' => true, 'data' => []]);
         }
 
-        // Cari di tabel Pengguna (Hanya pakai kolom yang benar-benar ada)
-        $users = \Illuminate\Support\Facades\DB::table('Pengguna')
-            ->where('id_pengguna', '!=', $userId)
+        // 1. LEFT JOIN dengan tabel 'stores' agar data toko terbawa jika punya
+        $users = DB::table('Pengguna')
+            ->leftJoin('stores', 'Pengguna.id_pengguna', '=', 'stores.user_id')
+            ->select(
+                'Pengguna.id_pengguna',
+                'Pengguna.nama_lengkap',
+                'Pengguna.no_wa',
+                'Pengguna.store_logo_path',
+                'stores.id as store_id',
+                'stores.name as nama_toko',
+                'stores.logo as logo_toko'
+            )
+            ->where('Pengguna.id_pengguna', '!=', $userId)
             ->where(function($q) use ($searchTerm) {
-                // 👇 HANYA GUNAKAN NAMA KOLOM YANG PASTI ADA DI TABEL PENGGUNA
-                $q->where('nama_lengkap', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('no_wa', 'LIKE', '%' . $searchTerm . '%');
+                // Bisa dicari lewat Nama User, Nomor WA, atau Nama Toko!
+                $q->where('Pengguna.nama_lengkap', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('Pengguna.no_wa', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('stores.name', 'LIKE', '%' . $searchTerm . '%');
             })
             ->limit(20)
             ->get();
 
+        // 2. Map datanya menjadi JSON yang diharapkan React Native
         $formattedUsers = $users->map(function($user) {
             return [
-                'id' => $user->id_pengguna,
-                'nama_lengkap' => $user->nama_lengkap ?? 'User Sancaka',
-                'no_wa' => $user->no_wa ?? '-',
-                'store_logo_path' => $user->store_logo_path ?? null,
+                'id'              => $user->id_pengguna,
+                'nama_lengkap'    => $user->nama_lengkap ?? 'User Sancaka',
+                'no_wa'           => $user->no_wa ?? '-',
+                // Data khusus toko (jika null, React Native akan otomatis fallback ke data user)
+                'store_id'        => $user->store_id,
+                'nama_toko'       => $user->nama_toko,
+                'logo_toko'       => $user->logo_toko ?? $user->store_logo_path ?? null,
             ];
         });
 
         return response()->json([
             'success' => true,
-            'data' => $formattedUsers
+            'data'    => $formattedUsers
         ]);
     }
 
