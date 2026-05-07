@@ -265,12 +265,28 @@ class ChatController extends Controller
             if (!$contactUser) continue;
 
             $store = Store::where('user_id', $conv['contact_id'])->first();
-            $conv['name'] = $store ? $store->name : ($contactUser->nama_lengkap ?? 'Pengguna');
-            $conv['logo'] = $store ? $store->logo : $contactUser->store_logo_path;
+
+            // 👇 PERBAIKAN: Ambil nama dari tabel Pengguna (store_name)
+            $conv['name'] = $store ? $store->name : ($contactUser->store_name ?? $contactUser->nama_lengkap ?? 'Pengguna');
+
+            // 👇 PERBAIKAN: KEMBALIKAN KE ASAL! Ambil logo mutlak dari tabel Pengguna
+            $conv['logo'] = $contactUser->store_logo_path;
+
             $conv['store_id'] = $store ? $store->id : $conv['contact_id'];
 
             $isOnline = false;
             $waktu_terakhir = $contactUser->last_seen ?? $contactUser->last_seen_at ?? null;
+
+            if ($waktu_terakhir) {
+                $lastSeenTime = \Carbon\Carbon::parse($waktu_terakhir);
+                if (abs($lastSeenTime->diffInMinutes(\Carbon\Carbon::now())) < 3) {
+                    $isOnline = true;
+                }
+            }
+
+            $conv['is_online'] = $isOnline;
+            $finalConversations[] = $conv;
+        }
 
             if ($waktu_terakhir) {
                 $lastSeenTime = \Carbon\Carbon::parse($waktu_terakhir);
@@ -369,9 +385,6 @@ class ChatController extends Controller
         ]);
     }
 
-    /**
-     * ✅ PERBAIKAN PENTING: MENCARI USER & TOKO SEKALIGUS
-     */
     public function searchUsers(Request $request)
     {
         $userId = Auth::user()->id_pengguna ?? Auth::id();
@@ -381,38 +394,27 @@ class ChatController extends Controller
             return response()->json(['success' => true, 'data' => []]);
         }
 
-        // 1. LEFT JOIN dengan tabel 'stores' agar data toko terbawa jika punya
+        // 👇 PERBAIKAN: Langsung cari di tabel Pengguna tanpa JOIN yang ribet
         $users = DB::table('Pengguna')
-            ->leftJoin('stores', 'Pengguna.id_pengguna', '=', 'stores.user_id')
-            ->select(
-                'Pengguna.id_pengguna',
-                'Pengguna.nama_lengkap',
-                'Pengguna.no_wa',
-                'Pengguna.store_logo_path',
-                'stores.id as store_id',
-                'stores.name as nama_toko',
-                'stores.logo as logo_toko'
-            )
-            ->where('Pengguna.id_pengguna', '!=', $userId)
+            ->where('id_pengguna', '!=', $userId)
             ->where(function($q) use ($searchTerm) {
-                // Bisa dicari lewat Nama User, Nomor WA, atau Nama Toko!
-                $q->where('Pengguna.nama_lengkap', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('Pengguna.no_wa', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('stores.name', 'LIKE', '%' . $searchTerm . '%');
+                // Bisa dicari lewat Nama User, Nomor WA, atau Nama Toko
+                $q->where('nama_lengkap', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('no_wa', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('store_name', 'LIKE', '%' . $searchTerm . '%');
             })
             ->limit(20)
             ->get();
 
-        // 2. Map datanya menjadi JSON yang diharapkan React Native
+        // 👇 PERBAIKAN: Map datanya mengambil langsung dari kolom yang benar
         $formattedUsers = $users->map(function($user) {
             return [
                 'id'              => $user->id_pengguna,
                 'nama_lengkap'    => $user->nama_lengkap ?? 'User Sancaka',
                 'no_wa'           => $user->no_wa ?? '-',
-                // Data khusus toko (jika null, React Native akan otomatis fallback ke data user)
-                'store_id'        => $user->store_id,
-                'nama_toko'       => $user->nama_toko,
-                'logo_toko'       => $user->logo_toko ?? $user->store_logo_path ?? null,
+                'store_id'        => $user->id_pengguna,
+                'nama_toko'       => $user->store_name ?? $user->nama_lengkap, // Prioritaskan nama toko
+                'logo_toko'       => $user->store_logo_path, // Langsung tembak path logonya
             ];
         });
 
