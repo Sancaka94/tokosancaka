@@ -31,7 +31,22 @@ class KontakController extends Controller
         // ==========================================
         // LOGIKA ADMIN: ID 4 Bisa Lihat Semua
         // ==========================================
-        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
+        // ==========================================
+        // FIX BUG: CEK ADMIN YANG AMAN
+        // ==========================================
+        // Pakai null coalescing (??) agar tidak error jika id_pengguna kosong
+        $userId = $user->id_pengguna ?? $user->id;
+
+        // Pastikan role tidak null sebelum di-strtolower
+        $isAdmin = ($userId == 4 && $user->role && strtolower($user->role) === 'admin');
+
+        if (!$isAdmin) {
+            $query->where(function($q) use ($userId) {
+                // Gunakan $userId yang sudah difilter di atas
+                $q->where('user_id', $userId)
+                  ->orWhere('id_Pengguna', $userId);
+            });
+        }
 
         if (!$isAdmin) {
             $query->where(function($q) use ($user) {
