@@ -112,14 +112,22 @@ class ChatController extends Controller
             ];
         });
 
-        // ... (Kode Status Online di bawahnya biarkan sama persis seperti milik Anda)
-        $contactUser = \App\Models\User::find($contactId);
+       // ========================================================
+        // 👇 PERBAIKAN 1: Gunakan DB::table agar konsisten dengan tabel Pengguna
+        // ========================================================
+        $contactUser = \Illuminate\Support\Facades\DB::table('Pengguna')
+                            ->where('id_pengguna', $contactId)
+                            ->first();
+
         $isOnline = false;
         $lastSeen = null;
 
-        if ($contactUser && $contactUser->last_seen) {
-            $lastSeenTime = \Carbon\Carbon::parse($contactUser->last_seen);
-            if ($lastSeenTime->diffInMinutes(\Carbon\Carbon::now()) < 3) {
+        // Cek online status (Mendukung last_seen atau last_seen_at)
+        $waktu_terakhir = $contactUser->last_seen ?? $contactUser->last_seen_at ?? null;
+
+        if ($contactUser && $waktu_terakhir) {
+            $lastSeenTime = \Carbon\Carbon::parse($waktu_terakhir);
+            if (abs($lastSeenTime->diffInMinutes(\Carbon\Carbon::now())) < 3) {
                 $isOnline = true;
             } else {
                 if ($lastSeenTime->isToday()) {
@@ -135,12 +143,14 @@ class ChatController extends Controller
             $lastSeen = "Beberapa waktu lalu";
         }
 
-
-
         return response()->json([
             'success' => true,
             'data' => [
                 'messages' => $formattedMessages,
+                // ========================================================
+                // 👇 PERBAIKAN 2: Wajib mengirim no_wa ke React Native
+                // ========================================================
+                'no_wa'           => $contactUser ? $contactUser->no_wa : null,
                 'store_is_online' => $isOnline,
                 'store_last_seen' => $lastSeen,
                 'store_is_typing' => false
