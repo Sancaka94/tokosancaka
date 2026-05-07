@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Kontak;
-use Illuminate\Support\Str; // Dibutuhkan untuk fitur perapian nomor HP
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB; // Tambahkan ini jika butuh query DB langsung
 
 class KontakController extends Controller
 {
     /**
      * ==========================================================
-     * 1. MENGAMBIL DATA KONTAK (INDEX & SEARCH & FILTER)
+     * 1. MENGAMBIL DATA KONTAK (INDEX & SEARCH & FILTER & STATS)
      * ==========================================================
      */
     public function index(Request $request)
@@ -28,13 +29,11 @@ class KontakController extends Controller
         $query = Kontak::query();
 
         // ==========================================
-        // LOGIKA BARU: CEK ADMIN (Bisa Lihat Semua)
+        // LOGIKA ADMIN: ID 4 Bisa Lihat Semua
         // ==========================================
         $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
 
         if (!$isAdmin) {
-            // FIX BUG SQL: Harus dibungkus function($q) agar 'orWhere' tidak merusak
-            // query pencarian dan filter di bawahnya!
             $query->where(function($q) use ($user) {
                 $q->where('user_id', $user->id_pengguna)
                   ->orWhere('id_Pengguna', $user->id_pengguna);
@@ -51,37 +50,72 @@ class KontakController extends Controller
             });
         }
 
-        // B. Filter Berdasarkan Tipe Tab di Mobile (Pengirim / Penerima / Keduanya)
+        // B. Filter Berdasarkan Tipe Tab (Pengirim / Penerima / Keduanya)
         $filter = $request->query('filter', 'Semua');
         if ($filter !== 'Semua') {
             $query->where('tipe', $filter);
         }
 
-        // C. Eksekusi dengan Paginasi (Bukan limit biasa) agar Mobile bisa "Infinite Scroll"
+        // C. Filter Berdasarkan Status (Baru, Repeat, Loyal)
+        // Asumsi ada kolom 'total_pengiriman' di tabel kontak. Jika tidak ada, sesuaikan logikanya.
+        $status = $request->query('status', '');
+        if (!empty($status)) {
+            if ($status === 'baru') {
+                $query->where(function($q) {
+                    $q->whereNull('total_pengiriman')->orWhere('total_pengiriman', '<=', 1);
+                });
+            } elseif ($status === 'repeat') {
+                $query->where('total_pengiriman', 2);
+            } elseif ($status === 'loyal') {
+                $query->where('total_pengiriman', '>', 2);
+            }
+        }
+
+        // D. GENERATE STATISTIK (Dihitung sebelum dipaginasi)
+        $statsQuery = clone $query; // Kloning query agar tidak merusak query utama
+        $total = $statsQuery->count();
+
+        $count_baru = (clone $statsQuery)->where(function($q) {
+            $q->whereNull('total_pengiriman')->orWhere('total_pengiriman', '<=', 1);
+        })->count();
+
+        $count_repeat = (clone $statsQuery)->where('total_pengiriman', 2)->count();
+        $count_loyal = (clone $statsQuery)->where('total_pengiriman', '>', 2)->count();
+
+        $stats = [
+            'total' => $total,
+            'count_baru' => $count_baru,
+            'count_repeat' => $count_repeat,
+            'count_loyal' => $count_loyal,
+            'persen_baru' => $total > 0 ? round(($count_baru / $total) * 100) : 0,
+            'persen_repeat' => $total > 0 ? round(($count_repeat / $total) * 100) : 0,
+            'persen_loyal' => $total > 0 ? round(($count_loyal / $total) * 100) : 0,
+        ];
+
+        // E. Eksekusi dengan Paginasi
         $kontaks = $query->latest()->paginate(15);
 
         return response()->json([
             'success'      => true,
             'message'      => 'Data kontak berhasil diambil',
             'data'         => $kontaks->items(),
+            'stats'        => $stats, // STATISTIK DIKIRIM KE REACT NATIVE
             'current_page' => $kontaks->currentPage(),
-            'last_page'    => $kontaks->lastPage()
+            'last_page'    => $kontaks->lastPage(),
+            'total'        => $kontaks->total()
         ], 200);
     }
 
-   /**
+    /**
      * ==========================================================
-     * 2. MENYIMPAN KONTAK BARU (STORE) - DENGAN USER_ID
+     * 2. MENYIMPAN KONTAK BARU (STORE)
      * ==========================================================
      */
     public function store(Request $request)
     {
         $user = auth('sanctum')->user();
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-        }
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
 
-        // Validasi input dari aplikasi Mobile (Tanpa rule 'unique')
         $validatedData = $request->validate([
             'nama'   => 'required|string|max:255',
             'no_hp'  => 'required|string|max:20',
@@ -89,105 +123,133 @@ class KontakController extends Controller
             'tipe'   => 'required|string|in:Pengirim,Penerima,Keduanya',
         ]);
 
-        // Merapikan nomor HP (cth: +6281... diubah jadi 081...)
         $validatedData['no_hp'] = $this->_sanitizePhoneNumber($validatedData['no_hp']);
-
-        // Membersihkan nama dari simbol aneh/emoji
         $validatedData['nama'] = trim(preg_replace('/[^a-zA-Z0-9\s]/', '', $validatedData['nama']));
-
-        // =========================================================
-        // INI TAMBAHANNYA: MENYIMPAN USER ID OTOMATIS
-        // =========================================================
-        // Kita isi kolom user_id dan id_Pengguna (jika ada) sesuai dengan ID yang login
         $validatedData['user_id'] = $user->id_pengguna;
         $validatedData['id_Pengguna'] = $user->id_pengguna;
+        $validatedData['total_pengiriman'] = 0; // Set default 0
 
         try {
             $kontak = Kontak::create($validatedData);
-            return response()->json([
-                'success' => true,
-                'message' => 'Kontak berhasil disimpan.',
-                'data'    => $kontak
-            ], 200);
+            return response()->json(['success' => true, 'message' => 'Kontak berhasil disimpan.', 'data' => $kontak], 200);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menyimpan kontak: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Gagal menyimpan: ' . $e->getMessage()], 500);
         }
     }
 
     /**
      * ==========================================================
-     * 3. MENGHAPUS KONTAK (DESTROY)
+     * 3. MENGUBAH KONTAK (UPDATE) - TAMBAHAN WAJIB UNTUK MOBILE
+     * ==========================================================
+     */
+    public function update(Request $request, $id)
+    {
+        $user = auth('sanctum')->user();
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+
+        $kontak = Kontak::find($id);
+        if (!$kontak) return response()->json(['success' => false, 'message' => 'Kontak tidak ditemukan.'], 404);
+
+        $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
+        $isOwner = ($kontak->user_id == $user->id_pengguna || $kontak->id_Pengguna == $user->id_pengguna);
+
+        if (!$isAdmin && !$isOwner) {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
+
+        $validatedData = $request->validate([
+            'nama'   => 'required|string|max:255',
+            'no_hp'  => 'required|string|max:20',
+            'alamat' => 'required|string',
+            'tipe'   => 'required|string|in:Pengirim,Penerima,Keduanya',
+        ]);
+
+        $validatedData['no_hp'] = $this->_sanitizePhoneNumber($validatedData['no_hp']);
+        $validatedData['nama'] = trim(preg_replace('/[^a-zA-Z0-9\s]/', '', $validatedData['nama']));
+
+        try {
+            $kontak->update($validatedData);
+            return response()->json(['success' => true, 'message' => 'Kontak berhasil diperbarui.', 'data' => $kontak], 200);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal update: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * ==========================================================
+     * 4. MENGHAPUS KONTAK (DESTROY)
      * ==========================================================
      */
     public function destroy($id)
     {
         $user = auth('sanctum')->user();
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-        }
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
 
         $kontak = Kontak::find($id);
+        if (!$kontak) return response()->json(['success' => false, 'message' => 'Kontak tidak ditemukan.'], 404);
 
-        if (!$kontak) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Kontak tidak ditemukan.'
-            ], 404);
-        }
-
-        // ==========================================
-        // SECURITY FIX: Pastikan yang menghapus adalah pemiliknya ATAU Admin
-        // ==========================================
         $isAdmin = ($user->id_pengguna == 4 && strtolower($user->role) === 'admin');
         $isOwner = ($kontak->user_id == $user->id_pengguna || $kontak->id_Pengguna == $user->id_pengguna);
 
-        if (!$isAdmin && !$isOwner) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Anda tidak memiliki akses untuk menghapus kontak ini.'
-            ], 403);
-        }
+        if (!$isAdmin && !$isOwner) return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
 
         try {
             $kontak->delete();
-            return response()->json([
-                'success' => true,
-                'message' => 'Kontak berhasil dihapus.'
-            ], 200);
+            return response()->json(['success' => true, 'message' => 'Kontak berhasil dihapus.'], 200);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan saat menghapus.'
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Kesalahan saat menghapus.'], 500);
         }
     }
 
     /**
      * ==========================================================
-     * FUNGSI BANTUAN (PRIVATE HELPER): MERAPIKAN NOMOR HP
+     * 5. RIWAYAT PENGIRIMAN (HISTORY) - TAMBAHAN WAJIB UNTUK MOBILE
+     * ==========================================================
+     */
+    public function history(Request $request, $id)
+    {
+        $user = auth('sanctum')->user();
+        $kontak = Kontak::find($id);
+
+        if (!$kontak) {
+            return response()->json(['success' => false, 'message' => 'Kontak tidak ditemukan'], 404);
+        }
+
+        // Ambil data histori dari tabel 'pesanans' atau nama tabel transaksimu
+        // Asumsi: dicari berdasarkan nomor hp penerima/pengirim yang sama dengan kontak
+        $riwayat = DB::table('pesanans') // GANTI 'pesanans' DENGAN NAMA TABEL ASLI KAMU JIKA BEDA
+                    ->where('sender_phone', $kontak->no_hp)
+                    ->orWhere('receiver_phone', $kontak->no_hp)
+                    ->orderBy('created_at', 'desc')
+                    ->paginate(10);
+
+        $total_omzet = DB::table('pesanans')
+                    ->where('sender_phone', $kontak->no_hp)
+                    ->orWhere('receiver_phone', $kontak->no_hp)
+                    ->sum('shipping_cost'); // Sesuaikan nama kolom harga ongkir
+
+        return response()->json([
+            'success'     => true,
+            'kontak'      => $kontak,
+            'total_paket' => $riwayat->total(),
+            'total_omzet' => (int) $total_omzet,
+            'history'     => $riwayat
+        ], 200);
+    }
+
+    /**
+     * ==========================================================
+     * FUNGSI BANTUAN (PRIVATE HELPER)
      * ==========================================================
      */
     private function _sanitizePhoneNumber(string $phone): string
     {
-        // Buang semua karakter selain angka (spasi, strip, tanda plus hilang)
         $phone = preg_replace('/[^0-9]/', '', $phone);
-
-        // Jika depannya 62, ubah jadi 0
         if (Str::startsWith($phone, '62')) {
-            if (Str::startsWith(substr($phone, 2), '0')) {
-                return '0' . substr($phone, 3);
-            }
+            if (Str::startsWith(substr($phone, 2), '0')) return '0' . substr($phone, 3);
             return '0' . substr($phone, 2);
         }
-
-        // Jika depannya 8 (tanpa 0), tambahkan 0 di depan
-        if (!Str::startsWith($phone, '0') && Str::startsWith($phone, '8')) {
-            return '0' . $phone;
-        }
-
+        if (!Str::startsWith($phone, '0') && Str::startsWith($phone, '8')) return '0' . $phone;
         return $phone;
     }
 }
