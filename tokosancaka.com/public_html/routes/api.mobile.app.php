@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\Mobile\LaporanKeuanganMobileController;
 use App\Http\Controllers\Api\Mobile\ProdukSellerMobileController;
 use App\Http\Controllers\Api\Mobile\ChatController; // <-- Tambahkan import ini
 use App\Http\Controllers\Admin\DashboardController; // <-- Tambahkan import ini untuk Broadcast
+use App\Http\Controllers\Api\Mobile\DaftarMemberController;
 /*
 |--------------------------------------------------------------------------
 | API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)
@@ -349,3 +350,11 @@ Route::post('/customer/pesanan/cancel', [App\Http\Controllers\Api\Mobile\Pesanan
 
     // Rute untuk menandai notifikasi sebagai sudah dibaca (Centang 2)
     Route::post('/notifications/mark-read', [ChatController::class, 'deleteSelectedMessages']);
+
+
+    // Pastikan ini berada di dalam group middleware auth (login required)
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/customer/member/status', [DaftarMemberController::class, 'getStatus']);
+    Route::post('/customer/member/register-agent', [DaftarMemberController::class, 'registerAgent']);
+});
