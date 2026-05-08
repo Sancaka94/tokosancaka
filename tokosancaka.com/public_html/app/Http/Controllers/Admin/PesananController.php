@@ -1212,27 +1212,28 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         // LOGIKA FINAL: FEE (Min 2.500) + PPN 11% + PEMBULATAN 500
         // ============================================================
 
-        $apiItemPrice = (float) $data['item_price'];
-        $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0;
-        $finalCodValue = $cod_value;
+        // $apiItemPrice = (float) $data['item_price'];
+        // $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0;
+        // $finalCodValue = $cod_value;
 
-        // JIKA METODE 'COD' (COD Ongkir):
-        if (isset($data['payment_method']) && $data['payment_method'] === 'COD') {
+        // JIKA METODE 'COD' (COD Ongkir / COD Custom):
+        /* if (isset($data['payment_method']) && $data['payment_method'] === 'COD') {
 
             // 1. Tentukan Asuransi & Harga Barang untuk API
             if ($data['ansuransi'] == 'iya') {
                 $apiItemPrice = (float) $data['item_price'];
                 $finalInsuranceAmount = (int) $insurance_cost;
             } else {
-                $apiItemPrice = 10000;
+                $apiItemPrice = 10000; // KiriminAja mewajibkan minimal nilai barang 10.000
                 $finalInsuranceAmount = 0;
             }
 
-            // 2. Hitung Total Dasar (Ongkir + Asuransi)
-            $totalBasic = (int)$shipping_cost + (int)$finalInsuranceAmount;
+            // ==================================================
+            // 2. KOREKSI RUMUS: Wajib masukkan Harga Barang!
+            // ==================================================
+            $totalBasic = $apiItemPrice + (int)$shipping_cost + (int)$finalInsuranceAmount;
 
             // 3. Hitung COD Fee (3% dari Total Dasar, Minimal 2.500)
-            // Contoh: 3% dari 72.000 = 2.160 -> Dipaksa jadi 2.500
             $calculatedFee = $totalBasic * 0.03;
             $codFeeValue = max(2500, $calculatedFee);
 
@@ -1249,8 +1250,35 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
             // Update harga di database
             $order->price = $finalCodValue;
             $order->save();
+        } */
+
+        // ============================================================
+        // LOGIKA FINAL: MENGGUNAKAN NILAI MURNI DARI API (SARAN CS)
+        // ============================================================
+
+        $apiItemPrice = (float) $data['item_price'];
+        $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0;
+        $finalCodValue = $cod_value; // Nilai default
+
+        // BERLAKU UNTUK SEMUA JENIS COD (COD Ongkir maupun COD Barang)
+        if (isset($data['payment_method']) && in_array($data['payment_method'], ['COD', 'CODBARANG'])) {
+
+            // 1. Aturan Baku API KiriminAja: Harga barang minimal 10.000 jika tanpa asuransi
+            if ($data['ansuransi'] !== 'iya' && $apiItemPrice < 10000) {
+                $apiItemPrice = 10000;
+            }
+
+            // 2. Tembak menggunakan hasil mutlak dari jawaban API sebelumnya!
+            // Cukup jumlahkan: Harga Barang + Ongkir (API) + Asuransi (API) + Fee COD (API)
+            $finalCodValue = $apiItemPrice + (int)$shipping_cost + $finalInsuranceAmount + (int)$cod_fee;
+
+            // 3. Update nominal di database agar angka tagihan pesanan sesuai
+            $order->price = $finalCodValue;
+            $order->save();
         }
         // ============================================================
+
+
 
         if (in_array($serviceGroup, ['instant', 'sameday'])) {
             if (empty($senderData['lat']) || empty($senderData['lng']) || empty($receiverData['lat']) || empty($receiverData['lng'])) {
