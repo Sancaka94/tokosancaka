@@ -1144,36 +1144,29 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
 
     private function _calculateTotalPaid(array $validatedData): array
     {
-        // 1. Ekstrak data dari format string BARU (Ada 7 Bagian)
-        // Format: serviceGroup - courier - service_type - ongkir - asuransi - feeOngkir - feeBarang
-        // Contoh: regular - spx - 1 - 57000 - 100 - 4700 - 4700
         $parts = explode('-', $validatedData['expedition']);
 
-        // Ambil dari index langsung agar tidak pernah ketukar lagi
-        $shipping_cost  = (int) ($parts[3] ?? 0); // Pasti ongkir
-        $ansuransi_fee  = (int) ($parts[4] ?? 0); // Pasti asuransi
-        $cod_fee_ongkir = (int) ($parts[5] ?? 0); // Pasti fee COD Ongkir
-        $cod_fee_barang = (int) ($parts[6] ?? 0); // Pasti fee COD Barang
+        $shipping_cost  = (int) ($parts[3] ?? 0);
+        $ansuransi_fee  = (int) ($parts[4] ?? 0);
+        $cod_fee_ongkir = (int) ($parts[5] ?? 0); // Ini adalah codFeeApi dari frontend
+        $cod_fee_barang = (int) ($parts[6] ?? 0);
 
         $cod_fee = ($validatedData['payment_method'] === 'COD') ? $cod_fee_ongkir : $cod_fee_barang;
 
         $item_price = (int)$validatedData['item_price'];
         $use_insurance = ($validatedData['ansuransi'] == 'iya');
 
-        // 2. Hitung $total_paid_ongkir (HANYA untuk Saldo / Tripay)
-        $total_paid_ongkir = $shipping_cost;
-        if ($use_insurance) {
-            $total_paid_ongkir += $ansuransi_fee;
-        }
+        $total_paid_ongkir = $shipping_cost + ($use_insurance ? $ansuransi_fee : 0);
 
-        // 3. Hitung $cod_value (HANYA untuk COD / CODBARANG)
+        // =========================================================
+        // 🔥 PENJUMLAHAN AKHIR COD YANG PASTI KLOP DENGAN API 🔥
+        // =========================================================
         $cod_value = 0;
         if ($validatedData['payment_method'] === 'COD') {
-            // COD ONGKIR: Barang paksa 1000 + Ongkir + Asuransi + Fee Ongkir
+            // Wajib 1000 + Ongkir + Fee API (+ Asuransi jika ada)
             $cod_value = 1000 + $shipping_cost + ($use_insurance ? $ansuransi_fee : 0) + $cod_fee_ongkir;
 
         } elseif ($validatedData['payment_method'] === 'CODBARANG') {
-            // COD BARANG: Harga Barang + Ongkir + Asuransi + Fee Barang
             $apiItemPrice = $item_price;
             if (!$use_insurance && $apiItemPrice < 1000) {
                 $apiItemPrice = 1000;
@@ -1181,7 +1174,6 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
             $cod_value = $apiItemPrice + $shipping_cost + ($use_insurance ? $ansuransi_fee : 0) + $cod_fee_barang;
         }
 
-        // 4. Kembalikan semua biaya murni dan total yang dihitung
         return compact('total_paid_ongkir', 'cod_value', 'shipping_cost', 'ansuransi_fee', 'cod_fee');
     }
    /**

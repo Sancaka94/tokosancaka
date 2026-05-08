@@ -538,40 +538,25 @@ document.addEventListener('DOMContentLoaded', function () {
             results.sort((a, b) => a.cost - b.cost).forEach(item => {
                 const isCod = item.cod;
 
-                // ==========================================
-                // 🔥 FIX: Paksa jadi Angka (Integer) 🔥
-                // ==========================================
+                // 1. Ambil Angka Murni dari API
                 const shippingCost = parseInt(item.cost) || 0;
                 const insuranceFee = parseInt(item.insurance) || 0;
-                const itemPrice = parseInt(document.getElementById('item_price').value) || 0;
 
-                // RUMUS BIAYA COD AMAN
-                let feeOngkir = 0;
-                let feeBarang = 0;
+                // 🔥 INI KUNCINYA: Ambil COD Fee murni dari jawaban API KiriminAja!
+                const codFeeApi = parseInt(item.add_cost) || parseInt(item.setting?.cod_fee_amount) || 0;
 
-                if (isCod) {
-                    // 1. Hitung Fee untuk COD Ongkir Murni
-                    let baseOngkir = shippingCost + insuranceFee;
-                    let targetOngkir = baseOngkir / 0.96;
-                    if (targetOngkir * 0.03 <= 2500) targetOngkir = baseOngkir + 2800;
-                    feeOngkir = Math.ceil(targetOngkir) - baseOngkir;
+                // 2. Samakan nilai untuk dikirim ke Backend
+                let feeOngkir = codFeeApi;
+                let feeBarang = codFeeApi;
 
-                    // 2. Hitung Fee untuk COD Barang + Ongkir
-                    let baseBarang = shippingCost + insuranceFee + itemPrice;
-                    let targetBarang = baseBarang / 0.96;
-                    if (targetBarang * 0.03 <= 2500) targetBarang = baseBarang + 2800;
-                    feeBarang = Math.ceil(targetBarang) - baseBarang;
-                }
-
-                // Kirim KEDUA data fee ke Backend lewat satu string
+                // 3. String yang dikirim ke Backend
                 const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${shippingCost}-${insuranceFee}-${feeOngkir}-${feeBarang}`;
 
                 let details = `<small class="text-gray-500 block">Estimasi: ${item.etd}</small>`;
                 if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
 
                 if (isCod) {
-                    details += `<small class="text-gray-600 font-medium block mt-1">Biaya COD Ongkir: <span class="text-red-600">${formatRupiah(feeOngkir)}</span></small>`;
-                    details += `<small class="text-gray-600 font-medium block">Biaya COD Barang: <span class="text-red-600">${formatRupiah(feeBarang)}</span></small>`;
+                    details += `<small class="text-gray-600 font-medium block mt-1">Biaya COD (Sesuai API): <span class="text-red-600">${formatRupiah(codFeeApi)}</span></small>`;
                     details += `<small class="text-green-600 font-bold block mt-1">COD Tersedia</small>`;
                 }
 
