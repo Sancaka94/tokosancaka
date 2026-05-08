@@ -421,7 +421,7 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
                                     </div>
                                     <div class="text-xs text-slate-500 space-y-0.5">
                                         <div><i class="fas fa-weight-hanging w-4"></i> {{ $order->weight }} Gram</div>
-                                        <div><i class="fas fa-tag w-4"></i> Rp {{ number_format($hargaBarang, 0, ',', '.') }}</div>
+                                        <div><i class="fas fa-tag w-4"></i> Rp {{ number_format($hargaBarangReal, 0, ',', '.') }}</div>
                                         <div><i class="fas fa-cube w-4"></i> {{ $order->item_type ?? 'Paket' }}</div>
                                         <div><i class="fas fa-cube w-4"></i> Dimensi: {{ $order->length ?? '0' }} x {{ $order->width ?? '0' }} x {{ $order->height ?? '0' }} cm</div>
                                     </div>
