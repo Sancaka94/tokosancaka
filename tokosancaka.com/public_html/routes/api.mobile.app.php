@@ -360,16 +360,28 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/customer/member/register-agent', [DaftarMemberController::class, 'registerAgent']);
 });
 
-// PPOB & Produk Digital Mobile API
-Route::prefix('ppob')->group(function () {
-    // Mengambil daftar produk berdasarkan kategori (pulsa, data, pln, dll)
-    Route::get('/products/{category}', [PpobDigiflazController::class, 'getProductsByCategory']);
+// Pastikan semua dibungkus di dalam auth:sanctum agar $request->user() terbaca
+Route::middleware('auth:sanctum')->group(function () {
 
-    // Pengecekan (Inquiry)
-    Route::post('/inquiry/pasca', [PpobDigiflazController::class, 'checkBill']);
-    Route::post('/inquiry/pln', [PpobDigiflazController::class, 'checkPlnPrabayar']);
-    // Transaksi / Pembayaran
-    Route::post('/transaction', [PpobDigiflazController::class, 'processTransaction']);
-});
+    // ==========================================
+    // PPOB & Produk Digital Mobile API
+    // ==========================================
+    Route::prefix('ppob')->group(function () {
+        // Mengambil daftar produk berdasarkan kategori (pulsa, data, pln, dll)
+        Route::get('/products/{category}', [PpobDigiflazController::class, 'getProductsByCategory']);
 
+        // Pengecekan (Inquiry)
+        Route::post('/inquiry/pasca', [PpobDigiflazController::class, 'checkBill']);
+        Route::post('/inquiry/pln', [PpobDigiflazController::class, 'checkPlnPrabayar']);
+
+        // Transaksi / Pembayaran
+        Route::post('/transaction', [PpobDigiflazController::class, 'processTransaction']);
+    });
+
+    // ==========================================
+    // KHUSUS ADMIN
+    // ==========================================
+    // Route ini sekarang aman di dalam pelukan Sanctum
     Route::get('/admin/ppob/cek-saldo', [PpobDigiflazController::class, 'cekSaldo']);
+
+});
