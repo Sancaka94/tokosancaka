@@ -541,14 +541,44 @@ document.addEventListener('DOMContentLoaded', function () {
             results.sort((a, b) => a.cost - b.cost).forEach(item => {
                 const isCod = item.cod;
                 const insuranceFee = item.insurance || 0;
-                const codFee = item.setting?.cod_fee_amount || 0;
-                const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${item.cost}-${insuranceFee}-${codFee}`;
+                const shippingCost = item.cost;
+                const itemPrice = parseInt(document.getElementById('item_price').value) || 0;
+
+                // ====================================================================
+                // RUMUS BIAYA COD AMAN (MENCEGAH ERROR "CUSTOM COD TERLALU KECIL")
+                // ====================================================================
+                let feeOngkir = 0;
+                let feeBarang = 0;
+
+                if (isCod) {
+                    // 1. Hitung Fee untuk COD Ongkir Murni (Margin pengaman dibagi 0.96)
+                    let baseOngkir = shippingCost + insuranceFee;
+                    let targetOngkir = baseOngkir / 0.96;
+                    if (targetOngkir * 0.03 <= 2500) targetOngkir = baseOngkir + 2800; // Standar minimal 2500 + PPN
+                    feeOngkir = Math.ceil(targetOngkir) - baseOngkir;
+
+                    // 2. Hitung Fee untuk COD Barang + Ongkir
+                    let baseBarang = shippingCost + insuranceFee + itemPrice;
+                    let targetBarang = baseBarang / 0.96;
+                    if (targetBarang * 0.03 <= 2500) targetBarang = baseBarang + 2800;
+                    feeBarang = Math.ceil(targetBarang) - baseBarang;
+                }
+
+                // Kirim KEDUA data fee ke Backend lewat satu string!
+                const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${shippingCost}-${insuranceFee}-${feeOngkir}-${feeBarang}`;
+
                 let details = `<small class="text-gray-500 block">Estimasi: ${item.etd}</small>`;
                 if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
-                if (isCod && codFee > 0) details += `<small class="text-gray-500 block">Biaya COD: ${formatRupiah(codFee)}</small>`;
-                if (isCod) details += `<small class="text-green-600 font-bold block">COD Tersedia</small>`;
+
+                if (isCod) {
+                    // Tampilkan UI yang jauh lebih detail untuk Admin
+                    details += `<small class="text-gray-600 font-medium block mt-1">Biaya COD Ongkir: <span class="text-red-600">${formatRupiah(feeOngkir)}</span></small>`;
+                    details += `<small class="text-gray-600 font-medium block">Biaya COD Barang: <span class="text-red-600">${formatRupiah(feeBarang)}</span></small>`;
+                    details += `<small class="text-green-600 font-bold block mt-1">COD Tersedia</small>`;
+                }
+
                 const card = document.createElement('div');
-                card.className = 'border rounded-lg mb-3 shadow-sm';
+                card.className = 'border rounded-lg mb-3 shadow-sm hover:border-red-500 transition-colors';
                 card.innerHTML = `
                     <div class="p-4 flex justify-between items-center">
                         <div class="flex items-center">
@@ -557,8 +587,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>
                         <div class="text-right">
                             <small class="text-gray-500">Ongkir</small>
-                            <strong class="block text-lg text-red-600">${formatRupiah(item.cost)}</strong>
-                            <button type="button" class="select-ongkir-btn mt-1 bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${isCod}">Pilih</button>
+                            <strong class="block text-lg text-red-600">${formatRupiah(shippingCost)}</strong>
+                            <button type="button" class="select-ongkir-btn mt-1 bg-red-600 text-white px-4 py-1.5 rounded-md hover:bg-red-700 text-sm font-semibold" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${isCod}">Pilih</button>
                         </div>
                     </div>`;
                 ongkirModalBody.appendChild(card);
