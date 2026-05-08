@@ -203,24 +203,7 @@ class PpobDigiflazController extends Controller
 
             $status = $response['data']['status'] ?? 'Gagal';
             $sn = $response['data']['sn'] ?? '';
-            $rc = $response['data']['rc'] ?? ''; // Ambil kode RC dari Digiflazz
             $msg = $response['data']['message'] ?? '-';
-
-            // 1. MAPPING RESPONSE CODE DIGIFLAZZ UNTUK USER APLIKASI
-            $rcGangguan = [
-                '53' => 'Maaf, produk ini sedang tidak tersedia dari pusat (Digiflazz).',
-                '55' => 'Maaf, layanan produk ini sedang mengalami gangguan (Error). Silakan coba produk lain.',
-                '71' => 'Layanan sedang tidak stabil dari pusat. Silakan coba beberapa saat lagi.',
-                '68' => 'Stok produk ini sedang habis.',
-                '51' => 'Nomor tujuan yang Anda masukkan telah diblokir.',
-                '52' => 'Prefix (Awalan) nomor tujuan tidak sesuai dengan operator produk ini.',
-                '54' => 'Nomor tujuan yang Anda masukkan salah atau tidak terdaftar.',
-                '58' => 'Layanan sedang Cut Off (Perawatan sistem rutin). Coba lagi nanti.',
-                '60' => 'Tagihan untuk nomor ini belum tersedia atau sudah dibayar.',
-                '72' => 'Gagal! Anda harus melakukan Unreg paket lama pada nomor tersebut terlebih dahulu.',
-                '73' => 'Gagal! Pembelian KWh Listrik melebihi batas yang diizinkan PLN.',
-                '84' => 'Nominal tagihan/pembayaran tidak valid.'
-            ];
 
             if ($status !== 'Gagal') {
                 $updateData = ['status' => $status, 'sn' => $sn, 'message' => $msg];
@@ -234,6 +217,7 @@ class PpobDigiflazController extends Controller
 
                 $trx->update($updateData);
 
+                // Jika transaksi instan sukses, langsung kirim WA
                 if ($status === 'Sukses' || $status === 'Success') {
                     $this->_sendWhatsappNotificationSN($trx, $sn);
                 }
@@ -241,17 +225,18 @@ class PpobDigiflazController extends Controller
                 DB::commit();
                 return response()->json(['success' => true, 'message' => 'Transaksi Berhasil Diproses!', 'data' => $trx]);
             } else {
-                // 2. REFUND SALDO JIKA GAGAL
+                // Refund Saldo Jika Gagal di Awal
                 $user->increment('saldo', $priceToDeduct);
-
-                // 3. TERJEMAHKAN PESAN ERROR BERDASARKAN RC (JIKA ADA DI DAFTAR)
-                $userFriendlyMessage = $rcGangguan[$rc] ?? 'Transaksi Gagal: ' . $msg;
-
-                $trx->update(['status' => 'Gagal', 'message' => $userFriendlyMessage]);
+                $trx->update(['status' => 'Gagal', 'message' => $msg]);
                 DB::commit();
 
-                return response()->json(['success' => false, 'message' => $userFriendlyMessage]);
+                return response()->json(['success' => false, 'message' => 'Transaksi Gagal: ' . $msg]);
             }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('API PPOB Store Exception: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error Sistem: ' . $e->getMessage()], 500);
+        }
     }
 
     // =================================================================
