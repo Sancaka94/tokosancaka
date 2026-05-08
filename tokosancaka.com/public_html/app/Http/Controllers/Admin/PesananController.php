@@ -1269,22 +1269,28 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         }
 
         // ============================================================
-        // LOGIKA FINAL: MENGGUNAKAN NILAI MURNI DARI API
+        // LOGIKA FINAL: PISAH MUTLAK COD ONGKIR & COD BARANG
         // ============================================================
         $apiItemPrice = (float) $data['item_price'];
         $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0;
         $finalCodValue = $cod_value; // Nilai default
 
-        // BERLAKU UNTUK SEMUA JENIS COD
         if (isset($data['payment_method']) && in_array($data['payment_method'], ['COD', 'CODBARANG'])) {
 
-            if ($data['ansuransi'] !== 'iya' && $apiItemPrice < 10000) {
-                $apiItemPrice = 10000;
+            if ($data['payment_method'] === 'COD') {
+                // 1. COD ONGKIR: Murni Ongkir + Asuransi + Fee (NILAI BARANG JANGAN DIJUMLAH!)
+                $finalCodValue = (int)$shipping_cost + $finalInsuranceAmount + (int)$cod_fee;
+
+                // Trik Wajib: Karena API KA akan error kalau item_value besar tapi tidak dimasukkan ke COD,
+                // kita "palsukan" nilai barang jadi sangat kecil (1.000) khusus untuk dikirim ke API mereka.
+                $apiItemPrice = 1000;
+
+            } else {
+                // 2. COD BARANG: Full Harga Barang + Ongkir + Asuransi + Fee
+                $finalCodValue = $apiItemPrice + (int)$shipping_cost + $finalInsuranceAmount + (int)$cod_fee;
             }
 
-            // Sekarang $cod_fee sudah terdefinisi dan siap digunakan!
-            $finalCodValue = $apiItemPrice + (int)$shipping_cost + $finalInsuranceAmount + $cod_fee;
-
+            // Update nominal di database agar angka tagihan pesanan klop
             $order->price = $finalCodValue;
             $order->save();
         }
