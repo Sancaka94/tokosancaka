@@ -1187,10 +1187,7 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         return compact('total_paid_ongkir', 'cod_value', 'shipping_cost', 'ansuransi_fee', 'cod_fee');
     }
 
-   /**
-     * FUNGSI UNTUK MEMBUAT ORDER DI KIRIMIN AJA
-     */
-    private function _createKiriminAjaOrder(
+   private function _createKiriminAjaOrder(
         array $data, Pesanan $order, KiriminAjaService $kirimaja,
         array $senderData, array $receiverData, int $cod_value,
         int $shipping_cost, int $insurance_cost
@@ -1201,88 +1198,22 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         $courier = $expeditionParts[1] ?? null;
         $service_type = $expeditionParts[2] ?? null;
 
-        /*if (empty($data['sender_address']) || empty($data['sender_phone']) || empty($data['sender_name']) ||
-            empty($data['receiver_name']) || empty($data['receiver_phone']) || empty($data['receiver_address']) ||
-            empty($data['item_description']) || !isset($data['item_price']) || !isset($data['weight']) ||
-            !isset($data['item_type']) || empty($courier) || empty($service_type)) {
-                Log::error('_createKiriminAjaOrder (Customer): Missing required data.', ['invoice' => $order->nomor_invoice]);
-                return ['status' => false, 'text' => 'Data pesanan tidak lengkap untuk dikirim ke ekspedisi.'];
-        }*/
-
-        // ============================================================
-        // LOGIKA FINAL: FEE (Min 2.500) + PPN 11% + PEMBULATAN 500
-        // ============================================================
-
-        // $apiItemPrice = (float) $data['item_price'];
-        // $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0;
-        // $finalCodValue = $cod_value;
-
-        // JIKA METODE 'COD' (COD Ongkir / COD Custom):
-        /* if (isset($data['payment_method']) && $data['payment_method'] === 'COD') {
-
-            // 1. Tentukan Asuransi & Harga Barang untuk API
-            if ($data['ansuransi'] == 'iya') {
-                $apiItemPrice = (float) $data['item_price'];
-                $finalInsuranceAmount = (int) $insurance_cost;
-            } else {
-                $apiItemPrice = 10000; // KiriminAja mewajibkan minimal nilai barang 10.000
-                $finalInsuranceAmount = 0;
-            }
-
-            // ==================================================
-            // 2. KOREKSI RUMUS: Wajib masukkan Harga Barang!
-            // ==================================================
-            $totalBasic = $apiItemPrice + (int)$shipping_cost + (int)$finalInsuranceAmount;
-
-            // 3. Hitung COD Fee (3% dari Total Dasar, Minimal 2.500)
-            $calculatedFee = $totalBasic * 0.03;
-            $codFeeValue = max(2500, $calculatedFee);
-
-            // 4. Hitung PPN 11% HANYA DARI FEE COD
-            $ppnFee = $codFeeValue * 0.11;
-
-            // 5. Jumlahkan Semua (Total Mentah)
-            $grandTotalMentah = $totalBasic + $codFeeValue + $ppnFee;
-
-            // 6. LOGIKA PEMBULATAN (REQUEST BAPAK)
-            // 1-499 -> 500 | 501-999 -> 1000
-            $finalCodValue = (int) (ceil($grandTotalMentah / 500) * 500);
-
-            // Update harga di database
-            $order->price = $finalCodValue;
-            $order->save();
-        } */
-
-        // ============================================================
-        // 👇 TAMBAHKAN INI: Tangkap nilai COD Fee dari string ekspedisi
-        // ============================================================
-        $cod_fee = 0;
-        if (count($expeditionParts) >= 6) {
-            $cod_fee = (int) end($expeditionParts); // Mengambil angka paling belakang (contoh: 6993)
-        }
-
         if (empty($data['sender_address']) || empty($data['sender_phone']) || empty($data['sender_name']) ||
             empty($data['receiver_name']) || empty($data['receiver_phone']) || empty($data['receiver_address']) ||
             empty($data['item_description']) || !isset($data['item_price']) || !isset($data['weight']) ||
             !isset($data['item_type']) || empty($courier) || empty($service_type)) {
-                Log::error('_createKiriminAjaOrder (Customer): Missing required data.', ['invoice' => $order->nomor_invoice]);
+                \Log::error('_createKiriminAjaOrder (Customer): Missing required data.', ['invoice' => $order->nomor_invoice]);
                 return ['status' => false, 'text' => 'Data pesanan tidak lengkap untuk dikirim ke ekspedisi.'];
         }
 
-       // ============================================================
-        // LOGIKA FINAL: SINKRONISASI BIAYA DARI FRONTEND
         // ============================================================
-        // Tangkap kedua nilai fee yang dikirim oleh UI
-        $cod_fee_ongkir = (int) ($expeditionParts[5] ?? 0);
-        $cod_fee_barang = (int) ($expeditionParts[6] ?? 0);
-
-      // ============================================================
-        // LOGIKA PENYELARASAN HARGA BARANG KE DATABASE SANCAKA
+        // LOGIKA FINAL: PENYELARASAN HARGA BARANG KE DATABASE SANCAKA
         // ============================================================
         $apiItemPrice = (float) $data['item_price'];
+        $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0;
 
-        // Ambil nilai murni yang sudah dihitung matang-matang dari _calculateTotalPaid (Contoh: 47.000)
-        $finalCodValue = $calculateData['cod_value'];
+        // Kita pakai langsung parameter $cod_value bawaan fungsi Bapak
+        $finalCodValue = $cod_value;
 
         if (isset($data['payment_method']) && in_array($data['payment_method'], ['COD', 'CODBARANG'])) {
 
@@ -1295,7 +1226,7 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
             }
 
             // ✅ Simpan nominal tagihan yang sudah kembar ke database Sancaka
-            // Database Sancaka sekarang resmi mencatat 47.000.
+            // Database Sancaka sekarang resmi mencatat angka yang sudah final
             $order->price = $finalCodValue;
             $order->save();
         }
