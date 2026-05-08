@@ -1144,48 +1144,46 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
 
     private function _calculateTotalPaid(array $validatedData): array
     {
-        // 1. Dapatkan biaya murni dari string ekspedisi
-        $parts = explode('-', $validatedData['expedition']); $count = count($parts);
-        $cod_fee = 0; $ansuransi_fee = 0; $shipping_cost = 0;
-        if ($count >= 6) { $cod_fee = (int) end($parts); $ansuransi_fee = (int) $parts[$count - 2]; $shipping_cost = (int) $parts[$count - 3]; }
-        elseif ($count === 5) { $ansuransi_fee = (int) $parts[4]; $shipping_cost = (int) $parts[3]; }
-        elseif ($count === 4) { $shipping_cost = (int) $parts[3]; }
-        else { Log::warning('Format expedition tidak dikenal', ['exp' => $validatedData['expedition']]); }
+        // 1. Ekstrak data dari format string BARU (Ada 7 Bagian)
+        // Format: serviceGroup - courier - service_type - ongkir - asuransi - feeOngkir - feeBarang
+        // Contoh: regular - spx - 1 - 57000 - 100 - 4700 - 4700
+        $parts = explode('-', $validatedData['expedition']);
+
+        // Ambil dari index langsung agar tidak pernah ketukar lagi
+        $shipping_cost  = (int) ($parts[3] ?? 0); // Pasti ongkir
+        $ansuransi_fee  = (int) ($parts[4] ?? 0); // Pasti asuransi
+        $cod_fee_ongkir = (int) ($parts[5] ?? 0); // Pasti fee COD Ongkir
+        $cod_fee_barang = (int) ($parts[6] ?? 0); // Pasti fee COD Barang
+
+        $cod_fee = ($validatedData['payment_method'] === 'COD') ? $cod_fee_ongkir : $cod_fee_barang;
 
         $item_price = (int)$validatedData['item_price'];
-        $use_insurance = $validatedData['ansuransi'] == 'iya';
+        $use_insurance = ($validatedData['ansuransi'] == 'iya');
 
-        // 2. Hitung $total_paid_ongkir (Ini HANYA untuk Saldo / Tripay)
-        // Sesuai aturan Anda: (ongkir) atau (ongkir + asuransi)
+        // 2. Hitung $total_paid_ongkir (HANYA untuk Saldo / Tripay)
         $total_paid_ongkir = $shipping_cost;
         if ($use_insurance) {
             $total_paid_ongkir += $ansuransi_fee;
         }
 
-        // 3. Hitung $cod_value (Ini HANYA untuk COD / CODBARANG)
+        // 3. Hitung $cod_value (HANYA untuk COD / CODBARANG)
         $cod_value = 0;
-        if ($validatedData['payment_method'] === 'CODBARANG') {
-            // Aturan CODBARANG: "cod fee + ongkir + nilai barang" ( + asuransi jika dicentang)
-            $cod_value = $item_price + $shipping_cost + $cod_fee;
-            if ($use_insurance) {
-                $cod_value += $ansuransi_fee;
-            }
+        if ($validatedData['payment_method'] === 'COD') {
+            // COD ONGKIR: Barang paksa 1000 + Ongkir + Asuransi + Fee Ongkir
+            $cod_value = 1000 + $shipping_cost + ($use_insurance ? $ansuransi_fee : 0) + $cod_fee_ongkir;
 
-        } elseif ($validatedData['payment_method'] === 'COD') {
-            // Aturan COD CUSTOM (COD):
-            if ($use_insurance) {
-                // "Pakai Asuransi: cod_fee + ongkir + nilai_barang + asuransi"
-                $cod_value = $item_price + $shipping_cost + $ansuransi_fee + $cod_fee;
-            } else {
-                // "Tidak Asuransi: nilai_barang + cod_fee + ongkir"
-                $cod_value = $item_price + $shipping_cost + $cod_fee; // <-- SUDAH DIPERBAIKI
+        } elseif ($validatedData['payment_method'] === 'CODBARANG') {
+            // COD BARANG: Harga Barang + Ongkir + Asuransi + Fee Barang
+            $apiItemPrice = $item_price;
+            if (!$use_insurance && $apiItemPrice < 1000) {
+                $apiItemPrice = 1000;
             }
+            $cod_value = $apiItemPrice + $shipping_cost + ($use_insurance ? $ansuransi_fee : 0) + $cod_fee_barang;
         }
 
         // 4. Kembalikan semua biaya murni dan total yang dihitung
         return compact('total_paid_ongkir', 'cod_value', 'shipping_cost', 'ansuransi_fee', 'cod_fee');
     }
-
    /**
      * FUNGSI UNTUK MEMBUAT ORDER DI KIRIMIN AJA
      */
