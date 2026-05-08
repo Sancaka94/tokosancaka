@@ -1269,34 +1269,41 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         }
 
        // ============================================================
-        // LOGIKA FINAL: PISAH MUTLAK COD ONGKIR & COD BARANG
+        // LOGIKA FINAL: SINKRONISASI BACKEND DAN UI (SESUAI ARAHAN CS KA)
         // ============================================================
         $apiItemPrice = (float) $data['item_price'];
         $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0;
-        $finalCodValue = $cod_value; // Nilai default
+        $finalCodValue = $cod_value;
 
         if (isset($data['payment_method']) && in_array($data['payment_method'], ['COD', 'CODBARANG'])) {
 
             if ($data['payment_method'] === 'COD') {
-                // 1. COD ONGKIR: Murni Ongkir + Asuransi + Fee (NILAI BARANG DIBUANG)
+                // --- 1. COD ONGKIR MURNI ---
+
+                // Syarat wajib JSON dari KiriminAja: kolom item_value minimal 1000
+                $apiItemPrice = 1000;
+
+                // SINKRON UI: Tagihan Kurir (COD) HANYA Ongkir + Asuransi + Fee COD
+                // NILAI BARANG SAMA SEKALI TIDAK DIJUMLAHKAN KE DALAM TAGIHAN!
                 $finalCodValue = (int)$shipping_cost + $finalInsuranceAmount + (int)$cod_fee;
 
-                // 🔥 TRIK UTAMA: Paksa nilai barang jadi 1 perak khusus untuk dikirim ke API KiriminAja!
-                // Ini akan membungkam perhitungan paksa dari server mereka,
-                // sehingga kurir benar-benar HANYA menagih nominal ongkir + fee.
-                $apiItemPrice = 1;
-
             } else {
-                // 2. COD BARANG: Full Harga Barang + Ongkir + Asuransi + Fee
+                // --- 2. COD BARANG ---
+
+                // Syarat wajib JSON: minimal 1000
+                if ($data['ansuransi'] !== 'iya' && $apiItemPrice < 1000) {
+                    $apiItemPrice = 1000;
+                }
+
+                // Tagihan Kurir = Harga Barang + Ongkir + Asuransi + Fee COD
                 $finalCodValue = $apiItemPrice + (int)$shipping_cost + $finalInsuranceAmount + (int)$cod_fee;
             }
 
-            // Update nominal tagihan akhir di database Sancaka
+            // Simpan nominal tagihan yang sudah sinkron dengan UI ke database
             $order->price = $finalCodValue;
             $order->save();
         }
         // ============================================================
-
 
 
         if (in_array($serviceGroup, ['instant', 'sameday'])) {
