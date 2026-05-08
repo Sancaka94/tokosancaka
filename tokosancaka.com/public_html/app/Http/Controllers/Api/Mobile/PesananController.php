@@ -627,14 +627,30 @@ class PesananController extends Controller
 
         // 3. Logika Statistik (Admin liat stat semua, User liat stat sendiri)
         Log::info("[API MOBILE] Mulai menghitung statistik pesanan...");
+
+        // Kumpulkan semua metode Non-Payment Gateway agar mudah di-filter
+        $nonPgMethods = ['COD', '#COD_ONGKIR', 'CODBARANG', '#COD_BARANG', 'Potong Saldo', 'Cash', 'CASH', '#SALDO'];
+
         $stats = [
             'countSelesai' => (clone $baseQuery)->whereIn('status_pesanan', ['Selesai', 'Terkirim'])->count(),
             'countPickup'  => (clone $baseQuery)->where('status_pesanan', 'Menunggu Pickup')->count(),
             'countDikirim' => (clone $baseQuery)->where('status_pesanan', 'Diproses')->count(),
-            'countGagal'   => (clone $baseQuery)->whereIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'])
-                                                ->orWhere('status_pesanan', 'LIKE', '%Gagal Auto-Resi%')
-                                                ->count(),
+
+            // Perbaikan query countGagal agar lebih aman untuk id_pengguna
+            'countGagal'   => (clone $baseQuery)->where(function($q) {
+                                  $q->whereIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'])
+                                    ->orWhere('status_pesanan', 'LIKE', '%Gagal Auto-Resi%');
+                              })->count(),
+
+            // ==========================================================
+            // 🔥 TAMBAHAN STATS METODE PEMBAYARAN UNTUK REACT NATIVE 🔥
+            // ==========================================================
+            'countCodOngkir' => (clone $baseQuery)->whereIn('payment_method', ['COD', '#COD_ONGKIR'])->count(),
+            'countCodBarang' => (clone $baseQuery)->whereIn('payment_method', ['CODBARANG', '#COD_BARANG'])->count(),
+            'countCash'      => (clone $baseQuery)->whereIn('payment_method', ['Potong Saldo', 'Cash', 'CASH', '#SALDO'])->count(),
+            'countPg'        => (clone $baseQuery)->whereNotIn('payment_method', $nonPgMethods)->count(),
         ];
+
         Log::info("[API MOBILE] Statistik selesai dihitung:", $stats);
 
         // 4. Ambil Data dengan Paginasi
