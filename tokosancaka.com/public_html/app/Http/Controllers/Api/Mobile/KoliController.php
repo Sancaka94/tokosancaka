@@ -32,6 +32,9 @@ class KoliController extends Controller
         elseif ($pm === 'COD_ONGKIR') $pm = 'COD';
         elseif ($pm === 'COD_BARANG') $pm = 'CODBARANG';
 
+        // Catatan: #DOKU atau DOKU_JOKUL sudah tidak digunakan lagi dari Mobile
+        // karena semuanya akan dikirim sebagai 'GATEWAY'
+
         $request->merge(['payment_method' => $pm]);
     }
 
@@ -154,6 +157,8 @@ class KoliController extends Controller
     // ==========================================
     public function storeSingle(Request $request, KiriminAjaService $kirimaja)
     {
+        // Fungsi storeSingle pada KoliController sebaiknya tidak digunakan lagi (diganti PesananController).
+        // Namun untuk jaga-jaga, saya biarkan eksis dan mengembalikan error jika tereksekusi.
         return response()->json(['success' => false, 'message' => 'Endpoint ini sudah tidak digunakan. Gunakan PesananController untuk Single Order.'], 400);
     }
 
@@ -223,38 +228,25 @@ class KoliController extends Controller
 
                 $ongkirFix = (int) $realCostData['cost'];
                 $asuransiFix = ($request->ansuransi == 'iya') ? (int) $realCostData['insurance'] : 0;
-                $codFeeApi = (int) $realCostData['cod_fee'];
-                $isCodAvailable = $realCostData['is_cod'];
 
                 $codFeeFix = 0; $finalPriceDB = 0; $finalCodValueAPI = 0;
                 $paymentMethod = $request->payment_method;
-                $apiItemValueForKirim = $hargaBarangPerPaket;
 
-                // =======================================================
-                // 🔥 LOGIKA BARU: HITUNGAN MURNI TANPA PPN & PEMBULATAN
-                // =======================================================
                 if ($paymentMethod === 'COD' || $paymentMethod === 'CODBARANG') {
+                    $baseTotal = $ongkirFix + $asuransiFix;
+                    if ($paymentMethod === 'CODBARANG') $baseTotal += $hargaBarangPerPaket;
 
-                    // Jika API KiriminAja return 0 tapi mendukung COD, hitung manual
-                    if ($isCodAvailable && $codFeeApi === 0) {
-                        $baseTotal = $ongkirFix + $asuransiFix;
-                        if ($paymentMethod === 'CODBARANG') $baseTotal += $hargaBarangPerPaket;
-                        $codFeeApi = max(2500, (int) ceil($baseTotal * 0.03));
-                    }
-                    $codFeeFix = $codFeeApi;
+                    $rawFee = $baseTotal * 0.03;
+                    $codFeeBeforePPN = max(2500, $rawFee);
+                    $ppnFee = $codFeeBeforePPN * 0.11;
+                    $grandTotalMentah = $baseTotal + $codFeeBeforePPN + $ppnFee;
 
-                    if ($paymentMethod === 'COD') {
-                        $apiItemValueForKirim = 1000; // Suntikan harga fiktif
-                        $finalPriceDB = 1000 + $ongkirFix + $asuransiFix + $codFeeFix;
-                    } else {
-                        if ($request->ansuransi !== 'iya' && $apiItemValueForKirim < 1000) {
-                            $apiItemValueForKirim = 1000;
-                        }
-                        $finalPriceDB = $apiItemValueForKirim + $ongkirFix + $asuransiFix + $codFeeFix;
-                    }
-                    $finalCodValueAPI = $finalPriceDB;
+                    $finalCodValueAPI = (int) (ceil($grandTotalMentah / 500) * 500);
+                    $finalPriceDB = $finalCodValueAPI;
+                    $codFeeFix = $codFeeBeforePPN + $ppnFee;
                 } else {
                     $finalPriceDB = $ongkirFix + $asuransiFix;
+                    $finalCodValueAPI = 0;
                 }
 
                 $pesanan = new Pesanan();
@@ -297,7 +289,7 @@ class KoliController extends Controller
                 $createdOrders[] = $pesanan;
                 $tempDataPerOrder[$pesanan->id] = [
                     'cod_value_api' => $finalCodValueAPI, 'shipping_cost' => $ongkirFix, 'insurance_cost' => $asuransiFix,
-                    'item_value_api' => $apiItemValueForKirim, 'courier_code' => $targetCourier, 'service_code' => $targetService,
+                    'item_value_api' => $hargaBarangPerPaket, 'courier_code' => $targetCourier, 'service_code' => $targetService,
                     'booking_weight' => $finalBookingWeight
                 ];
 
@@ -307,6 +299,8 @@ class KoliController extends Controller
 
             $masterOrder = $createdOrders[0];
             $paymentUrl = null;
+
+            // Mengambil user dengan akurat dari Auth
             $user = User::where('id_pengguna', Auth::id())->first();
 
             // =========================================================
@@ -341,13 +335,18 @@ class KoliController extends Controller
                 }
             }
             elseif (strtoupper($request->payment_method) === 'GATEWAY') {
+                // KODE BARU: Lempar status ke Menunggu Pembayaran & Set Link
                 Log::info("[API MOBILE MULTI] Metode GATEWAY terpilih. Meneruskan user ke portal Sancaka.");
+
+                // Gunakan nomor WA user yang sedang login
                 $noWa = $user->no_wa ?? '08000000';
                 $paymentUrl = url('/pembayaran?akun=' . urlencode($noWa));
 
                 foreach ($createdOrders as $o) {
                     $o->status = 'Menunggu Pembayaran';
                     $o->status_pesanan = 'Menunggu Pembayaran';
+                    // Kita tidak menyimpan payment_url di database karena ini akan diambil dinamis
+                    // oleh React Native via response JSON di bawah.
                     $o->save();
                 }
             }
@@ -403,7 +402,7 @@ class KoliController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => count($createdOrders) . " Pesanan berhasil dibuat!",
-                'payment_url' => $paymentUrl
+                'payment_url' => $paymentUrl // <--- Ini akan ditangkap oleh React Native jika GATEWAY
             ]);
 
         } catch (Exception $e) {
@@ -436,7 +435,7 @@ class KoliController extends Controller
             $chargeableWeight, $length, $width, $height, $itemValue, null, $category, $useInsurance
         );
 
-        $foundCost = 0; $foundInsurance = 0; $foundCodFee = 0; $isCod = false;
+        $foundCost = 0; $foundInsurance = 0;
 
         if (isset($options['results'])) {
             foreach ($options['results'] as $res) {
@@ -445,8 +444,6 @@ class KoliController extends Controller
                 if ($apiCourier == strtolower($courier) && strpos($apiService, strtolower($service)) !== false) {
                     $foundCost = (int) ($res['cost'] ?? 0);
                     $foundInsurance = (int) ($res['insurance'] ?? 0);
-                    $isCod = !empty($res['cod']);
-                    $foundCodFee = (float) ($res['add_cost'] ?? $res['setting']['cod_fee_amount'] ?? $res['setting']['cod_fee'] ?? 0);
                     break;
                 }
             }
@@ -457,23 +454,25 @@ class KoliController extends Controller
                 if (strtolower($res['service']) == strtolower($courier)) {
                     $foundCost = (int) ($res['cost'] ?? 0);
                     $foundInsurance = (int) ($res['insurance'] ?? 0);
-                    $isCod = !empty($res['cod']);
-                    $foundCodFee = (float) ($res['add_cost'] ?? $res['setting']['cod_fee_amount'] ?? $res['setting']['cod_fee'] ?? 0);
                     break;
                 }
              }
         }
 
-        if ($foundCost == 0) throw new Exception("Ongkir tidak ditemukan utk kurir {$courier} - {$service}.");
-        return ['cost' => $foundCost, 'insurance' => $foundInsurance, 'cod_fee' => $foundCodFee, 'is_cod' => $isCod];
+        if ($foundCost == 0) throw new Exception("Ongkir tidak ditemukan utk kurir {$courier}.");
+        return ['cost' => $foundCost, 'insurance' => $foundInsurance];
     }
 
     private function _createKiriminAjaOrderLocal($data, $order, $kirimaja, $senderData, $receiverData, $cod_value, $shipping_cost, $insurance_cost) {
         $serviceGroup = 'regular';
         if (strpos(strtolower($data['service_code']), 'cargo') !== false) $serviceGroup = 'trucking';
 
+        // ---------------------------------------------------------
+        // LOGIKA PENJADWALAN PICKUP KIRIMINAJA BARU
+        // ---------------------------------------------------------
         $now = \Carbon\Carbon::now('Asia/Jakarta');
 
+        // Jika hari ini adalah hari Minggu ATAU sudah lewat jam 17:00 (5 Sore)
         if ($now->isSunday() || $now->hour >= 17) {
             $pickupDate = $now->copy()->addDay();
             if ($pickupDate->isSunday()) {
@@ -486,6 +485,9 @@ class KoliController extends Controller
 
         $useInsuranceFlag = ($data['ansuransi'] == 'iya') ? 1 : 0;
 
+        // ============================================================
+        // 🔥 LOGIKA PENYELARASAN HARGA BARANG KE DATABASE SANCAKA 🔥
+        // ============================================================
         $pm = strtoupper(trim($order->payment_method ?? ''));
         $apiItemPrice = (float) $data['item_price'];
 
@@ -494,44 +496,42 @@ class KoliController extends Controller
 
         if ($isCodOngkir || $isCodBarang) {
             if ($isCodOngkir) {
-                $apiItemPrice = 1000;
+                $apiItemPrice = 1000; // Syarat mutlak JSON KiriminAja untuk COD Ongkir Murni
             } else {
                 if ($data['ansuransi'] !== 'iya' && $apiItemPrice < 1000) {
                     $apiItemPrice = 1000;
                 }
             }
+            // Panggil fungsi rekam keuangan (ambil dari Web Controller)
             if (method_exists(\App\Http\Controllers\Customer\PesananController::class, 'simpanKeKeuangan')) {
                 \App\Http\Controllers\Customer\PesananController::simpanKeKeuangan($order);
             }
         }
+        // ============================================================
 
         $payload = [
             'address' => $order->sender_address, 'phone' => $order->sender_phone, 'name' => $order->sender_name,
             'kecamatan_id' => $senderData['kirimaja_data']['district_id'], 'kelurahan_id' => $senderData['kirimaja_data']['subdistrict_id'],
-            'zipcode' => $senderData['kirimaja_data']['postal_code'] ?? '00000',
+            'zipcode' => $senderData['kirimaja_data']['postal_code'],
             'platform_name' => 'tokosancaka.com', 'category' => $serviceGroup,
             'schedule' => $scheduleClock,
             'packages' => [[
                 'order_id' => $order->nomor_invoice, 'item_name' => $data['item_description'],
-                'package_type_id' => (int)($order->item_type ?? 7),
+                'package_type_id' => $order->item_type ?? 7,
                 'destination_name' => $order->receiver_name, 'destination_phone' => $order->receiver_phone,
                 'destination_address' => $order->receiver_address,
                 'destination_kecamatan_id' => $receiverData['kirimaja_data']['district_id'],
                 'destination_kelurahan_id' => $receiverData['kirimaja_data']['subdistrict_id'],
-                'destination_zipcode' => $receiverData['kirimaja_data']['postal_code'] ?? '00000',
+                'destination_zipcode' => $receiverData['kirimaja_data']['postal_code'],
                 'weight' => (int)$data['weight'], 'width' => (int)$data['width'], 'height' => (int)$data['height'], 'length' => (int)$data['length'],
-
                 'item_value' => (int)$apiItemPrice,
                 'insurance' => $useInsuranceFlag, 'insurance_amount' => ($useInsuranceFlag === 1) ? (int)$insurance_cost : 0,
                 'cod' => (int)$cod_value,
-
                 'service' => $data['courier_code'],
                 'service_type' => $data['service_code'],
                 'shipping_cost' => (int)$shipping_cost
             ]]
         ];
-
-        Log::info('[API MOBILE MULTI] KiriminAja Payload akhir:', $payload);
         return $kirimaja->createExpressOrder($payload);
     }
 
@@ -545,7 +545,53 @@ class KoliController extends Controller
 
         $msgSender = "Halo *{$masterOrder->sender_name}*,\n\nPesanan Anda melalui *Sancaka Express* berhasil kami proses.\n\n🧾 Invoice: *{$masterOrder->nomor_invoice}*\n👤 Penerima: *{$masterOrder->receiver_name}*\n📦 Jumlah Koli: *{$count} Paket*\n🏷️ Total Tagihan: *{$formattedTotal}*\n📍 Status: *{$masterOrder->status_pesanan}*\n\nTerima kasih telah mempercayakan pengiriman Anda kepada kami.";
         $msgReceiver = "Halo *{$masterOrder->receiver_name}*,\n\nAda paket kiriman untuk Anda dari *{$masterOrder->sender_name}* melalui *Sancaka Express*.\n\n🧾 Invoice: *{$masterOrder->nomor_invoice}*\n🏷️ Nomor Resi: *{$resiText}*\n\nMohon tunggu kedatangan kurir kami di lokasi Anda. Terima kasih.";
-        $msgAdmin = "⚠️ *ORDER BARU SANCAKA EXPRESS* ⚠️\n\n🧾 Invoice: *{$masterOrder->nomor_invoice}*\n📤 Pengirim: *{$masterOrder->sender_name}* ({$masterOrder->sender_phone})\n📥 Penerima: *{$masterOrder->receiver_name}* ({$masterOrder->receiver_phone})\n📦 Jumlah Koli: *{$count} Paket*\n💳 Metode Bayar: *{$data['payment_method']}*\n💰 Total Tagihan: *{$formattedTotal}*";
+
+        $paymentMethod = strtoupper(trim($data['payment_method']));
+        $isCodOngkir   = in_array($paymentMethod, ['COD', '#COD_ONGKIR']);
+        $isCodBarang   = in_array($paymentMethod, ['CODBARANG', '#COD_BARANG']);
+
+        $fmt = function($val) { return number_format($val, 0, ',', '.'); };
+
+        $hargaBarangFix = $data['item_price'] ?? 0;
+        if ($isCodOngkir && $hargaBarangFix < 1000) {
+            $hargaBarangFix = 1000;
+        }
+
+        $adminInstruction = "";
+        $rincianKeuangan = "";
+
+        if ($isCodOngkir) {
+            $adminInstruction = "⚠️ *INSTRUKSI: TAGIH ONGKIR + FEE SAJA*";
+            $rincianKeuangan .= "⛔ Harga Barang: Rp " . $fmt($hargaBarangFix) . " (JANGAN DITAGIH)\n";
+            $rincianKeuangan .= "✅ Ongkir: Rp " . $fmt($ongkir) . "\n";
+            if($ins > 0) $rincianKeuangan .= "✅ Asuransi: Rp " . $fmt($ins) . "\n";
+            if($fee > 0) $rincianKeuangan .= "✅ Biaya Layanan: Rp " . $fmt($fee) . "\n";
+        } elseif ($isCodBarang) {
+            $adminInstruction = "⚠️ *INSTRUKSI: TAGIH FULL (BARANG + ONGKIR)*";
+            $rincianKeuangan .= "✅ Harga Barang: Rp " . $fmt($hargaBarangFix) . "\n";
+            $rincianKeuangan .= "✅ Ongkir: Rp " . $fmt($ongkir) . "\n";
+            if($ins > 0) $rincianKeuangan .= "✅ Asuransi: Rp " . $fmt($ins) . "\n";
+            if($fee > 0) $rincianKeuangan .= "✅ Biaya Layanan: Rp " . $fmt($fee) . "\n";
+        } else {
+            $adminInstruction = "✅ *INSTRUKSI: NON-COD (SUDAH LUNAS)*";
+            $rincianKeuangan .= "☑️ Harga Barang: Rp " . $fmt($hargaBarangFix) . "\n";
+            $rincianKeuangan .= "☑️ Ongkir: Rp " . $fmt($ongkir) . "\n";
+            $rincianKeuangan .= "Note: Paket langsung serahkan, jangan menagih uang.";
+        }
+
+        $msgAdmin = "⚠️ *ORDER BARU SANCAKA EXPRESS (MULTI KOLI)* ⚠️\n\n";
+        $msgAdmin .= "🧾 Invoice: *{$masterOrder->nomor_invoice}*\n";
+        $msgAdmin .= "📤 Pengirim: *{$masterOrder->sender_name}* ({$masterOrder->sender_phone})\n";
+        $msgAdmin .= "📥 Penerima: *{$masterOrder->receiver_name}* ({$masterOrder->receiver_phone})\n";
+        $msgAdmin .= "📦 Jumlah Koli: *{$count} Paket*\n\n";
+        $msgAdmin .= "💰 *RINCIAN KEUANGAN*\n";
+        $msgAdmin .= "Metode: *{$data['payment_method']}*\n";
+        $msgAdmin .= $rincianKeuangan . "\n";
+        $msgAdmin .= "----------------------------------\n";
+        $msgAdmin .= "*TOTAL TAGIHAN KE CUSTOMER:*\n";
+        $msgAdmin .= "*{$formattedTotal}*\n";
+        $msgAdmin .= "----------------------------------\n";
+        $msgAdmin .= $adminInstruction;
 
         $this->_kirimFonnte($masterOrder->sender_phone, $msgSender);
         $this->_kirimFonnte($masterOrder->receiver_phone, $msgReceiver);
