@@ -81,7 +81,7 @@ class PesananController extends Controller
         $nonPgMethods = ['COD', 'CODBARANG', 'Potong Saldo', 'Cash', 'cash'];
 
         // --- A. CARD PENGELUARAN CUSTOMER (Rp) ---
-        
+
         // 1. SELESAI
         $incomeSelesai = (clone $cardQuery)->where('status_pesanan', 'Selesai')->sum('price');
         $incomeSelesaiSaldo     = (clone $cardQuery)->where('status_pesanan', 'Selesai')->where('payment_method', 'Potong Saldo')->sum('price');
@@ -702,33 +702,33 @@ class PesananController extends Controller
      */
     private function _calculateTotalPaid(array $validatedData): array
     {
-        $parts = explode('-', $validatedData['expedition']); $count = count($parts);
-        $cod_fee = 0; $ansuransi_fee = 0; $shipping_cost = 0;
-        if ($count >= 6) { $cod_fee = (int) end($parts); $ansuransi_fee = (int) $parts[$count - 2]; $shipping_cost = (int) $parts[$count - 3]; }
-        elseif ($count === 5) { $ansuransi_fee = (int) $parts[4]; $shipping_cost = (int) $parts[3]; }
-        elseif ($count === 4) { $shipping_cost = (int) $parts[3]; }
-        else { Log::warning('Format expedition tidak dikenal (Customer)', ['exp' => $validatedData['expedition']]); }
+        // Format Baru: serviceGroup - courier - service_type - ongkir - asuransi - feeOngkir - feeBarang
+        $parts = explode('-', $validatedData['expedition']);
+
+        $shipping_cost  = (int) ($parts[3] ?? 0);
+        $ansuransi_fee  = (int) ($parts[4] ?? 0);
+        $cod_fee_ongkir = (int) ($parts[5] ?? 0);
+        $cod_fee_barang = (int) ($parts[6] ?? 0);
+
+        $cod_fee = ($validatedData['payment_method'] === 'COD') ? $cod_fee_ongkir : $cod_fee_barang;
 
         $item_price = (int)$validatedData['item_price'];
-        $use_insurance = $validatedData['ansuransi'] == 'iya';
+        $use_insurance = ($validatedData['ansuransi'] == 'iya');
 
-        $total_paid_ongkir = $shipping_cost;
-        if ($use_insurance) {
-            $total_paid_ongkir += $ansuransi_fee;
-        }
+        $total_paid_ongkir = $shipping_cost + ($use_insurance ? $ansuransi_fee : 0);
 
+        // 🔥 PENJUMLAHAN KEMBAR DENGAN KIRIMINAJA 🔥
         $cod_value = 0;
-        if ($validatedData['payment_method'] === 'CODBARANG') {
-            $cod_value = $item_price + $shipping_cost + $cod_fee;
-            if ($use_insurance) {
-                $cod_value += $ansuransi_fee;
+        if ($validatedData['payment_method'] === 'COD') {
+            // WAJIB ditambah 1000 agar sinkron
+            $cod_value = 1000 + $shipping_cost + ($use_insurance ? $ansuransi_fee : 0) + $cod_fee_ongkir;
+
+        } elseif ($validatedData['payment_method'] === 'CODBARANG') {
+            $apiItemPrice = $item_price;
+            if (!$use_insurance && $apiItemPrice < 1000) {
+                $apiItemPrice = 1000;
             }
-        } elseif ($validatedData['payment_method'] === 'COD') {
-            $total_paid = $shipping_cost + $cod_fee;
-            if ($use_insurance) {
-                $total_paid += $ansuransi_fee;
-            }
-            $cod_value = $total_paid;
+            $cod_value = $apiItemPrice + $shipping_cost + ($use_insurance ? $ansuransi_fee : 0) + $cod_fee_barang;
         }
 
         return compact('total_paid_ongkir', 'cod_value', 'shipping_cost', 'ansuransi_fee', 'cod_fee');
@@ -756,49 +756,28 @@ class PesananController extends Controller
                 return ['status' => false, 'text' => 'Data pesanan tidak lengkap untuk dikirim ke ekspedisi.'];
         }
 
-       // ============================================================
-        // LOGIKA FINAL: FEE (Min 2.500) + PPN 11% + PEMBULATAN 500
         // ============================================================
-
+        // LOGIKA PENYELARASAN HARGA BARANG KE DATABASE SANCAKA
+        // ============================================================
         $apiItemPrice = (float) $data['item_price'];
         $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0;
-        $finalCodValue = $cod_value;
+        $finalCodValue = $cod_value; // Langsung pakai hasil _calculateTotalPaid
 
-        // JIKA METODE 'COD' (COD Ongkir):
-        if (isset($data['payment_method']) && $data['payment_method'] === 'COD') {
+        if (isset($data['payment_method']) && in_array($data['payment_method'], ['COD', 'CODBARANG'])) {
 
-            // 1. Tentukan Asuransi & Harga Barang untuk API
-            if ($data['ansuransi'] == 'iya') {
-                $apiItemPrice = (float) $data['item_price'];
-                $finalInsuranceAmount = (int) $insurance_cost;
+            if ($data['payment_method'] === 'COD') {
+                $apiItemPrice = 1000; // Syarat mutlak JSON KiriminAja
             } else {
-                $apiItemPrice = 10000;
-                $finalInsuranceAmount = 0;
+                if ($data['ansuransi'] !== 'iya' && $apiItemPrice < 1000) {
+                    $apiItemPrice = 1000;
+                }
             }
 
-            // 2. Hitung Total Dasar (Ongkir + Asuransi)
-            $totalBasic = (int)$shipping_cost + (int)$finalInsuranceAmount;
-
-            // 3. Hitung COD Fee (3% dari Total Dasar, Minimal 2.500)
-            // Contoh: 3% dari 72.000 = 2.160 -> Dipaksa jadi 2.500
-            $calculatedFee = $totalBasic * 0.03;
-            $codFeeValue = max(2500, $calculatedFee);
-
-            // 4. Hitung PPN 11% HANYA DARI FEE COD
-            $ppnFee = $codFeeValue * 0.11;
-
-            // 5. Jumlahkan Semua (Total Mentah)
-            $grandTotalMentah = $totalBasic + $codFeeValue + $ppnFee;
-
-            // 6. LOGIKA PEMBULATAN (REQUEST BAPAK)
-            // 1-499 -> 500 | 501-999 -> 1000
-            $finalCodValue = (int) (ceil($grandTotalMentah / 500) * 500);
-
-            // Update harga di database
+            // Simpan nominal tagihan yang sudah kembar ke database
             $order->price = $finalCodValue;
             $order->save();
 
-            self::simpanKeKeuangan($order);
+            self::simpanKeKeuangan($order); // Catat keuangan
         }
         // ============================================================
 
@@ -1073,62 +1052,54 @@ TEXT;
     }
 
     /**
-     * FUNGSI INTERNAL: Kirim Notifikasi WA dengan Logika COD Ongkir vs COD Barang
-     * Dipanggil dari method store()
+     * FUNGSI INTERNAL: Kirim Notifikasi WA
      */
     private function _sendWhatsappNotification($order, $data, $shipping_cost, $insurance_cost, $cod_fee, $total_invoice, $request)
     {
         try {
-            // 1. Setup Dasar
-            $adminNumbers = ['085745808809', '08819435180']; // Nomor Admin
+            $adminNumbers = ['085745808809', '08819435180'];
             $fmt = function($val) { return number_format($val, 0, ',', '.'); };
 
-            // Bersihkan format metode pembayaran
             $paymentMethod = strtoupper($data['payment_method']);
-            $isCodOngkir   = ($paymentMethod === 'COD');          // Hanya bayar Ongkir
-            $isCodBarang   = ($paymentMethod === 'CODBARANG');    // Bayar Barang + Ongkir
+            $isCodOngkir   = ($paymentMethod === 'COD');
+            $isCodBarang   = ($paymentMethod === 'CODBARANG');
 
-            // 2. Tentukan Status Tagihan & Note Admin
-            $statusTagihan = "";
+            // ==============================================================
+            // 🔥 AMBIL LANGSUNG DARI DATABASE SANCAKA 🔥
+            // ==============================================================
+            $finalTotal  = $order->price ?? $total_invoice;
+            $ongkirFix   = $shipping_cost;
+            $asuransiFix = $insurance_cost;
+            $feeCodFix   = $cod_fee;
+
+            // Sesuaikan Harga Barang untuk Tampilan WA
+            $hargaBarangFix = $data['item_price'] ?? 0;
+            if ($isCodOngkir && $hargaBarangFix < 1000) {
+                $hargaBarangFix = 1000; // Munculkan 1000 perak agar hasil matematikanya pas
+            }
+
             $adminInstruction = "";
             $rincianKeuangan = "";
 
-            // --- LOGIKA PESAN BERDASARKAN TIPE PEMBAYARAN ---
-
             if ($isCodOngkir) {
-                // KASUS: COD ONGKIR
-                // User sudah transfer harga barang (atau dianggap lunas), cuma bayar ongkir ke kurir
                 $adminInstruction = "⚠️ *INSTRUKSI: TAGIH ONGKIR + FEE SAJA*";
-
-                $rincianKeuangan .= "⛔ Harga Barang: Rp " . $fmt($data['item_price']) . " (JANGAN DITAGIH)\n";
-                $rincianKeuangan .= "✅ Ongkir: Rp " . $fmt($shipping_cost) . "\n";
-                if($insurance_cost > 0) $rincianKeuangan .= "✅ Asuransi: Rp " . $fmt($insurance_cost) . "\n";
-
-                // Hitung sisa fee agar totalnya klop dengan total_invoice
-                // Total Invoice di COD Ongkir biasanya = Ongkir + Asuransi + Fee + PPN
-                $calculatedFee = $total_invoice - $shipping_cost - $insurance_cost;
-                if($calculatedFee > 0) $rincianKeuangan .= "✅ Biaya Layanan: Rp " . $fmt($calculatedFee) . "\n";
-
+                $rincianKeuangan .= "⛔ Harga Barang: Rp " . $fmt($hargaBarangFix) . " (JANGAN DITAGIH)\n";
+                $rincianKeuangan .= "✅ Ongkir: Rp " . $fmt($ongkirFix) . "\n";
+                if($asuransiFix > 0) $rincianKeuangan .= "✅ Asuransi: Rp " . $fmt($asuransiFix) . "\n";
+                if($feeCodFix > 0) $rincianKeuangan .= "✅ Biaya Layanan: Rp " . $fmt($feeCodFix) . "\n";
             } elseif ($isCodBarang) {
-                // KASUS: COD BARANG (FULL)
-                // User bayar semuanya ke kurir
                 $adminInstruction = "⚠️ *INSTRUKSI: TAGIH FULL (BARANG + ONGKIR)*";
-
-                $rincianKeuangan .= "✅ Harga Barang: Rp " . $fmt($data['item_price']) . "\n";
-                $rincianKeuangan .= "✅ Ongkir: Rp " . $fmt($shipping_cost) . "\n";
-                if($insurance_cost > 0) $rincianKeuangan .= "✅ Asuransi: Rp " . $fmt($insurance_cost) . "\n";
-                if($cod_fee > 0) $rincianKeuangan .= "✅ Biaya Layanan: Rp " . $fmt($cod_fee) . "\n";
-
+                $rincianKeuangan .= "✅ Harga Barang: Rp " . $fmt($hargaBarangFix) . "\n";
+                $rincianKeuangan .= "✅ Ongkir: Rp " . $fmt($ongkirFix) . "\n";
+                if($asuransiFix > 0) $rincianKeuangan .= "✅ Asuransi: Rp " . $fmt($asuransiFix) . "\n";
+                if($feeCodFix > 0) $rincianKeuangan .= "✅ Biaya Layanan: Rp " . $fmt($feeCodFix) . "\n";
             } else {
-                // KASUS: TRANSFER / SALDO
                 $adminInstruction = "✅ *INSTRUKSI: NON-COD (SUDAH LUNAS)*";
-
-                $rincianKeuangan .= "☑️ Harga Barang: Rp " . $fmt($data['item_price']) . "\n";
-                $rincianKeuangan .= "☑️ Ongkir: Rp " . $fmt($shipping_cost) . "\n";
+                $rincianKeuangan .= "☑️ Harga Barang: Rp " . $fmt($hargaBarangFix) . "\n";
+                $rincianKeuangan .= "☑️ Ongkir: Rp " . $fmt($ongkirFix) . "\n";
                 $rincianKeuangan .= "Note: Paket langsung serahkan, jangan menagih uang.";
             }
 
-            // 3. Susun Pesan Akhir
             $message = "*🔔 PESANAN BARU MASUK (WEB)*\n";
             $message .= "----------------------------------\n";
             $message .= "🆔 Invoice: *{$order->nomor_invoice}*\n";
@@ -1145,21 +1116,17 @@ TEXT;
             $message .= $rincianKeuangan;
             $message .= "----------------------------------\n";
             $message .= "*TOTAL TAGIHAN KE CUSTOMER:*\n";
-            $message .= "*Rp " . $fmt($total_invoice) . "*\n";
+            $message .= "*Rp " . $fmt($finalTotal) . "*\n";
             $message .= "----------------------------------\n";
             $message .= $adminInstruction . "\n\n";
-
             $message .= "Link: " . route('admin.pesanan.index');
 
-            // 4. Kirim ke Semua Nomor Admin
             foreach ($adminNumbers as $number) {
-                // Format nomor HP (ubah 08 jadi 628 jika perlu, Fonnte biasanya otomatis tapi lebih aman manual)
                 $waTarget = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $number));
                 \App\Services\FonnteService::sendMessage($waTarget, $message);
             }
 
         } catch (\Exception $e) {
-            // Error handling silent agar pesanan tetap terbuat meskipun WA gagal
             \Illuminate\Support\Facades\Log::error('WA Notification Error: ' . $e->getMessage());
         }
     }

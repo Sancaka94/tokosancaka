@@ -1103,7 +1103,7 @@ asuransiSelect.addEventListener('mousedown', function(e) {
         nameInput.addEventListener('input', function (e) {
             // Hapus semua karakter selain huruf (A-Z, a-z) dan spasi
             let val = this.value.replace(/[^a-zA-Z\s]/g, '');
-            
+
             // Paksa menjadi huruf besar semua (Kapital)
             this.value = val.toUpperCase();
         });
@@ -1203,41 +1203,24 @@ async function runCekOngkir() {
 
         // 3. Render Hasil
         results.sort((a, b) => parseFloat(a.cost) - parseFloat(b.cost)).forEach(item => {
-
-            const cost = parseFloat(item.cost) || 0;
             const serviceName = item.service_name;
             const serviceCode = item.service.toLowerCase();
             const serviceType = item.service_type;
             const etd = item.etd ? item.etd.replace('Hari', '').trim() + ' Hari' : '-';
-            const isCod = item.cod; // Boolean
-            const insuranceFee = parseFloat(item.insurance) || 0;
+            const isCod = item.cod;
 
-            // --- [LOGIKA HITUNG COD FEE UNTUK TAMPILAN] ---
-            // Ambil dari API dulu
-            let codFee = 0;
-            if (item.setting) {
-                codFee = parseFloat(item.setting.cod_fee_amount || item.setting.cod_fee || 0);
-            }
-
-            // Jika API return 0 dan layanan support COD, hitung manual (3% Min 2500)
-            if (isCod && codFee === 0) {
-                const codRate = 0.03;   // 3%
-                const minCodFee = 2500; // Rp 2.500
-
-                // Asumsi Fee dihitung dari (Ongkir + Asuransi + Harga Barang)
-                let basis = cost + insuranceFee + itemValue;
-                let manualFee = Math.ceil(basis * codRate);
-
-                if (manualFee < minCodFee) manualFee = minCodFee;
-                codFee = manualFee;
-            }
-            // ----------------------------------------------
+            // =================================================================
+            // 🔥 AMBIL ANGKA MURNI DARI API KIRIMINAJA (HARAM HITUNG MANUAL) 🔥
+            // =================================================================
+            const shippingCost = parseInt(item.cost) || 0;
+            const insuranceFee = parseInt(item.insurance) || 0;
+            const codFeeApi = parseInt(item.add_cost) || parseInt(item.setting?.cod_fee_amount) || 0;
 
             const logoUrl = `{{ asset('public/storage/logo-ekspedisi/') }}/${serviceCode.replace(/\s+/g, '')}.png`;
 
-            // Update value tombol agar fee terkirim ke modal konfirmasi
+            // Update value tombol agar formatnya 7 Bagian (Sesuai update Controller)
             const serviceCategory = document.getElementById('service_type').value;
-            const value = `${serviceCategory}-${serviceCode}-${serviceType}-${cost}-${insuranceFee}-${codFee}`;
+            const value = `${serviceCategory}-${serviceCode}-${serviceType}-${shippingCost}-${insuranceFee}-${codFeeApi}-${codFeeApi}`;
 
             // Susun HTML Detail
             let details = `<div class="mt-1 text-xs text-gray-500 space-y-1">`;
@@ -1248,67 +1231,49 @@ async function runCekOngkir() {
             }
 
             if (isCod) {
-                // Tampilkan Label COD + Nominal Fee
                 details += `<div class="text-green-600 font-bold flex items-center">
                                 <i class="fas fa-hand-holding-usd w-4 text-center mr-1"></i>
                                 <span>COD Tersedia</span>
                             </div>`;
-                // Tambahkan baris estimasi fee
                 details += `<div class="text-red-600 font-medium ml-5">
-                            + Fee COD: ${formatRupiah(codFee)}
+                            + Fee COD: ${formatRupiah(codFeeApi)}
                             </div>`;
             } else {
                 details += `<div class="text-red-500"><i class="fas fa-times-circle w-4 text-center mr-1"></i>Tidak Bisa COD</div>`;
             }
             details += `</div>`;
 
-
             // Render Card
-const card = document.createElement('div');
-card.className = 'border rounded-lg mb-3 bg-white transition-shadow';
+            const card = document.createElement('div');
+            card.className = 'border rounded-lg mb-3 bg-white transition-shadow';
+            card.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.05)';
+            card.addEventListener('mouseenter', () => { card.style.boxShadow = '0 6px 18px rgba(0, 118, 255, 0.55)'; });
+            card.addEventListener('mouseleave', () => { card.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.05)'; });
 
-// Shadow default
-card.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.05)';
-
-// Hover biru
-card.addEventListener('mouseenter', () => {
-    card.style.boxShadow = '0 6px 18px rgba(0, 118, 255, 0.55)';
-});
-
-// Hilang hover
-card.addEventListener('mouseleave', () => {
-    card.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.05)';
-});
-
-card.innerHTML = `
-    <div class="p-4 flex justify-between items-center">
-        <div class="flex items-center w-3/4">
-            <div class="w-16 h-12 mr-3 flex-shrink-0 flex items-center justify-center border border-gray-100 rounded p-1 bg-gray-50">
-                <img src="${logoUrl}" class="max-w-full max-h-full object-contain"
-                    onerror="this.src='https://placehold.co/100x40?text=${serviceCode}'">
-            </div>
-            <div class="overflow-hidden">
-                <h6 class="font-bold text-gray-800 text-sm md:text-base truncate" title="${serviceName}">${serviceName}</h6>
-                ${details}
-            </div>
-        </div>
-        <div class="text-right w-1/4 pl-2">
-            <small class="text-gray-500 text-xs block">Ongkir</small>
-            <strong class="block text-base md:text-lg text-red-600 leading-tight">${formatRupiah(cost)}</strong>
-            <button type="button"
-                class="select-ongkir-btn mt-2 bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 text-xs md:text-sm w-full transition-colors font-medium shadow-sm"
-                data-value="${value}"
-                data-display="${serviceName}"
-                data-cod-supported="${isCod}"
-                data-logo="${logoUrl}">
-                Pilih
-            </button>
-        </div>
-    </div>
-`;
-
-ongkirModalBody.appendChild(card);
-
+            card.innerHTML = `
+                <div class="p-4 flex justify-between items-center">
+                    <div class="flex items-center w-3/4">
+                        <div class="w-16 h-12 mr-3 flex-shrink-0 flex items-center justify-center border border-gray-100 rounded p-1 bg-gray-50">
+                            <img src="${logoUrl}" class="max-w-full max-h-full object-contain"
+                                onerror="this.src='https://placehold.co/100x40?text=${serviceCode}'">
+                        </div>
+                        <div class="overflow-hidden">
+                            <h6 class="font-bold text-gray-800 text-sm md:text-base truncate" title="${serviceName}">${serviceName}</h6>
+                            ${details}
+                        </div>
+                    </div>
+                    <div class="text-right w-1/4 pl-2">
+                        <small class="text-gray-500 text-xs block">Ongkir</small>
+                        <strong class="block text-base md:text-lg text-red-600 leading-tight">${formatRupiah(shippingCost)}</strong>
+                        <button type="button"
+                            class="select-ongkir-btn mt-2 bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 text-xs md:text-sm w-full transition-colors font-medium shadow-sm"
+                            data-value="${value}" data-display="${serviceName}" data-cod-supported="${isCod}" data-logo="${logoUrl}">
+                            Pilih
+                        </button>
+                    </div>
+                </div>
+            `;
+            ongkirModalBody.appendChild(card);
         });
 
     } catch (error) {
@@ -1493,73 +1458,36 @@ function openConfirmationModal() {
     const rawPrice = document.getElementById('item_price').value;
     const itemValue = parseInt(rawPrice.replace(/[^0-9]/g, '')) || 0;
 
-    // 3. PARSING DATA ONGKIR (String dari API)
-    // Format: ServiceType-Ekspedisi-Layanan-Ongkir-Asuransi-CodFee
+    // 3. PARSING DATA ONGKIR (String dari API Format 7 Bagian)
     const rawExpedition = document.getElementById('expedition').value;
     const parts = rawExpedition.split('-');
 
     const shippingCost = parseInt(parts[3]) || 0;
     const insuranceAmount = parseInt(parts[4]) || 0;
-    let codFee = parseInt(parts[5]) || 0; // Ini seringkali 0 dari API
+    const codFeeOngkir = parseInt(parts[5]) || 0;
+    const codFeeBarang = parseInt(parts[6]) || 0;
 
     // Cek Jenis Pembayaran
     const isCODBarang = (paymentMethodVal === 'CODBARANG');
     const isCODRegular = (paymentMethodVal === 'COD');
 
-    // --- 4. LOGIKA HITUNG MANUAL (WAJIB KARENA API RETURN 0) ---
-    // Jika metode COD tapi fee dari API 0, kita hitung manual di sini
-    if ((isCODBarang || isCODRegular) && codFee === 0) {
-        // KONFIGURASI RATE (3% Min 2500)
-        const codRate = 0.03;
-        const minCodFee = 2500;
+    let codFee = 0;
+    if (isCODRegular) codFee = codFeeOngkir;
+    else if (isCODBarang) codFee = codFeeBarang;
 
-        // Hitung Basis: Ongkir + Asuransi + (Harga Barang jika COD Barang)
-        let basisPerhitungan = shippingCost + insuranceAmount;
-        if(isCODBarang) {
-            basisPerhitungan += itemValue;
-        }
-
-        // Rumus Fee
-        let manualFee = Math.ceil(basisPerhitungan * codRate);
-        if (manualFee < minCodFee) manualFee = minCodFee;
-
-        codFee = manualFee; // Update variabel lokal dengan hasil hitungan
-    }
-
-    // Reset Fee jadi 0 jika BUKAN metode COD (Transfer/Saldo)
-    if (!isCODBarang && !isCODRegular) {
-        codFee = 0;
-    }
-
-    // =========================================================================
-    // [BAGIAN PERBAIKAN UTAMA]
-    // Update Value Input Hidden 'expedition' agar terkirim ke Controller
-    // =========================================================================
-
-    // 1. Masukkan fee hasil hitungan ke array data (index ke-5)
-    parts[5] = codFee;
-
-    // 2. Gabungkan kembali jadi string (Contoh: "regular-sicepat-halu-10000-0-2500")
-    const newExpeditionString = parts.join('-');
-
-    // 3. Timpa value di elemen HTML
-    document.getElementById('expedition').value = newExpeditionString;
-
-    // (Opsional) Jika punya input khusus cod_fee, isi juga
-    const inputFeeKhusus = document.getElementById('final_cod_fee');
-    if(inputFeeKhusus) inputFeeKhusus.value = codFee;
-
-    console.log("Data Terkirim ke Server:", newExpeditionString);
-    // =========================================================================
-
-
-    // --- 5. HITUNG TOTAL BAYAR VISUAL ---
+    // --- 4. HITUNG TOTAL BAYAR VISUAL (SINKRON DENGAN KIRIMINAJA) ---
     let totalBayar = shippingCost + insuranceAmount + codFee;
+    let displayItemValue = itemValue;
+
     if (isCODBarang) {
-        totalBayar += itemValue;
+        if (displayItemValue < 1000 && !insuranceAmount) displayItemValue = 1000;
+        totalBayar += displayItemValue;
+    } else if (isCODRegular) {
+        displayItemValue = 1000; // Harga Fiktif Wajib KiriminAja
+        totalBayar += 1000;      // Suntikkan ke Total Tagihan Modal
     }
 
-    // --- 6. UPDATE TAMPILAN MODAL (UI) ---
+    // --- 5. UPDATE TAMPILAN MODAL (UI) ---
     document.getElementById('confirm_expedition_name').innerText = document.getElementById('selected_expedition_display').value;
     document.getElementById('confirm_expedition_logo').src = logoUrl || 'https://placehold.co/100x40?text=Kurir';
 
@@ -1592,8 +1520,14 @@ function openConfirmationModal() {
     document.getElementById('detail_cost_insurance').innerText = formatRupiah(insuranceAmount);
     (insuranceAmount > 0) ? showRow('row_detail_insurance') : hideRow('row_detail_insurance');
 
-    document.getElementById('detail_cost_item').innerText = formatRupiah(itemValue);
-    (isCODBarang && itemValue > 0) ? showRow('row_detail_item_price') : hideRow('row_detail_item_price');
+    // Tampilkan Harga Barang jika COD Barang, ATAU jika COD Ongkir (Biar customer tahu ada 1000 perak diselipkan)
+    if (isCODRegular) {
+        document.getElementById('detail_cost_item').innerHTML = formatRupiah(displayItemValue) + ' <span class="text-xs text-gray-400 font-normal italic">(Admin)</span>';
+        showRow('row_detail_item_price');
+    } else {
+        document.getElementById('detail_cost_item').innerText = formatRupiah(displayItemValue);
+        (isCODBarang && displayItemValue > 0) ? showRow('row_detail_item_price') : hideRow('row_detail_item_price');
+    }
 
     // Tampilkan Fee COD di Modal
     document.getElementById('detail_cost_cod').innerText = formatRupiah(codFee);
