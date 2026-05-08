@@ -467,54 +467,16 @@ class KoliController extends Controller
         $serviceGroup = 'regular';
         if (strpos(strtolower($data['service_code']), 'cargo') !== false) $serviceGroup = 'trucking';
 
-        // ---------------------------------------------------------
-        // LOGIKA PENJADWALAN PICKUP KIRIMINAJA BARU
-        // ---------------------------------------------------------
-        $now = \Carbon\Carbon::now('Asia/Jakarta');
-
-        // Jika hari ini adalah hari Minggu ATAU sudah lewat jam 17:00 (5 Sore)
-        if ($now->isSunday() || $now->hour >= 17) {
-            $pickupDate = $now->copy()->addDay();
-            if ($pickupDate->isSunday()) {
-                $pickupDate->addDay();
-            }
-            $scheduleClock = $pickupDate->setTime(9, 0, 0)->format('Y-m-d H:i:s');
-        } else {
-            $scheduleClock = $now->setTime(17, 0, 0)->format('Y-m-d H:i:s');
-        }
-
+        $schedules = $kirimaja->getSchedules();
+        $pickupSchedule = $schedules['clock'] ?? 'now';
         $useInsuranceFlag = ($data['ansuransi'] == 'iya') ? 1 : 0;
-
-        // ============================================================
-        // 🔥 LOGIKA PENYELARASAN HARGA BARANG KE DATABASE SANCAKA 🔥
-        // ============================================================
-        $pm = strtoupper(trim($order->payment_method ?? ''));
-        $apiItemPrice = (float) $data['item_price'];
-
-        $isCodOngkir = in_array($pm, ['COD', '#COD_ONGKIR']);
-        $isCodBarang = in_array($pm, ['CODBARANG', '#COD_BARANG']);
-
-        if ($isCodOngkir || $isCodBarang) {
-            if ($isCodOngkir) {
-                $apiItemPrice = 1000; // Syarat mutlak JSON KiriminAja untuk COD Ongkir Murni
-            } else {
-                if ($data['ansuransi'] !== 'iya' && $apiItemPrice < 1000) {
-                    $apiItemPrice = 1000;
-                }
-            }
-            // Panggil fungsi rekam keuangan (ambil dari Web Controller)
-            if (method_exists(\App\Http\Controllers\Customer\PesananController::class, 'simpanKeKeuangan')) {
-                \App\Http\Controllers\Customer\PesananController::simpanKeKeuangan($order);
-            }
-        }
-        // ============================================================
 
         $payload = [
             'address' => $order->sender_address, 'phone' => $order->sender_phone, 'name' => $order->sender_name,
             'kecamatan_id' => $senderData['kirimaja_data']['district_id'], 'kelurahan_id' => $senderData['kirimaja_data']['subdistrict_id'],
             'zipcode' => $senderData['kirimaja_data']['postal_code'],
             'platform_name' => 'tokosancaka.com', 'category' => $serviceGroup,
-            'schedule' => $scheduleClock,
+            'schedule' => $pickupSchedule,
             'packages' => [[
                 'order_id' => $order->nomor_invoice, 'item_name' => $data['item_description'],
                 'package_type_id' => $order->item_type ?? 7,
@@ -524,7 +486,7 @@ class KoliController extends Controller
                 'destination_kelurahan_id' => $receiverData['kirimaja_data']['subdistrict_id'],
                 'destination_zipcode' => $receiverData['kirimaja_data']['postal_code'],
                 'weight' => (int)$data['weight'], 'width' => (int)$data['width'], 'height' => (int)$data['height'], 'length' => (int)$data['length'],
-                'item_value' => (int)$apiItemPrice,
+                'item_value' => (int)$data['item_price'],
                 'insurance' => $useInsuranceFlag, 'insurance_amount' => ($useInsuranceFlag === 1) ? (int)$insurance_cost : 0,
                 'cod' => (int)$cod_value,
                 'service' => $data['courier_code'],
@@ -545,53 +507,7 @@ class KoliController extends Controller
 
         $msgSender = "Halo *{$masterOrder->sender_name}*,\n\nPesanan Anda melalui *Sancaka Express* berhasil kami proses.\n\n🧾 Invoice: *{$masterOrder->nomor_invoice}*\n👤 Penerima: *{$masterOrder->receiver_name}*\n📦 Jumlah Koli: *{$count} Paket*\n🏷️ Total Tagihan: *{$formattedTotal}*\n📍 Status: *{$masterOrder->status_pesanan}*\n\nTerima kasih telah mempercayakan pengiriman Anda kepada kami.";
         $msgReceiver = "Halo *{$masterOrder->receiver_name}*,\n\nAda paket kiriman untuk Anda dari *{$masterOrder->sender_name}* melalui *Sancaka Express*.\n\n🧾 Invoice: *{$masterOrder->nomor_invoice}*\n🏷️ Nomor Resi: *{$resiText}*\n\nMohon tunggu kedatangan kurir kami di lokasi Anda. Terima kasih.";
-
-        $paymentMethod = strtoupper(trim($data['payment_method']));
-        $isCodOngkir   = in_array($paymentMethod, ['COD', '#COD_ONGKIR']);
-        $isCodBarang   = in_array($paymentMethod, ['CODBARANG', '#COD_BARANG']);
-
-        $fmt = function($val) { return number_format($val, 0, ',', '.'); };
-
-        $hargaBarangFix = $data['item_price'] ?? 0;
-        if ($isCodOngkir && $hargaBarangFix < 1000) {
-            $hargaBarangFix = 1000;
-        }
-
-        $adminInstruction = "";
-        $rincianKeuangan = "";
-
-        if ($isCodOngkir) {
-            $adminInstruction = "⚠️ *INSTRUKSI: TAGIH ONGKIR + FEE SAJA*";
-            $rincianKeuangan .= "⛔ Harga Barang: Rp " . $fmt($hargaBarangFix) . " (JANGAN DITAGIH)\n";
-            $rincianKeuangan .= "✅ Ongkir: Rp " . $fmt($ongkir) . "\n";
-            if($ins > 0) $rincianKeuangan .= "✅ Asuransi: Rp " . $fmt($ins) . "\n";
-            if($fee > 0) $rincianKeuangan .= "✅ Biaya Layanan: Rp " . $fmt($fee) . "\n";
-        } elseif ($isCodBarang) {
-            $adminInstruction = "⚠️ *INSTRUKSI: TAGIH FULL (BARANG + ONGKIR)*";
-            $rincianKeuangan .= "✅ Harga Barang: Rp " . $fmt($hargaBarangFix) . "\n";
-            $rincianKeuangan .= "✅ Ongkir: Rp " . $fmt($ongkir) . "\n";
-            if($ins > 0) $rincianKeuangan .= "✅ Asuransi: Rp " . $fmt($ins) . "\n";
-            if($fee > 0) $rincianKeuangan .= "✅ Biaya Layanan: Rp " . $fmt($fee) . "\n";
-        } else {
-            $adminInstruction = "✅ *INSTRUKSI: NON-COD (SUDAH LUNAS)*";
-            $rincianKeuangan .= "☑️ Harga Barang: Rp " . $fmt($hargaBarangFix) . "\n";
-            $rincianKeuangan .= "☑️ Ongkir: Rp " . $fmt($ongkir) . "\n";
-            $rincianKeuangan .= "Note: Paket langsung serahkan, jangan menagih uang.";
-        }
-
-        $msgAdmin = "⚠️ *ORDER BARU SANCAKA EXPRESS (MULTI KOLI)* ⚠️\n\n";
-        $msgAdmin .= "🧾 Invoice: *{$masterOrder->nomor_invoice}*\n";
-        $msgAdmin .= "📤 Pengirim: *{$masterOrder->sender_name}* ({$masterOrder->sender_phone})\n";
-        $msgAdmin .= "📥 Penerima: *{$masterOrder->receiver_name}* ({$masterOrder->receiver_phone})\n";
-        $msgAdmin .= "📦 Jumlah Koli: *{$count} Paket*\n\n";
-        $msgAdmin .= "💰 *RINCIAN KEUANGAN*\n";
-        $msgAdmin .= "Metode: *{$data['payment_method']}*\n";
-        $msgAdmin .= $rincianKeuangan . "\n";
-        $msgAdmin .= "----------------------------------\n";
-        $msgAdmin .= "*TOTAL TAGIHAN KE CUSTOMER:*\n";
-        $msgAdmin .= "*{$formattedTotal}*\n";
-        $msgAdmin .= "----------------------------------\n";
-        $msgAdmin .= $adminInstruction;
+        $msgAdmin = "⚠️ *ORDER BARU SANCAKA EXPRESS* ⚠️\n\n🧾 Invoice: *{$masterOrder->nomor_invoice}*\n📤 Pengirim: *{$masterOrder->sender_name}* ({$masterOrder->sender_phone})\n📥 Penerima: *{$masterOrder->receiver_name}* ({$masterOrder->receiver_phone})\n📦 Jumlah Koli: *{$count} Paket*\n💳 Metode Bayar: *{$data['payment_method']}*\n💰 Total Tagihan: *{$formattedTotal}*";
 
         $this->_kirimFonnte($masterOrder->sender_phone, $msgSender);
         $this->_kirimFonnte($masterOrder->receiver_phone, $msgReceiver);
