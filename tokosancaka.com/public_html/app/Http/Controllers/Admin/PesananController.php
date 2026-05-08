@@ -1144,26 +1144,35 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
 
     private function _calculateTotalPaid(array $validatedData): array
     {
+        // 1. Ekstrak data dari format string BARU (Ada 7 Bagian)
+        // Format: serviceGroup - courier - service_type - ongkir - asuransi - feeOngkir - feeBarang
         $parts = explode('-', $validatedData['expedition']);
 
-        $shipping_cost  = (int) ($parts[3] ?? 0);
-        $ansuransi_fee  = (int) ($parts[4] ?? 0);
-        $cod_fee_ongkir = (int) ($parts[5] ?? 0); // Diambil dari codFeeApi frontend
-        $cod_fee_barang = (int) ($parts[6] ?? 0);
+        // Ambil dari index langsung agar tidak pernah ketukar lagi
+        $shipping_cost  = (int) ($parts[3] ?? 0); // Pasti ongkir
+        $ansuransi_fee  = (int) ($parts[4] ?? 0); // Pasti asuransi
+        $cod_fee_ongkir = (int) ($parts[5] ?? 0); // Pasti fee COD Ongkir
+        $cod_fee_barang = (int) ($parts[6] ?? 0); // Pasti fee COD Barang
 
         $cod_fee = ($validatedData['payment_method'] === 'COD') ? $cod_fee_ongkir : $cod_fee_barang;
 
         $item_price = (int)$validatedData['item_price'];
         $use_insurance = ($validatedData['ansuransi'] == 'iya');
 
-        $total_paid_ongkir = $shipping_cost + ($use_insurance ? $ansuransi_fee : 0);
+        // 2. Hitung $total_paid_ongkir (HANYA untuk Saldo / Tripay)
+        $total_paid_ongkir = $shipping_cost;
+        if ($use_insurance) {
+            $total_paid_ongkir += $ansuransi_fee;
+        }
 
+        // 3. Hitung $cod_value (HANYA untuk COD / CODBARANG)
         // =========================================================
         // 🔥 PENJUMLAHAN AKHIR YANG KEMBAR DENGAN KIRIMINAJA 🔥
         // =========================================================
         $cod_value = 0;
         if ($validatedData['payment_method'] === 'COD') {
-            // WAJIB ditambah 1000 agar sinkron dengan Dashboard Simulation
+            // ✅ WAJIB ditambah 1000 agar sinkron dengan Dashboard Simulation
+            // Tagihan di Tabel Sancaka akan sama plek dengan tagihan Kurir.
             $cod_value = 1000 + $shipping_cost + ($use_insurance ? $ansuransi_fee : 0) + $cod_fee_ongkir;
 
         } elseif ($validatedData['payment_method'] === 'CODBARANG') {
@@ -1174,8 +1183,10 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
             $cod_value = $apiItemPrice + $shipping_cost + ($use_insurance ? $ansuransi_fee : 0) + $cod_fee_barang;
         }
 
+        // 4. Kembalikan semua biaya murni dan total yang dihitung
         return compact('total_paid_ongkir', 'cod_value', 'shipping_cost', 'ansuransi_fee', 'cod_fee');
     }
+
    /**
      * FUNGSI UNTUK MEMBUAT ORDER DI KIRIMIN AJA
      */
@@ -1265,14 +1276,13 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         $cod_fee_ongkir = (int) ($expeditionParts[5] ?? 0);
         $cod_fee_barang = (int) ($expeditionParts[6] ?? 0);
 
-       // ============================================================
-        // LOGIKA FINAL COD (PENYELARASAN HARGA BARANG)
+      // ============================================================
+        // LOGIKA PENYELARASAN HARGA BARANG KE DATABASE SANCAKA
         // ============================================================
         $apiItemPrice = (float) $data['item_price'];
-        $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0;
 
-        // Ambil nilai yang sudah dihitung matang-matang dari _calculateTotalPaid
-        $finalCodValue = $cod_value;
+        // Ambil nilai murni yang sudah dihitung matang-matang dari _calculateTotalPaid (Contoh: 47.000)
+        $finalCodValue = $calculateData['cod_value'];
 
         if (isset($data['payment_method']) && in_array($data['payment_method'], ['COD', 'CODBARANG'])) {
 
@@ -1284,7 +1294,8 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                 }
             }
 
-            // Simpan nominal tagihan yang sudah kembar ke database
+            // ✅ Simpan nominal tagihan yang sudah kembar ke database Sancaka
+            // Database Sancaka sekarang resmi mencatat 47.000.
             $order->price = $finalCodValue;
             $order->save();
         }
