@@ -229,7 +229,7 @@
             {{-- ======================================================= --}}
             {{-- ROW 1: MONITOR PENDAPATAN (RP) DENGAN EFEK HOVER        --}}
             {{-- ======================================================= --}}
-            
+
             {{-- CARD 1: SELESAI --}}
             <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg group cursor-help transition-all duration-300">
                 <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
@@ -555,7 +555,7 @@
                             <div class="font-semibold text-gray-800">Isi: {{ $order->item_description }}</div>
                             <div class="text-xs text-gray-500 mt-1">Dimensi: {{ $order->length ?? '0' }} x {{ $order->width ?? '0' }} x {{ $order->height ?? '0' }}</div>
                             <div class="text-xs text-gray-500 mt-1">Berat: {{ $order->weight }}gr</div>
-                            <div class="mt-1 text-xs">Nilai: Rp {{ number_format($order->total_harga_barang ?? $order->item_price ?? 0, 0, ',', '.') }}</div>
+                            <div class="mt-1 text-xs">Nilai: Rp {{ number_format($order->price, 0, ',', '.') }}</div>
                         </td>
 
                         {{-- 6. STATUS --}}
