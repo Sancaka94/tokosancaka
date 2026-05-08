@@ -4,17 +4,17 @@
 @push('styles')
 <style>
     /* ✅ PERBAIKAN: Hapus width paksa, ganti dengan ini */
-    
+
     /* CSS untuk efek Zoom Barcode */
     .barcode-zoomed {
-        position: fixed !important; 
+        position: fixed !important;
         top: 50% !important;
         left: 50% !important;
-        transform: translate(-50%, -50%) scale(2) !important; 
+        transform: translate(-50%, -50%) scale(2) !important;
         z-index: 1000 !important;
-        background-color: white; 
+        background-color: white;
         padding: 10px;
-        border: 2px solid #3b82f6; 
+        border: 2px solid #3b82f6;
         box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
         border-radius: 8px;
     }
@@ -36,7 +36,7 @@
 
 {{-- === 1. CARD MONITOR PENDAPATAN (GAYA WARNA-WARNI) === --}}
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-    
+
     {{-- CARD 1: SELESAI (HIJAU) --}}
     <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg">
         <div class="relative z-10 text-white">
@@ -98,7 +98,7 @@
 
 {{-- === 2. TABEL DATA === --}}
 <div class="bg-white shadow border border-gray-200 rounded-lg overflow-hidden">
-    
+
     {{-- HEADER: Pencarian & Tombol Export --}}
     <div class="flex flex-col md:flex-row items-center justify-between border-b border-gray-200 p-4 gap-3">
         <form action="{{ route('admin.orders.index') }}" method="GET" class="w-full md:max-w-md">
@@ -113,7 +113,7 @@
             @endif
         </form>
 
-        <button type="button" onclick="openModal('exportModal')" 
+        <button type="button" onclick="openModal('exportModal')"
     class="inline-flex items-center justify-center w-full md:w-auto px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 transition duration-150 ease-in-out whitespace-nowrap">
     <i class="fas fa-file-export mr-2"></i> Export
         </button>
@@ -127,7 +127,7 @@
                 'menunggu-pickup' => 'Menunggu Pickup',
                 'diproses' => 'Diproses',
                 'terkirim' => 'Terkirim',
-                'selesai' => 'Selesai', 
+                'selesai' => 'Selesai',
                 'batal' => 'Batal',
             ];
             $currentStatus = request('status');
@@ -147,7 +147,7 @@
             </a>
         @endforeach
     </div>
-    
+
    {{-- 1. Scrollbar Dummy di Atas (Biarkan seperti ini) --}}
     <div id="topScrollWrapper" class="w-full overflow-x-auto mb-1 border-b border-gray-200 hidden md:block">
         <div id="topScrollContent" class="h-1 pt-1"></div>
@@ -172,13 +172,13 @@
                     <th scope="col" class="sticky right-0 z-10 bg-red-100 px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[170px] whitespace-nowrap border-l border-gray-300"><strong>Aksi</strong></th>
                 </tr>
             </thead>
-            
+
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($orders as $index => $order)
                     @php
                         // --- Inisialisasi Variabel ---
                         $isPesanan = isset($order->status_pesanan);
-                        
+
                         if ($isPesanan) {
                             $id = $order->id_pesanan;
                             $invoice = $order->nomor_invoice;
@@ -206,7 +206,7 @@
                             $statusMapPesanan = ['Menunggu Pickup' => 'menunggu-pickup', 'Sedang Dikirim' => 'terkirim', 'Selesai' => 'selesai', 'Batal' => 'batal'];
                             $status = $statusMapPesanan[$statusRaw] ?? strtolower($statusRaw);
                             $canCancel = in_array($statusRaw, ['Menunggu Pickup']);
-                        } else { 
+                        } else {
                             // Tabel Orders
                             $id = $order->id;
                             $invoice = $order->invoice_number;
@@ -224,7 +224,7 @@
                             $shippedAt = $order->shipped_at;
                             $finishedAt = $order->finished_at;
                             $statusRaw = $order->status;
-                            
+
                             // Keuangan DB
                             $totalAmountDB = $order->total_amount;
                             $shippingCost = $order->shipping_cost;
@@ -236,18 +236,18 @@
                             $status = $statusMapOrder[$statusRaw] ?? $statusRaw;
                             $canCancel = in_array($statusRaw, ['pending', 'paid', 'processing']);
                         }
-                        
+
                         $ship = \App\Helpers\ShippingHelper::parseShippingMethod($shippingMethodString);
-                        
+
                         // Hitung Fee & Total
                         $metodeBayar = strtoupper(trim($paymentMethod ?? ''));
                         $isCodOngkir = ($metodeBayar === 'COD');
 
                         if ($isCodOngkir) {
-                            $basisCod = ($shippingCost ?? 0) + 10000; 
+                            $basisCod = ($shippingCost ?? 0) + 10000;
                             $codFeeHitung = max(2500, $basisCod * 0.03);
                             $codFeeDisplay = $codFeeHitung;
-                            $finalTagihan = $shippingCost + $codFeeDisplay + $insuranceCost;
+                            $finalTagihan = $shippingCost + $codFeeDisplay + $insuranceCost + 1000;
                         } else {
                             $codFeeDisplay = $codFeeDB;
                             $finalTagihan = $totalAmountDB;
@@ -263,10 +263,10 @@
                     <tr class="group hover:bg-gray-50">
                         {{-- 1. Kolom No --}}
                         <td class="px-4 py-4 whitespace-nowrap text-gray-500 align-top">{{ $orders->firstItem() + $index }}</td>
-                        
+
                         {{-- 2. Kolom ID --}}
                         <td class="px-4 py-4 whitespace-nowrap text-gray-500 align-top">{{ $id }}</td>
-                        
+
                         {{-- 3. Kolom Tipe --}}
                         <td class="px-4 py-4 whitespace-nowrap align-top">
                             @if ($isPesanan)
@@ -275,7 +275,7 @@
                                 <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Order</span>
                             @endif
                         </td>
-                        
+
                         {{-- 4. Kolom Transaksi --}}
                         <td class="px-4 py-4 align-top">
                             @if(Str::contains($metodeBayar, 'COD'))
@@ -312,7 +312,7 @@
                                 </div>
                             </div>
                         </td>
-                        
+
                         {{-- 5. Kolom Alamat --}}
                         <td class="px-4 py-4 align-top">
                             <div class="mb-2">
@@ -326,7 +326,7 @@
                                 <div class="text-xs text-gray-600 break-words max-w-xs">{{ $receiverAddress }}</div>
                             </div>
                         </td>
-                        
+
                         {{-- 6. Kolom Ekspedisi --}}
                         <td class="px-4 py-4 align-top whitespace-nowrap">
                             @if ($ship['logo_url'])
@@ -337,7 +337,7 @@
                             <div class="text-xs text-gray-500">Layanan: {{ $ship['service_name'] }}</div>
                             <div class="font-semibold text-green-700 mt-1">Rp{{ number_format($shippingCost ?? 0, 0, ',', '.') }}</div>
                         </td>
-                        
+
                         {{-- 7. Kolom Resi --}}
                         <td class="px-4 py-4 align-top">
                             @if ($resi)
@@ -354,13 +354,13 @@
                                 <span class="text-gray-400 italic">Belum ada resi</span>
                             @endif
                         </td>
-                        
+
                         {{-- 8. Kolom Paket --}}
                         <td class="px-4 py-4 align-top">
                             <div class="font-semibold text-gray-800 break-words max-w-xs">{{ $paket }}</div>
                             @if($isPesanan)
                             <div class="text-xs text-gray-500 mt-1">
-                                Berat: {{ $order->weight ?? 0 }} gr <br> 
+                                Berat: {{ $order->weight ?? 0 }} gr <br>
                                 Dimensi: {{ $order->length ?? 0 }}x{{ $order->width ?? 0 }}x{{ $order->height ?? 0 }} cm
                             </div>
                             @elseif(isset($order->items) && $item = $order->items->first())
@@ -371,37 +371,37 @@
                             </div>
                             @endif
                         </td>
-                        
+
                         {{-- 9. Kolom Tanggal --}}
                         <td class="px-4 py-4 align-top whitespace-nowrap text-gray-500">
                             <div><span class="text-gray-400">Dibuat:</span> {{ $createdAt ? \Carbon\Carbon::parse($createdAt)->translatedFormat('d M Y, H:i') : '-' }}</div>
                             <div><span class="text-gray-400">Dikirim:</span> {{ $shippedAt ? \Carbon\Carbon::parse($shippedAt)->translatedFormat('d M Y, H:i') : '-' }}</div>
                             <div><span class="text-gray-400">Selesai:</span> {{ $finishedAt ? \Carbon\Carbon::parse($finishedAt)->translatedFormat('d M Y, H:i') : '-' }}</div>
                         </td>
-                        
+
                         {{-- 10. Kolom Status --}}
                         <td class="px-4 py-4 align-top whitespace-nowrap">
                             <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $statusBadge }}">
                                 {{ $statusText }}
                             </span>
                         </td>
-                        
+
                         {{-- 11. Kolom Aksi --}}
                         <td class="sticky right-0 z-10 bg-white group-hover:bg-gray-50 px-6 py-4 align-top whitespace-nowrap border-l border-gray-200">
                             <div class="flex items-center space-x-3">
                                 @if($resi)
                                     <a href="{{ 'https://tokosancaka.com/tracking/search?resi=' . e($resi) }}" target="_blank" class="text-gray-500 hover:text-green-600" title="Lacak Resi"><i class="fas fa-truck fa-fw"></i></a>
                                 @endif
-                                
+
                                 @if ($isPesanan)
                                     <a href="{{ route('admin.pesanan.show', $invoice) }}" class="text-gray-500 hover:text-indigo-600" title="Detail"><i class="fas fa-eye fa-fw"></i></a>
                                 @else
                                     <a href="{{ route('admin.orders.show', $invoice) }}" class="text-gray-500 hover:text-indigo-600" title="Detail"><i class="fas fa-eye fa-fw"></i></a>
                                 @endif
-                                
+
                                 <a href="{{ route('admin.orders.print.thermal', $invoice) }}" target="_blank" class="text-gray-500 hover:text-gray-800" title="Cetak Label"><i class="fas fa-print fa-fw"></i></a>
                                 <a href="{{ route('admin.orders.invoice.pdf', $invoice) }}" target="_blank" class="text-gray-500 hover:text-red-600" title="PDF Faktur"><i class="fas fa-file-pdf fa-fw"></i></a>
-                                
+
                                 @if ($userId)
                                 <a href="{{ route('admin.chat.start', ['id_pengguna' => $userId]) }}" target="_blank" class="text-gray-500 hover:text-blue-600" title="Chat"><i class="fas fa-comment fa-fw"></i></a>
                                 @endif
@@ -433,16 +433,16 @@
     @if ($orders->hasPages())
         <div class="mt-4 p-4 border-t border-gray-200 flex flex-col items-center justify-between sm:flex-row gap-4">
             <div class="text-sm text-gray-700">
-                Menampilkan 
-                <span class="font-medium">{{ $orders->firstItem() }}</span> 
-                sampai 
-                <span class="font-medium">{{ $orders->lastItem() }}</span> 
-                dari 
-                <span class="font-medium">{{ $orders->total() }}</span> 
+                Menampilkan
+                <span class="font-medium">{{ $orders->firstItem() }}</span>
+                sampai
+                <span class="font-medium">{{ $orders->lastItem() }}</span>
+                dari
+                <span class="font-medium">{{ $orders->total() }}</span>
                 hasil
             </div>
             <div class="inline-flex rounded-md shadow-sm">
-                {{ $orders->appends(request()->query())->links() }} 
+                {{ $orders->appends(request()->query())->links() }}
             </div>
         </div>
     @endif
@@ -467,7 +467,7 @@
                 </button>
             </div>
             <div class="p-6 space-y-6 text-center">
-                <div id="modalBarcodeContainer" class="flex justify-center items-center h-80"> 
+                <div id="modalBarcodeContainer" class="flex justify-center items-center h-80">
                 </div>
                 <div id="resiTextZoom" class="font-bold text-lg text-gray-700"></div>
             </div>
@@ -488,9 +488,9 @@
     $(document).ready(function() {
         toastr.options = { "closeButton": true, "progressBar": true, "positionClass": "toast-top-right" };
         @if (session('success')) toastr.success("{{ session('success') }}", "Berhasil!"); @endif
-        
+
         $(document).on('click', '.clickable-zoom-barcode', function(e) {
-            e.stopPropagation(); 
+            e.stopPropagation();
             const targetDiv = $(this).find('.barcode-svg-container');
             if (targetDiv.hasClass('barcode-zoomed')) {
                 targetDiv.removeClass('barcode-zoomed');
@@ -506,7 +506,7 @@
                 $('.barcode-zoomed').removeClass('barcode-zoomed');
             }
         });
-        
+
         // --- FUNGSI SCROLLBAR ATAS TABEL ---
         const topScrollWrapper = document.getElementById('topScrollWrapper');
         const topScrollContent = document.getElementById('topScrollContent');
@@ -517,7 +517,7 @@
             // Ini agar panjang scrollbar atas sama persis dengan bawah
             function syncScrollWidth() {
                 topScrollContent.style.width = tableWrapper.scrollWidth + 'px';
-                
+
                 // Sembunyikan scrollbar atas jika tabel tidak meluber (tidak perlu scroll)
                 if (tableWrapper.scrollWidth <= tableWrapper.clientWidth) {
                     topScrollWrapper.style.display = 'none';
@@ -542,7 +542,7 @@
                 topScrollWrapper.scrollLeft = tableWrapper.scrollLeft;
             });
         }
-        
+
         // --- FUNGSI MODAL EXPORT (Script Tambahan) ---
     function openModal(modalId) {
         const modal = document.getElementById(modalId);
