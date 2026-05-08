@@ -395,4 +395,45 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
             'message' => 'Broadcast berhasil dikirim ke ' . count($tokens) . ' pengguna!'
         ]);
     }
+
+    /**
+     * ==============================================================
+     * FUNGSI BARU: MENGUBAH MODE SISTEM (PRODUCTION / DEVELOPMENT)
+     * ==============================================================
+     */
+    public function toggleSystemMode(Request $request)
+    {
+        try {
+            // Ambil status dari switch di aplikasi (asumsinya frontend mengirim 'is_production')
+            // Ubah tipe data jadi boolean
+            $isProduction = filter_var($request->input('is_production'), FILTER_VALIDATE_BOOLEAN);
+
+            // Karena data ini disimpan di tabel settings (Setting Model)
+            // Mari kita cari data 'system_mode' atau buat jika belum ada
+            $setting = \App\Models\Setting::firstOrCreate(
+                ['key' => 'system_mode'], // Kondisi pencarian
+                ['value' => 'production'] // Default value jika baru dibuat
+            );
+
+            // Update nilainya
+            $setting->value = $isProduction ? 'production' : 'development';
+            $setting->save();
+
+            // Opsional: Bersihkan cache pengaturan agar aplikasi langsung membaca perubahan
+            Cache::forget('system_mode');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Mode sistem berhasil diubah menjadi: ' . strtoupper($setting->value)
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error toggleSystemMode: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengubah mode sistem: Terjadi kesalahan di server.'
+            ], 500);
+        }
+    }
 }
