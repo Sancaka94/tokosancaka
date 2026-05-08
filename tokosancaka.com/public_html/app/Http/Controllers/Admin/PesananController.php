@@ -1148,7 +1148,7 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
 
         $shipping_cost  = (int) ($parts[3] ?? 0);
         $ansuransi_fee  = (int) ($parts[4] ?? 0);
-        $cod_fee_ongkir = (int) ($parts[5] ?? 0); // Ini adalah codFeeApi dari frontend
+        $cod_fee_ongkir = (int) ($parts[5] ?? 0); // Diambil dari codFeeApi frontend
         $cod_fee_barang = (int) ($parts[6] ?? 0);
 
         $cod_fee = ($validatedData['payment_method'] === 'COD') ? $cod_fee_ongkir : $cod_fee_barang;
@@ -1159,11 +1159,11 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         $total_paid_ongkir = $shipping_cost + ($use_insurance ? $ansuransi_fee : 0);
 
         // =========================================================
-        // 🔥 PENJUMLAHAN AKHIR COD YANG PASTI KLOP DENGAN API 🔥
+        // 🔥 PENJUMLAHAN AKHIR YANG KEMBAR DENGAN KIRIMINAJA 🔥
         // =========================================================
         $cod_value = 0;
         if ($validatedData['payment_method'] === 'COD') {
-            // Wajib 1000 + Ongkir + Fee API (+ Asuransi jika ada)
+            // WAJIB ditambah 1000 agar sinkron dengan Dashboard Simulation
             $cod_value = 1000 + $shipping_cost + ($use_insurance ? $ansuransi_fee : 0) + $cod_fee_ongkir;
 
         } elseif ($validatedData['payment_method'] === 'CODBARANG') {
@@ -1265,30 +1265,26 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         $cod_fee_ongkir = (int) ($expeditionParts[5] ?? 0);
         $cod_fee_barang = (int) ($expeditionParts[6] ?? 0);
 
+       // ============================================================
+        // LOGIKA FINAL COD (PENYELARASAN HARGA BARANG)
+        // ============================================================
         $apiItemPrice = (float) $data['item_price'];
         $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0;
+
+        // Ambil nilai yang sudah dihitung matang-matang dari _calculateTotalPaid
         $finalCodValue = $cod_value;
 
         if (isset($data['payment_method']) && in_array($data['payment_method'], ['COD', 'CODBARANG'])) {
 
             if ($data['payment_method'] === 'COD') {
-                // --- 1. COD ONGKIR MURNI ---
-                $apiItemPrice = 1000; // Syarat mutlak API agar tidak error JSON
-
-                // Tagihan COD = Harga Fiktif (1000) + Ongkir + Asuransi + Fee Ongkir dari UI
-                $finalCodValue = $apiItemPrice + (int)$shipping_cost + $finalInsuranceAmount + $cod_fee_ongkir;
-
+                $apiItemPrice = 1000; // Syarat mutlak JSON KiriminAja
             } else {
-                // --- 2. COD BARANG ---
                 if ($data['ansuransi'] !== 'iya' && $apiItemPrice < 1000) {
                     $apiItemPrice = 1000;
                 }
-
-                // Tagihan COD = Harga Barang + Ongkir + Asuransi + Fee Barang dari UI
-                $finalCodValue = $apiItemPrice + (int)$shipping_cost + $finalInsuranceAmount + $cod_fee_barang;
             }
 
-            // Simpan nominal ke database (Sekarang dijamin 100% klop dengan UI)
+            // Simpan nominal tagihan yang sudah kembar ke database
             $order->price = $finalCodValue;
             $order->save();
         }

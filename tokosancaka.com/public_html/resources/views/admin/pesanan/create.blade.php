@@ -538,25 +538,21 @@ document.addEventListener('DOMContentLoaded', function () {
             results.sort((a, b) => a.cost - b.cost).forEach(item => {
                 const isCod = item.cod;
 
-                // 1. Ambil Angka Murni dari API
+                // 1. Ambil Angka Murni dari API KiriminAja
                 const shippingCost = parseInt(item.cost) || 0;
                 const insuranceFee = parseInt(item.insurance) || 0;
 
-                // 🔥 INI KUNCINYA: Ambil COD Fee murni dari jawaban API KiriminAja!
+                // 🔥 Ambil Biaya COD persis dari jawaban server KiriminAja
                 const codFeeApi = parseInt(item.add_cost) || parseInt(item.setting?.cod_fee_amount) || 0;
 
-                // 2. Samakan nilai untuk dikirim ke Backend
-                let feeOngkir = codFeeApi;
-                let feeBarang = codFeeApi;
-
-                // 3. String yang dikirim ke Backend
-                const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${shippingCost}-${insuranceFee}-${feeOngkir}-${feeBarang}`;
+                // 2. Gabungkan ke dalam satu string untuk dikirim ke Backend
+                const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${shippingCost}-${insuranceFee}-${codFeeApi}-${codFeeApi}`;
 
                 let details = `<small class="text-gray-500 block">Estimasi: ${item.etd}</small>`;
                 if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
 
                 if (isCod) {
-                    details += `<small class="text-gray-600 font-medium block mt-1">Biaya COD (Sesuai API): <span class="text-red-600">${formatRupiah(codFeeApi)}</span></small>`;
+                    details += `<small class="text-gray-600 font-medium block mt-1">Biaya COD (API): <span class="text-red-600">${formatRupiah(codFeeApi)}</span></small>`;
                     details += `<small class="text-green-600 font-bold block mt-1">COD Tersedia</small>`;
                 }
 
