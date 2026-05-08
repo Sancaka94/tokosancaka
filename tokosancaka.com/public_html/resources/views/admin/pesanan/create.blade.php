@@ -537,21 +537,23 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             results.sort((a, b) => a.cost - b.cost).forEach(item => {
                 const isCod = item.cod;
-                const insuranceFee = item.insurance || 0;
-                const shippingCost = item.cost;
+
+                // ==========================================
+                // 🔥 FIX: Paksa jadi Angka (Integer) 🔥
+                // ==========================================
+                const shippingCost = parseInt(item.cost) || 0;
+                const insuranceFee = parseInt(item.insurance) || 0;
                 const itemPrice = parseInt(document.getElementById('item_price').value) || 0;
 
-                // ====================================================================
-                // RUMUS BIAYA COD AMAN (MENCEGAH ERROR "CUSTOM COD TERLALU KECIL")
-                // ====================================================================
+                // RUMUS BIAYA COD AMAN
                 let feeOngkir = 0;
                 let feeBarang = 0;
 
                 if (isCod) {
-                    // 1. Hitung Fee untuk COD Ongkir Murni (Margin pengaman dibagi 0.96)
+                    // 1. Hitung Fee untuk COD Ongkir Murni
                     let baseOngkir = shippingCost + insuranceFee;
                     let targetOngkir = baseOngkir / 0.96;
-                    if (targetOngkir * 0.03 <= 2500) targetOngkir = baseOngkir + 2800; // Standar minimal 2500 + PPN
+                    if (targetOngkir * 0.03 <= 2500) targetOngkir = baseOngkir + 2800;
                     feeOngkir = Math.ceil(targetOngkir) - baseOngkir;
 
                     // 2. Hitung Fee untuk COD Barang + Ongkir
@@ -561,14 +563,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     feeBarang = Math.ceil(targetBarang) - baseBarang;
                 }
 
-                // Kirim KEDUA data fee ke Backend lewat satu string!
+                // Kirim KEDUA data fee ke Backend lewat satu string
                 const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${shippingCost}-${insuranceFee}-${feeOngkir}-${feeBarang}`;
 
                 let details = `<small class="text-gray-500 block">Estimasi: ${item.etd}</small>`;
                 if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
 
                 if (isCod) {
-                    // Tampilkan UI yang jauh lebih detail untuk Admin
                     details += `<small class="text-gray-600 font-medium block mt-1">Biaya COD Ongkir: <span class="text-red-600">${formatRupiah(feeOngkir)}</span></small>`;
                     details += `<small class="text-gray-600 font-medium block">Biaya COD Barang: <span class="text-red-600">${formatRupiah(feeBarang)}</span></small>`;
                     details += `<small class="text-green-600 font-bold block mt-1">COD Tersedia</small>`;
