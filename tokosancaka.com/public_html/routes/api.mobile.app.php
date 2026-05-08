@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\Mobile\ProdukSellerMobileController;
 use App\Http\Controllers\Api\Mobile\ChatController; // <-- Tambahkan import ini
 use App\Http\Controllers\Admin\DashboardController; // <-- Tambahkan import ini untuk Broadcast
 use App\Http\Controllers\Api\Mobile\DaftarMemberController;
+use App\Http\Controllers\Api\Mobile\PpobDigiflazController;
 /*
 |--------------------------------------------------------------------------
 | API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)
@@ -357,4 +358,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/customer/member/status', [DaftarMemberController::class, 'getStatus']);
     Route::post('/customer/member/register-agent', [DaftarMemberController::class, 'registerAgent']);
+});
+
+// PPOB & Produk Digital Mobile API
+Route::prefix('ppob')->group(function () {
+    // Mengambil daftar produk berdasarkan kategori (pulsa, data, pln, dll)
+    Route::get('/products/{category}', [PpobDigiflazController::class, 'getProductsByCategory']);
+
+    // Pengecekan (Inquiry)
+    Route::post('/inquiry/pasca', [PpobDigiflazController::class, 'checkBill']);
+    Route::post('/inquiry/pln', [PpobDigiflazController::class, 'checkPlnPrabayar']);
+
+    // Transaksi / Pembayaran
+    Route::post('/transaction', [PpobDigiflazController::class, 'processTransaction']);
 });
