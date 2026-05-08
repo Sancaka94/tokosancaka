@@ -1268,7 +1268,7 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                 return ['status' => false, 'text' => 'Data pesanan tidak lengkap untuk dikirim ke ekspedisi.'];
         }
 
-        // ============================================================
+       // ============================================================
         // LOGIKA FINAL: PISAH MUTLAK COD ONGKIR & COD BARANG
         // ============================================================
         $apiItemPrice = (float) $data['item_price'];
@@ -1278,19 +1278,20 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         if (isset($data['payment_method']) && in_array($data['payment_method'], ['COD', 'CODBARANG'])) {
 
             if ($data['payment_method'] === 'COD') {
-                // 1. COD ONGKIR: Murni Ongkir + Asuransi + Fee (NILAI BARANG JANGAN DIJUMLAH!)
+                // 1. COD ONGKIR: Murni Ongkir + Asuransi + Fee (NILAI BARANG DIBUANG)
                 $finalCodValue = (int)$shipping_cost + $finalInsuranceAmount + (int)$cod_fee;
 
-                // Trik Wajib: Karena API KA akan error kalau item_value besar tapi tidak dimasukkan ke COD,
-                // kita "palsukan" nilai barang jadi sangat kecil (1.000) khusus untuk dikirim ke API mereka.
-                $apiItemPrice = 1000;
+                // 🔥 TRIK UTAMA: Paksa nilai barang jadi 1 perak khusus untuk dikirim ke API KiriminAja!
+                // Ini akan membungkam perhitungan paksa dari server mereka,
+                // sehingga kurir benar-benar HANYA menagih nominal ongkir + fee.
+                $apiItemPrice = 1;
 
             } else {
                 // 2. COD BARANG: Full Harga Barang + Ongkir + Asuransi + Fee
                 $finalCodValue = $apiItemPrice + (int)$shipping_cost + $finalInsuranceAmount + (int)$cod_fee;
             }
 
-            // Update nominal di database agar angka tagihan pesanan klop
+            // Update nominal tagihan akhir di database Sancaka
             $order->price = $finalCodValue;
             $order->save();
         }
