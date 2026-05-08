@@ -368,7 +368,8 @@ Route::prefix('ppob')->group(function () {
     // Pengecekan (Inquiry)
     Route::post('/inquiry/pasca', [PpobDigiflazController::class, 'checkBill']);
     Route::post('/inquiry/pln', [PpobDigiflazController::class, 'checkPlnPrabayar']);
-
     // Transaksi / Pembayaran
     Route::post('/transaction', [PpobDigiflazController::class, 'processTransaction']);
 });
+
+    Route::get('/admin/ppob/cek-saldo', [PpobDigiflazController::class, 'cekSaldo']);

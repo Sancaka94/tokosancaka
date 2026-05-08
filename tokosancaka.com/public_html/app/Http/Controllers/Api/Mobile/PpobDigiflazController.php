@@ -363,4 +363,68 @@ class PpobDigiflazController extends Controller
             return false;
         }
     }
+
+    // =================================================================
+    // CEK SALDO DIGIFLAZZ (KHUSUS ADMIN)
+    // =================================================================
+    public function cekSaldo(Request $request)
+    {
+        Log::info("=== [DEBUG PPOB] Start Cek Saldo Digiflazz ===");
+
+        $user = $request->user();
+        if (!$user) {
+            Log::warning("[DEBUG PPOB] Cek Saldo: Unauthorized (Token tidak valid/tidak ada)");
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        // Pastikan hanya role Admin yang bisa akses
+        if (strtolower($user->role) !== 'admin') {
+            Log::warning("[DEBUG PPOB] Cek Saldo: Forbidden (Akses ditolak untuk role " . $user->role . ")");
+            return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
+
+        try {
+            // Ambil Kredensial (Gunakan Env jika ada, jika tidak gunakan fallback hardcode)
+            $username = trim(env('DIGIFLAZZ_USERNAME', 'mihetiDVGdeW'));
+            $apiKey   = trim(env('DIGIFLAZZ_API_KEY', '1f48c69f-8676-5d56-a868-10a46a69f9b7'));
+
+            // Formula cek saldo Digiflazz: md5(username + apikey + "depo")
+            $sign = md5($username . $apiKey . "depo");
+
+            $payload = [
+                'cmd' => 'deposit',
+                'username' => $username,
+                'sign' => $sign
+            ];
+
+            Log::info("[DEBUG PPOB] Payload request ke Digiflazz:", $payload);
+
+            // Tembak API Digiflazz
+            $response = \Illuminate\Support\Facades\Http::post('https://api.digiflazz.com/v1/cek-saldo', $payload);
+
+            Log::info("[DEBUG PPOB] Response Status dari Digiflazz: " . $response->status());
+            Log::info("[DEBUG PPOB] Response Body dari Digiflazz: " . $response->body());
+
+            $data = $response->json();
+
+            if (isset($data['data']['deposit'])) {
+                $saldo = $data['data']['deposit'];
+                return response()->json([
+                    'success' => true,
+                    'formatted' => 'Rp ' . number_format($saldo, 0, ',', '.'),
+                    'saldo' => $saldo
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Format response Digiflazz tidak sesuai',
+                'raw_data' => $data
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("[DEBUG PPOB] Exception Error Cek Saldo: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
+        }
+    }
 }
