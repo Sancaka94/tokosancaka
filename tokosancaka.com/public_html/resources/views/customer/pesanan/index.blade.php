@@ -100,7 +100,7 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
             {{-- ROW 1: MONITOR PENGELUARAN (RP) DENGAN EFEK HOVER --}}
-            
+
             {{-- CARD 1: SELESAI --}}
             <div class="relative overflow-hidden rounded-xl bg-green-500 p-5 shadow-sm border border-green-600 group cursor-help transition-all duration-300">
                 <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
@@ -242,62 +242,48 @@ Deskripsi: Halaman riwayat pesanan dengan TABEL RESPONSIF + PENCARIAN + FILTER +
                     <tbody class="divide-y divide-slate-200 text-sm text-slate-700">
                         @forelse ($pesanans as $order)
                             @php
-                                // --- LOGIC PHP UNTUK DATA ---
-                                $pm = strtoupper(trim($order->payment_method));
-                                $pm = ($pm === 'DOKU_JOKUL') ? 'DOMPET SANCAKA' : $pm;
-                                // Ganti otomatis jika POTONG SALDO
-                                if ($pm === 'POTONG SALDO') {$pm = 'CASH / SALDO';}
+                                // --- LOGIC PHP UNTUK DATA (BERSIH DARI RUMUS MANUAL) ---
+                                $pmRaw = strtoupper(trim($order->payment_method));
+                                $isCodOngkir = ($pmRaw === 'COD');
+                                $isCodBarang = ($pmRaw === 'CODBARANG');
 
-                                $isCodOngkir = ($pm === 'COD');
+                                // Rapikan Nama Metode Pembayaran untuk UI
+                                $pmDisplay = $pmRaw;
+                                if ($pmRaw === 'DOKU_JOKUL') $pmDisplay = 'DOMPET SANCAKA';
+                                elseif ($pmRaw === 'POTONG SALDO') $pmDisplay = 'CASH / SALDO';
+                                elseif ($isCodOngkir) $pmDisplay = 'COD ONGKIR';
+                                elseif ($isCodBarang) $pmDisplay = 'COD BARANG';
 
-                                // Ganti otomatis jika COD
-                                if ($pm === 'COD') {$pm = 'COD ONGKIR';}
-                                $isCodBarang = ($pm === 'CODBARANG');
-
-                                // Ganti CODBARANG → COD BARANG
-                                if ($pm === 'CODBARANG') {$pm = 'COD BARANG';}
-
-
+                                // Warna Badge
                                 $badgeColor = 'bg-blue-800 text-white';
-
-if ($isCodBarang) {
-    $badgeColor = 'bg-red-500 text-white';
-}
-elseif ($isCodOngkir) {
-    $badgeColor = 'bg-yellow-400 text-grey';
-}
-elseif ($pm === 'DOMPET SANCAKA') {
-    // Warna hijau
-    $badgeColor = 'bg-green-800 text-white';
-}
+                                if ($isCodBarang) $badgeColor = 'bg-red-500 text-white';
+                                elseif ($isCodOngkir) $badgeColor = 'bg-yellow-400 text-slate-800'; // Biar teksnya kelihatan jelas
+                                elseif ($pmDisplay === 'DOMPET SANCAKA') $badgeColor = 'bg-green-800 text-white';
 
                                 $expParts = explode('-', $order->expedition);
                                 $kurirName = $expParts[1] ?? 'Expedition';
                                 $kurirService = $expParts[2] ?? 'Reg';
                                 $logo = strtolower(str_replace(' ', '', $kurirName));
 
-                                $hargaBarang = $order->total_harga_barang ?? ($order->item_price ?? 0);
+                                // ========================================================
+                                // 🔥 AMBIL NILAI MURNI DARI DATABASE (HARAM DIHITUNG ULANG)
+                                // ========================================================
+                                $hargaBarangReal = $order->total_harga_barang ?? ($order->item_price ?? 0);
                                 $ongkirAsli  = $order->shipping_cost ?? 0;
                                 $asuransi    = $order->insurance_cost ?? 0;
-                                $feeDb       = $order->cod_fee ?? 0;
+                                $feeLayanan  = $order->cod_fee ?? 0;
 
-                                // Hitung Total & Label
+                                // Total Tagihan (Sudah termasuk 1.000 jika COD Ongkir)
+                                $displayTotal = $order->price ?? 0;
+
+                                // Penyesuaian Label Tampilan
                                 if ($isCodOngkir) {
-                                    $basisBarang = ($hargaBarang > 1000000) ? 10000 : $hargaBarang;
-                                    $basisHitung = $ongkirAsli + $basisBarang;
-                                    $feeHitung = $basisHitung * 0.03;
-                                    $feeLayanan = max(2500, ceil($feeHitung));
-                                    $displayTotal = $ongkirAsli + $feeLayanan + $asuransi;
                                     $labelTotal = "Total Ongkir (COD)";
-                                    $noteBawah = "*Jangan bayar harga barang lagi";
+                                    $noteBawah = "*Hanya bayar ongkir ke kurir";
                                 } elseif ($isCodBarang) {
-                                    $feeLayanan = $feeDb;
-                                    $displayTotal = $order->price;
                                     $labelTotal = "Total Bayar ke Kurir";
                                     $noteBawah = "";
                                 } else {
-                                    $feeLayanan = $feeDb;
-                                    $displayTotal = $order->price;
                                     $labelTotal = "Total Biaya";
                                     $noteBawah = "";
                                 }
@@ -312,7 +298,7 @@ elseif ($pm === 'DOMPET SANCAKA') {
                                 {{-- 2. TRANSAKSI --}}
                                 <td class="p-4 align-top">
                                     <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ $badgeColor }} mb-1">
-                                        {{ $pm }}
+                                        {{ $pmDisplay }}
                                     </span>
                                     <div class="text-xs text-slate-500 mt-1">
                                         <i class="far fa-clock mr-1"></i>
@@ -335,9 +321,6 @@ elseif ($pm === 'DOMPET SANCAKA') {
                                         </div>
                                     @endif
 
-                                    {{-- ========================================================================= --}}
-                                    {{-- 🔥 TAMBAHAN BARU: SHIPPING REF (KODE BOOKING) JIKA ADA 🔥 --}}
-                                    {{-- ========================================================================= --}}
                                     @if(!empty($order->shipping_ref))
                                         <div class="mt-1 p-1.5 bg-blue-50 border border-blue-200 rounded flex items-center gap-2">
                                             <i class="fas fa-barcode text-blue-500"></i>
@@ -347,8 +330,6 @@ elseif ($pm === 'DOMPET SANCAKA') {
                                             </div>
                                         </div>
                                     @endif
-                                    {{-- ========================================================================= --}}
-
                                 </td>
 
                                 {{-- 3. PENGIRIM --}}
@@ -399,12 +380,12 @@ elseif ($pm === 'DOMPET SANCAKA') {
                                         <div class="text-lg font-extrabold text-slate-800">Rp {{ number_format($displayTotal, 0, ',', '.') }}</div>
                                     </div>
 
-                                    {{-- Rincian Biaya --}}
+                                    {{-- Rincian Biaya UI Baru --}}
                                     <div class="mt-2 space-y-1 text-xs text-slate-600">
                                         <div class="flex justify-between gap-4">
                                             <span>Barang:</span>
                                             <span class="font-medium {{ $isCodOngkir ? 'line-through text-slate-400' : '' }}">
-                                                Rp {{ number_format($hargaBarang, 0, ',', '.') }}
+                                                Rp {{ number_format($hargaBarangReal, 0, ',', '.') }}
                                             </span>
                                         </div>
                                         <div class="flex justify-between gap-4">
@@ -421,8 +402,14 @@ elseif ($pm === 'DOMPET SANCAKA') {
                                             <span class="font-medium">Rp {{ number_format($asuransi, 0, ',', '.') }}</span>
                                         </div>
                                         @endif
+
+                                        {{-- SUNTIKAN VISUAL 1.000 PERAK AGAR MATEMATIKA PELANGGAN MASUK AKAL --}}
                                         @if($isCodOngkir)
-                                            <div class="text-[10px] text-red-600 italic mt-1">{{ $noteBawah }}</div>
+                                        <div class="flex justify-between gap-4 text-slate-500 border-t border-dashed border-slate-200 mt-1 pt-1">
+                                            <span>Admin COD:</span>
+                                            <span class="font-medium">Rp 1.000</span>
+                                        </div>
+                                        <div class="text-[10px] text-red-600 italic mt-1">{{ $noteBawah }}</div>
                                         @endif
                                     </div>
                                 </td>
