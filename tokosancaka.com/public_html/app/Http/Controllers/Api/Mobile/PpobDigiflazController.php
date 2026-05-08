@@ -427,4 +427,34 @@ class PpobDigiflazController extends Controller
             return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
         }
     }
+
+    // =================================================================
+    // CEK ID PLN PRABAYAR (INQUIRY NAMA PELANGGAN)
+    // =================================================================
+    public function checkPlnPrabayar(Request $request)
+    {
+        $request->validate(['customer_no' => 'required']);
+
+        try {
+            // Tembak API Digiflazz khusus inquiry PLN
+            $response = $this->digiflazz->inquiryPln($request->customer_no);
+
+            // Jika RC 00 atau Status Sukses
+            if (isset($response['data']) && in_array($response['data']['rc'] ?? '', ['00', 'Sukses', 'Success'])) {
+                return response()->json([
+                    'success' => true,
+                    'name' => $response['data']['name'],
+                    'segment_power' => $response['data']['segment_power']
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $response['data']['message'] ?? 'ID Pelanggan tidak ditemukan.'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal koneksi ke provider.'], 500);
+        }
+    }
 }
