@@ -16,6 +16,8 @@ use Carbon\Carbon;
 use Illuminate\Notifications\DatabaseNotification;
 use App\Helpers\ShippingHelper;
 use Illuminate\Support\Facades\Http;
+use App\Models\Api;
+use App\Events\SystemModeUpdated;
 
 class DashboardController extends Controller
 {
@@ -396,43 +398,48 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
         ]);
     }
 
-    /**
-     * ==============================================================
-     * FUNGSI BARU: MENGUBAH MODE SISTEM (PRODUCTION / DEVELOPMENT)
-     * ==============================================================
-     */
     public function toggleSystemMode(Request $request)
     {
         try {
-            // Ambil status dari switch di aplikasi (asumsinya frontend mengirim 'is_production')
-            // Ubah tipe data jadi boolean
+            // Tangkap perintah dari HP: true (Production/ON) atau false (Sandbox/OFF)
             $isProduction = filter_var($request->input('is_production'), FILTER_VALIDATE_BOOLEAN);
 
-            // Karena data ini disimpan di tabel settings (Setting Model)
-            // Mari kita cari data 'system_mode' atau buat jika belum ada
-            $setting = \App\Models\Setting::firstOrCreate(
-                ['key' => 'system_mode'], // Kondisi pencarian
-                ['value' => 'production'] // Default value jika baru dibuat
-            );
+            if ($isProduction == true) {
+                // Jika ON -> Ubah semua ke Production
+                $targetKA     = 'production';
+                $targetTripay = 'production';
+                $targetDoku   = 'production';
+                $targetIAK    = 'production';
+                $label        = 'PRODUCTION (LIVE)';
+            } else {
+                // Jika OFF -> Ubah semua ke Sandbox / Staging
+                $targetKA     = 'staging';
+                $targetTripay = 'sandbox';
+                $targetDoku   = 'sandbox';
+                $targetIAK    = 'development';
+                $label        = 'SANDBOX / MAINTENANCE';
+            }
 
-            // Update nilainya
-            $setting->value = $isProduction ? 'production' : 'development';
-            $setting->save();
+            // 1. Simpan perubahan ke Database
+            Api::setValue('KIRIMINAJA_MODE', $targetKA, 'kiriminaja', 'global');
+            Api::setValue('TRIPAY_MODE', $targetTripay, 'tripay', 'global');
+            Api::setValue('DOKU_ENV', $targetDoku, 'doku', 'global');
+            Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global');
 
-            // Opsional: Bersihkan cache pengaturan agar aplikasi langsung membaca perubahan
-            Cache::forget('system_mode');
+            // 2. Beritahu semua user yang sedang online
+            event(new SystemModeUpdated($targetKA));
 
+            // 3. Kembalikan respons sukses ke HP
             return response()->json([
                 'success' => true,
-                'message' => 'Mode sistem berhasil diubah menjadi: ' . strtoupper($setting->value)
-            ]);
+                'message' => "Sistem berhasil diubah ke mode $label",
+                'mode'    => $targetKA
+            ], 200);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Error toggleSystemMode: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengubah mode sistem: Terjadi kesalahan di server.'
+                'message' => 'Gagal mengubah database: ' . $e->getMessage()
             ], 500);
         }
     }
