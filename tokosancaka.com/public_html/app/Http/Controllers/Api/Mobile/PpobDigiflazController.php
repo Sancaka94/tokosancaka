@@ -185,7 +185,7 @@ class PpobDigiflazController extends Controller
 
             // Simpan Transaksi ke Database
             $trx = PpobTransaction::create([
-                'user_id' => $user->id,
+                'user_id' => $user->id_pengguna,
                 'order_id' => $trxRefId,
                 'buyer_sku_code' => $sku,
                 'customer_no' => $request->customer_no,
