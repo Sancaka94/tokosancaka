@@ -228,24 +228,39 @@ class KoliController extends Controller
 
                 $ongkirFix = (int) $realCostData['cost'];
                 $asuransiFix = ($request->ansuransi == 'iya') ? (int) $realCostData['insurance'] : 0;
+                $codFeeApi = (int) $realCostData['cod_fee'];
+                $isCodAvailable = $realCostData['is_cod'];
 
                 $codFeeFix = 0; $finalPriceDB = 0; $finalCodValueAPI = 0;
                 $paymentMethod = $request->payment_method;
+                $apiItemValueForKirim = $hargaBarangPerPaket;
 
+                // =======================================================
+                // 🔥 LOGIKA BARU: HITUNGAN MURNI TANPA PPN & PEMBULATAN
+                // =======================================================
                 if ($paymentMethod === 'COD' || $paymentMethod === 'CODBARANG') {
-                    $baseTotal = $ongkirFix + $asuransiFix;
-                    if ($paymentMethod === 'CODBARANG') $baseTotal += $hargaBarangPerPaket;
 
-                    $rawFee = $baseTotal * 0.03;
-                    $codFeeBeforePPN = max(2500, $rawFee);
-                    $ppnFee = $codFeeBeforePPN * 0.11;
-                    $grandTotalMentah = $baseTotal + $codFeeBeforePPN + $ppnFee;
+                    // Jika API KiriminAja return 0 tapi mendukung COD, hitung manual
+                    if ($isCodAvailable && $codFeeApi === 0) {
+                        $baseTotal = $ongkirFix + $asuransiFix;
+                        if ($paymentMethod === 'CODBARANG') $baseTotal += $hargaBarangPerPaket;
+                        $codFeeApi = max(2500, ceil($baseTotal * 0.03));
+                    }
+                    $codFeeFix = $codFeeApi;
 
-                    $finalCodValueAPI = (int) (ceil($grandTotalMentah / 500) * 500);
-                    $finalPriceDB = $finalCodValueAPI;
-                    $codFeeFix = $codFeeBeforePPN + $ppnFee;
+                    if ($paymentMethod === 'COD') {
+                        $apiItemValueForKirim = 1000; // Suntikan harga fiktif
+                        $finalPriceDB = 1000 + $ongkirFix + $asuransiFix + $codFeeFix;
+                    } else {
+                        if ($request->ansuransi !== 'iya' && $apiItemValueForKirim < 1000) {
+                            $apiItemValueForKirim = 1000;
+                        }
+                        $finalPriceDB = $apiItemValueForKirim + $ongkirFix + $asuransiFix + $codFeeFix;
+                    }
+                    $finalCodValueAPI = $finalPriceDB;
                 } else {
                     $finalPriceDB = $ongkirFix + $asuransiFix;
+                }
                     $finalCodValueAPI = 0;
                 }
 
@@ -289,7 +304,7 @@ class KoliController extends Controller
                 $createdOrders[] = $pesanan;
                 $tempDataPerOrder[$pesanan->id] = [
                     'cod_value_api' => $finalCodValueAPI, 'shipping_cost' => $ongkirFix, 'insurance_cost' => $asuransiFix,
-                    'item_value_api' => $hargaBarangPerPaket, 'courier_code' => $targetCourier, 'service_code' => $targetService,
+                    'item_value_api' => $apiItemValueForKirim, 'courier_code' => $targetCourier, 'service_code' => $targetService,
                     'booking_weight' => $finalBookingWeight
                 ];
 
@@ -412,9 +427,6 @@ class KoliController extends Controller
         }
     }
 
-    // ==========================================
-    // INNER HELPERS: COST & KIRIMINAJA
-    // ==========================================
     private function _getRealShippingCost($kirimaja, $senderData, $receiverData, $weight, $length, $width, $height, $courier, $service, $itemValue, $ansuransi)
     {
         if($weight < 1) $weight = 1;
@@ -435,7 +447,7 @@ class KoliController extends Controller
             $chargeableWeight, $length, $width, $height, $itemValue, null, $category, $useInsurance
         );
 
-        $foundCost = 0; $foundInsurance = 0;
+        $foundCost = 0; $foundInsurance = 0; $foundCodFee = 0; $isCod = false;
 
         if (isset($options['results'])) {
             foreach ($options['results'] as $res) {
@@ -444,6 +456,9 @@ class KoliController extends Controller
                 if ($apiCourier == strtolower($courier) && strpos($apiService, strtolower($service)) !== false) {
                     $foundCost = (int) ($res['cost'] ?? 0);
                     $foundInsurance = (int) ($res['insurance'] ?? 0);
+                    $isCod = !empty($res['cod']);
+                    // Tangkap add_cost langsung dari API
+                    $foundCodFee = (float) ($res['add_cost'] ?? $res['setting']['cod_fee_amount'] ?? $res['setting']['cod_fee'] ?? 0);
                     break;
                 }
             }
@@ -454,46 +469,91 @@ class KoliController extends Controller
                 if (strtolower($res['service']) == strtolower($courier)) {
                     $foundCost = (int) ($res['cost'] ?? 0);
                     $foundInsurance = (int) ($res['insurance'] ?? 0);
+                    $isCod = !empty($res['cod']);
+                    $foundCodFee = (float) ($res['add_cost'] ?? $res['setting']['cod_fee_amount'] ?? $res['setting']['cod_fee'] ?? 0);
                     break;
                 }
              }
         }
 
-        if ($foundCost == 0) throw new Exception("Ongkir tidak ditemukan utk kurir {$courier}.");
-        return ['cost' => $foundCost, 'insurance' => $foundInsurance];
+        if ($foundCost == 0) throw new Exception("Ongkir tidak ditemukan utk kurir {$courier} - {$service}.");
+        return ['cost' => $foundCost, 'insurance' => $foundInsurance, 'cod_fee' => $foundCodFee, 'is_cod' => $isCod];
     }
 
     private function _createKiriminAjaOrderLocal($data, $order, $kirimaja, $senderData, $receiverData, $cod_value, $shipping_cost, $insurance_cost) {
         $serviceGroup = 'regular';
         if (strpos(strtolower($data['service_code']), 'cargo') !== false) $serviceGroup = 'trucking';
 
-        $schedules = $kirimaja->getSchedules();
-        $pickupSchedule = $schedules['clock'] ?? 'now';
+        // ---------------------------------------------------------
+        // LOGIKA PENJADWALAN PICKUP KIRIMINAJA BARU
+        // ---------------------------------------------------------
+        $now = \Carbon\Carbon::now('Asia/Jakarta');
+
+        // Jika hari ini adalah hari Minggu ATAU sudah lewat jam 17:00 (5 Sore)
+        if ($now->isSunday() || $now->hour >= 17) {
+            $pickupDate = $now->copy()->addDay(); // Jadwalkan ke Besok
+            if ($pickupDate->isSunday()) {
+                $pickupDate->addDay();
+            }
+            $scheduleClock = $pickupDate->setTime(9, 0, 0)->format('Y-m-d H:i:s');
+        } else {
+            $scheduleClock = $now->setTime(17, 0, 0)->format('Y-m-d H:i:s');
+        }
+
         $useInsuranceFlag = ($data['ansuransi'] == 'iya') ? 1 : 0;
+
+        // ============================================================
+        // 🔥 LOGIKA PENYELARASAN HARGA BARANG (SUNTIK 1000 PERAK) 🔥
+        // ============================================================
+        $pm = strtoupper(trim($order->payment_method ?? ''));
+        $apiItemPrice = (float) $data['item_price'];
+
+        $isCodOngkir = in_array($pm, ['COD', '#COD_ONGKIR']);
+        $isCodBarang = in_array($pm, ['CODBARANG', '#COD_BARANG']);
+
+        if ($isCodOngkir || $isCodBarang) {
+            if ($isCodOngkir) {
+                $apiItemPrice = 1000; // Syarat mutlak JSON KiriminAja
+            } else {
+                if ($data['ansuransi'] !== 'iya' && $apiItemPrice < 1000) {
+                    $apiItemPrice = 1000;
+                }
+            }
+            // Merekam ke jurnal keuangan
+            if (method_exists(\App\Http\Controllers\Customer\PesananController::class, 'simpanKeKeuangan')) {
+                \App\Http\Controllers\Customer\PesananController::simpanKeKeuangan($order);
+            }
+        }
+        // ============================================================
 
         $payload = [
             'address' => $order->sender_address, 'phone' => $order->sender_phone, 'name' => $order->sender_name,
             'kecamatan_id' => $senderData['kirimaja_data']['district_id'], 'kelurahan_id' => $senderData['kirimaja_data']['subdistrict_id'],
-            'zipcode' => $senderData['kirimaja_data']['postal_code'],
+            'zipcode' => $senderData['kirimaja_data']['postal_code'] ?? '00000',
             'platform_name' => 'tokosancaka.com', 'category' => $serviceGroup,
-            'schedule' => $pickupSchedule,
+            'schedule' => $scheduleClock,
             'packages' => [[
                 'order_id' => $order->nomor_invoice, 'item_name' => $data['item_description'],
-                'package_type_id' => $order->item_type ?? 7,
+                'package_type_id' => (int)($order->item_type ?? 7),
                 'destination_name' => $order->receiver_name, 'destination_phone' => $order->receiver_phone,
                 'destination_address' => $order->receiver_address,
                 'destination_kecamatan_id' => $receiverData['kirimaja_data']['district_id'],
                 'destination_kelurahan_id' => $receiverData['kirimaja_data']['subdistrict_id'],
-                'destination_zipcode' => $receiverData['kirimaja_data']['postal_code'],
+                'destination_zipcode' => $receiverData['kirimaja_data']['postal_code'] ?? '00000',
                 'weight' => (int)$data['weight'], 'width' => (int)$data['width'], 'height' => (int)$data['height'], 'length' => (int)$data['length'],
-                'item_value' => (int)$data['item_price'],
+
+                // Data API yang sudah dipoles
+                'item_value' => (int)$apiItemPrice,
                 'insurance' => $useInsuranceFlag, 'insurance_amount' => ($useInsuranceFlag === 1) ? (int)$insurance_cost : 0,
                 'cod' => (int)$cod_value,
+
                 'service' => $data['courier_code'],
                 'service_type' => $data['service_code'],
                 'shipping_cost' => (int)$shipping_cost
             ]]
         ];
+
+        Log::info('[API MOBILE MULTI] KiriminAja Payload akhir:', $payload);
         return $kirimaja->createExpressOrder($payload);
     }
 
