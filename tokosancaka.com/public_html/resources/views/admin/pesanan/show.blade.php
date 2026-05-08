@@ -84,29 +84,46 @@
         </dl>
     </div>
 
-    {{-- Perbaikan: Rincian Biaya membaca dari kolom baru di DB --}}
+    {{-- Perbaikan: Rincian Biaya sinkron 100% dengan KiriminAja --}}
     <div class="mt-8 border-t pt-6">
         <h3 class="font-semibold text-lg text-gray-700 mb-3">Rincian Biaya</h3>
         <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            @php
+                // Logika Cerdas untuk menyesuaikan tampilan
+                $isCodOngkir = (strtoupper($order->payment_method) === 'COD');
 
-            {{-- Menggunakan 'item_price' dan fallback ke 'total_harga_barang' --}}
-            <div><dt class="text-gray-500">Harga Barang</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($order->item_price ?? $order->total_harga_barang ?? 0) }}</dd></div>
+                // 1. Ambil Harga Barang (Paksakan 1000 jika COD Ongkir Murni)
+                $hargaBarang = $order->item_price ?? $order->total_harga_barang ?? 0;
+                if ($isCodOngkir && $hargaBarang < 1000) {
+                    $hargaBarang = 1000;
+                }
 
-            {{-- Menggunakan 'shipping_cost' --}}
-            <div><dt class="text-gray-500">Ongkos Kirim</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($order->shipping_cost ?? 0) }}</dd></div>
+                // 2. Ambil Biaya Lainnya
+                $ongkir = $order->shipping_cost ?? 0;
+                $asuransi = $order->insurance_cost ?? 0;
+                $codFee = $order->cod_fee ?? 0;
 
-            {{-- Menggunakan 'insurance_cost' --}}
-            @if($order->insurance_cost > 0)
-                <div><dt class="text-gray-500">Biaya Asuransi</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($order->insurance_cost) }}</dd></div>
+                // 3. Kalkulasi Total agar matematika-nya akurat
+                $totalTagihan = $hargaBarang + $ongkir + $asuransi + $codFee;
+            @endphp
+
+            <div><dt class="text-gray-500">Harga Barang</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($hargaBarang, 0, ',', '.') }}</dd></div>
+            <div><dt class="text-gray-500">Ongkos Kirim</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($ongkir, 0, ',', '.') }}</dd></div>
+
+            @if($asuransi > 0)
+                <div><dt class="text-gray-500">Biaya Asuransi</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($asuransi, 0, ',', '.') }}</dd></div>
             @endif
 
-            {{-- Menggunakan 'cod_fee' --}}
-            @if($order->cod_fee > 0)
-                    <div><dt class="text-gray-500">Biaya COD</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($order->cod_fee) }}</dd></div>
+            @if($codFee > 0)
+                <div><dt class="text-gray-500">Biaya COD</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($codFee, 0, ',', '.') }}</dd></div>
             @endif
 
             <div class="col-span-2 border-t mt-2 pt-2"></div>
-            <div><dt class="text-gray-500 font-bold">Total</dt><dd class="text-gray-800 font-bold text-base">Rp {{ number_format($order->price) }}</dd></div>
+
+            <div>
+                <dt class="text-gray-500 font-bold">Total Tagihan</dt>
+                <dd class="text-blue-700 font-bold text-lg">Rp {{ number_format($totalTagihan, 0, ',', '.') }}</dd>
+            </div>
         </dl>
     </div>
 
