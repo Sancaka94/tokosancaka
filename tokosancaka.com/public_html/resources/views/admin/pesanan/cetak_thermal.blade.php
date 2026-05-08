@@ -5,18 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="icon" type="image/png" href="https://tokosancaka.com/storage/uploads/sancaka.png">
-    
+
     <title>Cetak Resi - {{ $pesanan->resi }}</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    
+
     {{-- LIBRARY WAJIB: JSBARCODE (1D) --}}
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     {{-- LIBRARY WAJIB: QRCODE.JS (2D) --}}
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     {{-- WAJIB UNTUK AJAX FONTTE --}}
@@ -49,11 +49,11 @@
                 border: none;
             }
         }
-        .barcode { 
-            width: 100%; 
-            height: 50px; 
+        .barcode {
+            width: 100%;
+            height: 50px;
             /* Tambahkan sedikit margin vertikal agar tidak terlalu mepet dengan tulisan di atas/bawahnya */
-            margin-top: 5px; 
+            margin-top: 5px;
             margin-bottom: 5px;
         }
         .label { font-weight: 600; font-size: 12px; color: #374151; }
@@ -112,27 +112,27 @@
         @endphp
 
         <div class="flex flex-wrap justify-center gap-2 max-w-5xl mx-auto">
-            
+
             <button onclick="window.print()" class="w-full sm:w-auto lg:flex-none lg:min-w-[150px] bg-red-600 text-white px-5 py-2 rounded-md shadow hover:bg-red-700 transition flex justify-center items-center">
                 <i class="fas fa-print mr-1"></i> Cetak Resi
             </button>
-            
+
             <button id="downloadBtn" class="w-full sm:w-auto lg:flex-none lg:min-w-[150px] bg-blue-600 text-white px-5 py-2 rounded-md shadow hover:bg-blue-700 transition flex justify-center items-center">
                 <i class="fas fa-download mr-2"></i> Download JPG
             </button>
-            
+
             <button onclick="sendWaNotificationApi('receiver')" class="w-full sm:w-auto lg:flex-none lg:min-w-[150px] bg-green-600 text-white px-5 py-2 rounded-md shadow hover:bg-green-700 transition flex justify-center items-center">
                 <i class="fab fa-whatsapp mr-1"></i> Kirim WA (Penerima)
             </button>
-            
+
             <button onclick="sendWaNotificationApi('sender')" class="w-full sm:w-auto lg:flex-none lg:min-w-[150px] bg-green-600 text-white px-5 py-2 rounded-md shadow hover:bg-green-700 transition flex justify-center items-center">
                 <i class="fab fa-whatsapp mr-1"></i> Kirim WA (Pengirim)
             </button>
-            
+
             <a href="{{ $backUrl }}" class="w-full sm:w-auto lg:flex-none lg:min-w-[150px] bg-gray-200 text-gray-800 px-5 py-2 rounded-md shadow hover:bg-gray-300 transition flex justify-center items-center">
                 <i class="fas fa-arrow-left mr-1"></i> Kembali
             </a>
-            
+
         </div>
     </div>
 
@@ -180,7 +180,7 @@
             // Cek Khusus untuk J&T Cargo vs J&T Express (karena mirip)
             if (str_contains($normalizedName, 'cargo') && (str_contains($normalizedName, 'j&t') || str_contains($normalizedName, 'jt'))) {
                 $finalLogoUrl = $courierMap['jtcargo'];
-            } 
+            }
             // Cek Loop Normal
             else {
                 foreach ($courierMap as $key => $url) {
@@ -204,40 +204,39 @@
         <div class="flex justify-between items-center border-b border-gray-700 pb-2">
             <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10" onerror="this.style.display='none'">
 
-            <img src="{{ $finalLogoUrl }}" 
-                 alt="{{ $expeditionName }}" 
-                 class="h-8 object-contain" 
+            <img src="{{ $finalLogoUrl }}"
+                 alt="{{ $expeditionName }}"
+                 class="h-8 object-contain"
                  onerror="this.style.opacity='0'">
         </div>
 
-        <div class="text-center mt-2"> 
+        <div class="text-center mt-2">
             <p class="font-bold text-sm tracking-wide"><strong>NOMOR RESI TOKOSANCAKA.COM</strong></p>
             {{-- Elemen SVG barcode, margin vertikal ditangani oleh CSS .barcode --}}
             <svg id="barcodeSancaka" class="barcode"></svg>
         </div>
 
         {{-- LOGIKA COD DIPINDAH KE ATAS AGAR BISA DIAKSES DI KANAN/KIRI --}}
+        {{-- LOGIKA COD DIPINDAH KE ATAS AGAR BISA DIAKSES DI KANAN/KIRI --}}
         @php
             $pm = strtoupper($pesanan->payment_method);
             $isCodBarang = ($pm === 'CODBARANG');
             $isCodOngkir = ($pm === 'COD');
-            
+
             // Variabel Default
             $labelCod = "NILAI COD";
             $nilaiCodFinal = 0;
             $showCodBlock = false;
 
             if ($isCodBarang) {
+                // Ambil langsung dari harga final di DB
                 $nilaiCodFinal = $pesanan->price;
                 $labelCod = "NILAI COD (BARANG + ONGKIR)";
                 $showCodBlock = true;
             } elseif ($isCodOngkir) {
-                $ongkirAsli = $pesanan->shipping_cost ?? 0;
-                $asuransiAsli = $pesanan->insurance_cost ?? 0;
-                $feeLayanan = 2500;
-                $feeHitung = max($feeLayanan, floor($ongkirAsli * 0.03));
-                
-                $nilaiCodFinal = $ongkirAsli + $asuransiAsli + $feeHitung;
+                // 🔥 PERBAIKAN: Hapus hitungan manual! Langsung tembak dari database! 🔥
+                // Karena $pesanan->price sudah mengandung Ongkir + Fee API + Asuransi + 1000
+                $nilaiCodFinal = $pesanan->price;
                 $labelCod = "NILAI COD (ONGKIR)";
                 $showCodBlock = true;
             }
@@ -350,9 +349,9 @@
                 const resiSancaka = RESI;
                 if (resiSancaka) {
                     JsBarcode("#barcodeSancaka", resiSancaka, {
-                        format: "CODE128", 
+                        format: "CODE128",
                         textMargin: 10,  // Jarak garis Barcode ke teks RESI
-                        fontOptions: "bold", 
+                        fontOptions: "bold",
                         height: 50,      // Tinggi barcode
                         width: 3.5,      // LEBAR GARIS BARCODE (MEMPENGARUHI PANJANG KESELURUHAN)
                         fontSize: 30     // Ukuran font teks di bawah barcode
@@ -362,9 +361,9 @@
                     const resiAktual = {!! json_encode($pesanan->resi_aktual ?? '') !!};
                     if (resiAktual) {
                         JsBarcode("#barcodeAktual", resiAktual, {
-                            format: "CODE128", 
+                            format: "CODE128",
                             textMargin: 10,  // Jarak garis Barcode ke teks RESI
-                            fontOptions: "bold", 
+                            fontOptions: "bold",
                             height: 50,      // Tinggi barcode
                             width: 3.5,      // LEBAR GARIS BARCODE
                             fontSize: 30     // Ukuran font teks di bawah barcode
@@ -374,11 +373,11 @@
             } catch (e) {
                 console.error("Gagal membuat barcode:", e);
             }
-            
+
             // --- QR CODE GENERATION (2D) ---
             try {
                  new QRCode(document.getElementById("qrcode"), {
-                     text: "https://tokosancaka.com/tracking/search?resi=" + RESI, 
+                     text: "https://tokosancaka.com/tracking/search?resi=" + RESI,
                      width: 75,
                      height: 75
                  });
@@ -386,13 +385,13 @@
                 console.error("Gagal membuat QR Code:", e);
             }
         });
-        
+
         // --- FUNGSI FONTTE/WHATSAPP API ---
         function sendWaNotificationApi(target) {
-            const button = (target === 'receiver') 
-                ? document.querySelector('button[onclick*="receiver"]') 
+            const button = (target === 'receiver')
+                ? document.querySelector('button[onclick*="receiver"]')
                 : document.querySelector('button[onclick*="sender"]');
-            
+
             if (button) {
                 button.disabled = true;
                 button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mengirim...';
@@ -402,11 +401,11 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': TOKEN 
+                    'X-CSRF-TOKEN': TOKEN
                 },
                 body: JSON.stringify({
                     resi: RESI,
-                    target: target 
+                    target: target
                 })
             })
             .then(response => response.json())
@@ -418,7 +417,7 @@
                 }
                 if (button) {
                     button.disabled = false;
-                    button.innerHTML = (target === 'receiver') 
+                    button.innerHTML = (target === 'receiver')
                         ? '<i class="fab fa-whatsapp mr-1"></i> Kirim WA (Penerima)'
                         : '<i class="fab fa-whatsapp mr-1"></i> Kirim WA (Pengirim)';
                 }
@@ -428,7 +427,7 @@
                 Swal.fire('Error', 'Gagal terhubung ke API Fonnte/Server. Periksa koneksi.', 'error');
                 if (button) {
                     button.disabled = false;
-                    button.innerHTML = (target === 'receiver') 
+                    button.innerHTML = (target === 'receiver')
                         ? '<i class="fab fa-whatsapp mr-1"></i> Kirim WA (Penerima)'
                         : '<i class="fab fa-whatsapp mr-1"></i> Kirim WA (Pengirim)';
                 }
@@ -446,12 +445,12 @@
 
             html2canvas(labelElement, {
                 useCORS: true,
-                scale: 2 
+                scale: 2
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.href = canvas.toDataURL('image/jpeg', 0.95);
                 link.download = `resi-${resi}.jpg`;
-                
+
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
