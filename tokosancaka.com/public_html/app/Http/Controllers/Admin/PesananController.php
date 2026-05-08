@@ -1200,13 +1200,13 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         $courier = $expeditionParts[1] ?? null;
         $service_type = $expeditionParts[2] ?? null;
 
-        if (empty($data['sender_address']) || empty($data['sender_phone']) || empty($data['sender_name']) ||
+        /*if (empty($data['sender_address']) || empty($data['sender_phone']) || empty($data['sender_name']) ||
             empty($data['receiver_name']) || empty($data['receiver_phone']) || empty($data['receiver_address']) ||
             empty($data['item_description']) || !isset($data['item_price']) || !isset($data['weight']) ||
             !isset($data['item_type']) || empty($courier) || empty($service_type)) {
                 Log::error('_createKiriminAjaOrder (Customer): Missing required data.', ['invoice' => $order->nomor_invoice]);
                 return ['status' => false, 'text' => 'Data pesanan tidak lengkap untuk dikirim ke ekspedisi.'];
-        }
+        }*/
 
         // ============================================================
         // LOGIKA FINAL: FEE (Min 2.500) + PPN 11% + PEMBULATAN 500
@@ -1253,26 +1253,38 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         } */
 
         // ============================================================
-        // LOGIKA FINAL: MENGGUNAKAN NILAI MURNI DARI API (SARAN CS)
+        // 👇 TAMBAHKAN INI: Tangkap nilai COD Fee dari string ekspedisi
         // ============================================================
+        $cod_fee = 0;
+        if (count($expeditionParts) >= 6) {
+            $cod_fee = (int) end($expeditionParts); // Mengambil angka paling belakang (contoh: 6993)
+        }
 
+        if (empty($data['sender_address']) || empty($data['sender_phone']) || empty($data['sender_name']) ||
+            empty($data['receiver_name']) || empty($data['receiver_phone']) || empty($data['receiver_address']) ||
+            empty($data['item_description']) || !isset($data['item_price']) || !isset($data['weight']) ||
+            !isset($data['item_type']) || empty($courier) || empty($service_type)) {
+                Log::error('_createKiriminAjaOrder (Customer): Missing required data.', ['invoice' => $order->nomor_invoice]);
+                return ['status' => false, 'text' => 'Data pesanan tidak lengkap untuk dikirim ke ekspedisi.'];
+        }
+
+        // ============================================================
+        // LOGIKA FINAL: MENGGUNAKAN NILAI MURNI DARI API
+        // ============================================================
         $apiItemPrice = (float) $data['item_price'];
         $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0;
         $finalCodValue = $cod_value; // Nilai default
 
-        // BERLAKU UNTUK SEMUA JENIS COD (COD Ongkir maupun COD Barang)
+        // BERLAKU UNTUK SEMUA JENIS COD
         if (isset($data['payment_method']) && in_array($data['payment_method'], ['COD', 'CODBARANG'])) {
 
-            // 1. Aturan Baku API KiriminAja: Harga barang minimal 10.000 jika tanpa asuransi
             if ($data['ansuransi'] !== 'iya' && $apiItemPrice < 10000) {
                 $apiItemPrice = 10000;
             }
 
-            // 2. Tembak menggunakan hasil mutlak dari jawaban API sebelumnya!
-            // Cukup jumlahkan: Harga Barang + Ongkir (API) + Asuransi (API) + Fee COD (API)
-            $finalCodValue = $apiItemPrice + (int)$shipping_cost + $finalInsuranceAmount + (int)$cod_fee;
+            // Sekarang $cod_fee sudah terdefinisi dan siap digunakan!
+            $finalCodValue = $apiItemPrice + (int)$shipping_cost + $finalInsuranceAmount + $cod_fee;
 
-            // 3. Update nominal di database agar angka tagihan pesanan sesuai
             $order->price = $finalCodValue;
             $order->save();
         }
