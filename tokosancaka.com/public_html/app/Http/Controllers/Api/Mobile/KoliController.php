@@ -157,13 +157,188 @@ class KoliController extends Controller
     }
 
     // ==========================================
-    // API: STORE SINGLE (Pesanan Satuan Mobile)
+    // API: STORE SINGLE (Pesanan Satuan / Per-Div Mobile)
     // ==========================================
     public function storeSingle(Request $request, KiriminAjaService $kirimaja)
     {
-        // Fungsi storeSingle pada KoliController sebaiknya tidak digunakan lagi (diganti PesananController).
-        // Namun untuk jaga-jaga, saya biarkan eksis dan mengembalikan error jika tereksekusi.
-        return response()->json(['success' => false, 'message' => 'Endpoint ini sudah tidak digunakan. Gunakan PesananController untuk Single Order.'], 400);
+        Log::info('[API MOBILE SINGLE] Menerima request pembuatan Single Koli:', $request->all());
+        $this->_normalizePaymentMethod($request);
+
+        // Group ID yang didapat dari React Native (Date.now())
+        $groupId = $request->input('transaction_group_id');
+
+        DB::beginTransaction();
+        try {
+            $rawItemPrice = str_replace(['Rp', '.', ' ', ','], '', $request->input('item_price'));
+            $request->merge(['item_price' => $rawItemPrice]);
+
+            $request->validate([
+                'sender_name' => 'required', 'sender_phone' => 'required',
+                'receiver_name' => 'required', 'receiver_phone' => 'required|min:9|max:13',
+                'sender_district_id' => 'required', 'receiver_district_id' => 'required',
+                'payment_method' => 'required', 'item_price' => 'required|numeric|min:1000',
+                'weight' => 'required|numeric|min:1',
+                'courier_code' => 'required', 'service_code' => 'required',
+            ]);
+
+            $this->_saveKontak($request, 'sender', 'Pengirim');
+            $this->_saveKontak($request, 'receiver', 'Penerima');
+
+            $senderAddressData = $this->_getAddressData($request, 'sender');
+            $receiverAddressData = $this->_getAddressData($request, 'receiver');
+
+            // 1. Generate Nomor Invoice Unik
+            do {
+                $nomorInvoice = 'SCK-' . date('ymd') . '-'. strtoupper(Str::random(5));
+            } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
+
+            $beratFisik = (int) $request->weight;
+            $p = (int) ($request->length ?? 10);
+            $l = (int) ($request->width ?? 10);
+            $t = (int) ($request->height ?? 10);
+
+            $targetCourier = $request->courier_code;
+            $targetService = $request->service_code;
+
+            // 2. Hitung Berat Volumetrik
+            $divisor = (strpos(strtolower($targetService), 'cargo') !== false || strpos(strtolower($targetService), 'trucking') !== false) ? 4000 : 6000;
+            $volumeWeight = ($p * $l * $t) / $divisor * 1000;
+            $finalBookingWeight = (int) ceil(max($beratFisik, $volumeWeight));
+
+            // 3. Tembak API Cek Ongkir di belakang layar (Keamanan anti-hack harga)
+            $realCostData = $this->_getRealShippingCost(
+                $kirimaja, $senderAddressData['kirimaja_data'], $receiverAddressData['kirimaja_data'],
+                $beratFisik, $p, $l, $t, $targetCourier, $targetService, $rawItemPrice, $request->ansuransi
+            );
+
+            $ongkirFix = (int) $realCostData['cost'];
+            $asuransiFix = ($request->ansuransi == 'iya') ? (int) $realCostData['insurance'] : 0;
+
+            // 4. Hitung Harga & COD Fee
+            $codFeeFix = 0; $finalPriceDB = 0; $finalCodValueAPI = 0;
+            $paymentMethod = $request->payment_method;
+
+            if ($paymentMethod === 'COD' || $paymentMethod === 'CODBARANG') {
+                $baseTotal = $ongkirFix + $asuransiFix;
+                if ($paymentMethod === 'CODBARANG') $baseTotal += $rawItemPrice;
+
+                $rawFee = $baseTotal * 0.03;
+                $codFeeBeforePPN = max(2500, $rawFee);
+                $ppnFee = $codFeeBeforePPN * 0.11;
+                $grandTotalMentah = $baseTotal + $codFeeBeforePPN + $ppnFee;
+
+                $finalCodValueAPI = (int) (ceil($grandTotalMentah / 500) * 500);
+                $finalPriceDB = $finalCodValueAPI;
+                $codFeeFix = $codFeeBeforePPN + $ppnFee;
+            } else {
+                $finalPriceDB = $ongkirFix + $asuransiFix;
+                $finalCodValueAPI = 0;
+            }
+
+            // 5. Simpan Pesanan ke DB
+            $pesanan = new Pesanan();
+            $pesanan->nomor_invoice = $nomorInvoice;
+
+            // Pengikat bahwa paket ini adalah bagian dari "Multi Koli"
+            $pesanan->shipping_ref = $groupId;
+            $pesanan->idempotency_key = $groupId . '-' . Str::random(4);
+
+            $pesanan->customer_id = Auth::id();
+            $pesanan->id_pengguna_pembeli = Auth::id();
+
+            $pesanan->sender_name = $request->sender_name; $pesanan->sender_phone = $this->_sanitizePhone($request->sender_phone);
+            $pesanan->sender_address = $request->sender_address; $pesanan->sender_district_id = $request->sender_district_id;
+            $pesanan->sender_subdistrict_id = $request->sender_subdistrict_id; $pesanan->sender_province = $request->sender_province;
+            $pesanan->sender_regency = $request->sender_regency; $pesanan->sender_district = $request->sender_district;
+            $pesanan->sender_village = $request->sender_village; $pesanan->sender_postal_code = $request->sender_postal_code;
+            $pesanan->sender_lat = $senderAddressData['lat'] ?? 0; $pesanan->sender_lng = $senderAddressData['lng'] ?? 0;
+
+            $pesanan->receiver_name = $request->receiver_name; $pesanan->receiver_phone = $this->_sanitizePhone($request->receiver_phone);
+            $pesanan->receiver_address = $request->receiver_address; $pesanan->receiver_district_id = $request->receiver_district_id;
+            $pesanan->receiver_subdistrict_id = $request->receiver_subdistrict_id; $pesanan->receiver_province = $request->receiver_province;
+            $pesanan->receiver_regency = $request->receiver_regency; $pesanan->receiver_district = $request->receiver_district;
+            $pesanan->receiver_village = $request->receiver_village; $pesanan->receiver_postal_code = $request->receiver_postal_code;
+            $pesanan->receiver_lat = $receiverAddressData['lat'] ?? 0; $pesanan->receiver_lng = $receiverAddressData['lng'] ?? 0;
+
+            $pesanan->item_description = $request->item_description;
+            $pesanan->weight = $beratFisik; $pesanan->length = $p; $pesanan->width = $l; $pesanan->height = $t;
+            $pesanan->item_type = $request->item_type ?? 7; $pesanan->item_price = $rawItemPrice;
+
+            $pesanan->expedition = sprintf('mix-%s-%s-%d-%d-%d', strtolower($targetCourier), strtoupper($targetService), $ongkirFix, $asuransiFix, $codFeeFix);
+            $pesanan->service_type = 'Single-Mobile';
+            $pesanan->payment_method = $request->payment_method;
+            $pesanan->ansuransi = $request->ansuransi;
+
+            $pesanan->shipping_cost = $ongkirFix; $pesanan->insurance_cost = $asuransiFix;
+            $pesanan->cod_fee = $codFeeFix; $pesanan->price = $finalPriceDB;
+
+            $pesanan->status = 'Menunggu Pembayaran';
+            $pesanan->status_pesanan = 'Menunggu Pembayaran';
+            $pesanan->tanggal_pesanan = now();
+
+            $user = User::where('id_pengguna', Auth::id())->first();
+            $paymentUrl = null;
+
+            // 6. LOGIKA PEMBAYARAN PER-PAKET
+            if ($request->payment_method === 'CASH') {
+                if (!$user || $user->id_pengguna != 4) throw new Exception("Metode Cash hanya untuk Admin.");
+                $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
+            } elseif ($request->payment_method === 'Potong Saldo') {
+                if (!$user || $user->saldo < $finalPriceDB) throw new Exception("Saldo tidak mencukupi untuk paket ini.");
+                $user->decrement('saldo', $finalPriceDB);
+                $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
+            } elseif (in_array($request->payment_method, ['COD', 'CODBARANG'])) {
+                $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
+            } elseif (strtoupper($request->payment_method) === 'GATEWAY') {
+                $noWa = $user->no_wa ?? '08000000';
+                // URL Tagihan dilempar ke mobile agar user bisa klik
+                $paymentUrl = url('/pembayaran?akun=' . urlencode($noWa));
+            }
+
+            $pesanan->save();
+
+            // 7. HIT API KIRIMINAJA
+            if (in_array($request->payment_method, ['COD', 'CODBARANG', 'Potong Saldo', 'CASH'])) {
+                $apiPayload = [
+                    'item_description' => $pesanan->item_description, 'item_price' => $rawItemPrice,
+                    'weight' => $finalBookingWeight, 'length' => $p, 'width' => $l, 'height' => $t,
+                    'courier_code' => $targetCourier, 'service_code' => $targetService, 'ansuransi' => $request->ansuransi
+                ];
+
+                $kiriminResponse = $this->_createKiriminAjaOrderLocal(
+                    $apiPayload, $pesanan, $kirimaja, $senderAddressData, $receiverAddressData,
+                    $finalCodValueAPI, $ongkirFix, $asuransiFix
+                );
+
+                if (($kiriminResponse['status'] ?? false) === true) {
+                    $resi = $kiriminResponse['details']['awb'] ?? $kiriminResponse['awb'] ?? $kiriminResponse['order_id'] ?? null;
+                    if($resi) {
+                        $pesanan->resi = $resi;
+                        $pesanan->status = 'Pesanan Dibuat';
+                        $pesanan->status_pesanan = 'Pesanan Dibuat';
+                        $pesanan->save();
+                    }
+                } else {
+                    $pesanan->status = 'Gagal Kirim Resi';
+                    $pesanan->save();
+                    Log::error("Gagal KiriminAja Single:", $kiriminResponse);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Paket berhasil dikunci & disimpan!",
+                'resi' => $pesanan->resi ?? 'DIPROSES',
+                'payment_url' => $paymentUrl
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Store Single Mobile Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     // ==========================================
