@@ -53,7 +53,7 @@ Route::post('/resend-token', [\App\Http\Controllers\Api\Mobile\AuthController::c
 // --- ENDPOINT UPDATE APLIKASI (GOOGLE PLAY STORE) ---
 Route::get('/check-update', function(Request $request) {
     // 1. Tentukan versi rilis terbaru di server
-    $latestVersion = '1.1.8'; // Ubah ini setiap kali ada rilis versi baru di Play Store
+    $latestVersion = '1.1.9'; // Ubah ini setiap kali ada rilis versi baru di Play Store
 
     // 2. Tangkap versi aplikasi yang sedang dipakai user dari parameter URL
     $appVersion = $request->query('app_version');
