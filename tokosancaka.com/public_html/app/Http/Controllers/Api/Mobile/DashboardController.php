@@ -189,17 +189,20 @@ class DashboardController extends Controller
             // 1. Data Paket (Pesanan Baru)
             $pesananHariIni = DB::table('Pesanan')->whereDate('tanggal_pesanan', $today)->count();
 
-            // 2. Riwayat Scan (Pesanan yang diupdate menjadi Diproses/Terkirim hari ini)
-            $scanHariIni = DB::table('Pesanan')->whereIn('status_pesanan', ['Diproses', 'Terkirim'])->whereDate('updated_at', $today)->count();
+            // 2. Riwayat Scan SPX (Terkonfirmasi dari ScanSpxController)
+            $scanHariIni = \App\Models\ScannedPackage::whereDate('created_at', $today)->count();
 
-            // 3. Riwayat Topup
-            $topupHariIni = \App\Models\TopUp::whereDate('created_at', $today)->count();
+            // 3. Riwayat Topup (Terkonfirmasi dari TopUpController)
+            $topupHariIni = \App\Models\Transaction::where('type', 'topup')->whereDate('created_at', $today)->count();
 
-            // 4. Riwayat PPOB (GANTI 'transaksi_ppob' DENGAN NAMA TABEL PPOB ANDA JIKA BERBEDA)
-            $ppobHariIni = DB::table('transaksi_ppob')->whereDate('created_at', $today)->count();
+            // 4. Riwayat PPOB (Terkonfirmasi dari PpobMobileController & PpobDigiflazController)
+            // Gabungkan jumlah transaksi PPOB dari IAK dan Digiflazz hari ini
+            $ppobIak = \App\Models\TransactionPpobIak::whereDate('created_at', $today)->count();
+            $ppobDigi = \App\Models\PpobTransaction::whereDate('created_at', $today)->count();
+            $ppobHariIni = $ppobIak + $ppobDigi;
 
-            // 5. Riwayat Belanja (GANTI 'marketplace_orders' DENGAN NAMA TABEL BELANJA ANDA JIKA BERBEDA)
-            $belanjaHariIni = DB::table('marketplace_orders')->whereDate('created_at', $today)->count();
+            // 5. Riwayat Belanja (Karena tabel marketplace belum ada di file yang kamu kirim, diset 0 dulu agar aman dan tidak Error 500)
+            $belanjaHariIni = 0;
         }
 
         // ==========================================
