@@ -43,6 +43,7 @@ Route::prefix('marketplace')->group(function () {
 });
 
 Route::post('/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'login']);
+Route::post('/login-pin', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'loginPin']); // <--- TARUH DI SINI
 Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
 Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendResetLinkApi']);
 

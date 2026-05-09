@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
-    // LOG LOG: Fungsi Login API Mobile
+    // LOG LOG: Fungsi Login API Mobile (Password)
     public function login(Request $request)
     {
         $request->validate([
@@ -42,6 +42,67 @@ class AuthController extends Controller
         }
 
         // Cetak Token untuk HP
+        $token = $user->createToken('sancaka-mobile')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login Berhasil',
+            'data' => [
+                'user' => $user,
+                'token' => $token
+            ]
+        ], 200);
+    }
+
+    // LOG LOG: Fungsi Login API Mobile (PIN 6 Digit)
+    public function loginPin(Request $request)
+    {
+        $request->validate([
+            'login' => 'required', // Email atau No WA
+            'pin'   => 'required|digits:6',
+        ], [
+            'login.required' => 'Email atau Nomor WA wajib diisi.',
+            'pin.required'   => 'PIN wajib diisi.',
+            'pin.digits'     => 'PIN harus 6 digit angka.'
+        ]);
+
+        $user = User::where('email', $request->login)
+                    ->orWhere('no_wa', $request->login)
+                    ->first();
+
+        // 1. Cek apakah user ditemukan
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akun tidak ditemukan.',
+            ], 404);
+        }
+
+        // 2. Cek apakah user aktif
+        if ($user->status === 'Tidak Aktif') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akun belum aktif.',
+            ], 403);
+        }
+
+        // 3. Cek apakah user sudah set PIN sebelumnya
+        if (empty($user->pin)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda belum mengatur PIN. Silakan login menggunakan Password terlebih dahulu, lalu atur PIN di menu pengaturan.',
+            ], 400);
+        }
+
+        // 4. Cocokkan PIN
+        if (!Hash::check($request->pin, $user->pin)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'PIN yang Anda masukkan salah.',
+            ], 401);
+        }
+
+        // 5. Cetak Token untuk HP
         $token = $user->createToken('sancaka-mobile')->plainTextToken;
 
         return response()->json([
