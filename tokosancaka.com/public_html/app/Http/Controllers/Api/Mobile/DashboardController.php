@@ -173,12 +173,36 @@ class DashboardController extends Controller
             })->sortByDesc('total_order')->values()->all();
         });
 
-        // 🔥 TAMBAHAN KHUSUS UNTUK BADGE ADMIN: HITUNG PESANAN HARI INI SAJA 🔥
-        $pesananHariIni = DB::table('Pesanan')
-            ->whereDate('tanggal_pesanan', Carbon::today()->toDateString())
-            ->count();
+        // ==========================================
+        // 🔥 TAMBAHAN KHUSUS BADGE ADMIN (HARI INI) 🔥
+        // ==========================================
+        $pesananHariIni = 0;
+        $scanHariIni = 0;
+        $topupHariIni = 0;
+        $ppobHariIni = 0;
+        $belanjaHariIni = 0;
 
-       // ==========================================
+        // Hanya hitung jika user adalah Admin (Meringankan beban server untuk user biasa)
+        if ($isAdmin) {
+            $today = Carbon::today()->toDateString();
+
+            // 1. Data Paket (Pesanan Baru)
+            $pesananHariIni = DB::table('Pesanan')->whereDate('tanggal_pesanan', $today)->count();
+
+            // 2. Riwayat Scan (Pesanan yang diupdate menjadi Diproses/Terkirim hari ini)
+            $scanHariIni = DB::table('Pesanan')->whereIn('status_pesanan', ['Diproses', 'Terkirim'])->whereDate('updated_at', $today)->count();
+
+            // 3. Riwayat Topup
+            $topupHariIni = \App\Models\TopUp::whereDate('created_at', $today)->count();
+
+            // 4. Riwayat PPOB (GANTI 'transaksi_ppob' DENGAN NAMA TABEL PPOB ANDA JIKA BERBEDA)
+            $ppobHariIni = DB::table('transaksi_ppob')->whereDate('created_at', $today)->count();
+
+            // 5. Riwayat Belanja (GANTI 'marketplace_orders' DENGAN NAMA TABEL BELANJA ANDA JIKA BERBEDA)
+            $belanjaHariIni = DB::table('marketplace_orders')->whereDate('created_at', $today)->count();
+        }
+
+        // ==========================================
         // UPDATE RESPONSE JSON-NYA (Paket Komplit)
         // ==========================================
         return response()->json([
@@ -187,7 +211,13 @@ class DashboardController extends Controller
                 'namaLengkap'         => $user->nama_lengkap,
                 'role'                => $user->role,
                 'saldo_format'        => number_format($saldo, 0, ',', '.'),
+
+                // Masukkan semua count ke dalam JSON
                 'pesananHariIni'      => $pesananHariIni,
+                'scanHariIni'         => $scanHariIni,
+                'topupHariIni'        => $topupHariIni,
+                'ppobHariIni'         => $ppobHariIni,
+                'belanjaHariIni'      => $belanjaHariIni,
 
                 // 🚨 INI BARANG BAWAAN YANG KETINGGALAN DI STASIUN COK!
                 'saldo_iak_format'    => number_format($saldoIak ?? 0, 0, ',', '.'),
