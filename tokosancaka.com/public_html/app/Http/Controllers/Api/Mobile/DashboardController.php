@@ -173,6 +173,11 @@ class DashboardController extends Controller
             })->sortByDesc('total_order')->values()->all();
         });
 
+        // 🔥 TAMBAHAN KHUSUS UNTUK BADGE ADMIN: HITUNG PESANAN HARI INI SAJA 🔥
+        $pesananHariIni = DB::table('Pesanan')
+            ->whereDate('tanggal_pesanan', Carbon::today()->toDateString())
+            ->count();
+
        // ==========================================
         // UPDATE RESPONSE JSON-NYA (Paket Komplit)
         // ==========================================
@@ -182,6 +187,7 @@ class DashboardController extends Controller
                 'namaLengkap'         => $user->nama_lengkap,
                 'role'                => $user->role,
                 'saldo_format'        => number_format($saldo, 0, ',', '.'),
+                'pesananHariIni'      => $pesananHariIni,
 
                 // 🚨 INI BARANG BAWAAN YANG KETINGGALAN DI STASIUN COK!
                 'saldo_iak_format'    => number_format($saldoIak ?? 0, 0, ',', '.'),
