@@ -120,7 +120,7 @@ class KoliController extends Controller
     }
 
     // ==========================================
-    // API: CEK ONGKIR
+    // API: CEK ONGKIR (MURNI PROXY KE KIRIMINAJA)
     // ==========================================
     public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
     {
@@ -130,11 +130,13 @@ class KoliController extends Controller
                 'weight' => 'required|numeric', 'volume' => 'required|numeric',
             ]);
 
+            // Bersihkan format harga
             $itemPrice = (int) str_replace(['Rp', '.', ',', ' '], '', $request->item_price);
             $useInsurance = ($request->ansuransi == 'iya' || $request->ansuransi == 1 || $request->ansuransi == 'true') ? 1 : 0;
 
             $cat = $request->input('service_type', 'regular');
 
+            // 1. LANGSUNG TEMBAK API KIRIMINAJA
             $options = $kirimaja->getExpressPricing(
                 $request->sender_district_id, $request->sender_subdistrict_id,
                 $request->receiver_district_id, $request->receiver_subdistrict_id,
@@ -142,9 +144,11 @@ class KoliController extends Controller
                 $itemPrice, null, $cat, $useInsurance
             );
 
+            // 2. LANGSUNG LEMPAR RESPONSE ASLI DARI KA KE MOBILE
             if (isset($options['status']) && $options['status'] === true && !empty($options['results'])) {
                  return response()->json(['success' => true, 'data' => $options]);
             }
+
             return response()->json(['success' => false, 'message' => 'Layanan tidak tersedia untuk rute ini.'], 404);
 
         } catch (\Exception $e) {
