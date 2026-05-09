@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\Mobile\ChatController; // <-- Tambahkan import ini
 use App\Http\Controllers\Admin\DashboardController; // <-- Tambahkan import ini untuk Broadcast
 use App\Http\Controllers\Api\Mobile\DaftarMemberController;
 use App\Http\Controllers\Api\Mobile\PpobDigiflazController;
+use App\Http\Controllers\Api\Mobile\SettingPrivacyController;
 /*
 |--------------------------------------------------------------------------
 | API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)
@@ -383,5 +384,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // ==========================================
     // Route ini sekarang aman di dalam pelukan Sanctum
     Route::get('/admin/ppob/cek-saldo', [PpobDigiflazController::class, 'cekSaldo']);
+
+});
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    // Route Pengaturan Privasi & Keamanan (Sancaka)
+    Route::post('/user/update-email', [SettingPrivacyController::class, 'updateEmail']);
+    Route::post('/user/update-password', [SettingPrivacyController::class, 'updatePassword']);
+    Route::post('/user/update-pin', [SettingPrivacyController::class, 'updatePin']);
 
 });
