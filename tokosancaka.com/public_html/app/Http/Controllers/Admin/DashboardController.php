@@ -327,74 +327,79 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
     {
         \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Memulai eksekusi sendBroadcast.', $request->all());
 
-        // Validasi input dari form Admin
+        // 1. Validasi input (Tambahkan validasi link)
         $request->validate([
             'judul' => 'required|string',
             'pesan' => 'required|string',
-            'jenis_aksi' => 'required|string'
+            'jenis_aksi' => 'required|string',
+            'link' => 'nullable|string' // <-- PERBAIKAN 1: Izinkan link masuk
         ]);
 
         \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Validasi input berhasil dilewati.');
 
-        // 1. Ambil semua token HP user yang tidak kosong dari tabel Pengguna
+        // 2. Ambil semua token HP user
         $tokens = DB::table('Pengguna')
                     ->whereNotNull('expo_token')
                     ->where('expo_token', '!=', '')
                     ->pluck('expo_token')
                     ->toArray();
 
-        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Query token selesai. Jumlah token yang ditemukan: ' . count($tokens));
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Query token selesai. Ditemukan: ' . count($tokens));
 
         if (empty($tokens)) {
-            \Illuminate\Support\Facades\Log::warning('LOG LOG: [Broadcast] Dibatalkan. Tidak ada user dengan expo_token aktif di database.');
-
-            // PERBAIKAN: Kembalikan respon berformat JSON (Gagal)
+            \Illuminate\Support\Facades\Log::warning('LOG LOG: [Broadcast] Dibatalkan. Tidak ada user aktif.');
             return response()->json([
                 'success' => false,
                 'message' => 'Tidak ada user dengan token notifikasi aktif.'
             ], 400);
         }
 
-        // 2. Siapkan Data Notifikasi
+        // 3. Siapkan Data Notifikasi
         $notificationData = [
             'title' => $request->judul,
             'body'  => $request->pesan,
             'sound' => 'default',
             'data'  => [
-                // Jika admin pilih aksi 'playstore', kirim instruksi ke aplikasi
-                'action' => $request->jenis_aksi == 'playstore' ? 'rate_playstore' : 'info_biasa'
+                // <-- PERBAIKAN 2: Teruskan persis apa yang dikirim dari React Native
+                'action' => $request->jenis_aksi,
+                'link'   => $request->link ?? ''
             ]
         ];
 
-        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Payload notificationData berhasil disiapkan.', $notificationData);
-
-        // 3. Format payload sesuai standar Expo Push API
+        // 4. Format payload untuk Expo
         $messages = [];
         foreach ($tokens as $token) {
             $messages[] = array_merge(['to' => $token], $notificationData);
         }
 
-        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Array messages siap ditembakkan ke Expo.', ['total_messages' => count($messages)]);
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Melakukan HTTP POST ke Expo...');
 
-        // 4. Tembakkan ke Server Expo
-        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Melakukan HTTP POST ke https://exp.host/--/api/v2/push/send...');
+        // 5. PERBAIKAN 3: Pecah array menjadi 100 per request (Chunking)
+        // Agar tidak ditolak oleh server Expo jika user sudah sangat banyak
+        $chunks = array_chunk($messages, 100);
 
-        $response = Http::withHeaders([
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json',
-        ])->post('https://exp.host/--/api/v2/push/send', $messages);
+        $berhasil = 0;
+        foreach ($chunks as $chunk) {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ])->post('https://exp.host/--/api/v2/push/send', $chunk);
 
-        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Response diterima dari server Expo.', [
-            'status_code' => $response->status(),
-            'response_body' => $response->json()
-        ]);
+            if ($response->successful()) {
+                $berhasil += count($chunk);
+            }
 
-        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Eksekusi selesai, mengembalikan response ke klien.');
+            \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Chunk Response:', [
+                'status_code' => $response->status(),
+                'response_body' => $response->json()
+            ]);
+        }
 
-        // PERBAIKAN: Kembalikan respon berformat JSON (Sukses)
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Eksekusi selesai.');
+
         return response()->json([
             'success' => true,
-            'message' => 'Broadcast berhasil dikirim ke ' . count($tokens) . ' pengguna!'
+            'message' => 'Broadcast berhasil dikirim ke ' . $berhasil . ' pengguna!'
         ]);
     }
 
