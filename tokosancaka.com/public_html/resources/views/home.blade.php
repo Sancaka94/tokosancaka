@@ -591,7 +591,7 @@ width: 22px;
             </div>
 
             <div class="col-12 col-md-4">
-                <a href="https://tokosancaka.com/public/assets/app/SancakaExpress.apk" target="_blank" class="text-decoration-none text-dark">
+                <a href="https://play.google.com/store/apps/details?id=com.sancaka.express.app" target="_blank" class="text-decoration-none text-dark">
                     <div class="action-card clickable h-100">
                         <h5 class="fw-bold"><i class="fa-brands fa-android me-2 text-success"></i>Aplikasi Android</h5>
                         <p class="text-muted small">Lebih praktis! Nikmati fitur layanan lengkap Sancaka Express langsung dari HP Anda.</p>
@@ -1792,7 +1792,7 @@ width: 22px;
 
 
 
-{{-- 
+{{--
     =======================================================
     LOGIKA PENGAMBILAN DATA (DENGAN CACHE AGAR GTMETRIX 100%)
     =======================================================
@@ -1803,7 +1803,7 @@ width: 22px;
         if (class_exists(\App\Models\Post::class)) {
             // Ambil parameter halaman untuk nama cache
             $page = request()->get('page', 1);
-            
+
             // Query di-cache selama 1 jam (3600 detik) agar TTFB secepat kilat
             $latestPosts = \Illuminate\Support\Facades\Cache::remember('berita_home_page_' . $page, 3600, function () {
                 return \App\Models\Post::with(['category', 'author'])
