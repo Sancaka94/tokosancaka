@@ -341,6 +341,7 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
         $tokens = DB::table('Pengguna')
                     ->whereNotNull('expo_token')
                     ->where('expo_token', '!=', '')
+                    ->distinct()
                     ->pluck('expo_token')
                     ->toArray();
 
