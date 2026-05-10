@@ -3,47 +3,73 @@
 @section('title', 'Edit Data Pelanggan')
 
 @section('styles')
-{{-- CSS Khusus untuk Select2 agar tingginya sama dengan form Bootstrap 5 --}}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
 <style>
-    /* Select2 Bootstrap 5 Style using Tailwind Colors */
-    .select2-container .select2-selection--single {
-        height: 50px !important; /* Setara dengan py-3 Tailwind */
+    /* Reset bawaan select agar tidak bentrok */
+    select.select2-hidden-accessible {
+        border: 0 !important;
+        clip: rect(0 0 0 0) !important;
+        height: 1px !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        position: absolute !important;
+        width: 1px !important;
+    }
+
+    /* Style Utama Kotak Select2 */
+    .select2-container--default .select2-selection--single {
+        height: 50px !important;
         border: 1px solid #d1d5db !important;
         border-radius: 0.5rem !important;
-        padding: 0.5rem 0.75rem !important;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        display: flex !important;
+        align-items: center !important;
         background-color: #fff !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
     }
+
+    /* Teks Pilihan */
     .select2-container--default .select2-selection--single .select2-selection__rendered {
-        line-height: 32px !important;
-        padding-left: 0 !important;
+        line-height: normal !important;
+        padding-left: 0.75rem !important;
         color: #374151 !important;
-        font-size: 1rem !important; /* Setara text-base */
+        font-size: 1rem !important;
     }
+
+    /* Teks Placeholder (Warna Merah) */
+    .select2-container--default .select2-selection--single .select2-selection__placeholder {
+        color: #ef4444 !important; /* Merah Tailwind */
+        font-weight: 600 !important;
+    }
+
+    /* Posisi Panah */
     .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 48px !important;
+        height: 100% !important;
         right: 0.75rem !important;
     }
+
+    /* Kotak Dropdown & Pencarian */
     .select2-dropdown {
         border: 1px solid #d1d5db !important;
         border-radius: 0.5rem !important;
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
-        font-size: 1rem !important;
+        overflow: hidden;
+    }
+    .select2-search--dropdown {
+        padding: 10px !important;
+        background-color: #f8fafc !important; /* Warna abu-abu super muda */
+        border-bottom: 1px solid #e2e8f0 !important;
     }
     .select2-search__field {
+        border: 1px solid #cbd5e1 !important;
         border-radius: 0.375rem !important;
-        border: 1px solid #d1d5db !important;
-        padding: 0.5rem !important;
+        padding: 0.5rem 0.75rem !important;
+        height: 40px !important;
+        font-size: 0.875rem !important;
     }
     .select2-search__field:focus {
         outline: none !important;
-        border-color: #4f46e5 !important;
-        box-shadow: 0 0 0 1px #4f46e5 !important;
-    }
-    .select2-container.select2-container--focus .select2-selection {
         border-color: #4f46e5 !important;
         box-shadow: 0 0 0 1px #4f46e5 !important;
     }
@@ -169,9 +195,8 @@
 
                             <div>
                                 <label for="province_id" class="block text-base font-bold text-gray-700 mb-2">Provinsi <span class="text-red-500">*</span></label>
-                                <select id="province_id" name="province_id" required class="select2 mt-1 block w-full rounded-lg text-base">
-                                    <option value="">Pilih Provinsi...</option>
-                                    @foreach($provinces as $province)
+                                <select id="province_id" name="province_id" required class="select2-searchable w-full" data-placeholder="Pilih Provinsi...">
+                                    <option></option> @foreach($provinces as $province)
                                         <option value="{{ $province->id }}" {{ old('province_id', $userProvinceId ?? '') == $province->id ? 'selected' : '' }}>
                                             {{ $province->name }}
                                         </option>
@@ -182,24 +207,24 @@
 
                             <div>
                                 <label for="regency_id" class="block text-base font-bold text-gray-700 mb-2">Kabupaten/Kota <span class="text-red-500">*</span></label>
-                                <select id="regency_id" name="regency_id" required class="select2 mt-1 block w-full rounded-lg text-base">
-                                    <option value="">Pilih Provinsi terlebih dahulu...</option>
+                                <select id="regency_id" name="regency_id" required class="select2-searchable w-full" data-placeholder="Pilih Provinsi terlebih dahulu...">
+                                    <option></option>
                                 </select>
                                 @error('regency_id')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
 
                             <div>
                                 <label for="district_id" class="block text-base font-bold text-gray-700 mb-2">Kecamatan <span class="text-red-500">*</span></label>
-                                <select id="district_id" name="district_id" required class="select2 mt-1 block w-full rounded-lg text-base">
-                                    <option value="">Pilih Kabupaten terlebih dahulu...</option>
+                                <select id="district_id" name="district_id" required class="select2-searchable w-full" data-placeholder="Pilih Kabupaten terlebih dahulu...">
+                                    <option></option>
                                 </select>
                                 @error('district_id')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
 
                             <div>
                                 <label for="village_id" class="block text-base font-bold text-gray-700 mb-2">Desa/Kelurahan <span class="text-red-500">*</span></label>
-                                <select id="village_id" name="village_id" required class="select2 mt-1 block w-full rounded-lg text-base">
-                                    <option value="">Pilih Kecamatan terlebih dahulu...</option>
+                                <select id="village_id" name="village_id" required class="select2-searchable w-full" data-placeholder="Pilih Kecamatan terlebih dahulu...">
+                                    <option></option>
                                 </select>
                                 @error('village_id')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
@@ -207,7 +232,7 @@
                             <div class="sm:col-span-2">
                                 <label for="address_detail" class="block text-base font-bold text-gray-700 mb-2">Alamat Detail (Jalan, RT/RW, Patokan)</label>
                                 <textarea id="address_detail" name="address_detail" rows="4" placeholder="Contoh: Jl. Merdeka No. 123, Depan minimarket"
-                                          class="block w-full rounded-lg border-gray-300 px-4 py-3 text-base shadow-sm focus:ring-teal-500 focus:border-teal-500 transition-colors">{{ old('address_detail', $user->address_detail) }}</textarea>
+                                        class="block w-full rounded-lg border-gray-300 px-4 py-3 text-base shadow-sm focus:ring-teal-500 focus:border-teal-500 transition-colors">{{ old('address_detail', $user->address_detail) }}</textarea>
                                 @error('address_detail')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
                         </div>
