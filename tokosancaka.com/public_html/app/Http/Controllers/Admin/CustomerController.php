@@ -63,11 +63,11 @@ class CustomerController extends Controller
             if (substr($phoneNumber, 0, 1) === '0') {
                 $phoneNumber = '62' . substr($phoneNumber, 1);
             }
-            
+
             // Pesan WA yang akan dikirim
-            $message = "Selamat datang, {$request->nama_lengkap}! Pendaftaran Anda di Toko Sancaka telah disetujui. " . 
+            $message = "Selamat datang, {$request->nama_lengkap}! Pendaftaran Anda di Toko Sancaka telah disetujui. " .
                        "Akun Anda sudah aktif Ya kak, Jika ada Kendala yang kakak alami angan ragu WA ke ADMIN +6285745808809\n\n" .
-                       "Silakan klik link berikut untuk melengkapi profil dan mengatur password Anda (Link berlaku 48 jam):\n" . 
+                       "Silakan klik link berikut untuk melengkapi profil dan mengatur password Anda (Link berlaku 48 jam):\n" .
                        $setupUrl . "\n\n" .
                        "Terima kasih!";
 
@@ -102,7 +102,7 @@ class CustomerController extends Controller
         // kita bisa me-redirect atau menggunakan view dasar di sini.
         // Jika Anda ingin ini berfungsi sebagai view detail standar:
         return view('admin.customers.show', compact('customer'));
-        
+
         // CATATAN: Pastikan resources/views/admin/customers/show.blade.php tersedia.
     }
 
@@ -118,7 +118,7 @@ class CustomerController extends Controller
         $userProvinceId = DB::table('reg_provinces')
                             ->where('name', $customer->province)
                             ->value('id');
-                            
+
         $userRegencyId = null;
         if ($userProvinceId) {
             $userRegencyId = DB::table('reg_regencies')
@@ -155,23 +155,26 @@ class CustomerController extends Controller
     }
 
     /**
-     * Memperbarui data pelanggan di database.
+     * Memperbarui data pelanggan di database (TERMASUK EDIT & SET PIN).
      */
     public function update(Request $request, User $customer)
     {
+        // 1. Validasi Dasar + PIN
         $validated = $request->validate([
-            'nama_lengkap' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('Pengguna', 'email')->ignore($customer->id_pengguna, 'id_pengguna')],
-            'no_wa' => ['required', 'string', 'max:15'],
-            'store_name' => ['nullable', 'string', 'max:255'],
-            'role' => ['required', 'string', Rule::in(['Admin', 'Pelanggan', 'Seller'])],
-            'province_id' => ['required', 'exists:reg_provinces,id'],
-            'regency_id' => ['required', 'exists:reg_regencies,id'],
-            'district_id' => ['required', 'exists:reg_districts,id'],
-            'village_id' => ['required', 'exists:reg_villages,id'],
+            'nama_lengkap'   => ['required', 'string', 'max:255'],
+            'email'          => ['required', 'string', 'email', 'max:255', Rule::unique('Pengguna', 'email')->ignore($customer->id_pengguna, 'id_pengguna')],
+            'no_wa'          => ['required', 'string', 'max:15'],
+            'store_name'     => ['nullable', 'string', 'max:255'],
+            'role'           => ['required', 'string', Rule::in(['Admin', 'Pelanggan', 'Seller'])],
+            'province_id'    => ['required', 'exists:reg_provinces,id'],
+            'regency_id'     => ['required', 'exists:reg_regencies,id'],
+            'district_id'    => ['required', 'exists:reg_districts,id'],
+            'village_id'     => ['required', 'exists:reg_villages,id'],
             'address_detail' => ['nullable', 'string', 'max:500'],
+            'pin'            => ['nullable', 'digits:6'], // ✅ Validasi PIN 6 Digit ditambahkan
         ]);
 
+        // 2. Logika Update Password (Opsional)
         if ($request->filled('password')) {
             $request->validate([
                 'password' => ['required', 'confirmed', Password::min(8)],
@@ -179,9 +182,21 @@ class CustomerController extends Controller
             $validated['password'] = Hash::make($request->password);
         }
 
+        // 3. ✅ Logika Update PIN Transaksi (Opsional)
+        if ($request->filled('pin')) {
+            // Hash PIN sebelum disimpan ke database agar aman
+            $validated['pin'] = Hash::make($request->pin);
+        } else {
+            // Jika input PIN dikosongkan di form, hapus key 'pin' dari array
+            // agar PIN lama di database tidak tertimpa menjadi null
+            unset($validated['pin']);
+        }
+
+        // 4. Simpan Perubahan
         $customer->update($validated);
 
-        return redirect()->route('admin.customers.index')->with('success', 'Data pelanggan ' . $customer->nama_lengkap . ' berhasil diperbarui.');
+        return redirect()->route('admin.customers.index')
+                         ->with('success', 'Data pelanggan ' . $customer->nama_lengkap . ' berhasil diperbarui.');
     }
 
     /**
@@ -191,7 +206,7 @@ class CustomerController extends Controller
     {
         $fileName = "daftar-pelanggan-" . date('Y-m-d') . ".csv";
         $headers = [
-            "Content-type"          => "text/csv",
+            "Content-type"        => "text/csv",
             "Content-Disposition" => "attachment; filename=$fileName",
             "Pragma"              => "no-cache",
             "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
@@ -201,7 +216,7 @@ class CustomerController extends Controller
         $callback = function() {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['ID', 'Nama Lengkap', 'Email', 'No. WA', 'Nama Toko', 'Role', 'Status Verifikasi', 'Tanggal Daftar']);
-            
+
             $customers = User::where('role', 'pelanggan')->get();
 
             foreach ($customers as $customer) {
@@ -259,7 +274,7 @@ class CustomerController extends Controller
 
         // 4. KIRIM WA VIA FONNTE SERVICE
         try {
-            $response = $fonnteService->sendMessage($phoneNumber, $message); 
+            $response = $fonnteService->sendMessage($phoneNumber, $message);
 
             // Cek respon
             if ($response && isset($response['status']) && $response['status'] === 'success') {
@@ -288,7 +303,7 @@ class CustomerController extends Controller
         $customer->forceDelete();
         return redirect()->route('admin.customers.index')->with('success', 'Data pelanggan ' . $userName . ' berhasil dihapus.');
     }
-    
+
     /**
      * Menambahkan saldo ke customer.
      */
@@ -319,7 +334,7 @@ class CustomerController extends Controller
             return redirect()->route('admin.customers.index')->with('error', 'Gagal menambahkan saldo. Terjadi kesalahan server.');
         }
     }
-    
+
     // --- METHOD BARU UNTUK MENGUBAH PELANGGAN MENJADI PENJUAL ---
 
     /**
