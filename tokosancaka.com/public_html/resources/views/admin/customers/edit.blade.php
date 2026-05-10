@@ -18,29 +18,35 @@
         width: 1px !important;
     }
 
-    /* Style Utama Kotak Select2 */
+    /* Style Utama Kotak Select2 menyesuaikan desain Bootstrap 5 / Tailwind Modern */
     .select2-container--default .select2-selection--single {
-        height: 50px !important;
-        border: 1px solid #d1d5db !important;
-        border-radius: 0.5rem !important;
+        height: 42px !important; /* Disesuaikan dengan tinggi input Tailwind px-4 py-2.5 */
+        border: 1px solid #d1d5db !important; /* border-gray-300 */
+        border-radius: 0.5rem !important; /* rounded-lg */
         display: flex !important;
         align-items: center !important;
-        background-color: #fff !important;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+        background-color: #f9fafb !important; /* bg-gray-50 */
+        transition: all 0.2s ease-in-out;
+    }
+
+    .select2-container--default.select2-container--open .select2-selection--single {
+        border-color: #3b82f6 !important; /* border-blue-500 */
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2) !important; /* ring-4 ring-blue-500/20 */
+        background-color: #ffffff !important;
     }
 
     /* Teks Pilihan */
     .select2-container--default .select2-selection--single .select2-selection__rendered {
         line-height: normal !important;
-        padding-left: 0.75rem !important;
-        color: #374151 !important;
-        font-size: 1rem !important;
+        padding-left: 1rem !important; /* px-4 */
+        color: #111827 !important; /* text-gray-900 */
+        font-size: 0.875rem !important; /* text-sm */
     }
 
-    /* Teks Placeholder (Warna Merah) */
+    /* Teks Placeholder */
     .select2-container--default .select2-selection--single .select2-selection__placeholder {
-        color: #ef4444 !important; /* Merah Tailwind */
-        font-weight: 600 !important;
+        color: #6b7280 !important; /* text-gray-500 */
+        font-weight: 400 !important;
     }
 
     /* Posisi Panah */
@@ -53,67 +59,75 @@
     .select2-dropdown {
         border: 1px solid #d1d5db !important;
         border-radius: 0.5rem !important;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
         overflow: hidden;
+        margin-top: 4px;
     }
     .select2-search--dropdown {
-        padding: 10px !important;
-        background-color: #f8fafc !important; /* Warna abu-abu super muda */
-        border-bottom: 1px solid #e2e8f0 !important;
+        padding: 8px !important;
+        background-color: #ffffff !important;
+        border-bottom: 1px solid #e5e7eb !important;
     }
     .select2-search__field {
-        border: 1px solid #cbd5e1 !important;
+        border: 1px solid #d1d5db !important;
         border-radius: 0.375rem !important;
         padding: 0.5rem 0.75rem !important;
-        height: 40px !important;
+        height: 36px !important;
         font-size: 0.875rem !important;
+        transition: all 0.2s ease-in-out;
     }
     .select2-search__field:focus {
         outline: none !important;
-        border-color: #4f46e5 !important;
-        box-shadow: 0 0 0 1px #4f46e5 !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
     }
 </style>
 @endsection
 
 @section('content')
-<div class="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+<div class="px-4 py-6 md:px-6 lg:px-8 max-w-7xl mx-auto">
 
     {{-- ====================================================== --}}
     {{-- ============= BLOK FLASH MESSAGE ===================== --}}
     {{-- ====================================================== --}}
     @if(session('success'))
-        <div id="alert-success" class="flex items-center justify-between p-4 mb-6 text-base text-green-800 border border-green-200 rounded-lg bg-green-50 shadow-sm" role="alert">
-            <div class="flex items-center">
-                <i class="fa fa-check-circle w-6 h-6 mr-3 text-xl text-green-500"></i>
+        <div id="alert-success" class="flex items-center justify-between p-4 mb-6 text-sm text-emerald-800 border border-emerald-200 rounded-lg bg-emerald-50 shadow-sm transition-all" role="alert">
+            <div class="flex items-center gap-3">
+                <i class="fa fa-check-circle text-xl text-emerald-500"></i>
                 <span class="font-medium">{{ session('success') }}</span>
             </div>
-            <button type="button" onclick="document.getElementById('alert-success').style.display='none'" class="text-green-600 hover:text-green-800 font-bold focus:outline-none text-xl"><i class="fa fa-times"></i></button>
+            <button type="button" onclick="document.getElementById('alert-success').style.display='none'" class="text-emerald-600 hover:text-emerald-900 transition-colors focus:outline-none p-1">
+                <i class="fa fa-times text-lg"></i>
+            </button>
         </div>
     @endif
 
     @if($errors->any())
-        <div id="alert-validation" class="flex p-4 mb-6 text-base text-red-800 border border-red-200 rounded-lg bg-red-50 shadow-sm" role="alert">
-            <i class="fa fa-exclamation-triangle w-6 h-6 mr-3 mt-1 text-xl text-red-500"></i>
+        <div id="alert-validation" class="flex p-4 mb-6 text-sm text-red-800 border border-red-200 rounded-lg bg-red-50 shadow-sm" role="alert">
+            <i class="fa fa-exclamation-circle text-xl text-red-500 mr-3 mt-0.5"></i>
             <div>
-                <span class="font-bold text-lg">Oops! Ada kesalahan pengisian form:</span>
-                <ul class="mt-2 ml-5 list-disc list-outside text-red-700">
+                <span class="font-semibold text-base">Oops! Terdapat kesalahan pada form:</span>
+                <ul class="mt-2 ml-4 list-disc list-outside text-red-700 space-y-1">
                     @foreach($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
             </div>
-            <button type="button" onclick="document.getElementById('alert-validation').style.display='none'" class="ml-auto -mx-1.5 -my-1.5 text-red-500 rounded-lg focus:ring-2 focus:ring-red-400 p-1.5 hover:bg-red-200 inline-flex h-10 w-10 text-xl"><i class="fa fa-times m-auto"></i></button>
+            <button type="button" onclick="document.getElementById('alert-validation').style.display='none'" class="ml-auto text-red-500 hover:text-red-700 p-1 focus:outline-none transition-colors h-fit">
+                <i class="fa fa-times text-lg"></i>
+            </button>
         </div>
     @endif
 
     {{-- HEADER PAGE --}}
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
         <div>
-            <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">Edit Data Pelanggan</h1>
-            <p class="mt-2 text-base text-gray-500">Perbarui informasi profil, alamat, dan keamanan dari <span class="font-bold text-gray-800">{{ $user->nama_lengkap }}</span>.</p>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Edit Data Pelanggan</h1>
+            <p class="mt-1.5 text-sm text-gray-500">
+                Perbarui informasi profil, alamat, dan keamanan dari <span class="font-semibold text-gray-800">{{ $user->nama_lengkap }}</span>.
+            </p>
         </div>
-        <a href="{{ route('admin.customers.index') }}" class="mt-5 sm:mt-0 inline-flex items-center px-5 py-3 bg-white border border-gray-300 rounded-lg shadow-sm text-base font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+        <a href="{{ route('admin.customers.index') }}" class="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 focus:outline-none focus:ring-4 focus:ring-gray-200 transition-all">
             <i class="fa fa-arrow-left mr-2"></i> Kembali
         </a>
     </div>
@@ -123,57 +137,60 @@
         @csrf
         @method('PUT')
 
-        <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
             {{-- KOLOM KIRI (Informasi Dasar & Alamat) --}}
-            <div class="xl:col-span-8 space-y-8">
+            <div class="lg:col-span-8 space-y-6 lg:space-y-8">
 
                 {{-- CARD: INFORMASI DASAR --}}
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="px-6 py-5 border-b border-gray-200 bg-gray-50">
-                        <h3 class="text-xl font-bold leading-6 text-gray-900 flex items-center">
-                            <i class="fa fa-user-circle text-indigo-600 mr-3 text-2xl"></i> Informasi Dasar
+                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
+                        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                            <div class="bg-blue-100 text-blue-600 p-2 rounded-lg mr-3">
+                                <i class="fa fa-user-circle text-lg w-5 h-5 flex items-center justify-center"></i>
+                            </div>
+                            Informasi Dasar
                         </h3>
                     </div>
-                    <div class="p-6 md:p-8">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-8">
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
                             <div class="sm:col-span-2">
-                                <label for="nama_lengkap" class="block text-base font-bold text-gray-700 mb-2">Nama Lengkap <span class="text-red-500">*</span></label>
+                                <label for="nama_lengkap" class="block text-sm font-medium text-gray-900 mb-2">Nama Lengkap <span class="text-red-500">*</span></label>
                                 <input type="text" id="nama_lengkap" name="nama_lengkap" value="{{ old('nama_lengkap', $user->nama_lengkap) }}" required
-                                       class="block w-full rounded-lg border-gray-300 px-4 py-3 text-base shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors @error('nama_lengkap') border-red-400 focus:border-red-500 focus:ring-red-500 bg-red-50 @enderror">
-                                @error('nama_lengkap')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white block w-full px-4 py-2.5 transition-all @error('nama_lengkap') border-red-500 focus:ring-red-500/20 focus:border-red-500 bg-red-50 @enderror">
+                                @error('nama_lengkap')<p class="mt-1.5 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
 
                             <div>
-                                <label for="email" class="block text-base font-bold text-gray-700 mb-2">Alamat Email <span class="text-red-500">*</span></label>
+                                <label for="email" class="block text-sm font-medium text-gray-900 mb-2">Alamat Email <span class="text-red-500">*</span></label>
                                 <input type="email" id="email" name="email" value="{{ old('email', $user->email) }}" required
-                                       class="block w-full rounded-lg border-gray-300 px-4 py-3 text-base shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors @error('email') border-red-400 bg-red-50 @enderror">
-                                @error('email')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white block w-full px-4 py-2.5 transition-all @error('email') border-red-500 bg-red-50 @enderror">
+                                @error('email')<p class="mt-1.5 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
 
                             <div>
-                                <label for="no_wa" class="block text-base font-bold text-gray-700 mb-2">Nomor WhatsApp <span class="text-red-500">*</span></label>
-                                <div class="relative rounded-lg shadow-sm">
-                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <i class="fab fa-whatsapp text-green-500 text-lg"></i>
+                                <label for="no_wa" class="block text-sm font-medium text-gray-900 mb-2">Nomor WhatsApp <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                        <i class="fab fa-whatsapp text-emerald-500 text-lg"></i>
                                     </div>
                                     <input type="text" id="no_wa" name="no_wa" value="{{ old('no_wa', $user->no_wa) }}" required
-                                           class="block w-full pl-12 pr-4 py-3 rounded-lg border-gray-300 text-base focus:ring-indigo-500 focus:border-indigo-500 transition-colors @error('no_wa') border-red-400 bg-red-50 @enderror">
+                                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white block w-full pl-10 pr-4 py-2.5 transition-all @error('no_wa') border-red-500 bg-red-50 @enderror">
                                 </div>
-                                @error('no_wa')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
+                                @error('no_wa')<p class="mt-1.5 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
 
                             <div>
-                                <label for="store_name" class="block text-base font-bold text-gray-700 mb-2">Nama Toko (Opsional)</label>
+                                <label for="store_name" class="block text-sm font-medium text-gray-900 mb-2">Nama Toko <span class="text-gray-400 font-normal">(Opsional)</span></label>
                                 <input type="text" id="store_name" name="store_name" value="{{ old('store_name', $user->store_name) }}" placeholder="Contoh: Toko Sancaka"
-                                       class="block w-full rounded-lg border-gray-300 px-4 py-3 text-base shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
-                                @error('store_name')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white block w-full px-4 py-2.5 transition-all">
+                                @error('store_name')<p class="mt-1.5 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
 
                             <div>
-                                <label for="role" class="block text-base font-bold text-gray-700 mb-2">Hak Akses (Role) <span class="text-red-500">*</span></label>
-                                <select id="role" name="role" required class="block w-full rounded-lg border-gray-300 px-4 py-3 text-base shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+                                <label for="role" class="block text-sm font-medium text-gray-900 mb-2">Hak Akses (Role) <span class="text-red-500">*</span></label>
+                                <select id="role" name="role" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white block w-full px-4 py-2.5 transition-all">
                                     <option value="Pelanggan" {{ old('role', $user->role) == 'Pelanggan' ? 'selected' : '' }}>Pelanggan</option>
                                     <option value="Seller" {{ old('role', $user->role) == 'Seller' ? 'selected' : '' }}>Seller</option>
                                     <option value="Admin" {{ old('role', $user->role) == 'Admin' ? 'selected' : '' }}>Admin</option>
@@ -185,55 +202,59 @@
 
                 {{-- CARD: ALAMAT PENGGUNA --}}
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="px-6 py-5 border-b border-gray-200 bg-gray-50">
-                        <h3 class="text-xl font-bold leading-6 text-gray-900 flex items-center">
-                            <i class="fa fa-map-marker-alt text-teal-600 mr-3 text-2xl"></i> Alamat Pengiriman
+                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
+                        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                            <div class="bg-teal-100 text-teal-600 p-2 rounded-lg mr-3">
+                                <i class="fa fa-map-marker-alt text-lg w-5 h-5 flex items-center justify-center"></i>
+                            </div>
+                            Alamat Pengiriman
                         </h3>
                     </div>
-                    <div class="p-6 md:p-8">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-8">
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
                             <div>
-                                <label for="province_id" class="block text-base font-bold text-gray-700 mb-2">Provinsi <span class="text-red-500">*</span></label>
+                                <label for="province_id" class="block text-sm font-medium text-gray-900 mb-2">Provinsi <span class="text-red-500">*</span></label>
                                 <select id="province_id" name="province_id" required class="select2-searchable w-full" data-placeholder="Pilih Provinsi...">
-                                    <option></option> @foreach($provinces as $province)
+                                    <option></option>
+                                    @foreach($provinces as $province)
                                         <option value="{{ $province->id }}" {{ old('province_id', $userProvinceId ?? '') == $province->id ? 'selected' : '' }}>
                                             {{ $province->name }}
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('province_id')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
+                                @error('province_id')<p class="mt-1.5 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
 
                             <div>
-                                <label for="regency_id" class="block text-base font-bold text-gray-700 mb-2">Kabupaten/Kota <span class="text-red-500">*</span></label>
+                                <label for="regency_id" class="block text-sm font-medium text-gray-900 mb-2">Kabupaten/Kota <span class="text-red-500">*</span></label>
                                 <select id="regency_id" name="regency_id" required class="select2-searchable w-full" data-placeholder="Pilih Provinsi terlebih dahulu...">
                                     <option></option>
                                 </select>
-                                @error('regency_id')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
+                                @error('regency_id')<p class="mt-1.5 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
 
                             <div>
-                                <label for="district_id" class="block text-base font-bold text-gray-700 mb-2">Kecamatan <span class="text-red-500">*</span></label>
+                                <label for="district_id" class="block text-sm font-medium text-gray-900 mb-2">Kecamatan <span class="text-red-500">*</span></label>
                                 <select id="district_id" name="district_id" required class="select2-searchable w-full" data-placeholder="Pilih Kabupaten terlebih dahulu...">
                                     <option></option>
                                 </select>
-                                @error('district_id')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
+                                @error('district_id')<p class="mt-1.5 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
 
                             <div>
-                                <label for="village_id" class="block text-base font-bold text-gray-700 mb-2">Desa/Kelurahan <span class="text-red-500">*</span></label>
+                                <label for="village_id" class="block text-sm font-medium text-gray-900 mb-2">Desa/Kelurahan <span class="text-red-500">*</span></label>
                                 <select id="village_id" name="village_id" required class="select2-searchable w-full" data-placeholder="Pilih Kecamatan terlebih dahulu...">
                                     <option></option>
                                 </select>
-                                @error('village_id')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
+                                @error('village_id')<p class="mt-1.5 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
 
                             <div class="sm:col-span-2">
-                                <label for="address_detail" class="block text-base font-bold text-gray-700 mb-2">Alamat Detail (Jalan, RT/RW, Patokan)</label>
-                                <textarea id="address_detail" name="address_detail" rows="4" placeholder="Contoh: Jl. Merdeka No. 123, Depan minimarket"
-                                        class="block w-full rounded-lg border-gray-300 px-4 py-3 text-base shadow-sm focus:ring-teal-500 focus:border-teal-500 transition-colors">{{ old('address_detail', $user->address_detail) }}</textarea>
-                                @error('address_detail')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
+                                <label for="address_detail" class="block text-sm font-medium text-gray-900 mb-2">Alamat Detail <span class="text-gray-400 font-normal">(Jalan, RT/RW, Patokan)</span></label>
+                                <textarea id="address_detail" name="address_detail" rows="3" placeholder="Contoh: Jl. Merdeka No. 123, Depan minimarket"
+                                          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white block w-full px-4 py-2.5 transition-all resize-y">{{ old('address_detail', $user->address_detail) }}</textarea>
+                                @error('address_detail')<p class="mt-1.5 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
                         </div>
                     </div>
@@ -241,92 +262,95 @@
             </div>
 
             {{-- KOLOM KANAN (Keamanan: Password & PIN) --}}
-            <div class="xl:col-span-4 space-y-8">
+            <div class="lg:col-span-4 space-y-6 lg:space-y-8">
 
-                <div class="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden relative">
-                    <div class="absolute top-0 left-0 w-2 h-full bg-red-600"></div>
-                    <div class="px-6 py-5 border-b border-red-100 bg-white ml-2">
-                        <h3 class="text-xl font-bold leading-6 text-gray-900 flex items-center">
-                            <i class="fa fa-shield-alt text-red-600 mr-3 text-2xl"></i> Keamanan Akun
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
+                        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                            <div class="bg-slate-100 text-slate-700 p-2 rounded-lg mr-3">
+                                <i class="fa fa-shield-alt text-lg w-5 h-5 flex items-center justify-center"></i>
+                            </div>
+                            Keamanan Akun
                         </h3>
-                        <p class="mt-2 text-sm text-red-500 font-semibold">Kosongkan kolom di bawah jika tidak ingin diubah.</p>
                     </div>
 
-                    <div class="p-6 md:p-8 space-y-8 bg-red-50/20 ml-2">
+                    <div class="p-6 space-y-8">
+                        <div class="bg-blue-50 text-blue-800 text-xs font-medium px-3 py-2 rounded-md mb-4 border border-blue-100">
+                            <i class="fa fa-info-circle mr-1"></i> Kosongkan form di bawah jika tidak ingin mengubah password atau PIN.
+                        </div>
 
                         {{-- UBAH PASSWORD --}}
-                        <div class="space-y-5">
-                            <h4 class="text-lg font-bold text-gray-800 border-b border-gray-200 pb-3">Password Login</h4>
+                        <div class="space-y-4">
+                            <h4 class="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">Password Login</h4>
 
                             <div>
-                                <label for="password" class="block text-base font-bold text-gray-700 mb-2">Password Baru</label>
-                                <div class="relative rounded-lg shadow-sm">
+                                <label for="password" class="block text-sm font-medium text-gray-900 mb-2">Password Baru</label>
+                                <div class="relative">
                                     <input type="password" id="password" name="password" autocomplete="new-password" placeholder="Minimal 8 Karakter"
-                                           class="block w-full px-4 py-3 pr-12 rounded-lg border-gray-300 text-base focus:ring-red-500 focus:border-red-500 transition-colors @error('password') border-red-400 bg-red-50 @enderror">
-                                    <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 hover:text-gray-700 focus:outline-none">
-                                        <i class="fa fa-eye-slash text-lg" id="togglePasswordIcon"></i>
+                                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-4 focus:ring-slate-500/20 focus:border-slate-500 focus:bg-white block w-full px-4 py-2.5 pr-10 transition-all @error('password') border-red-500 bg-red-50 @enderror">
+                                    <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                                        <i class="fa fa-eye-slash" id="togglePasswordIcon"></i>
                                     </button>
                                 </div>
-                                @error('password')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
+                                @error('password')<p class="mt-1.5 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
 
                             <div>
-                                <label for="password_confirmation" class="block text-base font-bold text-gray-700 mb-2">Konfirmasi Password</label>
-                                <div class="relative rounded-lg shadow-sm">
+                                <label for="password_confirmation" class="block text-sm font-medium text-gray-900 mb-2">Konfirmasi Password</label>
+                                <div class="relative">
                                     <input type="password" id="password_confirmation" name="password_confirmation" autocomplete="new-password" placeholder="Ulangi Password Baru"
-                                           class="block w-full px-4 py-3 pr-12 rounded-lg border-gray-300 text-base focus:ring-red-500 focus:border-red-500 transition-colors">
-                                    <button type="button" id="togglePasswordConfirmation" class="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 hover:text-gray-700 focus:outline-none">
-                                        <i class="fa fa-eye-slash text-lg" id="togglePasswordConfirmationIcon"></i>
+                                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-4 focus:ring-slate-500/20 focus:border-slate-500 focus:bg-white block w-full px-4 py-2.5 pr-10 transition-all">
+                                    <button type="button" id="togglePasswordConfirmation" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                                        <i class="fa fa-eye-slash" id="togglePasswordConfirmationIcon"></i>
                                     </button>
                                 </div>
                             </div>
                         </div>
 
                         {{-- UBAH PIN TRANSAKSI --}}
-                        <div class="space-y-5 pt-4">
-                            <div class="flex justify-between items-center border-b border-gray-200 pb-3">
-                                <h4 class="text-lg font-bold text-gray-800">PIN Transaksi</h4>
+                        <div class="space-y-4 pt-2">
+                            <div class="flex justify-between items-center border-b border-gray-100 pb-2">
+                                <h4 class="text-sm font-bold text-gray-900 uppercase tracking-wider">PIN Transaksi</h4>
                                 @if(empty($user->pin))
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
                                       Belum Diatur
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
-                                      Terlindungi
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                      <i class="fa fa-check mr-1"></i> Terlindungi
                                     </span>
                                 @endif
                             </div>
 
                             <div>
-                                <label for="pin" class="block text-base font-bold text-gray-700 mb-2">Set PIN Baru / Reset</label>
-                                <div class="relative rounded-lg shadow-sm">
-                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <i class="fa fa-key text-gray-400 text-lg"></i>
+                                <label for="pin" class="block text-sm font-medium text-gray-900 mb-2">Set PIN Baru / Reset</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i class="fa fa-key text-gray-400"></i>
                                     </div>
                                     <input type="password" id="pin" name="pin" autocomplete="off" maxlength="6" pattern="\d{6}" placeholder="6 Digit Angka"
-                                           class="block w-full pl-12 pr-12 py-3 rounded-lg border-gray-300 focus:ring-red-500 focus:border-red-500 text-lg font-mono tracking-[0.25em] transition-colors @error('pin') border-red-400 bg-red-50 @enderror">
-                                    <button type="button" id="togglePin" class="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 hover:text-gray-700 focus:outline-none">
-                                        <i class="fa fa-eye-slash text-lg" id="togglePinIcon"></i>
+                                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-4 focus:ring-slate-500/20 focus:border-slate-500 focus:bg-white block w-full pl-9 pr-10 py-2.5 font-mono tracking-widest transition-all @error('pin') border-red-500 bg-red-50 @enderror">
+                                    <button type="button" id="togglePin" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                                        <i class="fa fa-eye-slash" id="togglePinIcon"></i>
                                     </button>
                                 </div>
-                                <p class="mt-2 text-sm text-gray-500">Masukkan 6 digit angka untuk mereset paksa PIN user ini.</p>
-                                @error('pin')<p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
+                                <p class="mt-2 text-xs text-gray-500">Masukkan 6 digit angka untuk mereset paksa PIN.</p>
+                                @error('pin')<p class="mt-1.5 text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
                             </div>
                         </div>
 
                     </div>
                 </div>
-
             </div>
         </div>
 
         {{-- AREA TOMBOL SUBMIT --}}
-        <div class="mt-10 bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex flex-col-reverse sm:flex-row sm:justify-end gap-4">
-            <a href="{{ route('admin.customers.index') }}" class="w-full sm:w-auto flex justify-center items-center px-6 py-3 border border-gray-300 rounded-lg shadow-sm text-base font-bold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+        <div class="mt-8 pt-6 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+            <a href="{{ route('admin.customers.index') }}" class="w-full sm:w-auto inline-flex justify-center items-center px-5 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 focus:outline-none focus:ring-4 focus:ring-gray-200 transition-all">
                 Batal
             </a>
-            <button type="submit" class="w-full sm:w-auto flex justify-center items-center px-8 py-3 border border-transparent rounded-lg shadow-sm text-base font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                <i class="fa fa-save mr-2 text-lg"></i> Simpan Perubahan
+            <button type="submit" class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-2.5 bg-blue-600 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all">
+                <i class="fa fa-save mr-2"></i> Simpan Perubahan
             </button>
         </div>
 
@@ -444,7 +468,6 @@ $(document).ready(function() {
 
     // --- SCRIPT: Toggle Lihat Password / PIN ---
     function setupPasswordToggle(toggleBtnId, inputId, iconId) {
-        // [Kode toggle Anda yang lama tidak perlu diubah, biarkan saja di sini]
         const toggleBtn = $('#' + toggleBtnId);
         const passwordInput = $('#' + inputId);
         const icon = $('#' + iconId);
