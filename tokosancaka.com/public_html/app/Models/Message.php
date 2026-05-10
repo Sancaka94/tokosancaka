@@ -16,10 +16,10 @@ class Message extends Model
         'from_id',
         'to_id',
         'message',
-        'read_at',
-        'product_id',
         'image_url',
-        'audio_url'
+        'audio_url',
+        'product_id',
+        'read_at'
     ];
 
     /**

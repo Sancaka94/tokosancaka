@@ -327,83 +327,107 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
     {
         \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Memulai eksekusi sendBroadcast.', $request->all());
 
-        // =========================================================================
-        // 1. PERBAIKAN VALIDASI: Ubah 'image' menjadi file/mimes, BUKAN string
-        // =========================================================================
         $request->validate([
             'judul'      => 'required|string',
             'pesan'      => 'required|string',
             'jenis_aksi' => 'required|string',
             'link'       => 'nullable|string',
-            'image'      => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120' // <-- INI YANG BIKIN ERROR TADI
+            'image'      => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120'
         ]);
 
-        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Validasi input berhasil dilewati.');
-
-        // =========================================================================
-        // 2. TANGKAP DAN SIMPAN FILE GAMBARNYA (JIKA ADA)
-        // =========================================================================
-        $imageUrl = '';
+        // 1. TANGKAP DAN SIMPAN FILE GAMBARNYA KE SERVER
+        $imageUrl = null; // Default null agar sesuai dengan database
         if ($request->hasFile('image')) {
-            // Simpan gambar ke folder storage/app/public/broadcasts
             $path = $request->file('image')->store('broadcasts', 'public');
-
-            // Jadikan URL lengkap agar bisa dibaca HP customer
             $imageUrl = 'https://tokosancaka.com/storage/' . $path;
         }
 
-        // 3. Ambil semua token HP user
-        $tokens = \Illuminate\Support\Facades\DB::table('Pengguna')
+        // 2. AMBIL SEMUA USER YANG PUNYA TOKEN NOTIFIKASI AKTIF
+        $users = \Illuminate\Support\Facades\DB::table('Pengguna')
                     ->whereNotNull('expo_token')
                     ->where('expo_token', '!=', '')
+                    ->select('id_pengguna', 'expo_token')
                     ->distinct()
-                    ->pluck('expo_token')
-                    ->toArray();
+                    ->get();
 
-        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Query token selesai. Ditemukan: ' . count($tokens));
-
-        if (empty($tokens)) {
-            \Illuminate\Support\Facades\Log::warning('LOG LOG: [Broadcast] Dibatalkan. Tidak ada user aktif.');
+        if ($users->isEmpty()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Tidak ada user dengan token notifikasi aktif.'
             ], 400);
         }
 
+        // --- TAMBAHAN BARU: SIMPAN KE DATABASE (TABEL MESSAGES) ---
+        // Kita simpan ke inbox chat masing-masing customer agar history-nya tidak hilang
+        $insertData = [];
+        $tokens = [];
+        $now = now();
+
+        foreach ($users as $user) {
+            $tokens[] = $user->expo_token; // Kumpulkan token untuk Expo
+
+            // Siapkan data untuk dimasukkan ke database
+            $insertData[] = [
+                'from_id'    => 4, // ID Admin
+                'to_id'      => $user->id_pengguna, // Dikirim ke ID Customer ini
+                'message'    => "[BROADCAST: " . $request->judul . "]\n\n" . $request->pesan . ($request->link ? "\nLink: " . $request->link : ""),
+                'image_url'  => $imageUrl, // <--- GAMBAR MASUK KE DATABASE DI SINI
+                'read_at'    => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        // Insert ke database secara massal (Bulk Insert) agar lebih cepat & tidak membebani server
+        // Kita pecah per 500 baris berjaga-jaga jika usernya ribuan
+        $chunksDb = array_chunk($insertData, 500);
+        foreach ($chunksDb as $chunkDb) {
+            \App\Models\Message::insert($chunkDb);
+        }
+        // -----------------------------------------------------------
+
         // 4. Siapkan Data Notifikasi
         $notificationData = [
             'title' => $request->judul,
             'body'  => $request->pesan,
             'sound' => 'default',
-            'categoryId' => 'reply_to_admin', // Tombol balas
+            'badge' => 1,
+            'mutableContent' => true, // WAJIB: Agar iOS bisa menampilkan gambar
+            'categoryId' => 'reply_to_admin',
+
+            // --- TAMBAHAN AGAR GAMBAR MUNCUL DI NOTIFIKASI ---
+            'attachments' => [
+                [
+                    'url' => $imageUrl // Kirim URL gambar di sini untuk visual
+                ]
+            ],
+            // ------------------------------------------------
+
             'data'  => [
                 'action'    => $request->jenis_aksi,
                 'link'      => $request->link ?? '',
                 'admin_id'  => 4,
-                'image_url' => $imageUrl // <-- Masukkan URL gambar yang sudah diupload
+                'image_url' => $imageUrl, // Tetap simpan di sini untuk dibaca aplikasi
             ]
         ];
 
-        // 5. Format payload untuk Expo
         $messages = [];
         foreach ($tokens as $token) {
             $messages[] = array_merge(['to' => $token], $notificationData);
         }
 
-        \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Melakukan HTTP POST ke Expo...');
-
-        // 6. Pecah array menjadi 100 per request (Chunking)
-        $chunks = array_chunk($messages, 100);
+        // 4. KIRIM KE EXPO PUSH SERVER (Dipecah per 100)
+        $chunksPush = array_chunk($messages, 100);
         $berhasil = 0;
 
-        foreach ($chunks as $chunk) {
+        foreach ($chunksPush as $chunkPush) {
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
-            ])->post('https://exp.host/--/api/v2/push/send', $chunk);
+            ])->post('https://exp.host/--/api/v2/push/send', $chunkPush);
 
             if ($response->successful()) {
-                $berhasil += count($chunk);
+                $berhasil += count($chunkPush);
             }
         }
 
@@ -411,7 +435,7 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
 
         return response()->json([
             'success' => true,
-            'message' => 'Broadcast berhasil dikirim ke ' . $berhasil . ' pengguna!'
+            'message' => 'Broadcast berhasil dikirim dan disimpan ke riwayat chat ' . $berhasil . ' pengguna!'
         ]);
     }
 
@@ -462,7 +486,7 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
         }
     }
 
-    /**
+   /**
      * MENYIMPAN BALASAN DARI CUSTOMER KE DATABASE
      * Dipanggil saat customer klik "Balas" dari notifikasi HP
      */
@@ -473,16 +497,16 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
 
             $request->validate([
                 'pesan' => 'required|string',
-                'contact_id' => 'required|integer' // Biasanya 4 (ID Admin Utama)
+                'contact_id' => 'required|integer'
             ]);
 
-            // Simpan ke tabel Messages (Chat)
+            // Simpan ke tabel Messages menyesuaikan struktur database aslimu
             $message = \App\Models\Message::create([
                 'from_id' => $user->id_pengguna ?? $user->id,
                 'to_id' => $request->contact_id,
-                'message' => $request->pesan,
-                'type' => 'Broadcast Reply', // Penanda bahwa ini balasan dari Notif Broadcast
-                'is_read' => 0,
+                // Tambahkan penanda di dalam teks karena tidak ada kolom 'type'
+                'message' => '[REPLY BROADCAST] ' . $request->pesan,
+                'read_at' => null, // Ganti is_read menjadi read_at
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
