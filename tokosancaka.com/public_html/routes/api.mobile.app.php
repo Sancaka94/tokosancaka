@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\DashboardController; // <-- Tambahkan import ini 
 use App\Http\Controllers\Api\Mobile\DaftarMemberController;
 use App\Http\Controllers\Api\Mobile\PpobDigiflazController;
 use App\Http\Controllers\Api\Mobile\SettingPrivacyController;
+use App\Http\Controllers\Api\Mobile\EditPenggunaController;
 /*
 |--------------------------------------------------------------------------
 | API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)
@@ -393,5 +394,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/user/update-email', [SettingPrivacyController::class, 'updateEmail']);
     Route::post('/user/update-password', [SettingPrivacyController::class, 'updatePassword']);
     Route::post('/user/update-pin', [SettingPrivacyController::class, 'updatePin']);
+
+        // --- KHUSUS ADMIN (ID 4) ---
+    Route::get('/admin/pengguna/{id}', [EditPenggunaController::class, 'show']);
+    Route::put('/admin/pengguna/{id}', [EditPenggunaController::class, 'update']);
+
 
 });
