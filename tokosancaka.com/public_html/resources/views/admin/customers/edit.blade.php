@@ -55,32 +55,19 @@
         right: 0.75rem !important;
     }
 
+    /* Tambahkan ini di dalam @section('styles') */
+    .select2-container.select2-container--open {
+        z-index: 999999 !important; /* Memaksa wrapper terluar berada paling atas */
+    }
+
     /* Kotak Dropdown Utama (Diperbaiki) */
     .select2-dropdown {
         border: 1px solid #d1d5db !important;
         border-radius: 0.5rem !important;
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-        background-color: #ffffff !important; /* WAJIB ADA: Agar tidak transparan */
-        z-index: 9999 !important; /* WAJIB ADA: Agar berada paling atas / tidak tertimpa form lain */
-        margin-top: 4px;
-    }
-    .select2-search--dropdown {
-        padding: 8px !important;
         background-color: #ffffff !important;
-        border-bottom: 1px solid #e5e7eb !important;
-    }
-    .select2-search__field {
-        border: 1px solid #d1d5db !important;
-        border-radius: 0.375rem !important;
-        padding: 0.5rem 0.75rem !important;
-        height: 36px !important;
-        font-size: 0.875rem !important;
-        transition: all 0.2s ease-in-out;
-    }
-    .select2-search__field:focus {
-        outline: none !important;
-        border-color: #3b82f6 !important;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+        z-index: 999999 !important; /* Samakan dengan z-index container open */
+        margin-top: 4px;
     }
 
     /* Style untuk List Pilihan agar rapi dan ada efek hover (Baru) */
@@ -415,7 +402,8 @@ $(document).ready(function() {
         $(this).select2({
             width: '100%',
             placeholder: $(this).data('placeholder'),
-            allowClear: true // Memunculkan tombol X untuk menghapus pilihan
+            allowClear: true, // Memunculkan tombol X untuk menghapus pilihan
+            dropdownParent: $('body')
         });
     });
 
@@ -431,7 +419,8 @@ $(document).ready(function() {
         target.select2({
             width: '100%',
             placeholder: placeholderText,
-            allowClear: true
+            allowClear: true,
+            dropdownParent: $('body')
         }).prop('disabled', true);
 
         if (!url) {
