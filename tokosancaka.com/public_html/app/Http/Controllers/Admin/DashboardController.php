@@ -410,6 +410,52 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
         ]);
     }
 
+    /**
+     * Mengambil daftar balasan dari customer ke Admin (ID 4)
+     */
+    public function getBroadcastReplies()
+    {
+        try {
+            // Ambil 50 pesan terakhir yang dikirim ke Admin ID 4
+            $messages = \App\Models\Message::where('to_id', 4)
+                        ->orderBy('created_at', 'desc')
+                        ->limit(50)
+                        ->get();
+
+            $data = [];
+            foreach ($messages as $msg) {
+                // Cari data pengirim di tabel Pengguna
+                $user = \Illuminate\Support\Facades\DB::table('Pengguna')
+                            ->where('id_pengguna', $msg->from_id)
+                            ->first();
+
+                if ($user) {
+                    $data[] = [
+                        'nama'        => $user->nama_lengkap ?? $user->store_name ?? 'User Sancaka',
+                        'nama_toko'   => $user->store_name ?? '-',
+                        'foto_profil' => $user->store_logo_path ? 'https://tokosancaka.com/storage/' . $user->store_logo_path : null,
+                        'nomor_wa'    => $user->no_wa ?? '-',
+                        'pesan'       => $msg->message,
+                        'created_at'  => $msg->created_at
+                    ];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'data'    => $data
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('LOG LOG: Error getBroadcastReplies: ' . $e->getMessage());
+            // Kembalikan JSON error dengan status 500 agar React Native tidak menerima HTML
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan di server: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function toggleSystemMode(Request $request)
     {
         try {

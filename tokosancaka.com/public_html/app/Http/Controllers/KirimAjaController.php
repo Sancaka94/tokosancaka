@@ -303,6 +303,40 @@ class KirimAjaController extends Controller
 
             } // End Foreach
 
+            // =========================================================================
+            // 👇 NOTIFIKASI WEBHOOK KE ADMIN (ID 4) 👇
+            // =========================================================================
+            try {
+                // Ambil token Admin ID 4
+                $admin = DB::table('Pengguna')->where('id_pengguna', 4)->first();
+
+                if ($admin && !empty($admin->expo_token)) {
+                    $statusText = $pesananStatusMap[$method] ?? $method;
+                    $jumlahResi = count($dataArray);
+
+                    $pushPayload = [
+                        'to' => $admin->expo_token,
+                        'title' => 'Update KiriminAja 📦',
+                        'body' => "Ada update status '$statusText' untuk $jumlahResi resi pengiriman.",
+                        'sound' => 'default',
+                    ];
+
+                    // Tembak ke API Expo
+                    \Illuminate\Support\Facades\Http::withHeaders([
+                        'Accept' => 'application/json',
+                        'Content-Type' => 'application/json',
+                    ])->post('https://exp.host/--/api/v2/push/send', $pushPayload);
+
+                    Log::info("[WEBHOOK-KA] Notifikasi webhook berhasil dikirim ke Admin ID 4.");
+                }
+            } catch (\Exception $notifError) {
+                // Jangan sampai webhook gagal membalas KiriminAja hanya karena notifikasi error
+                Log::error('[WEBHOOK-KA] Gagal kirim notif ke Admin: ' . $notifError->getMessage());
+            }
+            // =========================================================================
+            // 👆 BATAS AKHIR NOTIFIKASI 👆
+            // =========================================================================
+
             DB::commit();
             return response()->json(['success' => true]);
 
