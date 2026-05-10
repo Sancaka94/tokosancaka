@@ -415,7 +415,7 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
         ]);
     }
 
-    /**
+   /**
      * Mengambil daftar balasan dari customer ke Admin (ID 4)
      */
     public function getBroadcastReplies()
@@ -436,11 +436,13 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
 
                 if ($user) {
                     $data[] = [
+                        'id'          => $msg->id, // <--- INI WAJIB ADA AGAR BISA DIHAPUS DARI MOBILE
                         'nama'        => $user->nama_lengkap ?? $user->store_name ?? 'User Sancaka',
                         'nama_toko'   => $user->store_name ?? '-',
                         'foto_profil' => $user->store_logo_path ? 'https://tokosancaka.com/storage/' . $user->store_logo_path : null,
                         'nomor_wa'    => $user->no_wa ?? '-',
                         'pesan'       => $msg->message,
+                        'type'        => $msg->type, // Opsional: untuk membedakan balasan notif vs chat biasa
                         'created_at'  => $msg->created_at
                     ];
                 }
@@ -453,10 +455,82 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
 
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('LOG LOG: Error getBroadcastReplies: ' . $e->getMessage());
-            // Kembalikan JSON error dengan status 500 agar React Native tidak menerima HTML
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan di server: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * MENYIMPAN BALASAN DARI CUSTOMER KE DATABASE
+     * Dipanggil saat customer klik "Balas" dari notifikasi HP
+     */
+    public function storeBroadcastReply(Request $request)
+    {
+        try {
+            $user = auth()->user(); // Ambil data user yang sedang login via token Sanctum
+
+            $request->validate([
+                'pesan' => 'required|string',
+                'contact_id' => 'required|integer' // Biasanya 4 (ID Admin Utama)
+            ]);
+
+            // Simpan ke tabel Messages (Chat)
+            $message = \App\Models\Message::create([
+                'from_id' => $user->id_pengguna ?? $user->id,
+                'to_id' => $request->contact_id,
+                'message' => $request->pesan,
+                'type' => 'Broadcast Reply', // Penanda bahwa ini balasan dari Notif Broadcast
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Balasan berhasil dikirim.',
+                'data' => $message
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('LOG LOG: Error storeBroadcastReply: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan balasan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * MENGHAPUS BALASAN BROADCAST (Bisa Satu, Bisa Banyak Sekaligus)
+     */
+    public function deleteBroadcastReplies(Request $request)
+    {
+        try {
+            $request->validate([
+                'ids'   => 'required|array',   // Memastikan input 'ids' adalah sebuah array
+                'ids.*' => 'integer'           // Memastikan isi array semuanya angka (ID)
+            ]);
+
+            $idsToDelete = $request->input('ids');
+
+            // Hapus semua data message yang ID-nya ada di dalam array $idsToDelete
+            // Pastikan data yang dihapus benar-benar yang ditujukan ke Admin (to_id = 4)
+            \App\Models\Message::whereIn('id', $idsToDelete)
+                               ->where('to_id', 4)
+                               ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => count($idsToDelete) . ' balasan berhasil dihapus.'
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('LOG LOG: Error deleteBroadcastReplies: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus balasan: ' . $e->getMessage()
             ], 500);
         }
     }
