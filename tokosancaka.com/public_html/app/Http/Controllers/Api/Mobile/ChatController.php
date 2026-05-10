@@ -211,6 +211,64 @@ class ChatController extends Controller
                 'product_id' => $request->product_id,
             ]);
 
+            // ============================================================
+            // 👇 TAMBAHKAN BLOK PUSH NOTIFICATION INI 👇
+            // ============================================================
+            try {
+                // 1. Ambil data pengirim
+                $sender = DB::table('Pengguna')->where('id_pengguna', $userId)->first();
+                $senderName = $sender->nama_lengkap ?? $sender->store_name ?? 'Pengguna Sancaka';
+
+                // 2. Ambil token penerima
+                $receiver = DB::table('Pengguna')->where('id_pengguna', $contactId)->first();
+
+                if ($receiver && !empty($receiver->expo_token)) {
+
+                    // 3. Tentukan isi teks notifikasi
+                    $bodyText = $request->message;
+                    if (empty($bodyText)) {
+                        if ($imageUrl) {
+                            $bodyText = '📷 Mengirim Gambar';
+                        } elseif ($audioUrl) {
+                            $bodyText = '🎵 Mengirim Pesan Suara';
+                        } else {
+                            $bodyText = 'Mengirim pesan baru...';
+                        }
+                    }
+
+                    // 4. Hitung jumlah pesan belum dibaca (untuk Badge merah)
+                    $unreadCount = \App\Models\Message::where('to_id', $contactId)->whereNull('read_at')->count();
+
+                    // 5. Siapkan data untuk dikirim ke Expo
+                    $pushPayload = [
+                        'to' => $receiver->expo_token,
+                        'title' => $senderName,
+                        'body' => $bodyText,
+                        'sound' => 'default',
+                        'badge' => $unreadCount,
+                        'categoryId' => 'reply_to_admin', // <-- KUNCI AGAR TOMBOL BALAS MUNCUL
+                        'data' => [
+                            'type' => 'new_chat',
+                            'admin_id' => $userId
+                        ]
+                    ];
+
+                    // 6. Tembak notifikasi ke HP User
+                    Http::withHeaders([
+                        'Accept' => 'application/json',
+                        'Content-Type' => 'application/json',
+                    ])->post('https://exp.host/--/api/v2/push/send', $pushPayload);
+
+                    \Illuminate\Support\Facades\Log::info('LOG LOG: [Chat Notif] Notifikasi terkirim ke: ' . $receiver->expo_token);
+                }
+            } catch (\Exception $notifError) {
+                // Sengaja dibungkus try-catch agar jika gagal kirim notif, chat tetap masuk ke database
+                \Illuminate\Support\Facades\Log::error('LOG LOG: [Chat Notif] Gagal mengirim push notif: ' . $notifError->getMessage());
+            }
+            // ============================================================
+            // 👆 BATAS AKHIR TAMBAHAN 👆
+            // ============================================================
+
             return response()->json([
                 'success' => true,
                 'data' => [
