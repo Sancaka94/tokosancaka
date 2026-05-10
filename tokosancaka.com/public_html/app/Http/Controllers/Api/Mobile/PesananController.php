@@ -605,37 +605,39 @@ TEXT;
             $senderWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($validatedData['sender_phone']));
             $receiverWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($validatedData['receiver_phone']));
 
-            // Kirim menggunakan PushWA
-            if ($senderWa) $this->_sendPushWa($senderWa, $message);
-            if ($receiverWa) $this->_sendPushWa($receiverWa, $message);
+            // Kirim menggunakan Fonnte
+            if ($senderWa) $this->_sendFonnte($senderWa, $message);
+            if ($receiverWa) $this->_sendFonnte($receiverWa, $message);
 
         } catch (\Exception $e) {
             Log::error('[API MOBILE] WA Notification failed: ' . $e->getMessage(), ['invoice' => $order->nomor_invoice]);
         }
     }
 
-    private function _sendPushWa($target, $message)
+    private function _sendFonnte($target, $message)
     {
-        $token = env('PUSHWA_TOKEN');
+        // Menggunakan token Fonnte dari file .env
+        $token = env('FONNTE_TOKEN');
 
-        if (Str::startsWith($target, '0')) {
+        if (\Illuminate\Support\Str::startsWith($target, '0')) {
             $target = '62' . substr($target, 1);
         }
 
         try {
-            $response = \Illuminate\Support\Facades\Http::post('https://dash.pushwa.com/api/kirimPesan', [
-                'token' => $token,
+            // Fonnte menggunakan Header Authorization untuk tokennya
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Authorization' => $token,
+            ])->post('https://api.fonnte.com/send', [
                 'target' => $target,
-                'type' => 'text',
-                'delay' => '1',
-                'message' => $message
+                'message' => $message,
+                'delay' => '1' // Delay pengiriman pesan (opsional)
             ]);
 
-            Log::info("[API MOBILE] PushWA Sent to $target", ['response' => $response->json()]);
+            Log::info("[API MOBILE] Fonnte Sent to $target", ['response' => $response->json()]);
             return $response->json();
 
         } catch (\Exception $e) {
-            Log::error("[API MOBILE] PushWA Failed to $target: " . $e->getMessage());
+            Log::error("[API MOBILE] Fonnte Failed to $target: " . $e->getMessage());
             return ['status' => false, 'error' => $e->getMessage()];
         }
     }
