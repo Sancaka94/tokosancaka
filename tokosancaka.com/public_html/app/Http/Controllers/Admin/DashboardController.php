@@ -327,12 +327,13 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
     {
         \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Memulai eksekusi sendBroadcast.', $request->all());
 
-        // 1. Validasi input (Tambahkan validasi link)
+        // 1. Validasi input (Tambahkan validasi link dan image)
         $request->validate([
             'judul' => 'required|string',
             'pesan' => 'required|string',
             'jenis_aksi' => 'required|string',
-            'link' => 'nullable|string' // <-- PERBAIKAN 1: Izinkan link masuk
+            'link' => 'nullable|string', // <-- PERBAIKAN 1: Izinkan link masuk
+            'image' => 'nullable|string' // <-- TAMBAHAN: Izinkan URL gambar masuk
         ]);
 
         \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Validasi input berhasil dilewati.');
@@ -360,10 +361,15 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
             'title' => $request->judul,
             'body'  => $request->pesan,
             'sound' => 'default',
+            // --- TAMBAHAN UNTUK TOMBOL BALAS ---
+            'categoryId' => 'reply_to_admin', // Memicu Expo untuk menampilkan action button
             'data'  => [
                 // <-- PERBAIKAN 2: Teruskan persis apa yang dikirim dari React Native
                 'action' => $request->jenis_aksi,
-                'link'   => $request->link ?? ''
+                'link'   => $request->link ?? '',
+                // --- TAMBAHAN UNTUK DATA BALASAN & GAMBAR ---
+                'admin_id' => 4, // Targetkan spesifik ke admin ID 4
+                'image_url' => $request->image ?? '' // Kirim URL gambar ke frontend
             ]
         ];
 

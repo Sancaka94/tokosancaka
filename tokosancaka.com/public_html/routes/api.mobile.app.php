@@ -314,6 +314,7 @@ Route::prefix('seller')->group(function () {
         Route::post('/escrow/{id}/cairkan', [\App\Http\Controllers\Api\Mobile\AdminEscrowController::class, 'cairkan']);
 
         Route::post('/broadcast/send', [DashboardController::class, 'sendBroadcast']);
+        Route::get('/broadcast/replies', [DashboardController::class, 'getBroadcastReplies']); // <--- TARUH DI SINI
 
         Route::get('/get-system-mode', [DashboardController::class, 'getSystemMode']);
         Route::post('/toggle-system-mode', [DashboardController::class, 'toggleSystemMode']);
