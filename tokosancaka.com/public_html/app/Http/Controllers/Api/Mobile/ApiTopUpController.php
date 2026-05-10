@@ -501,21 +501,22 @@ class ApiTopUpController extends Controller
             $message .= "*{$otpCode}*\n\n";
             $message .= "Kode ini hanya berlaku selama 5 menit. JANGAN BERIKAN KODE INI KEPADA SIAPAPUN, termasuk pihak Sancaka.";
 
+            // 1. STANDARISASI NOMOR WA MENJADI 62... (Aman & Pasti Berhasil)
             $nomorTujuan = $user->no_wa;
             if (str_starts_with($nomorTujuan, '0')) {
-                $nomorTujuan = substr($nomorTujuan, 1);
-            } elseif (str_starts_with($nomorTujuan, '62')) {
-                $nomorTujuan = substr($nomorTujuan, 2);
+                $nomorTujuan = '62' . substr($nomorTujuan, 1);
             } elseif (str_starts_with($nomorTujuan, '+62')) {
-                $nomorTujuan = substr($nomorTujuan, 3);
+                $nomorTujuan = substr($nomorTujuan, 1); // Hanya buang tanda '+'
             }
+            // Jika sudah berawalan 62, biarkan saja.
 
-            $response = Http::withHeaders([
+            // 2. TAMBAHKAN asForm() AGAR FONNTE BISA MEMBACA DATANYA
+            $response = Http::asForm()->withHeaders([
                 'Authorization' => env('FONNTE_API_KEY') ?? env('FONNTE_KEY') ?? 'ynMyPswSKr14wdtXMJF7'
             ])->post('https://api.fonnte.com/send', [
-                'target'      => $nomorTujuan,
-                'message'     => $message,
-                'countryCode' => '62',
+                'target'  => $nomorTujuan,
+                'message' => $message,
+                // Parameter countryCode dihapus karena nomor sudah pasti berawalan 62
             ]);
 
             $fonnteResult = $response->json();
