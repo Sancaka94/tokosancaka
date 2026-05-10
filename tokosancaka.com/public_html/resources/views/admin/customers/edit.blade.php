@@ -6,7 +6,140 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
 <style>
-    /* Reset bawaan select agar tidak bentrok */
+    /* =========================
+       GLOBAL
+    ========================= */
+    .form-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow:
+            0 1px 2px rgba(0,0,0,.03),
+            0 8px 24px rgba(15,23,42,.04);
+        transition: all .25s ease;
+    }
+
+    .form-card:hover {
+        box-shadow:
+            0 4px 8px rgba(0,0,0,.04),
+            0 16px 32px rgba(15,23,42,.08);
+    }
+
+    .card-header-modern {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        background:
+            linear-gradient(to right, #ffffff, #f8fafc);
+    }
+
+    .card-body-modern {
+        padding: 1.5rem;
+    }
+
+    .section-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    /* =========================
+       INPUT MODERN
+    ========================= */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    textarea,
+    select {
+        width: 100%;
+        min-height: 46px;
+        border-radius: 0.85rem !important;
+        border: 1px solid #dbe1ea !important;
+        background: #f8fafc !important;
+        font-size: .92rem !important;
+        color: #0f172a !important;
+        transition: all .2s ease;
+        box-shadow: none !important;
+    }
+
+    textarea {
+        min-height: 110px;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+        background: #ffffff !important;
+        border-color: #2563eb !important;
+        box-shadow:
+            0 0 0 4px rgba(37,99,235,.10) !important;
+        outline: none !important;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+        color: #94a3b8 !important;
+    }
+
+    label {
+        font-size: .875rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: .55rem !important;
+    }
+
+    /* =========================
+       BUTTON
+    ========================= */
+    .btn-primary-modern {
+        background: linear-gradient(135deg,#2563eb,#1d4ed8);
+        border: none !important;
+        color: #fff !important;
+        border-radius: .85rem !important;
+        min-height: 46px;
+        font-weight: 600;
+        transition: .2s ease;
+        box-shadow: 0 8px 18px rgba(37,99,235,.20);
+    }
+
+    .btn-primary-modern:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 24px rgba(37,99,235,.25);
+    }
+
+    .btn-secondary-modern {
+        background: #fff;
+        border: 1px solid #dbe1ea !important;
+        color: #334155 !important;
+        border-radius: .85rem !important;
+        min-height: 46px;
+        transition: .2s ease;
+    }
+
+    .btn-secondary-modern:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1 !important;
+    }
+
+    /* =========================
+       ALERT
+    ========================= */
+    .alert-modern {
+        border-radius: 1rem !important;
+        border-width: 1px !important;
+        padding: 1rem 1.25rem !important;
+        backdrop-filter: blur(10px);
+    }
+
+    /* =========================
+       SELECT2 FIX MODERN
+    ========================= */
+
     select.select2-hidden-accessible {
         border: 0 !important;
         clip: rect(0 0 0 0) !important;
@@ -18,100 +151,153 @@
         width: 1px !important;
     }
 
-    /* Style Utama Kotak Select2 menyesuaikan desain Bootstrap 5 / Tailwind Modern */
+    .select2-container {
+        width: 100% !important;
+    }
+
     .select2-container--default .select2-selection--single {
-        height: 42px !important; /* Disesuaikan dengan tinggi input Tailwind px-4 py-2.5 */
-        border: 1px solid #d1d5db !important; /* border-gray-300 */
-        border-radius: 0.5rem !important; /* rounded-lg */
+        height: 46px !important;
+        border-radius: 0.85rem !important;
+        border: 1px solid #dbe1ea !important;
+        background: #f8fafc !important;
         display: flex !important;
         align-items: center !important;
-        background-color: #f9fafb !important; /* bg-gray-50 */
-        transition: all 0.2s ease-in-out;
+        transition: all .2s ease !important;
+    }
+
+    .select2-container--default .select2-selection--single:hover {
+        border-color: #cbd5e1 !important;
+        background: #ffffff !important;
     }
 
     .select2-container--default.select2-container--open .select2-selection--single {
-        border-color: #3b82f6 !important; /* border-blue-500 */
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2) !important; /* ring-4 ring-blue-500/20 */
-        background-color: #ffffff !important;
+        border-color: #2563eb !important;
+        background: #ffffff !important;
+        box-shadow: 0 0 0 4px rgba(37,99,235,.10) !important;
     }
 
-    /* Teks Pilihan */
     .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #0f172a !important;
+        font-size: .92rem !important;
+        padding-left: 1rem !important;
+        padding-right: 2rem !important;
         line-height: normal !important;
-        padding-left: 1rem !important; /* px-4 */
-        color: #111827 !important; /* text-gray-900 */
-        font-size: 0.875rem !important; /* text-sm */
     }
 
-    /* Teks Placeholder */
     .select2-container--default .select2-selection--single .select2-selection__placeholder {
-        color: #6b7280 !important; /* text-gray-500 */
-        font-weight: 400 !important;
+        color: #94a3b8 !important;
     }
 
-    /* Posisi Panah */
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 100% !important;
-        right: 0.75rem !important;
+        right: .75rem !important;
     }
 
-    /* Tambahkan ini di dalam @section('styles') */
-    .select2-container.select2-container--open {
-        z-index: 999999 !important; /* Memaksa wrapper terluar berada paling atas */
+    .select2-container--open {
+        z-index: 999999 !important;
     }
 
-    /* Kotak Dropdown Utama (Diperbaiki) */
     .select2-dropdown {
-        border: 1px solid #d1d5db !important;
-        border-radius: 0.5rem !important;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-        background-color: #ffffff !important;
-        z-index: 999999 !important; /* Samakan dengan z-index container open */
-        margin-top: 4px;
-    }
-
-    /* Style untuk List Pilihan agar rapi dan ada efek hover (Baru) */
-    .select2-results__options {
-        padding: 4px !important;
-        margin: 0 !important;
-    }
-    .select2-results__option {
-        padding: 8px 12px !important;
-        font-size: 0.875rem !important;
-        color: #374151 !important;
-        border-radius: 0.375rem !important;
-        cursor: pointer !important;
-        margin-bottom: 2px !important;
-    }
-    /* Saat di-hover */
-    .select2-results__option--highlighted[aria-selected] {
-        background-color: #eff6ff !important; /* Warna biru muda */
-        color: #1d4ed8 !important; /* Teks biru tua */
-    }
-    /* Saat sudah dipilih sebelumnya */
-    .select2-results__option[aria-selected="true"] {
-        background-color: #3b82f6 !important; /* Biru tebal */
-        color: #ffffff !important; /* Teks putih */
-        font-weight: 600 !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 1rem !important;
+        overflow: hidden !important;
+        background: #ffffff !important;
+        box-shadow:
+            0 10px 15px -3px rgba(0,0,0,.08),
+            0 4px 6px -4px rgba(0,0,0,.05) !important;
+        margin-top: 6px !important;
     }
 
     .select2-search--dropdown {
-        padding: 8px !important;
-        background-color: #ffffff !important;
-        border-bottom: 1px solid #e5e7eb !important;
+        padding: .75rem !important;
+        border-bottom: 1px solid #f1f5f9 !important;
     }
+
     .select2-search__field {
-        border: 1px solid #d1d5db !important;
-        border-radius: 0.375rem !important;
-        padding: 0.5rem 0.75rem !important;
-        height: 36px !important;
-        font-size: 0.875rem !important;
-        transition: all 0.2s ease-in-out;
+        height: 42px !important;
+        border-radius: .75rem !important;
+        border: 1px solid #dbe1ea !important;
+        padding: .5rem .9rem !important;
+        font-size: .9rem !important;
     }
+
     .select2-search__field:focus {
+        border-color: #2563eb !important;
+        box-shadow: 0 0 0 4px rgba(37,99,235,.10) !important;
         outline: none !important;
-        border-color: #3b82f6 !important;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+    }
+
+    .select2-results__options {
+        padding: .5rem !important;
+    }
+
+    .select2-results__option {
+        border-radius: .75rem !important;
+        padding: .7rem .9rem !important;
+        font-size: .9rem !important;
+        color: #334155 !important;
+        transition: all .15s ease;
+        margin-bottom: 2px;
+    }
+
+    .select2-results__option--highlighted[aria-selected] {
+        background: #eff6ff !important;
+        color: #1d4ed8 !important;
+    }
+
+    .select2-results__option[aria-selected="true"] {
+        background: linear-gradient(135deg,#2563eb,#1d4ed8) !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+
+    /* =========================
+       PASSWORD ICON
+    ========================= */
+    .password-toggle-btn {
+        position: absolute;
+        top: 0;
+        right: 0;
+        height: 100%;
+        width: 46px;
+        border: none;
+        background: transparent;
+        color: #94a3b8;
+        transition: .2s ease;
+    }
+
+    .password-toggle-btn:hover {
+        color: #334155;
+    }
+
+    /* =========================
+       BADGE
+    ========================= */
+    .badge-modern {
+        border-radius: 999px !important;
+        padding: .45rem .8rem !important;
+        font-size: .75rem !important;
+        font-weight: 600 !important;
+    }
+
+    /* =========================
+       RESPONSIVE
+    ========================= */
+    @media (max-width: 768px) {
+        .card-header-modern,
+        .card-body-modern {
+            padding: 1rem;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+        }
+
+        h1 {
+            font-size: 1.6rem !important;
+        }
     }
 </style>
 @endsection
