@@ -422,4 +422,5 @@ $(document).ready(function() {
     setupPasswordToggle('togglePin', 'pin', 'togglePinIcon');
 });
 </script>
+
 @endpush
