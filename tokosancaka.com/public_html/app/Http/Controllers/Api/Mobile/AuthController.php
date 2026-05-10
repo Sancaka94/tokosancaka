@@ -263,7 +263,8 @@ TEXT;
                 'message' => 'Verifikasi berhasil.',
                 'data' => [
                     'token' => $authToken,
-                    'user' => $user
+                    'user' => $user,
+                    'is_profile_completed' => !empty($user->pin) ? true : false
                 ]
             ], 200);
         }
