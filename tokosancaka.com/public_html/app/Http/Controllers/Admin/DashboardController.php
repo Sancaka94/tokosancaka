@@ -327,19 +327,33 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
     {
         \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Memulai eksekusi sendBroadcast.', $request->all());
 
-        // 1. Validasi input (Tambahkan validasi link dan image)
+        // =========================================================================
+        // 1. PERBAIKAN VALIDASI: Ubah 'image' menjadi file/mimes, BUKAN string
+        // =========================================================================
         $request->validate([
-            'judul' => 'required|string',
-            'pesan' => 'required|string',
+            'judul'      => 'required|string',
+            'pesan'      => 'required|string',
             'jenis_aksi' => 'required|string',
-            'link' => 'nullable|string', // <-- PERBAIKAN 1: Izinkan link masuk
-            'image' => 'nullable|string' // <-- TAMBAHAN: Izinkan URL gambar masuk
+            'link'       => 'nullable|string',
+            'image'      => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120' // <-- INI YANG BIKIN ERROR TADI
         ]);
 
         \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Validasi input berhasil dilewati.');
 
-        // 2. Ambil semua token HP user
-        $tokens = DB::table('Pengguna')
+        // =========================================================================
+        // 2. TANGKAP DAN SIMPAN FILE GAMBARNYA (JIKA ADA)
+        // =========================================================================
+        $imageUrl = '';
+        if ($request->hasFile('image')) {
+            // Simpan gambar ke folder storage/app/public/broadcasts
+            $path = $request->file('image')->store('broadcasts', 'public');
+
+            // Jadikan URL lengkap agar bisa dibaca HP customer
+            $imageUrl = 'https://tokosancaka.com/storage/' . $path;
+        }
+
+        // 3. Ambil semua token HP user
+        $tokens = \Illuminate\Support\Facades\DB::table('Pengguna')
                     ->whereNotNull('expo_token')
                     ->where('expo_token', '!=', '')
                     ->distinct()
@@ -356,24 +370,21 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
             ], 400);
         }
 
-        // 3. Siapkan Data Notifikasi
+        // 4. Siapkan Data Notifikasi
         $notificationData = [
             'title' => $request->judul,
             'body'  => $request->pesan,
             'sound' => 'default',
-            // --- TAMBAHAN UNTUK TOMBOL BALAS ---
-            'categoryId' => 'reply_to_admin', // Memicu Expo untuk menampilkan action button
+            'categoryId' => 'reply_to_admin', // Tombol balas
             'data'  => [
-                // <-- PERBAIKAN 2: Teruskan persis apa yang dikirim dari React Native
-                'action' => $request->jenis_aksi,
-                'link'   => $request->link ?? '',
-                // --- TAMBAHAN UNTUK DATA BALASAN & GAMBAR ---
-                'admin_id' => 4, // Targetkan spesifik ke admin ID 4
-                'image_url' => $request->image ?? '' // Kirim URL gambar ke frontend
+                'action'    => $request->jenis_aksi,
+                'link'      => $request->link ?? '',
+                'admin_id'  => 4,
+                'image_url' => $imageUrl // <-- Masukkan URL gambar yang sudah diupload
             ]
         ];
 
-        // 4. Format payload untuk Expo
+        // 5. Format payload untuk Expo
         $messages = [];
         foreach ($tokens as $token) {
             $messages[] = array_merge(['to' => $token], $notificationData);
@@ -381,13 +392,12 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
 
         \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Melakukan HTTP POST ke Expo...');
 
-        // 5. PERBAIKAN 3: Pecah array menjadi 100 per request (Chunking)
-        // Agar tidak ditolak oleh server Expo jika user sudah sangat banyak
+        // 6. Pecah array menjadi 100 per request (Chunking)
         $chunks = array_chunk($messages, 100);
-
         $berhasil = 0;
+
         foreach ($chunks as $chunk) {
-            $response = Http::withHeaders([
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
             ])->post('https://exp.host/--/api/v2/push/send', $chunk);
@@ -395,11 +405,6 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
             if ($response->successful()) {
                 $berhasil += count($chunk);
             }
-
-            \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Chunk Response:', [
-                'status_code' => $response->status(),
-                'response_body' => $response->json()
-            ]);
         }
 
         \Illuminate\Support\Facades\Log::info('LOG LOG: [Broadcast] Eksekusi selesai.');
