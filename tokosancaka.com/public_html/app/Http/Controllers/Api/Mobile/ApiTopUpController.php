@@ -512,7 +512,7 @@ class ApiTopUpController extends Controller
 
             // 2. TAMBAHKAN asForm() AGAR FONNTE BISA MEMBACA DATANYA
             $response = Http::asForm()->withHeaders([
-                'Authorization' => env('FONNTE_API_KEY') ?? env('FONNTE_KEY') ?? 'ynMyPswSKr14wdtXMJF7'
+                'Authorization' => env('FONNTE_API_KEY') ?? env('FONNTE_KEY') ?? 'BpbgYZnZRNGkaZxcCr6B'
             ])->post('https://api.fonnte.com/send', [
                 'target'  => $nomorTujuan,
                 'message' => $message,
