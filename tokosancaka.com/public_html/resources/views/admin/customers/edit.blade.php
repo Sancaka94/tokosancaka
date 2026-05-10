@@ -55,14 +55,59 @@
         right: 0.75rem !important;
     }
 
-    /* Kotak Dropdown & Pencarian */
+    /* Kotak Dropdown Utama (Diperbaiki) */
     .select2-dropdown {
         border: 1px solid #d1d5db !important;
         border-radius: 0.5rem !important;
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-        overflow: hidden;
+        background-color: #ffffff !important; /* WAJIB ADA: Agar tidak transparan */
+        z-index: 9999 !important; /* WAJIB ADA: Agar berada paling atas / tidak tertimpa form lain */
         margin-top: 4px;
     }
+    .select2-search--dropdown {
+        padding: 8px !important;
+        background-color: #ffffff !important;
+        border-bottom: 1px solid #e5e7eb !important;
+    }
+    .select2-search__field {
+        border: 1px solid #d1d5db !important;
+        border-radius: 0.375rem !important;
+        padding: 0.5rem 0.75rem !important;
+        height: 36px !important;
+        font-size: 0.875rem !important;
+        transition: all 0.2s ease-in-out;
+    }
+    .select2-search__field:focus {
+        outline: none !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+    }
+
+    /* Style untuk List Pilihan agar rapi dan ada efek hover (Baru) */
+    .select2-results__options {
+        padding: 4px !important;
+        margin: 0 !important;
+    }
+    .select2-results__option {
+        padding: 8px 12px !important;
+        font-size: 0.875rem !important;
+        color: #374151 !important;
+        border-radius: 0.375rem !important;
+        cursor: pointer !important;
+        margin-bottom: 2px !important;
+    }
+    /* Saat di-hover */
+    .select2-results__option--highlighted[aria-selected] {
+        background-color: #eff6ff !important; /* Warna biru muda */
+        color: #1d4ed8 !important; /* Teks biru tua */
+    }
+    /* Saat sudah dipilih sebelumnya */
+    .select2-results__option[aria-selected="true"] {
+        background-color: #3b82f6 !important; /* Biru tebal */
+        color: #ffffff !important; /* Teks putih */
+        font-weight: 600 !important;
+    }
+
     .select2-search--dropdown {
         padding: 8px !important;
         background-color: #ffffff !important;
