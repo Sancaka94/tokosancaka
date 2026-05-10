@@ -13,6 +13,66 @@ use Illuminate\Support\Facades\Log;
 class EditPenggunaController extends Controller
 {
     /**
+     * GET: Menampilkan daftar semua pengguna (dengan pencarian)
+     */
+    public function index(Request $request)
+    {
+        if (!$this->checkIsAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Akses Ditolak.'], 403);
+        }
+
+        $search = $request->query('search');
+        // Ganti 'User' dengan 'Pengguna' jika modelmu bernama Pengguna
+        $query = User::orderBy('created_at', 'desc');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                // Sesuaikan 'id_pengguna' jika primary key-mu berbeda
+                $q->where('id', 'like', "%{$search}%")
+                  ->orWhere('nama_lengkap', 'like', "%{$search}%")
+                  ->orWhere('no_wa', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        // Gunakan pagination agar aplikasi mobile tidak lag saat load ribuan data
+        $users = $query->paginate(20);
+
+        return response()->json([
+            'success' => true,
+            'data' => $users->items(), // Mengambil array datanya saja
+            'last_page' => $users->lastPage(),
+        ]);
+    }
+
+    /**
+     * DELETE: Menghapus pengguna
+     */
+    public function destroy($id)
+    {
+        if (!$this->checkIsAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Akses Ditolak.'], 403);
+        }
+
+        $targetUser = User::find($id);
+
+        if (!$targetUser) {
+            return response()->json(['success' => false, 'message' => 'Pengguna tidak ditemukan.'], 404);
+        }
+
+        // Cegah Admin menghapus dirinya sendiri (Asumsi Admin ID = 4)
+        if ($targetUser->id == 4) {
+            return response()->json(['success' => false, 'message' => 'Akun Master Admin tidak boleh dihapus.'], 400);
+        }
+
+        $targetUser->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pengguna berhasil dihapus.'
+        ]);
+    }
+    /**
      * Middleware check: Pastikan hanya User ID 4 yang bisa mengakses
      */
     private function checkIsAdmin()
