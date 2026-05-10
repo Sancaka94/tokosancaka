@@ -399,5 +399,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/admin/pengguna/{id}', [EditPenggunaController::class, 'show']);
     Route::put('/admin/pengguna/{id}', [EditPenggunaController::class, 'update']);
 
-
+    Route::get('/admin/pengguna', [EditPenggunaController::class, 'index']); // Ambil semua
+    Route::delete('/admin/pengguna/{id}', [EditPenggunaController::class, 'destroy']); // Hapus
 });
