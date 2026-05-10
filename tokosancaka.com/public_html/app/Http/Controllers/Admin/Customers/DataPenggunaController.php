@@ -5,12 +5,11 @@ namespace App\Http\Controllers\Admin\Customers;
 use App\Http\Controllers\Controller;
 use App\Models\Pengguna;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB; // Untuk agregasi statistik
-use Illuminate\Validation\Rule; // Untuk validasi
-// Asumsikan Anda menggunakan Laravel Excel (Maatwebsite) dan DomPDF
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\PenggunaExport; // Anda perlu membuat file export ini
-use Barryvdh\DomPDF\Facade\Pdf; // Untuk PDF
+use App\Exports\PenggunaExport;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Hash; // WAJIB ada
 
 class DataPenggunaController extends Controller
@@ -87,53 +86,62 @@ class DataPenggunaController extends Controller
         return view('admin.customers.data.pengguna.edit', compact('data'));
     }
 
-   /**
- * Menyimpan perubahan pada data pengguna (Edit Data).
- */
-public function update(Request $request, $id_pengguna)
-{
-    $data = Pengguna::findOrFail($id_pengguna);
+    /**
+     * Menyimpan perubahan pada data pengguna (Edit Data).
+     */
+    public function update(Request $request, $id_pengguna)
+    {
+        $data = Pengguna::findOrFail($id_pengguna);
 
-    // --- Aturan Validasi ---
-    $request->validate([
-        'nama_lengkap' => 'required|string|max:255',
-        'email' => [
-            'required',
-            'email',
-            // Pastikan email unik, kecuali untuk pengguna yang sedang diedit
-            Rule::unique('Pengguna')->ignore($data->id_pengguna, 'id_pengguna'),
-        ],
-        'no_wa' => 'nullable|string|max:15',
-        'role' => 'required|in:Admin,Seller,Pelanggan',
-        'status' => 'required|in:Aktif,Beku,Nonaktif',
+        // --- Aturan Validasi ---
+        $request->validate([
+            'nama_lengkap' => 'required|string|max:255',
+            'email' => [
+                'required',
+                'email',
+                // Pastikan email unik, kecuali untuk pengguna yang sedang diedit
+                Rule::unique('Pengguna')->ignore($data->id_pengguna, 'id_pengguna'),
+            ],
+            'no_wa' => 'nullable|string|max:15',
+            'role' => 'required|in:Admin,Seller,Pelanggan',
+            'status' => 'required|in:Aktif,Beku,Nonaktif',
 
-        // VITAL: Aturan Validasi untuk Password (Hanya divalidasi jika diisi)
-        'password' => 'nullable|string|min:8|confirmed',
+            // VITAL: Aturan Validasi untuk Password (Hanya divalidasi jika diisi)
+            'password' => 'nullable|string|min:8|confirmed',
 
-        // Validasi untuk kolom data toko/bank yang mungkin null
-        'store_name' => 'nullable|string|max:255',
-        'address_detail' => 'nullable|string',
-        'bank_name' => 'nullable|string|max:255',
-        'bank_account_number' => 'nullable|string|max:255',
-        'bank_account_name' => 'nullable|string|max:255',
-    ]);
+            // ---> TAMBAHAN: Validasi PIN Transaksi (6 Digit Angka) <---
+            'pin' => 'nullable|digits:6',
 
-    // Ambil semua data request, KECUALI 'password' dan 'password_confirmation'
-    $updateData = $request->except(['password', 'password_confirmation', '_token', '_method']);
+            // Validasi untuk kolom data toko/bank yang mungkin null
+            'store_name' => 'nullable|string|max:255',
+            'address_detail' => 'nullable|string',
+            'bank_name' => 'nullable|string|max:255',
+            'bank_account_number' => 'nullable|string|max:255',
+            'bank_account_name' => 'nullable|string|max:255',
+        ]);
 
-    // --- Logika Update Password Menjadi HASH ---
-    if ($request->filled('password')) {
-        // Jika field 'password' diisi (tidak kosong), maka hash password baru.
-        $updateData['password_hash'] = Hash::make($request->password);
+        // ---> PERBAIKAN: Ambil semua data request, KECUALI password, pin, dan token <---
+        // Kita exclude 'pin' agar tidak langsung tersimpan dalam bentuk angka mentah
+        $updateData = $request->except(['password', 'password_confirmation', 'pin', 'pin_confirmation', '_token', '_method']);
+
+        // --- Logika Update Password Menjadi HASH ---
+        if ($request->filled('password')) {
+            // Jika field 'password' diisi (tidak kosong), maka hash password baru.
+            $updateData['password_hash'] = Hash::make($request->password);
+        }
+
+        // ---> TAMBAHAN: Logika Update PIN Menjadi HASH <---
+        if ($request->filled('pin')) {
+            // Jika field 'pin' diisi Admin (tidak kosong), ubah menjadi Hash agar aman
+            $updateData['pin'] = Hash::make($request->pin);
+        }
+
+        // --- Proses Update Data ---
+        $data->update($updateData);
+
+        return redirect()->route('admin.customers.data.pengguna.index')
+                         ->with('success', 'Data pengguna berhasil diperbarui.');
     }
-    // CATATAN: Jika 'password' kosong, 'password_hash' di database tidak akan berubah.
-
-    // --- Proses Update Data ---
-    $data->update($updateData);
-
-    return redirect()->route('admin.customers.data.pengguna.index')
-                     ->with('success', 'Data pengguna berhasil diperbarui.');
-}
 
     /**
      * Menghapus akun pengguna (Hapus Akun).
@@ -142,6 +150,7 @@ public function update(Request $request, $id_pengguna)
     {
         Pengguna::where('id_pengguna', $id_pengguna)->delete();
 
+        // Pastikan nama route ini sudah sesuai dengan yang ada di web.php Anda
         return redirect()->route('admin.customers.pengguna.index')
                          ->with('success', 'Akun pengguna berhasil dihapus.');
     }
