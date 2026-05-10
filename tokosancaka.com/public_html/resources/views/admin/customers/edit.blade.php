@@ -341,15 +341,29 @@
 <script>
 $(document).ready(function() {
 
-    // Inisialisasi Select2
-    $('.select2').select2({
-        width: '100%'
+    // Inisialisasi Select2 dengan fitur Search
+    $('.select2-searchable').each(function() {
+        $(this).select2({
+            width: '100%',
+            placeholder: $(this).data('placeholder'),
+            allowClear: true // Memunculkan tombol X untuk menghapus pilihan
+        });
     });
 
     // Fungsi untuk memuat data wilayah (Kabupaten, Kecamatan, Desa)
-    function loadRegions(url, targetSelector, placeholder, selectedValue = null) {
+    function loadRegions(url, targetSelector, placeholderText, selectedValue = null) {
         const target = $(targetSelector);
-        target.html(`<option value="">${placeholder}</option>`).prop('disabled', true);
+
+        // Kosongkan opsi, tambahkan option kosong, lalu update placeholder
+        target.empty().append('<option></option>');
+        target.attr('data-placeholder', placeholderText);
+
+        // Re-inisialisasi agar placeholder terupdate
+        target.select2({
+            width: '100%',
+            placeholder: placeholderText,
+            allowClear: true
+        }).prop('disabled', true);
 
         if (!url) {
             target.prop('disabled', false);
@@ -380,27 +394,31 @@ $(document).ready(function() {
     $('#province_id').on('change', function() {
         const provinceId = $(this).val();
         const url = provinceId ? `/api/regencies/${provinceId}` : null;
-        loadRegions(url, '#regency_id', 'Memuat kabupaten...');
-        $('#district_id').html('<option value="">Pilih Kabupaten/Kota terlebih dahulu...</option>').trigger('change');
-        $('#village_id').html('<option value="">Pilih Kecamatan terlebih dahulu...</option>').trigger('change');
+        loadRegions(url, '#regency_id', 'Ketik nama Kabupaten/Kota...');
+
+        // Reset bawahnya
+        $('#district_id').empty().append('<option></option>').attr('data-placeholder', 'Pilih Kabupaten terlebih dahulu...').select2({placeholder: 'Pilih Kabupaten terlebih dahulu...'});
+        $('#village_id').empty().append('<option></option>').attr('data-placeholder', 'Pilih Kecamatan terlebih dahulu...').select2({placeholder: 'Pilih Kecamatan terlebih dahulu...'});
     });
 
     // Event listener untuk perubahan Kabupaten/Kota
     $('#regency_id').on('change', function() {
         const regencyId = $(this).val();
         const url = regencyId ? `/api/districts/${regencyId}` : null;
-        loadRegions(url, '#district_id', 'Memuat kecamatan...');
-        $('#village_id').html('<option value="">Pilih Kecamatan terlebih dahulu...</option>').trigger('change');
+        loadRegions(url, '#district_id', 'Ketik nama Kecamatan...');
+
+        // Reset bawahnya
+        $('#village_id').empty().append('<option></option>').attr('data-placeholder', 'Pilih Kecamatan terlebih dahulu...').select2({placeholder: 'Pilih Kecamatan terlebih dahulu...'});
     });
 
     // Event listener untuk perubahan Kecamatan
     $('#district_id').on('change', function() {
         const districtId = $(this).val();
         const url = districtId ? `/api/villages/${districtId}` : null;
-        loadRegions(url, '#village_id', 'Memuat desa/kelurahan...');
+        loadRegions(url, '#village_id', 'Ketik nama Desa/Kelurahan...');
     });
 
-    // --- Inisialisasi data alamat ---
+    // --- Inisialisasi data alamat (Untuk Mode Edit) ---
     const initialProvinceId = '{{ old('province_id', $userProvinceId ?? '') }}';
     const initialRegencyId = '{{ old('regency_id', $userRegencyId ?? '') }}';
     const initialDistrictId = '{{ old('district_id', $userDistrictId ?? '') }}';
@@ -413,19 +431,20 @@ $(document).ready(function() {
         $('#province_id').trigger('change');
 
         const urlRegencies = `/api/regencies/${initialProvinceId}`;
-        loadRegions(urlRegencies, '#regency_id', 'Memuat kabupaten...', initialRegencyId);
+        loadRegions(urlRegencies, '#regency_id', 'Ketik nama Kabupaten/Kota...', initialRegencyId);
     }
     if (initialRegencyId) {
         const urlDistricts = `/api/districts/${initialRegencyId}`;
-        loadRegions(urlDistricts, '#district_id', 'Memuat kecamatan...', initialDistrictId);
+        loadRegions(urlDistricts, '#district_id', 'Ketik nama Kecamatan...', initialDistrictId);
     }
     if (initialDistrictId) {
         const urlVillages = `/api/villages/${initialDistrictId}`;
-        loadRegions(urlVillages, '#village_id', 'Memuat desa/kelurahan...', initialVillageId);
+        loadRegions(urlVillages, '#village_id', 'Ketik nama Desa/Kelurahan...', initialVillageId);
     }
 
     // --- SCRIPT: Toggle Lihat Password / PIN ---
     function setupPasswordToggle(toggleBtnId, inputId, iconId) {
+        // [Kode toggle Anda yang lama tidak perlu diubah, biarkan saja di sini]
         const toggleBtn = $('#' + toggleBtnId);
         const passwordInput = $('#' + inputId);
         const icon = $('#' + iconId);
