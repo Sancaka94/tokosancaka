@@ -218,17 +218,19 @@ class PpobMobileController extends Controller
                         'redirect_url' => '/riwayatppob'
                     ]);
                 } else {
-                    // Tampilkan pesan error asli dari Tripay
-                    $tripayError = $resTripay['message'] ?? 'Error dari server Tripay';
+                    // Pastikan respons dari Tripay diubah menjadi Array yang aman untuk Log
+                    $safeLogData = is_array($resTripay) ? $resTripay : ['raw_response' => (string) $resTripay];
+                    $tripayError = $safeLogData['message'] ?? 'Error Payment Gateway (Cek Koneksi / Kredensial Tripay)';
 
-                    // Catat ke log Laravel biar gampang dilacak
-                    Log::error('LOG LOG - [API Mobile] Error Tripay Prabayar:', $resTripay);
+                    // Gunakan Array yang aman untuk argumen kedua
+                    Log::error('LOG LOG - [API Mobile] Error Tripay Prabayar:', $safeLogData);
 
                     $transaction->update(['status' => 'FAILED', 'message' => 'Tripay: ' . $tripayError]);
+
                     return response()->json([
                         'success' => false,
                         'message' => 'Gagal Payment Gateway: ' . $tripayError,
-                        'debug_tripay' => $resTripay // Lempar datanya ke frontend biar kelihatan di terminal VS Code
+                        'debug_tripay' => $safeLogData // Tetap lempar ke frontend buat bahan debug
                     ]);
                 }
             }
