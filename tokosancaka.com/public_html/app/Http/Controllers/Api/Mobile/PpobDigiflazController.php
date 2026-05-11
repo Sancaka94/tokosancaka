@@ -561,4 +561,35 @@ class PpobDigiflazController extends Controller
             return response()->json(['success' => false, 'message' => 'Gagal koneksi ke provider.'], 500);
         }
     }
+
+    // =================================================================
+    // 6. RIWAYAT TRANSAKSI (HISTORY)
+    // =================================================================
+    public function getHistory(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+
+        // Inisialisasi query dasar, diurutkan dari yang paling baru
+        $query = PpobTransaction::orderBy('created_at', 'desc');
+
+        // Cek apakah user BUKAN admin DAN BUKAN user dengan ID 4
+        // Catatan: Gunakan $user->id atau $user->id_pengguna sesuai struktur tabel User kamu
+        $isAdmin = strtolower($user->role) === 'admin' || $user->id_pengguna == 4;
+
+        if (!$isAdmin) {
+            // Jika BUKAN admin, batasi data hanya untuk user yang sedang login
+            $query->where('user_id', $user->id_pengguna);
+        }
+        // Jika dia admin/ID 4, kode where() di atas dilewati sehingga mengambil semua data transaksi.
+
+        // Eksekusi query
+        $history = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $history
+        ]);
+    }
+
 }
