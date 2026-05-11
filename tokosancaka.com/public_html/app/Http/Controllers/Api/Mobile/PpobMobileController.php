@@ -200,6 +200,8 @@ class PpobMobileController extends Controller
                             throw new \Exception('Response payment URL DOKU kosong.');
                         }
 
+                        $transaction->update(['payment_url' => $paymentUrl]);
+
                         return response()->json([
                             'success' => true,
                             'message' => 'Pesanan berhasil dibuat. Mengalihkan ke DOKU...',
@@ -220,6 +222,8 @@ class PpobMobileController extends Controller
 
                     $akunParams = $user->no_wa ?? $user->no_hp ?? $user->id_pengguna;
                     $paymentUrl = url('/pembayaran?akun=' . urlencode($akunParams));
+
+                    $transaction->update(['payment_url' => $paymentUrl]);
 
                     return response()->json([
                         'success' => true,
@@ -263,6 +267,9 @@ class PpobMobileController extends Controller
                     $resTripay = $responseTripay->json();
 
                     if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
+
+                    $transaction->update(['payment_url' => $paymentUrl]);
+
                         return response()->json([
                             'success' => true,
                             'message' => 'Pesanan berhasil dibuat. Mengalihkan ke pembayaran...',
@@ -642,7 +649,7 @@ class PpobMobileController extends Controller
                         throw new \Exception('Response payment URL DOKU kosong.');
                     }
 
-                    $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway']);
+                    $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway', 'payment_url' => $paymentUrl]);
                     return response()->json([
                         'success' => true,
                         'message' => 'Silakan selesaikan pembayaran DOKU.',
@@ -660,7 +667,7 @@ class PpobMobileController extends Controller
             elseif ($cleanPaymentMethod === 'DANA') {
                 $akunParams = $user->no_wa ?? $user->no_hp ?? $user->id_pengguna;
                 $paymentUrl = url('/pembayaran?akun=' . urlencode($akunParams));
-                $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway']);
+                $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway', 'payment_url' => $paymentUrl]);
 
                 return response()->json([
                     'success' => true,
@@ -704,7 +711,7 @@ class PpobMobileController extends Controller
                 $resTripay = $responseTripay->json();
 
                 if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
-                    $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway']);
+                    $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway', 'payment_url' => $resTripay['data']['checkout_url']]);
                     return response()->json([
                         'success' => true,
                         'message' => 'Silakan selesaikan pembayaran.',
