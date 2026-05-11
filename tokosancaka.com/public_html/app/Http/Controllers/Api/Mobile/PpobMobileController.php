@@ -164,8 +164,16 @@ class PpobMobileController extends Controller
             $product = IakPricelistPrepaid::where('code', $request->product_code)->first();
             if (!$product) return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan.']);
 
-            // --- CEK SALDO HANYA JIKA METODE PEMBAYARAN ADALAH SALDO / CASH ---
-            if ($request->payment_method === '#SALDO' || $request->payment_method === 'CASH' || empty($request->payment_method)) {
+            // --- CEK METODE PEMBAYARAN DAN HAK AKSES ---
+            $isSaldoOrCash = in_array(strtoupper($request->payment_method), ['#SALDO', 'CASH']) || empty($request->payment_method);
+            $isAdmin4 = ($user->id_pengguna == 4);
+
+            if ($isSaldoOrCash) {
+                // HANYA ADMIN (USER ID 4) YANG BOLEH POTONG SALDO / CASH LANGSUNG
+                if (!$isAdmin4) {
+                    return response()->json(['success' => false, 'message' => 'Metode Pembayaran Saldo/Cash hanya khusus untuk Admin. Silakan gunakan Doku, Dana, atau Tripay.']);
+                }
+
                 // Pastikan menggunakan balance_iak atau saldo sesuai database-mu
                 if ($user->balance_iak < $product->price) {
                     return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi.']);
@@ -175,10 +183,10 @@ class PpobMobileController extends Controller
                 $refId = 'P' . date('ymd') . rand(1000, 9999);
 
             } else {
-                // --- LOGIKA PAYMENT GATEWAY (TRIPAY) ---
+                // --- LOGIKA PAYMENT GATEWAY (DOKU, DANA, TRIPAY DLL) ---
                 $refId = 'P' . date('ymd') . rand(1000, 9999);
 
-                // 1. Simpan Transaksi PPOB dengan status UNPAID (Belum Lunas)
+                // 1. Simpan Transaksi PPOB dengan status PENDING (Sesuai Request)
                 $transaction = TransactionPpobIak::create([
                     'user_id'         => $user->id_pengguna,
                     'ref_id'          => $refId,
@@ -186,7 +194,7 @@ class PpobMobileController extends Controller
                     'customer_id'     => $request->customer_id,
                     'product_code'    => $request->product_code,
                     'whatsapp_number' => $request->whatsapp_number,
-                    'status'          => 'UNPAID',
+                    'status'          => 'PENDING',
                     'price'           => $product->price,
                     'message'         => 'Menunggu Pembayaran Gateway'
                 ]);
@@ -212,6 +220,7 @@ class PpobMobileController extends Controller
                         'order_items'    => [
                             ['sku' => $product->code, 'name' => $product->description, 'price' => $amount, 'quantity' => 1]
                         ],
+                        'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob', // Otomatis balik ke riwayatppob.tsx
                         'signature'      => $signature
                     ]);
 
@@ -222,7 +231,8 @@ class PpobMobileController extends Controller
                     return response()->json([
                         'success' => true,
                         'message' => 'Pesanan berhasil dibuat. Silakan bayar.',
-                        'payment_url' => $resTripay['data']['checkout_url']
+                        'payment_url' => $resTripay['data']['checkout_url'],
+                        'redirect_url' => '/riwayatppob' // URL arah untuk Frontend
                     ]);
                 } else {
                     $transaction->update(['status' => 'FAILED', 'message' => 'Gagal generate Tripay']);
@@ -231,8 +241,7 @@ class PpobMobileController extends Controller
             }
 
             // ========================================================
-            // SISA KODE DI BAWAH INI HANYA AKAN DIJALANKAN JIKA USER PAKAI SALDO / CASH
-            // Karena jika pakai Tripay, sistem sudah kena "return" di atas.
+            // SISA KODE DI BAWAH INI HANYA AKAN DIJALANKAN JIKA ADMIN (ID 4) PAKAI SALDO / CASH
             // ========================================================
             $sign = md5($this->username . $this->apiKey . $refId);
 
@@ -594,8 +603,16 @@ class PpobMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Pembayaran tagihan ini sedang diproses oleh sistem, mohon tunggu.']);
         }
 
-        // --- PERBAIKAN: CEK SALDO HANYA JIKA PAKAI SALDO / CASH ---
-        if ($request->payment_method === '#SALDO' || $request->payment_method === 'CASH' || empty($request->payment_method)) {
+        // --- CEK METODE PEMBAYARAN DAN HAK AKSES ---
+        $isSaldoOrCash = in_array(strtoupper($request->payment_method), ['#SALDO', 'CASH']) || empty($request->payment_method);
+        $isAdmin4 = ($user->id_pengguna == 4);
+
+        if ($isSaldoOrCash) {
+            // HANYA ADMIN (USER ID 4) YANG BOLEH POTONG SALDO / CASH LANGSUNG
+            if (!$isAdmin4) {
+                return response()->json(['success' => false, 'message' => 'Metode Pembayaran Saldo/Cash hanya khusus untuk Admin. Silakan gunakan Doku, Dana, atau Tripay.']);
+            }
+
             if ($user->balance_iak < $transaction->price) { // Pastikan pakai $user->saldo jika di DB mu pakai kolom saldo
                 return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi untuk membayar tagihan ini.']);
             }
@@ -623,19 +640,21 @@ class PpobMobileController extends Controller
                     'order_items'    => [
                         ['sku' => 'TAGIHAN', 'name' => 'Tagihan ' . $transaction->product_code, 'price' => $amount, 'quantity' => 1]
                     ],
+                    'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob',
                     'signature'      => $signature
                 ]);
 
             $resTripay = $responseTripay->json();
 
             if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
-                // Update status transaksi PPOB jadi UNPAID
-                $transaction->update(['status' => 'UNPAID', 'message' => 'Menunggu Pembayaran Gateway']);
+                // Update status transaksi PPOB jadi PENDING (Sesuai Request)
+                $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway']);
 
                 return response()->json([
                     'success' => true,
                     'message' => 'Silakan selesaikan pembayaran.',
-                    'payment_url' => $resTripay['data']['checkout_url']
+                    'payment_url' => $resTripay['data']['checkout_url'],
+                    'redirect_url' => '/riwayatppob'
                 ]);
             } else {
                 return response()->json(['success' => false, 'message' => 'Gagal Payment Gateway: ' . ($resTripay['message'] ?? 'Error')]);
