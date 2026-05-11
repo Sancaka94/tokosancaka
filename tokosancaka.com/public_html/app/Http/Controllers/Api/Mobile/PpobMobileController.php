@@ -14,6 +14,7 @@ use App\Models\IakPricelistPrepaid;
 use App\Models\Api;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
+use App\Services\DokuJokulService;
 
 class PpobMobileController extends Controller
 {
@@ -164,21 +165,10 @@ class PpobMobileController extends Controller
 
             $refId = 'P' . date('ymd') . rand(1000, 9999);
 
+            // =====================================================
             // JIKA BUKAN SALDO (PAKAI PAYMENT GATEWAY)
+            // =====================================================
             if (!$isSaldoOrCash) {
-                // Ambil mode Tripay dulu (sandbox / production)
-                $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
-
-                // Ambil Key berdasarkan mode yang aktif
-                $apiKey = Api::getValue('TRIPAY_API_KEY', $tripayMode);
-                $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY', $tripayMode);
-                $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', $tripayMode);
-
-                if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
-                    Log::error('LOG LOG - Kredensial Tripay Kosong');
-                    return response()->json(['success' => false, 'message' => 'Sistem Error: Konfigurasi Payment Gateway belum disetting.']);
-                }
-
                 $transaction = TransactionPpobIak::create([
                     'user_id'         => $user->id_pengguna,
                     'ref_id'          => $refId,
@@ -191,51 +181,100 @@ class PpobMobileController extends Controller
                     'message'         => 'Menunggu Pembayaran Gateway'
                 ]);
 
-                $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'development');
-                $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
-
                 $amount = (int) $product->price;
-                $signature = hash_hmac('sha256', $merchantCode.$refId.$amount, $privateKey);
 
-                // Eksekusi pembersihan nama kode DOKU/DANA
-                $cleanPaymentMethod = str_replace('#', '', $paymentMethod);
+                // Bersihkan string dari spasi dan tanda #
+                $cleanPaymentMethod = strtoupper(trim(str_replace('#', '', $paymentMethod)));
 
-                $responseTripay = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . trim($apiKey)
-                ])->post($tripayUrl, [
-                    'method'         => $cleanPaymentMethod,
-                    'merchant_ref'   => $refId,
-                    'amount'         => $amount,
-                    'customer_name'  => $user->nama_lengkap ?? 'Member Sancaka',
-                    'customer_email' => $user->email ?? 'no-reply@sancaka.com',
-                    'customer_phone' => $user->no_hp ?? '081234567890',
-                    'order_items'    => [
-                        ['sku' => $product->code, 'name' => $product->description, 'price' => $amount, 'quantity' => 1]
-                    ],
-                    'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob',
-                    'signature'      => $signature
-                ]);
+                // -------------------------------------------------
+                // A. JALUR DOKU JOKUL
+                // -------------------------------------------------
+                if (in_array($cleanPaymentMethod, ['DOKU', 'DOKU_JOKUL'])) {
+                    Log::info("[API MOBILE PPOB] Memproses pembayaran via DOKU Jokul untuk: " . $refId);
 
-                $resTripay = $responseTripay->json();
+                    try {
+                        $dokuService = new DokuJokulService();
+                        $paymentUrl = $dokuService->createPayment($refId, $amount);
 
-                if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
+                        if (empty($paymentUrl)) {
+                            throw new \Exception('Response payment URL DOKU kosong.');
+                        }
+
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Pesanan berhasil dibuat. Mengalihkan ke DOKU...',
+                            'payment_url' => $paymentUrl,
+                            'redirect_url' => '/riwayatppob'
+                        ]);
+                    } catch (\Exception $e) {
+                        Log::error('LOG LOG - [API Mobile] Error DOKU Prabayar: ' . $e->getMessage());
+                        $transaction->update(['status' => 'FAILED', 'message' => 'Gagal generate link DOKU']);
+                        return response()->json(['success' => false, 'message' => 'Gagal membuat transaksi DOKU: ' . $e->getMessage()]);
+                    }
+                }
+                // -------------------------------------------------
+                // B. JALUR DANA (Diarahkan ke Web Portal Sancaka)
+                // -------------------------------------------------
+                elseif ($cleanPaymentMethod === 'DANA') {
+                    Log::info("[API MOBILE PPOB] Mengalihkan DANA ke Web Sancaka");
+
+                    $akunParams = $user->no_wa ?? $user->no_hp ?? $user->id_pengguna;
+                    $paymentUrl = url('/pembayaran?akun=' . urlencode($akunParams));
+
                     return response()->json([
                         'success' => true,
-                        'message' => 'Pesanan berhasil dibuat. Silakan bayar.',
-                        'payment_url' => $resTripay['data']['checkout_url'],
+                        'message' => 'Pesanan berhasil dibuat. Mengalihkan ke pembayaran DANA...',
+                        'payment_url' => $paymentUrl,
                         'redirect_url' => '/riwayatppob'
                     ]);
-                } else {
-                    $safeLogData = is_array($resTripay) ? $resTripay : ['raw_response' => (string) $resTripay];
-                    $tripayError = $safeLogData['message'] ?? 'Error dari server Tripay';
+                }
+                // -------------------------------------------------
+                // C. JALUR TRIPAY (QRIS, VA, Minimarket, dll)
+                // -------------------------------------------------
+                else {
+                    Log::info("[API MOBILE PPOB] Memproses pembayaran via TRIPAY untuk: " . $refId);
 
-                    Log::error('LOG LOG - [API Mobile] Error Tripay Prabayar:', $safeLogData);
-                    $transaction->update(['status' => 'FAILED', 'message' => 'Tripay: ' . $tripayError]);
+                    $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+                    $apiKey = Api::getValue('TRIPAY_API_KEY', $tripayMode);
+                    $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY', $tripayMode);
+                    $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', $tripayMode);
 
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Gagal Payment Gateway: ' . $tripayError
+                    if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+                        return response()->json(['success' => false, 'message' => 'Sistem Error: Konfigurasi Tripay belum disetting.']);
+                    }
+
+                    $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+                    $signature = hash_hmac('sha256', $merchantCode.$refId.$amount, $privateKey);
+
+                    $responseTripay = Http::withHeaders([
+                        'Authorization' => 'Bearer ' . trim($apiKey)
+                    ])->post($tripayUrl, [
+                        'method'         => $cleanPaymentMethod,
+                        'merchant_ref'   => $refId,
+                        'amount'         => $amount,
+                        'customer_name'  => $user->nama_lengkap ?? 'Member Sancaka',
+                        'customer_email' => $user->email ?? 'no-reply@sancaka.com',
+                        'customer_phone' => $user->no_hp ?? '081234567890',
+                        'order_items'    => [['sku' => $product->code, 'name' => $product->description, 'price' => $amount, 'quantity' => 1]],
+                        'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob',
+                        'signature'      => $signature
                     ]);
+
+                    $resTripay = $responseTripay->json();
+
+                    if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Pesanan berhasil dibuat. Mengalihkan ke pembayaran...',
+                            'payment_url' => $resTripay['data']['checkout_url'],
+                            'redirect_url' => '/riwayatppob'
+                        ]);
+                    } else {
+                        $safeLogData = is_array($resTripay) ? $resTripay : ['raw_response' => (string) $resTripay];
+                        Log::error('LOG LOG - [API Mobile] Error Tripay Prabayar:', $safeLogData);
+                        $transaction->update(['status' => 'FAILED', 'message' => 'Tripay: ' . ($safeLogData['message'] ?? 'Error')]);
+                        return response()->json(['success' => false, 'message' => 'Gagal Payment Gateway: ' . ($safeLogData['message'] ?? 'Error')]);
+                    }
                 }
             }
 
@@ -575,68 +614,108 @@ class PpobMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Pembayaran tagihan ini sedang diproses oleh sistem, mohon tunggu.']);
         }
 
-        // --- PERCABANGAN LOGIKA METODE PEMBAYARAN PASCABAYAR ---
         $paymentMethod = $request->payment_method ?? '';
         $isSaldoOrCash = in_array(strtoupper($paymentMethod), ['#SALDO', 'CASH', 'POTONG SALDO', 'SALDO']) || empty($paymentMethod);
         $isAdmin4 = ($user->id_pengguna == 4);
 
+        // =====================================================
+        // JIKA BUKAN SALDO (PAKAI PAYMENT GATEWAY)
+        // =====================================================
         if (!$isSaldoOrCash) {
-            // LOGIKA PAYMENT GATEWAY DIRECT TRIPAY
-            // Ambil mode Tripay dulu (sandbox / production)
-            $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
-
-            // Ambil Key berdasarkan mode yang aktif
-            $apiKey = Api::getValue('TRIPAY_API_KEY', $tripayMode);
-            $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY', $tripayMode);
-            $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', $tripayMode);
-
-            if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
-                Log::error('LOG LOG - Kredensial Tripay Kosong di Postpaid');
-                return response()->json(['success' => false, 'message' => 'Sistem Error: Konfigurasi Payment Gateway belum disetting.']);
-            }
-
-            $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'development');
-            $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
-
             $amount = (int) $transaction->price;
             $merchantRef = 'PASCA' . $transaction->tr_id;
-            $signature = hash_hmac('sha256', $merchantCode.$merchantRef.$amount, $privateKey);
 
-            $cleanPaymentMethod = str_replace('#', '', $paymentMethod);
+            // Bersihkan string dari spasi dan tanda #
+            $cleanPaymentMethod = strtoupper(trim(str_replace('#', '', $paymentMethod)));
 
-            $responseTripay = Http::withHeaders([
-                'Authorization' => 'Bearer ' . trim($apiKey)
-            ])->post($tripayUrl, [
-                'method'         => $cleanPaymentMethod,
-                'merchant_ref'   => $merchantRef,
-                'amount'         => $amount,
-                'customer_name'  => $user->nama_lengkap ?? 'Member Sancaka',
-                'customer_email' => $user->email ?? 'no-reply@sancaka.com',
-                'customer_phone' => $user->no_hp ?? '081234567890',
-                'order_items'    => [
-                    ['sku' => 'TAGIHAN', 'name' => 'Tagihan ' . $transaction->product_code, 'price' => $amount, 'quantity' => 1]
-                ],
-                'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob',
-                'signature'      => $signature
-            ]);
+            // -------------------------------------------------
+            // A. JALUR DOKU JOKUL
+            // -------------------------------------------------
+            if (in_array($cleanPaymentMethod, ['DOKU', 'DOKU_JOKUL'])) {
+                Log::info("[API MOBILE PPOB] Memproses pascabayar via DOKU Jokul untuk: " . $merchantRef);
 
-            $resTripay = $responseTripay->json();
+                try {
+                    $dokuService = new DokuJokulService();
+                    $paymentUrl = $dokuService->createPayment($merchantRef, $amount);
 
-            if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
+                    if (empty($paymentUrl)) {
+                        throw new \Exception('Response payment URL DOKU kosong.');
+                    }
+
+                    $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway']);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Silakan selesaikan pembayaran DOKU.',
+                        'payment_url' => $paymentUrl,
+                        'redirect_url' => '/riwayatppob'
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('LOG LOG - [API Mobile] Error DOKU Pascabayar: ' . $e->getMessage());
+                    return response()->json(['success' => false, 'message' => 'Gagal membuat transaksi DOKU: ' . $e->getMessage()]);
+                }
+            }
+            // -------------------------------------------------
+            // B. JALUR DANA (Diarahkan ke Web Portal Sancaka)
+            // -------------------------------------------------
+            elseif ($cleanPaymentMethod === 'DANA') {
+                $akunParams = $user->no_wa ?? $user->no_hp ?? $user->id_pengguna;
+                $paymentUrl = url('/pembayaran?akun=' . urlencode($akunParams));
                 $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway']);
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Silakan selesaikan pembayaran.',
-                    'payment_url' => $resTripay['data']['checkout_url'],
+                    'message' => 'Silakan selesaikan pembayaran DANA.',
+                    'payment_url' => $paymentUrl,
                     'redirect_url' => '/riwayatppob'
                 ]);
-            } else {
-                $safeLogData = is_array($resTripay) ? $resTripay : ['raw_response' => (string) $resTripay];
-                $tripayError = $safeLogData['message'] ?? 'Error dari server Tripay';
+            }
+            // -------------------------------------------------
+            // C. JALUR TRIPAY
+            // -------------------------------------------------
+            else {
+                Log::info("[API MOBILE PPOB] Memproses pascabayar via TRIPAY untuk: " . $merchantRef);
 
-                Log::error('LOG LOG - [API Mobile] Error Tripay Pascabayar:', $safeLogData);
-                return response()->json(['success' => false, 'message' => 'Gagal Payment Gateway: ' . $tripayError]);
+                $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+                $apiKey = Api::getValue('TRIPAY_API_KEY', $tripayMode);
+                $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY', $tripayMode);
+                $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', $tripayMode);
+
+                if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+                    return response()->json(['success' => false, 'message' => 'Sistem Error: Konfigurasi Tripay belum disetting.']);
+                }
+
+                $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+                $signature = hash_hmac('sha256', $merchantCode.$merchantRef.$amount, $privateKey);
+
+                $responseTripay = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . trim($apiKey)
+                ])->post($tripayUrl, [
+                    'method'         => $cleanPaymentMethod,
+                    'merchant_ref'   => $merchantRef,
+                    'amount'         => $amount,
+                    'customer_name'  => $user->nama_lengkap ?? 'Member Sancaka',
+                    'customer_email' => $user->email ?? 'no-reply@sancaka.com',
+                    'customer_phone' => $user->no_hp ?? '081234567890',
+                    'order_items'    => [['sku' => 'TAGIHAN', 'name' => 'Tagihan ' . $transaction->product_code, 'price' => $amount, 'quantity' => 1]],
+                    'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob',
+                    'signature'      => $signature
+                ]);
+
+                $resTripay = $responseTripay->json();
+
+                if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
+                    $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway']);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Silakan selesaikan pembayaran.',
+                        'payment_url' => $resTripay['data']['checkout_url'],
+                        'redirect_url' => '/riwayatppob'
+                    ]);
+                } else {
+                    $safeLogData = is_array($resTripay) ? $resTripay : ['raw_response' => (string) $resTripay];
+                    Log::error('LOG LOG - [API Mobile] Error Tripay Pascabayar:', $safeLogData);
+                    return response()->json(['success' => false, 'message' => 'Gagal Payment Gateway: ' . ($safeLogData['message'] ?? 'Error')]);
+                }
             }
         }
 
