@@ -644,11 +644,54 @@ class KoliController extends Controller
 
     private function _createKiriminAjaOrderLocal($data, $order, $kirimaja, $senderData, $receiverData, $cod_value, $shipping_cost, $insurance_cost) {
         $serviceGroup = 'regular';
-        if (strpos(strtolower($data['service_code']), 'cargo') !== false) $serviceGroup = 'trucking';
+        $serviceCodeLower = strtolower($data['service_code']);
 
+        if (strpos($serviceCodeLower, 'cargo') !== false || strpos($serviceCodeLower, 'trucking') !== false) {
+            $serviceGroup = 'trucking';
+        }
+
+        // 1. Deteksi apakah ini layanan Instant / Sameday
+        $isInstant = (strpos(strtolower($data['courier_code']), 'instant') !== false || strpos($serviceCodeLower, 'instant') !== false || strpos($serviceCodeLower, 'sameday') !== false);
+
+        $useInsuranceFlag = ($data['ansuransi'] == 'iya') ? 1 : 0;
+
+        // =========================================================
+        // JIKA LAYANAN INSTANT / SAMEDAY (Memakai Titik Koordinat)
+        // =========================================================
+        if ($isInstant) {
+            $payload = [
+                'service' => strtolower($data['courier_code']), 'service_type' => $data['service_code'], 'vehicle' => 'motor',
+                'order_prefix' => $order->nomor_invoice,
+                'packages' => [[
+                    'destination_name' => $order->receiver_name, 'destination_phone' => $order->receiver_phone,
+                    // Gunakan koordinat dari database, fallback ke titik default jika 0
+                    'destination_lat' => $order->receiver_lat != 0 ? $order->receiver_lat : '-7.250445',
+                    'destination_long' => $order->receiver_lng != 0 ? $order->receiver_lng : '112.768845',
+                    'destination_address' => $order->receiver_address, 'destination_address_note' => '-',
+
+                    'origin_name' => $order->sender_name, 'origin_phone' => $order->sender_phone,
+                    // Gunakan koordinat dari database, fallback ke titik default jika 0
+                    'origin_lat' => $order->sender_lat != 0 ? $order->sender_lat : '-7.250445',
+                    'origin_long' => $order->sender_lng != 0 ? $order->sender_lng : '112.768845',
+                    'origin_address' => $order->sender_address, 'origin_address_note' => '-',
+
+                    'shipping_price' => (int)$shipping_cost,
+                    'item' => [
+                        'name' => $data['item_description'], 'description' => 'Pesanan ' . $order->nomor_invoice,
+                        'price' => (int)$data['item_price'], 'weight' => (int)$data['weight'],
+                    ]
+                ]]
+            ];
+
+            Log::info('[API MOBILE] Payload Instant/Sameday KiriminAja:', $payload);
+            return $kirimaja->createInstantOrder($payload);
+        }
+
+        // =========================================================
+        // JIKA LAYANAN REGULAR / EXPRESS / CARGO
+        // =========================================================
         $schedules = $kirimaja->getSchedules();
         $pickupSchedule = $schedules['clock'] ?? 'now';
-        $useInsuranceFlag = ($data['ansuransi'] == 'iya') ? 1 : 0;
 
         $payload = [
             'address' => $order->sender_address, 'phone' => $order->sender_phone, 'name' => $order->sender_name,
@@ -656,6 +699,10 @@ class KoliController extends Controller
             'zipcode' => $senderData['kirimaja_data']['postal_code'],
             'platform_name' => 'tokosancaka.com', 'category' => $serviceGroup,
             'schedule' => $pickupSchedule,
+            // Opsional: API Regulernya KiriminAja terkadang juga butuh koordinat pengirim
+            'latitude' => $order->sender_lat != 0 ? $order->sender_lat : null,
+            'longitude' => $order->sender_lng != 0 ? $order->sender_lng : null,
+
             'packages' => [[
                 'order_id' => $order->nomor_invoice, 'item_name' => $data['item_description'],
                 'package_type_id' => $order->item_type ?? 7,
@@ -673,6 +720,8 @@ class KoliController extends Controller
                 'shipping_cost' => (int)$shipping_cost
             ]]
         ];
+
+        Log::info('[API MOBILE] Payload Express/Cargo KiriminAja:', $payload);
         return $kirimaja->createExpressOrder($payload);
     }
 

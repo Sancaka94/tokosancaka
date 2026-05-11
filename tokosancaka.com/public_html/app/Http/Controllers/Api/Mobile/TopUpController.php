@@ -18,16 +18,23 @@ class TopUpController extends Controller
         try {
             $user = Auth::user();
 
-            // Mengambil transaksi khusus topup milik user yang sedang login
-            $transactions = Transaction::where('user_id', $user->id_pengguna)
-                ->where('type', 'topup')
-                ->orderBy('created_at', 'desc')
-                ->paginate(15);
+            // 1. Inisialisasi Query dasar (Hanya ambil yang typenya topup)
+            $query = Transaction::where('type', 'topup');
 
-            // Format data agar lebih mudah dibaca oleh React Native
+            // 2. Logika Pengecekan Admin
+            // Jika ID pengguna BUKAN 4, maka batasi data hanya untuk user tersebut
+            if ($user->id_pengguna != 4) {
+                $query->where('user_id', $user->id_pengguna);
+            }
+
+            // 3. Eksekusi query dengan sorting dan paginasi
+            $transactions = $query->orderBy('created_at', 'desc')->paginate(15);
+
+            // 4. Format data agar lebih mudah dibaca oleh React Native
             $formattedData = collect($transactions->items())->map(function ($trx) {
                 return [
                     'id' => $trx->id,
+                    'user_id' => $trx->user_id, // Ditambahkan agar admin bisa membedakan pemilik transaksi
                     'reference_id' => $trx->reference_id,
                     'amount' => $trx->amount,
                     'status' => strtolower($trx->status), // 'pending', 'success', 'failed'

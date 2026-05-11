@@ -59,6 +59,11 @@ class PesananController extends Controller
                 'receiver_subdistrict_id'=> 'required|numeric',
                 'receiver_full_region'  => 'nullable|string|max:255',
 
+                'sender_lat'            => 'nullable|numeric',
+                'sender_lng'            => 'nullable|numeric',
+                'receiver_lat'          => 'nullable|numeric',
+                'receiver_lng'          => 'nullable|numeric',
+
                 'item_description'      => 'required|string|max:255',
                 'item_price'            => 'required|numeric|min:100',
                 'weight'                => 'required|numeric|min:1',
@@ -178,6 +183,31 @@ class PesananController extends Controller
                     $user->decrement('saldo', $totalTagihanFinal);
                     Log::info("[API MOBILE] Saldo user {$user->id_pengguna} berhasil dipotong sebesar {$totalTagihanFinal}");
                 }
+
+                // ==========================================================
+                // 🔥 LOGIKA PENCARIAN TITIK KOORDINAT (GEOCODING) 🔥
+                // ==========================================================
+                $serviceGroup = explode('-', $validatedData['expedition'] ?? '')[0] ?? '';
+                if (in_array(strtolower($serviceGroup), ['instant', 'sameday'])) {
+                    Log::info('[API MOBILE] Layanan Instant/Sameday terdeteksi. Mencari koordinat otomatis...');
+
+                    // Cari Koordinat Pengirim
+                    if (empty($validatedData['sender_lat']) || empty($validatedData['sender_lng'])) {
+                        $senderQuery = $validatedData['sender_full_region'] ?? implode(', ', array_filter([$validatedData['sender_district'], $validatedData['sender_regency']]));
+                        $geoSender = $this->geocode($senderQuery);
+                        $validatedData['sender_lat'] = $geoSender['lat'] ?? '-7.250445'; // Default jika gagal
+                        $validatedData['sender_lng'] = $geoSender['lng'] ?? '112.768845';
+                    }
+
+                    // Cari Koordinat Penerima
+                    if (empty($validatedData['receiver_lat']) || empty($validatedData['receiver_lng'])) {
+                        $receiverQuery = $validatedData['receiver_full_region'] ?? implode(', ', array_filter([$validatedData['receiver_district'], $validatedData['receiver_regency']]));
+                        $geoReceiver = $this->geocode($receiverQuery);
+                        $validatedData['receiver_lat'] = $geoReceiver['lat'] ?? '-7.250445';
+                        $validatedData['receiver_lng'] = $geoReceiver['lng'] ?? '112.768845';
+                    }
+                }
+                // ==========================================================
 
                 // Tembak API KiriminAja
                 Log::info("[API MOBILE] Membuat order lunas ke KiriminAja...");
@@ -393,7 +423,7 @@ class PesananController extends Controller
     {
         Log::info('[API MOBILE] Menyiapkan payload KiriminAja...');
         $expeditionParts = explode('-', $data['expedition'] ?? '');
-        $serviceGroup = $expeditionParts[0] ?? null;
+        $serviceGroup = strtolower($expeditionParts[0] ?? '');
         $courier = $expeditionParts[1] ?? null;
         $service_type = $expeditionParts[2] ?? null;
 
@@ -401,53 +431,65 @@ class PesananController extends Controller
         $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0;
         $finalCodValue = $cod_value;
 
-        // ============================================================
-        // 🔥 LOGIKA PENYELARASAN HARGA BARANG KE DATABASE SANCAKA 🔥
-        // ============================================================
+        // Logika Penyelarasan Harga (Tetap Dipertahankan)
         $pm = strtoupper(trim($data['payment_method'] ?? ''));
-        // Deteksi penamaan dari React Native (pakai hashtag atau tidak)
         $isCodOngkir = in_array($pm, ['COD', '#COD_ONGKIR']);
         $isCodBarang = in_array($pm, ['CODBARANG', '#COD_BARANG']);
 
         if ($isCodOngkir || $isCodBarang) {
             if ($isCodOngkir) {
-                $apiItemPrice = 1000; // Syarat mutlak JSON KiriminAja
+                $apiItemPrice = 1000;
             } else {
                 if (($data['ansuransi'] ?? 'tidak') !== 'iya' && $apiItemPrice < 1000) {
                     $apiItemPrice = 1000;
                 }
             }
-
-            // Simpan nominal tagihan yang sudah kembar ke database
             $order->price = $finalCodValue;
             $order->save();
 
-            // Panggil fungsi rekam keuangan (ambil dari Web Controller)
             if (method_exists(\App\Http\Controllers\Customer\PesananController::class, 'simpanKeKeuangan')) {
                 \App\Http\Controllers\Customer\PesananController::simpanKeKeuangan($order);
             }
         }
-        // ============================================================
 
-        // ---------------------------------------------------------
-        // LOGIKA PENJADWALAN PICKUP KIRIMINAJA BARU
-        // ---------------------------------------------------------
+        // =========================================================
+        // JIKA LAYANAN INSTANT / SAMEDAY (Memakai Titik Koordinat)
+        // =========================================================
+        if (in_array($serviceGroup, ['instant', 'sameday'])) {
+            $payload = [
+                'service' => $courier, 'service_type' => $service_type, 'vehicle' => 'motor',
+                'order_prefix' => $order->nomor_invoice,
+                'packages' => [[
+                    'destination_name' => $data['receiver_name'], 'destination_phone' => $data['receiver_phone'],
+                    'destination_lat' => $data['receiver_lat'] ?? '-7.250445', 'destination_long' => $data['receiver_lng'] ?? '112.768845',
+                    'destination_address' => $data['receiver_address'], 'destination_address_note' => '-',
+                    'origin_name' => $data['sender_name'], 'origin_phone' => $data['sender_phone'],
+                    'origin_lat' => $data['sender_lat'] ?? '-7.250445', 'origin_long' => $data['sender_lng'] ?? '112.768845',
+                    'origin_address' => $data['sender_address'], 'origin_address_note' => '-',
+                    'shipping_price' => (int)$shipping_cost,
+                    'item' => [
+                        'name' => $data['item_description'], 'description' => 'Pesanan ' . $order->nomor_invoice,
+                        'price' => (int)$apiItemPrice, 'weight' => (int)$data['weight'],
+                    ]
+                ]]
+            ];
+            Log::info('[API MOBILE] KiriminAja Payload Instant:', $payload);
+            return $kirimaja->createInstantOrder($payload);
+        }
+
+        // =========================================================
+        // JIKA LAYANAN REGULAR / EXPRESS / CARGO
+        // =========================================================
         $now = \Carbon\Carbon::now('Asia/Jakarta');
-
-        // Jika hari ini adalah hari Minggu ATAU sudah lewat jam 17:00 (5 Sore)
         if ($now->isSunday() || $now->hour >= 17) {
-            $pickupDate = $now->copy()->addDay(); // Jadwalkan ke Besok
-            if ($pickupDate->isSunday()) {
-                $pickupDate->addDay();
-            }
+            $pickupDate = $now->copy()->addDay();
+            if ($pickupDate->isSunday()) $pickupDate->addDay();
             $scheduleClock = $pickupDate->setTime(9, 0, 0)->format('Y-m-d H:i:s');
         } else {
             $scheduleClock = $now->setTime(17, 0, 0)->format('Y-m-d H:i:s');
         }
-        Log::info("[API MOBILE] Jadwal pickup KiriminAja ditetapkan pada: {$scheduleClock}");
 
         $category = ($data['service_type'] ?? $serviceGroup) === 'cargo' ? 'trucking' : 'regular';
-
         $weightInput = (int) $data['weight'];
         $lengthInput = (int) ($data['length'] ?? 1);
         $widthInput = (int) ($data['width'] ?? 1);
@@ -464,6 +506,8 @@ class PesananController extends Controller
             'kecamatan_id' => $data['sender_district_id'], 'kelurahan_id' => $data['sender_subdistrict_id'],
             'zipcode' => $data['sender_postal_code'] ?? '00000', 'schedule' => $scheduleClock,
             'platform_name' => 'tokosancaka.com', 'category' => $category,
+            // Opsional: Sertakan koordinat pengirim untuk regular jika ada
+            'latitude' => $data['sender_lat'] ?? null, 'longitude' => $data['sender_lng'] ?? null,
             'packages' => [[
                 'order_id' => $order->nomor_invoice, 'item_name' => $data['item_description'],
                 'package_type_id' => (int)$data['item_type'],
@@ -473,8 +517,6 @@ class PesananController extends Controller
                 'destination_zipcode' => $data['receiver_postal_code'] ?? '00000',
                 'weight' => (int) ceil($finalWeight),
                 'width' => $widthInput, 'height' => $heightInput, 'length' => $lengthInput,
-
-                // --- DATA FINAL KE API ---
                 'item_value' => (int)$apiItemPrice,
                 'insurance_amount' => (int)$finalInsuranceAmount,
                 'cod' => (int)$finalCodValue,
@@ -484,7 +526,7 @@ class PesananController extends Controller
             ]]
         ];
 
-        Log::info('[API MOBILE] KiriminAja Payload akhir:', $payload);
+        Log::info('[API MOBILE] KiriminAja Payload Express:', $payload);
         return $kirimaja->createExpressOrder($payload);
     }
 
@@ -843,6 +885,29 @@ TEXT;
                 'trace' => $e->getTraceAsString()
             ]);
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Fungsi Helper untuk mengubah teks alamat menjadi Koordinat
+     */
+    private function geocode(string $address): ?array
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(10)
+                ->withHeaders(['User-Agent' => 'SancakaCargoMobile/1.0 (api@tokosancaka.com)'])
+                ->get("https://nominatim.openstreetmap.org/search", [
+                    'q' => $address, 'format' => 'json', 'limit' => 1, 'countrycodes' => 'id'
+                ]);
+
+            if (!$response->successful() || empty($response[0]) || !isset($response[0]['lat']) || !isset($response[0]['lon'])) {
+                Log::warning("[API MOBILE] Geocoding gagal untuk alamat: " . $address);
+                return null;
+            }
+            return ['lat' => (float) $response[0]['lat'], 'lng' => (float) $response[0]['lon']];
+        } catch (\Exception $e) {
+            Log::error("[API MOBILE] Geocoding error: " . $e->getMessage());
+            return null;
         }
     }
 
