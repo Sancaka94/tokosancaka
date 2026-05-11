@@ -596,13 +596,50 @@ class PpobMobileController extends Controller
 
         // --- PERBAIKAN: CEK SALDO HANYA JIKA PAKAI SALDO / CASH ---
         if ($request->payment_method === '#SALDO' || $request->payment_method === 'CASH' || empty($request->payment_method)) {
-            if ($user->balance_iak < $transaction->price) {
+            if ($user->balance_iak < $transaction->price) { // Pastikan pakai $user->saldo jika di DB mu pakai kolom saldo
                 return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi untuk membayar tagihan ini.']);
             }
         } else {
-            // 🚨 STOP DI SINI UNTUK PAYMENT GATEWAY 🚨
-            // Sama seperti Prabayar, buat invoice Tripay di sini lalu kembalikan payment_url nya ke aplikasi HP.
-            return response()->json(['success' => true, 'payment_url' => $tripayLink]);
+            // --- LOGIKA PAYMENT GATEWAY (TRIPAY) UNTUK PASCABAYAR ---
+            $apiKey = Api::getValue('TRIPAY_API_KEY');
+            $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY');
+            $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE');
+            $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'development');
+            $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+            $amount = (int) $transaction->price;
+            // Tripay mewajibkan merchant_ref unik, kita gabungkan TR_ID IAK dengan "PASCA"
+            $merchantRef = 'PASCA' . $transaction->tr_id;
+            $signature = hash_hmac('sha256', $merchantCode.$merchantRef.$amount, $privateKey);
+
+            $responseTripay = Http::withHeaders(['Authorization' => 'Bearer '.$apiKey])
+                ->post($tripayUrl, [
+                    'method'         => $request->payment_method,
+                    'merchant_ref'   => $merchantRef,
+                    'amount'         => $amount,
+                    'customer_name'  => $user->nama_lengkap ?? 'Member Sancaka',
+                    'customer_email' => $user->email ?? 'no-reply@sancaka.com',
+                    'customer_phone' => $user->no_hp ?? '081234567890',
+                    'order_items'    => [
+                        ['sku' => 'TAGIHAN', 'name' => 'Tagihan ' . $transaction->product_code, 'price' => $amount, 'quantity' => 1]
+                    ],
+                    'signature'      => $signature
+                ]);
+
+            $resTripay = $responseTripay->json();
+
+            if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
+                // Update status transaksi PPOB jadi UNPAID
+                $transaction->update(['status' => 'UNPAID', 'message' => 'Menunggu Pembayaran Gateway']);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Silakan selesaikan pembayaran.',
+                    'payment_url' => $resTripay['data']['checkout_url']
+                ]);
+            } else {
+                return response()->json(['success' => false, 'message' => 'Gagal Payment Gateway: ' . ($resTripay['message'] ?? 'Error')]);
+            }
         }
 
         // =======================================================
