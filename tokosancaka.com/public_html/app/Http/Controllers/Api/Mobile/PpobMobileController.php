@@ -549,7 +549,7 @@ class PpobMobileController extends Controller
         } else {
             // 🚨 STOP DI SINI UNTUK PAYMENT GATEWAY 🚨
             // Sama seperti Prabayar, buat invoice Tripay di sini lalu kembalikan payment_url nya ke aplikasi HP.
-            // return response()->json(['success' => true, 'payment_url' => $tripayLink]);
+            return response()->json(['success' => true, 'payment_url' => $tripayLink]);
         }
 
         // =======================================================
