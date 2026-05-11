@@ -41,23 +41,19 @@ class PpobMobileController extends Controller
         Log::info('LOG LOG - [API Mobile] getProductsPra Payload Masuk:', $request->all());
 
         $operator = $request->query('operator');
-        $type = $request->query('type'); // pulsa / data
+        $type = $request->query('type');
         $nominal = $request->query('nominal');
 
-        // ========================================================
-        // FITUR BARU: TRANSLATOR NAMA OPERATOR (HP -> Database)
-        // ========================================================
         if (!empty($operator)) {
             $opUpper = strtoupper($operator);
             if ($opUpper === 'SMARTFREN') {
                 $operator = 'Smart';
             } elseif ($opUpper === 'THREE') {
-                $operator = 'Tri'; // Jaga-jaga kalau di database nulisnya Tri
+                $operator = 'Tri';
             } elseif ($opUpper === 'TELKOMSEL') {
                 $operator = 'Telkomsel';
             }
         }
-        // ========================================================
 
         $query = IakPricelistPrepaid::whereIn('status', ['Active', 'active', '1', 1]);
 
@@ -139,7 +135,6 @@ class PpobMobileController extends Controller
 
         $user = auth()->user();
 
-        // Idempotency (Cegah Dobel) - PERBAIKAN: Gunakan id_pengguna
         $isDuplicate = TransactionPpobIak::where('user_id', $user->id_pengguna)
             ->where('customer_id', $request->customer_id)
             ->where('product_code', $request->product_code)
@@ -151,7 +146,6 @@ class PpobMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Transaksi ke nomor & produk yang sama sedang diproses. Tunggu 3 menit.']);
         }
 
-        // Atomic Lock - PERBAIKAN: Gunakan id_pengguna
         $lockKey = 'topup_' . $user->id_pengguna . '_' . $request->product_code . '_' . $request->customer_id;
         $lock = Cache::lock($lockKey, 10);
 
@@ -165,16 +159,21 @@ class PpobMobileController extends Controller
             if (!$product) return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan.']);
 
             $paymentMethod = $request->payment_method ?? '';
-            $isSaldoOrCash = in_array(strtoupper($paymentMethod), ['#SALDO', 'CASH']) || empty($paymentMethod);
+            $isSaldoOrCash = in_array(strtoupper($paymentMethod), ['#SALDO', 'CASH', 'POTONG SALDO', 'SALDO']) || empty($paymentMethod);
             $isAdmin4 = ($user->id_pengguna == 4);
 
             $refId = 'P' . date('ymd') . rand(1000, 9999);
 
-            // JIKA BUKAN SALDO (Pilih Doku/Dana/Tripay)
+            // JIKA BUKAN SALDO (PAKAI PAYMENT GATEWAY)
             if (!$isSaldoOrCash) {
                 $apiKey = Api::getValue('TRIPAY_API_KEY');
                 $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY');
                 $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE');
+
+                if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+                    Log::error('LOG LOG - Kredensial Tripay Kosong');
+                    return response()->json(['success' => false, 'message' => 'Sistem Error: Konfigurasi Payment Gateway belum disetting.']);
+                }
 
                 $transaction = TransactionPpobIak::create([
                     'user_id'         => $user->id_pengguna,
@@ -183,7 +182,7 @@ class PpobMobileController extends Controller
                     'customer_id'     => $request->customer_id,
                     'product_code'    => $request->product_code,
                     'whatsapp_number' => $request->whatsapp_number,
-                    'status'          => 'PENDING', // Sesuai request dibikin PENDING
+                    'status'          => 'PENDING',
                     'price'           => $product->price,
                     'message'         => 'Menunggu Pembayaran Gateway'
                 ]);
@@ -194,16 +193,21 @@ class PpobMobileController extends Controller
                 $amount = (int) $product->price;
                 $signature = hash_hmac('sha256', $merchantCode.$refId.$amount, $privateKey);
 
+                // Eksekusi pembersihan nama kode DOKU/DANA
                 $cleanPaymentMethod = str_replace('#', '', $paymentMethod);
 
-                $responseTripay = Http::withToken($apiKey)->post($tripayUrl, [
-                    'method'         => $paymentMethod,
+                $responseTripay = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . trim($apiKey)
+                ])->post($tripayUrl, [
+                    'method'         => $cleanPaymentMethod,
                     'merchant_ref'   => $refId,
                     'amount'         => $amount,
                     'customer_name'  => $user->nama_lengkap ?? 'Member Sancaka',
                     'customer_email' => $user->email ?? 'no-reply@sancaka.com',
                     'customer_phone' => $user->no_hp ?? '081234567890',
-                    'order_items'    => [['sku' => $product->code, 'name' => $product->description, 'price' => $amount, 'quantity' => 1]],
+                    'order_items'    => [
+                        ['sku' => $product->code, 'name' => $product->description, 'price' => $amount, 'quantity' => 1]
+                    ],
                     'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob',
                     'signature'      => $signature
                 ]);
@@ -213,36 +217,39 @@ class PpobMobileController extends Controller
                 if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
                     return response()->json([
                         'success' => true,
-                        'message' => 'Pesanan dibuat. Silakan bayar.',
+                        'message' => 'Pesanan berhasil dibuat. Silakan bayar.',
                         'payment_url' => $resTripay['data']['checkout_url'],
                         'redirect_url' => '/riwayatppob'
                     ]);
                 } else {
-                    // Pastikan respons dari Tripay diubah menjadi Array yang aman untuk Log
                     $safeLogData = is_array($resTripay) ? $resTripay : ['raw_response' => (string) $resTripay];
-                    $tripayError = $safeLogData['message'] ?? 'Error Payment Gateway (Cek Koneksi / Kredensial Tripay)';
+                    $tripayError = $safeLogData['message'] ?? 'Error dari server Tripay';
 
-                    // Gunakan Array yang aman untuk argumen kedua
                     Log::error('LOG LOG - [API Mobile] Error Tripay Prabayar:', $safeLogData);
-
                     $transaction->update(['status' => 'FAILED', 'message' => 'Tripay: ' . $tripayError]);
 
                     return response()->json([
                         'success' => false,
-                        'message' => 'Gagal Payment Gateway: ' . $tripayError,
-                        'debug_tripay' => $safeLogData // Tetap lempar ke frontend buat bahan debug
+                        'message' => 'Gagal Payment Gateway: ' . $tripayError
                     ]);
                 }
             }
 
-            // JIKA PILIH SALDO / CASH (HANYA ADMIN ID 4)
-            if (!$isAdmin4) return response()->json(['success' => false, 'message' => 'Metode Saldo hanya untuk Admin.']);
-            if ($user->balance_iak < $product->price) return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi.']);
+            // ========================================================
+            // SISA KODE DI BAWAH HANYA JALAN JIKA PAKAI SALDO / CASH (KHUSUS ADMIN)
+            // ========================================================
+            if (!$isAdmin4) {
+                return response()->json(['success' => false, 'message' => 'Metode Pembayaran Saldo/Cash hanya khusus untuk Admin. Silakan gunakan metode bayar Gateway (DOKU/DANA).']);
+            }
+
+            if ($user->balance_iak < $product->price) {
+                return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi.']);
+            }
 
             $sign = md5($this->username . $this->apiKey . $refId);
 
             $transaction = TransactionPpobIak::create([
-                'user_id'         => $user->id_pengguna, // PERBAIKAN: Gunakan id_pengguna secara eksplisit
+                'user_id'         => $user->id_pengguna,
                 'ref_id'          => $refId,
                 'type'            => 'prabayar',
                 'customer_id'     => $request->customer_id,
@@ -334,7 +341,7 @@ class PpobMobileController extends Controller
             if ($response->successful() && isset($result['data']) && $result['data']['response_code'] === '00') {
                 $data = $result['data'];
                 $transaction = TransactionPpobIak::create([
-                    'user_id'         => $user->id_pengguna, // PERBAIKAN: Gunakan id_pengguna eksplisit
+                    'user_id'         => $user->id_pengguna,
                     'ref_id'          => $refId,
                     'tr_id'           => $data['tr_id'],
                     'type'            => 'pascabayar',
@@ -365,14 +372,12 @@ class PpobMobileController extends Controller
     public function inquiryPln(Request $request)
     {
         Log::info('LOG LOG - [API Mobile] inquiryPln Payload Masuk:', $request->all());
-
         $sign = md5($this->username . $this->apiKey . $request->customer_id);
         try {
             $response = Http::post($this->prepaidBaseUrl . '/api/inquiry-pln', [
                 'username' => $this->username, 'customer_id' => $request->customer_id, 'sign' => $sign
             ]);
             $result = $response->json();
-
             if ($response->successful() && isset($result['data']) && $result['data']['status'] == '1') {
                 return response()->json(['success' => true, 'data' => $result['data']]);
             }
@@ -383,14 +388,12 @@ class PpobMobileController extends Controller
     public function inquiryOvo(Request $request)
     {
         Log::info('LOG LOG - [API Mobile] inquiryOvo Payload Masuk:', $request->all());
-
         $sign = md5($this->username . $this->apiKey . $request->customer_id);
         try {
             $response = Http::post($this->prepaidBaseUrl . '/api/inquiry-ovo', [
                 'username' => $this->username, 'customer_id' => $request->customer_id, 'sign' => $sign
             ]);
             $result = $response->json();
-
             if ($response->successful() && isset($result['data']) && $result['data']['status'] == '1') {
                 return response()->json(['success' => true, 'data' => $result['data']]);
             }
@@ -401,14 +404,12 @@ class PpobMobileController extends Controller
     public function getGameList(Request $request)
     {
         Log::info('LOG LOG - [API Mobile] getGameList Hit');
-
         $sign = md5($this->username . $this->apiKey . 'gc');
         try {
             $response = Http::post($this->prepaidBaseUrl . '/api/gamelist', [
                 'username' => $this->username, 'sign' => $sign
             ]);
             $result = $response->json();
-
             if ($response->successful() && isset($result['data']['rc']) && $result['data']['rc'] == '00') {
                 return response()->json(['success' => true, 'data' => $result['data']['gamelist'] ?? []]);
             }
@@ -419,7 +420,6 @@ class PpobMobileController extends Controller
     public function inquiryGameFormat(Request $request)
     {
         Log::info('LOG LOG - [API Mobile] inquiryGameFormat Payload Masuk:', $request->all());
-
         $sign = md5($this->username . $this->apiKey . $request->game_code);
         try {
             $response = Http::post($this->prepaidBaseUrl . '/api/game/format', [
@@ -436,7 +436,6 @@ class PpobMobileController extends Controller
     public function inquiryGameServer(Request $request)
     {
         Log::info('LOG LOG - [API Mobile] inquiryGameServer Payload Masuk:', $request->all());
-
         $sign = md5($this->username . $this->apiKey . $request->game_code);
         try {
             $response = Http::post($this->prepaidBaseUrl . '/api/inquiry-game-server', [
@@ -463,18 +462,13 @@ class PpobMobileController extends Controller
                 return response()->json(['success' => false, 'message' => 'Sesi login tidak valid / Token Kadaluarsa.']);
             }
 
-            // 1. TENTUKAN STATUS ADMIN
-            // PERBAIKAN: Gunakan id_pengguna dan amankan role huruf besar/kecil
             $isAdmin = ($user->id_pengguna == 4 || strtolower($user->role) === 'admin');
-
             $query = TransactionPpobIak::query();
 
-            // 2. KUNCI UTAMA: JIKA BUKAN ADMIN, HANYA TAMPILKAN MILIKNYA SENDIRI!
             if (!$isAdmin) {
-                $query->where('user_id', $user->id_pengguna); // PERBAIKAN: Harus id_pengguna
+                $query->where('user_id', $user->id_pengguna);
             }
 
-            // 3. FILTER PENCARIAN
             if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function($q) use ($search) {
@@ -485,7 +479,6 @@ class PpobMobileController extends Controller
                 });
             }
 
-            // 4. FILTER WAKTU
             $filterWaktu = $request->query('filter_waktu', 'Bulan Ini');
             $now = \Carbon\Carbon::now();
 
@@ -502,23 +495,17 @@ class PpobMobileController extends Controller
                 $query->whereYear('created_at', $now->year);
             }
 
-           // Ambil data (20 per halaman)
             $transactions = $query->orderBy('created_at', 'desc')->paginate(20);
-
-            // =======================================================
-            // 5. EKSTRAK DATA TAMBAHAN & PAKSA MASUK KE DALAM ARRAY
-            // =======================================================
             $mappedItems = [];
+
             try {
-                // A. AMBIL LOGO PRODUK
                 $prepaidCodes = $transactions->where('type', 'prabayar')->pluck('product_code')->filter()->unique()->toArray();
                 $icons = [];
                 if (!empty($prepaidCodes)) {
                     $icons = \App\Models\IakPricelistPrepaid::whereIn('code', $prepaidCodes)
-                        ->pluck('icon_url', 'code');
+                                ->pluck('icon_url', 'code');
                 }
 
-                // B. AMBIL NAMA PEMBELI (KHUSUS TAMPILAN ADMIN)
                 $usersData = [];
                 if ($isAdmin) {
                     $userIds = $transactions->pluck('user_id')->filter()->unique()->toArray();
@@ -528,35 +515,26 @@ class PpobMobileController extends Controller
                     }
                 }
 
-                // C. REKA ULANG ARRAY AGAR SEMUA ATRIBUT MASUK KE JSON
                 foreach ($transactions->items() as $trx) {
-                    $item = $trx->toArray(); // Ubah baris database jadi array biasa
-
-                    // Sisipkan logo
+                    $item = $trx->toArray();
                     $item['icon_url'] = ($item['type'] == 'prabayar') ? ($icons[$item['product_code']] ?? null) : null;
-
-                    // Sisipkan nama pembeli khusus Admin
                     if ($isAdmin) {
                         $namaUser = $item['user_id'] ? ($usersData[$item['user_id']] ?? 'User ID ' . $item['user_id']) : 'Guest / Web';
                         $item['nama_pembeli'] = $namaUser;
                     }
-
                     $mappedItems[] = $item;
                 }
 
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::warning('LOG LOG - Gagal ekstrak data riwayat: ' . $e->getMessage());
-                // Jika error ekstrak, fallback gunakan item mentah
                 $mappedItems = $transactions->items();
             }
-            // =======================================================
 
-            // Kita bentuk struktur Pagination JSON secara manual agar tidak ditimpa Laravel
             return response()->json([
                 'success'  => true,
                 'data'     => [
                     'current_page' => $transactions->currentPage(),
-                    'data'         => $mappedItems, // <-- Data yang sudah disisipkan atribut
+                    'data'         => $mappedItems,
                     'last_page'    => $transactions->lastPage(),
                     'total'        => $transactions->total(),
                 ],
@@ -580,18 +558,12 @@ class PpobMobileController extends Controller
         $transaction = TransactionPpobIak::where('tr_id', $request->tr_id)->first();
         if (!$transaction) return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan']);
 
-        // Mengecek Akses User untuk Membayar Tagihan
         $user = auth()->user();
 
-        // PERBAIKAN: Gunakan id_pengguna untuk mencocokkan kepemilikan tagihan (menggunakan != agar tipe datanya luwes)
         if ($transaction->user_id != $user->id_pengguna) {
            return response()->json(['success' => false, 'message' => 'Akses ditolak. Transaksi ini bukan milik Anda.']);
         }
 
-        // =======================================================
-        // 🚨 IDEMPOTENCY 1: CEK STATUS TRANSAKSI
-        // Cegah user bayar tagihan yang sama berkali-kali!
-        // =======================================================
         if ($transaction->status === 'SUCCESS') {
             return response()->json(['success' => false, 'message' => 'Tagihan ini sudah berhasil dibayar sebelumnya.']);
         }
@@ -599,15 +571,21 @@ class PpobMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Pembayaran tagihan ini sedang diproses oleh sistem, mohon tunggu.']);
         }
 
+        // --- PERCABANGAN LOGIKA METODE PEMBAYARAN PASCABAYAR ---
         $paymentMethod = $request->payment_method ?? '';
-        $isSaldoOrCash = in_array(strtoupper($paymentMethod), ['#SALDO', 'CASH']) || empty($paymentMethod);
+        $isSaldoOrCash = in_array(strtoupper($paymentMethod), ['#SALDO', 'CASH', 'POTONG SALDO', 'SALDO']) || empty($paymentMethod);
         $isAdmin4 = ($user->id_pengguna == 4);
 
         if (!$isSaldoOrCash) {
-            // JIKA PAKAI PAYMENT GATEWAY
+            // LOGIKA PAYMENT GATEWAY DIRECT TRIPAY
             $apiKey = Api::getValue('TRIPAY_API_KEY');
             $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY');
             $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE');
+
+            if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+                Log::error('LOG LOG - Kredensial Tripay Kosong di Postpaid');
+                return response()->json(['success' => false, 'message' => 'Sistem Error: Konfigurasi Payment Gateway belum disetting.']);
+            }
 
             $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'development');
             $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
@@ -616,14 +594,20 @@ class PpobMobileController extends Controller
             $merchantRef = 'PASCA' . $transaction->tr_id;
             $signature = hash_hmac('sha256', $merchantCode.$merchantRef.$amount, $privateKey);
 
-            $responseTripay = Http::withToken($apiKey)->post($tripayUrl, [
-                'method'         => $paymentMethod,
+            $cleanPaymentMethod = str_replace('#', '', $paymentMethod);
+
+            $responseTripay = Http::withHeaders([
+                'Authorization' => 'Bearer ' . trim($apiKey)
+            ])->post($tripayUrl, [
+                'method'         => $cleanPaymentMethod,
                 'merchant_ref'   => $merchantRef,
                 'amount'         => $amount,
                 'customer_name'  => $user->nama_lengkap ?? 'Member Sancaka',
                 'customer_email' => $user->email ?? 'no-reply@sancaka.com',
                 'customer_phone' => $user->no_hp ?? '081234567890',
-                'order_items'    => [['sku' => 'TAGIHAN', 'name' => 'Tagihan ' . $transaction->product_code, 'price' => $amount, 'quantity' => 1]],
+                'order_items'    => [
+                    ['sku' => 'TAGIHAN', 'name' => 'Tagihan ' . $transaction->product_code, 'price' => $amount, 'quantity' => 1]
+                ],
                 'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob',
                 'signature'      => $signature
             ]);
@@ -632,25 +616,33 @@ class PpobMobileController extends Controller
 
             if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
                 $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway']);
+
                 return response()->json([
-                    'success' => true, 'message' => 'Silakan selesaikan pembayaran.',
-                    'payment_url' => $resTripay['data']['checkout_url'], 'redirect_url' => '/riwayatppob'
+                    'success' => true,
+                    'message' => 'Silakan selesaikan pembayaran.',
+                    'payment_url' => $resTripay['data']['checkout_url'],
+                    'redirect_url' => '/riwayatppob'
                 ]);
             } else {
-                return response()->json(['success' => false, 'message' => 'Gagal Payment Gateway']);
+                $safeLogData = is_array($resTripay) ? $resTripay : ['raw_response' => (string) $resTripay];
+                $tripayError = $safeLogData['message'] ?? 'Error dari server Tripay';
+
+                Log::error('LOG LOG - [API Mobile] Error Tripay Pascabayar:', $safeLogData);
+                return response()->json(['success' => false, 'message' => 'Gagal Payment Gateway: ' . $tripayError]);
             }
         }
 
-        // JIKA PAKAI SALDO (HANYA ADMIN ID 4)
-        if (!$isAdmin4) return response()->json(['success' => false, 'message' => 'Metode Saldo hanya untuk Admin.']);
+        // ========================================================
+        // SISA KODE DI BAWAH HANYA JALAN JIKA PAKAI SALDO / CASH (KHUSUS ADMIN)
+        // ========================================================
+        if (!$isAdmin4) {
+            return response()->json(['success' => false, 'message' => 'Metode Pembayaran Saldo/Cash hanya khusus untuk Admin. Silakan gunakan metode bayar Gateway (DOKU/DANA).']);
+        }
+
         if ($user->balance_iak < $transaction->price) {
             return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi untuk membayar tagihan ini.']);
         }
 
-        // =======================================================
-        // 🚨 IDEMPOTENCY 2: ATOMIC LOCK MEMORY (Cegah Klik Beruntun/Milidetik)
-        // Kunci proses ini selama 10 detik untuk tr_id yang sama
-        // =======================================================
         $lock = Cache::lock('pay_pasca_' . $transaction->tr_id, 10);
         if (!$lock->get()) {
             Log::warning('LOG LOG - [API Mobile] Atomic Lock Bekerja untuk tr_id: ' . $transaction->tr_id);
@@ -658,7 +650,6 @@ class PpobMobileController extends Controller
         }
 
         try {
-            // Ubah status jadi PROCESS dulu biar aman kalau tiba-tiba server mati di tengah jalan
             $transaction->update(['status' => 'PROCESS', 'message' => 'Sedang mengirim pembayaran ke pusat...']);
 
             $sign = md5($this->username . $this->apiKey . $transaction->tr_id);
@@ -673,11 +664,8 @@ class PpobMobileController extends Controller
 
             if ($response->successful() && isset($result['data'])) {
                 $rc = $result['data']['response_code'] ?? '';
-                // 00 = SUCCESS, 39 = PROCESS
                 $status = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
 
-                // Potong saldo HANYA JIKA statusnya SUCCESS atau PROCESS
-                // (Kalau gagal, jangan potong saldo!)
                 if (in_array($status, ['PROCESS', 'SUCCESS'])) {
                     $user->balance_iak -= $transaction->price;
                     $user->save();
@@ -697,13 +685,10 @@ class PpobMobileController extends Controller
                 return response()->json(['success' => true, 'message' => 'Pembayaran Tagihan Berhasil Diproses!']);
             }
 
-            // JIKA API IAK ERROR / KEMBALIKAN HTML BUKAN JSON
             $transaction->update(['status' => 'FAILED', 'message' => 'Invalid API Response dari Pusat']);
             return response()->json(['success' => false, 'message' => 'Gagal memproses pembayaran ke server pusat.']);
 
         } catch (\Exception $e) {
-            // JIKA TIMEOUT / KONEKSI PUTUS (BIARKAN STATUS TETAP 'PROCESS', JANGAN FAILED!)
-            // Nanti admin bisa cek status manual, atau webhook yang menyelesaikan. Saldo sudah aman terkunci.
             Log::error('LOG LOG - [API Mobile] Timeout / Error Pay Pasca: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Koneksi lambat. Pembayaran sedang diproses di latar belakang. Cek riwayat berkala.']);
         } finally {
