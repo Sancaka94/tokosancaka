@@ -532,13 +532,13 @@ class PpobMobileController extends Controller
                     'sn',
                     'payment_url',
                     'created_at',
+                    'tr_id', // <--- TAMBAHKAN INI
                     \Illuminate\Support\Facades\DB::raw("'IAK' as provider")
                 );
 
             // =========================================================
             // 2. BUILD QUERY UNTUK PPOB DIGIFLAZZ
             // =========================================================
-            // Kita samakan alias kolomnya agar cocok (match) dengan struktur IAK saat di-UNION
             $queryDigi = \Illuminate\Support\Facades\DB::table('ppob_transactions')
                 ->select(
                     'id',
@@ -553,6 +553,7 @@ class PpobMobileController extends Controller
                     'sn',
                     'payment_url',
                     'created_at',
+                    \Illuminate\Support\Facades\DB::raw("NULL as tr_id"), // <--- TAMBAHKAN INI (Samakan dengan IAK)
                     \Illuminate\Support\Facades\DB::raw("'DIGIFLAZZ' as provider")
                 );
 
