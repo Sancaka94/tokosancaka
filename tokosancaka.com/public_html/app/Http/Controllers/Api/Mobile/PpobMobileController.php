@@ -163,7 +163,22 @@ class PpobMobileController extends Controller
         try {
             $product = IakPricelistPrepaid::where('code', $request->product_code)->first();
             if (!$product) return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan.']);
-            if ($user->balance_iak < $product->price) return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi.']);
+
+            // --- PERBAIKAN: CEK SALDO HANYA JIKA PAKAI SALDO / CASH ---
+            if ($request->payment_method === '#SALDO' || $request->payment_method === 'CASH' || empty($request->payment_method)) {
+                if ($user->balance_iak < $product->price) { // Ganti balance_iak ke saldo jika menggunakan field saldo reguler
+                    return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi.']);
+                }
+            } else {
+                // 🚨 STOP DI SINI UNTUK PAYMENT GATEWAY 🚨
+                // Kamu harus membuat Request API ke Tripay/Doku di sini.
+                // JANGAN DITERUSKAN KE BAWAH! Karena kode di bawah akan langsung menembak API IAK.
+
+                // Contoh Logika yang Benar:
+                // $tripayLink = ... (Fungsi Buat Invoice Tripay Sancaka);
+                // $transaction = TransactionPpobIak::create([... status => 'UNPAID']);
+                // return response()->json(['success' => true, 'payment_url' => $tripayLink]);
+            }
 
             $refId = 'P' . date('ymd') . rand(1000, 9999);
             $sign = md5($this->username . $this->apiKey . $refId);
@@ -526,8 +541,15 @@ class PpobMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Pembayaran tagihan ini sedang diproses oleh sistem, mohon tunggu.']);
         }
 
-        if ($user->balance_iak < $transaction->price) {
-            return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi untuk membayar tagihan ini.']);
+        // --- PERBAIKAN: CEK SALDO HANYA JIKA PAKAI SALDO / CASH ---
+        if ($request->payment_method === '#SALDO' || $request->payment_method === 'CASH' || empty($request->payment_method)) {
+            if ($user->balance_iak < $transaction->price) {
+                return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi untuk membayar tagihan ini.']);
+            }
+        } else {
+            // 🚨 STOP DI SINI UNTUK PAYMENT GATEWAY 🚨
+            // Sama seperti Prabayar, buat invoice Tripay di sini lalu kembalikan payment_url nya ke aplikasi HP.
+            // return response()->json(['success' => true, 'payment_url' => $tripayLink]);
         }
 
         // =======================================================
