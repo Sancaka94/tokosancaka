@@ -179,9 +179,9 @@ class PpobMobileController extends Controller
                 ]);
 
                 // 2. Generate Invoice Tripay
-                $apiKey = Api::getValue('TRIPAY_API_KEY');
-                $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY');
-                $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE');
+                $apiKey = Api::getValue('TRIPAY_API_KEY') ?: env('TRIPAY_API_KEY');
+                $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY') ?: env('TRIPAY_PRIVATE_KEY');
+                $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE') ?: env('TRIPAY_MERCHANT_CODE');
                 $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'development');
                 $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
 
