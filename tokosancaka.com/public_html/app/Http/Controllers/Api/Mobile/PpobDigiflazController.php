@@ -563,32 +563,92 @@ class PpobDigiflazController extends Controller
     }
 
     // =================================================================
-    // 6. RIWAYAT TRANSAKSI (HISTORY)
+    // 6. RIWAYAT TRANSAKSI (HISTORY PPOB)
     // =================================================================
     public function getHistory(Request $request)
     {
         $user = $request->user();
         if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
 
-        // Inisialisasi query dasar, diurutkan dari yang paling baru
-        $query = PpobTransaction::orderBy('created_at', 'desc');
+        // 1. Tangkap parameter dari React Native
+        $search = $request->query('search');
+        $filterWaktu = $request->query('filter_waktu', 'Bulan Ini');
 
-        // Cek apakah user BUKAN admin DAN BUKAN user dengan ID 4
-        // Catatan: Gunakan $user->id atau $user->id_pengguna sesuai struktur tabel User kamu
+        // Pastikan model mengarah ke tabel 'ppob_transactions'
+        // Jika nama modelmu bukan PpobTransaction, sesuaikan dengan nama modelmu.
+        $query = \App\Models\PpobTransaction::query();
+
+        // 2. Logika Admin vs User Biasa
         $isAdmin = strtolower($user->role) === 'admin' || $user->id_pengguna == 4;
 
         if (!$isAdmin) {
-            // Jika BUKAN admin, batasi data hanya untuk user yang sedang login
-            $query->where('user_id', $user->id_pengguna);
+            // User biasa hanya melihat datanya sendiri
+            $query->where('ppob_transactions.user_id', $user->id_pengguna);
+        } else {
+            // Jika admin, lakukan JOIN ke tabel pengguna agar bisa melihat 'nama_pembeli'
+            // Sesuaikan 'users' atau 'pengguna' dengan nama tabel user kamu
+            $query->leftJoin('pengguna', 'ppob_transactions.user_id', '=', 'pengguna.id_pengguna')
+                  ->select('ppob_transactions.*', 'pengguna.nama_lengkap as nama_pembeli');
         }
-        // Jika dia admin/ID 4, kode where() di atas dilewati sehingga mengambil semua data transaksi.
 
-        // Eksekusi query
-        $history = $query->get();
+        // 3. Logika Filter Waktu
+        $now = \Carbon\Carbon::now();
+        if ($filterWaktu === 'Hari Ini') {
+            $query->whereDate('ppob_transactions.created_at', $now->today());
+        } elseif ($filterWaktu === 'Bulan Ini') {
+            $query->whereMonth('ppob_transactions.created_at', $now->month)
+                  ->whereYear('ppob_transactions.created_at', $now->year);
+        } elseif ($filterWaktu === 'Bulan Kemarin') {
+            $query->whereMonth('ppob_transactions.created_at', $now->subMonth()->month)
+                  ->whereYear('ppob_transactions.created_at', $now->year);
+        } elseif ($filterWaktu === 'Tahun Ini') {
+            $query->whereYear('ppob_transactions.created_at', $now->year);
+        }
+        // Jika 'Semua', abaikan filter waktu
 
+        // 4. Logika Pencarian (Search)
+        if (!empty($search)) {
+            $query->where(function($q) use ($search) {
+                $q->where('ppob_transactions.order_id', 'like', "%{$search}%")
+                  ->orWhere('ppob_transactions.customer_no', 'like', "%{$search}%")
+                  ->orWhere('ppob_transactions.buyer_sku_code', 'like', "%{$search}%");
+            });
+        }
+
+        // Ambil data terbaru di urutan atas
+        $transactions = $query->orderBy('ppob_transactions.created_at', 'desc')->get();
+
+        // 5. Mapping Data untuk Frontend React Native
+        // Kita ubah nama kolom dari DB agar cocok dengan variabel item di flatlist React Native
+        $formattedData = $transactions->map(function($trx) {
+            // Ambil tipe transaksi dari kolom desc (JSON)
+            $descArr = json_decode($trx->desc, true);
+            $rawType = isset($descArr['type']) ? strtolower($descArr['type']) : 'pra';
+            $isPasca = strpos($rawType, 'pasca') !== false || strpos($rawType, 'post') !== false;
+
+            return [
+                'id' => $trx->id,
+                'ref_id' => $trx->order_id,                  // Frontend: item.ref_id
+                'nama_pembeli' => $trx->nama_pembeli ?? null, // Frontend: item.nama_pembeli
+                'status' => strtoupper($trx->status),        // Frontend: item.status (SUCCESS, FAILED, PROCESSING)
+                'type' => $isPasca ? 'pascabayar' : 'prabayar',
+                'product_code' => $trx->buyer_sku_code,      // Frontend: item.product_code
+                'customer_id' => $trx->customer_no,          // Frontend: item.customer_id
+                'price' => $trx->selling_price,              // Frontend: item.price (Harga Jual ke customer)
+                'created_at' => $trx->created_at,
+                'payment_url' => $trx->payment_url,          // Untuk tombol bayar jika pending
+                'sn' => $trx->sn,                            // Untuk token PLN
+                'icon_url' => '-'                            // Kosongkan atau relasikan ke tabel produk jika ada icon
+            ];
+        });
+
+        // 6. Format response JSON persis seperti yang diharapkan React Native
         return response()->json([
             'success' => true,
-            'data' => $history
+            'is_admin' => $isAdmin,
+            'data' => [
+                'data' => $formattedData // React Native memanggil result.data.data
+            ]
         ]);
     }
 
