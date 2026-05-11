@@ -29,7 +29,7 @@ class PembayaranController extends Controller
     public function index(Request $request)
     {
         $akun = $request->input('akun');
-        $pin  = $request->input('pin'); // Menangkap input PIN dari form
+        $pin  = $request->input('pin');
 
         if (!$akun) {
             return view('pembayaran.index');
@@ -43,23 +43,33 @@ class PembayaranController extends Controller
             Log::info('User ditemukan:', ['user_id' => $user->id_pengguna ?? 'Tidak ada']);
 
             // ====================================================================
-            // BLOK VALIDASI PIN
+            // PERBAIKAN: INISIALISASI VARIABEL KOSONG AGAR BLADE TIDAK ERROR COUNT
             // ====================================================================
+            $userId = $user->id_pengguna;
+            $invoices = collect();
+            $topups = collect();
+            $ekspedisi = collect();
+            $tripayChannels = [];
+
+            // Jika PIN belum diinput (Baru buka dari aplikasi Mobile)
             if (!$pin) {
-                return back()->with('error', 'PIN Keamanan wajib diisi untuk melihat tagihan.');
+                // Jangan gunakan return back(). Tetap di halaman ini agar user bisa mengisi form PIN
+                return view('pembayaran.index', compact('user', 'akun', 'invoices', 'topups', 'ekspedisi', 'userId', 'tripayChannels'))
+                    ->with('error', 'Silakan masukkan PIN Keamanan Anda untuk melihat tagihan.');
             }
 
             if (empty($user->pin)) {
-                return back()->with('error', 'Anda belum membuat PIN Keamanan. Silakan atur PIN melalui aplikasi Sancaka terlebih dahulu.');
+                return view('pembayaran.index', compact('user', 'akun', 'invoices', 'topups', 'ekspedisi', 'userId', 'tripayChannels'))
+                    ->with('error', 'Anda belum membuat PIN Keamanan. Silakan atur PIN melalui aplikasi Sancaka terlebih dahulu.');
             }
 
             if (!Hash::check($pin, $user->pin)) {
                 Log::warning('Akses web ditolak: PIN salah', ['akun' => $akun]);
-                return back()->with('error', 'PIN Keamanan yang Anda masukkan salah.');
+                return view('pembayaran.index', compact('user', 'akun', 'invoices', 'topups', 'ekspedisi', 'userId', 'tripayChannels'))
+                    ->with('error', 'PIN Keamanan yang Anda masukkan salah.');
             }
             // ====================================================================
 
-            $userId = $user->id_pengguna; // Pastikan menggunakan id_pengguna
             $excludedMethods = ['CASH', 'COD', 'CODBARANG', 'POTONG SALDO'];
 
             // 1. CARI TAGIHAN BELANJA TOKO (ORDERS)
@@ -131,7 +141,7 @@ class PembayaranController extends Controller
         }
 
         Log::warning('User tidak ditemukan saat pencarian tagihan', ['akun' => $akun]);
-        return back()->with('error', 'Akun tidak ditemukan. Pastikan Nomor WA atau Email sudah terdaftar.');
+        return view('pembayaran.index')->with('error', 'Akun tidak ditemukan. Pastikan Nomor WA atau Email sudah terdaftar.');
     }
 
     /**
