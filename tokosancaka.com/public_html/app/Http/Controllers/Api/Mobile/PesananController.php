@@ -209,6 +209,33 @@ class PesananController extends Controller
                 }
                 // ==========================================================
 
+                // ==========================================================
+                // 🔥 LOGIKA PENCARIAN TITIK KOORDINAT (GEOCODING) 🔥
+                // ==========================================================
+
+                // 1. Koordinat Pengirim (Origin)
+                $origin_lat = $request->input('sender_lat');
+                $origin_long = $request->input('sender_lng');
+
+                if (empty($origin_lat) || empty($origin_long) || $origin_lat == 0) {
+                    // Gabungkan Desa, Kecamatan, dan Kabupaten
+                    $senderQuery = implode(', ', array_filter([$request->sender_village, $request->sender_district, $request->sender_regency]));
+                    $geoSender = $this->geocode($senderQuery);
+                    $origin_lat = $geoSender['lat'] ?? '-7.250445'; // Fallback aman jika gagal
+                    $origin_long = $geoSender['lng'] ?? '112.768845';
+                }
+
+                // 2. Koordinat Penerima (Destination)
+                $dest_lat = $request->input('receiver_lat');
+                $dest_long = $request->input('receiver_lng');
+
+                if (empty($dest_lat) || empty($dest_long) || $dest_lat == 0) {
+                    $receiverQuery = implode(', ', array_filter([$request->receiver_village, $request->receiver_district, $request->receiver_regency]));
+                    $geoReceiver = $this->geocode($receiverQuery);
+                    $dest_lat = $geoReceiver['lat'] ?? '-7.250445';
+                    $dest_long = $geoReceiver['lng'] ?? '112.768845';
+                }
+
                 // Tembak API KiriminAja
                 Log::info("[API MOBILE] Membuat order lunas ke KiriminAja...");
                 $kiriminResponse = $this->_createKiriminAjaOrder($validatedData, $order, $kirimaja, $cod_value, $shipping_cost, $insurance_cost);
