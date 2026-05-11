@@ -509,8 +509,8 @@ class PpobMobileController extends Controller
                 $prepaidCodes = $transactions->where('type', 'prabayar')->pluck('product_code')->filter()->unique()->toArray();
                 $icons = [];
                 if (!empty($prepaidCodes)) {
-                    $icons = \Illuminate\Support\Facades\DB::table('iak_pricelist_prepaids')
-                                ->whereIn('code', $prepaidCodes)->pluck('icon_url', 'code');
+                    $icons = \App\Models\IakPricelistPrepaid::whereIn('code', $prepaidCodes)
+                        ->pluck('icon_url', 'code');
                 }
 
                 // B. AMBIL NAMA PEMBELI (KHUSUS TAMPILAN ADMIN)
