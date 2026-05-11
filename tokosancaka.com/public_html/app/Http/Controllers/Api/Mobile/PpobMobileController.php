@@ -164,27 +164,80 @@ class PpobMobileController extends Controller
             $product = IakPricelistPrepaid::where('code', $request->product_code)->first();
             if (!$product) return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan.']);
 
-            // --- PERBAIKAN: CEK SALDO HANYA JIKA PAKAI SALDO / CASH ---
+            // --- CEK SALDO HANYA JIKA METODE PEMBAYARAN ADALAH SALDO / CASH ---
             if ($request->payment_method === '#SALDO' || $request->payment_method === 'CASH' || empty($request->payment_method)) {
-                if ($user->balance_iak < $product->price) { // Ganti balance_iak ke saldo jika menggunakan field saldo reguler
+                // Pastikan menggunakan balance_iak atau saldo sesuai database-mu
+                if ($user->balance_iak < $product->price) {
                     return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi.']);
                 }
-            } else {
-                // 🚨 STOP DI SINI UNTUK PAYMENT GATEWAY 🚨
-                // Kamu harus membuat Request API ke Tripay/Doku di sini.
-                // JANGAN DITERUSKAN KE BAWAH! Karena kode di bawah akan langsung menembak API IAK.
 
-                // Contoh Logika yang Benar:
-                // $tripayLink = ... (Fungsi Buat Invoice Tripay Sancaka);
-                // $transaction = TransactionPpobIak::create([... status => 'UNPAID']);
-                // return response()->json(['success' => true, 'payment_url' => $tripayLink]);
+                // BUAT REF ID UNTUK TRANSAKSI SALDO
+                $refId = 'P' . date('ymd') . rand(1000, 9999);
+
+            } else {
+                // --- LOGIKA PAYMENT GATEWAY (TRIPAY) ---
+                $refId = 'P' . date('ymd') . rand(1000, 9999);
+
+                // 1. Simpan Transaksi PPOB dengan status UNPAID (Belum Lunas)
+                $transaction = TransactionPpobIak::create([
+                    'user_id'         => $user->id_pengguna,
+                    'ref_id'          => $refId,
+                    'type'            => 'prabayar',
+                    'customer_id'     => $request->customer_id,
+                    'product_code'    => $request->product_code,
+                    'whatsapp_number' => $request->whatsapp_number,
+                    'status'          => 'UNPAID',
+                    'price'           => $product->price,
+                    'message'         => 'Menunggu Pembayaran Gateway'
+                ]);
+
+                // 2. Generate Invoice Tripay
+                $apiKey = Api::getValue('TRIPAY_API_KEY');
+                $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY');
+                $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE');
+                $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'development');
+                $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+                $amount = (int) $product->price;
+                $signature = hash_hmac('sha256', $merchantCode.$refId.$amount, $privateKey);
+
+                $responseTripay = Http::withHeaders(['Authorization' => 'Bearer '.$apiKey])
+                    ->post($tripayUrl, [
+                        'method'         => $request->payment_method,
+                        'merchant_ref'   => $refId,
+                        'amount'         => $amount,
+                        'customer_name'  => $user->nama_lengkap ?? 'Member Sancaka',
+                        'customer_email' => $user->email ?? 'no-reply@sancaka.com',
+                        'customer_phone' => $user->no_hp ?? '081234567890',
+                        'order_items'    => [
+                            ['sku' => $product->code, 'name' => $product->description, 'price' => $amount, 'quantity' => 1]
+                        ],
+                        'signature'      => $signature
+                    ]);
+
+                $resTripay = $responseTripay->json();
+
+                // 3. Kembalikan URL Pembayaran ke Aplikasi HP & HENTIKAN PROSES
+                if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Pesanan berhasil dibuat. Silakan bayar.',
+                        'payment_url' => $resTripay['data']['checkout_url']
+                    ]);
+                } else {
+                    $transaction->update(['status' => 'FAILED', 'message' => 'Gagal generate Tripay']);
+                    return response()->json(['success' => false, 'message' => 'Gagal Payment Gateway: ' . ($resTripay['message'] ?? 'Error')]);
+                }
             }
 
-            $refId = 'P' . date('ymd') . rand(1000, 9999);
+            // ========================================================
+            // SISA KODE DI BAWAH INI HANYA AKAN DIJALANKAN JIKA USER PAKAI SALDO / CASH
+            // Karena jika pakai Tripay, sistem sudah kena "return" di atas.
+            // ========================================================
             $sign = md5($this->username . $this->apiKey . $refId);
 
             $transaction = TransactionPpobIak::create([
-                'user_id'         => $user->id_pengguna, // PERBAIKAN: Gunakan id_pengguna secara eksplisit
+                'user_id'         => $user->id_pengguna,
                 'ref_id'          => $refId,
                 'type'            => 'prabayar',
                 'customer_id'     => $request->customer_id,
