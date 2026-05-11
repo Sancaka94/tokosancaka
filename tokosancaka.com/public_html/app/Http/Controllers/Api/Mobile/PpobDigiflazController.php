@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use App\Services\DokuJokulService;
 
 class PpobDigiflazController extends Controller
 {
@@ -124,7 +125,7 @@ class PpobDigiflazController extends Controller
         }
     }
 
-    // =================================================================
+   // =================================================================
     // 3. PROSES TRANSAKSI (STORE)
     // =================================================================
     public function processTransaction(Request $request)
@@ -136,6 +137,7 @@ class PpobDigiflazController extends Controller
             'idempotency_key' => 'required|string|max:36',
             'selling_price' => 'nullable|numeric',
             'ref_id' => 'nullable|string',
+            'payment_method' => 'nullable|string' // Pastikan ini diterima
         ]);
 
         $user = $request->user();
@@ -165,10 +167,6 @@ class PpobDigiflazController extends Controller
             $modalPrice = $product->price;
         }
 
-        if ($user->saldo < $priceToDeduct) {
-            return response()->json(['success' => false, 'message' => 'Saldo tidak cukup. Silakan Top Up.']);
-        }
-
         // Idempotency Check (Mencegah double tap pada API)
         $idempotencyKey = 'ppob_lock:' . $request->customer_no . ':' . $sku . ':' . $request->idempotency_key;
         if (Cache::has($idempotencyKey)) {
@@ -177,6 +175,112 @@ class PpobDigiflazController extends Controller
         Cache::put($idempotencyKey, true, 300); // Kunci selama 5 menit
 
         $trxRefId = $isPasca ? $request->input('ref_id') : 'TRX-' . time() . rand(100,999);
+        $paymentMethod = strtoupper(trim(str_replace('#', '', $request->payment_method ?? 'SALDO')));
+        $isSaldoOrCash = in_array($paymentMethod, ['SALDO', 'CASH', 'POTONG SALDO']);
+
+        // =================================================================
+        // A. JALUR PAYMENT GATEWAY (TRIPAY, DOKU, DANA)
+        // =================================================================
+        if (!$isSaldoOrCash) {
+            // Simpan Transaksi sebagai Pending (Belum potong saldo, belum tembak Digiflazz)
+            $trx = PpobTransaction::create([
+                'user_id' => $user->id_pengguna,
+                'order_id' => $trxRefId,
+                'buyer_sku_code' => $sku,
+                'customer_no' => $request->customer_no,
+                'customer_wa' => $this->_sanitizePhoneNumber($request->customer_wa),
+                'price' => $modalPrice,
+                'selling_price' => $sellingPrice,
+                'profit' => $sellingPrice - $modalPrice,
+                'status' => 'Pending',
+                'message' => 'Menunggu Pembayaran Gateway',
+                'desc' => json_encode(['type' => $isPasca ? 'postpaid' : 'prepaid'])
+            ]);
+
+            $amount = (int) $sellingPrice;
+
+            // 1. DOKU JOKUL
+            if (in_array($paymentMethod, ['DOKU', 'DOKU_JOKUL'])) {
+                try {
+                    // Karena sudah di-use di atas, panggil langsung nama class-nya
+                    $dokuService = new DokuJokulService();
+                    $paymentUrl = $dokuService->createPayment($trxRefId, $amount);
+                    if (empty($paymentUrl)) throw new \Exception('Response URL DOKU kosong.');
+
+                    $trx->update(['payment_url' => $paymentUrl]);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Pesanan dibuat. Mengalihkan ke DOKU...',
+                        'data' => ['payment_url' => $paymentUrl]
+                    ]);
+                } catch (\Exception $e) {
+                    $trx->update(['status' => 'Gagal', 'message' => 'Gagal generate DOKU']);
+                    return response()->json(['success' => false, 'message' => 'Gagal DOKU: ' . $e->getMessage()]);
+                }
+            }
+
+            // 2. DANA DIRECT (Portal Web)
+            elseif ($paymentMethod === 'DANA') {
+                $akunParams = $user->no_wa ?? $user->no_hp ?? $user->id_pengguna;
+                $paymentUrl = url('/pembayaran?akun=' . urlencode($akunParams));
+                $trx->update(['payment_url' => $paymentUrl]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pesanan dibuat. Mengalihkan ke DANA...',
+                    'data' => ['payment_url' => $paymentUrl]
+                ]);
+            }
+
+            // 3. TRIPAY
+            else {
+                $tripayMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+                $apiKey = \App\Models\Api::getValue('TRIPAY_API_KEY', $tripayMode);
+                $privateKey = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', $tripayMode);
+                $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', $tripayMode);
+
+                if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+                    return response()->json(['success' => false, 'message' => 'Konfigurasi Tripay belum disetting.']);
+                }
+
+                $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+                $signature = hash_hmac('sha256', $merchantCode.$trxRefId.$amount, $privateKey);
+
+                $responseTripay = \Illuminate\Support\Facades\Http::withHeaders([
+                    'Authorization' => 'Bearer ' . trim($apiKey)
+                ])->post($tripayUrl, [
+                    'method'         => $paymentMethod,
+                    'merchant_ref'   => $trxRefId,
+                    'amount'         => $amount,
+                    'customer_name'  => $user->nama_lengkap ?? 'Member',
+                    'customer_email' => $user->email ?? 'no-reply@sancaka.com',
+                    'customer_phone' => $user->no_hp ?? '081234567890',
+                    'order_items'    => [['sku' => $sku, 'name' => $product->product_name ?? 'PPOB', 'price' => $amount, 'quantity' => 1]],
+                    'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob',
+                    'signature'      => $signature
+                ]);
+
+                $resTripay = $responseTripay->json();
+
+                if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
+                    $trx->update(['payment_url' => $resTripay['data']['checkout_url']]);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Mengalihkan ke pembayaran...',
+                        'data' => ['payment_url' => $resTripay['data']['checkout_url']]
+                    ]);
+                } else {
+                    $trx->update(['status' => 'Gagal', 'message' => 'Tripay: ' . ($resTripay['message'] ?? 'Error')]);
+                    return response()->json(['success' => false, 'message' => 'Gagal Tripay: ' . ($resTripay['message'] ?? 'Error')]);
+                }
+            }
+        }
+
+        // =================================================================
+        // B. JALUR SALDO / CASH (LANGSUNG TEMBAK DIGIFLAZZ)
+        // =================================================================
+        if ($user->saldo < $priceToDeduct) {
+            return response()->json(['success' => false, 'message' => 'Saldo tidak cukup. Silakan Top Up.']);
+        }
 
         DB::beginTransaction();
         try {
