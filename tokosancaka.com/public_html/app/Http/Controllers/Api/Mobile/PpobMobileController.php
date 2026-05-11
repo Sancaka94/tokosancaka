@@ -194,6 +194,8 @@ class PpobMobileController extends Controller
                 $amount = (int) $product->price;
                 $signature = hash_hmac('sha256', $merchantCode.$refId.$amount, $privateKey);
 
+                $cleanPaymentMethod = str_replace('#', '', $paymentMethod);
+
                 $responseTripay = Http::withToken($apiKey)->post($tripayUrl, [
                     'method'         => $paymentMethod,
                     'merchant_ref'   => $refId,
