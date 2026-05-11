@@ -379,6 +379,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Transaksi / Pembayaran
         Route::post('/transaction', [PpobDigiflazController::class, 'processTransaction']);
+
+        Route::get('/history-digi', [PpobDigiflazController::class, 'getHistory']);
     });
 
     // ==========================================
