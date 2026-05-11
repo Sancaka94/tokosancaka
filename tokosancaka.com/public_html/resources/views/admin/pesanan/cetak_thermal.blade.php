@@ -1,472 +1,216 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView, Platform } from 'react-native';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WebView } from 'react-native-webview';
 
-    <link rel="icon" type="image/png" href="https://tokosancaka.com/storage/uploads/sancaka.png">
+const APP_USER_AGENT = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36';
 
-    <title>Cetak Resi - {{ $pesanan->resi }}</title>
+export default function CetakThermalResiScreen() {
+  const router = useRouter();
+  const { resi } = useLocalSearchParams();
+  const [pesanan, setPesanan] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+  // --- FETCH DATA ---
+  useEffect(() => {
+    const fetchPesanan = async () => {
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+        const response = await fetch(`https://tokosancaka.com/api/mobile/customer/pesanan/detail/${resi}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json', 'User-Agent': APP_USER_AGENT }
+        });
+        const json = await response.json();
 
-    {{-- LIBRARY WAJIB: JSBARCODE (1D) --}}
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    {{-- LIBRARY WAJIB: QRCODE.JS (2D) --}}
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    {{-- WAJIB UNTUK AJAX FONTTE --}}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F3F4F6;
-            color: #111827;
+        if (json.success && json.data) {
+          setPesanan(json.data);
+        } else {
+          Alert.alert('Gagal', 'Data pesanan tidak ditemukan.');
+          router.back();
         }
-        .page {
-            width: 100mm;
-            min-height: 150mm;
-            padding: 6mm;
-            margin: 10mm auto;
-            background: #fff;
-            border: 1px solid #E5E7EB;
-            border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            display: flex;
-            flex-direction: column;
-            font-size: 8pt;
-        }
-        /* Penyesuaian Mobile */
-        @media (max-width: 640px) {
-            .page {
-                margin: 5px auto;
-                box-shadow: none;
-                border: none;
-            }
-        }
-        .barcode {
-            width: 100%;
-            height: 50px;
-            /* Tambahkan sedikit margin vertikal agar tidak terlalu mepet dengan tulisan di atas/bawahnya */
-            margin-top: 5px;
-            margin-bottom: 5px;
-        }
-        .label { font-weight: 600; font-size: 12px; color: #374151; }
-        .value { font-weight: 500; font-size: 9px; }
-        @media print {
-            body { background: none; }
-            .no-print { display: none; }
-            .page {
-                margin: 0;
-                border: none;
-                border-radius: 0;
-                width: 100mm;
-                min-height: 150mm;
-                box-shadow: none;
-                page-break-after: always;
-            }
-        }
-    </style>
-</head>
-<body>
+      } catch (error) {
+        Alert.alert('Error', 'Gagal memuat data resi.');
+        router.back();
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    <div class="no-print p-3 bg-white border-b border-gray-200 shadow-sm sticky top-0 z-10">
-        @php
-            if (!function_exists('maskText')) {
-                function maskText($text, $keepFirst = 3, $keepLast = 3) {
-                    if (empty($text) || $text === '-') return '-';
-                    $text = trim($text);
-                    $length = strlen($text);
+    if (resi) fetchPesanan();
+  }, [resi]);
 
-                    if ($length <= 4) {
-                        return substr($text, 0, 1) . str_repeat('*', $length - 1);
-                    }
-                    if ($length <= ($keepFirst + $keepLast)) {
-                        $keepFirst = 1;
-                        $keepLast = 1;
-                    }
+  // --- HELPER MASKING ---
+  const maskText = (text, keepFirst = 3, keepLast = 3) => {
+    if (!text || text === '-') return '-';
+    const str = text.trim();
+    const len = str.length;
+    if (len <= 4) return str.substring(0, 1) + '*'.repeat(len - 1);
+    if (len <= (keepFirst + keepLast)) { keepFirst = 1; keepLast = 1; }
+    return str.substring(0, keepFirst) + '*'.repeat(len - keepFirst - keepLast) + str.substring(len - keepLast);
+  };
 
-                    $start = substr($text, 0, $keepFirst);
-                    $end = substr($text, -$keepLast);
-                    $masked = str_repeat('*', $length - $keepFirst - $keepLast);
+  if (isLoading || !pesanan) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#dc2626" />
+        <Text style={{ marginTop: 10 }}>Memuat Label Resi...</Text>
+      </View>
+    );
+  }
 
-                    return $start . $masked . $end;
-                }
-            }
+  // --- PREPARE DATA ---
+  const expeditionParts = (pesanan.expedition || '').split('-');
+  const expName = (expeditionParts[1] || 'sancaka').toUpperCase();
+  const expService = (expeditionParts[2] || 'regular').toUpperCase();
+  const pm = String(pesanan.payment_method || '').toUpperCase();
+  const isCodBarang = pm === 'CODBARANG' || pm === '#COD_BARANG';
+  const isCodOngkir = pm === 'COD' || pm === '#COD_ONGKIR';
+  const showCodBlock = isCodBarang || isCodOngkir;
+  const labelCod = isCodBarang ? 'NILAI COD (BARANG + ONGKIR)' : 'NILAI COD (ONGKIR)';
+  const displayPayment = (pm === 'POTONG SALDO' || pm === '#SALDO') ? 'SALDO / CASH' : pesanan.payment_method;
 
-            // Logika Auth: Menentukan Back URL
-            $backUrl = url()->previous();
-
-            if (Auth::check()) {
-                if (Auth::user()->hasRole('Admin')) {
-                    $backUrl = route('admin.pesanan.index');
-                } elseif (Auth::user()->hasRole('Pelanggan')) {
-                    $backUrl = route('customer.pesanan.index');
-                }
-            }
-        @endphp
-
-        <div class="flex flex-wrap justify-center gap-2 max-w-5xl mx-auto">
-
-            <button onclick="window.print()" class="w-full sm:w-auto lg:flex-none lg:min-w-[150px] bg-red-600 text-white px-5 py-2 rounded-md shadow hover:bg-red-700 transition flex justify-center items-center">
-                <i class="fas fa-print mr-1"></i> Cetak Resi
-            </button>
-
-            <button id="downloadBtn" class="w-full sm:w-auto lg:flex-none lg:min-w-[150px] bg-blue-600 text-white px-5 py-2 rounded-md shadow hover:bg-blue-700 transition flex justify-center items-center">
-                <i class="fas fa-download mr-2"></i> Download JPG
-            </button>
-
-            <button onclick="sendWaNotificationApi('receiver')" class="w-full sm:w-auto lg:flex-none lg:min-w-[150px] bg-green-600 text-white px-5 py-2 rounded-md shadow hover:bg-green-700 transition flex justify-center items-center">
-                <i class="fab fa-whatsapp mr-1"></i> Kirim WA (Penerima)
-            </button>
-
-            <button onclick="sendWaNotificationApi('sender')" class="w-full sm:w-auto lg:flex-none lg:min-w-[150px] bg-green-600 text-white px-5 py-2 rounded-md shadow hover:bg-green-700 transition flex justify-center items-center">
-                <i class="fab fa-whatsapp mr-1"></i> Kirim WA (Pengirim)
-            </button>
-
-            <a href="{{ $backUrl }}" class="w-full sm:w-auto lg:flex-none lg:min-w-[150px] bg-gray-200 text-gray-800 px-5 py-2 rounded-md shadow hover:bg-gray-300 transition flex justify-center items-center">
-                <i class="fas fa-arrow-left mr-1"></i> Kembali
-            </a>
-
-        </div>
-    </div>
-
-    <div class="page" id="label-resi">
-
-        @php
-            // 1. Parsing Helper Asli
-            $ship = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->expedition);
-            $expeditionName = $ship['courier_name'] ?? 'SANCAKA'; // Contoh: "J&T Express", "JNE", "SiCepat"
-            $expeditionService = $ship['service_name'] ?? 'Regular';
-
-            // 2. Definisi Mapping Manual (DATABASE LINK GAMBAR)
-            $courierMap = [
-                'jne'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png',
-                'tiki'          => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png',
-                'pos'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png',
-                'posindonesia'  => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png',
-                'sicepat'       => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png',
-                'sap'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png',
-                'ncs'           => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLfUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg',
-                'idx'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png',
-                'idexpress'     => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png',
-                'gojek'         => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png',
-                'gosend'        => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png',
-                'grab'          => 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png',
-                'jnt'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png',
-                'j&t'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png',
-                'indah'         => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEicOAaLoH2eElQ93_gbkzhvk4dRhWVlk5wQsGgilihIB58321aHchlJLdjyz1ToS25P_nWrHJ_E4QBiW_OVlI7tQt7cZ5I0HZqk6StS7jZltLVvDXp2d5ZDLB9yklhV4x6z2iXyURURDv_unhf-U6vyiD_8to9OC4PBwMwyU_5wAqOiCl6tKiaTA-ri1Q/s851/Logo%20Indah%20Logistik%20Cargo@0.5x.png',
-                'jtcargo'       => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png',
-                'lion'          => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png',
-                'spx'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png',
-                'shopee'        => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png',
-                'ninja'         => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png',
-                'anteraja'      => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png',
-                'sentral'       => 'https://tokosancaka.com/public/storage/logo-ekspedisi/centralcargo.png',
-                'borzo'         => 'https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png',
-            ];
-
-            // 3. Logika Pencocokan (Smart Matching)
-            // Kita ubah nama ekspedisi menjadi huruf kecil semua dan hapus spasi agar mudah dicocokkan
-            // Contoh: "J&T Express" -> "j&texpress", "SiCepat" -> "sicepat"
-            $normalizedName = strtolower(str_replace(' ', '', $expeditionName));
-            $finalLogoUrl = null;
-
-            // Cek Khusus untuk J&T Cargo vs J&T Express (karena mirip)
-            if (str_contains($normalizedName, 'cargo') && (str_contains($normalizedName, 'j&t') || str_contains($normalizedName, 'jt'))) {
-                $finalLogoUrl = $courierMap['jtcargo'];
-            }
-            // Cek Loop Normal
-            else {
-                foreach ($courierMap as $key => $url) {
-                    // Jika nama ekspedisi mengandung kata kunci (misal 'sicepat' ada di 'sicepathalu')
-                    if (str_contains($normalizedName, $key)) {
-                        $finalLogoUrl = $url;
-                        break; // Ketemu, berhenti looping
-                    }
-                }
-            }
-
-            // 4. Fallback Terakhir (Jika tidak ada di list manual, pakai logika lama)
-            if (!$finalLogoUrl) {
-                $logoUrlFromHelper = $ship['logo_url'] ?? null;
-                $localLogoPath = strtolower(str_replace(' ', '', $expeditionName));
-                $localLogoAssetUrl = asset('public/storage/logo-ekspedisi/' . $localLogoPath . '.png');
-                $finalLogoUrl = $logoUrlFromHelper ?: $localLogoAssetUrl;
-            }
-        @endphp
-
-        <div class="flex justify-between items-center border-b border-gray-700 pb-2">
-            <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10" onerror="this.style.display='none'">
-
-            <img src="{{ $finalLogoUrl }}"
-                 alt="{{ $expeditionName }}"
-                 class="h-8 object-contain"
-                 onerror="this.style.opacity='0'">
-        </div>
-
-        <div class="text-center mt-2">
-            <p class="font-bold text-sm tracking-wide"><strong>NOMOR RESI TOKOSANCAKA.COM</strong></p>
-            {{-- Elemen SVG barcode, margin vertikal ditangani oleh CSS .barcode --}}
-            <svg id="barcodeSancaka" class="barcode"></svg>
-        </div>
-
-        {{-- LOGIKA COD DIPINDAH KE ATAS AGAR BISA DIAKSES DI KANAN/KIRI --}}
-        {{-- LOGIKA COD DIPINDAH KE ATAS AGAR BISA DIAKSES DI KANAN/KIRI --}}
-        @php
-            $pm = strtoupper($pesanan->payment_method);
-            $isCodBarang = ($pm === 'CODBARANG');
-            $isCodOngkir = ($pm === 'COD');
-
-            // Variabel Default
-            $labelCod = "NILAI COD";
-            $nilaiCodFinal = 0;
-            $showCodBlock = false;
-
-            if ($isCodBarang) {
-                // Ambil langsung dari harga final di DB
-                $nilaiCodFinal = $pesanan->price;
-                $labelCod = "NILAI COD (BARANG + ONGKIR)";
-                $showCodBlock = true;
-            } elseif ($isCodOngkir) {
-                // 🔥 PERBAIKAN: Hapus hitungan manual! Langsung tembak dari database! 🔥
-                // Karena $pesanan->price sudah mengandung Ongkir + Fee API + Asuransi + 1000
-                $nilaiCodFinal = $pesanan->price;
-                $labelCod = "NILAI COD (ONGKIR)";
-                $showCodBlock = true;
-            }
-        @endphp
-
-        <div class="grid grid-cols-2 gap-3 mt-2 border-b border-gray-700 pb-2">
-
-            <div class="pr-2">
-                <p class="label"><strong>PENGIRIM:</strong></p>
-                <p class="value">{{ maskText($pesanan->sender_name) }}</p>
-                <p class="text-xs">{{ maskText($pesanan->sender_phone) }}</p>
-                <p class="text-xs leading-snug mt-1">
-                    {{ implode(', ', array_filter([
-                        $pesanan->sender_address,
-                        $pesanan->sender_village,
-                        $pesanan->sender_district,
-                        $pesanan->sender_regency,
-                        $pesanan->sender_province,
-                        $pesanan->sender_postal_code,
-                    ])) }}
-                </p>
-
-                <div class="mt-2 pt-2">
-                    <p class="label"><strong>Rincian Paket:</strong></p>
-                    <p class="value">- Berat: {{ $pesanan->weight }} Gram</p>
-                    <p class="value">- Harga Barang: Rp {{ number_format($pesanan->item_price, 0, ',', '.') }}</p>
-                    <p class="value">- Isi Paket: {{ $pesanan->item_description }}</p>
-                    <p class="value">- Dimensi: {{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }} cm</p>
-                    <p class="value">- Layanan: {{ strtoupper($expeditionService) }}</p><br>
-                    @if($showCodBlock)
-                        {{-- TAMPILAN JIKA PESANAN COD --}}
-                        <p class="label text-gray-700"><strong>{{ $labelCod }}:</strong></p>
-                        <p class="value text-gray-700 text-lg mb-0">
-                            <strong>Rp {{ number_format($nilaiCodFinal, 0, ',', '.') }}</strong>
-                        </p>
-                        @if($isCodOngkir)
-                            <p class="text-[9px] italic mt-0 font-bold text-red-600 mb-2">(JANGAN TAGIH HARGA BARANG)</p>
-                        @endif
-                    @else
-                        {{-- TAMPILAN JIKA BUKAN COD (REGULER) --}}
-                        <p class="label text-green-600"><strong>Total Ongkir:</strong></p>
-                        <p class="value text-red-600 text-lg mb-2">
-                            <strong>Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}</strong>
-                        </p>
-                    @endif
-                     {{-- BAGIAN YANG DIPERBAIKI: LOGIKA COD ONGKIR vs COD BARANG --}}
-                </div>
+  // Render HTML String sesuai template web Anda (dinamis)
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Cetak Resi</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+        <style>
+            body { font-family: 'Inter', sans-serif; background-color: #F3F4F6; color: #111827; margin: 0; padding: 10px; }
+            .page { width: 100mm; min-height: 150mm; padding: 6mm; margin: 0 auto; background: #fff; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; font-size: 8pt; }
+            .barcode { width: 100%; height: 50px; margin-top: 5px; margin-bottom: 5px; }
+            .label { font-weight: 600; font-size: 12px; color: #374151; }
+            .value { font-weight: 500; font-size: 9px; }
+        </style>
+    </head>
+    <body>
+        <div class="page" id="label-resi">
+            <div class="flex justify-between items-center border-b border-gray-700 pb-2">
+                <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka" class="h-10" onerror="this.style.display='none'">
+                <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/${expName.toLowerCase().replace(/\s+/g, '')}.png" class="h-8 object-contain" onerror="this.style.display='none'">
             </div>
 
-            <div class="pl-2">
-                <p class="label"><strong>PENERIMA:</strong></p>
-                <p class="value">{{ maskText($pesanan->receiver_name) }}</p>
-                <p class="text-xs">{{ maskText($pesanan->receiver_phone) }}</p>
-                <p class="text-xs leading-snug mt-1">
-                    {{ implode(', ', array_filter([
-                        $pesanan->receiver_address,
-                        $pesanan->receiver_village,
-                        $pesanan->receiver_district,
-                        $pesanan->receiver_regency,
-                        $pesanan->receiver_province,
-                        $pesanan->receiver_postal_code,
-                    ])) }}
-                </p>
+            <div class="text-center mt-2">
+                <p class="font-bold text-sm tracking-wide"><strong>NOMOR RESI TOKOSANCAKA.COM</strong></p>
+                <svg id="barcodeSancaka" class="barcode"></svg>
+            </div>
 
-                <div class="flex justify-center mt-4">
-                    <div class="border border-gray-400 rounded-md p-3 inline-block">
-                        <div id="qrcode"></div>
+            <div class="grid grid-cols-2 gap-3 mt-2 border-b border-gray-700 pb-2">
+                <div class="pr-2 border-r border-gray-300">
+                    <p class="label"><strong>PENGIRIM:</strong></p>
+                    <p class="value">${maskText(pesanan.sender_name)}</p>
+                    <p class="text-xs">${maskText(pesanan.sender_phone)}</p>
+                    <p class="text-[8px] leading-snug mt-1">${[pesanan.sender_address, pesanan.sender_village, pesanan.sender_district, pesanan.sender_regency, pesanan.sender_province].filter(Boolean).join(', ')}</p>
+
+                    <div class="mt-2 pt-2 border-t border-dashed border-gray-300">
+                        <p class="label"><strong>Rincian Paket:</strong></p>
+                        <p class="value">- Berat: ${pesanan.weight} Gram</p>
+                        <p class="value">- Harga Brg: Rp ${Number(pesanan.item_price).toLocaleString('id-ID')}</p>
+                        <p class="value">- Isi: ${pesanan.item_description}</p>
+                        <p class="value">- Dimensi: ${pesanan.length || 0}x${pesanan.width || 0}x${pesanan.height || 0} cm</p>
+                        <p class="value">- Layanan: ${expService}</p>
+                        <br>
+                        ${showCodBlock ? `
+                            <p class="label text-gray-700"><strong>${labelCod}:</strong></p>
+                            <p class="value text-gray-700 text-lg mb-0"><strong>Rp ${Number(pesanan.price).toLocaleString('id-ID')}</strong></p>
+                            ${isCodOngkir ? `<p class="text-[8px] italic mt-0 font-bold text-red-600 mb-2">(JANGAN TAGIH HARGA BARANG)</p>` : ''}
+                        ` : `
+                            <p class="label text-green-600"><strong>Total Ongkir:</strong></p>
+                            <p class="value text-red-600 text-lg mb-2"><strong>Rp ${Number(pesanan.shipping_cost).toLocaleString('id-ID')}</strong></p>
+                        `}
                     </div>
                 </div>
 
-                <p class="flex justify-center mt-1 mb-1"><strong>TRACKING ME</strong></p>
-                <p class="value text-center">CV. SANCAKA KARYA HUTAMA</p>
-                <p class="value text-center">Helpdesk: 08574580809</p>
+                <div class="pl-2">
+                    <p class="label"><strong>PENERIMA:</strong></p>
+                    <p class="value">${maskText(pesanan.receiver_name)}</p>
+                    <p class="text-xs">${maskText(pesanan.receiver_phone)}</p>
+                    <p class="text-[8px] leading-snug mt-1">${[pesanan.receiver_address, pesanan.receiver_village, pesanan.receiver_district, pesanan.receiver_regency, pesanan.receiver_province].filter(Boolean).join(', ')}</p>
 
+                    <div class="flex justify-center mt-4">
+                        <div class="border border-gray-400 rounded-md p-2 inline-block"><div id="qrcode"></div></div>
+                    </div>
+                    <p class="flex justify-center mt-1 mb-1 text-[9px]"><strong>TRACKING ME</strong></p>
+                    <p class="value text-center text-[8px]">CV. SANCAKA KARYA HUTAMA<br>Helpdesk: 08574580809</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 text-center mt-2 border-b border-gray-700 pb-2">
+                <div><p class="label text-[9px]"><strong>RESI</strong></p><p class="value text-[8px]">${pesanan.nomor_invoice}</p></div>
+                <div><p class="label text-[9px]"><strong>BERAT</strong></p><p class="value text-[8px]">${pesanan.weight} Gr</p></div>
+                <div><p class="label text-[9px]"><strong>VOLUME</strong></p><p class="value text-[8px]">${pesanan.length || 0}x${pesanan.width || 0}x${pesanan.height || 0}</p></div>
+                <div><p class="label text-[9px]"><strong>LAYANAN</strong></p><p class="value text-[8px]">${expService}</p></div>
+                <div><p class="label text-[9px]"><strong>EKSPEDISI</strong></p><p class="value text-[8px]">${expName}</p></div>
+                <div><p class="label text-[9px]"><strong>BAYAR</strong></p><p class="value text-[8px]">${displayPayment}</p></div>
+            </div>
+
+            ${pesanan.resi_aktual ? `
+            <div class="text-center mt-3 pt-2 border-t border-gray-700">
+                <p class="label">RESI AKTUAL (${pesanan.jasa_ekspedisi_aktual || expName})</p>
+                <svg id="barcodeAktual" class="barcode"></svg>
+            </div>
+            ` : ''}
+
+            <div class="mt-auto pt-3 text-center text-[8px]">
+                <p>Terima kasih menggunakan <strong>Sancaka Express</strong>.</p>
+                <p class="font-bold mt-1">${pesanan.created_at} Kirim Paket DI TOKOSANCAKA.COM</p>
             </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-2 text-center mt-2 border-b border-gray-700 pb-2">
-            <div><p class="label"><strong>ORDER ID / RESI</strong></p><p class="value">{{ $pesanan->nomor_invoice }}</p></div>
-            <div><p class="label"><strong>BERAT</strong></p><p class="value">{{ $pesanan->weight }} Gram</p></div>
-            <div><p class="label"><strong>VOLUME (cm)</strong></p><p class="value">{{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }}</p></div>
-            <div><p class="label"><strong>LAYANAN</strong></p><p class="value">{{ strtoupper($expeditionService) }}</p></div>
-            <div><p class="label"><strong>EKSPEDISI</strong></p><p class="value">{{ strtoupper($expeditionName) }}</p></div>
-            <div><p class="label"><strong>Pembayaran</strong></p><p class="value">{{ strtoupper($pesanan->payment_method) === 'POTONG SALDO' ? 'SALDO / CASH' : $pesanan->payment_method }}</p></div></div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                // Generate 1D Barcode
+                JsBarcode("#barcodeSancaka", "${pesanan.resi}", { format: "CODE128", width: 2, height: 40, fontSize: 16 });
+                ${pesanan.resi_aktual ? `JsBarcode("#barcodeAktual", "${pesanan.resi_aktual}", { format: "CODE128", width: 2, height: 40, fontSize: 16 });` : ''}
 
-        @if($pesanan->resi_aktual)
-        <div class="text-center mt-3 pt-2 border-t border-gray-700">
-            <p class="label">RESI AKTUAL ({{ $pesanan->jasa_ekspedisi_aktual }})</p>
-            {{-- Elemen SVG barcode aktual --}}
-            <svg id="barcodeAktual" class="barcode"></svg>
-        </div>
-        @endif
-
-        <div class="mt-auto pt-3 text-center text-xs">
-            <p>Terima kasih telah menggunakan <span class="font-semibold">Sancaka Express</span>.</p>
-            <p class="font-bold mt-1">{{ \Carbon\Carbon::parse($pesanan->created_at)->format('d M Y H:i') }} Kirim Paket DI TOKOSANCAKA.COM</p>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-    <script>
-        const RESI = {!! json_encode($pesanan->resi) !!};
-        const TOKEN = document.querySelector('meta[name="csrf-token"]').content;
-
-        document.addEventListener('DOMContentLoaded', function() {
-            // --- BARCODE GENERATION (1D) ---
-            try {
-                const resiSancaka = RESI;
-                if (resiSancaka) {
-                    JsBarcode("#barcodeSancaka", resiSancaka, {
-                        format: "CODE128",
-                        textMargin: 10,  // Jarak garis Barcode ke teks RESI
-                        fontOptions: "bold",
-                        height: 50,      // Tinggi barcode
-                        width: 3.5,      // LEBAR GARIS BARCODE (MEMPENGARUHI PANJANG KESELURUHAN)
-                        fontSize: 30     // Ukuran font teks di bawah barcode
-                    });
-                }
-                @if($pesanan->resi_aktual)
-                    const resiAktual = {!! json_encode($pesanan->resi_aktual ?? '') !!};
-                    if (resiAktual) {
-                        JsBarcode("#barcodeAktual", resiAktual, {
-                            format: "CODE128",
-                            textMargin: 10,  // Jarak garis Barcode ke teks RESI
-                            fontOptions: "bold",
-                            height: 50,      // Tinggi barcode
-                            width: 3.5,      // LEBAR GARIS BARCODE
-                            fontSize: 30     // Ukuran font teks di bawah barcode
-                        });
-                    }
-                @endif
-            } catch (e) {
-                console.error("Gagal membuat barcode:", e);
-            }
-
-            // --- QR CODE GENERATION (2D) ---
-            try {
-                 new QRCode(document.getElementById("qrcode"), {
-                     text: "https://tokosancaka.com/tracking/search?resi=" + RESI,
-                     width: 75,
-                     height: 75
-                 });
-            } catch (e) {
-                console.error("Gagal membuat QR Code:", e);
-            }
-        });
-
-        // --- FUNGSI FONTTE/WHATSAPP API ---
-        function sendWaNotificationApi(target) {
-            const button = (target === 'receiver')
-                ? document.querySelector('button[onclick*="receiver"]')
-                : document.querySelector('button[onclick*="sender"]');
-
-            if (button) {
-                button.disabled = true;
-                button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mengirim...';
-            }
-
-            fetch('{{ route('api.whatsapp.send_resi') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': TOKEN
-                },
-                body: JSON.stringify({
-                    resi: RESI,
-                    target: target
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    Swal.fire('Berhasil!', data.message, 'success');
-                } else {
-                    Swal.fire('Gagal!', data.message || 'Terjadi kesalahan tidak dikenal.', 'error');
-                }
-                if (button) {
-                    button.disabled = false;
-                    button.innerHTML = (target === 'receiver')
-                        ? '<i class="fab fa-whatsapp mr-1"></i> Kirim WA (Penerima)'
-                        : '<i class="fab fa-whatsapp mr-1"></i> Kirim WA (Pengirim)';
-                }
-            })
-            .catch(error => {
-                console.error('API Error:', error);
-                Swal.fire('Error', 'Gagal terhubung ke API Fonnte/Server. Periksa koneksi.', 'error');
-                if (button) {
-                    button.disabled = false;
-                    button.innerHTML = (target === 'receiver')
-                        ? '<i class="fab fa-whatsapp mr-1"></i> Kirim WA (Penerima)'
-                        : '<i class="fab fa-whatsapp mr-1"></i> Kirim WA (Pengirim)';
-                }
+                // Generate 2D QRCode
+                new QRCode(document.getElementById("qrcode"), { text: "https://tokosancaka.com/tracking/search?resi=${pesanan.resi}", width: 60, height: 60 });
             });
-        }
+        </script>
+    </body>
+    </html>
+  `;
 
-        // --- DOWNLOAD JPG SCRIPT ---
-        document.getElementById('downloadBtn').addEventListener('click', function() {
-            const downloadBtn = this;
-            const labelElement = document.getElementById('label-resi');
-            const resi = RESI;
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      {/* HEADER ACTIONS */}
+      <View style={styles.actionHeader}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#1f2937" />
+        </TouchableOpacity>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity style={[styles.btn, styles.btnRed]}>
+            <Ionicons name="print" size={16} color="white" />
+            <Text style={styles.btnText}>Cetak Thermal</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-            downloadBtn.disabled = true;
-            downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Mengonversi...';
+      {/* WEBVIEW AREA */}
+      <WebView
+        source={{ html: htmlContent }}
+        style={{ flex: 1, backgroundColor: '#f3f4f6' }}
+        showsVerticalScrollIndicator={false}
+        originWhitelist={['*']}
+      />
+    </SafeAreaView>
+  );
+}
 
-            html2canvas(labelElement, {
-                useCORS: true,
-                scale: 2
-            }).then(canvas => {
-                const link = document.createElement('a');
-                link.href = canvas.toDataURL('image/jpeg', 0.95);
-                link.download = `resi-${resi}.jpg`;
-
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                downloadBtn.disabled = false;
-                downloadBtn.innerHTML = '<i class="fas fa-download mr-2"></i> Download JPG';
-
-            }).catch(err => {
-                console.error('Gagal konversi ke JPG:', err);
-                Swal.fire('Gagal', 'Maaf, gagal mengunduh gambar. Silakan coba lagi.', 'error');
-                downloadBtn.disabled = false;
-                downloadBtn.innerHTML = '<i class="fas fa-download mr-2"></i> Download JPG';
-            });
-        });
-
-    </script>
-
-</body>
-</html>
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#ffffff' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  actionHeader: { flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 1, borderColor: '#e5e7eb', justifyContent: 'space-between' },
+  backBtn: { padding: 5 },
+  actionButtons: { flexDirection: 'row', gap: 8 },
+  btn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6, gap: 6 },
+  btnRed: { backgroundColor: '#dc2626' },
+  btnText: { color: 'white', fontSize: 14, fontWeight: 'bold' }
+});

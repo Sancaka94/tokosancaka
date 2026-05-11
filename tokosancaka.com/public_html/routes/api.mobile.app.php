@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\Mobile\DaftarMemberController;
 use App\Http\Controllers\Api\Mobile\PpobDigiflazController;
 use App\Http\Controllers\Api\Mobile\SettingPrivacyController;
 use App\Http\Controllers\Api\Mobile\EditPenggunaController;
+use App\Http\Controllers\Api\Mobile\PesananController;
 /*
 |--------------------------------------------------------------------------
 | API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)
@@ -171,8 +172,6 @@ Route::prefix('seller')->group(function () {
 
 
     Route::get('/customer/pesanan/riwayat', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'riwayat']);
-
-
 
     // --- A. GENERAL AUTH & USER ---
     Route::get('/user/profile', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'user']);
@@ -402,4 +401,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/admin/pengguna', [EditPenggunaController::class, 'index']); // Ambil semua
     Route::delete('/admin/pengguna/{id}', [EditPenggunaController::class, 'destroy']); // Hapus
-});
+
+    Route::get('/customer/pesanan/detail/{resi}', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'getDetailPesanan']);
+
+    });
