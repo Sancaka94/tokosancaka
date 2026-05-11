@@ -532,7 +532,7 @@ class PpobMobileController extends Controller
                     'sn',
                     'payment_url',
                     'created_at',
-                    'tr_id', // <--- TAMBAHKAN INI
+                    'tr_id',
                     \Illuminate\Support\Facades\DB::raw("'IAK' as provider")
                 );
 
@@ -553,7 +553,7 @@ class PpobMobileController extends Controller
                     'sn',
                     'payment_url',
                     'created_at',
-                    \Illuminate\Support\Facades\DB::raw("NULL as tr_id"), // <--- TAMBAHKAN INI (Samakan dengan IAK)
+                    \Illuminate\Support\Facades\DB::raw("NULL as tr_id"),
                     \Illuminate\Support\Facades\DB::raw("'DIGIFLAZZ' as provider")
                 );
 
@@ -610,16 +610,18 @@ class PpobMobileController extends Controller
             }
 
             // =========================================================
-            // 6. GABUNGKAN KEDUA TABEL (UNION ALL) LALU PAGINASI
+            // 6. GABUNGKAN LALU BUNGKUS DENGAN SUBQUERY (FIX LARAVEL BUG)
             // =========================================================
-            $transactions = $queryIak->unionAll($queryDigi)
-                                     ->orderBy('created_at', 'desc')
-                                     ->paginate(20);
+            $unionQuery = $queryIak->unionAll($queryDigi);
+
+            $transactions = \Illuminate\Support\Facades\DB::table(\Illuminate\Support\Facades\DB::raw("({$unionQuery->toSql()}) as combined_table"))
+                ->mergeBindings($unionQuery) // Menyuntikkan variabel (bind) dengan urutan yang benar
+                ->orderBy('created_at', 'desc')
+                ->paginate(20);
 
             $mappedItems = [];
 
             try {
-                // Konversi hasil paginasi ke Laravel Collection untuk mempermudah mapping
                 $collection = collect($transactions->items());
 
                 // Ekstrak ikon prabayar (Menggunakan IAK sebagai master ikon)
@@ -643,7 +645,7 @@ class PpobMobileController extends Controller
 
                 // Proses Mapping Akhir
                 foreach ($transactions->items() as $trx) {
-                    $item = (array) $trx; // Casting stdClass dari DB::table menjadi array
+                    $item = (array) $trx;
 
                     // Sisipkan Icon
                     $item['icon_url'] = ($item['type'] == 'prabayar') ? ($icons[$item['product_code']] ?? null) : null;
@@ -659,7 +661,6 @@ class PpobMobileController extends Controller
 
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::warning('LOG LOG - Gagal ekstrak data riwayat tambahan: ' . $e->getMessage());
-                // Fallback aman jika mapping gagal
                 $mappedItems = json_decode(json_encode($transactions->items()), true);
             }
 
