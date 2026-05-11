@@ -164,16 +164,8 @@ class PpobMobileController extends Controller
             $product = IakPricelistPrepaid::where('code', $request->product_code)->first();
             if (!$product) return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan.']);
 
-            // --- CEK METODE PEMBAYARAN DAN HAK AKSES ---
-            $isSaldoOrCash = in_array(strtoupper($request->payment_method), ['#SALDO', 'CASH']) || empty($request->payment_method);
-            $isAdmin4 = ($user->id_pengguna == 4);
-
-            if ($isSaldoOrCash) {
-                // HANYA ADMIN (USER ID 4) YANG BOLEH POTONG SALDO / CASH LANGSUNG
-                if (!$isAdmin4) {
-                    return response()->json(['success' => false, 'message' => 'Metode Pembayaran Saldo/Cash hanya khusus untuk Admin. Silakan gunakan Doku, Dana, atau Tripay.']);
-                }
-
+            // --- CEK SALDO HANYA JIKA METODE PEMBAYARAN ADALAH SALDO / CASH ---
+            if ($request->payment_method === '#SALDO' || $request->payment_method === 'CASH' || empty($request->payment_method)) {
                 // Pastikan menggunakan balance_iak atau saldo sesuai database-mu
                 if ($user->balance_iak < $product->price) {
                     return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi.']);
@@ -183,10 +175,10 @@ class PpobMobileController extends Controller
                 $refId = 'P' . date('ymd') . rand(1000, 9999);
 
             } else {
-                // --- LOGIKA PAYMENT GATEWAY (DOKU, DANA, TRIPAY DLL) ---
+                // --- LOGIKA PAYMENT GATEWAY (TRIPAY) ---
                 $refId = 'P' . date('ymd') . rand(1000, 9999);
 
-                // 1. Simpan Transaksi PPOB dengan status PENDING (Sesuai Request)
+                // 1. Simpan Transaksi PPOB dengan status UNPAID (Belum Lunas)
                 $transaction = TransactionPpobIak::create([
                     'user_id'         => $user->id_pengguna,
                     'ref_id'          => $refId,
@@ -194,7 +186,7 @@ class PpobMobileController extends Controller
                     'customer_id'     => $request->customer_id,
                     'product_code'    => $request->product_code,
                     'whatsapp_number' => $request->whatsapp_number,
-                    'status'          => 'PENDING',
+                    'status'          => 'UNPAID',
                     'price'           => $product->price,
                     'message'         => 'Menunggu Pembayaran Gateway'
                 ]);
@@ -220,7 +212,6 @@ class PpobMobileController extends Controller
                         'order_items'    => [
                             ['sku' => $product->code, 'name' => $product->description, 'price' => $amount, 'quantity' => 1]
                         ],
-                        'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob', // Otomatis balik ke riwayatppob.tsx
                         'signature'      => $signature
                     ]);
 
@@ -231,8 +222,7 @@ class PpobMobileController extends Controller
                     return response()->json([
                         'success' => true,
                         'message' => 'Pesanan berhasil dibuat. Silakan bayar.',
-                        'payment_url' => $resTripay['data']['checkout_url'],
-                        'redirect_url' => '/riwayatppob' // URL arah untuk Frontend
+                        'payment_url' => $resTripay['data']['checkout_url']
                     ]);
                 } else {
                     $transaction->update(['status' => 'FAILED', 'message' => 'Gagal generate Tripay']);
@@ -241,7 +231,8 @@ class PpobMobileController extends Controller
             }
 
             // ========================================================
-            // SISA KODE DI BAWAH INI HANYA AKAN DIJALANKAN JIKA ADMIN (ID 4) PAKAI SALDO / CASH
+            // SISA KODE DI BAWAH INI HANYA AKAN DIJALANKAN JIKA USER PAKAI SALDO / CASH
+            // Karena jika pakai Tripay, sistem sudah kena "return" di atas.
             // ========================================================
             $sign = md5($this->username . $this->apiKey . $refId);
 
@@ -603,62 +594,15 @@ class PpobMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Pembayaran tagihan ini sedang diproses oleh sistem, mohon tunggu.']);
         }
 
-        // --- CEK METODE PEMBAYARAN DAN HAK AKSES ---
-        $isSaldoOrCash = in_array(strtoupper($request->payment_method), ['#SALDO', 'CASH']) || empty($request->payment_method);
-        $isAdmin4 = ($user->id_pengguna == 4);
-
-        if ($isSaldoOrCash) {
-            // HANYA ADMIN (USER ID 4) YANG BOLEH POTONG SALDO / CASH LANGSUNG
-            if (!$isAdmin4) {
-                return response()->json(['success' => false, 'message' => 'Metode Pembayaran Saldo/Cash hanya khusus untuk Admin. Silakan gunakan Doku, Dana, atau Tripay.']);
-            }
-
-            if ($user->balance_iak < $transaction->price) { // Pastikan pakai $user->saldo jika di DB mu pakai kolom saldo
+        // --- PERBAIKAN: CEK SALDO HANYA JIKA PAKAI SALDO / CASH ---
+        if ($request->payment_method === '#SALDO' || $request->payment_method === 'CASH' || empty($request->payment_method)) {
+            if ($user->balance_iak < $transaction->price) {
                 return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi untuk membayar tagihan ini.']);
             }
         } else {
-            // --- LOGIKA PAYMENT GATEWAY (TRIPAY) UNTUK PASCABAYAR ---
-            $apiKey = Api::getValue('TRIPAY_API_KEY');
-            $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY');
-            $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE');
-            $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'development');
-            $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
-
-            $amount = (int) $transaction->price;
-            // Tripay mewajibkan merchant_ref unik, kita gabungkan TR_ID IAK dengan "PASCA"
-            $merchantRef = 'PASCA' . $transaction->tr_id;
-            $signature = hash_hmac('sha256', $merchantCode.$merchantRef.$amount, $privateKey);
-
-            $responseTripay = Http::withHeaders(['Authorization' => 'Bearer '.$apiKey])
-                ->post($tripayUrl, [
-                    'method'         => $request->payment_method,
-                    'merchant_ref'   => $merchantRef,
-                    'amount'         => $amount,
-                    'customer_name'  => $user->nama_lengkap ?? 'Member Sancaka',
-                    'customer_email' => $user->email ?? 'no-reply@sancaka.com',
-                    'customer_phone' => $user->no_hp ?? '081234567890',
-                    'order_items'    => [
-                        ['sku' => 'TAGIHAN', 'name' => 'Tagihan ' . $transaction->product_code, 'price' => $amount, 'quantity' => 1]
-                    ],
-                    'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob',
-                    'signature'      => $signature
-                ]);
-
-            $resTripay = $responseTripay->json();
-
-            if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
-                // Update status transaksi PPOB jadi PENDING (Sesuai Request)
-                $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway']);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Silakan selesaikan pembayaran.',
-                    'payment_url' => $resTripay['data']['checkout_url'],
-                    'redirect_url' => '/riwayatppob'
-                ]);
-            } else {
-                return response()->json(['success' => false, 'message' => 'Gagal Payment Gateway: ' . ($resTripay['message'] ?? 'Error')]);
-            }
+            // 🚨 STOP DI SINI UNTUK PAYMENT GATEWAY 🚨
+            // Sama seperti Prabayar, buat invoice Tripay di sini lalu kembalikan payment_url nya ke aplikasi HP.
+            return response()->json(['success' => true, 'payment_url' => $tripayLink]);
         }
 
         // =======================================================
