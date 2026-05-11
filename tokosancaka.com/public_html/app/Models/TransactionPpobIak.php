@@ -19,7 +19,8 @@ class TransactionPpobIak extends Model
         'price',
         'status',
         'sn',
-        'message'
+        'message',
+        'payment_url' // <--- Tambahkan ini
     ];
 
     // LOG LOG - Jangan ubah atau hapus baris ini
