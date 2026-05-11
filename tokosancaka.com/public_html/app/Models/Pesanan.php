@@ -102,6 +102,8 @@ class Pesanan extends Model
 
         'telah_dilihat' => 'boolean',
 
+        'is_agreed' => 'boolean',
+
     ];
 
 

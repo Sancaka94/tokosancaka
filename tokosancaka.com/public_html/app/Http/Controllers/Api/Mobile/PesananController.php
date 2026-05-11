@@ -938,4 +938,107 @@ TEXT;
         }
     }
 
+    /**
+     * =========================================================================
+     * FUNGSI GET DETAIL PESANAN UNTUK CETAK THERMAL
+     * Digunakan oleh fitur "Cetak Thermal" di aplikasi Mobile (Expo)
+     * =========================================================================
+     */
+    public function getDetailPesanan(Request $request, $resi)
+    {
+        try {
+            // Ambil data user yang sedang login (untuk keamanan)
+            $user = Auth::user() ?? auth('sanctum')->user();
+
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'Anda harus login terlebih dahulu.'], 401);
+            }
+
+            // Cari pesanan berdasarkan resi atau nomor invoice
+            $pesanan = Pesanan::where('resi', $resi)
+                              ->orWhere('nomor_invoice', $resi)
+                              ->first();
+
+            if (!$pesanan) {
+                return response()->json(['success' => false, 'message' => 'Data pesanan dengan resi/invoice tersebut tidak ditemukan.'], 404);
+            }
+
+            // Otorisasi Keamanan:
+            // Pastikan user biasa hanya bisa mencetak resi miliknya sendiri,
+            // kecuali dia adalah Admin (Role 'Admin' atau ID Pengguna = 4).
+            $isAdmin = (strtolower($user->role) === 'admin' || $user->id_pengguna == 4);
+
+            if (!$isAdmin && $pesanan->id_pengguna_pembeli != $user->id_pengguna && $pesanan->customer_id != $user->id_pengguna) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak. Anda tidak berhak melihat resi ini.'], 403);
+            }
+
+            // Format tanggal yang rapi
+            $formattedDate = \Carbon\Carbon::parse($pesanan->tanggal_pesanan ?? $pesanan->created_at)->format('d M Y H:i');
+
+            // Format array kembalian agar seragam dan mudah dibaca oleh React Native
+            $data = [
+                'nomor_invoice'      => $pesanan->nomor_invoice,
+                'resi'               => $pesanan->resi,
+                'resi_aktual'        => $pesanan->resi_aktual,
+                'jasa_ekspedisi_aktual' => $pesanan->jasa_ekspedisi_aktual,
+
+                // Data Pengirim
+                'sender_name'        => $pesanan->sender_name,
+                'sender_phone'       => $pesanan->sender_phone,
+                'sender_address'     => $pesanan->sender_address,
+                'sender_village'     => $pesanan->sender_village,
+                'sender_district'    => $pesanan->sender_district,
+                'sender_regency'     => $pesanan->sender_regency,
+                'sender_province'    => $pesanan->sender_province,
+                'sender_postal_code' => $pesanan->sender_postal_code,
+
+                // Data Penerima
+                'receiver_name'      => $pesanan->receiver_name,
+                'receiver_phone'     => $pesanan->receiver_phone,
+                'receiver_address'   => $pesanan->receiver_address,
+                'receiver_village'   => $pesanan->receiver_village,
+                'receiver_district'  => $pesanan->receiver_district,
+                'receiver_regency'   => $pesanan->receiver_regency,
+                'receiver_province'  => $pesanan->receiver_province,
+                'receiver_postal_code'=> $pesanan->receiver_postal_code,
+
+                // Dimensi & Detail Barang
+                'weight'             => $pesanan->weight,
+                'length'             => $pesanan->length,
+                'width'              => $pesanan->width,
+                'height'             => $pesanan->height,
+                'item_price'         => (float)$pesanan->item_price,
+                'item_description'   => $pesanan->item_description,
+
+                // Biaya
+                'shipping_cost'      => (float)$pesanan->shipping_cost,
+                'cod_fee'            => (float)$pesanan->cod_fee,
+                'price'              => (float)$pesanan->price, // Harga Total / Tagihan Final
+
+                // Status & Layanan
+                'payment_method'     => $pesanan->payment_method,
+                'expedition'         => $pesanan->expedition, // Contoh: 'mix-jnt-ez-...'
+                'status_pesanan'     => $pesanan->status_pesanan,
+                'created_at'         => $formattedDate,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data pesanan berhasil diambil.',
+                'data'    => $data
+            ], 200);
+
+        } catch (Exception $e) {
+            Log::error('[API MOBILE] Gagal getDetailPesanan: ' . $e->getMessage(), [
+                'resi' => $resi,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem saat mengambil data pesanan.'
+            ], 500);
+        }
+    }
+
 }
