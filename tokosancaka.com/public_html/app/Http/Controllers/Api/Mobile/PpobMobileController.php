@@ -166,9 +166,13 @@ class PpobMobileController extends Controller
 
             // JIKA BUKAN SALDO (PAKAI PAYMENT GATEWAY)
             if (!$isSaldoOrCash) {
-                $apiKey = Api::getValue('TRIPAY_API_KEY');
-                $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY');
-                $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE');
+                // Ambil mode Tripay dulu (sandbox / production)
+                $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+                // Ambil Key berdasarkan mode yang aktif
+                $apiKey = Api::getValue('TRIPAY_API_KEY', $tripayMode);
+                $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY', $tripayMode);
+                $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', $tripayMode);
 
                 if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
                     Log::error('LOG LOG - Kredensial Tripay Kosong');
@@ -578,9 +582,13 @@ class PpobMobileController extends Controller
 
         if (!$isSaldoOrCash) {
             // LOGIKA PAYMENT GATEWAY DIRECT TRIPAY
-            $apiKey = Api::getValue('TRIPAY_API_KEY');
-            $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY');
-            $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE');
+            // Ambil mode Tripay dulu (sandbox / production)
+            $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+            // Ambil Key berdasarkan mode yang aktif
+            $apiKey = Api::getValue('TRIPAY_API_KEY', $tripayMode);
+            $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY', $tripayMode);
+            $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', $tripayMode);
 
             if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
                 Log::error('LOG LOG - Kredensial Tripay Kosong di Postpaid');
