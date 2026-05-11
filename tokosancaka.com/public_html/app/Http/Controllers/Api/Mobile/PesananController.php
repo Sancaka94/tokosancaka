@@ -82,6 +82,7 @@ class PesananController extends Controller
                 'save_receiver'         => 'nullable',
                 'idempotency_key'       => 'nullable|string',
                 'cart_items'            => 'nullable|array',
+                'is_agreed'             => 'required|in:0,1',
             ]);
 
             Log::info('[API MOBILE] Validasi input berhasil dilewati.');
@@ -137,6 +138,7 @@ class PesananController extends Controller
             $pesananData['id_pengguna_pembeli'] = $user->id_pengguna;
             $pesananData['customer_id'] = $user->id_pengguna;
             $pesananData['idempotency_key'] = $validatedData['idempotency_key'] ?? null;
+            $pesananData['is_agreed'] = $validatedData['is_agreed'];
 
             // Pastikan data string tidak null
             $pesananData['receiver_district'] = $pesananData['receiver_district'] ?? 'Tidak Diketahui';
@@ -288,18 +290,18 @@ class PesananController extends Controller
                 Log::info("[API MOBILE] Resi COD berhasil di-generate: {$order->resi}");
             }
             // C. PAYMENT GATEWAY (Diarahkan ke Web Browser)
-            elseif (strtoupper($validatedData['payment_method']) === 'GATEWAY') {
-                Log::info("[API MOBILE] Metode pembayaran menggunakan Web Payment Gateway...");
+            // ---> PERBAIKAN: Tangkap semua metode yang BUKAN COD dan BUKAN Saldo/Cash
+            elseif (!in_array(strtoupper(trim($validatedData['payment_method'])), ['CASH', 'SALDO', 'POTONG SALDO', '#SALDO', 'COD', '#COD_ONGKIR', 'CODBARANG', '#COD_BARANG'])) {
+                Log::info("[API MOBILE] Metode pembayaran menggunakan Web Payment Gateway: " . $validatedData['payment_method']);
 
                 // Set status order ke Menunggu Pembayaran
                 $order->status = 'Menunggu Pembayaran';
                 $order->status_pesanan = 'Menunggu Pembayaran';
 
-                // Buatkan URL ke portal pembayaran Sancaka, bawa parameter akun (No WA)
-                // Gunakan nomor WA user yang sedang login
+                // Buatkan URL ke portal web Sancaka untuk dibayar
                 $paymentUrl = url('/pembayaran?akun=' . urlencode($user->no_wa));
 
-                // Opsional: Simpan url ke tabel Pesanan jika kolom payment_url tersedia
+                // Simpan url ke tabel Pesanan
                 $order->payment_url = $paymentUrl;
 
                 Log::info("[API MOBILE] URL Portal Pembayaran disiapkan: {$paymentUrl}");
