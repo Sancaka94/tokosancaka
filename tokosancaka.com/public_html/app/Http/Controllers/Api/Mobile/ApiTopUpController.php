@@ -216,7 +216,7 @@ class ApiTopUpController extends Controller
 
     /**
      * ==========================================================
-     * 3. API: MENGAMBIL RIWAYAT TOP UP (FIX BUG KOLOM UNION)
+     * 3. API: MENGAMBIL RIWAYAT TOP UP (FIX ADMIN & UNION)
      * ==========================================================
      */
     public function history(Request $request)
@@ -225,6 +225,9 @@ class ApiTopUpController extends Controller
             $user = Auth::user();
             $search = $request->query('search');
 
+            // CEK ADMIN
+            $isAdmin = ($user->id_pengguna == 4);
+
             // 1. QUERY DARI TRANSACTIONS
             $q1 = DB::table('transactions')
                 ->select(
@@ -232,13 +235,18 @@ class ApiTopUpController extends Controller
                     'reference_id',
                     'amount',
                     'status',
-                    'description', // Diambil dari description
+                    'description',
                     'payment_url',
                     'created_at',
-                    DB::raw("'ISI_SALDO' as kategori_sumber")
+                    DB::raw("'ISI_SALDO' as kategori_sumber"),
+                    'user_id' // Tambahkan kolom user_id
                 )
-                ->where('user_id', $user->id_pengguna)
                 ->where('type', 'topup');
+
+            // Jika bukan admin, filter datanya
+            if (!$isAdmin) {
+                $q1->where('user_id', $user->id_pengguna);
+            }
 
             if (!empty($search)) {
                 $q1->where('reference_id', 'LIKE', "%{$search}%");
@@ -251,12 +259,17 @@ class ApiTopUpController extends Controller
                     'transaction_id as reference_id',
                     'amount',
                     'status',
-                    'payment_method as description', // KUNCI FIX: Alias disamakan
+                    'payment_method as description',
                     'payment_url',
                     'created_at',
-                    DB::raw("'PENCAIRAN_ADMIN' as kategori_sumber")
-                )
-                ->where('customer_id', $user->id_pengguna);
+                    DB::raw("'PENCAIRAN_ADMIN' as kategori_sumber"),
+                    'customer_id as user_id' // Samakan alias menjadi user_id agar bisa di-UNION
+                );
+
+            // Jika bukan admin, filter datanya
+            if (!$isAdmin) {
+                $q2->where('customer_id', $user->id_pengguna);
+            }
 
             if (!empty($search)) {
                 $q2->where('transaction_id', 'LIKE', "%{$search}%");
@@ -278,6 +291,7 @@ class ApiTopUpController extends Controller
 
                 return [
                     'id'             => $trx->id,
+                    'user_id'        => $trx->user_id, // Sekarang Front-End bisa tahu ini transaksi siapa
                     'reference_id'   => $trx->reference_id,
                     'amount'         => (float)$trx->amount,
                     'status'         => strtolower($trx->status),

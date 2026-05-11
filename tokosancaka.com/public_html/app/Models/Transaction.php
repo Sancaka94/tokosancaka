@@ -35,6 +35,8 @@ class Transaction extends Model
         'status',
         'description',
         'reference_id',
+        'payment_method', // <-- PASTIKAN INI ADA
+        'payment_url',    // <-- PASTIKAN INI ADA
     ];
 
     /**
@@ -53,7 +55,7 @@ class Transaction extends Model
      */
     public function user(): BelongsTo
     {
-        // Menghubungkan 'user_id' (di tabel transactions) 
+        // Menghubungkan 'user_id' (di tabel transactions)
         // dengan 'id_pengguna' (primary key di tabel users)
         return $this->belongsTo(User::class, 'user_id', 'id_pengguna');
     }
