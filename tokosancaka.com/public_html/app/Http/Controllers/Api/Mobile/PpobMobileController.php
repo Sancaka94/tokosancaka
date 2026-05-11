@@ -501,7 +501,6 @@ class PpobMobileController extends Controller
 
     // ========================================================
     // --- FUNGSI BARU: RIWAYAT TRANSAKSI & FILTER (ADMIN/USER) ---
-    // --- LENGKAP: IAK + DIGI + FILTER TAB + FIX PAGINASI ---
     // ========================================================
     public function history(Request $request)
     {
@@ -513,162 +512,72 @@ class PpobMobileController extends Controller
                 return response()->json(['success' => false, 'message' => 'Sesi login tidak valid / Token Kadaluarsa.']);
             }
 
-            // Cek apakah user adalah Admin (ID 4 atau role admin)
             $isAdmin = ($user->id_pengguna == 4 || strtolower($user->role) === 'admin');
+            $query = TransactionPpobIak::query();
 
-            // Tangkap filter Tab dari React Native (Default: prabayar)
-            $typeFilter = $request->query('type', 'prabayar');
-
-            // =========================================================
-            // 1. BUILD QUERY UNTUK PPOB IAK
-            // =========================================================
-            $queryIak = \Illuminate\Support\Facades\DB::table('transaction_ppob_iaks')
-                ->select(
-                    'id',
-                    'user_id',
-                    'ref_id',
-                    'type',
-                    'customer_id',
-                    'product_code',
-                    'price',
-                    'status',
-                    'message',
-                    'sn',
-                    'payment_url',
-                    'created_at',
-                    'tr_id',
-                    \Illuminate\Support\Facades\DB::raw("'IAK' as provider")
-                )
-                ->where('type', '=', $typeFilter); // Filter Tab
-
-            // =========================================================
-            // 2. BUILD QUERY UNTUK PPOB DIGIFLAZZ
-            // =========================================================
-            $queryDigi = \Illuminate\Support\Facades\DB::table('ppob_transactions')
-                ->select(
-                    'id',
-                    'user_id',
-                    'order_id as ref_id',
-                    \Illuminate\Support\Facades\DB::raw("IF(`desc` LIKE '%postpaid%', 'pascabayar', 'prabayar') as type"),
-                    'customer_no as customer_id',
-                    'buyer_sku_code as product_code',
-                    'selling_price as price',
-                    'status',
-                    'message',
-                    'sn',
-                    'payment_url',
-                    'created_at',
-                    \Illuminate\Support\Facades\DB::raw("NULL as tr_id"),
-                    \Illuminate\Support\Facades\DB::raw("'DIGIFLAZZ' as provider")
-                )
-                ->whereRaw("IF(`desc` LIKE '%postpaid%', 'pascabayar', 'prabayar') = ?", [$typeFilter]); // Filter Tab
-
-            // =========================================================
-            // 3. TERAPKAN FILTER HAK AKSES (ADMIN BISA LIHAT SEMUA)
-            // =========================================================
             if (!$isAdmin) {
-                $queryIak->where('user_id', $user->id_pengguna);
-                $queryDigi->where('user_id', $user->id_pengguna);
+                $query->where('user_id', $user->id_pengguna);
             }
 
-            // =========================================================
-            // 4. TERAPKAN FILTER PENCARIAN
-            // =========================================================
             if ($request->filled('search')) {
                 $search = $request->search;
-                $queryIak->where(function($q) use ($search) {
+                $query->where(function($q) use ($search) {
                     $q->where('ref_id', 'LIKE', "%{$search}%")
                       ->orWhere('customer_id', 'LIKE', "%{$search}%")
                       ->orWhere('product_code', 'LIKE', "%{$search}%")
                       ->orWhere('sn', 'LIKE', "%{$search}%");
                 });
-
-                $queryDigi->where(function($q) use ($search) {
-                    $q->where('order_id', 'LIKE', "%{$search}%")
-                      ->orWhere('customer_no', 'LIKE', "%{$search}%")
-                      ->orWhere('buyer_sku_code', 'LIKE', "%{$search}%")
-                      ->orWhere('sn', 'LIKE', "%{$search}%");
-                });
             }
 
-            // =========================================================
-            // 5. TERAPKAN FILTER WAKTU
-            // =========================================================
             $filterWaktu = $request->query('filter_waktu', 'Bulan Ini');
             $now = \Carbon\Carbon::now();
 
             if ($filterWaktu == 'Hari Ini') {
-                $queryIak->whereDate('created_at', $now->toDateString());
-                $queryDigi->whereDate('created_at', $now->toDateString());
+                $query->whereDate('created_at', $now->toDateString());
             } elseif ($filterWaktu == 'Kemarin') {
-                $queryIak->whereDate('created_at', $now->subDay()->toDateString());
-                $queryDigi->whereDate('created_at', $now->subDay()->toDateString());
+                $query->whereDate('created_at', $now->subDay()->toDateString());
             } elseif ($filterWaktu == 'Bulan Ini') {
-                $queryIak->whereMonth('created_at', $now->month)->whereYear('created_at', $now->year);
-                $queryDigi->whereMonth('created_at', $now->month)->whereYear('created_at', $now->year);
+                $query->whereMonth('created_at', $now->month)->whereYear('created_at', $now->year);
             } elseif ($filterWaktu == 'Bulan Kemarin') {
                 $lastMonth = $now->copy()->subMonth();
-                $queryIak->whereMonth('created_at', $lastMonth->month)->whereYear('created_at', $lastMonth->year);
-                $queryDigi->whereMonth('created_at', $lastMonth->month)->whereYear('created_at', $lastMonth->year);
+                $query->whereMonth('created_at', $lastMonth->month)->whereYear('created_at', $lastMonth->year);
             } elseif ($filterWaktu == 'Tahun Ini') {
-                $queryIak->whereYear('created_at', $now->year);
-                $queryDigi->whereYear('created_at', $now->year);
+                $query->whereYear('created_at', $now->year);
             }
 
-            // =========================================================
-            // 6. GABUNGKAN LALU BUNGKUS DENGAN SUBQUERY (FIX LARAVEL BUG)
-            // =========================================================
-            $unionQuery = $queryIak->unionAll($queryDigi);
-
-            // Harus dibungkus subquery agar paginate() menghitung tabel Digi juga
-            $transactions = \Illuminate\Support\Facades\DB::table(\Illuminate\Support\Facades\DB::raw("({$unionQuery->toSql()}) as combined_table"))
-                ->mergeBindings($unionQuery)
-                ->orderBy('created_at', 'desc')
-                ->paginate(20);
-
+            $transactions = $query->orderBy('created_at', 'desc')->paginate(20);
             $mappedItems = [];
 
             try {
-                $collection = collect($transactions->items());
-
-                // Ekstrak ikon prabayar (Menggunakan IAK sebagai master ikon)
-                $prepaidCodes = $collection->where('type', 'prabayar')->pluck('product_code')->filter()->unique()->toArray();
+                $prepaidCodes = $transactions->where('type', 'prabayar')->pluck('product_code')->filter()->unique()->toArray();
                 $icons = [];
                 if (!empty($prepaidCodes)) {
-                    $icons = \App\Models\IakPricelistPrepaid::whereIn('code', $prepaidCodes)->pluck('icon_url', 'code')->toArray();
+                    $icons = \App\Models\IakPricelistPrepaid::whereIn('code', $prepaidCodes)
+                                ->pluck('icon_url', 'code');
                 }
 
-                // Ambil data nama pengguna khusus untuk Admin
                 $usersData = [];
                 if ($isAdmin) {
-                    $userIds = $collection->pluck('user_id')->filter()->unique()->toArray();
+                    $userIds = $transactions->pluck('user_id')->filter()->unique()->toArray();
                     if (!empty($userIds)) {
                         $usersData = \Illuminate\Support\Facades\DB::table('Pengguna')
-                                        ->whereIn('id_pengguna', $userIds)
-                                        ->pluck('nama_lengkap', 'id_pengguna')
-                                        ->toArray();
+                                        ->whereIn('id_pengguna', $userIds)->pluck('nama_lengkap', 'id_pengguna');
                     }
                 }
 
-                // Proses Mapping Akhir
                 foreach ($transactions->items() as $trx) {
-                    $item = (array) $trx;
-
-                    // Sisipkan Icon
+                    $item = $trx->toArray();
                     $item['icon_url'] = ($item['type'] == 'prabayar') ? ($icons[$item['product_code']] ?? null) : null;
-
-                    // Sisipkan Nama Pembeli jika Admin
                     if ($isAdmin) {
                         $namaUser = $item['user_id'] ? ($usersData[$item['user_id']] ?? 'User ID ' . $item['user_id']) : 'Guest / Web';
                         $item['nama_pembeli'] = $namaUser;
                     }
-
                     $mappedItems[] = $item;
                 }
 
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning('LOG LOG - Gagal ekstrak data riwayat tambahan: ' . $e->getMessage());
-                $mappedItems = json_decode(json_encode($transactions->items()), true);
+                \Illuminate\Support\Facades\Log::warning('LOG LOG - Gagal ekstrak data riwayat: ' . $e->getMessage());
+                $mappedItems = $transactions->items();
             }
 
             return response()->json([
