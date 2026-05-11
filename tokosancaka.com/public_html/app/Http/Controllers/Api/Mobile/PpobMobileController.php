@@ -163,9 +163,68 @@ class PpobMobileController extends Controller
         try {
             $product = IakPricelistPrepaid::where('code', $request->product_code)->first();
             if (!$product) return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan.']);
-            if ($user->balance_iak < $product->price) return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi.']);
+
+            $paymentMethod = $request->payment_method ?? '';
+            $isSaldoOrCash = in_array(strtoupper($paymentMethod), ['#SALDO', 'CASH']) || empty($paymentMethod);
+            $isAdmin4 = ($user->id_pengguna == 4);
 
             $refId = 'P' . date('ymd') . rand(1000, 9999);
+
+            // JIKA BUKAN SALDO (Pilih Doku/Dana/Tripay)
+            if (!$isSaldoOrCash) {
+                $apiKey = Api::getValue('TRIPAY_API_KEY');
+                $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY');
+                $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE');
+
+                $transaction = TransactionPpobIak::create([
+                    'user_id'         => $user->id_pengguna,
+                    'ref_id'          => $refId,
+                    'type'            => 'prabayar',
+                    'customer_id'     => $request->customer_id,
+                    'product_code'    => $request->product_code,
+                    'whatsapp_number' => $request->whatsapp_number,
+                    'status'          => 'PENDING', // Sesuai request dibikin PENDING
+                    'price'           => $product->price,
+                    'message'         => 'Menunggu Pembayaran Gateway'
+                ]);
+
+                $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'development');
+                $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+                $amount = (int) $product->price;
+                $signature = hash_hmac('sha256', $merchantCode.$refId.$amount, $privateKey);
+
+                $responseTripay = Http::withToken($apiKey)->post($tripayUrl, [
+                    'method'         => $paymentMethod,
+                    'merchant_ref'   => $refId,
+                    'amount'         => $amount,
+                    'customer_name'  => $user->nama_lengkap ?? 'Member Sancaka',
+                    'customer_email' => $user->email ?? 'no-reply@sancaka.com',
+                    'customer_phone' => $user->no_hp ?? '081234567890',
+                    'order_items'    => [['sku' => $product->code, 'name' => $product->description, 'price' => $amount, 'quantity' => 1]],
+                    'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob',
+                    'signature'      => $signature
+                ]);
+
+                $resTripay = $responseTripay->json();
+
+                if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Pesanan dibuat. Silakan bayar.',
+                        'payment_url' => $resTripay['data']['checkout_url'],
+                        'redirect_url' => '/riwayatppob'
+                    ]);
+                } else {
+                    $transaction->update(['status' => 'FAILED', 'message' => 'Gagal generate Gateway']);
+                    return response()->json(['success' => false, 'message' => 'Gagal Payment Gateway']);
+                }
+            }
+
+            // JIKA PILIH SALDO / CASH (HANYA ADMIN ID 4)
+            if (!$isAdmin4) return response()->json(['success' => false, 'message' => 'Metode Saldo hanya untuk Admin.']);
+            if ($user->balance_iak < $product->price) return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi.']);
+
             $sign = md5($this->username . $this->apiKey . $refId);
 
             $transaction = TransactionPpobIak::create([
@@ -526,6 +585,50 @@ class PpobMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Pembayaran tagihan ini sedang diproses oleh sistem, mohon tunggu.']);
         }
 
+        $paymentMethod = $request->payment_method ?? '';
+        $isSaldoOrCash = in_array(strtoupper($paymentMethod), ['#SALDO', 'CASH']) || empty($paymentMethod);
+        $isAdmin4 = ($user->id_pengguna == 4);
+
+        if (!$isSaldoOrCash) {
+            // JIKA PAKAI PAYMENT GATEWAY
+            $apiKey = Api::getValue('TRIPAY_API_KEY');
+            $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY');
+            $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE');
+
+            $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'development');
+            $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+            $amount = (int) $transaction->price;
+            $merchantRef = 'PASCA' . $transaction->tr_id;
+            $signature = hash_hmac('sha256', $merchantCode.$merchantRef.$amount, $privateKey);
+
+            $responseTripay = Http::withToken($apiKey)->post($tripayUrl, [
+                'method'         => $paymentMethod,
+                'merchant_ref'   => $merchantRef,
+                'amount'         => $amount,
+                'customer_name'  => $user->nama_lengkap ?? 'Member Sancaka',
+                'customer_email' => $user->email ?? 'no-reply@sancaka.com',
+                'customer_phone' => $user->no_hp ?? '081234567890',
+                'order_items'    => [['sku' => 'TAGIHAN', 'name' => 'Tagihan ' . $transaction->product_code, 'price' => $amount, 'quantity' => 1]],
+                'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob',
+                'signature'      => $signature
+            ]);
+
+            $resTripay = $responseTripay->json();
+
+            if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
+                $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway']);
+                return response()->json([
+                    'success' => true, 'message' => 'Silakan selesaikan pembayaran.',
+                    'payment_url' => $resTripay['data']['checkout_url'], 'redirect_url' => '/riwayatppob'
+                ]);
+            } else {
+                return response()->json(['success' => false, 'message' => 'Gagal Payment Gateway']);
+            }
+        }
+
+        // JIKA PAKAI SALDO (HANYA ADMIN ID 4)
+        if (!$isAdmin4) return response()->json(['success' => false, 'message' => 'Metode Saldo hanya untuk Admin.']);
         if ($user->balance_iak < $transaction->price) {
             return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi untuk membayar tagihan ini.']);
         }
