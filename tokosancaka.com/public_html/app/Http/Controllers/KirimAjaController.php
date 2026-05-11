@@ -316,7 +316,7 @@ class KirimAjaController extends Controller
 
                     $pushPayload = [
                         'to' => $admin->expo_token,
-                        'title' => 'Update KiriminAja 📦',
+                        'title' => 'Update Sancaka Express 📦',
                         'body' => "Ada update status '$statusText' untuk $jumlahResi resi pengiriman.",
                         'sound' => 'default',
                     ];
