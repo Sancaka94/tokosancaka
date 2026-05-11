@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use App\Services\DokuJokulService;
 
 class ApiTopUpController extends Controller
 {
@@ -91,8 +92,7 @@ class ApiTopUpController extends Controller
 
     /**
      * ==========================================================
-     * 2. API: REQUEST TOP UP (GENERATE INVOICE & URL)
-     * Diperbarui: Hanya memproses 'CASH' dan 'GATEWAY'
+     * 2. API: REQUEST TOP UP (GENERATE INVOICE & URL LANGSUNG)
      * ==========================================================
      */
     public function requestTopUp(Request $request)
@@ -124,33 +124,54 @@ class ApiTopUpController extends Controller
             $status     = 'pending';
 
             // ====================================================================
-            // 2. CEGAT METODE PEMBAYARAN
+            // 2. CEGAT METODE PEMBAYARAN & LANGSUNG HIT GATEWAY
             // ====================================================================
 
-            // A. JIKA METODE GATEWAY (Arahkan ke Web Portal)
-            if ($paymentMethod === 'GATEWAY') {
-                $akun = $user->no_wa ?? $user->email ?? $userId;
-                $paymentUrl = url('/pembayaran?akun=' . urlencode($akun));
-            }
-
-            // B. JIKA METODE CASH (Khusus Admin / ID 4)
-            elseif ($paymentMethod === 'CASH') {
+            // A. JIKA METODE CASH (Khusus Admin / ID 4)
+            if ($paymentMethod === 'CASH') {
                 if ($userId != 4) {
                     throw new \Exception("Akses Ditolak: Metode CASH hanya untuk Admin.");
                 }
                 $isManual = true;
             }
 
-            // C. JIKA METODE TRANSFER_MANUAL (Bawaan Kode Lama)
+            // B. JIKA METODE TRANSFER_MANUAL
             elseif ($paymentMethod === 'TRANSFER_MANUAL') {
                  $isManual = true;
             }
 
-            // D. FALLBACK (Metode lain paksa menjadi GATEWAY)
+            // C. JIKA METODE DOKU JOKUL (LANGSUNG BYPASS KE DOKU)
+            elseif ($paymentMethod === 'DOKU_JOKUL' || $paymentMethod === 'DOKU') {
+                $dokuService = new DokuJokulService();
+
+                $customerData = [
+                    'name'  => $user->nama_lengkap ?? $user->name ?? 'Pelanggan Sancaka',
+                    'email' => $user->email ?? 'no-email@sancaka.com',
+                    'phone' => $user->no_wa ?? $user->phone ?? '0000000000'
+                ];
+
+                $orderItemsPayload = [
+                    ['sku' => 'TOPUP', 'name' => 'Top Up Saldo Sancaka', 'price' => $amount, 'quantity' => 1]
+                ];
+
+                $paymentUrl = $dokuService->createPayment(
+                    $invoiceNumber,
+                    $amount,
+                    $customerData,
+                    $orderItemsPayload,
+                    []
+                );
+
+                if (!$paymentUrl) {
+                    throw new \Exception('Gagal generate link pembayaran DOKU.');
+                }
+            }
+
+            // D. JIKA METODE LAINNYA (DANA, TRIPAY, DLL)
             else {
-                $paymentMethod = 'GATEWAY';
-                $akun          = $user->no_wa ?? $user->email ?? $userId;
-                $paymentUrl    = url('/pembayaran?akun=' . urlencode($akun));
+                // Biarkan diarahkan ke web portal jika belum dipasang API langsung
+                $akun       = $user->no_wa ?? $user->email ?? $userId;
+                $paymentUrl = url('/pembayaran?akun=' . urlencode($akun));
             }
 
             // ====================================================================
