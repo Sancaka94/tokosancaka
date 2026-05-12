@@ -588,7 +588,7 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
             Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global');
 
             // 2. Beritahu semua user yang sedang online
-            event(new SystemModeUpdated($targetKA));
+            // event(new SystemModeUpdated($targetKA));
 
             // 3. Kembalikan respons sukses ke HP
             return response()->json([
