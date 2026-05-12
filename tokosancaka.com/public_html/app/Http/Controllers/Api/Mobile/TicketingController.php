@@ -593,42 +593,57 @@ class TicketingController extends BaseController {
 
     /**
      * POST Session/Login
-     * Endpoint untuk melakukan login dan mendapatkan Access Token dari Darmawisata
+     * Melakukan autentikasi ke server Darmawisata untuk mendapatkan Access Token
      */
     public function sessionLogin(Request $request)
     {
-        // 1. Validasi Data dari Aplikasi Mobile
+        // 1. Validasi Input
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'token'        => 'required|string', // Timestamp token
-            'securityCode' => 'required|string', // Security code / hash
-            'language'     => 'nullable|string', // Contoh: "ID" atau "EN"
+            'token'        => 'required|string', // Timestamp
+            'securityCode' => 'required|string', // Password mentah
+            'language'     => 'nullable',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'status'  => 'FAILED',
-                'message' => 'Validasi gagal, pastikan token dan securityCode terisi.',
-                'errors'  => $validator->errors()
-            ], 422);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status'  => 'FAILED',
+                    'message' => 'Validasi gagal',
+                    'errors'  => $validator->errors()
+                ], 422);
+            }
+            return back()->withErrors($validator)->withInput();
         }
 
-        // 2. Ambil semua data request
-        $payload = $request->all();
+        // 2. Siapkan Payload
+        $payload = [
+            'token'        => $request->token,
+            'securityCode' => md5($request->securityCode), // Otomatis diubah ke MD5 untuk server Darmawisata
+            'userID'       => $this->darmawisataUserId,    // Diambil dari DB via __construct
+            'language'     => $request->language ?? "ID",
+            'accessToken'  => ""                           // Kosongkan untuk login pertama
+        ];
 
-        // 3. Inject User ID dari Database (API Settings)
-        $payload['userID'] = $this->darmawisataUserId;
+        // 3. Kirim Request ke Server Darmawisata via BaseController
+        $response = $this->forwardRequest('Session/Login', $payload);
+        $data = json_decode($response->getContent(), true);
 
-        // Catatan: accessToken biasanya tidak dikirim saat login karena tujuan login adalah untuk MENDAPATKAN accessToken.
-        // Tapi jika mobile app mengirimkannya (misal string kosong), biarkan saja dari $request->all().
-        // Jika tidak, kita bisa abaikan inject accessToken di sini.
-
-        // Default language jika tidak dikirim dari mobile
-        if (!isset($payload['language'])) {
-            $payload['language'] = 'ID';
+        // 4. Cek Jika Request dipanggil dari Halaman Web (Blade)
+        if (!$request->expectsJson()) {
+            if (isset($data['status']) && $data['status'] === 'SUCCESS') {
+                // Simpan token ke session jika perlu, atau cukup tampilkan pesan sukses
+                return back()->with('success', "
+                    <strong>Login Berhasil!</strong><br>
+                    Token: <code class='text-break'>{$data['accessToken']}</code><br>
+                    Waktu Server: {$data['respTime']}
+                ");
+            } else {
+                $errorMessage = $data['respMessage'] ?? ($data['message'] ?? 'Authentication failed');
+                return back()->with('error', 'Login Gagal: ' . $errorMessage)->withInput();
+            }
         }
 
-        // 4. Kirim Request ke Server Darmawisata
-        return $this->forwardRequest('Session/Login', $payload);
+        // 5. Jika dipanggil dari Mobile, kembalikan JSON asli
+        return $response;
     }
-
 }
