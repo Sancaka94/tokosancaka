@@ -156,6 +156,49 @@ class TicketingController extends BaseController
         return $this->forwardRequest('Airline/List', $payload);
     }
 
+    /**
+     * POST Airline/Booking
+     * Endpoint untuk proses booking tiket pesawat
+     */
+    public function airlineBooking(Request $request)
+    {
+        // 1. Validasi Parameter Dasar (Opsional namun disarankan untuk mencegah hit kosong ke Darmawisata)
+        $validator = Validator::make($request->all(), [
+            'airlineID'               => 'required|string',
+            'origin'                  => 'required|string',
+            'destination'             => 'required|string',
+            'departDate'              => 'required|string',
+            'contactFirstName'        => 'required|string',
+            'contactCountryCodePhone' => 'required|string',
+            'contactAreaCodePhone'    => 'required|string',
+            'paxDetails'              => 'required|array',
+            'schDeparts'              => 'required|array'
+        ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, pastikan data penumpang dan kontak lengkap.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        // 2. Siapkan Data Payload
+        $payload = $request->all();
+
+        // BaseController kamu secara otomatis akan menambahkan userID dan accessToken
+        // ke dalam payload sebelum dikirim ke Darmawisata melalui forwardRequest().
+
+        // Cetak Log Request untuk debugging
+        Log::info("\nLOG LOG: Memulai request API Airline/Booking dengan payload:\n" . json_encode($payload, JSON_PRETTY_PRINT));
+
+        // 3. Eksekusi Request ke Darmawisata
+        $response = $this->forwardRequest('Airline/Booking', $payload);
+
+        // Cetak Log Response dari Darmawisata
+        Log::info("\nLOG LOG: Response dari Darmawisata (Airline/Booking):\n" . json_encode(json_decode($response->getContent()), JSON_PRETTY_PRINT));
+
+        return $response;
+    }
 
 }
