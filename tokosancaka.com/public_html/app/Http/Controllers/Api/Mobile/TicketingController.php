@@ -593,60 +593,58 @@ class TicketingController extends BaseController {
 
     /**
      * POST Session/Login
-     * Melakukan autentikasi ke server Darmawisata untuk mendapatkan Access Token
+     * Melakukan login ke API Darmawisata
      */
     public function sessionLogin(Request $request)
     {
-        // 1. Validasi Input
+        // 1. Validasi input dari Form Blade
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'token'        => 'required|string', // Timestamp
-            'securityCode' => 'required|string', // Password mentah
+            'token'        => 'required|string',
+            'securityCode' => 'required|string', // Ini diisi password "Darmaj4y4" di form
             'language'     => 'nullable',
         ]);
 
         if ($validator->fails()) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'status'  => 'FAILED',
-                    'message' => 'Validasi gagal',
-                    'errors'  => $validator->errors()
-                ], 422);
+                return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
             }
             return back()->withErrors($validator)->withInput();
         }
 
-        $pass = "Darmaj4y4";
-        $user = $this->darmawisataUserId; // PWB6RGHXRC
-        $hash = md5($user . $pass); // Gabungan tanpa spasi
+        /**
+         * 2. Menyiapkan Payload sesuai Dokumentasi
+         * Penting: Darmawisata biasanya meminta securityCode dalam bentuk MD5 dari password.
+         * Jika MD5 saja gagal, beberapa versi meminta MD5(userID + password).
+         */
+        $password = $request->securityCode; // Contoh: Darmaj4y4
+        $userID   = $this->darmawisataUserId; // Contoh: PWB6RGHXRC
 
         $payload = [
             'token'        => $request->token,
-            'securityCode' => $hash,
-            'userID'       => $user,
+            'securityCode' => md5($password), // Opsi 1: md5 password saja
             'language'     => $request->language ?? "ID",
-            'accessToken'  => ""
+            'userID'       => $userID,
+            'accessToken'  => "" // String kosong sesuai sample dokumentasi
         ];
 
-        // 3. Kirim Request ke Server Darmawisata via BaseController
+        // 3. Eksekusi Request melalui BaseController
         $response = $this->forwardRequest('Session/Login', $payload);
         $data = json_decode($response->getContent(), true);
 
-        // 4. Cek Jika Request dipanggil dari Halaman Web (Blade)
+        // 4. Handle Response untuk Web (Blade) vs API (Mobile)
         if (!$request->expectsJson()) {
             if (isset($data['status']) && $data['status'] === 'SUCCESS') {
-                // Simpan token ke session jika perlu, atau cukup tampilkan pesan sukses
                 return back()->with('success', "
                     <strong>Login Berhasil!</strong><br>
-                    Token: <code class='text-break'>{$data['accessToken']}</code><br>
-                    Waktu Server: {$data['respTime']}
+                    Access Token: <code class='text-break'>{$data['accessToken']}</code>
                 ");
             } else {
-                $errorMessage = $data['respMessage'] ?? ($data['message'] ?? 'Authentication failed');
-                return back()->with('error', 'Login Gagal: ' . $errorMessage)->withInput();
+                // Jika gagal, coba berikan detail error dari server
+                $msg = $data['respMessage'] ?? 'Authentication failed';
+                return back()->with('error', 'Gagal Login: ' . $msg)->withInput();
             }
         }
 
-        // 5. Jika dipanggil dari Mobile, kembalikan JSON asli
         return $response;
     }
 }
