@@ -25,7 +25,9 @@ class BaseController extends Controller
         $response = \Illuminate\Support\Facades\Http::withHeaders([
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-        ])->post($url, $payload);
+        ])
+        ->withoutVerifying()
+        ->post($url, $payload);
 
         // 1. Coba ambil sebagai JSON
         $data = $response->json();
