@@ -53,6 +53,10 @@ Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendR
 Route::post('/verify-token', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'verifyToken']);
 Route::post('/resend-token', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'resendToken']);
 
+Route::get('/system-status', [\App\Http\Controllers\Admin\DashboardController::class, 'getSystemMode']);
+
+
+
 // --- ENDPOINT UPDATE APLIKASI (GOOGLE PLAY STORE) ---
 Route::get('/check-update', function(Request $request) {
     // 1. Tentukan versi rilis terbaru di server
@@ -184,7 +188,6 @@ Route::prefix('seller')->group(function () {
 
     Route::post('/save-push-token', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'savePushToken']);
 
-    Route::get('/system-status', [\App\Http\Controllers\Admin\DashboardController::class, 'getSystemMode']);
 
     // --- C. CUSTOMER ROUTES (PELANGGAN) ---
     Route::prefix('customer')->group(function () {
