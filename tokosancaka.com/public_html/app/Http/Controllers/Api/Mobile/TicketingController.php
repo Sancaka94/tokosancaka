@@ -70,8 +70,10 @@ class TicketingController extends BaseController {
         $payload['cacheType'] = 2; // 2 = Mix (Sesuai dokumentasi Darmawisata)
         $payload['isShowEachAirline'] = true;
 
-        // 5. PERUBAHAN UTAMA: Arahkan ke 'Airline/ScheduleAllAirline' BUKAN 'Airline/Search'
-        return $this->forwardRequest('Airline/ScheduleAllAirline', $payload);
+        // --- TAMBAHKAN BARIS INI UNTUK DEBUGGING ---
+        $response = $this->forwardRequest('Airline/ScheduleAllAirline', $payload);
+        \Illuminate\Support\Facades\Log::info("DEBUG API DARMAWISATA: ", json_decode($response->getContent(), true));
+        return $response;
     }
 
 
