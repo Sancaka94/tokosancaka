@@ -36,18 +36,13 @@ class TicketingController extends BaseController {
     // /dd($this->darmawisataUserId, $this->darmawisataBaseUrl);
 }
 
-    /**
-     * POST Airline/Search
-     * Mendapatkan jadwal penerbangan (Diteruskan ke Airline/ScheduleAllAirline)
-     */
     public function airlineSearch(Request $request)
     {
-        // 1. Validasi Data dari Aplikasi Mobile
+        // 1. Validasi Data
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'origin'      => 'required|string',
             'destination' => 'required|string',
             'departDate'  => 'required|date',
-            'returnDate'  => 'nullable|date',
             'tripType'    => 'required|string|in:OneWay,RoundTrip',
         ]);
 
@@ -59,20 +54,36 @@ class TicketingController extends BaseController {
             ], 422);
         }
 
-        // 2. Ambil semua data request dari React Native
+        // 2. Siapkan Data
         $payload = $request->all();
-        // 3. Inject Kredensial H2H secara otomatis
-        $payload['cacheType'] = 2; // 2 = Mix Live & Cache
+        $payload['cacheType'] = 2;
         $payload['isShowEachAirline'] = true;
 
-        // 4. INJECT PARAMETER WAJIB UNTUK "ScheduleAllAirline"
-        // Karena Darmawisata butuh cacheType dan isShowEachAirline
-        $payload['cacheType'] = 2; // 2 = Mix (Sesuai dokumentasi Darmawisata)
-        $payload['isShowEachAirline'] = true;
-
-        // --- TAMBAHKAN BARIS INI UNTUK DEBUGGING ---
+        // 3. Eksekusi Request ke Darmawisata melalui BaseController
         $response = $this->forwardRequest('Airline/ScheduleAllAirline', $payload);
-        \Illuminate\Support\Facades\Log::info("DEBUG API DARMAWISATA: ", json_decode($response->getContent(), true));
+
+        // =========================================================
+        // KODE KHUSUS UNTUK MENCETAK LAPORAN RAPI KE CS DARMAWISATA
+        // =========================================================
+
+        // Kita buat ulang payload final (termasuk user ID & Token) yang dikirim BaseController
+        $csPayload = $payload;
+        $csPayload['userID']      = $this->darmawisataUserId;
+        $csPayload['accessToken'] = $this->darmawisataToken;
+
+        $endpointUrl = rtrim($this->darmawisataBaseUrl, '/') . '/Airline/ScheduleAllAirline';
+
+        $logMessage = "\n\n================ BUKTI LAPORAN UNTUK CS DARMAWISATA ================\n";
+        $logMessage .= "ENDPOINT :\nPOST " . $endpointUrl . "\n\n";
+        $logMessage .= "--- REQUEST PAYLOAD (Kirim ini ke CS) ---\n";
+        $logMessage .= json_encode($csPayload, JSON_PRETTY_PRINT) . "\n\n";
+        $logMessage .= "--- RESPONSE DARI DARMAWISATA ---\n";
+        $logMessage .= json_encode(json_decode($response->getContent()), JSON_PRETTY_PRINT) . "\n";
+        $logMessage .= "====================================================================\n\n";
+
+        \Illuminate\Support\Facades\Log::info($logMessage);
+        // =========================================================
+
         return $response;
     }
 
