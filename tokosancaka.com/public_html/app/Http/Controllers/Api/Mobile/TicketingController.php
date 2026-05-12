@@ -160,7 +160,7 @@ class TicketingController extends BaseController
      * POST Airline/Booking
      * Endpoint untuk proses booking tiket pesawat
      */
-    public function airlineBooking(Request $request)
+    public function airlineBooking(Request $request) {
     {
         // 1. Validasi Parameter Dasar (Opsional namun disarankan untuk mencegah hit kosong ke Darmawisata)
         $validator = Validator::make($request->all(), [
