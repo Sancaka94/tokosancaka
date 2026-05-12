@@ -484,11 +484,28 @@
                                 </div>
                             </div>
 
-                            <div>
+                            <div class="mb-6">
                                 <label class="block text-sm font-medium text-gray-700">Base URL</label>
                                 <input type="url" name="dharmawisata_base_url" x-model="dwData[dwData.mode].base_url" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Biarkan kosong untuk URL otomatis (https://api.darmawisata.com/REST/)">
-                                <p class="text-xs text-gray-500 mt-1">URL standar: https://api.darmawisata.com/REST/</p>
+                                <p class="text-xs text-gray-500 mt-1">URL standar: https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/</p>
                             </div>
+
+                            {{-- TAMBAHAN: Kolom Auto-Reconnect --}}
+                            <div class="border-t border-gray-100 pt-5 mt-2">
+                                <h4 class="text-sm font-bold text-gray-800 mb-4"><i class="fas fa-sync-alt text-indigo-500 mr-2"></i>Kredensial Auto-Reconnect</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Static Token</label>
+                                        <input type="text" name="dharmawisata_static_token" x-model="dwData[dwData.mode].static_token" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Token dari Dashboard Darmawisata">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Password / Security Code</label>
+                                        {{-- Menggunakan type text agar mudah dicek saat diketik (misal: Darmaj4y4) --}}
+                                        <input type="text" name="dharmawisata_password" x-model="dwData[dwData.mode].password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Contoh: Darmaj4y4">
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
 
