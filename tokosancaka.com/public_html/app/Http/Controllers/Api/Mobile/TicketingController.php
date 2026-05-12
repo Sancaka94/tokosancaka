@@ -615,13 +615,16 @@ class TicketingController extends BaseController {
             return back()->withErrors($validator)->withInput();
         }
 
-        // 2. Siapkan Payload
+        $pass = "Darmaj4y4";
+        $user = $this->darmawisataUserId; // PWB6RGHXRC
+        $hash = md5($user . $pass); // Gabungan tanpa spasi
+
         $payload = [
             'token'        => $request->token,
-            'securityCode' => md5($request->securityCode), // Otomatis diubah ke MD5 untuk server Darmawisata
-            'userID'       => $this->darmawisataUserId,    // Diambil dari DB via __construct
+            'securityCode' => $hash,
+            'userID'       => $user,
             'language'     => $request->language ?? "ID",
-            'accessToken'  => ""                           // Kosongkan untuk login pertama
+            'accessToken'  => ""
         ];
 
         // 3. Kirim Request ke Server Darmawisata via BaseController
