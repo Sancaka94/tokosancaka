@@ -71,6 +71,42 @@ class TicketingController extends BaseController
     }
 
     /**
+     * POST Airline/Price
+     * Endpoint untuk mengecek harga detail dari maskapai berdasarkan jadwal yang dipilih
+     */
+    public function airlinePrice(Request $request)
+    {
+        // 1. Validasi Data Dasar (Mengacu pada dokumen API Darmawisata)
+        $validator = Validator::make($request->all(), [
+            'airlineID'   => 'required|string',
+            'origin'      => 'required|string',
+            'destination' => 'required|string',
+            'tripType'    => 'required|string',
+            'departDate'  => 'required|string',
+            'schDeparts'  => 'required|array', // Wajib ada untuk pengecekan harga
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        // 2. Siapkan Data Payload
+        $payload = $request->all();
+
+        // 3. Kirim Request ke Server Darmawisata (BaseController akan otomatis injek userID & accessToken)
+        $response = $this->forwardRequest('Airline/Price', $payload);
+
+        // Opsional: Log response jika butuh untuk debug
+        Log::info("LOG LOG: Response dari Darmawisata (Airline/Price): " . $response->getContent());
+
+        return $response;
+    }
+
+    /**
      * POST Airline/City
      * Get airline city list
      */
