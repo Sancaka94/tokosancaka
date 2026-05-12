@@ -421,6 +421,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             // MODULE: AIRLINE (TIKET PESAWAT)
             // ==========================================
             Route::prefix('airline')->group(function () {
+
+                Route::post('/search', [TicketingController::class, 'airlineSearch']);
                 // Data Master / Referensi
                 Route::post('/list', [TicketingController::class, 'airlineList']);
                 Route::post('/route', [TicketingController::class, 'airlineRoute']);
