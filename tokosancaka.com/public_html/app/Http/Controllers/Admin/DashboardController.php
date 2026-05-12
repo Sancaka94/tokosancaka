@@ -621,7 +621,7 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
 
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('LOG LOG: Error getSystemMode: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => true,
                 'data' => [
