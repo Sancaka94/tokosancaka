@@ -71,25 +71,25 @@ class TicketingController extends BaseController
     }
 
    /**
-     * POST Airline/Price
-     * Endpoint untuk mengecek harga detail dari maskapai berdasarkan jadwal yang dipilih
+     * POST Airline/PriceAllAirline
+     * Endpoint modern pasangan dari ScheduleAllAirline
      */
-    public function airlinePrice(Request $request)
+    public function priceAllAirline(Request $request)
     {
-        // 1. Validasi Data Dasar (Mengacu pada dokumen API Darmawisata)
+        // 1. Validasi parameter wajib sesuai dokumen Darmawisata
         $validator = Validator::make($request->all(), [
-            'airlineID'   => 'required|string',
-            'origin'      => 'required|string',
-            'destination' => 'required|string',
-            'tripType'    => 'required|string',
-            'departDate'  => 'required|string',
-            'schDeparts'  => 'required|array', // Wajib ada untuk pengecekan harga
+            'airlineID'              => 'required|string',
+            'origin'                 => 'required|string',
+            'destination'            => 'required|string',
+            'tripType'               => 'required|string',
+            'departDate'             => 'required|string',
+            'journeyDepartReference' => 'required|string'
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status'  => 'FAILED',
-                'message' => 'Validasi gagal.',
+                'message' => 'Validasi gagal, data tidak lengkap.',
                 'errors'  => $validator->errors()
             ], 422);
         }
@@ -97,34 +97,16 @@ class TicketingController extends BaseController
         // 2. Siapkan Data Payload
         $payload = $request->all();
 
-        // ======================================================================
-        // FIX PENTING: Cegah Laravel mengirim 'null' ke Darmawisata
-        // Middleware Laravel mengubah "" jadi null, kita kembalikan lagi jadi ""
-        // ======================================================================
-        if (isset($payload['schDeparts']) && is_array($payload['schDeparts'])) {
-            foreach ($payload['schDeparts'] as $key => $depart) {
-                $payload['schDeparts'][$key]['flightClass'] = $depart['flightClass'] ?? "";
-                $payload['schDeparts'][$key]['detailSchedule'] = $depart['detailSchedule'] ?? "";
-                $payload['schDeparts'][$key]['garudaNumber'] = $depart['garudaNumber'] ?? "";
-                $payload['schDeparts'][$key]['garudaAvailability'] = $depart['garudaAvailability'] ?? "";
-            }
-        }
+        // Kita pastikan parameter string kosong dikirim sebagai string "" (bukan null)
+        // Karena middleware Laravel suka mengubah "" menjadi null
+        $payload['airlineAccessCode']      = $payload['airlineAccessCode'] ?? "";
+        $payload['journeyReturnReference'] = $payload['journeyReturnReference'] ?? "";
 
-        if (isset($payload['schReturns']) && is_array($payload['schReturns'])) {
-            foreach ($payload['schReturns'] as $key => $return) {
-                $payload['schReturns'][$key]['flightClass'] = $return['flightClass'] ?? "";
-                $payload['schReturns'][$key]['detailSchedule'] = $return['detailSchedule'] ?? "";
-                $payload['schReturns'][$key]['garudaNumber'] = $return['garudaNumber'] ?? "";
-                $payload['schReturns'][$key]['garudaAvailability'] = $return['garudaAvailability'] ?? "";
-            }
-        }
-        // ======================================================================
+        // 3. Eksekusi Request ke Darmawisata
+        $response = $this->forwardRequest('Airline/PriceAllAirline', $payload);
 
-        // 3. Kirim Request ke Server Darmawisata
-        $response = $this->forwardRequest('Airline/Price', $payload);
-
-        // Opsional: Log response jika butuh untuk debug
-        Log::info("LOG LOG: Response dari Darmawisata (Airline/Price): " . $response->getContent());
+        // Cetak Log Response dari Darmawisata
+        Log::info("\nLOG LOG: Response dari Darmawisata (Airline/PriceAllAirline):\n" . json_encode(json_decode($response->getContent()), JSON_PRETTY_PRINT));
 
         return $response;
     }
