@@ -605,37 +605,23 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
         }
     }
 
-    /**
-     * MENGAMBIL STATUS MODE SISTEM (PRODUCTION / SANDBOX)
-     */
-    public function getSystemMode()
+   public function getSystemMode()
     {
         try {
-            // Karena di toggleSystemMode Anda mengubah 'KIRIMINAJA_MODE',
-            // kita gunakan itu sebagai patokan status sistem saat ini.
-            $apiRecord = \App\Models\Api::where('key', 'KIRIMINAJA_MODE')
-                                        ->orWhere('key_name', 'KIRIMINAJA_MODE')
-                                        ->first();
+            // Gunakan metode bawaan model Api Anda agar 100% akurat dengan fungsi toggle
+            $mode = \App\Models\Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
 
-            $mode = 'production'; // Default
-
-            if ($apiRecord) {
-                // Mendukung fleksibilitas penamaan kolom database (value atau key_value)
-                $mode = $apiRecord->value ?? $apiRecord->key_value ?? 'production';
-            }
-
-            // Kembalikan dalam format JSON yang diharapkan React Native
             return response()->json([
                 'success' => true,
                 'data' => [
+                    // Jika nilai di database adalah 'production', maka kembalikan 'production'
                     'mode' => strtolower($mode) === 'production' ? 'production' : 'sandbox'
                 ]
             ], 200);
 
         } catch (\Exception $e) {
-            // Jika ada error database, otomatis anggap 'production' agar aplikasi pelanggan tidak error
             \Illuminate\Support\Facades\Log::error('LOG LOG: Error getSystemMode: ' . $e->getMessage());
-
+            
             return response()->json([
                 'success' => true,
                 'data' => [
