@@ -18,30 +18,24 @@ class BaseController extends Controller
     }
 
     public function forwardRequest($endpoint, $payload)
-{
-    // Cek apakah BaseUrl sudah terisi atau belum
-    if (empty($this->darmawisataBaseUrl)) {
-        return response()->json([
-            'status' => 'FAILED',
-            'message' => 'Konfigurasi Base URL Darmawisata tidak ditemukan di database.'
-        ], 500);
-    }
+    {
+        $url = rtrim($this->darmawisataBaseUrl, '/') . '/' . ltrim($endpoint, '/');
 
-    // Gabungkan URL: Pastikan tidak ada double slash atau missing slash
-    $url = rtrim($this->darmawisataBaseUrl, '/') . '/' . ltrim($endpoint, '/');
-
-    try {
         $response = \Illuminate\Support\Facades\Http::withHeaders([
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
         ])->post($url, $payload);
 
+        // TAMBAHKAN INI UNTUK DEBUG
+        if ($response->failed() || empty($response->json())) {
+            dd([
+                'url' => $url,
+                'payload' => $payload,
+                'status_code' => $response->status(),
+                'raw_body' => $response->body(), // Lihat teks asli dari server
+            ]);
+        }
+
         return response()->json($response->json(), $response->status());
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'FAILED',
-            'message' => 'Koneksi ke server gagal: ' . $e->getMessage()
-        ], 500);
     }
-}
 }
