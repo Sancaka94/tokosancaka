@@ -69,4 +69,31 @@ class TicketingController extends BaseController
 
         return $response;
     }
+
+    /**
+     * POST Airline/City
+     * Ambil daftar kota/bandara yang tersedia
+     */
+    public function airlineCity(Request $request)
+    {
+        return $this->forwardRequest('Airline/City', $request->all());
+    }
+
+    /**
+     * POST Airline/List
+     * Ambil daftar maskapai yang aktif
+     */
+    public function airlineList(Request $request)
+    {
+        return $this->forwardRequest('Airline/List', $request->all());
+    }
+
+    /**
+     * POST Airline/Nationality
+     * Ambil daftar negara untuk data paspor/kewarganegaraan
+     */
+    public function airlineNationality(Request $request)
+    {
+        return $this->forwardRequest('Airline/Nationality', $request->all());
+    }
 }
