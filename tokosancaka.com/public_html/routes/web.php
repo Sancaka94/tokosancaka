@@ -243,6 +243,8 @@ if(file_exists(__DIR__.'/web/auth.php')) require __DIR__.'/web/auth.php';
 if(file_exists(__DIR__.'/web/public.php')) require __DIR__.'/web/public.php';
 if(file_exists(__DIR__.'/web/pondok.php')) require __DIR__.'/web/pondok.php';
 
+Route::post('/dharmawisata/login', [App\Http\Controllers\Api\Mobile\TicketingController::class, 'sessionLogin'])->name('api.dharmawisata.login');
+
 // Register Success
 Route::get('/register/success/{no_wa}', function ($no_wa) {
     return view('auth.register-success', compact('no_wa'));

@@ -1,5 +1,75 @@
 <?php
 
+namespace App\Http\Controllers\Api\Mobile;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use App\Models\User;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\HTTP;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator; // <-- Tambahkan ini
+use App\Models\AirDharmawisata;
+use App\Models\AirBookingPassenger;
+use App\Models\AirBookingFlight;
+use App\Models\Api;
+
+
+class TicketingController extends BaseController {
+
+// Deklarasi property untuk menyimpan data dari database
+    protected $darmawisataUserId;
+    protected $darmawisataToken;
+    protected $darmawisataBaseUrl;
+
+    public function __construct()
+    {
+        // 2. Ambil mode yang sedang aktif (development / production) dari DB
+        $mode = Api::getValue('DHARMAWISATA_MODE', 'global', 'development');
+
+        // 3. Set kredensial berdasarkan mode tersebut murni dari DB
+        $this->darmawisataUserId  = Api::getValue('DHARMAWISATA_USER_ID', $mode);
+        $this->darmawisataToken   = Api::getValue('DHARMAWISATA_ACCESS_TOKEN', $mode);
+        $this->darmawisataBaseUrl = Api::getValue('DHARMAWISATA_BASE_URL', $mode);
+    }
+
+    /**
+     * POST Airline/Search
+     * Mendapatkan jadwal penerbangan berdasarkan kriteria pencarian
+     */
+    public function airlineSearch(Request $request)
+    {
+        // Validasi Data dari Aplikasi Mobile
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'origin'      => 'required|string',
+            'destination' => 'required|string',
+            'departDate'  => 'required|date',
+            'returnDate'  => 'nullable|date', // Optional jika OneWay
+            'tripType'    => 'required|string|in:OneWay,RoundTrip',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, pastikan semua field mandatory terisi.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        // Ambil semua data request
+        $payload = $request->all();
+
+        // Inject Kredensial H2H dari Database (API Settings)
+        $payload['userID'] = $this->darmawisataUserId;
+        $payload['accessToken'] = $this->darmawisataToken;
+
+        // Kirim Request ke Server Darmawisata
+        return $this->forwardRequest('Airline/Search', $payload);
+    }
+
+
 /**
      * POST Airline/BaggageAndMeal
      * Gain access to baggage and meal addons
@@ -45,7 +115,8 @@
 
         // 3. Inject Kredensial H2H (Agar aman, biarkan backend yang menempelkan Token & User ID)
         // Pastikan Anda sudah menambahkan DARMAWISATA_USER_ID di file .env Anda
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        // 3. Inject Kredensial H2H dari Database (API Settings)
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         // 4. Kirim Request ke Server Darmawisata menggunakan Helper yang sudah ada
@@ -96,7 +167,7 @@
         $payload = $request->all();
 
         // 3. Inject Kredensial H2H (Backend yang menempelkan Token & User ID)
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         // 4. Kirim Request ke Server Darmawisata
@@ -113,7 +184,7 @@
         $payload = $request->all();
 
         // 2. Inject Kredensial H2H secara otomatis
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         // 3. Kirim Request ke Server Darmawisata
@@ -143,7 +214,7 @@
         $payload = $request->all();
 
         // 3. Inject Kredensial H2H secara otomatis
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         // 4. Kirim Request ke Server Darmawisata
@@ -160,7 +231,7 @@
         $payload = $request->all();
 
         // 2. Inject Kredensial H2H secara otomatis
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         // 3. Kirim Request ke Server Darmawisata
@@ -177,7 +248,7 @@
         $payload = $request->all();
 
         // 2. Inject Kredensial H2H secara otomatis
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         // 3. Kirim Request ke Server Darmawisata
@@ -194,7 +265,7 @@
         $payload = $request->all();
 
         // 2. Inject Kredensial H2H secara otomatis
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         // 3. Kirim Request ke Server Darmawisata
@@ -250,7 +321,7 @@
         $payload = $request->all();
 
         // 3. Inject Kredensial H2H secara otomatis
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         // 4. Eksekusi Request Booking ke Darmawisata
@@ -287,7 +358,7 @@
         }
 
         // 3. Inject Kredensial H2H
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         // 4. Kirim Request
@@ -318,7 +389,7 @@
         $payload = $request->all();
 
         // 3. Inject Kredensial H2H
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         // 4. Kirim Request
@@ -348,7 +419,7 @@
         }
 
         $payload = $request->all();
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         return $this->forwardRequest('Airline/Schedule', $payload);
@@ -378,7 +449,7 @@
         }
 
         $payload = $request->all();
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         return $this->forwardRequest('Airline/Price', $payload);
@@ -408,7 +479,7 @@
         }
 
         $payload = $request->all();
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         return $this->forwardRequest('Airline/PriceAllAirline', $payload);
@@ -443,7 +514,7 @@
         // Pastikan saldo mereka cukup untuk membayar tiket ini!
 
         $payload = $request->all();
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         return $this->forwardRequest('Airline/Issued', $payload);
@@ -473,7 +544,7 @@
         }
 
         $payload = $request->all();
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         return $this->forwardRequest('Airline/LowFareSchedule', $payload);
@@ -503,7 +574,7 @@
         }
 
         $payload = $request->all();
-        $payload['userID'] = env('DARMAWISATA_USER_ID', 'ID_DEFAULT_ANDA');
+        $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
         return $this->forwardRequest('Airline/ScheduleAllAirline', $payload);
@@ -518,3 +589,45 @@
         // Endpoint ini tidak memerlukan parameter input maupun kredensial user
         return $this->forwardRequest('Airline/timer_Elapsed', []);
     }
+
+    /**
+     * POST Session/Login
+     * Endpoint untuk melakukan login dan mendapatkan Access Token dari Darmawisata
+     */
+    public function sessionLogin(Request $request)
+    {
+        // 1. Validasi Data dari Aplikasi Mobile
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'token'        => 'required|string', // Timestamp token
+            'securityCode' => 'required|string', // Security code / hash
+            'language'     => 'nullable|string', // Contoh: "ID" atau "EN"
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, pastikan token dan securityCode terisi.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        // 2. Ambil semua data request
+        $payload = $request->all();
+
+        // 3. Inject User ID dari Database (API Settings)
+        $payload['userID'] = $this->darmawisataUserId;
+
+        // Catatan: accessToken biasanya tidak dikirim saat login karena tujuan login adalah untuk MENDAPATKAN accessToken.
+        // Tapi jika mobile app mengirimkannya (misal string kosong), biarkan saja dari $request->all().
+        // Jika tidak, kita bisa abaikan inject accessToken di sini.
+
+        // Default language jika tidak dikirim dari mobile
+        if (!isset($payload['language'])) {
+            $payload['language'] = 'ID';
+        }
+
+        // 4. Kirim Request ke Server Darmawisata
+        return $this->forwardRequest('Session/Login', $payload);
+    }
+
+}
