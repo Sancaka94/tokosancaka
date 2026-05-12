@@ -18,24 +18,44 @@ class BaseController extends Controller
     }
 
     public function forwardRequest($endpoint, $payload)
-    {
-        $url = rtrim($this->darmawisataBaseUrl, '/') . '/' . ltrim($endpoint, '/');
+{
+    $url = rtrim($this->darmawisataBaseUrl, '/') . '/' . ltrim($endpoint, '/');
 
+    try {
         $response = \Illuminate\Support\Facades\Http::withHeaders([
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
         ])->post($url, $payload);
 
-        // TAMBAHKAN INI UNTUK DEBUG
-        if ($response->failed() || empty($response->json())) {
-            dd([
-                'url' => $url,
-                'payload' => $payload,
-                'status_code' => $response->status(),
-                'raw_body' => $response->body(), // Lihat teks asli dari server
-            ]);
+        // 1. Coba ambil sebagai JSON
+        $data = $response->json();
+
+        // 2. Jika JSON kosong, cek apakah isinya XML
+        if (empty($data)) {
+            $body = $response->body();
+            if (str_contains($body, '<?xml') || str_contains($body, '<AuthResponse')) {
+                // Konversi XML ke Array
+                $xml = simplexml_load_string($body);
+                $data = json_decode(json_encode($xml), true);
+            }
         }
 
-        return response()->json($response->json(), $response->status());
+        // 3. Jika masih kosong juga, tampilkan respon mentah untuk debug
+        if (empty($data)) {
+            return response()->json([
+                'status' => 'FAILED',
+                'message' => 'Respon kosong dari server Darmawisata',
+                'raw_body' => $response->body()
+            ], $response->status());
+        }
+
+        return response()->json($data, $response->status());
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'FAILED',
+            'message' => 'Exception: ' . $e->getMessage()
+        ], 500);
     }
+}
 }

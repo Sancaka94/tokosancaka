@@ -33,7 +33,7 @@ class TicketingController extends BaseController {
     $this->darmawisataToken   = \App\Models\Api::getValue('DHARMAWISATA_ACCESS_TOKEN', $mode);
 
     // Cek apakah data masuk
-    dd($this->darmawisataUserId, $this->darmawisataBaseUrl);
+    // dd($this->darmawisataUserId, $this->darmawisataBaseUrl);
 }
 
     /**
