@@ -200,4 +200,111 @@ class TicketingController extends BaseController
 
         return $response;
     }
+
+    /**
+     * POST Airline/BaggageAndMeal
+     * Mendapatkan daftar add-ons bagasi dan makanan
+     */
+    public function airlineBaggageAndMeal(Request $request)
+    {
+        // 1. Validasi Data sesuai dokumen (Required fields)
+        $validator = Validator::make($request->all(), [
+            'airlineID'               => 'required|string',
+            'origin'                  => 'required|string',
+            'destination'             => 'required|string',
+            'tripType'                => 'required|string',
+            'departDate'              => 'required|string',
+            'schDepart'               => 'required|string',
+            'contactFirstName'        => 'required|string',
+            'contactLastName'         => 'required|string',
+            'contactTitle'            => 'required|string',
+            'contactCountryCodePhone' => 'required|string',
+            'contactAreaCodePhone'    => 'required|string',
+            'contactRemainingPhoneNo' => 'required|string',
+            'contactEmail'            => 'required|string',
+            'paxDetails'              => 'required|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, parameter add-ons tidak lengkap.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        // 2. Siapkan Payload
+        $payload = $request->all();
+
+        // Pastikan parameter opsional dikirim sebagai string kosong jika null (standar Darmawisata)
+        $payload['returnDate'] = $payload['returnDate'] ?? "";
+        $payload['schReturn']  = $payload['schReturn'] ?? "";
+        $payload['insurance']  = $payload['insurance'] ?? false;
+
+        // Parameter segment dan fare basis jika ada (biasanya didapat dari hasil price/schedule)
+        $payload['departureAirlineSegmentCode'] = $payload['departureAirlineSegmentCode'] ?? "";
+        $payload['departureFareBasisCode']      = $payload['departureFareBasisCode'] ?? "";
+
+        // 3. Eksekusi Request ke Darmawisata
+        $response = $this->forwardRequest('Airline/BaggageAndMeal', $payload);
+
+        // Cetak Log untuk keperluan Debugging
+        Log::info("\nLOG LOG: Request BaggageAndMeal dijalankan.\n" .
+                 "Response Status: " . $response->status());
+
+        return $response;
+    }
+
+    /**
+     * POST Airline/Seat
+     * Mendapatkan denah kursi (Seat Map) dan harga kursi
+     */
+    public function airlineSeat(Request $request)
+    {
+        // 1. Validasi Parameter Sesuai Dokumentasi
+        $validator = Validator::make($request->all(), [
+            'airlineID'               => 'required|string',
+            'origin'                  => 'required|string',
+            'destination'             => 'required|string',
+            'tripType'                => 'required|string',
+            'departDate'              => 'required|string',
+            'schDepart'               => 'required|string',
+            'contactFirstName'        => 'required|string',
+            'contactLastName'         => 'required|string',
+            'contactTitle'            => 'required|string',
+            'contactCountryCodePhone' => 'required|string',
+            'contactAreaCodePhone'    => 'required|string',
+            'contactRemainingPhoneNo' => 'required|string',
+            'contactEmail'            => 'required|string',
+            'paxDetails'              => 'required|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, data seat request tidak lengkap.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        // 2. Siapkan Payload
+        $payload = $request->all();
+
+        // Mapping parameter opsional agar tidak null
+        $payload['returnDate'] = $payload['returnDate'] ?? "";
+        $payload['schReturn']  = $payload['schReturn'] ?? "";
+        $payload['insurance']  = $payload['insurance'] ?? false;
+
+        // Parameter segmentasi dari step Price/Schedule
+        $payload['departureAirlineSegmentCode'] = $payload['departureAirlineSegmentCode'] ?? "";
+        $payload['departureFareBasisCode']      = $payload['departureFareBasisCode'] ?? "";
+
+        // 3. Eksekusi Request ke Server Darmawisata
+        $response = $this->forwardRequest('Airline/Seat', $payload);
+
+        // Debugging Log
+        Log::info("\nLOG LOG: Request Seat Map dijalankan untuk Airline: " . $payload['airlineID']);
+
+        return $response;
+    }
 }
