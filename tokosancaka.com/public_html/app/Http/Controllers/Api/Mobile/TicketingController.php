@@ -60,7 +60,7 @@ class TicketingController extends BaseController {
         $payload['isShowEachAirline'] = true;
 
         // 3. Eksekusi Request ke Darmawisata melalui BaseController
-        $response = $this->forwardRequest('Airline/Schedule', $payload);
+        $response = $this->forwardRequest('Airline/ScheduleAllAirline', $payload);
 
         // =========================================================
         // KODE KHUSUS UNTUK MENCETAK LAPORAN RAPI KE CS DARMAWISATA
@@ -71,7 +71,7 @@ class TicketingController extends BaseController {
         $csPayload['userID']      = $this->darmawisataUserId;
         $csPayload['accessToken'] = $this->darmawisataToken;
 
-        $endpointUrl = rtrim($this->darmawisataBaseUrl, '/') . '/Airline/Schedule';
+        $endpointUrl = rtrim($this->darmawisataBaseUrl, '/') . '/Airline/ScheduleAllAirline';
 
         $logMessage = "\n\n================ BUKTI LAPORAN UNTUK CS DARMAWISATA ================\n";
         $logMessage .= "ENDPOINT :\nPOST " . $endpointUrl . "\n\n";
