@@ -70,7 +70,7 @@ class TicketingController extends BaseController
         return $response;
     }
 
-        /**
+    /**
      * POST Airline/City
      * Get airline city list
      */
@@ -100,7 +100,7 @@ class TicketingController extends BaseController
         return $this->forwardRequest('Airline/Nationality', $payload);
     }
 
-/**
+    /**
      * POST Airline/List
      * Get list of active airlines
      */
