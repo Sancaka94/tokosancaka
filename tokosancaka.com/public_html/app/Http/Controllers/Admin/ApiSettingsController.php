@@ -80,18 +80,22 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        // --- TAMBAHAN DARMAWISATA ---
+       // --- TAMBAHAN DARMAWISATA ---
         $dharmawisata = [
             'mode' => $dharmawisataMode,
             'development' => [
                 'user_id'      => Api::getValue('DHARMAWISATA_USER_ID', 'development'),
                 'access_token' => Api::getValue('DHARMAWISATA_ACCESS_TOKEN', 'development'),
                 'base_url'     => Api::getValue('DHARMAWISATA_BASE_URL', 'development'),
+                'static_token' => Api::getValue('DHARMAWISATA_STATIC_TOKEN', 'development'), // TAMBAHAN BARU
+                'password'     => Api::getValue('DHARMAWISATA_PASSWORD', 'development'),     // TAMBAHAN BARU
             ],
             'production' => [
                 'user_id'      => Api::getValue('DHARMAWISATA_USER_ID', 'production'),
                 'access_token' => Api::getValue('DHARMAWISATA_ACCESS_TOKEN', 'production'),
                 'base_url'     => Api::getValue('DHARMAWISATA_BASE_URL', 'production'),
+                'static_token' => Api::getValue('DHARMAWISATA_STATIC_TOKEN', 'production'), // TAMBAHAN BARU
+                'password'     => Api::getValue('DHARMAWISATA_PASSWORD', 'production'),     // TAMBAHAN BARU
             ]
         ];
 
@@ -172,12 +176,16 @@ class ApiSettingsController extends Controller
 
                 $baseUrl = $request->dharmawisata_base_url;
                 if (empty($baseUrl)) {
-                    $baseUrl = 'https://api.darmawisata.com/REST/'; // Base URL default darmawisata
+                    $baseUrl = 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/'; // Base URL default darmawisata
                 }
 
                 Api::setValue('DHARMAWISATA_USER_ID', $request->dharmawisata_user_id, 'dharmawisata', $env);
                 Api::setValue('DHARMAWISATA_ACCESS_TOKEN', $request->dharmawisata_access_token, 'dharmawisata', $env);
                 Api::setValue('DHARMAWISATA_BASE_URL', $baseUrl, 'dharmawisata', $env);
+
+                // --- 2 BARIS TAMBAHAN BARU UNTUK AUTO-RECONNECT ---
+                Api::setValue('DHARMAWISATA_STATIC_TOKEN', $request->dharmawisata_static_token, 'dharmawisata', $env);
+                Api::setValue('DHARMAWISATA_PASSWORD', $request->dharmawisata_password, 'dharmawisata', $env);
 
             } elseif ($type === 'fonnte') {
                 Api::setValue('FONNTE_API_KEY', $request->fonnte_api_key, 'fonnte', 'global');
