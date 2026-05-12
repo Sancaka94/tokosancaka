@@ -229,7 +229,7 @@ class ApiSettingsController extends Controller
     public function toggleApi(Request $request)
     {
         try {
-            $isProduction = $request->input('is_production');
+            $isProduction = filter_var($request->input('is_production'), FILTER_VALIDATE_BOOLEAN);
 
             if ($isProduction == true) {
                 $targetKA           = 'production';
