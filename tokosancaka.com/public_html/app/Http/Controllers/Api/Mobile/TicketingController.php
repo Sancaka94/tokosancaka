@@ -61,10 +61,7 @@ class TicketingController extends BaseController {
 
         // 2. Ambil semua data request dari React Native
         $payload = $request->all();
-
-        // 3. Inject Kredensial H2H Darmawisata
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+        // 3. Inject Kredensial H2H secara otomatis
         $payload['cacheType'] = 2; // 2 = Mix Live & Cache
         $payload['isShowEachAirline'] = true;
 
@@ -121,11 +118,6 @@ class TicketingController extends BaseController {
         // 2. Ambil semua data request
         $payload = $request->all();
 
-        // 3. Inject Kredensial H2H (Agar aman, biarkan backend yang menempelkan Token & User ID)
-        // Pastikan Anda sudah menambahkan DARMAWISATA_USER_ID di file .env Anda
-        // 3. Inject Kredensial H2H dari Database (API Settings)
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
 
         // 4. Kirim Request ke Server Darmawisata menggunakan Helper yang sudah ada
         return $this->forwardRequest('Airline/BaggageAndMeal', $payload);
@@ -174,9 +166,7 @@ class TicketingController extends BaseController {
         // 2. Ambil semua data request
         $payload = $request->all();
 
-        // 3. Inject Kredensial H2H (Backend yang menempelkan Token & User ID)
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+
 
         // 4. Kirim Request ke Server Darmawisata
         return $this->forwardRequest('Airline/Seat', $payload);
@@ -191,9 +181,7 @@ class TicketingController extends BaseController {
         // 1. Ambil data request (kemungkinan kosong dari aplikasi mobile, dan itu tidak masalah)
         $payload = $request->all();
 
-        // 2. Inject Kredensial H2H secara otomatis
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+
 
         // 3. Kirim Request ke Server Darmawisata
         return $this->forwardRequest('Airline/List', $payload);
@@ -221,9 +209,7 @@ class TicketingController extends BaseController {
         // 2. Ambil data request
         $payload = $request->all();
 
-        // 3. Inject Kredensial H2H secara otomatis
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+
 
         // 4. Kirim Request ke Server Darmawisata
         return $this->forwardRequest('Airline/Route', $payload);
@@ -238,9 +224,7 @@ class TicketingController extends BaseController {
         // 1. Ambil data request (kemungkinan kosong dari aplikasi mobile)
         $payload = $request->all();
 
-        // 2. Inject Kredensial H2H secara otomatis
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+
 
         // 3. Kirim Request ke Server Darmawisata
         return $this->forwardRequest('Airline/Nationality', $payload);
@@ -255,9 +239,6 @@ class TicketingController extends BaseController {
         // 1. Ambil data request (kosong dari aplikasi mobile)
         $payload = $request->all();
 
-        // 2. Inject Kredensial H2H secara otomatis
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
 
         // 3. Kirim Request ke Server Darmawisata
         return $this->forwardRequest('Airline/LowFareRoute', $payload);
@@ -272,9 +253,7 @@ class TicketingController extends BaseController {
         // 1. Ambil data request (kosong dari sisi aplikasi mobile)
         $payload = $request->all();
 
-        // 2. Inject Kredensial H2H secara otomatis
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+
 
         // 3. Kirim Request ke Server Darmawisata
         return $this->forwardRequest('Airline/City', $payload);
@@ -328,9 +307,6 @@ class TicketingController extends BaseController {
         // 2. Ambil data payload dari Mobile
         $payload = $request->all();
 
-        // 3. Inject Kredensial H2H secara otomatis
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
 
         // 4. Eksekusi Request Booking ke Darmawisata
         return $this->forwardRequest('Airline/Booking', $payload);
@@ -365,9 +341,7 @@ class TicketingController extends BaseController {
             $payload['filterByStatus'] = 0;
         }
 
-        // 3. Inject Kredensial H2H
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+
 
         // 4. Kirim Request
         return $this->forwardRequest('Airline/BookingList', $payload);
@@ -396,9 +370,7 @@ class TicketingController extends BaseController {
         // 2. Siapkan Payload
         $payload = $request->all();
 
-        // 3. Inject Kredensial H2H
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+
 
         // 4. Kirim Request
         return $this->forwardRequest('Airline/BookingDetail', $payload);
@@ -427,8 +399,7 @@ class TicketingController extends BaseController {
         }
 
         $payload = $request->all();
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+
 
         return $this->forwardRequest('Airline/Schedule', $payload);
     }
@@ -457,8 +428,7 @@ class TicketingController extends BaseController {
         }
 
         $payload = $request->all();
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+
 
         return $this->forwardRequest('Airline/Price', $payload);
     }
@@ -487,8 +457,7 @@ class TicketingController extends BaseController {
         }
 
         $payload = $request->all();
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+
 
         return $this->forwardRequest('Airline/PriceAllAirline', $payload);
     }
@@ -522,8 +491,7 @@ class TicketingController extends BaseController {
         // Pastikan saldo mereka cukup untuk membayar tiket ini!
 
         $payload = $request->all();
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+
 
         return $this->forwardRequest('Airline/Issued', $payload);
     }
@@ -552,8 +520,7 @@ class TicketingController extends BaseController {
         }
 
         $payload = $request->all();
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+
 
         return $this->forwardRequest('Airline/LowFareSchedule', $payload);
     }
@@ -582,8 +549,7 @@ class TicketingController extends BaseController {
         }
 
         $payload = $request->all();
-        $payload['userID'] = $this->darmawisataUserId;
-        $payload['accessToken'] = $this->darmawisataToken;
+
 
         return $this->forwardRequest('Airline/ScheduleAllAirline', $payload);
     }
