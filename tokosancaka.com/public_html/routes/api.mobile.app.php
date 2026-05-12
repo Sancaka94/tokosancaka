@@ -184,6 +184,8 @@ Route::prefix('seller')->group(function () {
 
     Route::post('/save-push-token', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'savePushToken']);
 
+    Route::get('/system-status', [\App\Http\Controllers\Admin\DashboardController::class, 'getSystemMode']);
+
     // --- C. CUSTOMER ROUTES (PELANGGAN) ---
     Route::prefix('customer')->group(function () {
 
