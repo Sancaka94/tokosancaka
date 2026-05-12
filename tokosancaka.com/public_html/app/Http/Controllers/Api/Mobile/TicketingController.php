@@ -65,6 +65,8 @@ class TicketingController extends BaseController {
         // 3. Inject Kredensial H2H Darmawisata
         $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
+        $payload['cacheType'] = 2; // 2 = Mix Live & Cache
+        $payload['isShowEachAirline'] = true;
 
         // 4. INJECT PARAMETER WAJIB UNTUK "ScheduleAllAirline"
         // Karena Darmawisata butuh cacheType dan isShowEachAirline
