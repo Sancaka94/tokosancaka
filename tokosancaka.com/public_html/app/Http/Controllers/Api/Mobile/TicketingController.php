@@ -307,4 +307,67 @@ class TicketingController extends BaseController
 
         return $response;
     }
+
+    /**
+     * POST Airline/Seat
+     * Mendapatkan denah kursi (Seat Map) dan harga kursi
+     */
+    public function airlineSeat(Request $request)
+    {
+        // 1. Validasi Parameter Sesuai Dokumentasi
+        $validator = Validator::make($request->all(), [
+            'airlineID'               => 'required|string',
+            'origin'                  => 'required|string',
+            'destination'             => 'required|string',
+            'tripType'                => 'required|string',
+            'departDate'              => 'required|string',
+            'schDepart'               => 'required|string',
+            'contactFirstName'        => 'required|string',
+            'contactLastName'         => 'required|string',
+            'contactTitle'            => 'required|string',
+            'contactCountryCodePhone' => 'required|string',
+            'contactAreaCodePhone'    => 'required|string',
+            'contactRemainingPhoneNo' => 'required|string',
+            'contactEmail'            => 'required|string',
+            'paxDetails'              => 'required|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, data seat request tidak lengkap.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        // 2. Siapkan Payload
+        $payload = $request->all();
+
+        // Mapping parameter opsional agar tidak null (mengikuti struktur API Darmawisata)
+        $payload['returnDate'] = $payload['returnDate'] ?? "";
+        $payload['schReturn']  = $payload['schReturn'] ?? "";
+        $payload['insurance']  = $payload['insurance'] ?? false;
+
+        // Handling jumlah passenger opsional (Integer)
+        $payload['paxAdult']   = (int)($payload['paxAdult'] ?? 1);
+        $payload['paxChild']   = (int)($payload['paxChild'] ?? 0);
+        $payload['paxInfant']  = (int)($payload['paxInfant'] ?? 0);
+
+        // Parameter segmentasi dari step Price/Schedule opsional
+        $payload['departureAirlineSegmentCode'] = $payload['departureAirlineSegmentCode'] ?? "";
+        $payload['departureFareBasisCode']      = $payload['departureFareBasisCode'] ?? "";
+        $payload['returnAirlineSegmentCode']    = $payload['returnAirlineSegmentCode'] ?? "";
+        $payload['returnFareBasisCode']         = $payload['returnFareBasisCode'] ?? "";
+
+        // 3. Eksekusi Request ke Server Darmawisata melalui BaseController
+        $response = $this->forwardRequest('Airline/Seat', $payload);
+
+        // Debugging Log
+        Log::info("\nLOG LOG: Request Seat Map dijalankan untuk Airline: " . $payload['airlineID']);
+
+        // Log Response jika dibutuhkan (opsional, bisa di-uncomment jika ingin lihat response API)
+        // Log::info("\nLOG LOG: Response API Seat Map:\n" . json_encode(json_decode($response->getContent()), JSON_PRETTY_PRINT));
+
+        return $response;
+    }
 }
