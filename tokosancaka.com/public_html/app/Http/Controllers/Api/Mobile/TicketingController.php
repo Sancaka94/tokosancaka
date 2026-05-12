@@ -70,30 +70,51 @@ class TicketingController extends BaseController
         return $response;
     }
 
-    /**
+        /**
      * POST Airline/City
-     * Ambil daftar kota/bandara yang tersedia
+     * Get airline city list
      */
     public function airlineCity(Request $request)
     {
-        return $this->forwardRequest('Airline/City', $request->all());
-    }
+        // 1. Ambil data request (kosong dari sisi aplikasi mobile)
+        $payload = $request->all();
 
-    /**
-     * POST Airline/List
-     * Ambil daftar maskapai yang aktif
-     */
-    public function airlineList(Request $request)
-    {
-        return $this->forwardRequest('Airline/List', $request->all());
+
+
+        // 3. Kirim Request ke Server Darmawisata
+        return $this->forwardRequest('Airline/City', $payload);
     }
 
     /**
      * POST Airline/Nationality
-     * Ambil daftar negara untuk data paspor/kewarganegaraan
+     * Get nationality list (Daftar Kewarganegaraan/Negara)
      */
     public function airlineNationality(Request $request)
     {
-        return $this->forwardRequest('Airline/Nationality', $request->all());
+        // 1. Ambil data request (kemungkinan kosong dari aplikasi mobile)
+        $payload = $request->all();
+
+
+
+        // 3. Kirim Request ke Server Darmawisata
+        return $this->forwardRequest('Airline/Nationality', $payload);
     }
+
+/**
+     * POST Airline/List
+     * Get list of active airlines
+     */
+    public function airlineList(Request $request)
+    {
+        // 1. Ambil data request (kemungkinan kosong dari aplikasi mobile, dan itu tidak masalah)
+        $payload = $request->all();
+
+
+
+        // 3. Kirim Request ke Server Darmawisata
+        return $this->forwardRequest('Airline/List', $payload);
+    }
+
+
+
 }
