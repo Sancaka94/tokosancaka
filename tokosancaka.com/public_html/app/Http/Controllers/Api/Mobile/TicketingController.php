@@ -38,36 +38,41 @@ class TicketingController extends BaseController {
 
     /**
      * POST Airline/Search
-     * Mendapatkan jadwal penerbangan berdasarkan kriteria pencarian
+     * Mendapatkan jadwal penerbangan (Diteruskan ke Airline/ScheduleAllAirline)
      */
     public function airlineSearch(Request $request)
     {
-        // Validasi Data dari Aplikasi Mobile
+        // 1. Validasi Data dari Aplikasi Mobile
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'origin'      => 'required|string',
             'destination' => 'required|string',
             'departDate'  => 'required|date',
-            'returnDate'  => 'nullable|date', // Optional jika OneWay
+            'returnDate'  => 'nullable|date',
             'tripType'    => 'required|string|in:OneWay,RoundTrip',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status'  => 'FAILED',
-                'message' => 'Validasi gagal, pastikan semua field mandatory terisi.',
+                'message' => 'Validasi gagal.',
                 'errors'  => $validator->errors()
             ], 422);
         }
 
-        // Ambil semua data request
+        // 2. Ambil semua data request dari React Native
         $payload = $request->all();
 
-        // Inject Kredensial H2H dari Database (API Settings)
+        // 3. Inject Kredensial H2H Darmawisata
         $payload['userID'] = $this->darmawisataUserId;
         $payload['accessToken'] = $this->darmawisataToken;
 
-        // Kirim Request ke Server Darmawisata
-        return $this->forwardRequest('Airline/Search', $payload);
+        // 4. INJECT PARAMETER WAJIB UNTUK "ScheduleAllAirline"
+        // Karena Darmawisata butuh cacheType dan isShowEachAirline
+        $payload['cacheType'] = 2; // 2 = Mix (Sesuai dokumentasi Darmawisata)
+        $payload['isShowEachAirline'] = true;
+
+        // 5. PERUBAHAN UTAMA: Arahkan ke 'Airline/ScheduleAllAirline' BUKAN 'Airline/Search'
+        return $this->forwardRequest('Airline/ScheduleAllAirline', $payload);
     }
 
 
