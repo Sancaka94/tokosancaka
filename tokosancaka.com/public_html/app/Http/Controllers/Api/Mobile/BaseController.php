@@ -17,25 +17,31 @@ class BaseController extends Controller
         $this->darmawisataBaseUrl = Api::getValue('DHARMAWISATA_BASE_URL', $mode);
     }
 
-    /**
-     * Helper untuk kirim request ke Darmawisata
-     */
     public function forwardRequest($endpoint, $payload)
-    {
-        $url = $this->darmawisataBaseUrl . $endpoint;
-
-        try {
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
-            ])->post($url, $payload);
-
-            return response()->json($response->json(), $response->status());
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'FAILED',
-                'message' => 'Koneksi ke server Darmawisata gagal: ' . $e->getMessage()
-            ], 500);
-        }
+{
+    // Cek apakah BaseUrl sudah terisi atau belum
+    if (empty($this->darmawisataBaseUrl)) {
+        return response()->json([
+            'status' => 'FAILED',
+            'message' => 'Konfigurasi Base URL Darmawisata tidak ditemukan di database.'
+        ], 500);
     }
+
+    // Gabungkan URL: Pastikan tidak ada double slash atau missing slash
+    $url = rtrim($this->darmawisataBaseUrl, '/') . '/' . ltrim($endpoint, '/');
+
+    try {
+        $response = \Illuminate\Support\Facades\Http::withHeaders([
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+        ])->post($url, $payload);
+
+        return response()->json($response->json(), $response->status());
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'FAILED',
+            'message' => 'Koneksi ke server gagal: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }

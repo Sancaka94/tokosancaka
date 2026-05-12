@@ -26,13 +26,13 @@ class TicketingController extends BaseController {
 
     public function __construct()
     {
-        // 2. Ambil mode yang sedang aktif (development / production) dari DB
-        $mode = Api::getValue('DHARMAWISATA_MODE', 'global', 'development');
+        // Jalankan constructor milik BaseController agar BaseUrl terisi
+        parent::__construct();
 
-        // 3. Set kredensial berdasarkan mode tersebut murni dari DB
-        $this->darmawisataUserId  = Api::getValue('DHARMAWISATA_USER_ID', $mode);
-        $this->darmawisataToken   = Api::getValue('DHARMAWISATA_ACCESS_TOKEN', $mode);
-        $this->darmawisataBaseUrl = Api::getValue('DHARMAWISATA_BASE_URL', $mode);
+        // Ambil mode untuk data lainnya
+        $mode = \App\Models\Api::getValue('DHARMAWISATA_MODE', 'global', 'development');
+        $this->darmawisataUserId  = \App\Models\Api::getValue('DHARMAWISATA_USER_ID', $mode);
+        $this->darmawisataToken   = \App\Models\Api::getValue('DHARMAWISATA_ACCESS_TOKEN', $mode);
     }
 
     /**
