@@ -25,15 +25,16 @@ class TicketingController extends BaseController {
     protected $darmawisataBaseUrl;
 
     public function __construct()
-    {
-        // Jalankan constructor milik BaseController agar BaseUrl terisi
-        parent::__construct();
+{
+    parent::__construct(); // Mengisi $this->darmawisataBaseUrl dari BaseController
 
-        // Ambil mode untuk data lainnya
-        $mode = \App\Models\Api::getValue('DHARMAWISATA_MODE', 'global', 'development');
-        $this->darmawisataUserId  = \App\Models\Api::getValue('DHARMAWISATA_USER_ID', $mode);
-        $this->darmawisataToken   = \App\Models\Api::getValue('DHARMAWISATA_ACCESS_TOKEN', $mode);
-    }
+    $mode = \App\Models\Api::getValue('DHARMAWISATA_MODE', 'global', 'development');
+    $this->darmawisataUserId  = \App\Models\Api::getValue('DHARMAWISATA_USER_ID', $mode);
+    $this->darmawisataToken   = \App\Models\Api::getValue('DHARMAWISATA_ACCESS_TOKEN', $mode);
+
+    // Cek apakah data masuk
+    dd($this->darmawisataUserId, $this->darmawisataBaseUrl);
+}
 
     /**
      * POST Airline/Search
