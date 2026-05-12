@@ -591,60 +591,52 @@ class TicketingController extends BaseController {
         return $this->forwardRequest('Airline/timer_Elapsed', []);
     }
 
-    /**
-     * POST Session/Login
-     * Melakukan login ke API Darmawisata
-     */
     public function sessionLogin(Request $request)
-    {
-        // 1. Validasi input dari Form Blade
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'token'        => 'required|string',
-            'securityCode' => 'required|string', // Ini diisi password "Darmaj4y4" di form
-            'language'     => 'nullable',
-        ]);
+{
+    // 1. Validasi
+    $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+        'token'        => 'required|string',
+        'securityCode' => 'required|string', // Isi dengan "Darmaj4y4" di form
+    ]);
 
-        if ($validator->fails()) {
-            if ($request->expectsJson()) {
-                return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
-            }
-            return back()->withErrors($validator)->withInput();
-        }
-
-        /**
-         * 2. Menyiapkan Payload sesuai Dokumentasi
-         * Penting: Darmawisata biasanya meminta securityCode dalam bentuk MD5 dari password.
-         * Jika MD5 saja gagal, beberapa versi meminta MD5(userID + password).
-         */
-        $password = $request->securityCode; // Contoh: Darmaj4y4
-        $userID   = $this->darmawisataUserId; // Contoh: PWB6RGHXRC
-
-        $payload = [
-            'token'        => $request->token,
-            'securityCode' => md5($password), // Opsi 1: md5 password saja
-            'language'     => $request->language ?? "ID",
-            'userID'       => $userID,
-            'accessToken'  => "" // String kosong sesuai sample dokumentasi
-        ];
-
-        // 3. Eksekusi Request melalui BaseController
-        $response = $this->forwardRequest('Session/Login', $payload);
-        $data = json_decode($response->getContent(), true);
-
-        // 4. Handle Response untuk Web (Blade) vs API (Mobile)
-        if (!$request->expectsJson()) {
-            if (isset($data['status']) && $data['status'] === 'SUCCESS') {
-                return back()->with('success', "
-                    <strong>Login Berhasil!</strong><br>
-                    Access Token: <code class='text-break'>{$data['accessToken']}</code>
-                ");
-            } else {
-                // Jika gagal, coba berikan detail error dari server
-                $msg = $data['respMessage'] ?? 'Authentication failed';
-                return back()->with('error', 'Gagal Login: ' . $msg)->withInput();
-            }
-        }
-
-        return $response;
+    if ($validator->fails()) {
+        return $request->expectsJson()
+            ? response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422)
+            : back()->withErrors($validator)->withInput();
     }
+
+    // 2. Terapkan Rumus dari Pak Andrie
+    $token = $request->token;
+    $password = $request->securityCode; // Input dari form: Darmaj4y4
+
+    // Langkah A: MD5 dari password mentah
+    $md5Password = md5($password);
+
+    // Langkah B: MD5 dari (Token + Hasil MD5 Password)
+    $finalSecurityCode = md5($token . $md5Password);
+
+    // 3. Siapkan Payload
+    $payload = [
+        'token'        => $token,
+        'securityCode' => $finalSecurityCode,
+        'language'     => $request->language ?? "ID",
+        'userID'       => $this->darmawisataUserId,
+        'accessToken'  => ""
+    ];
+
+    // 4. Kirim ke BaseController
+    $response = $this->forwardRequest('Session/Login', $payload);
+    $data = json_decode($response->getContent(), true);
+
+    // 5. Handle tampilan Web
+    if (!$request->expectsJson()) {
+        if (isset($data['status']) && $data['status'] === 'SUCCESS') {
+            return back()->with('success', "Login Berhasil! Token: <code>{$data['accessToken']}</code>");
+        } else {
+            return back()->with('error', 'Gagal: ' . ($data['respMessage'] ?? 'Authentication failed'));
+        }
+    }
+
+    return $response;
+}
 }
