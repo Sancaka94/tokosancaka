@@ -8,7 +8,6 @@
     [x-cloak] { display: none !important; }
     /* Toggle Switch Custom Style */
     .toggle-checkbox:checked {
-        /* right: 0;  <-- HAPUS INI karena bikin tombol bablas ke kanan */
         border-color: #ef4444; /* Red-500 */
     }
     .toggle-checkbox:checked + .toggle-label {
@@ -29,7 +28,7 @@
                     <i class="fas fa-network-wired text-indigo-600 mr-2"></i> Konfigurasi API
                 </h2>
                 <p class="mt-2 text-sm text-gray-500">
-                    Kelola kredensial pihak ketiga. Data tersimpan terpisah antara <b>Sandbox</b> dan <b>Production</b>.
+                    Kelola kredensial pihak ketiga. Data tersimpan terpisah antara <b>Sandbox/Development</b> dan <b>Production</b>.
                 </p>
             </div>
         </div>
@@ -61,10 +60,15 @@
                 <button @click="activeTab = 'doku'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'doku', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'doku' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
                     <i class="fas fa-credit-card mr-2"></i> DOKU
                 </button>
-                {{-- TAMBAHAN TAB IAK --}}
                 <button @click="activeTab = 'iak'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'iak', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'iak' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
                     <i class="fas fa-mobile-alt mr-2"></i> IAK PPOB
                 </button>
+
+                {{-- TAMBAHAN TAB DARMAWISATA --}}
+                <button @click="activeTab = 'dharmawisata'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'dharmawisata', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'dharmawisata' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    <i class="fas fa-plane-departure mr-2"></i> Darmawisata
+                </button>
+
                 <button @click="activeTab = 'fonnte'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'fonnte', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'fonnte' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
                     <i class="fab fa-whatsapp mr-2"></i> Fonnte
                 </button>
@@ -91,7 +95,6 @@
                     <div class="flex items-center">
                         <span class="mr-3 text-sm font-medium" :class="kaData.mode === 'staging' ? 'text-indigo-600 font-bold' : 'text-gray-500'">SANDBOX</span>
 
-                        {{-- Tambahkan mr-3 agar ada jarak lebih --}}
                         <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
                             <input type="checkbox" name="kiriminaja_mode_toggle" id="ka_toggle"
                                    class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
@@ -109,7 +112,6 @@
                 <form action="{{ route('admin.settings.api.update') }}" method="POST">
                     @csrf @method('PUT')
                     <input type="hidden" name="type" value="kiriminaja">
-                    {{-- Hidden input untuk mengirim value mode yang sebenarnya ke controller --}}
                     <input type="hidden" name="kiriminaja_mode" x-model="kaData.mode">
 
                     <div class="space-y-6">
@@ -127,7 +129,6 @@
                             </div>
                         </div>
 
-                        {{-- Input Fields (Dynamic Binding) --}}
                         <div x-show="kaData.mode" x-transition.opacity>
                             <div class="mb-4">
                                 <label class="block text-sm font-medium text-gray-700">API Token (<span x-text="kaData.mode.toUpperCase()"></span>)</label>
@@ -167,7 +168,6 @@
                     <div class="flex items-center">
                         <span class="mr-3 text-sm font-medium" :class="tpData.mode === 'sandbox' ? 'text-indigo-600 font-bold' : 'text-gray-500'">SANDBOX</span>
 
-                        {{-- Tambahkan mr-3 --}}
                         <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
                             <input type="checkbox" id="tp_toggle"
                                    class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
@@ -238,7 +238,6 @@
                     <div class="flex items-center">
                         <span class="mr-3 text-sm font-medium" :class="dokuData.env === 'sandbox' ? 'text-indigo-600 font-bold' : 'text-gray-500'">SANDBOX</span>
 
-                        {{-- Tambahkan mr-3 --}}
                         <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
                             <input type="checkbox" id="doku_toggle"
                                    class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
@@ -294,7 +293,6 @@
                         </div>
                     </div>
 
-                    {{-- === TAMBAHAN BARU: DOKU MAIN SAC ID === --}}
                     <div class="mt-8 border-t border-gray-100 pt-6">
                         <h4 class="text-sm font-bold text-gray-800 uppercase tracking-wide mb-4">
                             <i class="fas fa-university mr-2 text-indigo-500"></i> Akun Utama (Master Account)
@@ -319,7 +317,6 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <span class="text-gray-500 sm:text-sm">SAC-</span>
                                 </div>
-                                {{-- Perhatikan x-model ini: mengambil data global dari JSON controller --}}
                                 <input type="text"
                                     name="doku_main_sac_id"
                                     x-model="dokuData.sac_id"
@@ -329,8 +326,6 @@
                             <p class="mt-1 text-xs text-gray-500">Format biasanya diawali dengan SAC-XXXX-XXXXX.</p>
                         </div>
                     </div>
-                    {{-- ========================================= --}}
-
 
                     <div class="mt-6 flex justify-end">
                         <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors">
@@ -340,7 +335,7 @@
                 </form>
             </div>
 
-            {{-- 4. TAB IAK (BARU) --}}
+            {{-- 4. TAB IAK (PPOB) --}}
             <div x-show="activeTab === 'iak'" style="display: none;">
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <div>
@@ -426,11 +421,90 @@
                 </form>
             </div>
 
-            {{-- 5. TAB FONNTE --}}
+            {{-- 5. TAB DARMAWISATA (BARU) --}}
+            <div x-show="activeTab === 'dharmawisata'" style="display: none;">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Darmawisata H2H (Tiket Pesawat)</h3>
+                        <p class="text-xs text-gray-500 mt-1">Status Aktif:
+                            <span class="px-2 py-0.5 rounded text-xs font-bold transition-colors duration-300"
+                                  :class="dwData.mode === 'production' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'"
+                                  x-text="dwData.mode === 'production' ? 'PRODUCTION (LIVE)' : 'DEVELOPMENT (TEST)'">
+                            </span>
+                        </p>
+                    </div>
+
+                    {{-- Toggle Switch Darmawisata --}}
+                    <div class="flex items-center">
+                        <span class="mr-3 text-sm font-medium" :class="dwData.mode === 'development' ? 'text-indigo-600 font-bold' : 'text-gray-500'">DEVELOPMENT</span>
+
+                        <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" id="dw_toggle"
+                                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
+                                   :class="{'translate-x-full border-red-500': dwData.mode === 'production', 'border-indigo-500': dwData.mode === 'development'}"
+                                   @click="dwData.mode = (dwData.mode === 'production' ? 'development' : 'production')"
+                                   :checked="dwData.mode === 'production'"/>
+                            <label for="dw_toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
+                                   :class="{'bg-red-500': dwData.mode === 'production', 'bg-indigo-500': dwData.mode === 'development'}"></label>
+                        </div>
+
+                        <span class="ml-1 text-sm font-medium" :class="dwData.mode === 'production' ? 'text-red-600 font-bold' : 'text-gray-500'">PRODUCTION</span>
+                    </div>
+                </div>
+
+                <form action="{{ route('admin.settings.api.update') }}" method="POST">
+                    @csrf @method('PUT')
+                    <input type="hidden" name="type" value="dharmawisata">
+                    <input type="hidden" name="dharmawisata_mode" x-model="dwData.mode">
+
+                    <div class="space-y-6">
+                        {{-- Visual Warning --}}
+                        <div class="p-4 rounded-lg border flex items-start"
+                             :class="dwData.mode === 'production' ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'">
+                            <div class="flex-shrink-0 mt-0.5">
+                                <i class="fas" :class="dwData.mode === 'production' ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle text-indigo-500'"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium" :class="dwData.mode === 'production' ? 'text-red-800' : 'text-indigo-800'" x-text="dwData.mode === 'production' ? 'Mode Produksi Aktif' : 'Mode Development Aktif'"></h3>
+                                <div class="mt-1 text-sm" :class="dwData.mode === 'production' ? 'text-red-700' : 'text-indigo-700'">
+                                    <p x-text="dwData.mode === 'production' ? 'Transaksi asli! Issued tiket pesawat akan memotong saldo B2B Anda secara otomatis.' : 'Mode testing. Transaksi tidak memotong saldo akun H2H Anda.'"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div x-show="dwData.mode" x-transition.opacity>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">User ID</label>
+                                    <input type="text" name="dharmawisata_user_id" x-model="dwData[dwData.mode].user_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Masukkan User ID Darmawisata">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Access Token</label>
+                                    <input type="text" name="dharmawisata_access_token" x-model="dwData[dwData.mode].access_token" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Masukkan Access Token / API Key">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Base URL</label>
+                                <input type="url" name="dharmawisata_base_url" x-model="dwData[dwData.mode].base_url" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Biarkan kosong untuk URL otomatis (https://api.darmawisata.com/REST/)">
+                                <p class="text-xs text-gray-500 mt-1">URL standar: https://api.darmawisata.com/REST/</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors">
+                            Simpan Darmawisata
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {{-- 6. TAB FONNTE --}}
             <div x-show="activeTab === 'fonnte'" style="display: none;">
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900">Fonnte (WhatsApp)</h3>
+                        <h3 class="text-lg font-bold text-gray-900">Fonnte (WhatsApp Gateway)</h3>
                         <p class="text-xs text-gray-500 mt-1">Status: GLOBAL</p>
                     </div>
                 </div>
@@ -466,18 +540,18 @@
 {{-- Alpine JS --}}
 <script src="//unpkg.com/alpinejs" defer></script>
 
-{{-- Inisialisasi Data Alpine di Script Tag (Lebih Aman) --}}
+{{-- Inisialisasi Data Alpine di Script Tag --}}
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('apiSettings', () => ({
-            activeTab: 'kiriminaja', // Tab default yang terbuka saat load pertama kali
+            activeTab: 'kiriminaja', // Tab default yang terbuka
 
-            // Mengambil Data Langsung dari PHP Variable yang dilempar Controller
-            // Tanpa perlu merinci satu per satu jika struktur di Controller sudah benar
+            // Mengambil Data Langsung dari PHP Variable (Controller)
             kaData: @json($kiriminaja),
             tpData: @json($tripay),
             dokuData: @json($doku),
-            iakData: @json($iak), // Tambahan varibel untuk IAK
+            iakData: @json($iak),
+            dwData: @json($dharmawisata), // Menambahkan data konfigurasi Darmawisata
         }))
     })
 </script>

@@ -13,13 +13,13 @@ class ApiSettingsController extends Controller
     public function index()
     {
         // 1. Ambil Mode Global yang sedang aktif
-        $kaMode     = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
-        $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
-        $dokuEnv    = Api::getValue('DOKU_ENV', 'global', 'sandbox');
-        $iakMode    = Api::getValue('IAK_MODE', 'global', 'development'); // Tambahan IAK
+        $kaMode           = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
+        $tripayMode       = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+        $dokuEnv          = Api::getValue('DOKU_ENV', 'global', 'sandbox');
+        $iakMode          = Api::getValue('IAK_MODE', 'global', 'development');
+        $dharmawisataMode = Api::getValue('DHARMAWISATA_MODE', 'global', 'development'); // Tambahan Darmawisata
 
         // 2. Siapkan Struktur Data Lengkap (Active Mode + Data per Environment)
-        // Kita kirim 'staging' DAN 'production' sekaligus agar frontend bisa switch real-time.
 
         $kiriminaja = [
             'mode' => $kaMode,
@@ -61,12 +61,9 @@ class ApiSettingsController extends Controller
                 'public_key'          => Api::getValue('DOKU_PUBLIC_KEY', 'production'),
                 'merchant_private_key'=> Api::getValue('MERCHANT_PRIVATE_KEY', 'production'),
             ],
-            // SAC ID diasumsikan global, tidak berubah per env (tapi bisa disesuaikan)
             'sac_id' => Api::getValue('DOKU_MAIN_SAC_ID', 'global'),
-
         ];
 
-        // --- TAMBAHAN IAK PPOB ---
         $iak = [
             'mode' => $iakMode,
             'development' => [
@@ -83,12 +80,27 @@ class ApiSettingsController extends Controller
             ]
         ];
 
+        // --- TAMBAHAN DARMAWISATA ---
+        $dharmawisata = [
+            'mode' => $dharmawisataMode,
+            'development' => [
+                'user_id'      => Api::getValue('DHARMAWISATA_USER_ID', 'development'),
+                'access_token' => Api::getValue('DHARMAWISATA_ACCESS_TOKEN', 'development'),
+                'base_url'     => Api::getValue('DHARMAWISATA_BASE_URL', 'development'),
+            ],
+            'production' => [
+                'user_id'      => Api::getValue('DHARMAWISATA_USER_ID', 'production'),
+                'access_token' => Api::getValue('DHARMAWISATA_ACCESS_TOKEN', 'production'),
+                'base_url'     => Api::getValue('DHARMAWISATA_BASE_URL', 'production'),
+            ]
+        ];
+
         $fonnte = [
             'api_key' => Api::getValue('FONNTE_API_KEY', 'global'),
         ];
 
-        // Tambahkan variable $iak ke compact
-        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte'));
+        // Tambahkan variable $dharmawisata ke compact
+        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata'));
     }
 
     public function update(Request $request)
@@ -97,23 +109,20 @@ class ApiSettingsController extends Controller
 
         try {
             if ($type === 'kiriminaja') {
-                $env = $request->kiriminaja_mode; // staging atau production
+                $env = $request->kiriminaja_mode;
 
-                // Simpan Mode Global
                 Api::setValue('KIRIMINAJA_MODE', $env, 'kiriminaja', 'global');
 
-                // Logic Base URL Auto jika kosong
                 $baseUrl = $request->kiriminaja_base_url;
                 if (empty($baseUrl)) {
                     $baseUrl = ($env === 'production') ? 'https://client.kiriminaja.com' : 'https://tdev.kiriminaja.com';
                 }
 
-                // Simpan data ke environment SPESIFIK yang dipilih user
                 Api::setValue('KIRIMINAJA_TOKEN', $request->kiriminaja_token, 'kiriminaja', $env);
                 Api::setValue('KIRIMINAJA_BASE_URL', $baseUrl, 'kiriminaja', $env);
 
             } elseif ($type === 'tripay') {
-                $env = $request->tripay_mode; // sandbox atau production
+                $env = $request->tripay_mode;
 
                 Api::setValue('TRIPAY_MODE', $env, 'tripay', 'global');
 
@@ -122,7 +131,7 @@ class ApiSettingsController extends Controller
                 Api::setValue('TRIPAY_PRIVATE_KEY', $request->tripay_private_key, 'tripay', $env);
 
             } elseif ($type === 'doku') {
-                $env = $request->doku_env; // sandbox atau production
+                $env = $request->doku_env;
 
                 Api::setValue('DOKU_ENV', $env, 'doku', 'global');
 
@@ -131,19 +140,15 @@ class ApiSettingsController extends Controller
                 Api::setValue('DOKU_PUBLIC_KEY', $request->doku_public_key, 'doku', $env);
                 Api::setValue('MERCHANT_PRIVATE_KEY', $request->merchant_private_key, 'doku', $env);
 
-                // ✅ 3. TAMBAHAN: Simpan DOKU MAIN SAC ID (Disimpan sebagai global)
-                // Pastikan input di blade bernama: name="doku_main_sac_id"
                 if ($request->has('doku_main_sac_id')) {
                     Api::setValue('DOKU_MAIN_SAC_ID', $request->doku_main_sac_id, 'doku', 'global');
                 }
 
-            // --- TAMBAHAN IAK PPOB ---
             } elseif ($type === 'iak') {
-                $env = $request->iak_mode; // development atau production
+                $env = $request->iak_mode;
 
                 Api::setValue('IAK_MODE', $env, 'iak', 'global');
 
-                // Logic Base URL Auto jika kosong (sesuai dokumentasi resmi)
                 $prepaidUrl = $request->iak_prepaid_base_url;
                 if (empty($prepaidUrl)) {
                     $prepaidUrl = ($env === 'production') ? 'https://prepaid.iak.id' : 'https://prepaid.iak.dev';
@@ -159,6 +164,21 @@ class ApiSettingsController extends Controller
                 Api::setValue('IAK_PREPAID_BASE_URL', $prepaidUrl, 'iak', $env);
                 Api::setValue('IAK_POSTPAID_BASE_URL', $postpaidUrl, 'iak', $env);
 
+            // --- TAMBAHAN DARMAWISATA UPDATE ---
+            } elseif ($type === 'dharmawisata') {
+                $env = $request->dharmawisata_mode; // development atau production
+
+                Api::setValue('DHARMAWISATA_MODE', $env, 'dharmawisata', 'global');
+
+                $baseUrl = $request->dharmawisata_base_url;
+                if (empty($baseUrl)) {
+                    $baseUrl = 'https://api.darmawisata.com/REST/'; // Base URL default darmawisata
+                }
+
+                Api::setValue('DHARMAWISATA_USER_ID', $request->dharmawisata_user_id, 'dharmawisata', $env);
+                Api::setValue('DHARMAWISATA_ACCESS_TOKEN', $request->dharmawisata_access_token, 'dharmawisata', $env);
+                Api::setValue('DHARMAWISATA_BASE_URL', $baseUrl, 'dharmawisata', $env);
+
             } elseif ($type === 'fonnte') {
                 Api::setValue('FONNTE_API_KEY', $request->fonnte_api_key, 'fonnte', 'global');
             }
@@ -170,43 +190,33 @@ class ApiSettingsController extends Controller
         }
     }
 
-      /**
-     * Method Baru: Toggle Global (Dipanggil dari Header atau Dashboard)
-     * Mengubah mode semua layanan sekaligus.
-     */
     public function toggle(Request $request)
     {
         try {
-            // 1. Cek Mode KiriminAja saat ini sebagai acuan
-            // Jika tidak ada setting, default ke 'staging'
             $currentMode = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
 
-            // 2. Tentukan Target Mode (Switch)
-            // Jika sekarang Production, ubah semua ke Staging/Sandbox/Development.
-            // Jika sekarang Staging, ubah semua ke Production.
             if ($currentMode === 'production') {
-                $targetKA     = 'staging';
-                $targetTripay = 'sandbox';
-                $targetDoku   = 'sandbox';
-                $targetIAK    = 'development'; // IAK menggunakan environment development
-                $label        = 'SANDBOX / STAGING / DEVELOPMENT';
+                $targetKA           = 'staging';
+                $targetTripay       = 'sandbox';
+                $targetDoku         = 'sandbox';
+                $targetIAK          = 'development';
+                $targetDharmawisata = 'development'; // Tambahan Darmawisata
+                $label              = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
-                $targetKA     = 'production';
-                $targetTripay = 'production';
-                $targetDoku   = 'production';
-                $targetIAK    = 'production';
-                $label        = 'PRODUCTION (LIVE)';
+                $targetKA           = 'production';
+                $targetTripay       = 'production';
+                $targetDoku         = 'production';
+                $targetIAK          = 'production';
+                $targetDharmawisata = 'production'; // Tambahan Darmawisata
+                $label              = 'PRODUCTION (LIVE)';
             }
 
-            // 3. Simpan Perubahan ke Database
             Api::setValue('KIRIMINAJA_MODE', $targetKA, 'kiriminaja', 'global');
             Api::setValue('TRIPAY_MODE', $targetTripay, 'tripay', 'global');
             Api::setValue('DOKU_ENV', $targetDoku, 'doku', 'global');
-            Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global'); // Tambahan update global mode IAK
+            Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global');
+            Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global'); // Tambahan Darmawisata
 
-
-            // ✅ 4. SIARKAN EVENT REAL-TIME KE SEMUA USER
-            // Ini akan mentrigger modal di dashboard customer tanpa refresh
             event(new SystemModeUpdated($targetKA));
 
             return back()->with('success', "Mode API berhasil diubah ke: <b>$label</b>");
@@ -216,39 +226,35 @@ class ApiSettingsController extends Controller
         }
     }
 
-    // Fungsi POST untuk mengubah mode dari Expo
     public function toggleApi(Request $request)
     {
         try {
-            // Tangkap perintah dari HP: true (Production/ON) atau false (Sandbox/OFF)
             $isProduction = $request->input('is_production');
 
             if ($isProduction == true) {
-                // Jika ON -> Ubah semua ke Production
-                $targetKA     = 'production';
-                $targetTripay = 'production';
-                $targetDoku   = 'production';
-                $targetIAK    = 'production';
-                $label        = 'PRODUCTION (LIVE)';
+                $targetKA           = 'production';
+                $targetTripay       = 'production';
+                $targetDoku         = 'production';
+                $targetIAK          = 'production';
+                $targetDharmawisata = 'production'; // Tambahan Darmawisata
+                $label              = 'PRODUCTION (LIVE)';
             } else {
-                // Jika OFF -> Ubah semua ke Sandbox / Staging
-                $targetKA     = 'staging';
-                $targetTripay = 'sandbox';
-                $targetDoku   = 'sandbox';
-                $targetIAK    = 'development';
-                $label        = 'SANDBOX / MAINTENANCE';
+                $targetKA           = 'staging';
+                $targetTripay       = 'sandbox';
+                $targetDoku         = 'sandbox';
+                $targetIAK          = 'development';
+                $targetDharmawisata = 'development'; // Tambahan Darmawisata
+                $label              = 'SANDBOX / MAINTENANCE';
             }
 
-            // 1. Simpan perubahan ke Database
             Api::setValue('KIRIMINAJA_MODE', $targetKA, 'kiriminaja', 'global');
             Api::setValue('TRIPAY_MODE', $targetTripay, 'tripay', 'global');
             Api::setValue('DOKU_ENV', $targetDoku, 'doku', 'global');
             Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global');
+            Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global'); // Tambahan Darmawisata
 
-            // 2. Beritahu semua user yang sedang online (Opsional jika pakai Pusher/Echo)
             event(new SystemModeUpdated($targetKA));
 
-            // 3. Kembalikan respons sukses ke HP
             return response()->json([
                 'success' => true,
                 'message' => "Sistem berhasil diubah ke mode $label",
@@ -266,12 +272,11 @@ class ApiSettingsController extends Controller
     public function getSystemMode()
     {
         try {
-            // Membaca mode saat ini menggunakan fungsi bawaan dari kodemu
             $currentMode = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
 
             return response()->json([
                 'success' => true,
-                'mode'    => $currentMode // Akan berisi 'production', 'staging', atau 'sandbox'
+                'mode'    => $currentMode
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
@@ -280,5 +285,4 @@ class ApiSettingsController extends Controller
             ], 500);
         }
     }
-
 }

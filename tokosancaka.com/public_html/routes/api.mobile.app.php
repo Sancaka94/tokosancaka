@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\Mobile\PpobDigiflazController;
 use App\Http\Controllers\Api\Mobile\SettingPrivacyController;
 use App\Http\Controllers\Api\Mobile\EditPenggunaController;
 use App\Http\Controllers\Api\Mobile\PesananController;
+use App\Http\Controllers\Api\Mobile\TicketingController;
 /*
 |--------------------------------------------------------------------------
 | API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)
@@ -405,5 +406,79 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/admin/pengguna/{id}', [EditPenggunaController::class, 'destroy']); // Hapus
 
     Route::get('/customer/pesanan/detail/{resi}', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'getDetailPesanan']);
+
+
+    // ==========================================
+        // MODULE: TICKETING / DARMAWISATA
+        // ==========================================
+        Route::prefix('ticketing')->group(function () {
+
+            // Session & Agent
+            Route::post('/session/login', [TicketingController::class, 'sessionLogin']);
+            Route::post('/agent/balance', [TicketingController::class, 'agentBalance']);
+
+            // ==========================================
+            // MODULE: AIRLINE (TIKET PESAWAT)
+            // ==========================================
+            Route::prefix('airline')->group(function () {
+                // Data Master / Referensi
+                Route::post('/list', [TicketingController::class, 'airlineList']);
+                Route::post('/route', [TicketingController::class, 'airlineRoute']);
+                Route::post('/nationality', [TicketingController::class, 'airlineNationality']);
+                Route::post('/lowfare-route', [TicketingController::class, 'airlineLowFareRoute']);
+                Route::post('/city', [TicketingController::class, 'airlineCity']);
+
+                // Flow Pencarian & Harga
+                Route::post('/schedule', [TicketingController::class, 'airlineSchedule']);
+
+                // --- TAMBAHKAN DUA BARIS INI UNTUK PENCARIAN MASSAL ---
+                Route::post('/lowfare-schedule', [TicketingController::class, 'airlineLowFareSchedule']);
+                Route::post('/schedule-all', [TicketingController::class, 'airlineScheduleAllAirline']);
+
+                Route::post('/price', [TicketingController::class, 'airlinePrice']);
+                Route::post('/price-all', [TicketingController::class, 'airlinePriceAllAirline']);
+
+                // Flow Addons
+                Route::post('/baggage-meal', [TicketingController::class, 'airlineBaggageAndMeal']);
+                Route::post('/seat', [TicketingController::class, 'airlineSeat']);
+
+                // Flow Transaksi
+                Route::post('/booking', [TicketingController::class, 'airlineBooking']);
+                Route::post('/booking-list', [TicketingController::class, 'airlineBookingList']);
+                Route::post('/booking-detail', [TicketingController::class, 'airlineBookingDetail']);
+                Route::post('/issued', [TicketingController::class, 'airlineIssued']);
+
+                // --- TAMBAHKAN BARIS INI UNTUK PING ---
+                Route::post('/timer-elapsed', [TicketingController::class, 'airlineTimerElapsed']);
+            });
+
+            // Train
+            Route::prefix('train')->group(function () {
+                Route::post('/route', [TicketingController::class, 'trainRoute']);
+                Route::post('/schedule', [TicketingController::class, 'trainSchedule']);
+                Route::post('/booking', [TicketingController::class, 'trainBooking']);
+                Route::post('/seatmap', [TicketingController::class, 'trainSeatMap']);
+            });
+
+            // Hotel
+            Route::prefix('hotel')->group(function () {
+                Route::post('/search', [TicketingController::class, 'hotelSearch']);
+                Route::post('/available-rooms', [TicketingController::class, 'hotelAvailableRooms']);
+                Route::post('/booking', [TicketingController::class, 'hotelBooking']);
+            });
+
+            // PPOB & TopUp
+            Route::prefix('ppob')->group(function () {
+                Route::post('/inquiry', [TicketingController::class, 'ppobInquiry']);
+                Route::post('/payment', [TicketingController::class, 'ppobPayment']);
+            });
+
+            Route::prefix('topup')->group(function () {
+                Route::post('/product', [TicketingController::class, 'topupProduct']);
+                Route::post('/order', [TicketingController::class, 'topupOrder']);
+            });
+
+        }); // END MODULE TICKETING
+
 
     });
