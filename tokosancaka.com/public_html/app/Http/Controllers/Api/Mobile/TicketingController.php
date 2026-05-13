@@ -52,7 +52,9 @@ class TicketingController extends BaseController
         // =========================================================
         $csPayload = $payload;
         $csPayload['userID']      = $this->darmawisataUserId;
-        $csPayload['accessToken'] = $this->darmawisataToken;
+
+        // Ambil token langsung dari payload yang dikirim oleh React Native
+        $csPayload['accessToken'] = $payload['accessToken'] ?? '';
 
         $endpointUrl = rtrim($this->darmawisataBaseUrl, '/') . '/Airline/ScheduleAllAirline';
 
