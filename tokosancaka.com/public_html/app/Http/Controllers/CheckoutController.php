@@ -6,9 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification; // <-- TAMBAHKAN INI
-use App\Notifications\NotifikasiUmum;      // <-- TAMBAHKAN INI
-use App\Events\AdminNotificationEvent; // <-- TAMBAHKAN INI
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\NotifikasiUmum;
+use App\Events\AdminNotificationEvent;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -1406,6 +1406,7 @@ class CheckoutController extends Controller
 
             // 3. KIRIM NOTIF WA
             $this->kirimNotifikasiPesananLengkap($order, 'Lunas');
+            $this->_sendExpoPushNotification($order);
 
         } elseif (in_array($status, ['EXPIRED', 'FAILED', 'UNPAID'])) {
             $order->status = ($status === 'EXPIRED') ? 'expired' : 'failed';
@@ -1673,6 +1674,62 @@ TEXT;
 
         // 3. Download filenya
         return $pdf->download('Invoice-' . $order->invoice_number . '.pdf');
+    }
+
+    // =========================================================================
+    // FUNGSI KHUSUS UNTUK KIRIM NOTIFIKASI PUSH EXPO (MOBILE APP)
+    // =========================================================================
+    private function _sendExpoPushNotification($order)
+    {
+        try {
+            $pushMessages = [];
+
+            // Identifikasi Nomor Invoice (Support tabel Order baru & Pesanan lama)
+            $invoiceNumber = $order->invoice_number ?? $order->nomor_invoice ?? 'Unknown';
+
+            // 1. CARI PEMILIK ORDER (Customer)
+            $buyerId = null;
+            if (get_class($order) === 'App\Models\Order') {
+                $buyerId = $order->user_id; // Dari tabel orders
+            } else {
+                $buyerId = $order->customer_id ?? $order->id_pengguna_pembeli ?? null; // Dari tabel Pesanan
+            }
+
+            if ($buyerId) {
+                $customer = \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', $buyerId)->first();
+                if ($customer && !empty($customer->expo_token)) {
+                    $pushMessages[] = [
+                        'to' => $customer->expo_token,
+                        'title' => 'Pembayaran Berhasil! 🎉',
+                        'body' => "Yey! Pembayaran untuk pesanan {$invoiceNumber} telah berhasil dikonfirmasi.",
+                        'sound' => 'default',
+                    ];
+                }
+            }
+
+            // 2. SIAPKAN PESAN UNTUK ADMIN UTAMA (ID 4)
+            $admin = \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', 4)->first();
+            if ($admin && !empty($admin->expo_token)) {
+                $pushMessages[] = [
+                    'to' => $admin->expo_token,
+                    'title' => 'Dana Masuk (Tripay)! 💰',
+                    'body' => "Invoice {$invoiceNumber} baru saja lunas oleh customer.",
+                    'sound' => 'default',
+                ];
+            }
+
+            // 3. TEMBAK SEMUA NOTIFIKASI KE EXPO SEKALIGUS
+            if (!empty($pushMessages)) {
+                \Illuminate\Support\Facades\Http::withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])->post('https://exp.host/--/api/v2/push/send', $pushMessages);
+
+                Log::info("✅ [EXPO PUSH] Notifikasi pembayaran berhasil dikirim untuk Invoice: {$invoiceNumber}");
+            }
+        } catch (\Exception $e) {
+            Log::error("❌ [EXPO PUSH] Gagal kirim notifikasi: " . $e->getMessage());
+        }
     }
 
 } // Akhir Class
