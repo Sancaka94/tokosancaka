@@ -183,71 +183,68 @@ class TicketingController extends BaseController
             ], 422);
         }
 
-        // 2. Siapkan Data Payload
-        $payload = $request->all();
+       $payload = $request->all();
 
-        // BaseController kamu secara otomatis akan menambahkan userID dan accessToken
-        // ke dalam payload sebelum dikirim ke Darmawisata melalui forwardRequest().
+    // Pastikan parameter opsional aman
+    $payload['returnDate'] = $payload['returnDate'] ?? "0001-01-01T00:00:00";
+    $payload['schReturns'] = $payload['schReturns'] ?? [];
+    $payload['insurance']  = $payload['insurance'] ?? false;
 
-        // Cetak Log Request untuk debugging
-        Log::info("\nLOG LOG: Memulai request API Airline/Booking dengan payload:\n" . json_encode($payload, JSON_PRETTY_PRINT));
+    // Hit ke Darmawisata
+    $response = $this->forwardRequest('Airline/Booking', $payload);
+    $json = json_decode($response->getContent(), true);
 
-        // 3. Eksekusi Request ke Darmawisata
-        $response = $this->forwardRequest('Airline/Booking', $payload);
-        $jsonResponse = json_decode($response->getContent(), true);
-
-        // 4. 🔥 JIKA BOOKING SUKSES, SIMPAN KE DATABASE LOKAL 🔥
-        if (isset($jsonResponse['status']) && $jsonResponse['status'] === 'SUCCESS') {
-            try {
-                // Contoh penyimpanan ke tabel (Silakan sesuaikan dengan nama tabel/model Anda)
-                DB::table('pesanan_tikets')->insert([
-                    'user_id'       => $request->user()->id, // Mengambil ID user yang login
-                    'booking_code'  => $jsonResponse['bookingCode'], // PNR: Z4PF8J
-                    'booking_date'  => $jsonResponse['bookingDate'],
-                    'airline_id'    => $jsonResponse['airlineID'],
-                    'origin'        => $jsonResponse['origin'],
-                    'destination'   => $jsonResponse['destination'],
-                    'ticket_price'  => $jsonResponse['ticketPrice'] ?? 0,
-                    'status'        => 'HOLD', // Menunggu pembayaran
-                    'created_at'    => now(),
-                    'updated_at'    => now(),
-                ]);
-
-                Log::info("✅ Booking {$jsonResponse['bookingCode']} berhasil disimpan ke Database Lokal.");
-            } catch (\Exception $e) {
-                Log::error("❌ Gagal simpan booking ke DB Lokal: " . $e->getMessage());
-            }
+    if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+        try {
+            // Gunakan Model PesananTiket
+            \App\Models\PesananTiket::create([
+                'user_id'       => $request->user()->id,
+                'booking_code'  => $json['bookingCode'],
+                'booking_date'  => $json['bookingDate'],
+                'time_limit'    => $json['timeLimit'],
+                'airline_id'    => $json['airlineID'],
+                'origin'        => $json['origin'],
+                'destination'   => $json['destination'],
+                'depart_date'   => $json['departDate'],
+                'trip_type'     => $json['tripType'],
+                'pax_adult'     => $json['paxAdult'],
+                'pax_child'     => $json['paxChild'],
+                'pax_infant'    => $json['paxInfant'],
+                'ticket_price'  => $json['ticketPrice'] ?? 0,
+                'status'        => 'HOLD',
+                'flight_detail' => $json['flightDeparts'] ?? [],
+                'pax_detail'    => $request->paxDetails, // Data dari request mobile
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Gagal simpan ke database lokal: " . $e->getMessage());
         }
-
-        Log::info("\nLOG LOG: Response dari Darmawisata (Airline/Booking):\n" . json_encode($jsonResponse, JSON_PRETTY_PRINT));
-
-        return $response;
     }
 
-    /**
-     * Mengambil detail tiket dari database lokal berdasarkan Booking Code
-     */
+    return $response;
+}
+
     public function getLocalBookingDetail(Request $request)
-    {
-        $request->validate(['bookingCode' => 'required|string']);
+{
+    $request->validate([
+        'bookingCode' => 'required|string'
+    ]);
 
-        $tiket = DB::table('pesanan_tikets')
-                    ->where('user_id', $request->user()->id)
-                    ->where('booking_code', $request->bookingCode)
-                    ->first();
+    $tiket = \App\Models\PesananTiket::where('user_id', $request->user()->id)
+                ->where('booking_code', $request->bookingCode)
+                ->first();
 
-        if (!$tiket) {
-            return response()->json([
-                'status' => 'FAILED',
-                'message' => 'Tiket tidak ditemukan di database.'
-            ], 404);
-        }
-
+    if (!$tiket) {
         return response()->json([
-            'status' => 'SUCCESS',
-            'data'   => $tiket
-        ]);
+            'status' => 'FAILED',
+            'message' => 'Data tiket tidak ditemukan di sistem kami.'
+        ], 404);
     }
+
+    return response()->json([
+        'status' => 'SUCCESS',
+        'data'   => $tiket
+    ]);
+}
 
     /**
      * POST Airline/BaggageAndMeal
