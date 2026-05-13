@@ -308,4 +308,43 @@ class TicketingController extends BaseController
         return $response;
     }
 
+    /**
+     * POST Airline/Issued
+     * Mengeksekusi pencetakan tiket (Issued) dan memotong saldo agen
+     */
+    public function airlineIssued(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'airlineID'   => 'required|string',
+            'origin'      => 'required|string',
+            'destination' => 'required|string',
+            'tripType'    => 'required|string',
+            'departDate'  => 'required|string',
+            'bookingCode' => 'required|string',
+            'bookingDate' => 'required|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, data issued tidak lengkap.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        $payload = $request->all();
+
+        // Parameter opsional diisi string kosong jika tidak ada
+        $payload['returnDate'] = $payload['returnDate'] ?? "0001-01-01T00:00:00";
+        $payload['airlineAccessCode'] = $payload['airlineAccessCode'] ?? "";
+
+        // Kirim ke Darmawisata
+        $response = $this->forwardRequest('Airline/Issued', $payload);
+
+        Log::info("\nLOG LOG: Request Airline/Issued dieksekusi untuk PNR: " . $payload['bookingCode']);
+        Log::info("LOG LOG: Response Issued:\n" . json_encode(json_decode($response->getContent()), JSON_PRETTY_PRINT));
+
+        return $response;
+    }
+
 }
