@@ -5,11 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http; // Tambahkan ini untuk Request ke Telegram
-use App\Models\PpobTransaction; 
+use App\Models\PpobTransaction;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
-use App\Services\FonnteService; 
-use Illuminate\Support\Str; 
+use App\Services\FonnteService;
+use Illuminate\Support\Str;
 
 class DigiflazzWebhookController extends Controller
 {
@@ -22,11 +22,11 @@ class DigiflazzWebhookController extends Controller
 
         if (empty($trx->telegram_chat_id)) {
             Log::warning("⚠️ [TELEGRAM] Skip. Chat ID kosong di database.");
-            return; 
+            return;
         }
 
         try {
-            $token = env('TELEGRAM_BOT_TOKEN'); 
+            $token = env('TELEGRAM_BOT_TOKEN');
             if (empty($token)) {
                 Log::error("❌ [TELEGRAM] Error: Token Bot tidak ditemukan di .env");
                 return;
@@ -79,10 +79,10 @@ class DigiflazzWebhookController extends Controller
 
         // 3. Bersihkan karakter selain angka
         $phone = preg_replace('/[^0-9]/', '', $phone);
-        
+
         // 4. Cek lagi setelah regex
         if (empty($phone)) return null;
-    
+
         // 5. Format ke 62
         if (Str::startsWith($phone, '08')) {
             return '62' . substr($phone, 1);
@@ -103,7 +103,7 @@ class DigiflazzWebhookController extends Controller
     private function _isPostpaid($sku) {
         $sku = strtoupper($sku);
         $postpaidPrefixes = ['PLNPOST', 'PDAM', 'BPJS', 'GAS', 'SPEEDY', 'TELKOM', 'HALO'];
-        
+
         foreach ($postpaidPrefixes as $prefix) {
             if (Str::startsWith($sku, $prefix)) {
                 return true;
@@ -118,8 +118,8 @@ class DigiflazzWebhookController extends Controller
     private function _sendWhatsappNotificationSN(PpobTransaction $trx, string $sn)
     {
         try {
-            $user = User::find($trx->user_id); 
-            
+            $user = User::find($trx->user_id);
+
             if (!$user) {
                  Log::error("Data Agent (Users) tidak ditemukan untuk user_id: " . $trx->user_id);
                  return false;
@@ -128,7 +128,7 @@ class DigiflazzWebhookController extends Controller
             // -------------------------------------------------------------
             // LOGIKA PENCARIAN NOMOR WA (UPDATE)
             // -------------------------------------------------------------
-            
+
             // 1. Ambil dari kolom 'customer_wa' (Prioritas Utama)
             $rawCustomerWa = $trx->customer_wa;
 
@@ -147,18 +147,18 @@ class DigiflazzWebhookController extends Controller
                     $rawCustomerWa = $trx->customer_no;
                 }
             }
-            
+
             // 4. Sanitize nomor yang ditemukan
             $customerWa = $this->_sanitizePhoneNumber($rawCustomerWa);
             $agentWa = $this->_sanitizePhoneNumber($user->no_wa ?? $user->no_hp);
             // -------------------------------------------------------------
-            
+
             $fmt = function($val) { return number_format($val, 0, ',', '.'); };
-            
+
             // --- DATA TOKO AGENT ---
             $storeName = $user->store_name ?? 'Sancaka Express';
             $storeAddress = $user->address_detail ?? 'Kantor Pusat Sancaka Express';
-            $storePhone = $this->_sanitizePhoneNumber($user->no_wa ?? null) ?? '628819435180'; 
+            $storePhone = $this->_sanitizePhoneNumber($user->no_wa ?? null) ?? '628819435180';
 
             // ===============================================
             // 1. SUSUN PESAN UNTUK AGENT
@@ -172,7 +172,7 @@ class DigiflazzWebhookController extends Controller
             "*Serial Number (SN):*\n" .
             "*{$sn}*\n" .
             "------------------------------------\n" .
-            "Saldo Baru: Rp " . $fmt($user->saldo ?? 0); 
+            "Saldo Baru: Rp " . $fmt($user->saldo ?? 0);
 
             // ===============================================
             // 2. SUSUN PESAN UNTUK CUSTOMER
@@ -197,9 +197,9 @@ class DigiflazzWebhookController extends Controller
             // Kirim WA
             if ($agentWa) FonnteService::sendMessage($agentWa, $messageAgent);
             if ($customerWa) FonnteService::sendMessage($customerWa, $messageCustomer);
-            
+
             return true;
-            
+
         } catch (\Exception $e) {
             Log::error('WA Notification SN PPOB Error: ' . $e->getMessage(), ['trx_id' => $trx->id]);
             return false;
@@ -211,7 +211,7 @@ class DigiflazzWebhookController extends Controller
         Log::info('Webhook Masuk:', $request->all());
 
         // 2. VERIFIKASI SIGNATURE
-        $secret = 'SancakaSecretKey2025'; 
+        $secret = 'SancakaSecretKey2025';
         $incomingSignature = $request->header('X-Hub-Signature');
         $payload = $request->getContent();
         $localSignature = 'sha1=' . hash_hmac('sha1', $payload, $secret);
@@ -262,24 +262,24 @@ class DigiflazzWebhookController extends Controller
             if (!empty($desc)) {
                 $transaction->desc = is_array($desc) ? json_encode($desc) : $desc;
             }
-            
+
             // ====================================================================
             // [FIXED] LOGIKA UPDATE HARGA (MODAL)
             // ====================================================================
             if ($price > 0) {
                 $isPostpaid = $this->_isPostpaid($transaction->buyer_sku_code);
                 $currentSellingPrice = $transaction->selling_price;
-                
+
                 // Cek Anomali Pascabayar:
-                // Jika produk Pascabayar DAN harga webhook sangat kecil (misal 2500) 
+                // Jika produk Pascabayar DAN harga webhook sangat kecil (misal 2500)
                 // SEDANGKAN harga jual tinggi (misal 70.000), maka webhook hanya mengirim FEE ADMIN.
                 // Jangan update harga modal jika ini terjadi.
-                
+
                 $isPriceAnomaly = $isPostpaid && ($price < 5000) && ($currentSellingPrice > 10000);
 
                 if (!$isPriceAnomaly) {
                     // Hanya update jika BUKAN anomali (Data valid / Prabayar Normal)
-                    $transaction->price = $price; 
+                    $transaction->price = $price;
                     $transaction->profit = $transaction->selling_price - $price;
                     Log::info("Harga Modal Updated: $price");
                 } else {
@@ -289,8 +289,8 @@ class DigiflazzWebhookController extends Controller
             // ====================================================================
 
             // LOGIKA STATUS
-            $rcStr = (string) $rc; 
-            
+            $rcStr = (string) $rc;
+
             if ($rcStr === '00' || $status === 'Sukses' || $status === 'Success') {
                 $transaction->status = 'Success';
             }
@@ -299,7 +299,7 @@ class DigiflazzWebhookController extends Controller
             }
             else {
                 $transaction->status = 'Failed';
-                
+
                 // AUTO REFUND
                 if (in_array(strtoupper($transaction->payment_method), ['SALDO', 'SALDO_AGEN'])) {
                     $user = User::find($transaction->user_id);
@@ -316,8 +316,8 @@ class DigiflazzWebhookController extends Controller
             // KIRIM NOTIFIKASI WA
             if ($transaction->status === 'Success' && !empty($sn)) {
                 $this->_sendWhatsappNotificationSN($transaction, $sn);
-
                 $this->_sendTelegramNotificationSN($transaction, $sn);
+                $this->_sendExpoPushNotification($transaction, $sn);
             }
 
             DB::commit();
@@ -329,4 +329,54 @@ class DigiflazzWebhookController extends Controller
             return response()->json(['status' => 'error'], 500);
         }
     }
+
+    /**
+     * Helper: Kirim Notifikasi Push via Expo (Mobile App)
+     */
+    private function _sendExpoPushNotification(PpobTransaction $trx, string $sn)
+    {
+        try {
+            $pushMessages = [];
+
+            // 1. SIAPKAN PESAN UNTUK CUSTOMER/AGENT (Pemilik Transaksi)
+            if ($trx->user_id) {
+                // Cari data pengguna berdasarkan user_id transaksi
+                $user = DB::table('Pengguna')->where('id_pengguna', $trx->user_id)->first();
+
+                if ($user && !empty($user->expo_token)) {
+                    $pushMessages[] = [
+                        'to' => $user->expo_token,
+                        'title' => 'Transaksi PPOB Berhasil! 📱',
+                        'body' => "Pengisian {$trx->buyer_sku_code} ke {$trx->customer_no} sukses. SN: {$sn}",
+                        'sound' => 'default',
+                    ];
+                }
+            }
+
+            // 2. SIAPKAN PESAN UNTUK ADMIN (ID 4)
+            $admin = DB::table('Pengguna')->where('id_pengguna', 4)->first();
+
+            if ($admin && !empty($admin->expo_token)) {
+                $pushMessages[] = [
+                    'to' => $admin->expo_token,
+                    'title' => 'PPOB Terjual! 💰',
+                    'body' => "Trx {$trx->order_id} ({$trx->buyer_sku_code}) ke {$trx->customer_no} sukses.",
+                    'sound' => 'default',
+                ];
+            }
+
+            // 3. TEMBAK SEMUA NOTIFIKASI KE EXPO SEKALIGUS
+            if (!empty($pushMessages)) {
+                \Illuminate\Support\Facades\Http::withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])->post('https://exp.host/--/api/v2/push/send', $pushMessages);
+
+                Log::info("✅ [EXPO PUSH] Notifikasi PPOB berhasil dikirim untuk Order: {$trx->order_id}");
+            }
+        } catch (\Exception $e) {
+            Log::error("❌ [EXPO PUSH] Gagal kirim notifikasi PPOB: " . $e->getMessage());
+        }
+    }
+
 }

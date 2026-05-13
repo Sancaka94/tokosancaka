@@ -307,6 +307,11 @@ class PpobIakController extends Controller
                     'message' => $finalMessage
                 ]);
 
+                // 👇 TAMBAHKAN INI 👇
+                if ($finalStatus === 'SUCCESS' && !empty($result['data']['sn'])) {
+                    $this->_sendExpoPushNotification($transaction, $result['data']['sn']);
+                }
+
                 Log::info('LOG LOG - Check Status Prepaid Result', ['ref_id' => $transaction->ref_id, 'status' => $finalStatus, 'sn' => $result['data']['sn'] ?? 'none']); // LOG LOG
                 return redirect()->back()->with('success', 'Status transaksi: ' . $finalStatus . '. Pesan: ' . $finalMessage);
             }
@@ -657,6 +662,11 @@ class PpobIakController extends Controller
                     'message' => $finalMessage
                 ]);
 
+                // 👇 TAMBAHKAN INI 👇
+                if ($finalStatus === 'SUCCESS' && !empty($result['data']['noref'])) {
+                    $this->_sendExpoPushNotification($transaction, $result['data']['noref']);
+                }
+
                 Log::info('LOG LOG - Check Status Postpaid Result', ['ref_id' => $transaction->ref_id, 'status' => $finalStatus]);
                 return redirect()->back()->with('success', 'Status tagihan berhasil di-refresh: ' . $finalMessage);
             }
@@ -773,6 +783,9 @@ class PpobIakController extends Controller
             // --- LOGIKA KIRIM WA VIA FONNTE (DI DALAM WEBHOOK) ---
             // ========================================================
             if ($finalStatus === 'SUCCESS' && !empty($sn)) {
+
+            $this->_sendExpoPushNotification($transaction, $sn);
+
                 $phone = $transaction->whatsapp_number;
                 if (!empty($phone)) {
                     $fonnteToken = Api::getValue('FONNTE_API_KEY', 'global');
@@ -1207,6 +1220,52 @@ class PpobIakController extends Controller
 
         } catch (\Exception $e) {
             return back()->with('error', 'Koneksi ke server Fonnte terputus: ' . $e->getMessage());
+        }
+    }
+
+    // =========================================================================
+    // FUNGSI KHUSUS UNTUK KIRIM NOTIFIKASI EXPO (MOBILE APP)
+    // =========================================================================
+    private function _sendExpoPushNotification($trx, $sn)
+    {
+        try {
+            $pushMessages = [];
+
+            // 1. Pesan untuk User/Agen (Pemilik Transaksi)
+            if ($trx->user_id) {
+                $user = \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', $trx->user_id)->first();
+                if ($user && !empty($user->expo_token)) {
+                    $pushMessages[] = [
+                        'to' => $user->expo_token,
+                        'title' => 'Transaksi PPOB Berhasil! 📱',
+                        'body' => "Pengisian {$trx->product_code} ke {$trx->customer_id} sukses. SN: {$sn}",
+                        'sound' => 'default',
+                    ];
+                }
+            }
+
+            // 2. Pesan untuk Admin Utama (ID 4)
+            $admin = \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', 4)->first();
+            if ($admin && !empty($admin->expo_token)) {
+                $pushMessages[] = [
+                    'to' => $admin->expo_token,
+                    'title' => 'PPOB Terjual (IAK)! 💰',
+                    'body' => "Trx {$trx->ref_id} ({$trx->product_code}) ke {$trx->customer_id} sukses.",
+                    'sound' => 'default',
+                ];
+            }
+
+            // 3. Tembak Semua Notifikasi ke Expo Sekaligus
+            if (!empty($pushMessages)) {
+                \Illuminate\Support\Facades\Http::withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])->post('https://exp.host/--/api/v2/push/send', $pushMessages);
+
+                Log::info("✅ [EXPO PUSH IAK] Notifikasi berhasil dikirim untuk Ref ID: {$trx->ref_id}");
+            }
+        } catch (\Exception $e) {
+            Log::error("❌ [EXPO PUSH IAK] Gagal kirim notifikasi: " . $e->getMessage());
         }
     }
 
