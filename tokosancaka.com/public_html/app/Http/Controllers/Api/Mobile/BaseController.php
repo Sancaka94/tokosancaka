@@ -96,29 +96,29 @@ class BaseController extends Controller
         }
     }
 
-    /**
-     * Endpoint BARU untuk di-hit oleh Mobile App guna mendapatkan Token baru
-     * setiap kali user mulai mencari tiket.
-     */
-    public function generateNewToken()
+   public function generateNewToken()
     {
+        // 1. Ambil data rahasia dari Database/Config agar tidak bocor ke sisi Client (HP)
         $staticToken = Api::getValue('DHARMAWISATA_STATIC_TOKEN', $this->darmawisataMode);
         $password    = Api::getValue('DHARMAWISATA_PASSWORD', $this->darmawisataMode);
+        $userID      = $this->darmawisataUserId;
+        $url         = rtrim($this->darmawisataBaseUrl, '/') . '/Session/Login';
 
+        // 2. Hitung Security Code sesuai rumus Darmawisata
         $md5Password  = md5($password);
         $securityCode = md5($staticToken . $md5Password);
 
+        // 3. Siapkan Payload sesuai dokumentasi yang Anda berikan
         $payload = [
             'token'        => $staticToken,
             'securityCode' => $securityCode,
             'language'     => "ID",
-            'userID'       => $this->darmawisataUserId,
-            'accessToken'  => ""
+            'userID'       => $userID,
+            'accessToken'  => "" // Kosong untuk login awal
         ];
 
-        $url = rtrim($this->darmawisataBaseUrl, '/') . '/Session/Login';
-
         try {
+            // 4. Hit ke Darmawisata
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
@@ -126,18 +126,26 @@ class BaseController extends Controller
 
             $data = $response->json();
 
+            // 5. Kembalikan response sukses ke TSX
             if (isset($data['status']) && $data['status'] === 'SUCCESS') {
                 return response()->json([
-                    'status' => 'SUCCESS',
-                    'message' => 'Token generated successfully',
-                    'accessToken' => $data['accessToken'] // Berikan ini ke Mobile App!
+                    'status'      => 'SUCCESS',
+                    'accessToken' => $data['accessToken'],
+                    'respTime'    => $data['respTime'],
+                    'userID'      => $data['userID']
                 ]);
             }
 
-            return response()->json(['status' => 'FAILED', 'message' => 'Gagal generate token dari Darmawisata'], 400);
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => $data['respMessage'] ?? 'Gagal login ke Darmawisata'
+            ], 400);
 
         } catch (\Exception $e) {
-            return response()->json(['status' => 'FAILED', 'message' => $e->getMessage()], 500);
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Kesalahan Server: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

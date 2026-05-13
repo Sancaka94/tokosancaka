@@ -422,6 +422,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/session/login', [TicketingController::class, 'sessionLogin']);
             Route::post('/agent/balance', [TicketingController::class, 'agentBalance']);
 
+            Route::post('/init-session', [TicketingController::class, 'generateNewToken']);
+
             // ==========================================
             // MODULE: AIRLINE (TIKET PESAWAT)
             // ==========================================
