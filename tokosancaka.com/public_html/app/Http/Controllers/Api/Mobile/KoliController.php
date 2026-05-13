@@ -850,8 +850,7 @@ class KoliController extends Controller
     // ==========================================
     // HELPER: TRIPAY TRANSACTION
     // ==========================================
-    private function _createTripayTransactionInternal(array $data, Pesanan $pesanan, int $total, array $orderItems, clone $user): array
-    {
+    private function _createTripayTransactionInternal(array $data, Pesanan $pesanan, int $total, array $orderItems, User $user): array{
         $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
 
         $baseUrl      = '';
