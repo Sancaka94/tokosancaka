@@ -13,6 +13,8 @@ use App\Models\Pesanan;
 use App\Models\Kontak;
 use App\Models\User;
 use App\Services\KiriminAjaService;
+use App\Services\DokuJokulService; // <--- TAMBAHKAN INI
+use App\Models\Api; // <--- TAMBAHKAN INI UNTUK TRIPAY
 use Exception;
 
 class KoliController extends Controller
@@ -303,15 +305,38 @@ class KoliController extends Controller
                 $user->decrement('saldo', $finalPriceDB);
                 $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
             } elseif (!in_array($request->payment_method, ['CASH', 'Potong Saldo', 'COD', 'CODBARANG'])) {
-                // KONDISI BARU: Jika bukan Cash/Saldo/COD, maka otomatis dianggap Payment Gateway (Tripay/DOKU)
 
-                $noWa = $user->no_wa ?? '08000000';
-                $paymentUrl = url('/pembayaran?akun=' . urlencode($noWa));
-
-                // Khusus Single (Jika di store() ganti $pesanan jadi $o)
                 $pesanan->status = 'Menunggu Pembayaran';
                 $pesanan->status_pesanan = 'Menunggu Pembayaran';
                 $pesanan->save();
+
+                $paymentUrl = null;
+
+                if ($request->payment_method === 'DOKU_JOKUL') {
+                    // --- 1. VIA DOKU JOKUL ---
+                    $dokuService = new DokuJokulService();
+                    $paymentUrl = $dokuService->createPayment($pesanan->nomor_invoice, $finalPriceDB);
+
+                    if (empty($paymentUrl)) {
+                        throw new Exception("Gagal membuat tagihan DOKU.");
+                    }
+                } else {
+                    // --- 2. VIA TRIPAY (BRIVA, QRIS, dll) ---
+                    $orderItems = [
+                        ['sku' => 'SHIPPING', 'name' => 'Ongkos Kirim ' . $pesanan->nomor_invoice, 'price' => $finalPriceDB, 'quantity' => 1]
+                    ];
+
+                    $tripayResponse = $this->_createTripayTransactionInternal($request->all(), $pesanan, $finalPriceDB, $orderItems, $user);
+
+                    if (empty($tripayResponse['success'])) {
+                        throw new Exception($tripayResponse['message'] ?? 'Gagal membuat tagihan Tripay.');
+                    }
+                    $paymentUrl = $tripayResponse['data']['checkout_url'];
+                }
+
+                $pesanan->payment_url = $paymentUrl;
+                $pesanan->save();
+
             } else {
                 throw new Exception("Metode pembayaran tidak valid.");
             }
@@ -551,24 +576,47 @@ class KoliController extends Controller
                      $o->status_pesanan = 'Menunggu Pickup';
                      $o->save();
                 }
-            }
-            elseif (strtoupper($request->payment_method) === 'GATEWAY') {
-                // KODE BARU: Lempar status ke Menunggu Pembayaran & Set Link
-                Log::info("[API MOBILE MULTI] Metode GATEWAY terpilih. Meneruskan user ke portal Sancaka.");
+            } elseif (!in_array($request->payment_method, ['CASH', 'Potong Saldo', 'COD', 'CODBARANG'])) {
 
-                // Gunakan nomor WA user yang sedang login
-                $noWa = $user->no_wa ?? '08000000';
-                $paymentUrl = url('/pembayaran?akun=' . urlencode($noWa));
+                $paymentUrl = null;
+                $masterInvoice = $masterOrder->nomor_invoice;
 
+                // Set status semua paket jadi Menunggu Pembayaran
                 foreach ($createdOrders as $o) {
                     $o->status = 'Menunggu Pembayaran';
                     $o->status_pesanan = 'Menunggu Pembayaran';
-                    // Kita tidak menyimpan payment_url di database karena ini akan diambil dinamis
-                    // oleh React Native via response JSON di bawah.
                     $o->save();
                 }
-            }
-            else {
+
+                if ($request->payment_method === 'DOKU_JOKUL') {
+                    // --- 1. VIA DOKU JOKUL MULTI ---
+                    $dokuService = new DokuJokulService();
+                    $paymentUrl = $dokuService->createPayment($masterInvoice, $grandTotalTagihan);
+
+                    if (empty($paymentUrl)) {
+                        throw new Exception("Gagal membuat tagihan DOKU.");
+                    }
+                } else {
+                    // --- 2. VIA TRIPAY MULTI ---
+                    $orderItems = [
+                        ['sku' => 'SHIPPING', 'name' => 'Ongkir Multi Koli ' . $masterInvoice, 'price' => $grandTotalTagihan, 'quantity' => 1]
+                    ];
+
+                    $tripayResponse = $this->_createTripayTransactionInternal($request->all(), $masterOrder, $grandTotalTagihan, $orderItems, $user);
+
+                    if (empty($tripayResponse['success'])) {
+                        throw new Exception($tripayResponse['message'] ?? 'Gagal membuat tagihan Tripay.');
+                    }
+                    $paymentUrl = $tripayResponse['data']['checkout_url'];
+                }
+
+                // Simpan URL yang sama persis ke semua paket (Penting untuk webhook DOKU/Tripay nantinya)
+                foreach ($createdOrders as $o) {
+                    $o->payment_url = $paymentUrl;
+                    $o->save();
+                }
+
+            } else {
                 throw new Exception("Metode pembayaran " . $request->payment_method . " tidak dikenali.");
             }
 
@@ -796,6 +844,72 @@ class KoliController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Fonnte API Error: ' . $e->getMessage());
+        }
+    }
+
+    // ==========================================
+    // HELPER: TRIPAY TRANSACTION
+    // ==========================================
+    private function _createTripayTransactionInternal(array $data, Pesanan $pesanan, int $total, array $orderItems, clone $user): array
+    {
+        $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+        $baseUrl      = '';
+        $apiKey       = '';
+        $privateKey   = '';
+        $merchantCode = '';
+
+        if ($mode === 'production') {
+            $baseUrl      = 'https://tripay.co.id/api/transaction/create';
+            $apiKey       = Api::getValue('TRIPAY_API_KEY', 'production');
+            $privateKey   = Api::getValue('TRIPAY_PRIVATE_KEY', 'production');
+            $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', 'production');
+        } else {
+            $baseUrl      = 'https://tripay.co.id/api-sandbox/transaction/create';
+            $apiKey       = Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            $privateKey   = Api::getValue('TRIPAY_PRIVATE_KEY', 'sandbox');
+            $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', 'sandbox');
+        }
+
+        if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+            return ['success' => false, 'message' => 'Konfigurasi Tripay belum lengkap.'];
+        }
+
+        $customerEmail = $user->email;
+        if (empty($customerEmail) || !filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+            $customerEmail = 'customer+' . Str::random(5) . '@tokosancaka.com';
+        }
+
+        $payload = [
+            'method'         => $data['payment_method'],
+            'merchant_ref'   => $pesanan->nomor_invoice,
+            'amount'         => $total,
+            'customer_name'  => $data['receiver_name'], // Pakai nama penerima
+            'customer_email' => $customerEmail,
+            'customer_phone' => $data['receiver_phone'],
+            'order_items'    => $orderItems,
+            'return_url'     => url('/riwayatpesanan'), // Arahkan kembali jika sudah bayar
+            'expired_time'   => time() + (24 * 60 * 60), // 24 jam
+            'signature'      => hash_hmac('sha256', $merchantCode . $pesanan->nomor_invoice . $total, $privateKey),
+        ];
+
+        try {
+            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+                ->timeout(60)->post($baseUrl, $payload);
+
+            if (!$response->successful()) {
+                return ['success' => false, 'message' => 'Gagal menghubungi server pembayaran (HTTP ' . $response->status() . ').'];
+            }
+
+            $responseData = $response->json();
+            if (!isset($responseData['success']) || $responseData['success'] !== true) {
+                return ['success' => false, 'message' => $responseData['message'] ?? 'Gagal membuat tagihan pembayaran.'];
+            }
+
+            return $responseData;
+        } catch (\Exception $e) {
+            Log::error('Error saat membuat transaksi Tripay Mobile: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Terjadi kesalahan internal saat memproses pembayaran.'];
         }
     }
 }
