@@ -167,6 +167,21 @@ class KoliController extends Controller
         // Group ID yang didapat dari React Native (Date.now())
         $groupId = $request->input('transaction_group_id');
 
+        // Deteksi apakah kurir yang dipilih adalah Instant atau Sameday
+        $isInstant = (stripos($request->courier_code, 'instant') !== false || stripos($request->service_code, 'sameday') !== false);
+
+        // Jika kurir Instant, pastikan lat & lng tidak kosong atau 0
+        if ($isInstant) {
+            if (empty($request->sender_lat) || $request->sender_lat == 0 ||
+                empty($request->receiver_lat) || $request->receiver_lat == 0) {
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'PENGIRIMAN GAGAL: Untuk kurir Instant/Sameday, Anda wajib menekan tombol "Ambil Lokasi Otomatis" untuk menangkap koordinat GPS.'
+                ], 422);
+            }
+        }
+
         DB::beginTransaction();
         try {
             $rawItemPrice = str_replace(['Rp', '.', ' ', ','], '', $request->input('item_price'));
@@ -354,6 +369,21 @@ class KoliController extends Controller
             return response()->json(['success' => false, 'message' => 'Pesanan massal sudah diproses sebelumnya.'], 422);
         }
 
+        // Deteksi apakah kurir yang dipilih adalah Instant atau Sameday
+        $isInstant = (stripos($request->courier_code, 'instant') !== false || stripos($request->service_code, 'sameday') !== false);
+
+        // Jika kurir Instant, pastikan lat & lng tidak kosong atau 0
+        if ($isInstant) {
+            if (empty($request->sender_lat) || $request->sender_lat == 0 ||
+                empty($request->receiver_lat) || $request->receiver_lat == 0) {
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'PENGIRIMAN GAGAL: Untuk kurir Instant/Sameday, Anda wajib menekan tombol "Ambil Lokasi Otomatis" untuk menangkap koordinat GPS.'
+                ], 422);
+            }
+        }
+
         DB::beginTransaction();
         try {
             $rawItemPrice = str_replace(['Rp', '.', ' ', ','], '', $request->input('item_price'));
@@ -365,6 +395,9 @@ class KoliController extends Controller
                 'sender_district_id' => 'required', 'receiver_district_id' => 'required',
                 'payment_method' => 'required', 'item_price' => 'required|numeric|min:1000',
                 'packages' => 'required|array|min:1',
+                'packages.*.weight' => 'required|numeric|min:1',
+                'packages.*.courier_code' => 'required|string',
+                'packages.*.service_code' => 'required|string',
             ]);
 
             $this->_saveKontak($request, 'sender', 'Pengirim');
@@ -651,7 +684,13 @@ class KoliController extends Controller
         }
 
         // 1. Deteksi apakah ini layanan Instant / Sameday
-        $isInstant = (strpos(strtolower($data['courier_code']), 'instant') !== false || strpos($serviceCodeLower, 'instant') !== false || strpos($serviceCodeLower, 'sameday') !== false);
+        $isInstant = (stripos($request->courier_code, 'instant') !== false || stripos($request->service_code, 'sameday') !== false);
+        if ($isInstant && (empty($request->sender_lat) || empty($request->receiver_lat))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Layanan Instant/Sameday wajib melampirkan titik koordinat GPS.'
+            ], 422);
+        }
 
         $useInsuranceFlag = ($data['ansuransi'] == 'iya') ? 1 : 0;
 
@@ -665,14 +704,14 @@ class KoliController extends Controller
                 'packages' => [[
                     'destination_name' => $order->receiver_name, 'destination_phone' => $order->receiver_phone,
                     // Gunakan koordinat dari database, fallback ke titik default jika 0
-                    'destination_lat' => $order->receiver_lat != 0 ? $order->receiver_lat : '-7.250445',
-                    'destination_long' => $order->receiver_lng != 0 ? $order->receiver_lng : '112.768845',
+                    'destination_lat' => (!empty($order->receiver_lat) && $order->receiver_lat != 0) ? $order->receiver_lat : null,
+                    'destination_long' => (!empty($order->receiver_lng) && $order->receiver_lng != 0) ? $order->receiver_lng : null,
                     'destination_address' => $order->receiver_address, 'destination_address_note' => '-',
 
                     'origin_name' => $order->sender_name, 'origin_phone' => $order->sender_phone,
                     // Gunakan koordinat dari database, fallback ke titik default jika 0
-                    'origin_lat' => $order->sender_lat != 0 ? $order->sender_lat : '-7.250445',
-                    'origin_long' => $order->sender_lng != 0 ? $order->sender_lng : '112.768845',
+                    'origin_lat' => (!empty($order->sender_lat) && $order->sender_lat != 0) ? $order->sender_lat : null,
+                    'origin_long' => (!empty($order->sender_lng) && $order->sender_lng != 0) ? $order->sender_lng : null,
                     'origin_address' => $order->sender_address, 'origin_address_note' => '-',
 
                     'shipping_price' => (int)$shipping_cost,
