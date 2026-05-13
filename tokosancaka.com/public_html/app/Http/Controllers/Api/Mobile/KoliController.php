@@ -302,12 +302,18 @@ class KoliController extends Controller
                 if (!$user || $user->saldo < $finalPriceDB) throw new Exception("Saldo tidak mencukupi untuk paket ini.");
                 $user->decrement('saldo', $finalPriceDB);
                 $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
-            } elseif (in_array($request->payment_method, ['COD', 'CODBARANG'])) {
-                $pesanan->status = 'Menunggu Pickup'; $pesanan->status_pesanan = 'Menunggu Pickup';
-            } elseif (strtoupper($request->payment_method) === 'GATEWAY') {
+            } elseif (!in_array($request->payment_method, ['CASH', 'Potong Saldo', 'COD', 'CODBARANG'])) {
+                // KONDISI BARU: Jika bukan Cash/Saldo/COD, maka otomatis dianggap Payment Gateway (Tripay/DOKU)
+
                 $noWa = $user->no_wa ?? '08000000';
-                // URL Tagihan dilempar ke mobile agar user bisa klik
                 $paymentUrl = url('/pembayaran?akun=' . urlencode($noWa));
+
+                // Khusus Single (Jika di store() ganti $pesanan jadi $o)
+                $pesanan->status = 'Menunggu Pembayaran';
+                $pesanan->status_pesanan = 'Menunggu Pembayaran';
+                $pesanan->save();
+            } else {
+                throw new Exception("Metode pembayaran tidak valid.");
             }
 
             $pesanan->save();
