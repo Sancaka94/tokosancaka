@@ -347,4 +347,35 @@ class TicketingController extends BaseController
         return $response;
     }
 
+    /**
+     * POST Airline/BookingDetail
+     * Endpoint untuk menarik detail history tiket (Status HOLD/ISSUED)
+     */
+    public function airlineBookingDetail(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'bookingCode' => 'required|string',
+            'bookingDate' => 'required|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, Kode Booking dan Tanggal diperlukan.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        $payload = $request->all();
+
+        // Parameter opsional
+        $payload['referenceNo'] = $payload['referenceNo'] ?? "";
+
+        $response = $this->forwardRequest('Airline/BookingDetail', $payload);
+
+        Log::info("\nLOG LOG: Request Airline/BookingDetail dieksekusi untuk PNR: " . $payload['bookingCode']);
+
+        return $response;
+    }
+
 }
