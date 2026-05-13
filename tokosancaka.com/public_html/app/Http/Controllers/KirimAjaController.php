@@ -301,41 +301,74 @@ class KirimAjaController extends Controller
                     $this->updatePercetakanDB($orderId, $awb, $statusGeneral);
                 }
 
+
+                // ============================ Looping untuk pencarian pemilik order id =====================
+
+                if (!$foundInMainDB) {
+                    $this->updatePercetakanDB($orderId, $awb, $statusGeneral);
+                }
+
+                // 👇 2. TARUH KODEMU TEPAT DI SINI 👇
+                $buyerId = null;
+
+                // KITA CARI TAHU DULU INI MILIK SIAPA BERDASARKAN DATABASE
+                if (isset($order) && $order) {
+                    $buyerId = $order->user_id;
+                } elseif (isset($cekPesanan) && $cekPesanan) {
+                    $buyerId = $cekPesanan->customer_id;
+                } elseif (isset($orderMarketplace) && $orderMarketplace) {
+                    $buyerId = $orderMarketplace->user_id ?? $orderMarketplace->customer_id ?? null;
+                }
+
+                // JIKA PEMILIKNYA KETEMU
+                if ($buyerId) {
+                    $customer = DB::table('Pengguna')->where('id_pengguna', $buyerId)->first();
+
+                    if ($customer && !empty($customer->expo_token)) {
+                        $statusText = $pesananStatusMap[$method] ?? $method;
+                        $pushMessages[] = [
+                            'to' => $customer->expo_token,
+                            'title' => 'Update Pesananmu! 📦',
+                            'body' => "Pesanan $orderId statusnya sekarang: $statusText",
+                            'sound' => 'default',
+                        ];
+                    }
+                }
+                // 👆 SELESAI TARUH KODE DI SINI 👆
+
             } // End Foreach
 
-            // =========================================================================
-            // 👇 NOTIFIKASI WEBHOOK KE ADMIN (ID 4) 👇
-            // =========================================================================
+                // 👇 3. GANTI BLOK NOTIFIKASI LAMA DENGAN INI 👇
             try {
-                // Ambil token Admin ID 4
+                // Tambahkan Notifikasi Rekap Khusus untuk Admin ID 4
                 $admin = DB::table('Pengguna')->where('id_pengguna', 4)->first();
-
                 if ($admin && !empty($admin->expo_token)) {
-                    $statusText = $pesananStatusMap[$method] ?? $method;
+                    $statusTextSummary = $pesananStatusMap[$method] ?? $method;
                     $jumlahResi = count($dataArray);
 
-                    $pushPayload = [
+                    $pushMessages[] = [
                         'to' => $admin->expo_token,
                         'title' => 'Update Sancaka Express 📦',
-                        'body' => "Ada update status '$statusText' untuk $jumlahResi resi pengiriman.",
+                        'body' => "Ada update status '$statusTextSummary' untuk $jumlahResi resi pengiriman.",
                         'sound' => 'default',
                     ];
+                }
 
-                    // Tembak ke API Expo
-                    \Illuminate\Support\Facades\Http::withHeaders([
-                        'Accept' => 'application/json',
-                        'Content-Type' => 'application/json',
-                    ])->post('https://exp.host/--/api/v2/push/send', $pushPayload);
-
-                    Log::info("[WEBHOOK-KA] Notifikasi webhook berhasil dikirim ke Admin ID 4.");
+                // Tembak Semua Notifikasi (Customer + Admin) ke Expo
+                if (!empty($pushMessages)) {
+                    $chunks = array_chunk($pushMessages, 100); // Pecah per 100 agar aman
+                    foreach ($chunks as $chunk) {
+                        \Illuminate\Support\Facades\Http::withHeaders([
+                            'Accept' => 'application/json',
+                            'Content-Type' => 'application/json',
+                        ])->post('https://exp.host/--/api/v2/push/send', $chunk);
+                    }
+                    Log::info("[WEBHOOK-KA] Berhasil mengirim " . count($pushMessages) . " notifikasi ke Customer & Admin.");
                 }
             } catch (\Exception $notifError) {
-                // Jangan sampai webhook gagal membalas KiriminAja hanya karena notifikasi error
-                Log::error('[WEBHOOK-KA] Gagal kirim notif ke Admin: ' . $notifError->getMessage());
+                Log::error('[WEBHOOK-KA] Gagal kirim barisan notifikasi: ' . $notifError->getMessage());
             }
-            // =========================================================================
-            // 👆 BATAS AKHIR NOTIFIKASI 👆
-            // =========================================================================
+            // 👆 SAMPAI SINI 👆
 
             DB::commit();
             return response()->json(['success' => true]);
