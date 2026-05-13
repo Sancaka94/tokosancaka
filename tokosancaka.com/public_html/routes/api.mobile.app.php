@@ -455,6 +455,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/booking-list', [TicketingController::class, 'airlineBookingList']);
                 Route::post('/booking-detail', [TicketingController::class, 'airlineBookingDetail']);
                 Route::post('/issued', [TicketingController::class, 'airlineIssued']);
+                Route::post('/local-detail', [TicketingController::class, 'getLocalBookingDetail']);
 
                 // --- TAMBAHKAN BARIS INI UNTUK PING ---
                 Route::post('/timer-elapsed', [TicketingController::class, 'airlineTimerElapsed']);

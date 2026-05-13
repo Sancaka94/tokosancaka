@@ -194,11 +194,59 @@ class TicketingController extends BaseController
 
         // 3. Eksekusi Request ke Darmawisata
         $response = $this->forwardRequest('Airline/Booking', $payload);
+        $jsonResponse = json_decode($response->getContent(), true);
 
-        // Cetak Log Response dari Darmawisata
-        Log::info("\nLOG LOG: Response dari Darmawisata (Airline/Booking):\n" . json_encode(json_decode($response->getContent()), JSON_PRETTY_PRINT));
+        // 4. 🔥 JIKA BOOKING SUKSES, SIMPAN KE DATABASE LOKAL 🔥
+        if (isset($jsonResponse['status']) && $jsonResponse['status'] === 'SUCCESS') {
+            try {
+                // Contoh penyimpanan ke tabel (Silakan sesuaikan dengan nama tabel/model Anda)
+                DB::table('pesanan_tikets')->insert([
+                    'user_id'       => $request->user()->id, // Mengambil ID user yang login
+                    'booking_code'  => $jsonResponse['bookingCode'], // PNR: Z4PF8J
+                    'booking_date'  => $jsonResponse['bookingDate'],
+                    'airline_id'    => $jsonResponse['airlineID'],
+                    'origin'        => $jsonResponse['origin'],
+                    'destination'   => $jsonResponse['destination'],
+                    'ticket_price'  => $jsonResponse['ticketPrice'] ?? 0,
+                    'status'        => 'HOLD', // Menunggu pembayaran
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ]);
+
+                Log::info("✅ Booking {$jsonResponse['bookingCode']} berhasil disimpan ke Database Lokal.");
+            } catch (\Exception $e) {
+                Log::error("❌ Gagal simpan booking ke DB Lokal: " . $e->getMessage());
+            }
+        }
+
+        Log::info("\nLOG LOG: Response dari Darmawisata (Airline/Booking):\n" . json_encode($jsonResponse, JSON_PRETTY_PRINT));
 
         return $response;
+    }
+
+    /**
+     * Mengambil detail tiket dari database lokal berdasarkan Booking Code
+     */
+    public function getLocalBookingDetail(Request $request)
+    {
+        $request->validate(['bookingCode' => 'required|string']);
+
+        $tiket = DB::table('pesanan_tikets')
+                    ->where('user_id', $request->user()->id)
+                    ->where('booking_code', $request->bookingCode)
+                    ->first();
+
+        if (!$tiket) {
+            return response()->json([
+                'status' => 'FAILED',
+                'message' => 'Tiket tidak ditemukan di database.'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'SUCCESS',
+            'data'   => $tiket
+        ]);
     }
 
     /**
