@@ -19,9 +19,6 @@ use Exception;
 use App\Models\Pesanan;
 use App\Models\User;
 
-// --- SERVICES ---
-use App\Services\KiriminAjaService;
-use App\Services\DokuJokulService;
 
 class PesananController extends Controller
 {
