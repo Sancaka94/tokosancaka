@@ -205,7 +205,7 @@ class TicketingController extends BaseController
      * POST Airline/BaggageAndMeal
      * Mendapatkan daftar add-ons bagasi dan makanan
      */
-    public function airlineBaggageAndMeal(Request $request)
+    public function baggageAndMeal(Request $request)
     {
         // 1. Validasi Data sesuai dokumen (Required fields)
         $validator = Validator::make($request->all(), [

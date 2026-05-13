@@ -447,7 +447,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/priceAllAirline', [TicketingController::class, 'airlinePriceAllAirline']);
 
                 // Flow Addons
-                Route::post('/baggage-meal', [TicketingController::class, 'airlineBaggageAndMeal']);
+                Route::post('/baggageAndMeal', [TicketingController::class, 'baggageAndMeal']);
                 Route::post('/seat', [TicketingController::class, 'airlineSeat']);
 
                 // Flow Transaksi
