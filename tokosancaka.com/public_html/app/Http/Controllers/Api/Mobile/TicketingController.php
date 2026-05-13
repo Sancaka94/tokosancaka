@@ -185,7 +185,7 @@ class TicketingController extends BaseController
             ], 422);
         }
 
-        $payload = $request->all();
+        $payload = json_decode($request->getContent(), true);
 
         // Pastikan parameter opsional aman
         $payload['returnDate'] = $payload['returnDate'] ?? "0001-01-01T00:00:00";
