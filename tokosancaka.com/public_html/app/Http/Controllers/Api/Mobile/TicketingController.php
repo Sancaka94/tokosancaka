@@ -164,7 +164,7 @@ class TicketingController extends BaseController
      */
     public function airlineBooking(Request $request)
     {
-        // 1. Validasi Parameter Dasar (Opsional namun disarankan untuk mencegah hit kosong ke Darmawisata)
+        // 1. Validasi Parameter Dasar
         $validator = Validator::make($request->all(), [
             'airlineID'               => 'required|string',
             'origin'                  => 'required|string',
@@ -185,45 +185,67 @@ class TicketingController extends BaseController
             ], 422);
         }
 
-       $payload = $request->all();
+        $payload = $request->all();
 
-    // Pastikan parameter opsional aman
-    $payload['returnDate'] = $payload['returnDate'] ?? "0001-01-01T00:00:00";
-    $payload['schReturns'] = $payload['schReturns'] ?? [];
-    $payload['insurance']  = $payload['insurance'] ?? false;
+        // Pastikan parameter opsional aman
+        $payload['returnDate'] = $payload['returnDate'] ?? "0001-01-01T00:00:00";
+        $payload['schReturns'] = $payload['schReturns'] ?? [];
+        $payload['insurance']  = $payload['insurance'] ?? false;
 
-    // Hit ke Darmawisata
-    $response = $this->forwardRequest('Airline/Booking', $payload);
-    $json = json_decode($response->getContent(), true);
+        // Hit ke Darmawisata
+        $response = $this->forwardRequest('Airline/Booking', $payload);
+        $json = json_decode($response->getContent(), true);
 
-    if (isset($json['status']) && $json['status'] === 'SUCCESS') {
-        try {
-            // Gunakan Model PesananTiket
-            \App\Models\PesananTiket::create([
-                'user_id'       => $request->user()->id,
-                'booking_code'  => $json['bookingCode'],
-                'booking_date'  => $json['bookingDate'],
-                'time_limit'    => $json['timeLimit'],
-                'airline_id'    => $json['airlineID'],
-                'origin'        => $json['origin'],
-                'destination'   => $json['destination'],
-                'depart_date'   => $json['departDate'],
-                'trip_type'     => $json['tripType'],
-                'pax_adult'     => $json['paxAdult'],
-                'pax_child'     => $json['paxChild'],
-                'pax_infant'    => $json['paxInfant'],
-                'ticket_price'  => $json['ticketPrice'] ?? 0,
-                'status'        => 'HOLD',
-                'flight_detail' => $json['flightDeparts'] ?? [],
-                'pax_detail'    => $request->paxDetails, // Data dari request mobile
-            ]);
-        } catch (\Exception $e) {
-            Log::error("Gagal simpan ke database lokal: " . $e->getMessage());
+        if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+            try {
+                // Menyusun Nama dan Telepon Kontak dari Request
+                $contactName  = trim($request->contactFirstName . ' ' . ($request->contactLastName ?? ''));
+                $contactPhone = $request->contactCountryCodePhone . $request->contactAreaCodePhone . ($request->contactRemainingPhoneNo ?? '');
+
+                // Gunakan Model PesananTiket
+                \App\Models\PesananTiket::create([
+                    'user_id'       => $request->user()->id,
+                    'booking_code'  => $json['bookingCode'],
+                    'booking_date'  => $json['bookingDate'] ?? now(),
+                    'time_limit'    => $json['timeLimit'] ?? null,
+                    'airline_id'    => $json['airlineID'] ?? $request->airlineID,
+                    'origin'        => $json['origin'] ?? $request->origin,
+                    'destination'   => $json['destination'] ?? $request->destination,
+                    'depart_date'   => $json['departDate'] ?? $request->departDate,
+                    'trip_type'     => $json['tripType'] ?? $request->tripType,
+                    'pax_adult'     => $json['paxAdult'] ?? $request->paxAdult ?? 1,
+                    'pax_child'     => $json['paxChild'] ?? $request->paxChild ?? 0,
+                    'pax_infant'    => $json['paxInfant'] ?? $request->paxInfant ?? 0,
+
+                    // 👇 TAMBAHAN DATA KONTAK AGAR TIDAK GAGAL SAVE 👇
+                    'contact_name'  => $contactName,
+                    'contact_phone' => $contactPhone,
+                    'contact_email' => $request->contactEmail ?? '-',
+
+                    'ticket_price'  => $json['ticketPrice'] ?? 0,
+                    'status'        => 'HOLD',
+
+                    // Fallback ke schDeparts dari request jika flightDeparts dari API kosong
+                    'flight_detail' => !empty($json['flightDeparts']) ? $json['flightDeparts'] : $request->schDeparts,
+                    'pax_detail'    => $request->paxDetails,
+                ]);
+
+                Log::info("LOG SUCCESS: Data booking {$json['bookingCode']} berhasil disimpan ke database lokal.");
+
+            } catch (\Exception $e) {
+                // Catat errornya secara detail jika masih gagal
+                Log::error("LOG FATAL ERROR: Gagal simpan database lokal saat Booking! Pesan: " . $e->getMessage());
+                Log::error("Trace: " . $e->getTraceAsString());
+
+                return response()->json([
+                    'status'  => 'FAILED',
+                    'message' => 'DB ERROR: ' . $e->getMessage(),
+                ], 500);
+            }
         }
-    }
 
-    return $response;
-}
+        return $response;
+    }
 
     public function getLocalBookingDetail(Request $request)
 {
