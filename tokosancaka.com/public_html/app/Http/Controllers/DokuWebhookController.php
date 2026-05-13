@@ -75,6 +75,9 @@ class DokuWebhookController extends Controller
 
             if (strtoupper($status) === 'SUCCESS') {
 
+                // Kirim notifikasi pembayaran ke Expo Mobile (Customer & Admin)
+                $this->sendExpoPaymentNotification($orderId);
+
                 // -------------------------------------------------------------
                 // A.1 AKTIVASI TENANT BARU (SEWA-)
                 // -------------------------------------------------------------
@@ -535,5 +538,79 @@ class DokuWebhookController extends Controller
             'target' => $target,
             'message' => $message
         ]);
+    }
+
+    // =========================================================================
+    // FUNGSI KHUSUS UNTUK KIRIM NOTIFIKASI PEMBAYARAN KE EXPO MOBILE
+    // =========================================================================
+    private function sendExpoPaymentNotification($orderId)
+    {
+        try {
+            $buyerId = null;
+            $pushMessages = [];
+
+            // 1. CARI PEMILIK INVOICE DI DATABASE UTAMA
+            // A. Cek di tabel Pesanan (Sancaka Express / Mobile)
+            $pesanan = DB::table('Pesanan')->where('nomor_invoice', $orderId)->first();
+            if ($pesanan) {
+                $buyerId = $pesanan->customer_id;
+            }
+
+            // B. Cek di tabel Orders (Toko Utama / Checkout)
+            if (!$buyerId) {
+                $order = DB::table('orders')->where('invoice_number', $orderId)->first();
+                if ($order) {
+                    $buyerId = $order->user_id;
+                }
+            }
+
+            // C. Cek di tabel TopUp (Isi Saldo Aplikasi)
+            if (!$buyerId && Str::startsWith($orderId, 'TOPUP-')) {
+                $topup = DB::table('top_ups')
+                            ->where('transaction_id', $orderId)
+                            ->orWhere('reference_id', $orderId)
+                            ->first();
+                if ($topup) {
+                    $buyerId = $topup->customer_id ?? $topup->user_id ?? null;
+                }
+            }
+
+            // 2. SIAPKAN PESAN UNTUK CUSTOMER (JIKA DITEMUKAN)
+            if ($buyerId) {
+                $customer = DB::table('Pengguna')->where('id_pengguna', $buyerId)->first();
+                if ($customer && !empty($customer->expo_token)) {
+                    $pushMessages[] = [
+                        'to' => $customer->expo_token,
+                        'title' => 'Pembayaran Berhasil! 🎉',
+                        'body' => "Yey! Pembayaran untuk pesanan $orderId telah berhasil diverifikasi.",
+                        'sound' => 'default',
+                    ];
+                }
+            }
+
+            // 3. SIAPKAN PESAN UNTUK ADMIN (ID 4) SELALU DIKIRIM
+            $admin = DB::table('Pengguna')->where('id_pengguna', 4)->first();
+            if ($admin && !empty($admin->expo_token)) {
+                $pushMessages[] = [
+                    'to' => $admin->expo_token,
+                    'title' => 'Dana Masuk! 💰',
+                    'body' => "Invoice $orderId baru saja sukses dibayar oleh customer.",
+                    'sound' => 'default',
+                ];
+            }
+
+            // 4. TEMBAK SEMUA NOTIFIKASI KE EXPO SEKALIGUS
+            if (!empty($pushMessages)) {
+                \Illuminate\Support\Facades\Http::withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])->post('https://exp.host/--/api/v2/push/send', $pushMessages);
+
+                Log::info("[WEBHOOK-DOKU] 📲 Notifikasi pembayaran Expo berhasil dikirim untuk $orderId");
+            }
+
+        } catch (\Exception $e) {
+            Log::error("[WEBHOOK-DOKU] ❌ Gagal kirim notifikasi Expo: " . $e->getMessage());
+        }
     }
 }
