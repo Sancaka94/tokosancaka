@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\Api;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+// --- SERVICES ---
+use App\Services\KiriminAjaService;
+use App\Services\DokuJokulService;
 use Exception;
 
 // --- MODEL ---
@@ -1040,6 +1044,76 @@ TEXT;
                 'success' => false,
                 'message' => 'Terjadi kesalahan sistem saat mengambil data pesanan.'
             ], 500);
+        }
+    }
+
+    /**
+     * ==========================================
+     * HELPER: TRIPAY TRANSACTION
+     * ==========================================
+     * Fungsi ini membuat tagihan ke API Tripay dan
+     * mengembalikan URL pembayaran.
+     */
+    private function _createTripayTransactionInternal(array $data, Pesanan $pesanan, int $total, array $orderItems, $user): array
+    {
+        $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+        $baseUrl      = '';
+        $apiKey       = '';
+        $privateKey   = '';
+        $merchantCode = '';
+
+        if ($mode === 'production') {
+            $baseUrl      = 'https://tripay.co.id/api/transaction/create';
+            $apiKey       = Api::getValue('TRIPAY_API_KEY', 'production');
+            $privateKey   = Api::getValue('TRIPAY_PRIVATE_KEY', 'production');
+            $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', 'production');
+        } else {
+            $baseUrl      = 'https://tripay.co.id/api-sandbox/transaction/create';
+            $apiKey       = Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            $privateKey   = Api::getValue('TRIPAY_PRIVATE_KEY', 'sandbox');
+            $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', 'sandbox');
+        }
+
+        if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+            return ['success' => false, 'message' => 'Konfigurasi Tripay belum lengkap.'];
+        }
+
+        $customerEmail = $user->email;
+        if (empty($customerEmail) || !filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+            $customerEmail = 'customer+' . Str::random(5) . '@tokosancaka.com';
+        }
+
+        $payload = [
+            'method'         => $data['payment_method'],
+            'merchant_ref'   => $pesanan->nomor_invoice,
+            'amount'         => $total,
+            'customer_name'  => $data['receiver_name'], // Pakai nama penerima
+            'customer_email' => $customerEmail,
+            'customer_phone' => $data['receiver_phone'],
+            'order_items'    => $orderItems,
+            'return_url'     => url('/riwayatpesanan'), // Arahkan kembali jika sudah bayar
+            'expired_time'   => time() + (24 * 60 * 60), // 24 jam
+            'signature'      => hash_hmac('sha256', $merchantCode . $pesanan->nomor_invoice . $total, $privateKey),
+        ];
+
+        try {
+            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+                ->timeout(60)->post($baseUrl, $payload);
+
+            if (!$response->successful()) {
+                return ['success' => false, 'message' => 'Gagal menghubungi server pembayaran (HTTP ' . $response->status() . ').'];
+            }
+
+            $responseData = $response->json();
+            if (!isset($responseData['success']) || $responseData['success'] !== true) {
+                return ['success' => false, 'message' => $responseData['message'] ?? 'Gagal membuat tagihan pembayaran.'];
+            }
+
+            return $responseData;
+        } catch (\Exception $e) {
+            Log::error('Error saat membuat transaksi Tripay Mobile: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Terjadi kesalahan internal saat memproses pembayaran.'];
         }
     }
 
