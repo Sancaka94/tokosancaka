@@ -292,6 +292,7 @@ class PesananController extends Controller
             }
             // C. PAYMENT GATEWAY (Diarahkan ke Web Browser)
             // ---> PERBAIKAN: Tangkap semua metode yang BUKAN COD dan BUKAN Saldo/Cash
+            // C. PAYMENT GATEWAY (Diarahkan ke Tripay / DOKU)
             elseif (!in_array(strtoupper(trim($validatedData['payment_method'])), ['CASH', 'SALDO', 'POTONG SALDO', '#SALDO', 'COD', '#COD_ONGKIR', 'CODBARANG', '#COD_BARANG'])) {
                 Log::info("[API MOBILE] Metode pembayaran menggunakan Web Payment Gateway: " . $validatedData['payment_method']);
 
@@ -299,13 +300,37 @@ class PesananController extends Controller
                 $order->status = 'Menunggu Pembayaran';
                 $order->status_pesanan = 'Menunggu Pembayaran';
 
-                // Buatkan URL ke portal web Sancaka untuk dibayar
-                $paymentUrl = url('/pembayaran?akun=' . urlencode($user->no_wa));
+                // Hitung total tagihan (Harga Barang + Ongkir)
+                $finalPriceDB = $validatedData['item_price'] + $total_paid_ongkir;
 
-                // Simpan url ke tabel Pesanan
+                $paymentUrl = null;
+
+                if ($validatedData['payment_method'] === '#DOKU' || $validatedData['payment_method'] === 'DOKU_JOKUL') {
+                    // --- 1. VIA DOKU JOKUL ---
+                    $dokuService = new DokuJokulService();
+                    $paymentUrl = $dokuService->createPayment($order->nomor_invoice, $finalPriceDB);
+
+                    if (empty($paymentUrl)) {
+                        throw new Exception("Gagal membuat tagihan DOKU.");
+                    }
+                } else {
+                    // --- 2. VIA TRIPAY ---
+                    $orderItems = [
+                        ['sku' => 'ORDER', 'name' => 'Pesanan ' . $order->nomor_invoice, 'price' => $finalPriceDB, 'quantity' => 1]
+                    ];
+
+                    $tripayResponse = $this->_createTripayTransactionInternal($validatedData, $order, $finalPriceDB, $orderItems, $user);
+
+                    if (empty($tripayResponse['success'])) {
+                        throw new Exception($tripayResponse['message'] ?? 'Gagal membuat tagihan Tripay.');
+                    }
+                    $paymentUrl = $tripayResponse['data']['checkout_url']; // Ini link asli Tripay!
+                }
+
+                // Simpan url asli Tripay/DOKU ke tabel Pesanan
                 $order->payment_url = $paymentUrl;
 
-                Log::info("[API MOBILE] URL Portal Pembayaran disiapkan: {$paymentUrl}");
+                Log::info("[API MOBILE] URL Gateway disiapkan: {$paymentUrl}");
             }
             // D. JIKA ADA METODE LAIN YANG TERLEWAT (Fallback)
             else {
