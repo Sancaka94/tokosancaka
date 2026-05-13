@@ -12,7 +12,6 @@ class BaseController extends Controller
     protected $darmawisataMode;
     protected $darmawisataBaseUrl;
     protected $darmawisataUserId;
-    protected $darmawisataToken;
 
     public function __construct()
     {
@@ -21,21 +20,26 @@ class BaseController extends Controller
         $this->darmawisataBaseUrl = Api::getValue('DHARMAWISATA_BASE_URL', $this->darmawisataMode);
         $this->darmawisataUserId  = Api::getValue('DHARMAWISATA_USER_ID', $this->darmawisataMode);
 
-        // 2. KHUSUS TOKEN: Bypass Cache! Ambil langsung secara real-time dari Database
-        $tokenData = Api::where('key', 'DHARMAWISATA_ACCESS_TOKEN')
-                        ->where('group', $this->darmawisataMode)
-                        ->first();
-        $this->darmawisataToken = $tokenData ? $tokenData->value : '';
+        // KITA HAPUS LOGIKA PENGAMBILAN TOKEN GLOBAL DARI DATABASE DI SINI
     }
 
     /**
-     * Helper untuk meneruskan request ke API Darmawisata dengan Auto-Reconnect
+     * Helper untuk meneruskan request ke API Darmawisata
      */
-    public function forwardRequest($endpoint, $payload = [], $isRetry = false)
+    public function forwardRequest($endpoint, $payload = [])
     {
+        // Tetap pastikan userID disuntikkan dari backend demi keamanan
         if ($endpoint !== 'Session/Login') {
-            $payload['userID']      = $this->darmawisataUserId;
-            $payload['accessToken'] = $this->darmawisataToken;
+            $payload['userID'] = $this->darmawisataUserId;
+
+            // accessToken TIDAK LAGI DITIMPA.
+            // Kita asumsikan $payload['accessToken'] sudah dikirim dari Mobile App
+            if (!isset($payload['accessToken']) || empty($payload['accessToken'])) {
+                return response()->json([
+                    'status'  => 'FAILED',
+                    'message' => 'Access Token Darmawisata tidak ditemukan dalam request.'
+                ], 400);
+            }
         }
 
         $url = rtrim($this->darmawisataBaseUrl, '/') . '/' . ltrim($endpoint, '/');
@@ -63,15 +67,13 @@ class BaseController extends Controller
             Log::info("===============================================================\n");
             // --------------------
 
-            // Parsing XML fallback
+            // Fallback XML
             if (empty($data) && (str_contains($body, '<?xml') || str_contains($body, '<AuthResponse'))) {
-                Log::info("LOG: Deteksi respon XML, melakukan konversi ke JSON...");
                 $xml = simplexml_load_string($body);
                 $data = json_decode(json_encode($xml), true);
             }
 
             if (empty($data)) {
-                Log::error("LOG ERROR: Format respon server tidak dikenali (Bukan JSON/XML)");
                 return response()->json([
                     'status'   => 'FAILED',
                     'message'  => 'Format respon server tidak dikenali',
@@ -79,58 +81,29 @@ class BaseController extends Controller
                 ], $response->status());
             }
 
-            // =========================================================================
-            // SISTEM AUTO-RECONNECT (DETEKSI TOKEN EXPIRED)
-            // =========================================================================
-            $isAuthFailed = isset($data['status']) && $data['status'] === 'FAILED'
-                            && isset($data['respMessage'])
-                            && stripos($data['respMessage'], 'member authentication failed') !== false;
-
-            if ($isAuthFailed && !$isRetry && $endpoint !== 'Session/Login') {
-                Log::warning("LOG WARNING: Token Darmawisata Expired / Ditolak. Memulai proses Auto-Reconnect...");
-
-                $newToken = $this->autoReconnect();
-
-                if ($newToken) {
-                    $this->darmawisataToken = $newToken;
-                    $payload['accessToken'] = $newToken;
-
-                    Log::info("LOG SUCCESS: Auto-Reconnect berhasil. Mengulangi request ke: {$endpoint}");
-                    return $this->forwardRequest($endpoint, $payload, true);
-                } else {
-                    Log::error("LOG ERROR: Auto-Reconnect gagal. Menghentikan request.");
-                }
-            }
+            // CATATAN: Fitur Auto-Reconnect dihapus dari proses ini.
+            // Jika token expired di tengah jalan, idealnya user diminta mengulangi pencarian dari awal
+            // karena flow "schedule -> price" di Darmawisata sudah hangus jika token mati.
 
             return response()->json($data, $response->status());
 
         } catch (\Exception $e) {
-            Log::error("\n==================== [DARMAWISATA FATAL ERROR] ====================");
-            Log::error("ENDPOINT : {$endpoint}");
-            Log::error("MESSAGE  : " . $e->getMessage());
-            Log::error("===================================================================\n");
-
+            Log::error("DARMAWISATA FATAL ERROR: " . $e->getMessage());
             return response()->json([
                 'status'  => 'FAILED',
-                'message' => 'Gagal terhubung ke server Darmawisata: ' . $e->getMessage()
+                'message' => 'Gagal terhubung ke server Darmawisata.'
             ], 500);
         }
     }
 
     /**
-     * Fungsi rahasia untuk melakukan login ulang di belakang layar
+     * Endpoint BARU untuk di-hit oleh Mobile App guna mendapatkan Token baru
+     * setiap kali user mulai mencari tiket.
      */
-    protected function autoReconnect()
+    public function generateNewToken()
     {
-        Log::info("LOG: Mengambil kredensial dari database untuk Auto-Reconnect...");
-
         $staticToken = Api::getValue('DHARMAWISATA_STATIC_TOKEN', $this->darmawisataMode);
         $password    = Api::getValue('DHARMAWISATA_PASSWORD', $this->darmawisataMode);
-
-        if (!$staticToken || !$password) {
-            Log::error("LOG ERROR: Auto-Reconnect Gagal. Kredensial (Static Token / Password) tidak ditemukan di Database.");
-            return false;
-        }
 
         $md5Password  = md5($password);
         $securityCode = md5($staticToken . $md5Password);
@@ -145,8 +118,6 @@ class BaseController extends Controller
 
         $url = rtrim($this->darmawisataBaseUrl, '/') . '/Session/Login';
 
-        Log::info("LOG: Menembak API Session/Login...");
-
         try {
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
@@ -155,30 +126,18 @@ class BaseController extends Controller
 
             $data = $response->json();
 
-            if (isset($data['status']) && $data['status'] === 'SUCCESS' && isset($data['accessToken'])) {
-                $newAccessToken = $data['accessToken'];
-
-                Log::info("LOG SUCCESS: Mendapatkan Token Baru: " . substr($newAccessToken, 0, 10) . "...");
-
-                // Simpan token baru ke Database (Cara ini lebih aman untuk mem-bypass error cache)
-                $apiRecord = Api::firstOrNew([
-                    'key'   => 'DHARMAWISATA_ACCESS_TOKEN',
-                    'group' => $this->darmawisataMode
+            if (isset($data['status']) && $data['status'] === 'SUCCESS') {
+                return response()->json([
+                    'status' => 'SUCCESS',
+                    'message' => 'Token generated successfully',
+                    'accessToken' => $data['accessToken'] // Berikan ini ke Mobile App!
                 ]);
-                $apiRecord->value = $newAccessToken;
-                $apiRecord->save();
-
-                Log::info("LOG SUCCESS: Token baru berhasil disimpan ke Database permanen.");
-
-                return $newAccessToken;
             }
 
-            Log::error("LOG ERROR: Respon Login Gagal. Pesan dari Darmawisata: " . json_encode($data));
-            return false;
+            return response()->json(['status' => 'FAILED', 'message' => 'Gagal generate token dari Darmawisata'], 400);
 
         } catch (\Exception $e) {
-            Log::error("LOG ERROR: Koneksi ke Session/Login terputus. Pesan: " . $e->getMessage());
-            return false;
+            return response()->json(['status' => 'FAILED', 'message' => $e->getMessage()], 500);
         }
     }
 }
