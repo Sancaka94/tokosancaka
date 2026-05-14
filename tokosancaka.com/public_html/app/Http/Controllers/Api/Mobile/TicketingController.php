@@ -1028,7 +1028,7 @@ class TicketingController extends BaseController
      * Mengambil Access Token dari Darmawisata (Session/Login)
      * Rumus: securityCode = MD5(token + MD5(password))
      */
-    private function sessionLogin()
+    public function sessionLogin()
     {
         // 1. Kredensial API Darmawisata
         $userId   = 'PWB6RGHXRC'; //
