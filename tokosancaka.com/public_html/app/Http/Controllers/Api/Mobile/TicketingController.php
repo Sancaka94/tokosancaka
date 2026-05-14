@@ -1032,7 +1032,7 @@ class TicketingController extends BaseController
     private function sessionLogin()
     {
         $userId   = 'PWB6RGHXRC';
-        $password = 'MASUKKAN_PASSWORD_ANDA'; // Pastikan password ini benar tanpa spasi
+        $password = 'Darmaj4y4'; // Pastikan password ini benar tanpa spasi
         $url      = 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/Session/Login';
 
         $token = date('Y-m-d\TH:i:s');
