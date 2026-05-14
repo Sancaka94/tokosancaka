@@ -217,7 +217,6 @@ class TicketingController extends BaseController
                     'pax_child'     => $json['paxChild'] ?? $request->paxChild ?? 0,
                     'pax_infant'    => $json['paxInfant'] ?? $request->paxInfant ?? 0,
 
-                    // 👇 TAMBAHAN DATA KONTAK AGAR TIDAK GAGAL SAVE 👇
                     'contact_name'  => $contactName,
                     'contact_phone' => $contactPhone,
                     'contact_email' => $request->contactEmail ?? '-',
@@ -445,6 +444,164 @@ class TicketingController extends BaseController
         Log::info("\nLOG LOG: Request Airline/BookingDetail dieksekusi untuk PNR: " . $payload['bookingCode']);
 
         return $response;
+    }
+
+    /**
+     * POST Airline/List
+     * Mendapatkan daftar maskapai yang aktif (Active Airlines)
+     * * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function airlineList(Request $request)
+    {
+        // 1. Ambil data request
+        // Meskipun dokumentasi meminta userID dan accessToken,
+        // BaseController biasanya sudah menyuntikkannya di forwardRequest.
+        $payload = $request->all();
+
+        // 2. Eksekusi Request ke Darmawisata
+        $response = $this->forwardRequest('Airline/List', $payload);
+
+        // 3. Logging untuk memantau daftar maskapai yang masuk (Opsional namun disarankan)
+        $jsonResponse = json_decode($response->getContent(), true);
+
+        if (isset($jsonResponse['status']) && $jsonResponse['status'] === 'SUCCESS') {
+            $count = count($jsonResponse['airlines'] ?? []);
+            Log::info("LOG SUCCESS: Berhasil mengambil daftar maskapai. Jumlah: {$count} maskapai.");
+        } else {
+            Log::error("LOG FAILED: Gagal mengambil daftar maskapai. Pesan: " . ($jsonResponse['respMessage'] ?? 'Unknown Error'));
+        }
+
+        return $response;
+    }
+
+    /**
+     * POST Airline/Route
+     * Mendapatkan rute penerbangan spesifik untuk 1 maskapai yang dipilih
+     */
+    public function airlineRoute(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'airlineID' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, airlineID wajib diisi.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        return $this->forwardRequest('Airline/Route', $request->all());
+    }
+
+    /**
+     * POST Airline/LowFareRoute
+     * Mendapatkan semua rute maskapai untuk pencarian jadwal harga termurah
+     */
+    public function airlineLowFareRoute(Request $request)
+    {
+        // Tidak ada parameter body wajib selain userID & accessToken
+        // yang sudah di-handle oleh BaseController
+        return $this->forwardRequest('Airline/LowFareRoute', $request->all());
+    }
+
+    /**
+     * POST Airline/Schedule
+     * Mendapatkan jadwal penerbangan spesifik untuk 1 maskapai
+     */
+    public function airlineScheduleSingle(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'airlineID'   => 'required|string',
+            'tripType'    => 'required|string|in:OneWay,RoundTrip',
+            'origin'      => 'required|string',
+            'destination' => 'required|string',
+            'departDate'  => 'required|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, lengkapi data pencarian.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        $payload = $request->all();
+
+        // Parameter opsional di-set default jika mobile tidak mengirimkan
+        $payload['paxAdult']   = $payload['paxAdult'] ?? 1;
+        $payload['paxChild']   = $payload['paxChild'] ?? 0;
+        $payload['paxInfant']  = $payload['paxInfant'] ?? 0;
+        $payload['returnDate'] = $payload['returnDate'] ?? "0001-01-01T00:00:00"; // Format standar jika OneWay
+
+        return $this->forwardRequest('Airline/Schedule', $payload);
+    }
+
+    /**
+     * POST Airline/LowFareSchedule
+     * Mendapatkan jadwal dengan harga termurah (Promo/Low Fare)
+     */
+    public function airlineLowFareSchedule(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'tripType'    => 'required|string|in:OneWay,RoundTrip',
+            'origin'      => 'required|string',
+            'destination' => 'required|string',
+            'departDate'  => 'required|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, lengkapi data origin dan destination.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        $payload = $request->all();
+
+        // Sesuai dokumentasi, ada parameter wajib khusus untuk LowFare
+        // cacheType: 0 (FullCache), 1 (FullLive), 2 (Mix)
+        $payload['cacheType']         = $payload['cacheType'] ?? 2;
+        // isShowEachAirline: wajib true jika ingin me-loop request (standar darmawisata)
+        $payload['isShowEachAirline'] = $payload['isShowEachAirline'] ?? true;
+
+        $payload['paxAdult']   = $payload['paxAdult'] ?? 1;
+        $payload['paxChild']   = $payload['paxChild'] ?? 0;
+        $payload['paxInfant']  = $payload['paxInfant'] ?? 0;
+
+        return $this->forwardRequest('Airline/LowFareSchedule', $payload);
+    }
+
+    /**
+     * POST Airline/BookingList
+     * Menarik daftar riwayat pesanan (Booking List) berdasarkan tanggal
+     */
+    public function airlineBookingList(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'startDate' => 'required|date',
+            'endDate'   => 'required|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, tanggal mulai dan akhir diperlukan.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        $payload = $request->all();
+
+        // Dokumentasi menyebutkan filterByStatus (integer)
+        // 0 biasanya untuk 'Semua Status' atau status default 'Booking'.
+        $payload['filterByStatus'] = $payload['filterByStatus'] ?? 0;
+
+        return $this->forwardRequest('Airline/BookingList', $payload);
     }
 
 }

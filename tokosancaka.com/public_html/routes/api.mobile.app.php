@@ -414,55 +414,52 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 
     // ==========================================
-        // MODULE: TICKETING / DARMAWISATA
+    // MODULE: TICKETING / DARMAWISATA
+    // ==========================================
+    Route::prefix('ticketing')->group(function () {
+
+        // Session & Agent (Asumsi fungsi ini sudah Anda buat sebelumnya)
+        Route::post('/session/login', [TicketingController::class, 'sessionLogin']);
+        Route::post('/agent/balance', [TicketingController::class, 'agentBalance']);
+        Route::post('/init-session', [TicketingController::class, 'generateNewToken']);
+
         // ==========================================
-        Route::prefix('ticketing')->group(function () {
+        // MODULE: AIRLINE (TIKET PESAWAT)
+        // ==========================================
+        Route::prefix('airline')->group(function () {
 
-            // Session & Agent
-            Route::post('/session/login', [TicketingController::class, 'sessionLogin']);
-            Route::post('/agent/balance', [TicketingController::class, 'agentBalance']);
+            // Pencarian Utama (Schedule All Airline)
+            Route::post('/search', [TicketingController::class, 'airlineSearch']);
 
-            Route::post('/init-session', [TicketingController::class, 'generateNewToken']);
+            // Data Master / Referensi
+            Route::post('/list', [TicketingController::class, 'airlineList']);
+            Route::post('/route', [TicketingController::class, 'airlineRoute']);
+            Route::post('/nationality', [TicketingController::class, 'airlineNationality']);
+            Route::post('/lowfare-route', [TicketingController::class, 'airlineLowFareRoute']);
+            Route::post('/city', [TicketingController::class, 'airlineCity']);
 
-            // ==========================================
-            // MODULE: AIRLINE (TIKET PESAWAT)
-            // ==========================================
-            Route::prefix('airline')->group(function () {
+            // Flow Pencarian Spesifik (Single Airline) & Low Fare
+            Route::post('/schedule', [TicketingController::class, 'airlineScheduleSingle']); // Diperbaiki
+            Route::post('/lowfare-schedule', [TicketingController::class, 'airlineLowFareSchedule']);
 
-                Route::post('/search', [TicketingController::class, 'airlineSearch']);
-                // Data Master / Referensi
-                Route::post('/list', [TicketingController::class, 'airlineList']);
-                Route::post('/route', [TicketingController::class, 'airlineRoute']);
-                Route::post('/nationality', [TicketingController::class, 'airlineNationality']);
-                Route::post('/lowfare-route', [TicketingController::class, 'airlineLowFareRoute']);
-                Route::post('/city', [TicketingController::class, 'airlineCity']);
+            // Flow Harga
+            Route::post('/price', [TicketingController::class, 'airlinePriceSingle']); // Diperbaiki
+            Route::post('/price-all', [TicketingController::class, 'airlinePriceAllAirline']); // Dirapikan (Hapus yang duplikat)
 
-                // Flow Pencarian & Harga
-                Route::post('/schedule', [TicketingController::class, 'airlineSchedule']);
+            // Flow Addons
+            Route::post('/baggageAndMeal', [TicketingController::class, 'baggageAndMeal']);
+            Route::post('/seat', [TicketingController::class, 'airlineSeat']);
 
-                // --- TAMBAHKAN DUA BARIS INI UNTUK PENCARIAN MASSAL ---
-                Route::post('/lowfare-schedule', [TicketingController::class, 'airlineLowFareSchedule']);
-                Route::post('/schedule-all', [TicketingController::class, 'airlineScheduleAllAirline']);
+            // Flow Transaksi & Manajemen
+            Route::post('/booking', [TicketingController::class, 'airlineBooking']);
+            Route::post('/booking-list', [TicketingController::class, 'airlineBookingList']);
+            Route::post('/booking-detail', [TicketingController::class, 'airlineBookingDetail']);
+            Route::post('/issued', [TicketingController::class, 'airlineIssued']);
+            Route::post('/local-detail', [TicketingController::class, 'getLocalBookingDetail']);
 
-                Route::post('/price', [TicketingController::class, 'airlinePrice']);
-                Route::post('/price-all', [TicketingController::class, 'airlinePriceAllAirline']);
-                Route::post('/priceAllAirline', [TicketingController::class, 'airlinePriceAllAirline']);
-
-                // Flow Addons
-                Route::post('/baggageAndMeal', [TicketingController::class, 'baggageAndMeal']);
-                Route::post('/seat', [TicketingController::class, 'airlineSeat']);
-
-                // Flow Transaksi
-                Route::post('/booking', [TicketingController::class, 'airlineBooking']);
-                Route::post('/booking-list', [TicketingController::class, 'airlineBookingList']);
-                Route::post('/booking-detail', [TicketingController::class, 'airlineBookingDetail']);
-                Route::post('/issued', [TicketingController::class, 'airlineIssued']);
-                Route::post('/local-detail', [TicketingController::class, 'getLocalBookingDetail']);
-
-                // --- TAMBAHKAN BARIS INI UNTUK PING ---
-                Route::post('/timer-elapsed', [TicketingController::class, 'airlineTimerElapsed']);
-            });
-
+            // Flow Sistem Khusus
+            Route::post('/timer-elapsed', [TicketingController::class, 'airlineTimerElapsed']);
+        });
             // Train
             Route::prefix('train')->group(function () {
                 Route::post('/route', [TicketingController::class, 'trainRoute']);
