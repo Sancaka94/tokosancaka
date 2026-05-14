@@ -680,13 +680,14 @@ class TicketingController extends BaseController
                         'id_number'  => $pax['idNumber'],
                     ]);
 
-                    // 3. Simpan kursi jika user memilih kursi
-                    if (!empty($pax['seat'])) {
+                    // 3. Simpan kursi ATAU bagasi jika user memilihnya
+                    if (!empty($pax['seat']) || !empty($pax['baggage'])) {
                         DB::table('flight_addons')->insert([
-                            'order_id'     => $orderId,
-                            'passenger_id' => $paxId,
-                            'seat_code'    => $pax['seat'],
-                            'compartment'  => 'Y'
+                            'order_id'       => $orderId,
+                            'passenger_id'   => $paxId,
+                            'seat_code'      => !empty($pax['seat']) ? $pax['seat'] : "",
+                            'compartment'    => 'Y',
+                            'baggage_string' => !empty($pax['baggage']) ? $pax['baggage'] : ""
                         ]);
                     }
                 }
@@ -743,16 +744,17 @@ class TicketingController extends BaseController
                 elseif ($pax->pax_type == 1) $paxChild++;
                 elseif ($pax->pax_type == 2) $paxInfant++;
 
-                $seat = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
+                // Ambil data AddOns dari database
+                $addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
                 $addOns = [];
 
-                if ($seat) {
+                if ($addonsDb) {
                     $addOns[] = [
                         'aoOrigin'      => $order->origin,
                         'aoDestination' => $order->destination,
-                        'seat'          => $seat->seat_code,
-                        'compartment'   => $seat->compartment,
-                        'baggageString' => "",
+                        'seat'          => $addonsDb->seat_code ?? "",
+                        'compartment'   => $addonsDb->compartment ?? "Y",
+                        'baggageString' => $addonsDb->baggage_string ?? "",
                         'meals'         => []
                     ];
                 }
@@ -773,6 +775,7 @@ class TicketingController extends BaseController
                     'Email'               => "",
                     'batikMilesNo'        => "",
                     'garudaFrequentFlyer' => "",
+                    // Jika addons tidak ada sama sekali, kirim null sesuai dokumen
                     'addOns'              => empty($addOns) ? null : $addOns
                 ];
             }
