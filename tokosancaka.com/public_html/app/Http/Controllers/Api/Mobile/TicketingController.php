@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Mobile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class TicketingController extends BaseController
 {
@@ -628,6 +629,229 @@ class TicketingController extends BaseController
         Log::info("\nLOG LOG: Response dari Darmawisata (Airline/Price):\n" . json_encode(json_decode($response->getContent()), JSON_PRETTY_PRINT));
 
         return $response;
+    }
+
+    /**
+     * POST Airline/SaveDB
+     * Simpan data order ke database lokal sebagai draft beserta Session Token baru
+     */
+    public function saveToDatabase(Request $request)
+    {
+        try {
+            // Gunakan Transaction agar jika salah satu tabel gagal, semua proses insert dibatalkan
+            $orderId = DB::transaction(function () use ($request) {
+
+                // 1. Simpan ke tabel flight_orders
+                $orderId = DB::table('flight_orders')->insertGetId([
+                    'user_id'            => $request->userID,
+                    'dw_access_token'    => $request->accessToken, // Token fresh dari App
+                    'airline_id'         => $request->airlineID,
+                    'flight_number'      => $request->flightNumber,
+                    'origin'             => $request->origin,
+                    'destination'        => $request->destination,
+                    'trip_type'          => $request->tripType,
+                    'depart_date'        => $request->departDate,
+                    'flight_class'       => $request->flightClass,
+                    'detail_schedule'    => $request->detailSchedule,
+                    'base_fare'          => $request->baseFare,
+                    'tax'                => $request->tax,
+                    'total_fare'         => $request->totalFare,
+                    'contact_title'      => $request->contact['title'],
+                    'contact_first_name' => $request->contact['firstName'],
+                    'contact_last_name'  => $request->contact['lastName'],
+                    'contact_phone'      => $request->contact['phone'],
+                    'contact_email'      => $request->contact['email'],
+                    'status'             => 'DRAFT',
+                    'created_at'         => now(),
+                    'updated_at'         => now(),
+                ]);
+
+                // 2. Simpan semua penumpang
+                foreach ($request->passengers as $pax) {
+                    $paxId = DB::table('flight_passengers')->insertGetId([
+                        'order_id'   => $orderId,
+                        'pax_type'   => $pax['type'],
+                        'title'      => $pax['title'],
+                        'first_name' => $pax['firstName'],
+                        'last_name'  => $pax['lastName'],
+                        'gender'     => $pax['gender'],
+                        'birth_date' => $pax['birthDate'],
+                        'doc_type'   => $pax['docType'],
+                        'id_number'  => $pax['idNumber'],
+                    ]);
+
+                    // 3. Simpan kursi jika user memilih kursi
+                    if (!empty($pax['seat'])) {
+                        DB::table('flight_addons')->insert([
+                            'order_id'     => $orderId,
+                            'passenger_id' => $paxId,
+                            'seat_code'    => $pax['seat'],
+                            'compartment'  => 'Y'
+                        ]);
+                    }
+                }
+
+                return $orderId;
+            });
+
+            return response()->json([
+                'status'   => 'SUCCESS',
+                'order_id' => $orderId,
+                'message'  => 'Data berhasil dicatat di database'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Gagal Save DB Draft: " . $e->getMessage());
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Sistem gagal menyimpan data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * POST Airline/ProcessBooking
+     * Membaca data dari DB lalu merakit Payload untuk dikirim ke Darmawisata
+     */
+    public function processBooking(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'order_id' => 'required|integer'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'FAILED', 'message' => 'Order ID tidak valid'], 422);
+        }
+
+        try {
+            $orderId = $request->order_id;
+
+            // 1. Ambil data Order
+            $order = DB::table('flight_orders')->where('id', $orderId)->first();
+            if (!$order) {
+                throw new \Exception("Data order tidak ditemukan di database.");
+            }
+
+            // 2. Ambil data Penumpang & Kursi
+            $passengers = DB::table('flight_passengers')->where('order_id', $orderId)->get();
+            $paxDetails = [];
+            $paxAdult = 0; $paxChild = 0; $paxInfant = 0;
+
+            foreach ($passengers as $pax) {
+                // Hitung jumlah pax
+                if ($pax->pax_type == 0) $paxAdult++;
+                elseif ($pax->pax_type == 1) $paxChild++;
+                elseif ($pax->pax_type == 2) $paxInfant++;
+
+                $seat = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
+                $addOns = [];
+
+                if ($seat) {
+                    $addOns[] = [
+                        'aoOrigin'      => $order->origin,
+                        'aoDestination' => $order->destination,
+                        'seat'          => $seat->seat_code,
+                        'compartment'   => $seat->compartment,
+                        'baggageString' => "",
+                        'meals'         => []
+                    ];
+                }
+
+                $paxDetails[] = [
+                    'IDNumber'            => $pax->id_number,
+                    'title'               => $pax->title,
+                    'firstName'           => $pax->first_name,
+                    'lastName'            => $pax->last_name,
+                    'birthDate'           => date('Y-m-d\T00:00:00', strtotime($pax->birth_date)),
+                    'gender'              => $pax->gender,
+                    'nationality'         => "ID",
+                    'birthCountry'        => "ID",
+                    'DocType'             => $pax->doc_type,
+                    'type'                => $pax->pax_type,
+                    'parent'              => "",
+                    'passportNumber'      => "",
+                    'Email'               => "",
+                    'batikMilesNo'        => "",
+                    'garudaFrequentFlyer' => "",
+                    'addOns'              => $addOns
+                ];
+            }
+
+            // Pecah kode area HP secara sederhana
+            $phone = $order->contact_phone;
+            $countryCode = "62";
+            $areaCode = substr(str_replace('62', '', $phone), 0, 2); // Ambil 2 digit awal (misal 81)
+            $remainingPhone = substr(str_replace('62', '', $phone), 2);
+
+            // 3. Rakit Payload Final untuk Darmawisata
+            $dwPayload = [
+                'airlineID'               => $order->airline_id,
+                'origin'                  => $order->origin,
+                'destination'             => $order->destination,
+                'tripType'                => $order->trip_type,
+                'departDate'              => date('Y-m-d\T00:00:00', strtotime($order->depart_date)),
+                'returnDate'              => "0001-01-01T00:00:00",
+                'paxAdult'                => $paxAdult,
+                'paxChild'                => $paxChild,
+                'paxInfant'               => $paxInfant,
+                'contactFirstName'        => $order->contact_first_name,
+                'contactLastName'         => $order->contact_last_name,
+                'contactTitle'            => $order->contact_title,
+                'contactCountryCodePhone' => $countryCode,
+                'contactAreaCodePhone'    => $areaCode,
+                'contactRemainingPhoneNo' => $remainingPhone,
+                'contactEmail'            => $order->contact_email,
+                'paxDetails'              => $paxDetails,
+                'insurance'               => false,
+                'userID'                  => $order->user_id,
+                'accessToken'             => $order->dw_access_token, // GUNAKAN TOKEN BARU DARI DB
+                'schDeparts'              => [
+                    [
+                        'airlineCode'    => $order->airline_id,
+                        'flightNumber'   => $order->flight_number,
+                        'schOrigin'      => $order->origin,
+                        'schDestination' => $order->destination,
+                        'detailSchedule' => $order->detail_schedule,
+                        'schDepartTime'  => "",
+                        'schArrivalTime' => "",
+                        'flightClass'    => $order->flight_class
+                    ]
+                ],
+                'schReturns'              => []
+            ];
+
+            Log::info("LOG LOG: Memulai proses booking dari DB untuk Order ID: {$orderId}");
+
+            // 4. Hit Darmawisata
+            $response = $this->forwardRequest('Airline/Booking', $dwPayload);
+            $json = json_decode($response->getContent(), true);
+
+            // 5. Update Status DB jika Berhasil
+            if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+                DB::table('flight_orders')->where('id', $orderId)->update([
+                    'status'       => 'BOOKED',
+                    'booking_code' => $json['bookingCode'],
+                    'updated_at'   => now()
+                ]);
+
+                // Opsional: Kamu bisa memanggil Model PesananTiket::create() di sini
+                // jika kamu ingin mencatatnya juga di tabel sistem lama milikmu.
+            } else {
+                DB::table('flight_orders')->where('id', $orderId)->update([
+                    'status'     => 'FAILED',
+                    'updated_at' => now()
+                ]);
+            }
+
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("Proses Booking Gagal: " . $e->getMessage());
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Gagal memproses booking: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
 }
