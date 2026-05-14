@@ -1024,33 +1024,35 @@ class TicketingController extends BaseController
         }
     }
 
-    /**
+   /**
      * Mengambil Access Token dari Darmawisata (Session/Login)
-     * Sesuai Dokumentasi: userID, token (timestamp), securityCode (MD5)
+     * Rumus: securityCode = MD5(token + MD5(password))
      */
     private function sessionLogin()
     {
-        // Ganti dengan data akun agen Darmawisata milikmu
-        $userId   = 'PWB6RGHXRC';
-        $passCode = 'Darmaj4y4'; // Password/Passcode API rahasia
-        $url      = 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/Session/Login';
+        // 1. Kredensial API Darmawisata
+        $userId   = 'PWB6RGHXRC'; //
+        $password = 'Darmaj4y4'; // Ganti dengan password akun H2H Anda
+        $url      = 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/Session/Login'; //
 
-        // 1. Generate Token (Timestamp format ISO 8601)
+        // 2. Generate Token (Timestamp format ISO 8601)
+        // Format: 2026-05-14T13:23:44
         $token = date('Y-m-d\TH:i:s');
 
-        // 2. Generate SecurityCode (MD5 dari token + passcode)
-        $securityCode = md5($token . $passCode);
+        // 3. Generate SecurityCode SESUAI RUMUS BARU
+        // MD5(token + MD5(password))
+        $md5Password  = md5($password);
+        $securityCode = md5($token . $md5Password);
 
-        // 3. Rakit Payload sesuai skema "Request Body"
+        // 4. Rakit Payload
         $payload = [
             'token'        => $token,
             'securityCode' => $securityCode,
-            'language'     => 1, // Indonesia
+            'language'     => 1, // 1 untuk Indonesia
             'userID'       => $userId
         ];
 
         try {
-            // Gunakan Http Client bawaan Laravel untuk menembak endpoint
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json'
@@ -1058,11 +1060,12 @@ class TicketingController extends BaseController
 
             $result = $response->json();
 
-            // 4. Validasi Response (AuthResponse)
+            // 5. Validasi Response
             if (isset($result['status']) && $result['status'] === 'SUCCESS') {
-                return $result['accessToken']; // Mengambil token untuk akses API selanjutnya
+                return $result['accessToken'];
             } else {
-                throw new \Exception($result['respMessage'] ?? 'Gagal Autentikasi Darmawisata');
+                \Illuminate\Support\Facades\Log::error("Auth Gagal: " . ($result['respMessage'] ?? 'Unknown Error'));
+                return null;
             }
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Error Login Darmawisata: " . $e->getMessage());
