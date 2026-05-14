@@ -835,7 +835,7 @@ class TicketingController extends BaseController
             Log::info("LOG LOG: Memulai proses booking dari DB untuk Order ID: {$orderId}");
 
             // =========================================================================
-            // 3.5. SYARAT WAJIB DARMAWISATA: HIT ADD-ONS SEBELUM BOOKING!
+            // 3.5. SYARAT WAJIB DARMAWISATA & AUTO-FILL BAGASI
             // =========================================================================
             $addonsPayload = [
                 'airlineID'               => $dwPayload['airlineID'],
@@ -844,7 +844,7 @@ class TicketingController extends BaseController
                 'tripType'                => $dwPayload['tripType'],
                 'departDate'              => $dwPayload['departDate'],
                 'returnDate'              => $dwPayload['returnDate'],
-                'schDepart'               => $order->detail_schedule, // Wajib diisi dengan classFare/reference
+                'schDepart'               => $order->detail_schedule,
                 'schReturn'               => "",
                 'paxAdult'                => $dwPayload['paxAdult'],
                 'paxChild'                => $dwPayload['paxChild'],
@@ -863,13 +863,60 @@ class TicketingController extends BaseController
                 'accessToken'             => $order->dw_access_token
             ];
 
-            // Tembak AddOns secara "silent" (diam-diam) di background
-            $this->forwardRequest('Airline/BaggageAndMeal', $addonsPayload);
-            Log::info("LOG LOG: Berhasil melewati tahapan wajib BaggageAndMeal.");
+            // Tembak AddOns untuk mendapatkan denah Bagasi
+            $addonsRes = $this->forwardRequest('Airline/BaggageAndMeal', $addonsPayload);
+            $addonsJson = json_decode($addonsRes->getContent(), true);
+
+            // CEK APAKAH MASKAPAI MEWAJIBKAN BAGASI
+            $isEnableNoBaggage = $addonsJson['isEnableNoBaggage'] ?? true;
+            $defaultBaggage = "";
+
+            if (!$isEnableNoBaggage && !empty($addonsJson['baggageAddOns'])) {
+                // Cari string bagasi default (utamakan yang harganya 0 / gratis bawaan)
+                foreach ($addonsJson['baggageAddOns'] as $routeBaggage) {
+                    if (!empty($routeBaggage['infos'])) {
+                        foreach ($routeBaggage['infos'] as $info) {
+                            if (isset($info['baggageString'])) {
+                                $defaultBaggage = $info['baggageString'];
+                                if (($info['price'] ?? 1) == 0) {
+                                    break 2; // Nemu yang gratis, langsung ambil dan stop cari
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // SUNTIKKAN STRING BAGASI KE SEMUA PENUMPANG DEWASA & ANAK
+            if (!$isEnableNoBaggage && $defaultBaggage !== "") {
+                foreach ($dwPayload['paxDetails'] as &$pax) {
+                    if ($pax['type'] == 0 || $pax['type'] == 1) { // 0 = Adult, 1 = Child
+
+                        // Jika penumpang belum punya addons sama sekali
+                        if (empty($pax['addOns'])) {
+                            $pax['addOns'] = [
+                                [
+                                    'aoOrigin'      => $order->origin,
+                                    'aoDestination' => $order->destination,
+                                    'seat'          => "",
+                                    'compartment'   => "Y",
+                                    'baggageString' => $defaultBaggage, // Suntik bagasi di sini
+                                    'meals'         => []
+                                ]
+                            ];
+                        } else {
+                            // Jika penumpang sudah milih kursi (seperti di Order ID 4: Seat 6A)
+                            // Kita cukup timpa baggageString-nya yang tadinya kosong
+                            $pax['addOns'][0]['baggageString'] = $defaultBaggage;
+                        }
+                    }
+                }
+                unset($pax); // Hapus referensi memori array
+                Log::info("LOG LOG: Maskapai mewajibkan bagasi. Sistem otomatis menyuntikkan bagasi: " . $defaultBaggage);
+            }
             // =========================================================================
 
             // 4. Hit Darmawisata (Booking)
-            // Pastikan jika array addOns kosong, kita kirim [] agar sesuai dokumentasinya
             $response = $this->forwardRequest('Airline/Booking', $dwPayload);
             $json = json_decode($response->getContent(), true);
 
