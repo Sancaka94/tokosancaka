@@ -783,6 +783,17 @@ class TicketingController extends BaseController
             $areaCode = substr(str_replace('62', '', $phone), 0, 2); // Ambil 2 digit awal (misal 81)
             $remainingPhone = substr(str_replace('62', '', $phone), 2);
 
+            // --- TAMBAHKAN BLOK KODE INI ---
+            // Buka bungkusan JSON dari detail_schedule untuk mengakali TrimStrings Laravel
+            $scheduleData = json_decode($order->detail_schedule, true);
+
+            // Ambil data dari JSON (Jika bukan JSON/data lama, gunakan fallback)
+            $dwDetailSchedule = is_array($scheduleData) ? $scheduleData['ref'] : $order->detail_schedule;
+            $dwFlightNumber   = is_array($scheduleData) ? $scheduleData['fn'] : $order->flight_number;
+            $dwDepartTime     = is_array($scheduleData) ? $scheduleData['depTime'] : "";
+            $dwArrivalTime    = is_array($scheduleData) ? $scheduleData['arrTime'] : "";
+            // -------------------------------
+
             // 3. Rakit Payload Final untuk Darmawisata
             $dwPayload = [
                 'airlineID'               => $order->airline_id,
@@ -805,15 +816,16 @@ class TicketingController extends BaseController
                 'insurance'               => false,
                 'userID'                  => $this->darmawisataUserId,
                 'accessToken'             => $order->dw_access_token, // GUNAKAN TOKEN BARU DARI DB
+                // --- UBAH BAGIAN schDeparts MENJADI SEPERTI INI ---
                 'schDeparts'              => [
                     [
                         'airlineCode'    => $order->airline_id,
-                        'flightNumber'   => $order->flight_number,
+                        'flightNumber'   => $dwFlightNumber, // <--- Menggunakan variabel aman
                         'schOrigin'      => $order->origin,
                         'schDestination' => $order->destination,
-                        'detailSchedule' => $order->detail_schedule,
-                        'schDepartTime'  => "",
-                        'schArrivalTime' => "",
+                        'detailSchedule' => $dwDetailSchedule, // <--- Menggunakan variabel aman
+                        'schDepartTime'  => $dwDepartTime, // <--- Menggunakan variabel aman
+                        'schArrivalTime' => $dwArrivalTime, // <--- Menggunakan variabel aman
                         'flightClass'    => $order->flight_class
                     ]
                 ],
