@@ -834,7 +834,42 @@ class TicketingController extends BaseController
 
             Log::info("LOG LOG: Memulai proses booking dari DB untuk Order ID: {$orderId}");
 
-            // 4. Hit Darmawisata
+            // =========================================================================
+            // 3.5. SYARAT WAJIB DARMAWISATA: HIT ADD-ONS SEBELUM BOOKING!
+            // =========================================================================
+            $addonsPayload = [
+                'airlineID'               => $dwPayload['airlineID'],
+                'origin'                  => $dwPayload['origin'],
+                'destination'             => $dwPayload['destination'],
+                'tripType'                => $dwPayload['tripType'],
+                'departDate'              => $dwPayload['departDate'],
+                'returnDate'              => $dwPayload['returnDate'],
+                'schDepart'               => $order->detail_schedule, // Wajib diisi dengan classFare/reference
+                'schReturn'               => "",
+                'paxAdult'                => $dwPayload['paxAdult'],
+                'paxChild'                => $dwPayload['paxChild'],
+                'paxInfant'               => $dwPayload['paxInfant'],
+                'contactFirstName'        => $dwPayload['contactFirstName'],
+                'contactLastName'         => $dwPayload['contactLastName'],
+                'contactTitle'            => $dwPayload['contactTitle'],
+                'contactCountryCodePhone' => $dwPayload['contactCountryCodePhone'],
+                'contactAreaCodePhone'    => $dwPayload['contactAreaCodePhone'],
+                'contactRemainingPhoneNo' => $dwPayload['contactRemainingPhoneNo'],
+                'contactEmail'            => $dwPayload['contactEmail'],
+                'paxDetails'              => $dwPayload['paxDetails'],
+                'departureAirlineSegmentCode' => "",
+                'departureFareBasisCode'      => $order->flight_class,
+                'userID'                  => $this->darmawisataUserId,
+                'accessToken'             => $order->dw_access_token
+            ];
+
+            // Tembak AddOns secara "silent" (diam-diam) di background
+            $this->forwardRequest('Airline/BaggageAndMeal', $addonsPayload);
+            Log::info("LOG LOG: Berhasil melewati tahapan wajib BaggageAndMeal.");
+            // =========================================================================
+
+            // 4. Hit Darmawisata (Booking)
+            // Pastikan jika array addOns kosong, kita kirim [] agar sesuai dokumentasinya
             $response = $this->forwardRequest('Airline/Booking', $dwPayload);
             $json = json_decode($response->getContent(), true);
 
