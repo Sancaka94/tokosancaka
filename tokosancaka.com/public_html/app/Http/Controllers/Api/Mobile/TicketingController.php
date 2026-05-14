@@ -951,4 +951,30 @@ class TicketingController extends BaseController
         }
     }
 
+    /**
+     * GET Airline/LocalOrders
+     * Mengambil semua daftar keranjang / riwayat booking dari database lokal
+     */
+    public function getLocalOrders(Request $request)
+    {
+        try {
+            // Mengambil semua data flight_orders milik user yang sedang login
+            // (Menggunakan id_pengguna sesuai struktur tabel database kamu sebelumnya)
+            $orders = \Illuminate\Support\Facades\DB::table('flight_orders')
+                        ->where('user_id', $request->user()->id_pengguna)
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+
+            return response()->json([
+                'status' => 'SUCCESS',
+                'data'   => $orders
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Gagal mengambil data dari database: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 }
