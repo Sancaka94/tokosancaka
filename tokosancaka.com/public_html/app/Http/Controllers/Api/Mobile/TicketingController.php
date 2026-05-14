@@ -953,17 +953,34 @@ class TicketingController extends BaseController
 
     /**
      * GET Airline/LocalOrders
-     * Mengambil semua daftar keranjang / riwayat booking dari database lokal (LENGKAP)
+     * Mengambil daftar keranjang / riwayat booking (Dengan Logika Akses Admin & User)
      */
     public function getLocalOrders(Request $request)
     {
         try {
-            $orders = \Illuminate\Support\Facades\DB::table('flight_orders')
-                        ->where('user_id', $request->user()->id_pengguna)
-                        ->orderBy('created_at', 'desc')
-                        ->get();
+            // 1. Dapatkan data user yang sedang login
+            $user = $request->user();
+            $userId = $user->id_pengguna;
 
-            // Looping untuk mengambil data penumpang & bagasi di setiap order
+            // Opsional: Jika tabelmu punya kolom 'role', gunakan ini juga
+            $userRole = strtolower($user->role ?? 'pelanggan');
+
+            // 2. Tentukan logika Query
+            // Jika ID-nya 4 (Admin Sancaka) ATAU rolenya 'admin', ambil semua order!
+            if ($userId == 4 || $userRole == 'admin') {
+                $orders = \Illuminate\Support\Facades\DB::table('flight_orders')
+                            ->orderBy('created_at', 'desc')
+                            ->get();
+            }
+            // Jika BUKAN Admin, hanya ambil order miliknya sendiri
+            else {
+                $orders = \Illuminate\Support\Facades\DB::table('flight_orders')
+                            ->where('user_id', $userId)
+                            ->orderBy('created_at', 'desc')
+                            ->get();
+            }
+
+            // 3. Looping untuk mengambil data tambahan (Penumpang, Bagasi, dll)
             foreach ($orders as $order) {
                 $passengers = \Illuminate\Support\Facades\DB::table('flight_passengers')
                                 ->where('order_id', $order->id)
@@ -990,6 +1007,7 @@ class TicketingController extends BaseController
                 'status' => 'SUCCESS',
                 'data'   => $orders
             ]);
+
         } catch (\Exception $e) {
             return response()->json([
                 'status'  => 'FAILED',
