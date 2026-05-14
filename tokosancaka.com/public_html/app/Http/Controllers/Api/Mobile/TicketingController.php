@@ -1073,4 +1073,27 @@ class TicketingController extends BaseController
         }
     }
 
+    /**
+     * Endpoint Public untuk testing / trigger login dari URL
+     * URL: https://tokosancaka.com/auth/dharmawisata/login
+     */
+    public function handleDharmawisataLogin()
+    {
+        // Memanggil fungsi private di atas
+        $token = $this->sessionLogin();
+
+        if ($token) {
+            return response()->json([
+                'status' => 'SUCCESS',
+                'message' => 'Login berhasil, token didapatkan',
+                'accessToken' => $token // Menampilkan token yang berhasil diambil
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'FAILED',
+            'message' => 'Gagal autentikasi. Silakan cek log Laravel untuk detail error (member authentication failed).'
+        ], 401);
+    }
+
 }

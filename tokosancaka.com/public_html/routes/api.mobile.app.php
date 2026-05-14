@@ -30,6 +30,8 @@ use App\Http\Controllers\Api\Mobile\TicketingController;
 | Pastikan Controller yang dipanggil me-return response()->json(), bukan view()
 */
 
+Route::post('auth/dharmawisata/login', [TicketingController::class, 'handleDharmawisataLogin']);
+
 
 // =========================================================================
 // 1. PUBLIC ROUTES (TIDAK BUTUH LOGIN / TOKEN)
