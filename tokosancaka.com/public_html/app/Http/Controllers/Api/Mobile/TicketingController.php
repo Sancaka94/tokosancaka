@@ -143,20 +143,6 @@ class TicketingController extends BaseController
         return $this->forwardRequest('Airline/Nationality', $payload);
     }
 
-    /**
-     * POST Airline/List
-     * Get list of active airlines
-     */
-    public function airlineList(Request $request)
-    {
-        // 1. Ambil data request (kemungkinan kosong dari aplikasi mobile, dan itu tidak masalah)
-        $payload = $request->all();
-
-
-
-        // 3. Kirim Request ke Server Darmawisata
-        return $this->forwardRequest('Airline/List', $payload);
-    }
 
     /**
      * POST Airline/Booking
