@@ -773,7 +773,7 @@ class TicketingController extends BaseController
                     'Email'               => "",
                     'batikMilesNo'        => "",
                     'garudaFrequentFlyer' => "",
-                    'addOns'              => $addOns
+                    'addOns'              => empty($addOns) ? null : $addOns
                 ];
             }
 
