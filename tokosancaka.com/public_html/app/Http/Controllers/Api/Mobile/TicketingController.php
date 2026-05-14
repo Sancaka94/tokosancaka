@@ -953,17 +953,38 @@ class TicketingController extends BaseController
 
     /**
      * GET Airline/LocalOrders
-     * Mengambil semua daftar keranjang / riwayat booking dari database lokal
+     * Mengambil semua daftar keranjang / riwayat booking dari database lokal (LENGKAP)
      */
     public function getLocalOrders(Request $request)
     {
         try {
-            // Mengambil semua data flight_orders milik user yang sedang login
-            // (Menggunakan id_pengguna sesuai struktur tabel database kamu sebelumnya)
             $orders = \Illuminate\Support\Facades\DB::table('flight_orders')
                         ->where('user_id', $request->user()->id_pengguna)
                         ->orderBy('created_at', 'desc')
                         ->get();
+
+            // Looping untuk mengambil data penumpang & bagasi di setiap order
+            foreach ($orders as $order) {
+                $passengers = \Illuminate\Support\Facades\DB::table('flight_passengers')
+                                ->where('order_id', $order->id)
+                                ->get();
+
+                foreach ($passengers as $pax) {
+                    $addon = \Illuminate\Support\Facades\DB::table('flight_addons')
+                                ->where('passenger_id', $pax->id)
+                                ->first();
+
+                    $pax->baggage = $addon && $addon->baggage_string ? $addon->baggage_string : 'Tidak ada ekstra bagasi';
+                    $pax->seat = $addon && $addon->seat_code ? $addon->seat_code : '-';
+                }
+
+                $order->passengers = $passengers;
+
+                // Buka bungkusan JSON untuk mengambil jam keberangkatan & kedatangan
+                $schedule = json_decode($order->detail_schedule, true);
+                $order->depTime = is_array($schedule) && isset($schedule['depTime']) ? date('H:i', strtotime($schedule['depTime'])) : '';
+                $order->arrTime = is_array($schedule) && isset($schedule['arrTime']) ? date('H:i', strtotime($schedule['arrTime'])) : '';
+            }
 
             return response()->json([
                 'status' => 'SUCCESS',
@@ -972,7 +993,7 @@ class TicketingController extends BaseController
         } catch (\Exception $e) {
             return response()->json([
                 'status'  => 'FAILED',
-                'message' => 'Gagal mengambil data dari database: ' . $e->getMessage()
+                'message' => 'Gagal mengambil data: ' . $e->getMessage()
             ], 500);
         }
     }
