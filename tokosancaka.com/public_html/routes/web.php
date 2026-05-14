@@ -166,13 +166,13 @@ use App\Http\Controllers\NotaController;
 use App\Http\Controllers\Api\Mobile\TicketingController;
 
 
-// 1. Link untuk membuka halaman form login
+// 1. Link untuk membuka halaman form login (Tetap sama)
 Route::get('/auth/dharmawisata/login', function () {
     return view('auth.dharmawisata.login');
 })->name('dharmawisata.login.view');
 
-// 2. Link untuk memproses form (Action POST)
-Route::post('/auth/dharmawisata/login-proses', [TicketingController::class, 'sessionLogin'])
+// 2. Link untuk memproses form (UBAH sessionLogin MENJADI handleFormLogin)
+Route::post('/auth/dharmawisata/login-proses', [TicketingController::class, 'handleFormLogin'])
     ->name('api.dharmawisata.login');
 
 

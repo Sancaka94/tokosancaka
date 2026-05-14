@@ -1025,30 +1025,26 @@ class TicketingController extends BaseController
     }
 
    /**
-     * Mengambil Access Token dari Darmawisata (Session/Login)
-     * Rumus: securityCode = MD5(token + MD5(password))
+     * 1. FUNGSI PRIVATE: Mengambil Access Token dari Darmawisata
+     * Hanya mengembalikan string token jika sukses, atau null jika gagal.
+     * Bisa dipakai ulang di fungsi searchSchedule() atau processBooking().
      */
-    public function sessionLogin()
+    private function sessionLogin()
     {
-        // 1. Kredensial API Darmawisata
-        $userId   = 'PWB6RGHXRC'; //
-        $password = 'Darmaj4y4'; // Ganti dengan password akun H2H Anda
-        $url      = 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/Session/Login'; //
+        $userId   = 'PWB6RGHXRC';
+        $password = 'MASUKKAN_PASSWORD_ANDA'; // Pastikan password ini benar tanpa spasi
+        $url      = 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/Session/Login';
 
-        // 2. Generate Token (Timestamp format ISO 8601)
-        // Format: 2026-05-14T13:23:44
         $token = date('Y-m-d\TH:i:s');
 
-        // 3. Generate SecurityCode SESUAI RUMUS BARU
-        // MD5(token + MD5(password))
+        // Rumus enkripsi: MD5(token + MD5(password))
         $md5Password  = md5($password);
         $securityCode = md5($token . $md5Password);
 
-        // 4. Rakit Payload
         $payload = [
             'token'        => $token,
             'securityCode' => $securityCode,
-            'language'     => 1, // 1 untuk Indonesia
+            'language'     => 1,
             'userID'       => $userId
         ];
 
@@ -1060,11 +1056,11 @@ class TicketingController extends BaseController
 
             $result = $response->json();
 
-            // 5. Validasi Response
+            // Kembalikan HANYA string token jika sukses
             if (isset($result['status']) && $result['status'] === 'SUCCESS') {
                 return $result['accessToken'];
             } else {
-                \Illuminate\Support\Facades\Log::error("Auth Gagal: " . ($result['respMessage'] ?? 'Unknown Error'));
+                \Illuminate\Support\Facades\Log::error("Darmawisata Login Gagal: " . json_encode($result));
                 return null;
             }
         } catch (\Exception $e) {
@@ -1074,25 +1070,27 @@ class TicketingController extends BaseController
     }
 
     /**
-     * Endpoint Public untuk testing / trigger login dari URL
-     * URL: https://tokosancaka.com/auth/dharmawisata/login
+     * 2. FUNGSI PUBLIC: Jembatan Penampung dari Form Login Web
+     * URL Action: /auth/dharmawisata/login-proses
      */
-    public function handleDharmawisataLogin()
+    public function handleFormLogin(Request $request)
     {
-        // Memanggil fungsi private di atas
-        $token = $this->sessionLogin();
+        // Panggil fungsi internal di atas untuk mendapatkan token string
+        $accessToken = $this->sessionLogin();
 
-        if ($token) {
+        if ($accessToken) {
+            // Jika sukses, kembalikan teks token ke halaman form sesuai keinginanmu
             return response()->json([
                 'status' => 'SUCCESS',
-                'message' => 'Login berhasil, token didapatkan',
-                'accessToken' => $token // Menampilkan token yang berhasil diambil
+                'message' => 'Login Berhasil!',
+                'accessToken' => $accessToken
             ]);
         }
 
+        // Jika gagal
         return response()->json([
             'status' => 'FAILED',
-            'message' => 'Gagal autentikasi. Silakan cek log Laravel untuk detail error (member authentication failed).'
+            'message' => 'Authentication Failed. Cek logs Laravel untuk detail error dari Darmawisata.'
         ], 401);
     }
 
