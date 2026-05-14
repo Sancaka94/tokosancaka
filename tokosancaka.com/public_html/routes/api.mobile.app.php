@@ -452,6 +452,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // Rute untuk simpan data ke database
             Route::post('/save-db', [TicketingController::class, 'saveToDatabase']);
+            Route::get('/local-orders', [TicketingController::class, 'getLocalOrders']);
 
             // Rute untuk eksekusi booking ke Darmawisata
             Route::post('/process-booking', [TicketingController::class, 'processBooking']);
