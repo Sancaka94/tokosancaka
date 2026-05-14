@@ -445,7 +445,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
             // Flow Harga
             Route::post('/price', [TicketingController::class, 'airlinePriceSingle']); // Diperbaiki
             Route::post('/price-all', [TicketingController::class, 'airlinePriceAllAirline']); // Dirapikan (Hapus yang duplikat)
-            Route::post('/priceAllAirline', [TicketingController::class, 'priceAllAirline']);
 
             // Flow Addons
             Route::post('/baggageAndMeal', [TicketingController::class, 'baggageAndMeal']);
