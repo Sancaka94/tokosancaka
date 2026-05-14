@@ -1033,7 +1033,7 @@ class TicketingController extends BaseController
         // 1. Kredensial API Darmawisata
         $userId   = 'PWB6RGHXRC'; //
         $password = 'Darmaj4y4'; // Ganti dengan password akun H2H Anda
-        $url      = 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/Session/Login'; //
+        $url      = 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/'; //
 
         // 2. Generate Token (Timestamp format ISO 8601)
         // Format: 2026-05-14T13:23:44
