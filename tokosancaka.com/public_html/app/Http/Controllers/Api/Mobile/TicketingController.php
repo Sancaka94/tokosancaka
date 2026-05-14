@@ -590,4 +590,44 @@ class TicketingController extends BaseController
         return $this->forwardRequest('Airline/BookingList', $payload);
     }
 
+    /**
+     * POST Airline/Price
+     * Endpoint untuk cek harga 1 maskapai spesifik
+     */
+    public function airlinePriceSingle(Request $request)
+    {
+        // 1. Validasi parameter wajib sesuai dokumen Darmawisata
+        $validator = Validator::make($request->all(), [
+            'airlineID'              => 'required|string',
+            'origin'                 => 'required|string',
+            'destination'            => 'required|string',
+            'tripType'               => 'required|string',
+            'departDate'             => 'required|string',
+            'journeyDepartReference' => 'required|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, data tidak lengkap.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        // 2. Siapkan Payload (Gunakan Trik Ninja anti-TrimStrings agar spasi aman!)
+        $payload = json_decode($request->getContent(), true);
+
+        // Pastikan string kosong tetap aman
+        $payload['airlineAccessCode']      = $payload['airlineAccessCode'] ?? "";
+        $payload['journeyReturnReference'] = $payload['journeyReturnReference'] ?? "";
+
+        // 3. Eksekusi Request ke Darmawisata (Endpoint spesifik: Airline/Price)
+        $response = $this->forwardRequest('Airline/Price', $payload);
+
+        // Cetak Log Response dari Darmawisata
+        Log::info("\nLOG LOG: Response dari Darmawisata (Airline/Price):\n" . json_encode(json_decode($response->getContent()), JSON_PRETTY_PRINT));
+
+        return $response;
+    }
+
 }
