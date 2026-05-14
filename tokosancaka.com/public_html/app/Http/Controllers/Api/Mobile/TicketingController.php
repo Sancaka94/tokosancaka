@@ -643,7 +643,7 @@ class TicketingController extends BaseController
 
                 // 1. Simpan ke tabel flight_orders
                 $orderId = DB::table('flight_orders')->insertGetId([
-                    'user_id'            => $request->userID,
+                    'user_id'            => $request->user()->id,
                     'dw_access_token'    => $request->accessToken, // Token fresh dari App
                     'airline_id'         => $request->airlineID,
                     'flight_number'      => $request->flightNumber,
@@ -803,7 +803,7 @@ class TicketingController extends BaseController
                 'contactEmail'            => $order->contact_email,
                 'paxDetails'              => $paxDetails,
                 'insurance'               => false,
-                'userID'                  => $order->user_id,
+                'userID'                  => $this->darmawisataUserId,
                 'accessToken'             => $order->dw_access_token, // GUNAKAN TOKEN BARU DARI DB
                 'schDeparts'              => [
                     [
