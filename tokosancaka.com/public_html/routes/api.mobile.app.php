@@ -450,6 +450,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/baggageAndMeal', [TicketingController::class, 'baggageAndMeal']);
             Route::post('/seat', [TicketingController::class, 'airlineSeat']);
 
+            // Rute untuk simpan data ke database
+            Route::post('/save-db', [TicketingController::class, 'saveToDatabase']);
+
+            // Rute untuk eksekusi booking ke Darmawisata
+            Route::post('/process-booking', [TicketingController::class, 'processBooking']);
+
             // Flow Transaksi & Manajemen
             Route::post('/booking', [TicketingController::class, 'airlineBooking']);
             Route::post('/booking-list', [TicketingController::class, 'airlineBookingList']);
