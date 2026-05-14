@@ -76,7 +76,7 @@ class TicketingController extends BaseController
      * POST Airline/PriceAllAirline
      * Endpoint modern pasangan dari ScheduleAllAirline
      */
-    public function airlinePriceAllAirline(Request $request)
+    public function priceAllAirline(Request $request)
     {
         // 1. Validasi parameter wajib sesuai dokumen Darmawisata
         $validator = Validator::make($request->all(), [
