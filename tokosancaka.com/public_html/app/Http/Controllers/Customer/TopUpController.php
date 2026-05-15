@@ -580,16 +580,21 @@ class TopUpController extends Controller
     {
         Log::info('[BINDING] Memulai proses redirect ke DANA Portal...');
 
-        // Otomatis ambil ID dari user yang sedang login
         $user = \Illuminate\Support\Facades\Auth::user();
         $affiliateId = $user->id_pengguna;
 
         $queryParams = [
             'partnerId'   => config('services.dana.x_partner_id'),
+            'merchantId'  => config('services.dana.merchant_id'),
             'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
             'externalId'  => 'BIND-' . $affiliateId . '-' . time(),
-            'merchantId'  => config('services.dana.merchant_id'),
-            'redirectUrl' => config('services.dana.redirect_url_oauth'), // Pastikan ini mengarah ke route /customer/dana/callback
+
+            // 1. TAMBAHKAN INI (Wajib menurut dokumentasi DANA)
+            'channelId'   => 'DANAID',
+
+            // 2. PASTIKAN URL INI SAMA PERSIS DENGAN YANG DI DANA PORTAL
+            'redirectUrl' => route('customer.dana.callback'),
+
             'state'       => 'ID-' . $affiliateId,
             'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         ];
