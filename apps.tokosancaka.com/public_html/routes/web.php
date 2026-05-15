@@ -691,6 +691,12 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::get('/cashflow/export/excel', [CashflowController::class, 'exportExcel'])->name('cashflow.export.excel');
 
 
+    // Rute untuk menampilkan halaman setting
+    Route::get('/setting-api', [SettingApiController::class, 'index'])->name('admin.settingapi.index');
+    
+    // Rute untuk memproses klik toggle (AJAX)
+    Route::post('/setting-api/update-dana-mode', [SettingApiController::class, 'updateDanaMode'])->name('admin.settingapi.update-dana-mode');
+
     // ==========================================
     // 2. ROUTE KONTAK & HUTANG PIUTANG
     // ==========================================
