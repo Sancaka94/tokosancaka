@@ -6,15 +6,54 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\Tenant; // <--- WAJIB TAMBAH
-use App\Models\Affiliate; // <--- BARIS INI WAJIB ADA
-use App\Models\TopUp;  // <--- TAMBAHKAN BARIS INI
+use App\Models\Tenant;
+use App\Models\Affiliate;
+use App\Models\TopUp; 
 use Illuminate\Support\Str;
 use App\Models\SettingApi;
 
 class DanaDashboardController extends Controller
 {
     protected $tenantId;
+
+    protected $tenantId;
+
+    // --- 1. TAMBAHKAN CONSTRUCTOR INI ---
+    public function __construct()
+    {
+        $this->applyDynamicConfig();
+    }
+
+    // --- 2. TAMBAHKAN FUNGSI PENARIK DATABASE INI ---
+    private function applyDynamicConfig()
+    {
+        $settings = \App\Models\SettingApi::pluck('value', 'key')->toArray();
+        $isProduction = ($settings['dana_production_mode'] ?? '0') == '1';
+
+        if ($isProduction) {
+            config([
+                'services.dana.dana_env'      => 'PRODUCTION',
+                'services.dana.base_url'      => 'https://api.dana.id',
+                'services.dana.merchant_id'   => $settings['dana_prod_merchant_id'] ?? env('DANA_PROD_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.private_key'   => $settings['dana_prod_private_key'] ?? env('DANA_PROD_PRIVATE_KEY'),
+                'services.dana.client_secret' => $settings['dana_prod_client_secret'] ?? env('DANA_PROD_CLIENT_SECRET'),
+                'services.dana.origin'        => env('DANA_ORIGIN', 'https://tokosancaka.com'),
+            ]);
+        } else {
+            config([
+                'services.dana.dana_env'      => 'SANDBOX',
+                'services.dana.base_url'      => 'https://api.sandbox.dana.id',
+                'services.dana.merchant_id'   => $settings['dana_sandbox_merchant_id'] ?? env('DANA_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.private_key'   => $settings['dana_sandbox_private_key'] ?? env('DANA_PRIVATE_KEY'),
+                'services.dana.client_secret' => $settings['dana_sandbox_client_secret'] ?? env('DANA_CLIENT_SECRET'),
+                'services.dana.origin'        => env('DANA_ORIGIN', 'https://tokosancaka.com'),
+            ]);
+        }
+    }
 
 public function index(Request $request)
 {
@@ -325,37 +364,39 @@ protected function processPendingTransactions($affiliateId, $accessToken)
     }
 
     private function generateSignature($stringToSign) {
-    $rawKey = config('services.dana.private_key');
+        $rawKey = config('services.dana.private_key');
 
-    // 1. Bersihkan key dari kotoran (kutip, spasi, enter)
-    $cleanKey = str_replace(
-        [
-            "-----BEGIN PRIVATE KEY-----", 
-            "-----END PRIVATE KEY-----", 
-            "-----BEGIN RSA PRIVATE KEY-----", 
-            "-----END RSA PRIVATE KEY-----", 
-            "\r", "\n", " ", "\"", "'"
-        ],
-        "",
-        $rawKey
-    );
+        if (empty($rawKey)) {
+            throw new \Exception("DANA Error: Private Key kosong! Konfigurasi dari database gagal dimuat.");
+        }
 
-    // 2. Susun ulang jadi format PEM standar OpenSSL (64 karakter per baris)
-    $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . 
-                    wordwrap($cleanKey, 64, "\n", true) . 
-                    "\n-----END PRIVATE KEY-----";
+        // 1. Buang Header & Footer bawaan
+        $cleanKey = str_replace(
+            ['-----BEGIN PRIVATE KEY-----', '-----END PRIVATE KEY-----', '-----BEGIN RSA PRIVATE KEY-----', '-----END RSA PRIVATE KEY-----'], 
+            '', 
+            $rawKey
+        );
 
-    $privateKeyResource = openssl_pkey_get_private($formattedKey);
+        // 2. SAPU BERSIH: Buang SEMUA karakter selain huruf, angka, +, /, dan = (Standar Base64)
+        // Ini otomatis menendang tanda kutip, spasi, enter, dan tulisan "\n" atau "\r" yang nyangkut.
+        $cleanKey = preg_replace('/[^a-zA-Z0-9\/\+=]/', '', $cleanKey);
 
-    if (!$privateKeyResource) {
-        throw new \Exception("DANA Error: Private Key tidak valid di Dashboard Controller.");
+        // 3. Susun ulang dengan format mutlak OpenSSL
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . 
+                        wordwrap($cleanKey, 64, "\n", true) . 
+                        "\n-----END PRIVATE KEY-----";
+
+        $privateKeyResource = openssl_pkey_get_private($formattedKey);
+
+        if (!$privateKeyResource) {
+            throw new \Exception("DANA Error: Private Key tetap tidak valid setelah di-format.");
+        }
+
+        $binarySignature = "";
+        openssl_sign($stringToSign, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256);
+        
+        return base64_encode($binarySignature);
     }
-
-    $binarySignature = "";
-    openssl_sign($stringToSign, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256);
-    
-    return base64_encode($binarySignature);
-}
 
    public function topupSaldo(Request $request)
 {
