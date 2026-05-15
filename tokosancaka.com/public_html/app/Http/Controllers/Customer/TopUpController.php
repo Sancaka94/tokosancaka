@@ -727,9 +727,9 @@ class TopUpController extends Controller
             throw new \Exception("Private Key kosong. Pastikan DANA_PRIVATE_KEY di .env atau Pengaturan Database sudah terisi.");
         }
 
-        // 2. Bersihkan Key dari header/footer/spasi/newline yang berantakan
+        // 2. Bersihkan Key dari header/footer/spasi/newline/tanda kutip yang berantakan
         $cleanKey = str_replace(
-            ["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "],
+            ["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " ", "\"", "'"],
             "",
             $rawKey
         );
