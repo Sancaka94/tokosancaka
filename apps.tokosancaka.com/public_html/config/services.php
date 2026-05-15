@@ -55,9 +55,8 @@ return [
         
         'dana_env'            => env('DANA_ENV', 'SANDBOX'),
         
-        // [WAJIB ADA] Logic otomatis menentukan URL Sandbox vs Production sebagai fallback
         'base_url'            => env('DANA_ENV', 'SANDBOX') === 'PRODUCTION'
-                                    ? 'https://api.dana.id'
+                                    ? 'https://api.saas.dana.id' // <--- Ganti di sini juga
                                     : 'https://api.sandbox.dana.id',
     ],
 

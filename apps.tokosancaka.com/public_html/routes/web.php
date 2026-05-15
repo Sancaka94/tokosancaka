@@ -698,6 +698,8 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     // Rute untuk memproses klik toggle (AJAX)
     Route::post('/setting-api/update-dana-mode', [SettingApiController::class, 'updateDanaMode'])->name('admin.settingapi.update-dana-mode');
 
+    Route::post('/setting-api/save-credentials', [SettingApiController::class, 'saveCredentials'])->name('admin.settingapi.save-credentials');
+    
     // ==========================================
     // 2. ROUTE KONTAK & HUTANG PIUTANG
     // ==========================================

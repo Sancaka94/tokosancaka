@@ -584,31 +584,32 @@ class DanaWidgetController extends Controller
     // =========================================================================
     private function applyDynamicConfig()
     {
-        // 1. Cek mode di database (1 = Production, 0 = Sandbox)
-        $isProduction = SettingApi::where('key', 'dana_production_mode')->value('value') == '1';
+        // 1. Ambil SEMUA setting API dari database sekaligus
+        $settings = SettingApi::pluck('value', 'key')->toArray();
+        $isProduction = ($settings['dana_production_mode'] ?? '0') == '1';
 
-        // 2. Timpa config Laravel secara 'on-the-fly'
+        // 2. Timpa config Laravel secara 'on-the-fly' pakai data DATABASE (jika kosong, fallback ke env)
         if ($isProduction) {
             \Illuminate\Support\Facades\Log::info('LOG LOG: DANA Menggunakan Mode PRODUCTION');
             config([
                 'services.dana.dana_env'      => 'PRODUCTION',
-                'services.dana.base_url'      => 'https://api.dana.id',
-                'services.dana.merchant_id'   => env('DANA_PROD_MERCHANT_ID'),
-                'services.dana.client_id'     => env('DANA_PROD_CLIENT_ID'),
-                'services.dana.x_partner_id'  => env('DANA_PROD_CLIENT_ID'), // Biasanya sama dengan Client ID
-                'services.dana.private_key'   => env('DANA_PROD_PRIVATE_KEY'),
-                'services.dana.client_secret' => env('DANA_PROD_CLIENT_SECRET'),
+                'services.dana.base_url'      => 'https://api.saas.dana.id',
+                'services.dana.merchant_id'   => $settings['dana_prod_merchant_id'] ?? env('DANA_PROD_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.private_key'   => $settings['dana_prod_private_key'] ?? env('DANA_PROD_PRIVATE_KEY'),
+                'services.dana.client_secret' => $settings['dana_prod_client_secret'] ?? env('DANA_PROD_CLIENT_SECRET'),
             ]);
         } else {
             \Illuminate\Support\Facades\Log::info('LOG LOG: DANA Menggunakan Mode SANDBOX');
             config([
                 'services.dana.dana_env'      => 'SANDBOX',
                 'services.dana.base_url'      => 'https://api.sandbox.dana.id',
-                'services.dana.merchant_id'   => env('DANA_MERCHANT_ID'),
-                'services.dana.client_id'     => env('DANA_X_PARTNER_ID'),
-                'services.dana.x_partner_id'  => env('DANA_X_PARTNER_ID'),
-                'services.dana.private_key'   => env('DANA_PRIVATE_KEY'),
-                'services.dana.client_secret' => env('DANA_CLIENT_SECRET'),
+                'services.dana.merchant_id'   => $settings['dana_sandbox_merchant_id'] ?? env('DANA_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.private_key'   => $settings['dana_sandbox_private_key'] ?? env('DANA_PRIVATE_KEY'),
+                'services.dana.client_secret' => $settings['dana_sandbox_client_secret'] ?? env('DANA_CLIENT_SECRET'),
             ]);
         }
     }
