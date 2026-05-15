@@ -726,6 +726,19 @@ Route::domain('apps.tokosancaka.com')->group(function () {
     Route::post('/redeem-lisensi', [\App\Http\Controllers\LicenseController::class, 'processRedeem'])
         ->name('public.license.process'); // <--- Nama ini harus persis sama dengan yang di Blade
 
+    // ====================================================================
+    // TAMBAHKAN KODE INI DI SINI (MANAJEMEN TENANT - ADMIN PUSAT)
+    // ====================================================================
+    // Hapus sementara middleware('auth') jika Anda belum punya sistem login di domain pusat
+    Route::prefix('admin')->group(function () {
+        Route::get('/tenants', [RegisterTenantController::class, 'listTenants'])->name('tenants.index');
+        Route::get('/tenants/{id}', [RegisterTenantController::class, 'show'])->name('tenants.show');
+        Route::get('/tenants/{id}/edit', [RegisterTenantController::class, 'edit'])->name('tenants.edit');
+        Route::put('/tenants/{id}', [RegisterTenantController::class, 'update'])->name('tenants.update');
+        Route::delete('/tenants/{id}', [RegisterTenantController::class, 'destroy'])->name('tenants.destroy');
+    });
+    // ====================================================================
+
 });
 
 // Pastikan ini berada di dalam Route::domain() atau Route::middleware() yang sesuai
