@@ -105,7 +105,7 @@ class RegisterTenantController extends Controller
                     'package_type'  => 'trial',
                     'max_devices'   => 1,
                     'max_ips'       => 1,
-                    'duration_days' => $days,
+                    'duration_days' => null,
                     'status'        => 'available', // <-- Kita paksa available
                     'used_at'       => null,
                     'expires_at'    => $expiredAt,
