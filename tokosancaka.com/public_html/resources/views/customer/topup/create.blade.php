@@ -76,7 +76,7 @@
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-500 peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all flex flex-col items-center text-center">
                                         <img src="{{ asset('assets/dana.webp') }}" class="h-10 w-10 object-contain mb-2 rounded-md" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
                                         <span class="text-sm font-bold text-gray-700">DANA</span>
-                                        <span class="text-[10px] text-gray-400">GAPURA</span>
+                                        <span class="text-[10px] text-gray-400">PAYMENT GATEWAY</span>
                                         {{-- Centang --}}
                                         <div class="absolute top-2 right-2 text-blue-600 opacity-0 peer-checked:opacity-100"><i class="fas fa-check-circle"></i></div>
                                     </div>
