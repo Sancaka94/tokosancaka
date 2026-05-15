@@ -121,12 +121,39 @@
                             </td>
 
                             <td class="px-4 py-3 whitespace-nowrap text-center">
-                                <a href="http://{{ $tenant->subdomain }}.tokosancaka.com/login" target="_blank" class="text-slate-400 hover:text-indigo-600 transition-colors">
-                                    <div class="flex items-center justify-center gap-1 border border-slate-200 rounded px-2 py-1 hover:bg-slate-50 hover:border-indigo-200">
-                                        <i class="fas fa-external-link-alt text-xs"></i>
-                                        <span class="text-xs font-semibold">Kunjungi</span>
-                                    </div>
-                                </a>
+                                <div class="flex items-center justify-center gap-2">
+                                    <!-- Kunjungi -->
+                                    <a href="http://{{ $tenant->subdomain }}.tokosancaka.com/login" target="_blank" title="Kunjungi Website" class="text-slate-500 hover:text-indigo-600 transition-colors">
+                                        <div class="flex items-center justify-center border border-slate-200 rounded px-2 py-1.5 hover:bg-indigo-50 hover:border-indigo-300">
+                                            <i class="fas fa-external-link-alt text-xs"></i>
+                                        </div>
+                                    </a>
+
+                                    <!-- Lihat Detail -->
+                                    <a href="{{ route('tenants.show', $tenant->id) }}" title="Lihat Detail" class="text-slate-500 hover:text-blue-600 transition-colors">
+                                        <div class="flex items-center justify-center border border-slate-200 rounded px-2 py-1.5 hover:bg-blue-50 hover:border-blue-300">
+                                            <i class="fas fa-eye text-xs"></i>
+                                        </div>
+                                    </a>
+
+                                    <!-- Edit -->
+                                    <a href="{{ route('tenants.edit', $tenant->id) }}" title="Edit Tenant" class="text-slate-500 hover:text-amber-600 transition-colors">
+                                        <div class="flex items-center justify-center border border-slate-200 rounded px-2 py-1.5 hover:bg-amber-50 hover:border-amber-300">
+                                            <i class="fas fa-edit text-xs"></i>
+                                        </div>
+                                    </a>
+
+                                    <!-- Hapus -->
+                                    <form action="{{ route('tenants.destroy', $tenant->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus tenant {{ $tenant->name }}? Semua data terkait mungkin tidak bisa dikembalikan.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" title="Hapus Tenant" class="text-slate-500 hover:text-red-600 transition-colors cursor-pointer">
+                                            <div class="flex items-center justify-center border border-slate-200 rounded px-2 py-1.5 hover:bg-red-50 hover:border-red-300">
+                                                <i class="fas fa-trash text-xs"></i>
+                                            </div>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         @empty
