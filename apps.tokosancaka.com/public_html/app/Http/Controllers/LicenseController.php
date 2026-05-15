@@ -125,15 +125,29 @@ class LicenseController extends Controller
             $durationDays = $license->duration_days ?? 30;
             $currentExpired = $tenant->expired_at ? \Carbon\Carbon::parse($tenant->expired_at) : now();
 
-            if ($currentExpired->isPast()) {
-                Log::info("ℹ️ Masa aktif sebelumnya sudah habis. Dihitung dari hari ini.");
-                $currentExpired = now();
+            // ==============================================================
+            // [PERBAIKAN: LOGIKA MASA AKTIF KHUSUS TRIAL VS PERPANJANGAN]
+            // ==============================================================
+            if ($license->package_type === 'trial') {
+                
+                // JIKA TRIAL: Override/Timpa waktu sisa 1 hari menjadi mutlak 14 hari dari sekarang.
+                Log::info("ℹ️ Lisensi TRIAL mendeteksi sisa hari awal. Masa aktif di-set mutlak {$durationDays} hari dari sekarang (Tidak diakumulasi).");
+                $newExpiredDate = now()->timezone('Asia/Jakarta')->addDays($durationDays);
+                
             } else {
-                Log::info("ℹ️ Sisa masa aktif masih ada. Akan diakumulasi.");
+                
+                // JIKA BUKAN TRIAL (Bulanan/Tahunan): Akumulasi sisa hari
+                if ($currentExpired->isPast()) {
+                    Log::info("ℹ️ Masa aktif sebelumnya sudah habis. Dihitung dari hari ini.");
+                    $currentExpired = now();
+                } else {
+                    Log::info("ℹ️ Sisa masa aktif masih ada. Akan diakumulasi.");
+                }
+                
+                $newExpiredDate = $currentExpired->addDays($durationDays)->timezone('Asia/Jakarta');
             }
-
-            $newExpiredDate = $currentExpired->addDays($durationDays)->timezone('Asia/Jakarta');
-            Log::info("📅 Tanggal expired baru: {$newExpiredDate->format('Y-m-d H:i:s')} (+{$durationDays} hari)");
+            
+            Log::info("📅 Tanggal expired baru: {$newExpiredDate->format('Y-m-d H:i:s')}");
 
             // Update tabel tenants menggunakan Model agar Cache sistem ter-refresh
             $tenantModel = \App\Models\Tenant::find($tenant->id);

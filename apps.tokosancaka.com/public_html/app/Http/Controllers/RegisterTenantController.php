@@ -62,12 +62,12 @@ class RegisterTenantController extends Controller
         try {
             // 3. KALKULASI MASA AKTIF
             $status = ($request->package == 'trial') ? 'active' : 'inactive';
-            $days = ($request->package == 'yearly') ? 365 : ($request->package == 'monthly' ? 30 : 0);
-            
+            $days = ($request->package == 'yearly') ? 365 : ($request->package == 'monthly' ? 30 : 14);
             $expiredAt = $now->copy()->addDays($days);
-            // [PERBAIKAN] Jika trial, set expired tenant hari ini juga (0 hari). 
-            // Kalau bukan trial, langsung tambahkan harinya.
-            $tenantExpiredAt = ($request->package == 'trial') ? $now->copy() : $now->copy()->addDays($days);
+            
+            // Beri masa tenggang 1 hari saja buat trial biar subdomain bisa dibuka dulu
+            // Kalau bukan trial, tetap pakai jatah aslinya ($days)
+            $tenantExpiredAt = ($request->package == 'trial') ? $now->copy()->addDay() : $now->copy()->addDays($days);
 
             // 4. SIMPAN TENANT
             $tenant = Tenant::create([
@@ -76,7 +76,7 @@ class RegisterTenantController extends Controller
                 'whatsapp'   => $request->whatsapp,
                 'package'    => $request->package,
                 'status'     => $status,
-                'expired_at' => $expiredAt, // <--- Gunakan $tenantExpiredAt yang nilainya 0 hari untuk trial
+                'expired_at' => $tenantExpiredAt, 
                 'created_at' => $now,
             ]);
 
