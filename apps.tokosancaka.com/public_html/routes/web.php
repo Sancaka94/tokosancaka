@@ -781,6 +781,5 @@ Route::domain('{subdomain}.tokosancaka.com')->middleware('tenant')->group(functi
 
 });
 
-
-Route::post('/tenant/generate-payment', [NamaControllerAnda::class, 'generatePayment']);
-Route::get('/tenant/check-status', [NamaControllerAnda::class, 'checkStatus']);
+Route::post('/tenant/generate-payment', [TenantPaymentController::class, 'generateUrl']);
+Route::get('/tenant/check-status', [TenantPaymentController::class, 'checkStatus']);
