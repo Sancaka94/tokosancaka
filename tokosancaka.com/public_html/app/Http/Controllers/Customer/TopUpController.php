@@ -610,15 +610,29 @@ class TopUpController extends Controller
     {
         Log::info('[DANA CALLBACK] Mendapatkan Auth Code:', $request->all());
 
-        $authCode = $request->input('auth_code');
-        $state = $request->input('state');
-        $affiliateId = $state ? str_replace('ID-', '', $state) : 11;
+        // Akomodasi penamaan param dari DANA
+        $authCode = $request->input('auth_code') ?? $request->input('authCode');
+        $stateRaw = $request->input('state');
 
-        if (!$authCode) {
-            return redirect()->route('member.dashboard')->with('error', 'Auth Code Kosong');
+        // Bongkar State (misal format dari bridge: ID-8-percetakan)
+        $parts = explode('-', $stateRaw);
+        $affiliateId = $parts[1] ?? ($stateRaw ? str_replace('ID-', '', $stateRaw) : null);
+
+        if (!$authCode || !$affiliateId) {
+            return redirect()->route('customer.topup.index')->with('error', 'Gagal: Auth Code atau State Kosong');
         }
 
-        DB::table('affiliates')->where('id', $affiliateId)->update([
+        // --- IDEMPOTENCY CHECK (Cegah user refresh halaman) ---
+        $cacheKey = 'dana_auth_process_' . $authCode;
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            Log::warning("[DANA CALLBACK] IDEMPOTENCY TRIGGERED: AuthCode $authCode sudah diproses.");
+            return redirect()->route('customer.topup.index')->with('success', 'Akun sudah terhubung (Request sebelumnya).');
+        }
+        \Illuminate\Support\Facades\Cache::put($cacheKey, true, 60);
+        // ------------------------------------------------------
+
+        // Simpan Auth Code sementara ke tabel Pengguna (Tenant)
+        DB::table('Pengguna')->where('id_pengguna', $affiliateId)->update([
             'dana_auth_code' => $authCode,
             'updated_at' => now()
         ]);
@@ -638,7 +652,7 @@ class TopUpController extends Controller
                 'additionalInfo' => (object)[]
             ];
 
-            // URL Dinamis
+            // Tembak API DANA
             $response = Http::withHeaders([
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
@@ -652,11 +666,37 @@ class TopUpController extends Controller
             $successCodes = ['2001100', '2007400'];
 
             if (isset($result['responseCode']) && in_array($result['responseCode'], $successCodes)) {
-                DB::table('affiliates')->where('id', $affiliateId)->update([
+
+                // =========================================================
+                // 3. UPDATE DB (METODE HYBRID DUAL-CONNECTION)
+                // =========================================================
+
+                // A. Update di Database Tenant (percetakan) -> Koneksi Default
+                $affected = DB::table('Pengguna')->where('id_pengguna', $affiliateId)->update([
                     'dana_access_token' => $result['accessToken'],
-                    'updated_at' => now()
+                    'dana_auth_code'    => $authCode,
+                    'updated_at'        => now()
                 ]);
 
+                if ($affected === 0) {
+                    Log::warning("[DANA CALLBACK] User ID $affiliateId tidak ditemukan di tabel Pengguna (Tenant).");
+                }
+
+                // B. Sync ke Database Pusat (tokq3391_db) -> Koneksi 'mysql_second'
+                try {
+                    DB::connection('mysql_second')->table('Pengguna')->where('id_pengguna', $affiliateId)->update([
+                        'dana_access_token' => $result['accessToken'],
+                        'dana_auth_code'    => $authCode,
+                        'updated_at'        => now()
+                    ]);
+                    Log::info("[DANA CALLBACK] Token berhasil di-sync ke database pusat untuk User ID: $affiliateId");
+                } catch (\Exception $syncEx) {
+                    Log::error('[DANA CALLBACK] Gagal sync token ke database pusat: ' . $syncEx->getMessage());
+                }
+
+                // =========================================================
+
+                // CATAT LOG KE TABEL TRANSAKSI (Koneksi Default Tenant)
                 try {
                     DB::table('dana_transactions')->insert([
                         'affiliate_id' => $affiliateId,
@@ -672,9 +712,15 @@ class TopUpController extends Controller
                     Log::error('[DANA CALLBACK] Gagal simpan log transaksi: ' . $dbEx->getMessage());
                 }
 
-                return redirect()->route('member.dashboard')->with('success', '✅ Akun Berhasil Terhubung!');
+                // AUTO RECOVERY TRANSAKSI PENDING
+                $this->processPendingTransactions($affiliateId, $result['accessToken']);
+
+                return redirect()->route('customer.topup.index')->with('success', '✅ Akun DANA Berhasil Terhubung!');
             }
 
+            // =========================================================
+            // JIKA GAGAL MENDAPATKAN TOKEN DARI DANA
+            // =========================================================
             try {
                 DB::table('dana_transactions')->insert([
                     'affiliate_id' => $affiliateId,
@@ -691,11 +737,12 @@ class TopUpController extends Controller
             }
 
             Log::error('[EXCHANGE FAILED]', $result);
-            return redirect()->route('member.dashboard')->with('error', 'Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+            return redirect()->route('customer.topup.index')->with('error', 'Gagal menghubungkan akun: ' . ($result['responseMessage'] ?? 'Terjadi kesalahan sistem DANA.'));
 
         } catch (\Exception $e) {
+            // MENUTUP BLOK TRY-CATCH
             Log::error('[DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
-            return redirect()->route('member.dashboard')->with('error', 'Sistem Error: ' . $e->getMessage());
+            return redirect()->route('customer.topup.index')->with('error', 'Sistem Error saat otorisasi: ' . $e->getMessage());
         }
     }
 
