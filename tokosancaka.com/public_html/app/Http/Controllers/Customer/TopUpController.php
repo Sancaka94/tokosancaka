@@ -606,145 +606,85 @@ class TopUpController extends Controller
         return redirect($baseUrl . "/d/portal/oauth?" . http_build_query($queryParams));
     }
 
-    public function handleCallback(Request $request)
-    {
-        Log::info('[DANA CALLBACK] Mendapatkan Auth Code:', $request->all());
+   public function handleCallback(Request $request)
+{
+    Log::info('[DANA CALLBACK] SNAP Apply Token Start...', $request->all());
 
-        // Akomodasi penamaan param dari DANA
-        $authCode = $request->input('auth_code') ?? $request->input('authCode');
-        $stateRaw = $request->input('state');
+    $authCode = $request->input('auth_code') ?? $request->input('authCode');
+    $stateRaw = $request->input('state');
 
-        // Bongkar State (misal format dari bridge: ID-8-percetakan)
-        $parts = explode('-', $stateRaw);
-        $affiliateId = $parts[1] ?? ($stateRaw ? str_replace('ID-', '', $stateRaw) : null);
+    $parts = explode('-', $stateRaw);
+    $affiliateId = $parts[1] ?? null;
 
-        if (!$authCode || !$affiliateId) {
-            return redirect()->route('customer.topup.index')->with('error', 'Gagal: Auth Code atau State Kosong');
-        }
+    if (!$authCode || !$affiliateId) {
+        return redirect()->route('customer.topup.index')->with('error', 'Auth Code/State Invalid.');
+    }
 
-        // --- IDEMPOTENCY CHECK (Cegah user refresh halaman) ---
-        $cacheKey = 'dana_auth_process_' . $authCode;
-        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
-            Log::warning("[DANA CALLBACK] IDEMPOTENCY TRIGGERED: AuthCode $authCode sudah diproses.");
-            return redirect()->route('customer.topup.index')->with('success', 'Akun sudah terhubung (Request sebelumnya).');
-        }
-        \Illuminate\Support\Facades\Cache::put($cacheKey, true, 60);
-        // ------------------------------------------------------
+    try {
+        $timestamp = now('Asia/Jakarta')->toIso8601String();
+        $clientId = config('services.dana.client_id');
 
-        // Simpan Auth Code sementara ke tabel Pengguna (Tenant)
-        DB::table('Pengguna')->where('id_pengguna', $affiliateId)->update([
-            'dana_auth_code' => $authCode,
-            'updated_at' => now()
-        ]);
+        // --- 1. GENERATE SNAP SIGNATURE ---
+        // Sesuai Dokumen: stringToSign = client_ID + “|” + X-TIMESTAMP
+        $stringToSign = $clientId . "|" . $timestamp;
+        $signature = $this->generateSignature($stringToSign);
 
-        try {
-            $timestamp = now('Asia/Jakarta')->toIso8601String();
-            $clientId = config('services.dana.x_partner_id');
-            $externalId = (string) time();
+        // --- 2. PREPARE SNAP BODY ---
+        $body = [
+            "grantType"    => "AUTHORIZATION_CODE",
+            "authCode"     => $authCode,
+            "refreshToken" => "",
+            "additionalInfo" => (object)[]
+        ];
 
-            $stringToSign = $clientId . "|" . $timestamp;
-            $signature = $this->generateSignature($stringToSign);
+        $path = '/v1.0/access-token/b2b2c.htm';
+        $fullUrl = config('services.dana.base_url') . $path;
 
-            $path = '/v1.0/access-token/b2b2c.htm';
-            $body = [
-                'grantType' => 'authorization_code',
-                'authCode' => $authCode,
-                'additionalInfo' => (object)[]
-            ];
+        // --- 3. SEND REQUEST SESUAI SNAP HEADERS ---
+        $response = Http::withHeaders([
+            'Content-Type'  => 'application/json',
+            'X-TIMESTAMP'   => $timestamp,
+            'X-CLIENT-KEY'  => $clientId, // Wajib di SNAP
+            'X-SIGNATURE'   => $signature,
+            'X-PARTNER-ID'  => $clientId, // Biasanya sama dengan Client ID
+        ])->post($fullUrl, $body);
 
-            // Tembak API DANA
-            $response = Http::withHeaders([
-                'X-TIMESTAMP'   => $timestamp,
-                'X-SIGNATURE'   => $signature,
-                'X-PARTNER-ID'  => $clientId,
-                'X-CLIENT-KEY'  => $clientId,
-                'X-EXTERNAL-ID' => $externalId,
-                'Content-Type'  => 'application/json'
-            ])->post(config('services.dana.base_url') . $path, $body);
+        $result = $response->json();
 
-            $result = $response->json();
-            $successCodes = ['2001100', '2007400'];
+        // SNAP Success Code untuk Apply Token adalah 2007400 (Sesuai Dokumen Anda)
+        if (isset($result['responseCode']) && $result['responseCode'] == '2007400') {
 
-            if (isset($result['responseCode']) && in_array($result['responseCode'], $successCodes)) {
+            // Simpan ke DB Tenant
+            DB::table('Pengguna')->where('id_pengguna', $affiliateId)->update([
+                'dana_access_token' => $result['accessToken'],
+                'dana_auth_code'    => $authCode,
+                'updated_at'        => now()
+            ]);
 
-                // =========================================================
-                // 3. UPDATE DB (METODE HYBRID DUAL-CONNECTION)
-                // =========================================================
-
-                // A. Update di Database Tenant (percetakan) -> Koneksi Default
-                $affected = DB::table('Pengguna')->where('id_pengguna', $affiliateId)->update([
+            // Sync ke DB Pusat (mysql_second)
+            try {
+                DB::connection('mysql_second')->table('Pengguna')->where('id_pengguna', $affiliateId)->update([
                     'dana_access_token' => $result['accessToken'],
                     'dana_auth_code'    => $authCode,
                     'updated_at'        => now()
                 ]);
-
-                if ($affected === 0) {
-                    Log::warning("[DANA CALLBACK] User ID $affiliateId tidak ditemukan di tabel Pengguna (Tenant).");
-                }
-
-                // B. Sync ke Database Pusat (tokq3391_db) -> Koneksi 'mysql_second'
-                try {
-                    DB::connection('mysql_second')->table('Pengguna')->where('id_pengguna', $affiliateId)->update([
-                        'dana_access_token' => $result['accessToken'],
-                        'dana_auth_code'    => $authCode,
-                        'updated_at'        => now()
-                    ]);
-                    Log::info("[DANA CALLBACK] Token berhasil di-sync ke database pusat untuk User ID: $affiliateId");
-                } catch (\Exception $syncEx) {
-                    Log::error('[DANA CALLBACK] Gagal sync token ke database pusat: ' . $syncEx->getMessage());
-                }
-
-                // =========================================================
-
-                // CATAT LOG KE TABEL TRANSAKSI (Koneksi Default Tenant)
-                try {
-                    DB::table('dana_transactions')->insert([
-                        'affiliate_id' => $affiliateId,
-                        'type' => 'BINDING',
-                        'reference_no' => $externalId,
-                        'phone' => '-',
-                        'amount' => 0,
-                        'status' => 'SUCCESS',
-                        'response_payload' => json_encode($result),
-                        'created_at' => now()
-                    ]);
-                } catch (\Exception $dbEx) {
-                    Log::error('[DANA CALLBACK] Gagal simpan log transaksi: ' . $dbEx->getMessage());
-                }
-
-                // AUTO RECOVERY TRANSAKSI PENDING
-                $this->processPendingTransactions($affiliateId, $result['accessToken']);
-
-                return redirect()->route('customer.topup.index')->with('success', '✅ Akun DANA Berhasil Terhubung!');
+            } catch (\Exception $e) {
+                Log::error('[DANA SYNC] Gagal ke DB Pusat: ' . $e->getMessage());
             }
 
-            // =========================================================
-            // JIKA GAGAL MENDAPATKAN TOKEN DARI DANA
-            // =========================================================
-            try {
-                DB::table('dana_transactions')->insert([
-                    'affiliate_id' => $affiliateId,
-                    'type' => 'BINDING',
-                    'reference_no' => $externalId,
-                    'phone' => '-',
-                    'amount' => 0,
-                    'status' => 'FAILED',
-                    'response_payload' => json_encode($result),
-                    'created_at' => now()
-                ]);
-            } catch (\Exception $dbEx) {
-                Log::error('[DANA CALLBACK] Gagal simpan log error: ' . $dbEx->getMessage());
-            }
-
-            Log::error('[EXCHANGE FAILED]', $result);
-            return redirect()->route('customer.topup.index')->with('error', 'Gagal menghubungkan akun: ' . ($result['responseMessage'] ?? 'Terjadi kesalahan sistem DANA.'));
-
-        } catch (\Exception $e) {
-            // MENUTUP BLOK TRY-CATCH
-            Log::error('[DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
-            return redirect()->route('customer.topup.index')->with('error', 'Sistem Error saat otorisasi: ' . $e->getMessage());
+            Log::info("[DANA CALLBACK] SNAP Berhasil untuk User: $affiliateId");
+            return redirect()->route('customer.topup.index')->with('success', '✅ Akun DANA Berhasil Terhubung!');
         }
+
+        // JIKA GAGAL
+        Log::error('[DANA SNAP ERROR]', $result);
+        return redirect()->route('customer.topup.index')->with('error', 'DANA Reject: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+
+    } catch (\Exception $e) {
+        Log::error('[DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
+        return redirect()->route('customer.topup.index')->with('error', 'Terjadi kesalahan sistem.');
     }
+}
 
     // 3. CEK SALDO USER
     public function checkBalance(Request $request)
