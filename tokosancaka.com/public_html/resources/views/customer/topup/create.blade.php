@@ -65,14 +65,14 @@
                     <div class="space-y-8">
                         <h4 class="text-xl font-bold text-gray-800">Pilih Metode Pembayaran</h4>
 
-                        {{-- CEK STATUS BINDING & TAMPILKAN INFO SALDO --}}
+                       {{-- CEK STATUS BINDING & TAMPILKAN INFO SALDO ATAU TOMBOL BINDING --}}
                         @php
                             $user = Auth::user();
                             $isDanaBound = $user && !empty($user->dana_access_token);
                         @endphp
 
                         @if($isDanaBound)
-                            <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between shadow-sm">
+                            <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between shadow-sm mb-4">
                                 <div>
                                     <p class="text-sm text-gray-500 font-medium mb-1"><i class="fas fa-wallet mr-1"></i> Saldo DANA Terhubung:</p>
                                     <h2 id="dana-balance-text" class="text-2xl font-bold text-blue-700">Rp ******</h2>
@@ -81,6 +81,17 @@
                                 <button type="button" id="btn-cek-saldo-dana" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow transition-all flex items-center">
                                     <i class="fas fa-sync mr-2"></i> Cek Saldo
                                 </button>
+                            </div>
+                        @else
+                            <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-xl flex items-center justify-between shadow-sm mb-4">
+                                <div>
+                                    <p class="text-sm text-gray-800 font-bold mb-1"><i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i> DANA Belum Terhubung</p>
+                                    <p class="text-xs text-gray-600">Hubungkan akun DANA Anda untuk menikmati fitur bayar instan (Auto-Debit).</p>
+                                </div>
+                                {{-- URL BINDING TANPA AFFILIATE ID --}}
+                                <a href="{{ url('/customer/dana/bind') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow transition-all flex items-center whitespace-nowrap">
+                                    <i class="fas fa-link mr-2"></i> Hubungkan
+                                </a>
                             </div>
                         @endif
 
