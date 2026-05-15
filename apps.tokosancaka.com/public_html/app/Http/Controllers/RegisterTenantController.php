@@ -89,21 +89,22 @@ class RegisterTenantController extends Controller
             ]);
 
             // [TAMBAHAN: Buat Lisensi Pertama Jika Trial]
+            $licenseCode = 'TRIAL-' . strtoupper(Str::random(8)); // Simpan di variabel agar bisa dipakai di pesan WA
             if ($request->package == 'trial') {
                 License::create([
-                    'license_code'  => 'TRIAL-' . strtoupper(Str::random(8)),
+                    'license_code'  => $licenseCode,
                     'tenant_id'     => $tenant->id,
                     'package_type'  => 'trial',
                     'max_devices'   => 1,
                     'max_ips'       => 1,
                     'duration_days' => $days,
-                    'status'        => 'used',
+                    'status'        => 'used', // Langsung 'used' agar user tidak perlu aktivasi manual lagi di dalam app
                     'used_at'       => $now,
                     'expires_at'    => $expiredAt,
                 ]);
             }
 
-            DB::commit(); // Commit database dulu sebelum kirim WA/API agar ID sudah terbentuk
+            DB::commit();
 
             // 6. NOTIFIKASI WA UNTUK ADMIN (SERVER)
             // [PERBAIKAN] Gunakan Domain Utama untuk notifikasi admin agar bisa dicek manual
@@ -133,23 +134,24 @@ class RegisterTenantController extends Controller
                 return redirect()->away($paymentUrl);
             }
 
-            // 8. FINISH (TRIAL)
-            // [PERBAIKAN KRUSIAL] Wajib pakai HTTPS.
-            // Cloudflare Worker hanya akan bekerja optimal jika request masuk via HTTPS.
-            // Jika HTTP, takutnya server DA me-redirect dan menghilangkan Header 'X-Original-Host'.
-            $targetUrl = 'https://' . $tenant->subdomain . '.tokosancaka.com/login';
+          // 8. FINISH (TRIAL)
+            if ($request->package == 'trial') {
+                $targetUrl = 'https://' . $tenant->subdomain . '.tokosancaka.com/login';
 
-            $msgTrial = "Selamat Kak *{$request->owner_name}*! 🎉\n\n";
-            $msgTrial .= "Akun Trial Anda aktif. Login disini:\n" . $targetUrl;
-            $this->_sendFonnte($userWa, $msgTrial);
+                $msgTrial = "Selamat Ya Kak *{$request->owner_name}*! 🎉\n\n";
+                $msgTrial .= "Akun Trial 14 hari Anda sudah aktif.\n";
+                $msgTrial .= "----------------------------------\n";
+                $msgTrial .= "🔑 *KODE AKTIVASI:* `{$licenseCode}`\n"; // Menampilkan kode ke user
+                $msgTrial .= "🌐 *LINK LOGIN:* {$targetUrl}\n";
+                $msgTrial .= "----------------------------------\n\n";
+                $msgTrial .= "Gunakan kode di atas jika aplikasi meminta aktivasi saat pertama kali login.";
+                
+                $this->_sendFonnte($userWa, $msgTrial);
 
-            Log::info("LOG LOG: Trial sukses. Redirect ke: " . $targetUrl);
+                Log::info("LOG LOG: Trial sukses mengirim kode {$licenseCode} ke {$userWa}");
 
-            // [PERBAIKAN] Redirect 'away' memaksa browser user memuat ulang URL baru.
-            // Saat browser memuat URL ini, Cloudflare Worker akan menangkapnya -> Memalsukan Header -> Masuk Server DA.
-            return redirect()->away($targetUrl);
-
-        } catch (\Exception $e) {
+                return redirect()->away($targetUrl);
+            } catch (\Exception $e) {
             DB::rollBack();
             Log::error("LOG LOG: FAILED REGISTER: " . $e->getMessage());
             return back()->with('error', 'Gagal mendaftar: ' . $e->getMessage());
