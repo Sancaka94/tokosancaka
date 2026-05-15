@@ -564,11 +564,10 @@ class DokuWebhookController extends Controller
                 }
             }
 
-            // C. Cek di tabel TopUp (Isi Saldo Aplikasi)
+           // C. Cek di tabel TopUp (Isi Saldo Aplikasi)
             if (!$buyerId && Str::startsWith($orderId, 'TOPUP-')) {
                 $topup = DB::table('top_ups')
-                            ->where('transaction_id', $orderId)
-                            ->orWhere('reference_id', $orderId)
+                            ->where('transaction_id', $orderId) // <--- Cukup cari berdasarkan transaction_id
                             ->first();
                 if ($topup) {
                     $buyerId = $topup->customer_id ?? $topup->user_id ?? null;
