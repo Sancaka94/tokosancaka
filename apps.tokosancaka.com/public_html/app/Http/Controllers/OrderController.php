@@ -1036,6 +1036,10 @@ class OrderController extends Controller
                         $envInfo->setTerminalType("WEB");
                         $envInfo->setWebsiteLanguage("ID");
 
+                        if (method_exists($envInfo, 'setOrderTerminalType')) {
+                            $envInfo->setOrderTerminalType("WEB"); 
+                        }
+
                         $addInfo = new WidgetPaymentRequestAdditionalInfo();
 
                         // [FIX UTAMA: TAMBAHKAN PRODUCT CODE]
@@ -1066,7 +1070,8 @@ class OrderController extends Controller
 
                         $urlParam->setUrl($returnUrl);
                         $urlParam->setType("PAY_RETURN");
-                        $urlParam->setIsDeeplink("Y");
+                        // $urlParam->setIsDeeplink("Y");
+                        $urlParam->setIsDeeplink("N");
 
                         $paymentRequest->setUrlParams([$urlParam]);
                         $paymentRequest->setAdditionalInfo($addInfo);
