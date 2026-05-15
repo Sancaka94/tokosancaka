@@ -22,14 +22,14 @@ class DanaSignatureService
 
         $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
         $partnerId = config('services.dana.x_partner_id');
-        
+
         // Step 1: Compose string (X-CLIENT-KEY + "|" + X-TIMESTAMP)
         $stringToSign = $partnerId . "|" . $timestamp;
-        
+
         $signature = $this->generateAsymmetricSignature($stringToSign);
 
-        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' 
-                   ? 'https://api.dana.id' 
+        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION'
+                   ? 'https://api.saas.dana.id'
                    : 'https://api.sandbox.dana.id';
 
         $response = Http::withHeaders([
@@ -77,7 +77,7 @@ class DanaSignatureService
     public function generateAsymmetricSignature($stringToSign)
     {
         $privateKey = config('services.dana.private_key');
-        
+
         // Pengecekan file_exists HANYA jika panjang string pendek (berupa path file)
         // Ini menghindari error jika $privateKey berisi string RSA utuh dari database
         if (is_string($privateKey) && strlen($privateKey) < 255 && file_exists($privateKey)) {
@@ -88,10 +88,10 @@ class DanaSignatureService
         $formattedKey = $this->formatPrivateKey($privateKey);
 
         $binarySignature = "";
-        
+
         // Gunakan standar modern openssl_pkey_get_private
         $pkeyResource = openssl_pkey_get_private($formattedKey);
-        
+
         if (!$pkeyResource) {
             throw new \Exception("DANA Error: Private Key tidak valid. Pastikan format di database benar.");
         }
@@ -100,7 +100,7 @@ class DanaSignatureService
         if (!openssl_sign($stringToSign, $binarySignature, $pkeyResource, OPENSSL_ALGO_SHA256)) {
              throw new \Exception("DANA Error: Gagal melakukan signing data.");
         }
-        
+
         return base64_encode($binarySignature);
     }
 
@@ -113,22 +113,22 @@ class DanaSignatureService
 
         $cleanKey = str_replace(
             [
-                "-----BEGIN PRIVATE KEY-----", 
-                "-----END PRIVATE KEY-----", 
-                "-----BEGIN RSA PRIVATE KEY-----", 
-                "-----END RSA PRIVATE KEY-----", 
-                "\r", 
-                "\n", 
+                "-----BEGIN PRIVATE KEY-----",
+                "-----END PRIVATE KEY-----",
+                "-----BEGIN RSA PRIVATE KEY-----",
+                "-----END RSA PRIVATE KEY-----",
+                "\r",
+                "\n",
                 " ",
-                "\"", 
-                "'"  
+                "\"",
+                "'"
             ],
             "",
             $rawKey
         );
 
-        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . 
-                        wordwrap($cleanKey, 64, "\n", true) . 
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" .
+                        wordwrap($cleanKey, 64, "\n", true) .
                         "\n-----END PRIVATE KEY-----";
 
         return $formattedKey;
@@ -143,13 +143,13 @@ class DanaSignatureService
 
         $jsonBody = is_string($body) ? $body : json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $hashedBody = strtolower(hash('sha256', $jsonBody));
-        
+
         $stringToVerify = strtoupper($method) . ":" . $path . ":" . $hashedBody . ":" . $timestamp;
 
         $isValid = openssl_verify(
-            $stringToVerify, 
-            base64_decode($signatureFromHeader), 
-            $publicKey, 
+            $stringToVerify,
+            base64_decode($signatureFromHeader),
+            $publicKey,
             OPENSSL_ALGO_SHA256
         );
 
