@@ -771,3 +771,12 @@ Route::middleware(['auth'])->group(function () {
 // Route untuk menangkap user yang kembali dari halaman pembayaran DOKU
 Route::get('/payment/doku-return', [\App\Http\Controllers\TenantPaymentController::class, 'dokuReturn'])
     ->name('doku.return');
+
+
+Route::domain('{subdomain}.tokosancaka.com')->middleware('tenant')->group(function () {
+    
+    Route::get('/suspended', function () {
+        return view('tenant.suspended'); 
+    })->name('tenant.suspended');
+
+});
