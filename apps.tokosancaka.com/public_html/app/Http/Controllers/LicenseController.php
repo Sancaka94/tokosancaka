@@ -97,10 +97,14 @@ class LicenseController extends Controller
             Log::info("✅ Tenant ditemukan. ID Tenant: {$tenant->id}, Status saat ini: {$tenant->status}");
 
             // 3. VALIDASI UTAMA: Pastikan Kode Lisensi ada DAN memang milik ID Toko tersebut
-            Log::info("🔍 Mencari lisensi '{$cleanLicenseCode}' untuk Tenant ID: {$tenant->id}");
+            Log::info("🔍 Mencari lisensi '{$cleanLicenseCode}' untuk Tenant ID: {$tenant->id} atau lisensi global");
+            
             $license = License::withoutGlobalScopes()
                           ->where('license_code', $cleanLicenseCode)
-                          ->where('tenant_id', $tenant->id)
+                          ->where(function($query) use ($tenant) {
+                              $query->where('tenant_id', $tenant->id)
+                                    ->orWhereNull('tenant_id'); // Mengizinkan lisensi buatan Superadmin (null)
+                          })
                           ->first();
 
             if (!$license) {
