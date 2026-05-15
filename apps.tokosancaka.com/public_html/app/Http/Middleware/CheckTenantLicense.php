@@ -18,42 +18,42 @@ class CheckTenantLicense
         $parts = explode('.', $host);
         $subdomain = $parts[0] ?? '';
 
-        // Abaikan pengecekan untuk subdomain utama / khusus
         $excludedSubdomains = ['apps', 'admin', 'www', 'localhost', '127', 'demo'];
         if (in_array($subdomain, $excludedSubdomains)) {
             return $next($request);
         }
 
-        // Whitelist rute agar tidak terjadi Infinite Redirect Loop
-        // Tambahkan rute 'redeem' ke dalam whitelist ini
-        if ($request->is('suspended') || $request->is('redeem-lisensi') || $request->is('api/*') || $request->is('dana/*')) {
+        // Whitelist agar tidak infinite redirect
+        if ($request->is('suspended') || $request->is('api/*') || $request->is('dana/*')) {
             return $next($request);
         }
 
         // 2. CEK TABEL TENANTS
         $tenant = DB::table('tenants')->where('subdomain', $subdomain)->first();
 
-        // JIKA TOKO TIDAK ADA
         if (!$tenant) {
             return redirect()->away('https://apps.tokosancaka.com/daftar-pos');
         }
 
-        // 3. LOGIKA BARU: CEK APAKAH BELUM MASUKKAN KODE AKTIVASI (REDEEM)
-        // Kita cek apakah ada lisensi milik tenant ini yang statusnya masih 'available'
+        // -------------------------------------------------------------------
+        // [LOGIKA 1] JIKA BELUM REDEEM (KODE PERTAMA ANDA)
+        // -------------------------------------------------------------------
         $pendingLicense = DB::table('licenses')
             ->where('tenant_id', $tenant->id)
             ->where('status', 'available')
             ->exists();
 
         if ($pendingLicense) {
-            // Jika ada lisensi yang belum di-redeem, arahkan ke halaman redeem
-            // Pastikan Anda sudah memiliki rute /redeem-lisensi di web.php
-            return redirect('/redeem-lisensi')->with('info', 'Silakan masukkan kode aktivasi Anda untuk melanjutkan.');
+            // Mengembalikan ke rute pusat sesuai kode awal Anda
+            return redirect()->to('https://apps.tokosancaka.com/redeem-lisensi?subdomain=' . $subdomain)
+                             ->with('info', 'Silakan aktivasi layanan Anda.');
         }
 
-        // 4. CEK STATUS AKTIF & EXPIRED
+        // -------------------------------------------------------------------
+        // [LOGIKA 2] JIKA EXPIRED / INACTIVE (KE HALAMAN SUSPEND LOKAL)
+        // -------------------------------------------------------------------
         if ($tenant->status !== 'active') {
-            return redirect('/suspended')->with('error', 'Toko Anda sedang ditangguhkan.');
+            return redirect('/suspended');
         }
 
         if ($tenant->expired_at) {
@@ -61,11 +61,13 @@ class CheckTenantLicense
             
             if (now()->timezone('Asia/Jakarta')->isAfter($expiredDate)) {
                 DB::table('tenants')->where('id', $tenant->id)->update(['status' => 'inactive']);
-                return redirect('/suspended')->with('error', 'Masa aktif toko telah habis.');
+                return redirect('/suspended');
             }
         }
 
-        // Lolos semua pengecekan
+        // -------------------------------------------------------------------
+        // LOLOS SEMUA: TOKO AKTIF & SUDAH REDEEM
+        // -------------------------------------------------------------------
         View::share('currentTenant', $tenant);
         $request->merge(['tenant' => $tenant]);
 
