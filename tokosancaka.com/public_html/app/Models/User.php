@@ -85,6 +85,10 @@ class User extends Authenticatable
         'last_seen_at',
         'last_seen',
         'expo_token',
+        'dana_access_token',
+        'dana_auth_code',
+        'dana_user_name',
+        'dana_user_balance',
         // 'created_at' DIHAPUS DARI SINI. Seharusnya tidak di-fillable,
         // karena dihandle otomatis oleh Eloquent/DB.
     ];

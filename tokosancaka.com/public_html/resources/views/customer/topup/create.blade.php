@@ -65,6 +65,25 @@
                     <div class="space-y-8">
                         <h4 class="text-xl font-bold text-gray-800">Pilih Metode Pembayaran</h4>
 
+                        {{-- CEK STATUS BINDING & TAMPILKAN INFO SALDO --}}
+                        @php
+                            $user = Auth::user();
+                            $isDanaBound = $user && !empty($user->dana_access_token);
+                        @endphp
+
+                        @if($isDanaBound)
+                            <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between shadow-sm">
+                                <div>
+                                    <p class="text-sm text-gray-500 font-medium mb-1"><i class="fas fa-wallet mr-1"></i> Saldo DANA Terhubung:</p>
+                                    <h2 id="dana-balance-text" class="text-2xl font-bold text-blue-700">Rp ******</h2>
+                                    <p id="dana-balance-msg" class="text-xs text-red-500 mt-1 font-medium" style="display:none;"></p>
+                                </div>
+                                <button type="button" id="btn-cek-saldo-dana" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow transition-all flex items-center">
+                                    <i class="fas fa-sync mr-2"></i> Cek Saldo
+                                </button>
+                            </div>
+                        @endif
+
                         {{-- GROUP 1: MANUAL & GATEWAY LAIN --}}
                         <div>
                             <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 pl-1 border-l-4 border-gray-400">Transfer & E-Wallet</h5>
@@ -95,16 +114,16 @@
                                 <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="DANA_BINDING" class="peer sr-only" {{ !$isDanaBound ? 'disabled' : '' }} required>
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-500 peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all flex flex-col items-center text-center {{ !$isDanaBound ? 'opacity-50 cursor-not-allowed bg-gray-50' : '' }}">
-                                        
+
                                         <img src="{{ asset('assets/dana.webp') }}" class="h-10 w-10 object-contain mb-2 rounded-md" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
                                         <span class="text-sm font-bold text-gray-700">Saldo DANA</span>
-                                        
+
                                         @if($isDanaBound)
                                             <span class="text-[10px] text-green-600 font-bold mt-1 bg-green-100 px-2 py-0.5 rounded-full"><i class="fas fa-link mr-1"></i>Tersambung</span>
                                         @else
                                             <span class="text-[10px] text-red-500 font-bold mt-1 bg-red-100 px-2 py-0.5 rounded-full"><i class="fas fa-unlink mr-1"></i>Belum Terhubung</span>
                                         @endif
-                                        
+
                                         <div class="absolute top-2 right-2 text-blue-600 opacity-0 peer-checked:opacity-100"><i class="fas fa-check-circle"></i></div>
                                     </div>
                                 </label>
@@ -320,6 +339,43 @@
                 });
             }
         });
+
+        // ==========================================
+            // SCRIPT CEK SALDO DANA REAL-TIME
+            // ==========================================
+            $('#btn-cek-saldo-dana').on('click', function() {
+                let $btn = $(this);
+                let $textSaldo = $('#dana-balance-text');
+                let $textMsg = $('#dana-balance-msg');
+
+                // State Loading
+                let originalText = $btn.html();
+                $btn.html('<i class="fas fa-spinner fa-spin mr-2"></i> Mengecek...');
+                $btn.prop('disabled', true);
+                $textMsg.hide();
+
+                $.ajax({
+                    url: "{{ route('customer.dana.check_balance') }}",
+                    method: "GET",
+                    dataType: "json",
+                    success: function(response) {
+                        if(response.success) {
+                            $textSaldo.html(response.formatted_balance);
+                        } else {
+                            $textMsg.html(response.message).show();
+                        }
+                    },
+                    error: function() {
+                        $textMsg.html('Terjadi kesalahan koneksi server.').show();
+                    },
+                    complete: function() {
+                        // Kembalikan tombol ke semula
+                        $btn.html(originalText);
+                        $btn.prop('disabled', false);
+                    }
+                });
+            });
+
     </script>
     @endpush
 @endsection
