@@ -88,21 +88,26 @@ class RegisterTenantController extends Controller
                 'permissions' => ['dashboard', 'pos', 'products', 'reports', 'settings', 'finance'],
             ]);
 
-            dd('HALO COK! FILE INI SUDAH KE-UPDATE', $request->package);
-
             // [TAMBAHAN: Buat Lisensi Pertama Jika Trial]
-            $licenseCode = 'TRIAL-' . strtoupper(Str::random(8)); // Simpan di variabel agar bisa dipakai di pesan WA
+            $licenseCode = 'TRIAL-' . strtoupper(Str::random(8)); 
             if ($request->package == 'trial') {
-                License::create([
+                
+                // KITA MATIKAN SEMENTARA MODEL-NYA
+                // License::create([ ... ]); 
+                
+                // KITA TEMBAK LANGSUNG KE DATABASE
+                \Illuminate\Support\Facades\DB::table('licenses')->insert([
                     'license_code'  => $licenseCode,
                     'tenant_id'     => $tenant->id,
                     'package_type'  => 'trial',
                     'max_devices'   => 1,
                     'max_ips'       => 1,
                     'duration_days' => $days,
-                    'status'        => 'available', // Ubah status menjadi 'available' atau 'unused' (sesuaikan dengan database Anda)
-                    'used_at'       => null,        // Kosongkan used_at karena kode belum di-redeem
+                    'status'        => 'available', // <-- Kita paksa available
+                    'used_at'       => null,
                     'expires_at'    => $expiredAt,
+                    'created_at'    => $now,
+                    'updated_at'    => $now,
                 ]);
             }
 
