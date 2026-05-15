@@ -74,25 +74,34 @@ class DanaSignatureService
         return $this->generateAsymmetricSignature($stringToSign);
     }
 
-    /**
+   /**
      * Helper: RSA-2048 SHA-256 Signature (Step 2 & 4 di Dokumen)
      */
     public function generateAsymmetricSignature($stringToSign)
     {
         $privateKey = config('services.dana.private_key');
-        if (file_exists($privateKey)) {
+        
+        // Jika masih berupa file path (fallback)
+        if (is_string($privateKey) && file_exists($privateKey) && is_file($privateKey)) {
             $privateKey = file_get_contents($privateKey);
         }
 
+        // --- FIX: Format ulang Private Key sebelum masuk OpenSSL ---
+        $formattedKey = $this->formatPrivateKey($privateKey);
+
         $binarySignature = "";
-        $pkeyResource = openssl_get_privatekey($privateKey);
+        
+        // Gunakan openssl_pkey_get_private (standar pemanggilan modern PHP)
+        $pkeyResource = openssl_pkey_get_private($formattedKey);
         
         if (!$pkeyResource) {
-            throw new \Exception("DANA Error: Private Key tidak valid.");
+            throw new \Exception("DANA Error: Private Key tidak valid. Gagal dibaca oleh OpenSSL.");
         }
 
         // RSA-SHA256
-        openssl_sign($stringToSign, $binarySignature, $pkeyResource, OPENSSL_ALGO_SHA256);
+        if (!openssl_sign($stringToSign, $binarySignature, $pkeyResource, OPENSSL_ALGO_SHA256)) {
+            throw new \Exception("DANA Error: Gagal melakukan signing data.");
+        }
         
         return base64_encode($binarySignature);
     }
@@ -118,5 +127,35 @@ class DanaSignatureService
         );
 
         return $isValid === 1;
+    }
+
+   private function formatPrivateKey($rawKey)
+    {
+        if (empty($rawKey)) {
+            throw new \Exception("Private Key kosong.");
+        }
+
+        // Tambahkan tanda kutip ganda (") dan kutip tunggal (') ke dalam array pembersih
+        $cleanKey = str_replace(
+            [
+                "-----BEGIN PRIVATE KEY-----", 
+                "-----END PRIVATE KEY-----", 
+                "-----BEGIN RSA PRIVATE KEY-----", 
+                "-----END RSA PRIVATE KEY-----", 
+                "\r", 
+                "\n", 
+                " ",
+                "\"", // <-- Tambahan untuk menghapus kutip ganda
+                "'"   // <-- Tambahan untuk menghapus kutip tunggal
+            ],
+            "",
+            $rawKey
+        );
+
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . 
+                        wordwrap($cleanKey, 64, "\n", true) . 
+                        "\n-----END PRIVATE KEY-----";
+
+        return $formattedKey;
     }
 }
