@@ -593,7 +593,8 @@ class TopUpController extends Controller
             'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         ];
 
-        return redirect("https://m.sandbox.dana.id/d/portal/oauth?" . http_build_query($queryParams));
+        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://m.dana.id' : 'https://m.sandbox.dana.id';
+        return redirect($baseUrl . "/d/portal/oauth?" . http_build_query($queryParams));
     }
 
    public function handleCallback(Request $request)
@@ -638,7 +639,7 @@ class TopUpController extends Controller
             'X-CLIENT-KEY'  => $clientId,
             'X-EXTERNAL-ID' => $externalId,
             'Content-Type'  => 'application/json'
-        ])->post('https://api.sandbox.dana.id' . $path, $body);
+        ])->post(config('services.dana.base_url') . $path, $body);
 
         $result = $response->json();
         // Kode sukses DANA Sandbox seringkali 2007400 untuk B2B2C
@@ -726,7 +727,7 @@ class TopUpController extends Controller
             'ORIGIN'        => config('services.dana.origin'),
             'Authorization-Customer' => 'Bearer ' . $accessToken,
             'Content-Type'  => 'application/json'
-        ])->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+        ])->withBody($jsonBody, 'application/json')->post(config('services.dana.base_url') . $path);
 
         $result = $response->json();
 
@@ -820,7 +821,7 @@ class TopUpController extends Controller
 
         $response = Http::withHeaders($headers)
             ->withBody($jsonBody, 'application/json')
-            ->post('https://api.sandbox.dana.id' . $path);
+            ->post(config('services.dana.base_url') . $path);
 
         $result = $response->json();
 
@@ -951,7 +952,7 @@ public function accountInquiry(Request $request)
         // --- [LOG 4] SENDING REQUEST ---
         Log::info('[DANA INQUIRY] Sending Request to DANA', ['body' => $body]);
 
-        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post(config('services.dana.base_url') . $path);
         $result = $response->json();
 
         // --- [LOG 5] RESPONSE RECEIVED ---
@@ -1174,7 +1175,7 @@ public function customerTopup(Request $request)
     try {
         Log::info('[DANA TOPUP] Mengirim Request ke DANA API', ['body' => $body]);
 
-        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post(config('services.dana.base_url') . $path);
         $result = $response->json();
 
         $resCode = $result['responseCode'] ?? '5003801';
@@ -1297,7 +1298,7 @@ public function checkTopupStatus(Request $request)
         // --- [LOG 2] SENDING REQUEST ---
         Log::info('[DANA INQUIRY STATUS] Mengirim Request Status ke DANA', ['body' => $body]);
 
-        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post(config('services.dana.base_url') . $path);
         $result = $response->json();
         $resCode = $result['responseCode'] ?? ''; // <--- TAMBAHKAN BARIS INI
 
@@ -1395,7 +1396,7 @@ public function checkTopupStatus(Request $request)
                 'X-IP-ADDRESS'  => $request->ip(),
                 'X-DEVICE-ID'   => 'SANCAKA-DANA-01',
                 'CHANNEL-ID'    => '95221'
-            ])->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+            ])->withBody($jsonBody, 'application/json')->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
             Log::info('[BANK INQUIRY]', ['res' => $result]);
@@ -1535,7 +1536,7 @@ public function checkTopupStatus(Request $request)
 
             $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
-                ->post('https://api.sandbox.dana.id' . $path);
+                ->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
             $resCode = $result['responseCode'] ?? '500';
@@ -1690,14 +1691,14 @@ public function checkTopupStatus(Request $request)
             ];
 
             Log::info('[GAPURA] 4. Sending Request...', [
-                'url' => 'https://api.sandbox.dana.id' . $path,
+                'url' => config('services.dana.base_url') . $path,
                 'headers' => $headers
             ]);
 
             // 6. Kirim Request
             $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
-                ->post('https://api.sandbox.dana.id' . $path);
+                ->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
             $httpStatus = $response->status();
@@ -1764,6 +1765,7 @@ public function checkTopupStatus(Request $request)
     public function __construct(DanaSignatureService $danaSignature)
     {
         $this->danaSignature = $danaSignature;
+        $this->applyDynamicConfig(); // <-- TAMBAHKAN BARIS INI
     }
 
   /**
@@ -2014,6 +2016,40 @@ public function checkTopupStatus(Request $request)
         } catch (\Exception $e) {
             Log::error('DOKU NOTIFY ERROR: ' . $e->getMessage());
             return response()->json(['message' => 'Error'], 500);
+        }
+    }
+
+    // =========================================================================
+    // TAMBAHAN HELPER: DINAMISASI CONFIG DANA BERDASARKAN DATABASE
+    // =========================================================================
+    private function applyDynamicConfig()
+    {
+        // Ambil status Production dari model Api
+        $danaMode = Api::getValue('dana_production_mode', 'global', '0');
+        $isProduction = ($danaMode == '1');
+
+        if ($isProduction) {
+            Log::info('LOG LOG: DANA Menggunakan Mode PRODUCTION');
+            config([
+                'services.dana.dana_env'      => 'PRODUCTION',
+                'services.dana.base_url'      => 'https://api.dana.id',
+                'services.dana.merchant_id'   => Api::getValue('dana_prod_merchant_id', 'production', env('DANA_PROD_MERCHANT_ID')),
+                'services.dana.client_id'     => Api::getValue('dana_prod_client_id', 'production', env('DANA_PROD_CLIENT_ID')),
+                'services.dana.x_partner_id'  => Api::getValue('dana_prod_client_id', 'production', env('DANA_PROD_CLIENT_ID')),
+                'services.dana.private_key'   => Api::getValue('dana_prod_private_key', 'production', env('DANA_PROD_PRIVATE_KEY')),
+                'services.dana.client_secret' => Api::getValue('dana_prod_client_secret', 'production', env('DANA_PROD_CLIENT_SECRET')),
+            ]);
+        } else {
+            Log::info('LOG LOG: DANA Menggunakan Mode SANDBOX');
+            config([
+                'services.dana.dana_env'      => 'SANDBOX',
+                'services.dana.base_url'      => 'https://api.sandbox.dana.id',
+                'services.dana.merchant_id'   => Api::getValue('dana_sandbox_merchant_id', 'sandbox', env('DANA_MERCHANT_ID')),
+                'services.dana.client_id'     => Api::getValue('dana_sandbox_client_id', 'sandbox', env('DANA_X_PARTNER_ID')),
+                'services.dana.x_partner_id'  => Api::getValue('dana_sandbox_client_id', 'sandbox', env('DANA_X_PARTNER_ID')),
+                'services.dana.private_key'   => Api::getValue('dana_sandbox_private_key', 'sandbox', env('DANA_PRIVATE_KEY')),
+                'services.dana.client_secret' => Api::getValue('dana_sandbox_client_secret', 'sandbox', env('DANA_CLIENT_SECRET')),
+            ]);
         }
     }
 
