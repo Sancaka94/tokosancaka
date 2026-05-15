@@ -10,6 +10,7 @@ use App\Models\Tenant; // <--- WAJIB TAMBAH
 use App\Models\Affiliate; // <--- BARIS INI WAJIB ADA
 use App\Models\TopUp;  // <--- TAMBAHKAN BARIS INI
 use Illuminate\Support\Str;
+use App\Models\SettingApi;
 
 class DanaDashboardController extends Controller
 {
@@ -324,11 +325,37 @@ protected function processPendingTransactions($affiliateId, $accessToken)
     }
 
     private function generateSignature($stringToSign) {
-        $privateKey = config('services.dana.private_key');
-        $binarySignature = "";
-        openssl_sign($stringToSign, $binarySignature, $privateKey, OPENSSL_ALGO_SHA256);
-        return base64_encode($binarySignature);
+    $rawKey = config('services.dana.private_key');
+
+    // 1. Bersihkan key dari kotoran (kutip, spasi, enter)
+    $cleanKey = str_replace(
+        [
+            "-----BEGIN PRIVATE KEY-----", 
+            "-----END PRIVATE KEY-----", 
+            "-----BEGIN RSA PRIVATE KEY-----", 
+            "-----END RSA PRIVATE KEY-----", 
+            "\r", "\n", " ", "\"", "'"
+        ],
+        "",
+        $rawKey
+    );
+
+    // 2. Susun ulang jadi format PEM standar OpenSSL (64 karakter per baris)
+    $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . 
+                    wordwrap($cleanKey, 64, "\n", true) . 
+                    "\n-----END PRIVATE KEY-----";
+
+    $privateKeyResource = openssl_pkey_get_private($formattedKey);
+
+    if (!$privateKeyResource) {
+        throw new \Exception("DANA Error: Private Key tidak valid di Dashboard Controller.");
     }
+
+    $binarySignature = "";
+    openssl_sign($stringToSign, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256);
+    
+    return base64_encode($binarySignature);
+}
 
    public function topupSaldo(Request $request)
 {
