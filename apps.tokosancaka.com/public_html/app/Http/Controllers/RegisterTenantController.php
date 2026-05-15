@@ -151,7 +151,10 @@ class RegisterTenantController extends Controller
                 Log::info("LOG LOG: Trial sukses mengirim kode {$licenseCode} ke {$userWa}");
 
                 return redirect()->away($targetUrl);
+                }
+
             } catch (\Exception $e) {
+            
             DB::rollBack();
             Log::error("LOG LOG: FAILED REGISTER: " . $e->getMessage());
             return back()->with('error', 'Gagal mendaftar: ' . $e->getMessage());
