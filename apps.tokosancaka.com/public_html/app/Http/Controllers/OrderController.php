@@ -15,6 +15,7 @@ use Carbon\Carbon; // <--- Pastikan baris ini ada di paling atas file
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\OrdersExport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\SettingApi;
 
 // Models
 use App\Models\Order;
@@ -63,6 +64,8 @@ class OrderController extends Controller
 
         // 4. Simpan ID-nya. Jika tidak ketemu, default ke 1 (Pusat)
         $this->tenantId = $tenant ? $tenant->id : 1;
+
+        $this->applyDynamicConfig();
     }
     // =========================================================================
     // 1. INDEX & DASHBOARD STATISTIK (DIPERBAIKI)
@@ -1020,8 +1023,8 @@ class OrderController extends Controller
                         $config->setApiKey('PRIVATE_KEY', config('services.dana.private_key'));
                         $config->setApiKey('X_PARTNER_ID', config('services.dana.x_partner_id'));
                         $config->setApiKey('ORIGIN', config('services.dana.origin'));
-                        $config->setApiKey('DANA_ENV', Env::SANDBOX); // Ubah ke Env::PRODUCTION jika live
-
+                        $danaEnvironment = config('services.dana.dana_env') === 'PRODUCTION' ? Env::PRODUCTION : Env::SANDBOX;
+                        $config->setApiKey('DANA_ENV', $danaEnvironment);
                         $apiInstance = new WidgetApi(null, $config);
 
                         $orderObj = new DanaOrder();
@@ -2631,6 +2634,37 @@ public function handleDanaCallback(Request $request)
                 'status' => 'error',
                 'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    private function applyDynamicConfig()
+    {
+        // Pastikan Model SettingApi sudah di-use di atas
+        $settings = \App\Models\SettingApi::pluck('value', 'key')->toArray();
+        $isProduction = ($settings['dana_production_mode'] ?? '0') == '1';
+
+        if ($isProduction) {
+            config([
+                'services.dana.dana_env'      => 'PRODUCTION',
+                'services.dana.base_url'      => 'https://api.dana.id',
+                'services.dana.merchant_id'   => $settings['dana_prod_merchant_id'] ?? env('DANA_PROD_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.private_key'   => $settings['dana_prod_private_key'] ?? env('DANA_PROD_PRIVATE_KEY'),
+                'services.dana.client_secret' => $settings['dana_prod_client_secret'] ?? env('DANA_PROD_CLIENT_SECRET'),
+                'services.dana.origin'        => env('DANA_ORIGIN', 'https://tokosancaka.com'),
+            ]);
+        } else {
+            config([
+                'services.dana.dana_env'      => 'SANDBOX',
+                'services.dana.base_url'      => 'https://api.sandbox.dana.id',
+                'services.dana.merchant_id'   => $settings['dana_sandbox_merchant_id'] ?? env('DANA_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.private_key'   => $settings['dana_sandbox_private_key'] ?? env('DANA_PRIVATE_KEY'),
+                'services.dana.client_secret' => $settings['dana_sandbox_client_secret'] ?? env('DANA_CLIENT_SECRET'),
+                'services.dana.origin'        => env('DANA_ORIGIN', 'https://tokosancaka.com'),
+            ]);
         }
     }
 

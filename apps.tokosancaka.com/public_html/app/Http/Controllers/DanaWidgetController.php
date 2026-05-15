@@ -12,16 +12,19 @@ use App\Models\SettingApi;
 
 class DanaWidgetController extends Controller
 {
-    protected $danaSignature;
-
     public function __construct(DanaSignatureService $danaSignature)
     {
         $this->danaSignature = $danaSignature;
+        
+        // Panggil di sini agar SEMUA fungsi di bawahnya 
+        // otomatis memakai config dinamis terbaru dari database
+        $this->applyDynamicConfig(); 
     }
+
 
   public function createPayment(Request $request) {
 
-    $this->applyDynamicConfig();  
+    // $this->applyDynamicConfig();  
 
     \Illuminate\Support\Facades\Log::info('DANA_H2H_START: Memulai pembuatan order.');
 
@@ -143,7 +146,7 @@ class DanaWidgetController extends Controller
      */
     public function checkStatus($orderId)
     {
-        $this->applyDynamicConfig();
+        // $this->applyDynamicConfig();
 
         Log::info("Checking Status for Order: $orderId");
 
@@ -361,7 +364,8 @@ class DanaWidgetController extends Controller
 
         try {
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
-            $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+            // $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+            $fullUrl = config('services.dana.base_url') . $relativePath;
             $externalId = \Illuminate\Support\Str::random(32);
 
             Log::info("Hitting Endpoint: $relativePath");
@@ -400,7 +404,7 @@ class DanaWidgetController extends Controller
 
     public function initiateBinding(Request $request)
     {
-        $this->applyDynamicConfig();
+        // $this->applyDynamicConfig();
 
         Log::info('========== DANA BINDING INITIATED (V2 SEAMLESS) ==========');
 
@@ -454,7 +458,11 @@ class DanaWidgetController extends Controller
 
         // 4. ENDPOINT V2 (SANDBOX)
         // Menggunakan /n/link/binding sesuai referensi Anda
-        $baseUrl = 'https://m.sandbox.dana.id/n/link/binding'; 
+        // $baseUrl = 'https://m.sandbox.dana.id/n/link/binding'; 
+
+        $baseUrl = (config('services.dana.dana_env') === 'PRODUCTION') 
+               ? 'https://m.dana.id/n/link/binding' 
+               : 'https://m.sandbox.dana.id/n/link/binding';
         
         $fullRedirectUrl = $baseUrl . '?' . http_build_query($queryParams);
 
@@ -547,7 +555,8 @@ class DanaWidgetController extends Controller
             // Generate Signature
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
             
-            $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+            // $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+            $fullUrl = config('services.dana.base_url') . $relativePath;
             $externalId = \Illuminate\Support\Str::random(32);
 
             Log::info("Hitting Endpoint: $relativePath");
