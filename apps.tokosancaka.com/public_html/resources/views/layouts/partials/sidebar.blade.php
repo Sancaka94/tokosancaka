@@ -196,6 +196,20 @@
             </a>
         @endif
 
+            {{-- ========================================================== --}}
+            {{-- [BARU] SETTING API (Khusus Superadmin & Subdomain apps/admin) --}}
+            {{-- ========================================================== --}}
+            <a wire:navigate.hover href="{{ route('admin.settingapi.index', $params) }}"
+               class="flex items-center rounded-xl text-sm font-medium transition-all duration-200 mt-1
+               {{ request()->routeIs('admin.settingapi.*')
+                 ? 'bg-teal-50 text-teal-600 font-bold border border-teal-100'
+                 : 'text-slate-600 hover:bg-teal-50 hover:text-teal-600' }}"
+               :class="isExpanded ? 'px-3 py-2.5 gap-3 justify-start' : 'p-2.5 justify-center'">
+                <i class="fas fa-cogs w-5 text-center flex-shrink-0 {{ request()->routeIs('admin.settingapi.*') ? 'text-teal-600' : 'text-slate-400' }}"></i>
+                <span x-show="isExpanded" style="display: none;" x-transition class="whitespace-nowrap">Pengaturan API</span>
+            </a>
+        @endif
+
         {{-- MENU LISENSI (BARU - DROPDOWN KHUSUS SUPERADMIN) --}}
         @if(in_array(Auth::user()->role, ['super_admin']))
             <div x-data="{ open: {{ request()->routeIs('superadmin.license.*') ? 'true' : 'false' }} }">
