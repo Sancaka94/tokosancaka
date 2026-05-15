@@ -59,6 +59,7 @@ use App\Http\Controllers\HppController;
 use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\CashflowContactController;
 use App\Http\Controllers\LicenseController;
+use App\Http\Controllers\SettingApiController;
 use App\Http\Middleware\EnforceLicenseLimits;
 
 

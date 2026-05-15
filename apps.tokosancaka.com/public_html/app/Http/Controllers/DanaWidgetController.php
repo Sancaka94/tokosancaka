@@ -8,6 +8,7 @@ use App\Services\DanaSignatureService;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use App\Models\SettingApi;
 
 class DanaWidgetController extends Controller
 {
@@ -18,8 +19,10 @@ class DanaWidgetController extends Controller
         $this->danaSignature = $danaSignature;
     }
 
-  public function createPayment(Request $request)
-{
+  public function createPayment(Request $request) {
+
+    $this->applyDynamicConfig();  
+
     \Illuminate\Support\Facades\Log::info('DANA_H2H_START: Memulai pembuatan order.');
 
     // 1. Setup Data menggunakan Config Baru
@@ -140,6 +143,8 @@ class DanaWidgetController extends Controller
      */
     public function checkStatus($orderId)
     {
+        $this->applyDynamicConfig();
+
         Log::info("Checking Status for Order: $orderId");
 
         // Body untuk Check Status biasanya hanya butuh Partner Reference No
@@ -395,6 +400,8 @@ class DanaWidgetController extends Controller
 
     public function initiateBinding(Request $request)
     {
+        $this->applyDynamicConfig();
+
         Log::info('========== DANA BINDING INITIATED (V2 SEAMLESS) ==========');
 
         $clientId    = config('services.dana.client_id');
@@ -569,6 +576,40 @@ class DanaWidgetController extends Controller
 
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    // =========================================================================
+    // HELPER: DINAMISASI CONFIG DANA BERDASARKAN DATABASE (SANDBOX / PROD)
+    // =========================================================================
+    private function applyDynamicConfig()
+    {
+        // 1. Cek mode di database (1 = Production, 0 = Sandbox)
+        $isProduction = SettingApi::where('key', 'dana_production_mode')->value('value') == '1';
+
+        // 2. Timpa config Laravel secara 'on-the-fly'
+        if ($isProduction) {
+            \Illuminate\Support\Facades\Log::info('LOG LOG: DANA Menggunakan Mode PRODUCTION');
+            config([
+                'services.dana.dana_env'      => 'PRODUCTION',
+                'services.dana.base_url'      => 'https://api.dana.id',
+                'services.dana.merchant_id'   => env('DANA_PROD_MERCHANT_ID'),
+                'services.dana.client_id'     => env('DANA_PROD_CLIENT_ID'),
+                'services.dana.x_partner_id'  => env('DANA_PROD_CLIENT_ID'), // Biasanya sama dengan Client ID
+                'services.dana.private_key'   => env('DANA_PROD_PRIVATE_KEY'),
+                'services.dana.client_secret' => env('DANA_PROD_CLIENT_SECRET'),
+            ]);
+        } else {
+            \Illuminate\Support\Facades\Log::info('LOG LOG: DANA Menggunakan Mode SANDBOX');
+            config([
+                'services.dana.dana_env'      => 'SANDBOX',
+                'services.dana.base_url'      => 'https://api.sandbox.dana.id',
+                'services.dana.merchant_id'   => env('DANA_MERCHANT_ID'),
+                'services.dana.client_id'     => env('DANA_X_PARTNER_ID'),
+                'services.dana.x_partner_id'  => env('DANA_X_PARTNER_ID'),
+                'services.dana.private_key'   => env('DANA_PRIVATE_KEY'),
+                'services.dana.client_secret' => env('DANA_CLIENT_SECRET'),
+            ]);
         }
     }
     

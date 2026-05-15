@@ -39,20 +39,24 @@ return [
         'key' => env('FONNTE_API_KEY'),
     ],
 
-    'dana' => [
-        'merchant_id'         => env('MERCHANT_ID'),
-        'x_partner_id'        => env('X_PARTNER_ID'),
-        'private_key'         => env('PRIVATE_KEY'),
-        'private_key_path'    => env('PRIVATE_KEY_PATH'),
-        'origin'              => env('ORIGIN'),
+ 'dana' => [
+        // Default menggunakan data Sandbox (Akan ditimpa otomatis oleh controller jika mode Production aktif)
+        'merchant_id'         => env('DANA_MERCHANT_ID'),
+        'client_id'           => env('DANA_X_PARTNER_ID'), // Di SNAP BI, Client ID nilainya sama dengan Partner ID
+        'x_partner_id'        => env('DANA_X_PARTNER_ID'),
+        'private_key'         => env('DANA_PRIVATE_KEY'),
+        'private_key_path'    => env('DANA_PRIVATE_KEY_PATH'),
+        'origin'              => env('DANA_ORIGIN'),
         'dana_public_key'     => env('DANA_PUBLIC_KEY'),
         'dana_public_key_path'=> env('DANA_PUBLIC_KEY_PATH'),
-        'client_secret'       => env('CLIENT_SECRET'),
-        'redirect_url_oauth'  => env('REDIRECT_URL_OAUTH'),
-        'external_shop_id'    => env('EXTERNAL_SHOP_ID'),
+        'client_secret'       => env('DANA_CLIENT_SECRET'),
+        'redirect_url_oauth'  => env('DANA_REDIRECT_URL_OAUTH'),
+        'external_shop_id'    => env('DANA_EXTERNAL_SHOP_ID'),
+        
         'dana_env'            => env('DANA_ENV', 'SANDBOX'),
-        // [WAJIB ADA] Logic otomatis menentukan URL Sandbox vs Production
-        'base_url'            => env('DANA_ENV') === 'PRODUCTION'
+        
+        // [WAJIB ADA] Logic otomatis menentukan URL Sandbox vs Production sebagai fallback
+        'base_url'            => env('DANA_ENV', 'SANDBOX') === 'PRODUCTION'
                                     ? 'https://api.dana.id'
                                     : 'https://api.sandbox.dana.id',
     ],
