@@ -62,7 +62,7 @@ class RegisterTenantController extends Controller
         try {
             // 3. KALKULASI MASA AKTIF
             $status = ($request->package == 'trial') ? 'active' : 'inactive';
-            $days = ($request->package == 'yearly') ? 365 : ($request->package == 'monthly' ? 30 : 14);
+            $days = ($request->package == 'yearly') ? 365 : ($request->package == 'monthly' ? 30 : 0);
             
             $expiredAt = $now->copy()->addDays($days);
             // [PERBAIKAN] Jika trial, set expired tenant hari ini juga (0 hari). 
@@ -105,7 +105,7 @@ class RegisterTenantController extends Controller
                     'package_type'  => 'trial',
                     'max_devices'   => 1,
                     'max_ips'       => 1,
-                    'duration_days' => null,
+                    'duration_days' => $days,
                     'status'        => 'available', // <-- Kita paksa available
                     'used_at'       => null,
                     'expires_at'    => $expiredAt,
