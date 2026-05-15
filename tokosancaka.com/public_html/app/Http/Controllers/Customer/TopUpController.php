@@ -2029,10 +2029,12 @@ public function checkTopupStatus(Request $request)
         $isProduction = ($danaMode == '1');
 
         if ($isProduction) {
-            Log::info('LOG LOG: DANA Menggunakan Mode PRODUCTION');
+            \Illuminate\Support\Facades\Log::info('LOG LOG: DANA Menggunakan Mode PRODUCTION');
             config([
                 'services.dana.dana_env'      => 'PRODUCTION',
-                'services.dana.base_url'      => 'https://api.dana.id',
+                // URL disesuaikan dengan file config Anda:
+                'services.dana.base_url'      => 'https://api.saas.dana.id',
+                
                 'services.dana.merchant_id'   => Api::getValue('dana_prod_merchant_id', 'production', env('DANA_PROD_MERCHANT_ID')),
                 'services.dana.client_id'     => Api::getValue('dana_prod_client_id', 'production', env('DANA_PROD_CLIENT_ID')),
                 'services.dana.x_partner_id'  => Api::getValue('dana_prod_client_id', 'production', env('DANA_PROD_CLIENT_ID')),
@@ -2040,10 +2042,12 @@ public function checkTopupStatus(Request $request)
                 'services.dana.client_secret' => Api::getValue('dana_prod_client_secret', 'production', env('DANA_PROD_CLIENT_SECRET')),
             ]);
         } else {
-            Log::info('LOG LOG: DANA Menggunakan Mode SANDBOX');
+            \Illuminate\Support\Facades\Log::info('LOG LOG: DANA Menggunakan Mode SANDBOX');
             config([
                 'services.dana.dana_env'      => 'SANDBOX',
+                // URL disesuaikan dengan file config Anda:
                 'services.dana.base_url'      => 'https://api.sandbox.dana.id',
+                
                 'services.dana.merchant_id'   => Api::getValue('dana_sandbox_merchant_id', 'sandbox', env('DANA_MERCHANT_ID')),
                 'services.dana.client_id'     => Api::getValue('dana_sandbox_client_id', 'sandbox', env('DANA_X_PARTNER_ID')),
                 'services.dana.x_partner_id'  => Api::getValue('dana_sandbox_client_id', 'sandbox', env('DANA_X_PARTNER_ID')),
