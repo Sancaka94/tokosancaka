@@ -176,88 +176,94 @@
 
     {{-- SCRIPT: JAVASCRIPT MURNI (TANPA ALPINE UNTUK LOGIC INI BIAR AMAN) --}}
     <script>
-        let currentAmount = 100000;
+    let currentAmount = 100000;
 
-        // 1. Update Tampilan Harga
-        function updatePlan(amount) {
-            currentAmount = amount;
-            document.getElementById('display-price').innerText = 'Rp ' + amount.toLocaleString('id-ID');
-        }
+    // 1. Update Tampilan Harga
+    function updatePlan(amount) {
+        currentAmount = amount;
+        document.getElementById('display-price').innerText = 'Rp ' + amount.toLocaleString('id-ID');
+    }
 
-        // 2. Proses Pembayaran
-        async function processPayment(e) {
-            e.preventDefault();
+    // 2. Proses Pembayaran
+    async function processPayment(e) {
+        e.preventDefault();
 
-            const btn = document.getElementById('pay-button');
-            const waitingText = document.getElementById('waiting-text');
-            const originalText = btn.innerHTML;
+        const btn = document.getElementById('pay-button');
+        const waitingText = document.getElementById('waiting-text');
+        const originalText = btn.innerHTML;
 
-            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Memproses...';
-            btn.classList.add('opacity-50', 'pointer-events-none');
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Memproses...';
+        btn.classList.add('opacity-50', 'pointer-events-none');
 
-            try {
-                // FIXED: Tambahkan prefix /api/
-                const response = await fetch('/api/tenant/generate-payment', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify({ amount: currentAmount })
-                });
+        // AMBIL TOKEN CSRF DARI HEAD HTML
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-                if (!response.ok) throw new Error('Gagal menghubungi server (404/500)');
+        try {
+            // HAPUS prefix /api/ jika route ini ada di web.php
+            const response = await fetch('/tenant/generate-payment', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken // <--- WAJIB UNTUK LARAVEL
+                },
+                body: JSON.stringify({ amount: currentAmount })
+            });
 
-                const res = await response.json();
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
-                if(res.success) {
-                    window.open(res.url, '_blank');
+            const res = await response.json();
 
-                    btn.innerHTML = 'MENUNGGU PEMBAYARAN...';
-                    waitingText.classList.remove('hidden');
+            if(res.success) {
+                window.open(res.url, '_blank');
 
-                    // JALANKAN POLLING (JURUS ANTI GAGAL)
-                    startPolling();
-                } else {
-                    throw new Error(res.message || 'Gagal generate token');
-                }
+                btn.innerHTML = 'MENUNGGU PEMBAYARAN...';
+                waitingText.classList.remove('hidden');
 
-            } catch (error) {
-                console.error(error);
-                btn.innerHTML = originalText;
-                btn.classList.remove('opacity-50', 'pointer-events-none');
-                alert('Gagal: ' + error.message);
+                // JALANKAN POLLING (JURUS ANTI GAGAL)
+                startPolling();
+            } else {
+                throw new Error(res.message || 'Gagal generate token');
             }
+
+        } catch (error) {
+            console.error(error);
+            btn.innerHTML = originalText;
+            btn.classList.remove('opacity-50', 'pointer-events-none');
+            alert('Gagal: ' + error.message + '\nPastikan URL Route sesuai di web.php');
         }
+    }
 
-        // 3. Polling / Cek Status Otomatis (Fix 404)
-        function startPolling() {
-            console.log("Mulai cek status...");
-            let checkInterval = setInterval(async () => {
-                try {
-                    // FIXED: URL HARUS '/api/tenant/check-status'
-                    let response = await fetch('/api/tenant/check-status');
+    // 3. Polling / Cek Status Otomatis
+    function startPolling() {
+        console.log("Mulai cek status...");
+        let checkInterval = setInterval(async () => {
+            try {
+                // Sesuaikan juga URL ini, hilangkan /api/ jika di web.php
+                let response = await fetch('/tenant/check-status');
 
-                    if (response.ok) {
-                        let data = await response.json();
-                        if (data.active) {
-                            clearInterval(checkInterval);
+                if (response.ok) {
+                    let data = await response.json();
+                    if (data.active) {
+                        clearInterval(checkInterval);
 
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'LUNAS!',
-                                text: 'Akun Anda aktif kembali.',
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                // Redirect ke dashboard
-                                let subdomain = window.location.hostname.split('.')[0];
-                                window.location.href = "https://" + subdomain + ".tokosancaka.com/dashboard";
-                            });
-                        }
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'LUNAS!',
+                            text: 'Akun Anda aktif kembali.',
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            let subdomain = window.location.hostname.split('.')[0];
+                            window.location.href = "https://" + subdomain + ".tokosancaka.com/dashboard";
+                        });
                     }
-                } catch (err) {
-                    console.log("Server belum merespon status aktif...");
                 }
-            }, 3000); // Cek tiap 3 detik
-        }
-    </script>
+            } catch (err) {
+                console.log("Server belum merespon status aktif...");
+            }
+        }, 3000); // Cek tiap 3 detik
+    }
+</script>
 </body>
 </html>

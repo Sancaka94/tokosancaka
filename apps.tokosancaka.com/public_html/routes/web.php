@@ -780,3 +780,7 @@ Route::domain('{subdomain}.tokosancaka.com')->middleware('tenant')->group(functi
     })->name('tenant.suspended');
 
 });
+
+
+Route::post('/tenant/generate-payment', [NamaControllerAnda::class, 'generatePayment']);
+Route::get('/tenant/check-status', [NamaControllerAnda::class, 'checkStatus']);
