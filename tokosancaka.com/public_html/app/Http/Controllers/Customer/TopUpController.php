@@ -720,9 +720,37 @@ class TopUpController extends Controller
     }
 
     private function generateSignature($stringToSign) {
-        $privateKey = config('services.dana.private_key');
+        // 1. Ambil Key dari Config (hasil dinamisasi)
+        $rawKey = config('services.dana.private_key');
+
+        if (empty($rawKey)) {
+            throw new \Exception("Private Key kosong. Pastikan DANA_PRIVATE_KEY di .env atau Pengaturan Database sudah terisi.");
+        }
+
+        // 2. Bersihkan Key dari header/footer/spasi/newline yang berantakan
+        $cleanKey = str_replace(
+            ["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "],
+            "",
+            $rawKey
+        );
+
+        // 3. Format ulang menjadi PEM standar (64 karakter per baris)
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" .
+                        wordwrap($cleanKey, 64, "\n", true) .
+                        "\n-----END PRIVATE KEY-----";
+
+        // 4. Validasi Key ke OpenSSL Resource
+        $privateKeyResource = openssl_pkey_get_private($formattedKey);
+        if (!$privateKeyResource) {
+            throw new \Exception("Format Private Key salah atau korup. Tidak dapat diproses oleh OpenSSL.");
+        }
+
+        // 5. Sign Data (SHA256)
         $binarySignature = "";
-        openssl_sign($stringToSign, $binarySignature, $privateKey, OPENSSL_ALGO_SHA256);
+        if (!openssl_sign($stringToSign, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256)) {
+            throw new \Exception("OpenSSL Sign Failed.");
+        }
+
         return base64_encode($binarySignature);
     }
 
