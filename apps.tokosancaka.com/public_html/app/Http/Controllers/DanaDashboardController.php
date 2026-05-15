@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\Tenant;
 use App\Models\Affiliate;
-use App\Models\TopUp; 
+use App\Models\TopUp;
 use Illuminate\Support\Str;
 use App\Models\SettingApi;
 
@@ -371,8 +371,8 @@ protected function processPendingTransactions($affiliateId, $accessToken)
 
         // 1. Buang Header & Footer bawaan
         $cleanKey = str_replace(
-            ['-----BEGIN PRIVATE KEY-----', '-----END PRIVATE KEY-----', '-----BEGIN RSA PRIVATE KEY-----', '-----END RSA PRIVATE KEY-----'], 
-            '', 
+            ['-----BEGIN PRIVATE KEY-----', '-----END PRIVATE KEY-----', '-----BEGIN RSA PRIVATE KEY-----', '-----END RSA PRIVATE KEY-----'],
+            '',
             $rawKey
         );
 
@@ -381,8 +381,8 @@ protected function processPendingTransactions($affiliateId, $accessToken)
         $cleanKey = preg_replace('/[^a-zA-Z0-9\/\+=]/', '', $cleanKey);
 
         // 3. Susun ulang dengan format mutlak OpenSSL
-        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . 
-                        wordwrap($cleanKey, 64, "\n", true) . 
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" .
+                        wordwrap($cleanKey, 64, "\n", true) .
                         "\n-----END PRIVATE KEY-----";
 
         $privateKeyResource = openssl_pkey_get_private($formattedKey);
@@ -393,7 +393,7 @@ protected function processPendingTransactions($affiliateId, $accessToken)
 
         $binarySignature = "";
         openssl_sign($stringToSign, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256);
-        
+
         return base64_encode($binarySignature);
     }
 
