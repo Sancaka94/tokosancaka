@@ -1037,7 +1037,7 @@ class OrderController extends Controller
                         $envInfo->setWebsiteLanguage("ID");
 
                         if (method_exists($envInfo, 'setOrderTerminalType')) {
-                            $envInfo->setOrderTerminalType("WEB"); 
+                            $envInfo->setOrderTerminalType("WEB");
                         }
 
                         $addInfo = new WidgetPaymentRequestAdditionalInfo();
@@ -1143,7 +1143,7 @@ class OrderController extends Controller
 
                         $accessToken = $danaService->getAccessToken();
                         $signature = $danaService->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
-                        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
+                        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.saas.dana.id' : 'https://api.sandbox.dana.id';
 
                         $response = Http::withHeaders([
                             'Authorization'  => 'Bearer ' . $accessToken,
@@ -1959,7 +1959,7 @@ public function handleDanaCallback(Request $request)
             'signature' => $signature
         ]);
 
-        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
+        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.saas.dana.id' : 'https://api.sandbox.dana.id';
 
         $response = \Illuminate\Support\Facades\Http::withHeaders([
             'Authorization'  => 'Bearer ' . $accessToken,
@@ -2558,7 +2558,7 @@ public function handleDanaCallback(Request $request)
         try {
             $timestamp = now('Asia/Jakarta')->toIso8601String();
             $path = '/v1.0/payment-gateway/consult-pay.htm';
-            $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
+            $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.saas.dana.id' : 'https://api.sandbox.dana.id';
 
             // 2. Dapatkan Access Token B2B
             $accessToken = $danaService->getAccessToken();
@@ -2651,7 +2651,7 @@ public function handleDanaCallback(Request $request)
         if ($isProduction) {
             config([
                 'services.dana.dana_env'      => 'PRODUCTION',
-                'services.dana.base_url'      => 'https://api.dana.id',
+                'services.dana.base_url'      => 'https://api.saas.dana.id',
                 'services.dana.merchant_id'   => $settings['dana_prod_merchant_id'] ?? env('DANA_PROD_MERCHANT_ID'),
                 'services.dana.client_id'     => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
                 'services.dana.x_partner_id'  => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),

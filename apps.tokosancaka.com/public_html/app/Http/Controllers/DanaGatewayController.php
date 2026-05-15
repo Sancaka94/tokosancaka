@@ -662,7 +662,7 @@ public function checkTopupStatus(Request $request)
             // 2. Persiapan Parameter SNAP API
             $timestamp = now('Asia/Jakarta')->toIso8601String();
             $path = '/v1.0/payment-gateway/consult-pay.htm';
-            $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
+            $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.saas.dana.id' : 'https://api.sandbox.dana.id';
 
             // 3. Siapkan Payload Sesuai Dokumentasi
             $body = [

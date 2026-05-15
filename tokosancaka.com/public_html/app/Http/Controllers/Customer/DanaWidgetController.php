@@ -90,7 +90,7 @@ class DanaWidgetController extends Controller
     }
 
     // 4. Hit API DANA Sandbox
-    $fullUrl = (config('services.dana.dana_env') == 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id') . $relativePath;
+    $fullUrl = (config('services.dana.dana_env') == 'PRODUCTION' ? 'https://api.saas.dana.id' : 'https://api.sandbox.dana.id') . $relativePath;
     $externalId = \Illuminate\Support\Str::random(32);
 
     try {
@@ -451,8 +451,8 @@ class DanaWidgetController extends Controller
         // 4. ENDPOINT V2 (SANDBOX)
         // Menggunakan /n/link/binding sesuai referensi Anda
         // $baseUrl = 'https://m.sandbox.dana.id/n/link/binding';
-        $baseUrl = (config('services.dana.dana_env') === 'PRODUCTION') 
-       ? 'https://m.dana.id/n/link/binding' 
+        $baseUrl = (config('services.dana.dana_env') === 'PRODUCTION')
+       ? 'https://m.dana.id/n/link/binding'
        : 'https://m.sandbox.dana.id/n/link/binding';
 
         $fullRedirectUrl = $baseUrl . '?' . http_build_query($queryParams);

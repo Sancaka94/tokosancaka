@@ -32,7 +32,7 @@ class DanaDashboardController extends Controller
         if ($isProduction) {
             config([
                 'services.dana.dana_env'      => 'PRODUCTION',
-                'services.dana.base_url'      => 'https://api.dana.id',
+                'services.dana.base_url'      => 'https://api.saas.dana.id',
                 'services.dana.merchant_id'   => $settings['dana_prod_merchant_id'] ?? env('DANA_PROD_MERCHANT_ID'),
                 'services.dana.client_id'     => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
                 'services.dana.x_partner_id'  => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),

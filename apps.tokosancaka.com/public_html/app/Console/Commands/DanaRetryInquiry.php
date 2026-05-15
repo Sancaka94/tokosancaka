@@ -25,7 +25,7 @@ class DanaRetryInquiry extends Command
      */
     public function handle()
     {
-        // 1. Ambil transaksi yang statusnya PENDING atau FAILED (karena timeout) 
+        // 1. Ambil transaksi yang statusnya PENDING atau FAILED (karena timeout)
         // dan jumlah retry masih di bawah 5 kali
         $pendingTransactions = DB::table('dana_transactions')
             ->whereIn('status', ['PENDING', 'FAILED'])
@@ -73,7 +73,7 @@ class DanaRetryInquiry extends Command
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
         $hashedBody = strtolower(hash('sha256', $jsonBody));
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-        
+
         // Asumsi fungsi generateSignature ada di service atau kita panggil manual
         $signature = $this->generateSignature($stringToSign);
 
@@ -88,8 +88,8 @@ class DanaRetryInquiry extends Command
         ];
 
         try {
-            $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' 
-                       ? 'https://api.dana.id' 
+            $baseUrl = config('services.dana.dana_env') === 'PRODUCTION'
+                       ? 'https://api.saas.dana.id'
                        : 'https://api.sandbox.dana.id';
 
             $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
@@ -107,11 +107,11 @@ class DanaRetryInquiry extends Command
                         'status' => 'SUCCESS',
                         'response_payload' => json_encode($result)
                     ]);
-                    
+
                     // Potong saldo jika sebelumnya gagal memotong (karena pending/timeout)
                     // Logika ini menjaga agar saldo tidak terpotong 2x
                     Log::info("[DANA AUTO-RETRY] Transaksi BERHASIL disinkronkan.");
-                    
+
                 } elseif (in_array($status, ['04', '05', '06', '07'])) {
                     // FAILED/CANCELLED
                     DB::table('dana_transactions')->where('id', $trx->id)->update([

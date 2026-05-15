@@ -15,16 +15,16 @@ class DanaWidgetController extends Controller
     public function __construct(DanaSignatureService $danaSignature)
     {
         $this->danaSignature = $danaSignature;
-        
-        // Panggil di sini agar SEMUA fungsi di bawahnya 
+
+        // Panggil di sini agar SEMUA fungsi di bawahnya
         // otomatis memakai config dinamis terbaru dari database
-        $this->applyDynamicConfig(); 
+        $this->applyDynamicConfig();
     }
 
 
   public function createPayment(Request $request) {
 
-    // $this->applyDynamicConfig();  
+    // $this->applyDynamicConfig();
 
     \Illuminate\Support\Facades\Log::info('DANA_H2H_START: Memulai pembuatan order.');
 
@@ -61,7 +61,7 @@ class DanaWidgetController extends Controller
             ]
         ],
         "additionalInfo" => [
-            "mcc" => "5732", 
+            "mcc" => "5732",
             "order" => [
                 "orderTitle" => "Invoice " . $orderId,
                 "merchantTransType" => "01",
@@ -77,16 +77,16 @@ class DanaWidgetController extends Controller
 
     $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $method = 'POST';
-    $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
+    $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
 
     // 3. Signature Generation
     try {
         // Ambil Access Token dulu (B2B) karena config baru mewajibkan Bearer Token
         $accessToken = $this->danaSignature->getAccessToken();
-        
+
         // Generate signature (Pastikan service Anda sudah update menggunakan RSA Asymmetric)
         $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
-        
+
         \Illuminate\Support\Facades\Log::info('DANA_H2H_SIGNATURE_SUCCESS');
     } catch (\Exception $e) {
         \Illuminate\Support\Facades\Log::error('DANA_H2H_SIGNATURE_FAILED', ['msg' => $e->getMessage()]);
@@ -94,7 +94,7 @@ class DanaWidgetController extends Controller
     }
 
     // 4. Hit API DANA Sandbox
-    $fullUrl = (config('services.dana.dana_env') == 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id') . $relativePath;
+    $fullUrl = (config('services.dana.dana_env') == 'PRODUCTION' ? 'https://api.saas.dana.id' : 'https://api.sandbox.dana.id') . $relativePath;
     $externalId = \Illuminate\Support\Str::random(32);
 
     try {
@@ -107,7 +107,7 @@ class DanaWidgetController extends Controller
             'X-TIMESTAMP'    => $timestamp,
             'X-SIGNATURE'    => $signature,
             'Content-Type'   => 'application/json',
-            'CHANNEL-ID'     => '95221', 
+            'CHANNEL-ID'     => '95221',
             'ORIGIN'         => config('services.dana.origin'),
         ])
         ->withBody($jsonBody, 'application/json')
@@ -137,7 +137,7 @@ class DanaWidgetController extends Controller
         return response()->json(['error' => $e->getMessage()], 500);
     }
 }
-    
+
 
     /**
      * FUNGSI 2: CEK STATUS PEMBAYARAN (QUERY PAYMENT)
@@ -174,7 +174,7 @@ class DanaWidgetController extends Controller
             ])->post(config('services.dana.base_url') . $relativePath, $body);
 
             Log::info('Status Check Result:', $response->json());
-            
+
             return $response->json();
 
         } catch (\Exception $e) {
@@ -187,7 +187,7 @@ class DanaWidgetController extends Controller
     {
         $status = $request->query('status');
         $orderId = $request->query('originalPartnerReferenceNo');
-        
+
         return "<h1>Status Pembayaran: $status</h1><p>Order ID: $orderId</p>
                 <br><a href='".route('dana.status', $orderId)."'>Cek Status Detail via API</a>";
     }
@@ -206,12 +206,12 @@ class DanaWidgetController extends Controller
         // 2. Cek Signature (Opsional tapi disarankan untuk Production)
         // Di Sandbox, kita bisa skip dulu atau log saja.
         $incomingSignature = $request->header('X-SIGNATURE');
-        
+
         // 3. Update Status di Database Anda
         // Logika sederhana:
         if ($status == '00') {
             Log::info("Order $orderId BERHASIL dibayar (Rp $amount).");
-            
+
             // TODO: Update database Anda di sini
             // $order = Order::where('invoice_number', $orderId)->first();
             // if ($order) {
@@ -221,7 +221,7 @@ class DanaWidgetController extends Controller
 
         } elseif ($status == '05') {
             Log::warning("Order $orderId DIBATALKAN/EXPIRED.");
-            
+
             // TODO: Update database jadi Cancelled
             // $order->status = 'CANCELLED';
             // $order->save();
@@ -240,15 +240,15 @@ class DanaWidgetController extends Controller
         ]);
     }
 
- 
+
     public function disburseAccountInquiry()
     {
         Log::info('========== DANA ACCOUNT INQUIRY TEST (FORMAT 8...) ==========');
 
         // REVISI: Coba hapus '0' atau '62' di depan. Langsung angka 8.
         // Asumsi nomor asli: 085745808809 -> Jadi: 85745808809
-        $phoneNumber = '85745808809'; 
-        
+        $phoneNumber = '85745808809';
+
         $bodyArray = [
             "partnerReferenceNo" => 'INQ-' . time(),
             "amount" => [
@@ -256,7 +256,7 @@ class DanaWidgetController extends Controller
                 "currency" => "IDR"
             ],
             "customerNumber" => $phoneNumber,
-            
+
             // WAJIB DIKEMBALIKAN (Biar ga error 500)
             "additionalInfo" => [
                 "fundType" => "TRANS_TO_USER"
@@ -276,18 +276,18 @@ class DanaWidgetController extends Controller
         // =====================================================================
         // [AREA EDIT DISINI] - GANTI NILAI INI UNTUK SETIAP CHECKLIST
         // =====================================================================
-        
+
         // PILIH SKENARIO: 'SUCCESS', 'NO_SALDO', 'REPEAT_FAIL', 'ERROR_GENERAL'
-        $scenario = 'SUCCESS'; 
+        $scenario = 'SUCCESS';
 
         // 1. SET NOMOR HP (Gunakan Magic Number Sandbox)
-        $phoneNumber = '08123456789'; 
+        $phoneNumber = '08123456789';
 
         // 2. SET ORDER ID & AMOUNT SESUAI SKENARIO
         if ($scenario == 'SUCCESS') {
             // Skenario 1: Sukses Normal
-            $orderId = 'TOPUP-' . time(); 
-            $amount  = '1000.00'; 
+            $orderId = 'TOPUP-' . time();
+            $amount  = '1000.00';
 
         } elseif ($scenario == 'NO_SALDO') {
             // Skenario 2: Error Insufficient Fund (Saldo Kurang)
@@ -306,7 +306,7 @@ class DanaWidgetController extends Controller
             $amount  = '1000.00';
             $phoneNumber = '000000'; // Nomor Ngawur
         }
-        
+
         // =====================================================================
         // JANGAN UBAH KODE DI BAWAH INI
         // =====================================================================
@@ -345,8 +345,8 @@ class DanaWidgetController extends Controller
         }
 
         $bodyArray = [
-            "partnerReferenceNo" => 'CHK-' . time(), 
-            "originalPartnerReferenceNo" => $originalOrderId, 
+            "partnerReferenceNo" => 'CHK-' . time(),
+            "originalPartnerReferenceNo" => $originalOrderId,
             "merchantId" => config('services.dana.merchant_id'),
         ];
 
@@ -377,7 +377,7 @@ class DanaWidgetController extends Controller
                 'X-TIMESTAMP'  => $timestamp,
                 'X-SIGNATURE'  => $signature,
                 'Content-Type' => 'application/json',
-                'CHANNEL-ID'   => '95221', 
+                'CHANNEL-ID'   => '95221',
             ])
             ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
@@ -409,14 +409,14 @@ class DanaWidgetController extends Controller
         Log::info('========== DANA BINDING INITIATED (V2 SEAMLESS) ==========');
 
         $clientId    = config('services.dana.client_id');
-        $redirectUrl = route('dana.callback'); 
-        $state       = \Illuminate\Support\Str::random(16); 
+        $redirectUrl = route('dana.callback');
+        $state       = \Illuminate\Support\Str::random(16);
         $timestamp   = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
 
         // 1. DATA USER UNTUK SEAMLESS (AUTO-FILL)
         // Gunakan nomor akun Sandbox Anda dengan format 62
         // Contoh: 085745808809 -> 6285745808809
-        $userPhone   = '6285745808809'; 
+        $userPhone   = '6285745808809';
         $userExtId   = 'USER-' . time();
 
         // Struktur Seamless Data sesuai contoh Anda
@@ -427,7 +427,7 @@ class DanaWidgetController extends Controller
             "externalUid"  => $userExtId,
             // "deviceId"     => "1234567890" // Opsional, boleh dikosongkan jika tidak ada
         ];
-        
+
         // Encode JSON (Pastikan urutan tidak berubah, JSON mentah yang disign)
         $seamlessDataStr = json_encode($seamlessDataArray);
 
@@ -458,12 +458,12 @@ class DanaWidgetController extends Controller
 
         // 4. ENDPOINT V2 (SANDBOX)
         // Menggunakan /n/link/binding sesuai referensi Anda
-        // $baseUrl = 'https://m.sandbox.dana.id/n/link/binding'; 
+        // $baseUrl = 'https://m.sandbox.dana.id/n/link/binding';
 
-        $baseUrl = (config('services.dana.dana_env') === 'PRODUCTION') 
-               ? 'https://m.dana.id/n/link/binding' 
+        $baseUrl = (config('services.dana.dana_env') === 'PRODUCTION')
+               ? 'https://m.dana.id/n/link/binding'
                : 'https://m.sandbox.dana.id/n/link/binding';
-        
+
         $fullRedirectUrl = $baseUrl . '?' . http_build_query($queryParams);
 
         Log::info("Generated Binding URL V2: " . $fullRedirectUrl);
@@ -477,7 +477,7 @@ class DanaWidgetController extends Controller
     {
         // 1. Ambil Key dari Config
         $rawKey = config('services.dana.private_key');
-        
+
         if (!$rawKey) {
             throw new \Exception("Private Key kosong. Cek .env Anda.");
         }
@@ -490,8 +490,8 @@ class DanaWidgetController extends Controller
         );
 
         // 3. Format ulang menjadi PEM standar (64 karakter per baris)
-        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . 
-                        wordwrap($cleanKey, 64, "\n", true) . 
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" .
+                        wordwrap($cleanKey, 64, "\n", true) .
                         "\n-----END PRIVATE KEY-----";
 
         // 4. Validasi Key
@@ -532,7 +532,7 @@ class DanaWidgetController extends Controller
         // [WAJIB] Masukkan ACCESS TOKEN user yang valid di sini
         // Token ini didapat setelah menukar Auth Code (dari proses Binding).
         // Jika belum punya, kode ini akan return error 401/400.
-        $accessToken = 'MASUKKAN_ACCESS_TOKEN_DISINI'; 
+        $accessToken = 'MASUKKAN_ACCESS_TOKEN_DISINI';
 
         $partnerRef = 'BAL-' . time();
 
@@ -546,15 +546,15 @@ class DanaWidgetController extends Controller
         ];
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        
+
         $method = 'POST';
-        $relativePath = '/v1.0/balance-inquiry.htm'; 
+        $relativePath = '/v1.0/balance-inquiry.htm';
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
 
         try {
             // Generate Signature
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
-            
+
             // $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
             $fullUrl = config('services.dana.base_url') . $relativePath;
             $externalId = \Illuminate\Support\Str::random(32);
@@ -570,7 +570,7 @@ class DanaWidgetController extends Controller
                 'X-SIGNATURE'   => $signature,
                 'Content-Type'  => 'application/json',
                 'CHANNEL-ID'    => '95221',
-                
+
                 // [HEADER WAJIB UNTUK CEK SALDO]
                 'Authorization-Customer' => 'Bearer ' . $accessToken,
                 'X-DEVICE-ID'   => 'DEVICE-' . time(), // ID Unik Device
@@ -622,5 +622,5 @@ class DanaWidgetController extends Controller
             ]);
         }
     }
-    
+
 }
