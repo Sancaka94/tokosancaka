@@ -42,7 +42,7 @@
                     <div class="flex items-center gap-3 px-3 py-1.5 bg-blue-50/50 border border-blue-100 rounded-2xl cursor-default group relative">
                         {{-- Logo DANA --}}
                         <div class="h-8 w-8 rounded-xl bg-blue-100 p-1.5 flex items-center justify-center shadow-sm">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png" class="w-full h-full object-contain" alt="DANA">
+                            <img src="https://tokosancaka.com/public/assets/dana.png" class="w-full h-full object-contain" alt="DANA">
                         </div>
 
                         {{-- Info Saldo --}}
