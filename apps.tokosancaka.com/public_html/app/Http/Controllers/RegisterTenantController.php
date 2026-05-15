@@ -94,20 +94,17 @@ class RegisterTenantController extends Controller
             $licenseCode = 'TRIAL-' . strtoupper(Str::random(8)); 
             if ($request->package == 'trial') {
                 
-                // KITA MATIKAN SEMENTARA MODEL-NYA
-                // License::create([ ... ]); 
-                
-                // KITA TEMBAK LANGSUNG KE DATABASE
+                // Gunakan DB::table sesuai temuan brutal kita sebelumnya biar aman dari 'hantu'
                 \Illuminate\Support\Facades\DB::table('licenses')->insert([
                     'license_code'  => $licenseCode,
                     'tenant_id'     => $tenant->id,
                     'package_type'  => 'trial',
                     'max_devices'   => 1,
                     'max_ips'       => 1,
-                    'duration_days' => $days,
-                    'status'        => 'available', // <-- Kita paksa available
+                    'duration_days' => $days, // <--- Jatah 14 harinya aman tersimpan di sini
+                    'status'        => 'available',
                     'used_at'       => null,
-                    'expires_at'    => $expiredAt,
+                    'expires_at'    => null,
                     'created_at'    => $now,
                     'updated_at'    => $now,
                 ]);
