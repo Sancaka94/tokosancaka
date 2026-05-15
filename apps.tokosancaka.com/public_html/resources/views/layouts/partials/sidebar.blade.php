@@ -194,8 +194,6 @@
                 <i class="fas fa-hand-holding-usd w-5 text-center flex-shrink-0 {{ request()->routeIs('escrow.*') ? 'text-amber-600' : 'text-slate-400' }}"></i>
                 <span x-show="isExpanded" style="display: none;" x-transition class="whitespace-nowrap">Manajemen Escrow</span>
             </a>
-        @endif
-
             {{-- ========================================================== --}}
             {{-- [BARU] SETTING API (Khusus Superadmin & Subdomain apps/admin) --}}
             {{-- ========================================================== --}}
