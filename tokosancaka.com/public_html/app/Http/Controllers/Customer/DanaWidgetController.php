@@ -8,6 +8,7 @@ use App\Services\DanaSignatureService;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use App\Models\SettingApi;
 
 class DanaWidgetController extends Controller
 {
@@ -16,6 +17,7 @@ class DanaWidgetController extends Controller
     public function __construct(DanaSignatureService $danaSignature)
     {
         $this->danaSignature = $danaSignature;
+        $this->applyDynamicConfig();
     }
 
   public function createPayment(Request $request)
@@ -356,7 +358,8 @@ class DanaWidgetController extends Controller
 
         try {
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
-            $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+            // $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+            $fullUrl = config('services.dana.base_url') . $relativePath;
             $externalId = \Illuminate\Support\Str::random(32);
 
             Log::info("Hitting Endpoint: $relativePath");
@@ -447,7 +450,10 @@ class DanaWidgetController extends Controller
 
         // 4. ENDPOINT V2 (SANDBOX)
         // Menggunakan /n/link/binding sesuai referensi Anda
-        $baseUrl = 'https://m.sandbox.dana.id/n/link/binding';
+        // $baseUrl = 'https://m.sandbox.dana.id/n/link/binding';
+        $baseUrl = (config('services.dana.dana_env') === 'PRODUCTION') 
+       ? 'https://m.dana.id/n/link/binding' 
+       : 'https://m.sandbox.dana.id/n/link/binding';
 
         $fullRedirectUrl = $baseUrl . '?' . http_build_query($queryParams);
 
@@ -540,7 +546,8 @@ class DanaWidgetController extends Controller
             // Generate Signature
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
 
-            $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+            //$fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+            $fullUrl = config('services.dana.base_url') . $relativePath;
             $externalId = \Illuminate\Support\Str::random(32);
 
             Log::info("Hitting Endpoint: $relativePath");
@@ -569,6 +576,40 @@ class DanaWidgetController extends Controller
 
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    // =========================================================================
+    // TAMBAHAN HELPER: DINAMISASI CONFIG DANA BERDASARKAN DATABASE
+    // =========================================================================
+    private function applyDynamicConfig()
+    {
+        // Sesuaikan 'SettingApi' dengan nama Model yang Anda pakai untuk tabel pengaturan
+        $settings = SettingApi::pluck('value', 'key')->toArray();
+        $isProduction = ($settings['dana_production_mode'] ?? '0') == '1';
+
+        if ($isProduction) {
+            \Illuminate\Support\Facades\Log::info('LOG LOG: DANA Menggunakan Mode PRODUCTION');
+            config([
+                'services.dana.dana_env'      => 'PRODUCTION',
+                'services.dana.base_url'      => 'https://api.saas.dana.id',
+                'services.dana.merchant_id'   => $settings['dana_prod_merchant_id'] ?? env('DANA_PROD_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.private_key'   => $settings['dana_prod_private_key'] ?? env('DANA_PROD_PRIVATE_KEY'),
+                'services.dana.client_secret' => $settings['dana_prod_client_secret'] ?? env('DANA_PROD_CLIENT_SECRET'),
+            ]);
+        } else {
+            \Illuminate\Support\Facades\Log::info('LOG LOG: DANA Menggunakan Mode SANDBOX');
+            config([
+                'services.dana.dana_env'      => 'SANDBOX',
+                'services.dana.base_url'      => 'https://api.sandbox.dana.id',
+                'services.dana.merchant_id'   => $settings['dana_sandbox_merchant_id'] ?? env('DANA_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.private_key'   => $settings['dana_sandbox_private_key'] ?? env('DANA_PRIVATE_KEY'),
+                'services.dana.client_secret' => $settings['dana_sandbox_client_secret'] ?? env('DANA_CLIENT_SECRET'),
+            ]);
         }
     }
 
