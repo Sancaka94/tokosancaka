@@ -72,6 +72,12 @@
                 <button @click="activeTab = 'fonnte'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'fonnte', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'fonnte' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
                     <i class="fab fa-whatsapp mr-2"></i> Fonnte
                 </button>
+
+                {{-- TAMBAHAN TAB DANA --}}
+                <button @click="activeTab = 'dana'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'dana', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'dana' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    <i class="fas fa-wallet mr-2"></i> DANA
+                </button>
+
             </div>
         </div>
 
@@ -550,6 +556,87 @@
                 </form>
             </div>
 
+            {{-- 7. TAB DANA (BARU) --}}
+            <div x-show="activeTab === 'dana'" style="display: none;">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">DANA Payment Gateway</h3>
+                        <p class="text-xs text-gray-500 mt-1">Status Aktif:
+                            <span class="px-2 py-0.5 rounded text-xs font-bold transition-colors duration-300"
+                                  :class="danaData.mode === 'production' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'"
+                                  x-text="danaData.mode === 'production' ? 'PRODUCTION (LIVE)' : 'SANDBOX (TEST)'">
+                            </span>
+                        </p>
+                    </div>
+
+                    {{-- Toggle Switch DANA --}}
+                    <div class="flex items-center">
+                        <span class="mr-3 text-sm font-medium" :class="danaData.mode === 'sandbox' ? 'text-indigo-600 font-bold' : 'text-gray-500'">SANDBOX</span>
+
+                        <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" id="dana_toggle"
+                                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
+                                   :class="{'translate-x-full border-red-500': danaData.mode === 'production', 'border-indigo-500': danaData.mode === 'sandbox'}"
+                                   @click="danaData.mode = (danaData.mode === 'production' ? 'sandbox' : 'production')"
+                                   :checked="danaData.mode === 'production'"/>
+                            <label for="dana_toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
+                                   :class="{'bg-red-500': danaData.mode === 'production', 'bg-indigo-500': danaData.mode === 'sandbox'}"></label>
+                        </div>
+
+                        <span class="ml-1 text-sm font-medium" :class="danaData.mode === 'production' ? 'text-red-600 font-bold' : 'text-gray-500'">PRODUCTION</span>
+                    </div>
+                </div>
+
+                <form action="{{ route('admin.settings.api.update') }}" method="POST">
+                    @csrf @method('PUT')
+                    <input type="hidden" name="type" value="dana">
+                    <input type="hidden" name="dana_mode" x-model="danaData.mode">
+
+                    <div class="space-y-6">
+                        {{-- Visual Warning --}}
+                        <div class="p-4 rounded-lg border flex items-start"
+                             :class="danaData.mode === 'production' ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'">
+                            <div class="flex-shrink-0 mt-0.5">
+                                <i class="fas" :class="danaData.mode === 'production' ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle text-indigo-500'"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium" :class="danaData.mode === 'production' ? 'text-red-800' : 'text-indigo-800'" x-text="danaData.mode === 'production' ? 'Mode Produksi Aktif' : 'Mode Sandbox Aktif'"></h3>
+                            </div>
+                        </div>
+
+                        <div x-show="danaData.mode" x-transition.opacity>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Merchant ID</label>
+                                    <input type="text" name="dana_merchant_id" x-model="danaData[danaData.mode].merchant_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Client ID</label>
+                                    <input type="text" name="dana_client_id" x-model="danaData[danaData.mode].client_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Client Secret</label>
+                                    <input type="text" name="dana_client_secret" x-model="danaData[danaData.mode].client_secret" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Private Key</label>
+                                    <textarea name="dana_private_key" x-model="danaData[danaData.mode].private_key" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 font-mono text-xs"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors">
+                            Simpan DANA
+                        </button>
+                    </div>
+                </form>
+            </div>
+
         </div>
     </div>
 </div>
@@ -568,7 +655,8 @@
             tpData: @json($tripay),
             dokuData: @json($doku),
             iakData: @json($iak),
-            dwData: @json($dharmawisata), // Menambahkan data konfigurasi Darmawisata
+            dwData: @json($dharmawisata),
+            danaData: @json($dana),
         }))
     })
 </script>

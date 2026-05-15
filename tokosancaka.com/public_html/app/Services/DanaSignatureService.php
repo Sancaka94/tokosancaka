@@ -74,29 +74,65 @@ class DanaSignatureService
         return $this->generateAsymmetricSignature($stringToSign);
     }
 
-    /**
-     * Helper: RSA-2048 SHA-256 Signature (Step 2 & 4 di Dokumen)
-     */
     public function generateAsymmetricSignature($stringToSign)
     {
         $privateKey = config('services.dana.private_key');
-        if (file_exists($privateKey)) {
+        
+        // Pengecekan file_exists HANYA jika panjang string pendek (berupa path file)
+        // Ini menghindari error jika $privateKey berisi string RSA utuh dari database
+        if (is_string($privateKey) && strlen($privateKey) < 255 && file_exists($privateKey)) {
             $privateKey = file_get_contents($privateKey);
         }
 
+        // --- PENTING: Panggil fungsi pembersih Key ---
+        $formattedKey = $this->formatPrivateKey($privateKey);
+
         $binarySignature = "";
-        $pkeyResource = openssl_get_privatekey($privateKey);
+        
+        // Gunakan standar modern openssl_pkey_get_private
+        $pkeyResource = openssl_pkey_get_private($formattedKey);
         
         if (!$pkeyResource) {
-            throw new \Exception("DANA Error: Private Key tidak valid.");
+            throw new \Exception("DANA Error: Private Key tidak valid. Pastikan format di database benar.");
         }
 
         // RSA-SHA256
-        openssl_sign($stringToSign, $binarySignature, $pkeyResource, OPENSSL_ALGO_SHA256);
+        if (!openssl_sign($stringToSign, $binarySignature, $pkeyResource, OPENSSL_ALGO_SHA256)) {
+             throw new \Exception("DANA Error: Gagal melakukan signing data.");
+        }
         
         return base64_encode($binarySignature);
     }
 
+    // --- PASTIKAN FUNGSI INI ADA DI BAWAHNYA ---
+    private function formatPrivateKey($rawKey)
+    {
+        if (empty($rawKey)) {
+            throw new \Exception("Private Key kosong.");
+        }
+
+        $cleanKey = str_replace(
+            [
+                "-----BEGIN PRIVATE KEY-----", 
+                "-----END PRIVATE KEY-----", 
+                "-----BEGIN RSA PRIVATE KEY-----", 
+                "-----END RSA PRIVATE KEY-----", 
+                "\r", 
+                "\n", 
+                " ",
+                "\"", 
+                "'"  
+            ],
+            "",
+            $rawKey
+        );
+
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . 
+                        wordwrap($cleanKey, 64, "\n", true) . 
+                        "\n-----END PRIVATE KEY-----";
+
+        return $formattedKey;
+    }
     /**
      * 3. Verifikasi Signature (Untuk Callback)
      */

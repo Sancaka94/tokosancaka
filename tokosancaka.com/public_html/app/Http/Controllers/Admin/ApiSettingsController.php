@@ -18,7 +18,8 @@ class ApiSettingsController extends Controller
         $dokuEnv          = Api::getValue('DOKU_ENV', 'global', 'sandbox');
         $iakMode          = Api::getValue('IAK_MODE', 'global', 'development');
         $dharmawisataMode = Api::getValue('DHARMAWISATA_MODE', 'global', 'development'); // Tambahan Darmawisata
-
+        $danaProductionMode = Api::getValue('dana_production_mode', 'global', '0');
+        $danaMode = $danaProductionMode == '1' ? 'production' : 'sandbox';
         // 2. Siapkan Struktur Data Lengkap (Active Mode + Data per Environment)
 
         $kiriminaja = [
@@ -103,8 +104,25 @@ class ApiSettingsController extends Controller
             'api_key' => Api::getValue('FONNTE_API_KEY', 'global'),
         ];
 
-        // Tambahkan variable $dharmawisata ke compact
-        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata'));
+       // --- TAMBAHAN ARRAY DANA ---
+        $dana = [
+            'mode' => $danaMode,
+            'sandbox' => [
+                'merchant_id'   => Api::getValue('dana_sandbox_merchant_id', 'sandbox'),
+                'client_id'     => Api::getValue('dana_sandbox_client_id', 'sandbox'),
+                'client_secret' => Api::getValue('dana_sandbox_client_secret', 'sandbox'),
+                'private_key'   => Api::getValue('dana_sandbox_private_key', 'sandbox'),
+            ],
+            'production' => [
+                'merchant_id'   => Api::getValue('dana_prod_merchant_id', 'production'),
+                'client_id'     => Api::getValue('dana_prod_client_id', 'production'),
+                'client_secret' => Api::getValue('dana_prod_client_secret', 'production'),
+                'private_key'   => Api::getValue('dana_prod_private_key', 'production'),
+            ]
+        ];
+
+        // Tambahkan variabel $dana ke compact
+        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana'));
     }
 
     public function update(Request $request)
@@ -191,6 +209,28 @@ class ApiSettingsController extends Controller
                 Api::setValue('FONNTE_API_KEY', $request->fonnte_api_key, 'fonnte', 'global');
             }
 
+           // --- TAMBAHAN UPDATE DANA ---
+            } elseif ($type === 'dana') {
+                $env = $request->dana_mode; // Menangkap 'sandbox' atau 'production' dari form
+                $isProdMode = ($env === 'production') ? '1' : '0';
+
+                // Simpan Mode Global (0 untuk Sandbox, 1 untuk Production)
+                Api::setValue('dana_production_mode', $isProdMode, 'dana', 'global');
+
+                // Simpan Kredensial sesuai Mode yang dipilih
+                if ($env === 'production') {
+                    Api::setValue('dana_prod_merchant_id', $request->dana_merchant_id, 'dana', 'production');
+                    Api::setValue('dana_prod_client_id', $request->dana_client_id, 'dana', 'production');
+                    Api::setValue('dana_prod_client_secret', $request->dana_client_secret, 'dana', 'production');
+                    Api::setValue('dana_prod_private_key', $request->dana_private_key, 'dana', 'production');
+                } else {
+                    Api::setValue('dana_sandbox_merchant_id', $request->dana_merchant_id, 'dana', 'sandbox');
+                    Api::setValue('dana_sandbox_client_id', $request->dana_client_id, 'dana', 'sandbox');
+                    Api::setValue('dana_sandbox_client_secret', $request->dana_client_secret, 'dana', 'sandbox');
+                    Api::setValue('dana_sandbox_private_key', $request->dana_private_key, 'dana', 'sandbox');
+                }
+            }
+
             return back()->with('success', 'Konfigurasi ' . strtoupper($type) . ' berhasil diperbarui untuk mode ' . strtoupper($request->input("{$type}_mode") ?? 'GLOBAL') . '.');
 
         } catch (\Exception $e) {
@@ -198,7 +238,7 @@ class ApiSettingsController extends Controller
         }
     }
 
-    public function toggle(Request $request)
+   public function toggle(Request $request)
     {
         try {
             $currentMode = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
@@ -208,14 +248,16 @@ class ApiSettingsController extends Controller
                 $targetTripay       = 'sandbox';
                 $targetDoku         = 'sandbox';
                 $targetIAK          = 'development';
-                $targetDharmawisata = 'development'; // Tambahan Darmawisata
+                $targetDharmawisata = 'development';
+                $targetDana         = '0'; // 0 = Sandbox DANA
                 $label              = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
                 $targetKA           = 'production';
                 $targetTripay       = 'production';
                 $targetDoku         = 'production';
                 $targetIAK          = 'production';
-                $targetDharmawisata = 'production'; // Tambahan Darmawisata
+                $targetDharmawisata = 'production';
+                $targetDana         = '1'; // 1 = Production DANA
                 $label              = 'PRODUCTION (LIVE)';
             }
 
@@ -223,7 +265,10 @@ class ApiSettingsController extends Controller
             Api::setValue('TRIPAY_MODE', $targetTripay, 'tripay', 'global');
             Api::setValue('DOKU_ENV', $targetDoku, 'doku', 'global');
             Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global');
-            Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global'); // Tambahan Darmawisata
+            Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global');
+            
+            // --- TAMBAHAN TOGGLE DANA ---
+            Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
 
             event(new SystemModeUpdated($targetKA));
 
@@ -234,7 +279,7 @@ class ApiSettingsController extends Controller
         }
     }
 
-    public function toggleApi(Request $request)
+   public function toggleApi(Request $request)
     {
         try {
             $isProduction = filter_var($request->input('is_production'), FILTER_VALIDATE_BOOLEAN);
@@ -244,14 +289,16 @@ class ApiSettingsController extends Controller
                 $targetTripay       = 'production';
                 $targetDoku         = 'production';
                 $targetIAK          = 'production';
-                $targetDharmawisata = 'production'; // Tambahan Darmawisata
+                $targetDharmawisata = 'production';
+                $targetDana         = '1'; // Production DANA
                 $label              = 'PRODUCTION (LIVE)';
             } else {
                 $targetKA           = 'staging';
                 $targetTripay       = 'sandbox';
                 $targetDoku         = 'sandbox';
                 $targetIAK          = 'development';
-                $targetDharmawisata = 'development'; // Tambahan Darmawisata
+                $targetDharmawisata = 'development';
+                $targetDana         = '0'; // Sandbox DANA
                 $label              = 'SANDBOX / MAINTENANCE';
             }
 
@@ -259,7 +306,10 @@ class ApiSettingsController extends Controller
             Api::setValue('TRIPAY_MODE', $targetTripay, 'tripay', 'global');
             Api::setValue('DOKU_ENV', $targetDoku, 'doku', 'global');
             Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global');
-            Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global'); // Tambahan Darmawisata
+            Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global');
+            
+            // --- TAMBAHAN TOGGLE API DANA ---
+            Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
 
             event(new SystemModeUpdated($targetKA));
 
