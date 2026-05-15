@@ -1559,6 +1559,17 @@ class TopUpController extends Controller
             $externalId = (string) time() . Str::random(8);
             $path       = '/v1.0/payment-gateway/consult-pay.htm';
 
+            // 1. PERBAIKAN NAMA USER SESUAI TABEL PENGGUNA
+            $user = Auth::user();
+            $buyerName = $user ? ($user->nama_lengkap ?? 'Guest') : 'Guest';
+            $buyerId   = $user ? (string) $user->id_pengguna : 'GUEST-' . time();
+
+            // 2. PERBAIKAN FORMAT IP (CEGAH IPV6 AGAR DANA TIDAK CRASH)
+            $clientIp = $request->ip();
+            if (filter_var($clientIp, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+                $clientIp = '127.0.0.1'; // Fallback ke IPv4 lokal jika user memakai IPv6
+            }
+
             $body = [
                 "merchantId" => $merchantId,
                 "amount" => [
@@ -1567,14 +1578,14 @@ class TopUpController extends Controller
                 ],
                 "additionalInfo" => [
                     "buyer" => [
-                        "nickname"       => Auth::user()->name ?? 'Guest',
-                        "externalUserId" => (string) (Auth::id() ?? 'GUEST-' . time()),
+                        "nickname"       => $buyerName,
+                        "externalUserId" => $buyerId,
                     ],
                     "envInfo" => [
                         "sourcePlatform"     => "IPG",
                         "terminalType"       => "SYSTEM",
                         "orderTerminalType"  => "WEB",
-                        "clientIp"           => $request->ip(),
+                        "clientIp"           => $clientIp, // Gunakan IP yang sudah disanitasi
                         "websiteLanguage"    => "id_ID",
                         "sessionId"          => Session::getId(),
                         "tokenId"            => Str::uuid()->toString(),
