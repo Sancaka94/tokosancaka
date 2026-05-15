@@ -71,8 +71,8 @@ class CheckTenantLicense
         // LOGIKA 3: LOLOS SEMUA HADANGAN, SILAKAN MASUK POS
         // ===================================================================
         View::share('currentTenant', $tenant);
-        $request->merge(['tenant' => $tenant]);
-
+        $request->attributes->add(['tenant' => $tenant]);
+        
         return $next($request);
     }
 }
