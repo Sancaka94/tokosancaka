@@ -98,8 +98,8 @@ class RegisterTenantController extends Controller
                     'max_devices'   => 1,
                     'max_ips'       => 1,
                     'duration_days' => $days,
-                    'status'        => 'used', // Langsung 'used' agar user tidak perlu aktivasi manual lagi di dalam app
-                    'used_at'       => $now,
+                    'status'        => 'available', // Ubah status menjadi 'available' atau 'unused' (sesuaikan dengan database Anda)
+                    'used_at'       => null,        // Kosongkan used_at karena kode belum di-redeem
                     'expires_at'    => $expiredAt,
                 ]);
             }
@@ -198,12 +198,12 @@ class RegisterTenantController extends Controller
                     License::create([
                         'license_code'  => 'PRO-' . strtoupper(Str::random(10)),
                         'tenant_id'     => $tenant->id,
-                        'package_type'  => '1_device_1_ip', // Default
+                        'package_type'  => 'pro', // Default
                         'max_devices'   => 1,
                         'max_ips'       => 1,
                         'duration_days' => $days,
-                        'status'        => 'used',
-                        'used_at'       => $now,
+                        'status'        => 'available',
+                        'used_at'       => null,
                         'expires_at'    => $newExpiredAt,
                     ]);
 
@@ -395,5 +395,5 @@ class RegisterTenantController extends Controller
             return back()->with('error', 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage());
         }
     }
-    
+
 }
