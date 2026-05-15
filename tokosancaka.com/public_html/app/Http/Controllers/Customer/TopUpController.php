@@ -583,23 +583,25 @@ class TopUpController extends Controller
         $user = \Illuminate\Support\Facades\Auth::user();
         $affiliateId = $user->id_pengguna;
 
+        // 1. TENTUKAN IDENTITAS TENANT/FOLDER
+        // Ganti 'percetakan' sesuai dengan dynamic path tenant Anda jika diperlukan
+        $tenantPath = 'percetakan';
+
         $queryParams = [
             'partnerId'   => config('services.dana.x_partner_id'),
             'merchantId'  => config('services.dana.merchant_id'),
             'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
             'externalId'  => 'BIND-' . $affiliateId . '-' . time(),
-
-            // 1. TAMBAHKAN INI (Wajib menurut dokumentasi DANA)
             'channelId'   => 'DANAID',
 
-            // 2. PASTIKAN URL INI SAMA PERSIS DENGAN YANG DI DANA PORTAL
-            'redirectUrl' => route('customer.dana.callback'),
+            // 2. HARDCODE SESUAI PORTAL DANA (JANGAN DIUBAH)
+            'redirectUrl' => 'https://apps.tokosancaka.com/dana/callback',
 
-            'state'       => 'ID-' . $affiliateId,
+            // 3. TITIPKAN PATH TENANT DI STATE (Maksimal 32 Karakter)
+            'state'       => 'ID-' . $affiliateId . '-' . $tenantPath,
             'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         ];
 
-        // URL Dinamis
         $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://m.dana.id' : 'https://m.sandbox.dana.id';
         return redirect($baseUrl . "/d/portal/oauth?" . http_build_query($queryParams));
     }
