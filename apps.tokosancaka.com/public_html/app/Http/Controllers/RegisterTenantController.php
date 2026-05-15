@@ -119,6 +119,11 @@ class RegisterTenantController extends Controller
             $msgAdmin .= "👤 Nama: {$request->owner_name}\n";
             $msgAdmin .= "🏪 Toko: {$request->business_name}\n";
             $msgAdmin .= "🌐 Subdomain: {$tenant->subdomain}.tokosancaka.com\n"; // URL ini akan ditangkap Cloudflare Worker nanti
+            if ($request->package == 'trial') {
+                $msgAdmin .= "🔑 Kode Aktivasi: {$licenseCode}\n";
+            }
+            
+            
             $this->_sendFonnte($adminPhone, $msgAdmin);
 
             // 7. PROSES PEMBAYARAN DOKU (Jika bukan trial)
