@@ -63,17 +63,19 @@ class RegisterTenantController extends Controller
             // 3. KALKULASI MASA AKTIF
             $status = ($request->package == 'trial') ? 'active' : 'inactive';
             $days = ($request->package == 'yearly') ? 365 : ($request->package == 'monthly' ? 30 : 14);
-            $expiredAt = $now->copy()->addDays($days);
+            
+            // [PERBAIKAN] Jika trial, set expired tenant hari ini juga (0 hari). 
+            // Kalau bukan trial, langsung tambahkan harinya.
+            $tenantExpiredAt = ($request->package == 'trial') ? $now->copy() : $now->copy()->addDays($days);
 
             // 4. SIMPAN TENANT
-            // Simpan subdomain dalam huruf kecil agar konsisten saat dicek Cloudflare
             $tenant = Tenant::create([
                 'name'       => $request->business_name,
                 'subdomain'  => strtolower($request->subdomain),
                 'whatsapp'   => $request->whatsapp,
                 'package'    => $request->package,
                 'status'     => $status,
-                'expired_at' => $expiredAt,
+                'expired_at' => $tenantExpiredAt, // <--- Gunakan $tenantExpiredAt yang nilainya 0 hari untuk trial
                 'created_at' => $now,
             ]);
 
