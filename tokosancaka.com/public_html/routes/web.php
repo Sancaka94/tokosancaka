@@ -1288,3 +1288,5 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/broadcast/send', [DashboardController::class, 'sendBroadcast'])->name('broadcast.send');
 
 });
+
+Route::get('/customer/dana/check-balance', [TopUpController::class, 'checkMyDanaBalance'])->name('customer.dana.check_balance');
