@@ -14,7 +14,6 @@ use App\Models\SettingApi;
 
 class DanaDashboardController extends Controller
 {
-    protected $tenantId;
 
     protected $tenantId;
 
