@@ -68,7 +68,10 @@ class TenantPaymentController extends Controller
         'phone' => $user->phone ?? '085745808809'
     ]);
 
-    return redirect()->away($paymentUrl);
+   return response()->json([
+        'success' => true,
+        'url' => $paymentUrl
+    ]);
 }
 
     public function startBinding(Request $request)
