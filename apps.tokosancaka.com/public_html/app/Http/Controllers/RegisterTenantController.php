@@ -88,6 +88,8 @@ class RegisterTenantController extends Controller
                 'permissions' => ['dashboard', 'pos', 'products', 'reports', 'settings', 'finance'],
             ]);
 
+            dd('HALO COK! FILE INI SUDAH KE-UPDATE', $request->package);
+
             // [TAMBAHAN: Buat Lisensi Pertama Jika Trial]
             $licenseCode = 'TRIAL-' . strtoupper(Str::random(8)); // Simpan di variabel agar bisa dipakai di pesan WA
             if ($request->package == 'trial') {
