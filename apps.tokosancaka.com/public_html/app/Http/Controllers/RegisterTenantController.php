@@ -296,4 +296,104 @@ class RegisterTenantController extends Controller
             'total_tenants' => Tenant::count()
         ]);
     }
+
+    // ==============================================================================
+    // FUNGSI MANAJEMEN TENANT (UNTUK ADMIN PUSAT)
+    // ==============================================================================
+
+    /**
+     * Menampilkan detail lengkap satu tenant
+     */
+    public function show($id)
+    {
+        $tenant = Tenant::findOrFail($id);
+        
+        // Asumsi Anda juga ingin melihat daftar user dari tenant ini
+        $users = User::where('tenant_id', $tenant->id)->get();
+        
+        // Asumsi Anda ingin melihat riwayat lisensi tenant ini
+        $licenses = License::where('tenant_id', $tenant->id)->get();
+
+        return view('admin.tenant-show', compact('tenant', 'users', 'licenses'));
+    }
+
+    /**
+     * Menampilkan form edit tenant
+     */
+    public function edit($id)
+    {
+        $tenant = Tenant::findOrFail($id);
+        
+        return view('admin.tenant-edit', compact('tenant'));
+    }
+
+    /**
+     * Memproses update data tenant
+     */
+    public function update(Request $request, $id)
+    {
+        $tenant = Tenant::findOrFail($id);
+
+        // Validasi input
+        $request->validate([
+            'name'       => 'required|string|max:255',
+            'whatsapp'   => 'required|string|max:20',
+            'package'    => 'required|in:trial,monthly,yearly',
+            'status'     => 'required|in:active,inactive,suspended',
+            'expired_at' => 'required|date',
+        ]);
+
+        try {
+            // Update data tenant
+            $tenant->update([
+                'name'       => $request->name,
+                'whatsapp'   => $request->whatsapp,
+                'package'    => $request->package,
+                'status'     => $request->status,
+                'expired_at' => $request->expired_at,
+            ]);
+
+            Log::info("LOG LOG: Tenant {$tenant->name} diupdate oleh Admin Pusat.");
+
+            return redirect()->route('tenants.index')->with('success', 'Data tenant berhasil diperbarui!');
+            
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: Gagal update tenant: " . $e->getMessage());
+            return back()->with('error', 'Gagal memperbarui data: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Menghapus tenant beserta data terkait
+     */
+    public function destroy($id)
+    {
+        DB::beginTransaction();
+        
+        try {
+            $tenant = Tenant::findOrFail($id);
+            $tenantName = $tenant->name;
+
+            // Hapus semua User yang terkait dengan tenant ini
+            User::where('tenant_id', $tenant->id)->delete();
+            
+            // Hapus semua Lisensi yang terkait
+            License::where('tenant_id', $tenant->id)->delete();
+            
+            // Hapus data tenant utama
+            $tenant->delete();
+
+            DB::commit();
+
+            Log::info("LOG LOG: Tenant {$tenantName} dan semua datanya berhasil dihapus permanen oleh Admin.");
+
+            return redirect()->route('tenants.index')->with('success', "Tenant {$tenantName} berhasil dihapus permanen!");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("LOG LOG: Gagal menghapus tenant: " . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage());
+        }
+    }
+    
 }
