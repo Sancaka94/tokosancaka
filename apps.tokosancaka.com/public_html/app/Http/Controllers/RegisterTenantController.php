@@ -60,16 +60,14 @@ class RegisterTenantController extends Controller
         DB::beginTransaction();
 
         try {
-           // 3. KALKULASI MASA AKTIF
+            // 3. KALKULASI MASA AKTIF
             $status = ($request->package == 'trial') ? 'active' : 'inactive';
             $days = ($request->package == 'yearly') ? 365 : ($request->package == 'monthly' ? 30 : 14);
             
-            // KEMBALIKAN VARIABEL INI (Biar script lisensi di bawah nggak error)
             $expiredAt = $now->copy()->addDays($days);
-
-            // Bikin variabel baru khusus untuk mengatur masa aktif tabel Tenant
-            // Jika trial, set 0 hari (sekarang). Jika bukan, pakai $expiredAt
-            $tenantExpiredAt = ($request->package == 'trial') ? $now->copy() : $expiredAt;
+            // [PERBAIKAN] Jika trial, set expired tenant hari ini juga (0 hari). 
+            // Kalau bukan trial, langsung tambahkan harinya.
+            $tenantExpiredAt = ($request->package == 'trial') ? $now->copy() : $now->copy()->addDays($days);
 
             // 4. SIMPAN TENANT
             $tenant = Tenant::create([
@@ -78,7 +76,7 @@ class RegisterTenantController extends Controller
                 'whatsapp'   => $request->whatsapp,
                 'package'    => $request->package,
                 'status'     => $status,
-                'expired_at' => $tenantExpiredAt, // <--- Gunakan variabel khusus tenant ini
+                'expired_at' => $expiredAt, // <--- Gunakan $tenantExpiredAt yang nilainya 0 hari untuk trial
                 'created_at' => $now,
             ]);
 
@@ -97,17 +95,20 @@ class RegisterTenantController extends Controller
             $licenseCode = 'TRIAL-' . strtoupper(Str::random(8)); 
             if ($request->package == 'trial') {
                 
-                // Gunakan DB::table sesuai temuan brutal kita sebelumnya biar aman dari 'hantu'
+                // KITA MATIKAN SEMENTARA MODEL-NYA
+                // License::create([ ... ]); 
+                
+                // KITA TEMBAK LANGSUNG KE DATABASE
                 \Illuminate\Support\Facades\DB::table('licenses')->insert([
                     'license_code'  => $licenseCode,
                     'tenant_id'     => $tenant->id,
                     'package_type'  => 'trial',
                     'max_devices'   => 1,
                     'max_ips'       => 1,
-                    'duration_days' => $days, // <--- Jatah 14 harinya aman tersimpan di sini
-                    'status'        => 'available',
+                    'duration_days' => $days,
+                    'status'        => 'available', // <-- Kita paksa available
                     'used_at'       => null,
-                    'expires_at'    => null,
+                    'expires_at'    => $expiredAt,
                     'created_at'    => $now,
                     'updated_at'    => $now,
                 ]);
