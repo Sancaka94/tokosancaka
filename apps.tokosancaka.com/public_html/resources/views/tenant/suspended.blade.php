@@ -184,7 +184,6 @@
         document.getElementById('display-price').innerText = 'Rp ' + amount.toLocaleString('id-ID');
     }
 
-    // 2. Proses Pembayaran
     async function processPayment(e) {
         e.preventDefault();
 
@@ -195,32 +194,44 @@
         btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Memproses...';
         btn.classList.add('opacity-50', 'pointer-events-none');
 
-        // AMBIL TOKEN CSRF DARI HEAD HTML
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
+        // --- TAMBAHAN LOGIKA DETEKSI PAKET ---
+        let packageStr = 'monthly'; // Default 1 bulan
+        if (currentAmount === 300000) packageStr = 'quarterly'; // 3 Bulan
+        if (currentAmount === 1000000) packageStr = 'yearly'; // 1 Tahun
+
         try {
-            // HAPUS prefix /api/ jika route ini ada di web.php
             const response = await fetch('/tenant/generate-payment', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json', 
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken // <--- WAJIB UNTUK LARAVEL
+                    'X-CSRF-TOKEN': csrfToken 
                 },
-                body: JSON.stringify({ amount: currentAmount })
+                // --- INI YANG BIKIN ERROR 422 HILANG ---
+                body: JSON.stringify({ 
+                    amount: currentAmount,
+                    target_subdomain: '{{ $tenant->subdomain }}', // Suntik dari Laravel Blade
+                    package_type: packageStr
+                })
             });
 
-            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            if (!response.ok) {
+                if (response.status === 422) {
+                    let errData = await response.json();
+                    throw new Error("Validasi Gagal: " + JSON.stringify(errData.errors || errData.message));
+                }
+                throw new Error(`HTTP Error: ${response.status}`);
+            }
 
             const res = await response.json();
 
             if(res.success) {
+                // ... (Sisa kode sukses biarkan sama seperti sebelumnya) ...
                 window.open(res.url, '_blank');
-
                 btn.innerHTML = 'MENUNGGU PEMBAYARAN...';
                 waitingText.classList.remove('hidden');
-
-                // JALANKAN POLLING (JURUS ANTI GAGAL)
                 startPolling();
             } else {
                 throw new Error(res.message || 'Gagal generate token');
@@ -230,7 +241,7 @@
             console.error(error);
             btn.innerHTML = originalText;
             btn.classList.remove('opacity-50', 'pointer-events-none');
-            alert('Gagal: ' + error.message + '\nPastikan URL Route sesuai di web.php');
+            alert('Gagal: ' + error.message);
         }
     }
 
