@@ -207,7 +207,6 @@ class ApiSettingsController extends Controller
 
             } elseif ($type === 'fonnte') {
                 Api::setValue('FONNTE_API_KEY', $request->fonnte_api_key, 'fonnte', 'global');
-            }
 
            // --- TAMBAHAN UPDATE DANA ---
             } elseif ($type === 'dana') {
