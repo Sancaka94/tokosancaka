@@ -1290,3 +1290,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 });
 
 Route::get('/customer/dana/check-balance', [TopUpController::class, 'checkMyDanaBalance'])->name('customer.dana.check_balance');
+
+Route::get('/customer/dana/bind', [TopUpController::class, 'startBinding'])->name('customer.dana.bind');
+
+// Route untuk menangkap kembalian (Callback) dari DANA setelah user setuju
+Route::get('/customer/dana/callback', [TopUpController::class, 'handleCallback'])->name('customer.dana.callback');
