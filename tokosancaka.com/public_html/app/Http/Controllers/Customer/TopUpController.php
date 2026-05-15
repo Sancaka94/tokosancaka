@@ -1904,10 +1904,10 @@ class TopUpController extends Controller
         }
     }
 
- /**
+    /**
      * EKSEKUSI POTONG SALDO DANA (AUTO DEBIT / DIRECT DEBIT)
      */
-    public function createPaymentDanaBinding(Transaction $transaction, clone $userAccount)
+    public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
     {
         $trxId = $transaction->reference_id;
         Log::info('[DANA BINDING] Memulai Auto-Debit untuk Top Up: ' . $trxId);
