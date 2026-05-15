@@ -1690,12 +1690,12 @@ class TopUpController extends Controller
                 [
                     "url" => $returnUrl,
                     "type" => "PAY_RETURN",
-                    "isDeeplink" => "Y"
+                    "isDeeplink" => "N"
                 ],
                 [
                     "url" => route('dana.notify'),
                     "type" => "NOTIFICATION",
-                    "isDeeplink" => "Y"
+                    "isDeeplink" => "N"
                 ]
             ],
             "additionalInfo" => [
