@@ -15,6 +15,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
 
+// --- [IMPORT DANA SDK] ---
+use Dana\Widget\v1\Model\WidgetPaymentRequest;
+use Dana\Widget\v1\Model\Money;
+use Dana\Widget\v1\Model\UrlParam;
+use Dana\Widget\v1\Model\WidgetPaymentRequestAdditionalInfo;
+use Dana\Widget\v1\Model\EnvInfo;
+use Dana\Widget\v1\Model\Order as DanaOrder;
+use Dana\Configuration;
+use Dana\Env;
+use Dana\Widget\v1\Api\WidgetApi;
+
 use App\Services\DokuJokulService;
 use Exception;
 use Illuminate\Support\Str;
@@ -147,6 +158,32 @@ class TopUpController extends Controller
                                  ->with('success', 'Silakan lakukan transfer dan upload bukti pembayaran Anda di halaman ini.');
 
             }
+
+            // 1.5 LOGIKA AUTO-DEBIT (POTONG SALDO DANA AKUN TERHUBUNG)
+            elseif ($validated['payment_method'] === 'DANA_BINDING') {
+                
+                // Pastikan akun benar-benar sudah bind (Ambil dari $user Auth langsung)
+                if (empty($user->dana_access_token)) {
+                    throw new \Exception("Akun DANA Anda belum terhubung. Silakan hubungkan terlebih dahulu di Profil / Pengaturan.");
+                }
+
+                Log::info("Memproses Potong Saldo DANA untuk " . $invoiceNumber . " (User ID: " . $user->id_pengguna . ")");
+
+                $transaction = Transaction::create([
+                    'user_id'        => $user->id_pengguna,
+                    'reference_id'   => $invoiceNumber,
+                    'amount'         => $amount,
+                    'type'           => 'topup',
+                    'status'         => 'pending',
+                    'payment_method' => 'DANA_BINDING',
+                    'description'    => 'Top up saldo via Saldo DANA Terhubung (Auto Debit)',
+                ]);
+
+                DB::commit();
+                // Passing $user langsung karena token ada di situ
+                return $this->createPaymentDanaBinding($transaction, $user);
+            }
+
             // 2. LOGIKA DANA DIRECT
             elseif ($validated['payment_method'] === 'DANA' || $validated['payment_method'] === 'NETWORK_PAY_PG_DANA') {
 
@@ -1864,6 +1901,95 @@ class TopUpController extends Controller
                 'services.dana.private_key'   => Api::getValue('dana_sandbox_private_key', 'sandbox', env('DANA_PRIVATE_KEY')),
                 'services.dana.client_secret' => Api::getValue('dana_sandbox_client_secret', 'sandbox', env('DANA_CLIENT_SECRET')),
             ]);
+        }
+    }
+
+ /**
+     * EKSEKUSI POTONG SALDO DANA (AUTO DEBIT / DIRECT DEBIT)
+     */
+    public function createPaymentDanaBinding(Transaction $transaction, clone $userAccount)
+    {
+        $trxId = $transaction->reference_id;
+        Log::info('[DANA BINDING] Memulai Auto-Debit untuk Top Up: ' . $trxId);
+
+        $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
+        $path = '/v1.0/debit/payment.htm'; // Endpoint khusus direct debit
+
+        // Payload Direct Debit
+        $body = [
+            "partnerReferenceNo" => $trxId,
+            "merchantId" => config('services.dana.merchant_id'),
+            "amount" => [
+                "value" => number_format($transaction->amount, 2, '.', ''),
+                "currency" => "IDR"
+            ],
+            "chargeToken" => "", // Dikosongkan karena pakai Authorization-Customer (Token OAuth)
+            "additionalInfo" => (object)[]
+        ];
+
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        try {
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+            $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+            $baseUrl = config('services.dana.base_url');
+
+            // Eksekusi Potong Saldo API
+            $response = Http::withHeaders([
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessTokenB2B, // Token B2B Sancaka
+                // PENTING: Ambil token dari user account (Tabel Pengguna)
+                'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token, 
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'X-DEVICE-ID'   => 'SANCAKA-WEB-POS',
+                'CHANNEL-ID'    => '95221'
+            ])
+            ->withBody($jsonBody, 'application/json')
+            ->post($baseUrl . $path);
+
+            $result = $response->json();
+            Log::info('[DANA BINDING] Respon Potong Saldo: ', $result);
+
+            // Cek Jika Potong Saldo BERHASIL (Kode 2000000)
+            if (isset($result['responseCode']) && $result['responseCode'] == '2000000') {
+                
+                // 1. Update Transaksi Sancaka
+                $transaction->update([
+                    'status' => 'success', 
+                    'payment_status' => 'paid',
+                    'note' => "[AUTO-DEBIT] Saldo DANA berhasil dipotong otomatis."
+                ]);
+
+                // 2. Tambah Saldo Utama User
+                $userAccount->increment('saldo', $transaction->amount);
+
+                // 3. Notifikasi
+                event(new SaldoUpdated($userAccount, $transaction->amount, $userAccount->saldo, 'Top up Saldo DANA Anda berhasil.'));
+
+                return redirect()->route('customer.topup.index')
+                    ->with('success', '🎉 Pembayaran Berhasil! Saldo DANA Anda telah terpotong secara otomatis.');
+            } 
+            
+            // Cek Jika butuh verifikasi tambahan/OTP dari DANA (Kode 2005400)
+            elseif (isset($result['responseCode']) && $result['responseCode'] == '2005400' && !empty($result['webRedirectUrl'])) {
+                $transaction->update(['payment_url' => $result['webRedirectUrl']]);
+                return redirect()->away($result['webRedirectUrl']);
+            } 
+
+            // Jika Gagal (Misal: Saldo DANA kurang)
+            else {
+                $transaction->update(['status' => 'failed']);
+                $pesanGagal = $result['responseMessage'] ?? 'Saldo DANA tidak mencukupi atau Token Kadaluarsa.';
+                return back()->with('error', 'Gagal memotong saldo: ' . $pesanGagal);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('[DANA BINDING] Fatal Error: ' . $e->getMessage());
+            return back()->with('error', 'Koneksi ke DANA terputus. Silakan coba lagi.');
         }
     }
 }

@@ -76,8 +76,35 @@
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-500 peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all flex flex-col items-center text-center">
                                         <img src="{{ asset('assets/dana.webp') }}" class="h-10 w-10 object-contain mb-2 rounded-md" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
                                         <span class="text-sm font-bold text-gray-700">DANA</span>
-                                        <span class="text-[10px] text-gray-400">Direct Debit / Saldo</span>
+                                        <span class="text-[10px] text-gray-400">GAPURA</span>
                                         {{-- Centang --}}
+                                        <div class="absolute top-2 right-2 text-blue-600 opacity-0 peer-checked:opacity-100"><i class="fas fa-check-circle"></i></div>
+                                    </div>
+                                </label>
+
+                                {{-- 1. CEK STATUS BINDING AKUN DANA (DARI TABEL PENGGUNA) --}}
+                                @php
+                                    // Ambil status bind langsung dari user yang login (karena tabelnya Pengguna)
+                                    // Pastikan kolom 'dana_access_token' sudah ada di tabel Pengguna.
+                                    // Jika kolomnya berbeda, silakan sesuaikan.
+                                    $user = Auth::user();
+                                    $isDanaBound = $user && !empty($user->dana_access_token);
+                                @endphp
+
+                                {{-- 2. TOMBOL POTONG SALDO DANA --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="DANA_BINDING" class="peer sr-only" {{ !$isDanaBound ? 'disabled' : '' }} required>
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-500 peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all flex flex-col items-center text-center {{ !$isDanaBound ? 'opacity-50 cursor-not-allowed bg-gray-50' : '' }}">
+                                        
+                                        <img src="{{ asset('assets/dana.webp') }}" class="h-10 w-10 object-contain mb-2 rounded-md" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                                        <span class="text-sm font-bold text-gray-700">Saldo DANA</span>
+                                        
+                                        @if($isDanaBound)
+                                            <span class="text-[10px] text-green-600 font-bold mt-1 bg-green-100 px-2 py-0.5 rounded-full"><i class="fas fa-link mr-1"></i>Tersambung</span>
+                                        @else
+                                            <span class="text-[10px] text-red-500 font-bold mt-1 bg-red-100 px-2 py-0.5 rounded-full"><i class="fas fa-unlink mr-1"></i>Belum Terhubung</span>
+                                        @endif
+                                        
                                         <div class="absolute top-2 right-2 text-blue-600 opacity-0 peer-checked:opacity-100"><i class="fas fa-check-circle"></i></div>
                                     </div>
                                 </label>
