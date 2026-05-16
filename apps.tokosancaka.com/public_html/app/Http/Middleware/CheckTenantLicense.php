@@ -42,14 +42,14 @@ class CheckTenantLicense
             // Kalau tulisan ini muncul di layar putih, berarti MIDDLEWARE SUDAH BENAR 100%.
             // dd('STOP COK! MIDDLEWARE JALAN. Status toko ini INACTIVE. Harusnya lari ke /suspended.');
             
-            return redirect('/suspended');
+            return redirect('/account-suspended');
         }
 
         if ($tenant->expired_at) {
             $expiredDate = Carbon::parse($tenant->expired_at)->timezone('Asia/Jakarta');
             if (now()->timezone('Asia/Jakarta')->isAfter($expiredDate)) {
                 DB::table('tenants')->where('id', $tenant->id)->update(['status' => 'inactive']);
-                return redirect('/suspended');
+                return redirect('/account-suspended');
             }
         }
 

@@ -98,11 +98,11 @@ class TenantMiddleware
             if ($tenant->status !== 'inactive') {
                 $tenant->update(['status' => 'inactive']);
             }
-            return redirect('/suspended'); // Gunakan absolute path
+            return redirect('/account-suspended'); // Gunakan absolute path
         }
 
         if ($tenant->status === 'inactive') {
-             return redirect('/suspended'); // Gunakan absolute path
+             return redirect('/account-suspended'); // Gunakan absolute path
         }
 
         return $next($request);
