@@ -2,12 +2,31 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB; // BENAR ✅
+use App\Http\Middleware\EnforceLicenseLimits; // Pastikan middleware ini sudah dibuat
+use Illuminate\Support\Facades\Log; // Untuk logging
+use Illuminate\Support\Str;
+use App\Models\License; // Pastikan nanti kita buat Model ini
+use App\Models\Tenant; // Model Tenant untuk relasi jika diperlukan
+use App\Models\User; // Model User untuk relasi jika diperlukan
 
 class SuspendController extends Controller
 {
+    protected $tenantId;
+
+    public function __construct(Request $request)
+    {
+        // Deteksi Subdomain untuk mengunci data dashboard
+        $host = $request->getHost();
+        $subdomain = explode('.', $host)[0];
+        $tenant = Tenant::where('subdomain', $subdomain)->first();
+
+        $this->tenantId = $tenant ? $tenant->id : 1;
+    }
+    
     public function index(Request $request)
         {
             // 1. AMBIL TENANT BERDASARKAN SUBDOMAIN DI URL BROWSER
