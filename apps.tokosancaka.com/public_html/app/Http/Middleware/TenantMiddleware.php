@@ -9,27 +9,31 @@ use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class TenantMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        // [DEBUG LOG] Cek apakah DANA sampai sini
-        if ($request->is('dana/*')) {
-            \Illuminate\Support\Facades\Log::info('Middleware: DANA Request Detected passing through...');
-            return $next($request); // <--- JALUR VIP
+        // 1. JALUR VIP: Biarkan webhook / callback lewat tanpa halangan
+        if ($request->is('dana/*') || $request->is('api/*')) {
+            return $next($request);
         }
 
-        // 1. AMBIL SUBDOMAIN
+        // 2. DETEKSI SUBDOMAIN
         $host = $request->getHost();
         $parts = explode('.', $host);
-        $subdomain = $parts[0];
+        $subdomain = $parts[0] ?? '';
 
-        \Illuminate\Support\Facades\URL::defaults(['subdomain' => $subdomain]);
-        
-        // -------------------------------------------------------------
+        URL::defaults(['subdomain' => $subdomain]);
+
+        // 3. PENGECUALIAN DOMAIN UTAMA / DEMO
+        $excludedSubdomains = ['apps', 'admin', 'www', 'localhost', '127'];
+        if (in_array($subdomain, $excludedSubdomains)) {
+            return $next($request);
+        }
+
         // [MAGIC FIX: PAKSA CONFIG DI RUNTIME UNTUK DEMO]
-        // -------------------------------------------------------------
         if ($subdomain === 'demo') {
             config(['database.connections.mysql_demo' => [
                 'driver'    => 'mysql',
@@ -44,67 +48,67 @@ class TenantMiddleware
                 'strict'    => true,
                 'engine'    => null,
             ]]);
-
             Config::set('database.default', 'mysql_demo');
             DB::purge('mysql_demo');
             DB::reconnect('mysql_demo');
-
-            View::share('currentTenant');
+            View::share('currentTenant', null);
             return $next($request);
         }
 
-        // -------------------------------------------------------------
-        // [RULE 1] JIKA AKSES DOMAIN UTAMA (APPS/WWW), LANGSUNG LEWAT
-        // -------------------------------------------------------------
-        if ($subdomain === 'apps' || $subdomain === 'www') {
-            return $next($request);
-        }
-
-        // -------------------------------------------------------------
-        // [RULE 2] CEK DATABASE TENANT TERLEBIH DAHULU (Pindah ke Atas)
-        // -------------------------------------------------------------
-        // Kita harus ambil data ini dulu agar halaman Suspended bisa menggunakannya
+        // 4. AMBIL DATA TENANT
         $tenant = Tenant::where('subdomain', $subdomain)->first();
 
+        // Jika tenant tidak ditemukan, lempar ke pendaftaran
         if (!$tenant) {
             return redirect()->away('https://apps.tokosancaka.com/daftar-pos');
         }
 
-        // -------------------------------------------------------------
-        // [RULE 3] INJEKSI DATA KE APLIKASI
-        // -------------------------------------------------------------
+        // 5. INJEKSI DATA TENANT (Agar bisa dipakai di Controller & View)
         $request->merge(['tenant' => $tenant]);
         View::share('currentTenant', $tenant);
+        $request->attributes->add(['tenant' => $tenant]);
 
-        // -------------------------------------------------------------
-        // [RULE 4] WHITELIST ROUTE TERTENTU (Setelah Data Tenant Didapat)
-        // -------------------------------------------------------------
-        // Jika user mengakses halaman ini, biarkan lewat (tidak peduli status tenant)
+        // 6. WHITELIST URL (Halaman yang boleh diakses meski Expired)
         if (
-            $request->is('api/*') ||
-            $request->is('dana/*') ||
+            $request->is('account-suspended') || 
+            $request->is('*account-suspended*') || 
+            $request->is('suspended') || 
             $request->is('tenant/generate-payment') ||
-            $request->is('account-suspended') ||
-            $request->routeIs('tenant.suspended')
+            $request->is('logout') ||
+            $request->is('*/logout')
         ) {
             return $next($request);
         }
 
-        // -------------------------------------------------------------
-        // [RULE 5] CEK EXPIRED / INACTIVE
-        // -------------------------------------------------------------
-        // Jika statusnya habis atau inactive, lempar ke URL /account-suspended
-        if ($tenant->expired_at && now()->gt($tenant->expired_at)) {
-            if ($tenant->status !== 'inactive') {
+        // 7. CEK STATUS EXPIRED / INACTIVE
+        $isExpired = false;
+        if ($tenant->expired_at) {
+            $expiredDate = Carbon::parse($tenant->expired_at)->timezone('Asia/Jakarta');
+            $isExpired = now()->timezone('Asia/Jakarta')->isAfter($expiredDate);
+        }
+
+        if ($isExpired || $tenant->status === 'inactive' || $tenant->status === 'suspended') {
+            // Update status DB ke inactive jika murni karena expired waktu
+            if ($isExpired && $tenant->status !== 'inactive') {
                 $tenant->update(['status' => 'inactive']);
             }
-            return redirect('/account-suspended'); // Gunakan absolute path
+            
+            // Arahkan ke halaman Suspended dengan aman
+            return redirect('/account-suspended'); 
         }
 
-        if ($tenant->status === 'inactive') {
-             return redirect('/account-suspended'); // Gunakan absolute path
+        // 8. CEK LISENSI REDEEM (Hanya jika toko sedang Aktif)
+        $pendingLicense = DB::table('licenses')
+            ->where('tenant_id', $tenant->id)
+            ->where('status', 'available')
+            ->exists();
+
+        if ($pendingLicense) {
+            return redirect()->to('https://apps.tokosancaka.com/redeem-lisensi?subdomain=' . $subdomain)
+                             ->with('info', 'Silakan aktivasi layanan Anda.');
         }
 
+        // 9. LOLOS SEMUA PENGECEKAN
         return $next($request);
     }
 }
