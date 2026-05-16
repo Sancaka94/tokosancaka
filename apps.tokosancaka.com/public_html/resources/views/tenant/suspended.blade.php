@@ -4,7 +4,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Akun Ditangguhkan - {{ $tenant->name }}</title>
+    {{-- Menggunakan fallback jika $tenant kosong agar tidak crash --}}
+    <title>Akun Ditangguhkan - {{ $tenant->name ?? 'Pelanggan' }}</title>
 
     <link rel="icon" type="image/jpeg" href="https://tokosancaka.com/public/assets/logo.jpg">
     <link rel="shortcut icon" type="image/jpeg" href="https://tokosancaka.com/public/assets/logo.jpg">
@@ -26,9 +27,9 @@
         {{-- KIRI: INFO SUSPEND & TIMER --}}
         <div class="md:w-1/3 bg-red-600 p-10 text-white flex flex-col justify-center items-center text-center relative overflow-hidden">
 
-            {{-- TIMER HITUNG MUNDUR (Menggunakan variabel $isoDeletionDate dari Controller) --}}
+            {{-- TIMER HITUNG MUNDUR (Aman dengan fallback ISO string jika $isoDeletionDate kosong) --}}
             <div x-data="{
-                    expiry: '{{ $isoDeletionDate }}',
+                    expiry: '{{ $isoDeletionDate ?? now()->addDays(30)->toIso8601String() }}',
                     days: '00', hours: '00', minutes: '00', seconds: '00',
                     distance: 0,
                     init() {
@@ -60,7 +61,7 @@
             <img src="https://tokosancaka.com/storage/uploads/logos/jWfpluPG2sSkvcvaOnYTNRqjizdUbSbeGKyv1F3A.jpg" alt="Logo" class="w-24 h-24 rounded-2xl mb-6 shadow-lg border-4 border-red-500 z-10 relative">
 
             <h2 class="text-2xl font-extrabold mb-2 uppercase italic tracking-tighter z-10 relative">
-                {{ $tenant->name }}
+                {{ $tenant->name ?? 'Sancaka Tenant' }}
             </h2>
 
             <div class="inline-block px-4 py-1 bg-blue-700 rounded-full text-xs font-bold mb-6 z-10 relative">STATUS: SUSPENDED</div>
@@ -133,7 +134,6 @@
     <script>
     let currentAmount = 100000;
 
-    // 1. Update Tampilan Harga
     function updatePlan(amount) {
         currentAmount = amount;
         document.getElementById('display-price').innerText = 'Rp ' + amount.toLocaleString('id-ID');
@@ -151,10 +151,9 @@
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        // --- TAMBAHAN LOGIKA DETEKSI PAKET ---
-        let packageStr = 'monthly'; // Default 1 bulan
-        if (currentAmount === 300000) packageStr = 'quarterly'; // 3 Bulan
-        if (currentAmount === 1000000) packageStr = 'yearly'; // 1 Tahun
+        let packageStr = 'monthly';
+        if (currentAmount === 300000) packageStr = 'quarterly';
+        if (currentAmount === 1000000) packageStr = 'yearly';
 
         try {
             const response = await fetch('/tenant/generate-payment', {
@@ -166,7 +165,8 @@
                 },
                 body: JSON.stringify({ 
                     amount: currentAmount,
-                    target_subdomain: '{{ $tenant->subdomain }}', // Disuntikkan aman dari Blade
+                    // Menggunakan fallback JS jika subdomain tidak disuntik via blade
+                    target_subdomain: '{{ $tenant->subdomain ?? "" }}' || window.location.hostname.split('.')[0], 
                     package_type: packageStr
                 })
             });
@@ -198,12 +198,10 @@
         }
     }
 
-    // 3. Polling / Cek Status Otomatis
     function startPolling() {
         console.log("Mulai cek status...");
         let checkInterval = setInterval(async () => {
             try {
-                // Sesuaikan juga URL ini jika diperlukan
                 let response = await fetch('/tenant/check-status');
 
                 if (response.ok) {
@@ -226,7 +224,7 @@
             } catch (err) {
                 console.log("Server belum merespon status aktif...");
             }
-        }, 3000); // Cek tiap 3 detik
+        }, 3000);
     }
     </script>
 </body>
