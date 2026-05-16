@@ -184,19 +184,30 @@ Route::domain('{subdomain}.tokosancaka.com')
     ->middleware(['web', 'tenant'])
     ->group(function () {
 
-        Route::get('/', function ($subdomain) {
+        Route::get('/', function (Request $request, $subdomain) {
             
-            // 1. Ambil data Kategori dari database
-            // Jika kategori spesifik per tenant, tambahkan ->where('tenant_id', request('tenant')->id)
-            $categories = Category::all(); 
+            // 1. Ambil data Tenant (Toko) yang sedang diakses
+            $tenant = $request->get('tenant') ?? \App\Models\Tenant::where('subdomain', $subdomain)->first();
 
-            // 2. Ambil data Produk dari database
-            // Menggunakan paginate() karena di blade Anda ada {{ $products->links() }}
-            $products = Product::paginate(10); 
+            // Jika toko tidak ada, cegah error dengan 404
+            if (!$tenant) {
+                abort(404, 'Toko tidak ditemukan');
+            }
 
-            // 3. Kirim semua variabel ke file Blade
+            // 2. Ambil Kategori KHUSUS untuk tenant ini saja
+            $categories = Category::where('tenant_id', $tenant->id)->get(); 
+
+            // 3. Ambil Produk KHUSUS untuk tenant ini saja (dan yang stoknya aman)
+            $products = Product::where('tenant_id', $tenant->id)
+                               ->where('stock_status', 'available')
+                               ->where('stock', '>', 0)
+                               ->latest()
+                               ->paginate(12); 
+
+            // 4. Kirim SEMUA variabel mutlak yang dibutuhkan oleh file Blade
             return view('storefront.index', [
                 'subdomain'  => $subdomain,
+                'tenant'     => $tenant,
                 'categories' => $categories,
                 'products'   => $products
             ]);
