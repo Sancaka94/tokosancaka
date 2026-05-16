@@ -179,13 +179,18 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 });
 
 Route::domain('{subdomain}.tokosancaka.com')
-    ->middleware(['web', 'tenant']) // <--- Pastikan license.check ada di sini!
+    ->middleware(['web', 'tenant'])
     ->group(function () {
 
-     Route::get('/', function () {
-    return view('storefront.index');
-    });
+        // 1. Tambahkan parameter $subdomain di dalam function()
+        Route::get('/', function ($subdomain) {
+            
+            // 2. Kirim variabel $subdomain ke dalam view menggunakan array atau compact()
+            return view('storefront.index', [
+                'subdomain' => $subdomain
+            ]);
 
+        })->name('storefront.index'); // 3. WAJIB tambahkan nama route ini
 
 });
 
