@@ -175,14 +175,17 @@ Route::domain('{subdomain}.tokosancaka.com')
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->name('dashboard');
+
+    Route::get('/', function () {
+    return view('welcome');
+    });
+
 });
 
 // Halaman Admin (Posting Produk)
 Route::post('/products/store', [ProductController::class, 'store'])->name('products.store');
 
-Route::get('/', function () {
-    return view('welcome');
-});
+
 
 Route::middleware('auth')->group(function () {
 
