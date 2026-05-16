@@ -27,8 +27,15 @@
         <div class="md:w-1/3 bg-red-600 p-10 text-white flex flex-col justify-center items-center text-center relative overflow-hidden">
 
             {{-- TIMER HITUNG MUNDUR --}}
+            @php
+                // Ambil tanggal expired dari database, tambah 30 hari batas toleransi
+                $batasHapus = isset($tenant->expired_at) 
+                    ? \Carbon\Carbon::parse($tenant->expired_at)->addDays(30) 
+                    : now()->addDays(30);
+            @endphp
+
             <div x-data="{
-                    expiry: '{{ $isoDeletionDate ?? now()->addDays(30)->toIso8601String() }}',
+                    expiry: '{{ $batasHapus->toIso8601String() }}',
                     days: '00', hours: '00', minutes: '00', seconds: '00',
                     distance: 0,
                     init() {
