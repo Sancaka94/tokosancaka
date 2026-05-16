@@ -151,7 +151,7 @@
                             </a>
                             
                             <p class="text-[10px] text-blue-600 italic leading-tight">
-                                *Catatan: Setelah Anda menekan tombol Submit pada halaman redeem, mohon <b>tunggu sekitar 5 detik</b> hingga muncul notifikasi sukses sebelum menutup halaman.
+                                *Catatan: Setelah Anda menekan tombol Submit pada halaman AKTIVASI, mohon <b>tunggu sekitar 5 detik</b> hingga muncul notifikasi sukses sebelum menutup halaman.
                             </p>
                         </div>
                     </div>
