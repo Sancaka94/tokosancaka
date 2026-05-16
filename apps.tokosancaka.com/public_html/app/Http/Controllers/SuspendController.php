@@ -2,16 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB; // BENAR ✅
-use App\Http\Middleware\EnforceLicenseLimits; // Pastikan middleware ini sudah dibuat
-use Illuminate\Support\Facades\Log; // Untuk logging
-use Illuminate\Support\Str;
-use App\Models\License; // Pastikan nanti kita buat Model ini
-use App\Models\Tenant; // Model Tenant untuk relasi jika diperlukan
-use App\Models\User; // Model User untuk relasi jika diperlukan
+use Illuminate\Support\Facades\DB;
+use App\Models\Tenant;
 
 class SuspendController extends Controller
 {
@@ -19,7 +13,6 @@ class SuspendController extends Controller
 
     public function __construct(Request $request)
     {
-        // Deteksi Subdomain untuk mengunci data dashboard
         $host = $request->getHost();
         $subdomain = explode('.', $host)[0];
         $tenant = Tenant::where('subdomain', $subdomain)->first();
@@ -28,37 +21,54 @@ class SuspendController extends Controller
     }
 
     public function index(Request $request)
-        {
-            // 1. AMBIL TENANT BERDASARKAN SUBDOMAIN DI URL BROWSER
-            $host = $request->getHost(); // Contoh: gerai.tokosancaka.com
-            $subdomain = explode('.', $host)[0]; // Mengambil 'gerai'
+    {
+        // 1. AMBIL TENANT BERDASARKAN SUBDOMAIN
+        $host = $request->getHost(); 
+        $subdomain = explode('.', $host)[0]; 
 
-            // Cari tenant berdasarkan subdomain yang sedang dibuka
-            $tenant = \DB::table('tenants')->where('subdomain', $subdomain)->first();
+        $tenant = DB::table('tenants')->where('subdomain', $subdomain)->first();
 
-            // Jika tenant tidak ditemukan di database
-            if (!$tenant) {
-                abort(404, 'Tenant tidak ditemukan.');
-            }
-
-            // 2. CEK LOGIC REDIRECT BERDASARKAN DATA TENANT YANG DIAKSES
-            $isExpired = ($tenant->expired_at && now()->gt($tenant->expired_at));
-            $isActive = ($tenant->status === 'active' && !$isExpired); // Menggunakan && agar lebih ketat
-
-            // Jika akun sebenarnya AKTIF, kembalikan ke dashboard subdomain tersebut
-            if ($isActive) {
-                $protocol = $request->secure() ? 'https://' : 'http://';
-                $dashboardUrl = $protocol . $tenant->subdomain . '.tokosancaka.com/dashboard';
-                
-                return redirect()->away($dashboardUrl);
-            }
-
-            // 3. SIAPKAN DATA TANGGAL UNTUK JAVASCRIPT
-            $expiredDate = $tenant->expired_at ? Carbon::parse($tenant->expired_at) : Carbon::now();
-            $deletionDate = $expiredDate->copy()->addDays(30);
-            $isoDeletionDate = $deletionDate->format('c');
-
-            // 4. TAMPILKAN HALAMAN SUSPEND
-            return view('tenant.suspended', compact('tenant', 'isoDeletionDate'));
+        if (!$tenant) {
+            abort(404, 'Tenant tidak ditemukan.');
         }
+
+        // 2. CEK LISENSI TERAKHIR DARI TABEL LICENSES
+        // Mencari lisensi yang statusnya 'used' dan tanggal expired paling jauh
+        $latestLicense = DB::table('licenses')
+            ->where('tenant_id', $tenant->id)
+            ->where('status', 'used')
+            ->orderBy('expires_at', 'desc')
+            ->first();
+
+        // 3. TENTUKAN TANGGAL EXPIRED (Prioritas: Tabel Licenses -> Tabel Tenants -> Waktu Saat Ini)
+        if ($latestLicense && $latestLicense->expires_at) {
+            $expiredDate = Carbon::parse($latestLicense->expires_at)->timezone('Asia/Jakarta');
+        } elseif ($tenant->expired_at) {
+            $expiredDate = Carbon::parse($tenant->expired_at)->timezone('Asia/Jakarta');
+        } else {
+            $expiredDate = Carbon::now()->timezone('Asia/Jakarta');
+        }
+
+        // 4. CEK LOGIC REDIRECT
+        $isExpired = now()->timezone('Asia/Jakarta')->gt($expiredDate);
+        $isActive = ($tenant->status === 'active' && !$isExpired); 
+
+        // Jika akun ternyata AKTIF (user iseng buka URL ini), kembalikan ke dashboard
+        if ($isActive) {
+            $protocol = $request->secure() ? 'https://' : 'http://';
+            $dashboardUrl = $protocol . $tenant->subdomain . '.tokosancaka.com/dashboard';
+            
+            return redirect()->away($dashboardUrl);
+        }
+
+        // 5. SIAPKAN DATA TANGGAL UNTUK JAVASCRIPT (TIMER ALPINE.JS)
+        // Tambah 30 hari dari tanggal expired sebagai batas hapus permanen
+        $deletionDate = $expiredDate->copy()->addDays(30);
+        
+        // Gunakan toIso8601String() agar mutlak terbaca oleh new Date() di JS
+        $isoDeletionDate = $deletionDate->toIso8601String();
+
+        // 6. TAMPILKAN HALAMAN SUSPEND
+        return view('tenant.suspended', compact('tenant', 'latestLicense', 'isoDeletionDate'));
+    }
 }
