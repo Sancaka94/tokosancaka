@@ -792,11 +792,14 @@ Route::domain('{subdomain}.tokosancaka.com')->middleware('tenant')->group(functi
 // 1. RUTE KHUSUS SUSPEND (Dikeluarkan dari middleware 'tenant')
 Route::domain('{subdomain}.tokosancaka.com')->group(function () {
     Route::get('/account-suspended', [SuspendController::class, 'index'])->name('tenant.suspended');
-});
 
-Route::get('/suspended', function () {
+    Route::get('/suspended', function () {
         return view('tenant.suspended'); 
      })->name('tenant.suspended');
+     
+});
+
+
 
 Route::post('/tenant/generate-payment', [TenantPaymentController::class, 'generateUrl']);
 Route::get('/tenant/check-status', [TenantPaymentController::class, 'checkStatus']);
