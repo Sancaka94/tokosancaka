@@ -183,7 +183,7 @@ Route::domain('{subdomain}.tokosancaka.com')
     ->group(function () {
 
      Route::get('/', function () {
-    return view('welcome');
+    return view('storefront.index');
     });
 
 
