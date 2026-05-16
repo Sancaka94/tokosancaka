@@ -972,7 +972,7 @@ class TopUpController extends Controller
             'ORIGIN'        => config('services.dana.origin'),
             'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
             'X-EXTERNAL-ID' => (string) time() . Str::random(5),
-            'X-IP-ADDRESS'  => $request->ip() ?? '127.0.0.1',
+            'X-IP-ADDRESS'  => $request->ip() ?? '82.25.62.13',
             'X-DEVICE-ID'   => 'DANA-DASHBOARD-01',
             'CHANNEL-ID'    => '95221'
         ];
@@ -1585,7 +1585,7 @@ class TopUpController extends Controller
             // 2. PERBAIKAN FORMAT IP (CEGAH IPV6 AGAR DANA TIDAK CRASH)
             $clientIp = $request->ip();
             if (filter_var($clientIp, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
-                $clientIp = '127.0.0.1'; // Fallback ke IPv4 lokal jika user memakai IPv6
+                $clientIp = '82.25.62.13'; // Fallback ke IPv4 lokal jika user memakai IPv6
             }
 
             $body = [
