@@ -33,7 +33,7 @@
                     ? \Carbon\Carbon::parse($tenant->expired_at)->addDays(30) 
                     : now()->addDays(30);
             @endphp
-            
+
 
             <div x-data="{
                     expiry: '{{ $batasHapus->toIso8601String() }}',
@@ -129,6 +129,33 @@
                     <i class="fab fa-whatsapp text-xl"></i>
                     <span>Hubungi Admin (Bantuan)</span>
                 </a>
+
+                {{-- KOTAK INFO REDEEM LISENSI --}}
+                <div class="mt-6 bg-blue-50 border-2 border-blue-100 rounded-2xl p-5 relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 opacity-10 text-blue-500">
+                        <i class="fas fa-ticket-alt text-6xl"></i>
+                    </div>
+                    
+                    <div class="flex items-start gap-4 relative z-10">
+                        <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-sm">
+                            <i class="fas fa-info-circle text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-extrabold text-blue-900 mb-1">Informasi Aktivasi</h4>
+                            <p class="text-xs text-blue-800 leading-relaxed mb-3">
+                                Setelah pembayaran berhasil, <b>Kode Aktivasi</b> perpanjangan akan dikirimkan secara otomatis ke nomor WhatsApp Anda.
+                            </p>
+                            
+                            <a href="https://apps.tokosancaka.com/redeem-lisensi?subdomain={{ $tenant->subdomain ?? '' }}" target="_blank" class="inline-flex items-center justify-center w-full bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold py-3 px-4 rounded-xl transition shadow-md mb-2">
+                                <i class="fas fa-key mr-2"></i> MASUKKAN KODE AKTIVASI DI SINI
+                            </a>
+                            
+                            <p class="text-[10px] text-blue-600 italic leading-tight">
+                                *Catatan: Setelah Anda menekan tombol Submit pada halaman redeem, mohon <b>tunggu sekitar 5 detik</b> hingga muncul notifikasi sukses sebelum menutup halaman.
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <p id="waiting-text" class="hidden text-center text-xs text-amber-600 mt-3 font-bold animate-pulse">
