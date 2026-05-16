@@ -26,9 +26,10 @@ class SuspendController extends Controller
 
         $this->tenantId = $tenant ? $tenant->id : 1;
     }
-    
+
     public function index(Request $request)
         {
+            dd("Controller Suspend Berhasil Dieksekusi!");
             // 1. AMBIL TENANT BERDASARKAN SUBDOMAIN DI URL BROWSER
             $host = $request->getHost(); // Contoh: gerai.tokosancaka.com
             $subdomain = explode('.', $host)[0]; // Mengambil 'gerai'
