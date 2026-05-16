@@ -85,7 +85,6 @@ class TenantMiddleware
             $request->is('dana/*') ||
             $request->is('tenant/generate-payment') ||
             $request->is('account-suspended') ||
-            $request->is('suspended') || // Pengecekan via URL Path (Lebih kebal 404)
             $request->routeIs('tenant.suspended')
         ) {
             return $next($request);
