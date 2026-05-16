@@ -170,7 +170,7 @@ Route::get('/dana/test-inquiry', [App\Http\Controllers\DanaDashboardController::
 */
 
 Route::domain('{subdomain}.tokosancaka.com')
-    ->middleware(['web', 'auth', 'license.check']) // <--- Pastikan license.check ada di sini!
+    ->middleware(['web', 'auth', 'tenant']) // <--- Pastikan license.check ada di sini!
     ->group(function () {
 
 Route::get('/dashboard', [DashboardController::class, 'index'])

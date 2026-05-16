@@ -28,9 +28,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'tenant' => \App\Http\Middleware\TenantMiddleware::class,
             'role'   => \App\Http\Middleware\CheckRole::class,
-            'check.status' => \App\Http\Middleware\CheckTenantStatus::class,
+            //'check.status' => \App\Http\Middleware\CheckTenantStatus::class,
             'check.subscription' => \App\Http\Middleware\CheckSubscription::class,
-            'license.check' => \App\Http\Middleware\CheckTenantLicense::class,
+            //'license.check' => \App\Http\Middleware\CheckTenantLicense::class,
         ]);
 
         // Cara yang benar untuk menambahkan banyak middleware sekaligus
