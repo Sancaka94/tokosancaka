@@ -50,7 +50,7 @@ class TenantController extends Controller
      */
     public function suspended()
     {
-        // Pastikan file view ini ada di: resources/views/tenant/suspended.blade.php
+        // Pastikan file view ini ada di: resources/views/tenant/account-suspended.blade.php
         return view('tenant.suspended');
     }
 }

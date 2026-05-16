@@ -93,7 +93,7 @@ class TenantMiddleware
         // -------------------------------------------------------------
         // [RULE 5] CEK EXPIRED / INACTIVE
         // -------------------------------------------------------------
-        // Jika statusnya habis atau inactive, lempar ke URL /suspended
+        // Jika statusnya habis atau inactive, lempar ke URL /account-suspended
         if ($tenant->expired_at && now()->gt($tenant->expired_at)) {
             if ($tenant->status !== 'inactive') {
                 $tenant->update(['status' => 'inactive']);

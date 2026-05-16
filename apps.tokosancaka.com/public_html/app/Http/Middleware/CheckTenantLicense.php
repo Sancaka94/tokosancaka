@@ -40,7 +40,7 @@ class CheckTenantLicense
             
             // ---> JEBAKAN DEBUGGING <---
             // Kalau tulisan ini muncul di layar putih, berarti MIDDLEWARE SUDAH BENAR 100%.
-            // dd('STOP COK! MIDDLEWARE JALAN. Status toko ini INACTIVE. Harusnya lari ke /suspended.');
+            // dd('STOP COK! MIDDLEWARE JALAN. Status toko ini INACTIVE. Harusnya lari ke /account-suspended.');
             
             return redirect('/account-suspended');
         }
