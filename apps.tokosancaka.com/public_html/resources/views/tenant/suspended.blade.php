@@ -33,6 +33,7 @@
                     ? \Carbon\Carbon::parse($tenant->expired_at)->addDays(30) 
                     : now()->addDays(30);
             @endphp
+            
 
             <div x-data="{
                     expiry: '{{ $batasHapus->toIso8601String() }}',
