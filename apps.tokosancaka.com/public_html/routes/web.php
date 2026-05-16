@@ -68,6 +68,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Services\DanaSignatureService;
+use App\Models\Category;
+use App\Models\Product;
 
 // -------------------------------------------------------------
 // RUTE KHUSUS LISENSI (Bisa diakses meski lisensi expired/limit device penuh)
@@ -182,15 +184,24 @@ Route::domain('{subdomain}.tokosancaka.com')
     ->middleware(['web', 'tenant'])
     ->group(function () {
 
-        // 1. Tambahkan parameter $subdomain di dalam function()
         Route::get('/', function ($subdomain) {
             
-            // 2. Kirim variabel $subdomain ke dalam view menggunakan array atau compact()
+            // 1. Ambil data Kategori dari database
+            // Jika kategori spesifik per tenant, tambahkan ->where('tenant_id', request('tenant')->id)
+            $categories = Category::all(); 
+
+            // 2. Ambil data Produk dari database
+            // Menggunakan paginate() karena di blade Anda ada {{ $products->links() }}
+            $products = Product::paginate(10); 
+
+            // 3. Kirim semua variabel ke file Blade
             return view('storefront.index', [
-                'subdomain' => $subdomain
+                'subdomain'  => $subdomain,
+                'categories' => $categories,
+                'products'   => $products
             ]);
 
-        })->name('storefront.index'); // 3. WAJIB tambahkan nama route ini
+        })->name('storefront.index');
 
 });
 
