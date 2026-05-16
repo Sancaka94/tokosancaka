@@ -1,36 +1,3 @@
-@php
-    // 1. CEK USER & TENANT (Wajib ditaruh paling atas sebelum HTML apapun)
-    $user = Auth::user();
-
-    // Jika tidak login, langsung lempar ke login
-    if (!$user) {
-        header("Location: /percetakan/login");
-        exit;
-    }
-
-    // Jika login tapi tidak punya tenant (safety check)
-    if (!$user->tenant) {
-        echo "Error: User tidak terhubung dengan tenant.";
-        exit;
-    }
-
-    $tenant = $user->tenant;
-
-    // 2. LOGIC REDIRECT (Jika User Iseng)
-    $isExpired = ($tenant->expired_at && now()->gt($tenant->expired_at));
-    $isActive = ($tenant->status === 'active' || !$isExpired);
-    $onSuspendedPage = request()->is('*account-suspended*');
-
-    // Jika akun sebenarnya AKTIF tapi buka halaman ini, tendang ke dashboard
-    if ($isActive && $onSuspendedPage) {
-        $protocol = request()->secure() ? 'https://' : 'http://';
-        $dashboardUrl = $protocol . $tenant->subdomain . '.tokosancaka.com/dashboard';
-        header("Location: " . $dashboardUrl);
-        exit;
-    }
-@endphp
-
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -54,24 +21,12 @@
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
 
-    {{-- PHP LOGIC: FIX TANGGAL --}}
-    @php
-        use Carbon\Carbon;
-        $tenant = Auth::user()->tenant;
-        // Jika expired null, pakai now() agar timer 00
-        $expiredDate = $tenant->expired_at ? Carbon::parse($tenant->expired_at) : Carbon::now();
-        // Batas hapus = Expired + 30 Hari
-        $deletionDate = $expiredDate->copy()->addDays(30);
-        // Format ISO 8601 Wajib untuk JS
-        $isoDeletionDate = $deletionDate->format('c');
-    @endphp
-
     <div class="max-w-4xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
 
         {{-- KIRI: INFO SUSPEND & TIMER --}}
         <div class="md:w-1/3 bg-red-600 p-10 text-white flex flex-col justify-center items-center text-center relative overflow-hidden">
 
-            {{-- TIMER HITUNG MUNDUR --}}
+            {{-- TIMER HITUNG MUNDUR (Menggunakan variabel $isoDeletionDate dari Controller) --}}
             <div x-data="{
                     expiry: '{{ $isoDeletionDate }}',
                     days: '00', hours: '00', minutes: '00', seconds: '00',
@@ -174,7 +129,7 @@
         </div>
     </div>
 
-    {{-- SCRIPT: JAVASCRIPT MURNI (TANPA ALPINE UNTUK LOGIC INI BIAR AMAN) --}}
+    {{-- SCRIPT: JAVASCRIPT MURNI --}}
     <script>
     let currentAmount = 100000;
 
@@ -209,10 +164,9 @@
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken 
                 },
-                // --- INI YANG BIKIN ERROR 422 HILANG ---
                 body: JSON.stringify({ 
                     amount: currentAmount,
-                    target_subdomain: '{{ $tenant->subdomain }}', // Suntik dari Laravel Blade
+                    target_subdomain: '{{ $tenant->subdomain }}', // Disuntikkan aman dari Blade
                     package_type: packageStr
                 })
             });
@@ -228,7 +182,6 @@
             const res = await response.json();
 
             if(res.success) {
-                // ... (Sisa kode sukses biarkan sama seperti sebelumnya) ...
                 window.open(res.url, '_blank');
                 btn.innerHTML = 'MENUNGGU PEMBAYARAN...';
                 waitingText.classList.remove('hidden');
@@ -250,7 +203,7 @@
         console.log("Mulai cek status...");
         let checkInterval = setInterval(async () => {
             try {
-                // Sesuaikan juga URL ini, hilangkan /api/ jika di web.php
+                // Sesuaikan juga URL ini jika diperlukan
                 let response = await fetch('/tenant/check-status');
 
                 if (response.ok) {
@@ -275,6 +228,6 @@
             }
         }, 3000); // Cek tiap 3 detik
     }
-</script>
+    </script>
 </body>
 </html>
