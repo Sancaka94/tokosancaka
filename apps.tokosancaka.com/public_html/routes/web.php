@@ -61,6 +61,7 @@ use App\Http\Controllers\CashflowContactController;
 use App\Http\Controllers\LicenseController;
 use App\Http\Controllers\SettingApiController;
 use App\Http\Middleware\EnforceLicenseLimits;
+use App\Http\Controllers\SuspendController;
 
 
 use Illuminate\Support\Facades\Http;
@@ -792,3 +793,5 @@ Route::domain('{subdomain}.tokosancaka.com')->middleware('tenant')->group(functi
 
 Route::post('/tenant/generate-payment', [TenantPaymentController::class, 'generateUrl']);
 Route::get('/tenant/check-status', [TenantPaymentController::class, 'checkStatus']);
+
+Route::get('/account-suspended', [SuspendController::class, 'index'])->name('tenant.suspended');
