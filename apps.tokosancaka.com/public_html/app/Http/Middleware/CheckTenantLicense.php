@@ -23,7 +23,7 @@ class CheckTenantLicense
         }
 
         // Whitelist wajib
-        if ($request->is('suspended') || $request->is('api/*') || $request->is('dana/*')) {
+        if ($request->is('account-suspended') || $request->is('api/*') || $request->is('dana/*')) {
             return $next($request);
         }
 
