@@ -4,7 +4,6 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    {{-- Menggunakan fallback jika $tenant kosong agar tidak crash --}}
     <title>Akun Ditangguhkan - {{ $tenant->name ?? 'Pelanggan' }}</title>
 
     <link rel="icon" type="image/jpeg" href="https://tokosancaka.com/public/assets/logo.jpg">
@@ -27,7 +26,7 @@
         {{-- KIRI: INFO SUSPEND & TIMER --}}
         <div class="md:w-1/3 bg-red-600 p-10 text-white flex flex-col justify-center items-center text-center relative overflow-hidden">
 
-            {{-- TIMER HITUNG MUNDUR (Aman dengan fallback ISO string jika $isoDeletionDate kosong) --}}
+            {{-- TIMER HITUNG MUNDUR --}}
             <div x-data="{
                     expiry: '{{ $isoDeletionDate ?? now()->addDays(30)->toIso8601String() }}',
                     days: '00', hours: '00', minutes: '00', seconds: '00',
@@ -78,7 +77,7 @@
             <h1 class="text-2xl font-bold text-gray-800 mb-6">Pilih Paket Perpanjangan</h1>
 
             <div class="grid grid-cols-1 gap-4 mb-8">
-                <label class="relative flex items-center p-4 border-2 border-gray-100 rounded-2xl cursor-pointer hover:border-red-500 transition-all peer-checked:border-red-600">
+                <label class="relative flex items-center p-4 border-2 border-gray-100 rounded-2xl cursor-pointer hover:border-red-500 transition-all">
                     <input type="radio" name="plan" value="100000" class="w-5 h-5 text-red-600" checked onchange="updatePlan(100000)">
                     <div class="ml-4">
                         <span class="block font-bold text-gray-800">1 Bulan</span>
@@ -165,7 +164,6 @@
                 },
                 body: JSON.stringify({ 
                     amount: currentAmount,
-                    // Menggunakan fallback JS jika subdomain tidak disuntik via blade
                     target_subdomain: '{{ $tenant->subdomain ?? "" }}' || window.location.hostname.split('.')[0], 
                     package_type: packageStr
                 })
