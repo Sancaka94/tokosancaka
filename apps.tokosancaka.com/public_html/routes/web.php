@@ -793,7 +793,6 @@ Route::domain('{subdomain}.tokosancaka.com')->middleware('tenant')->group(functi
 Route::domain('{subdomain}.tokosancaka.com')->middleware(['tenant'])->group(function () {
     Route::get('/account-suspended', [SuspendController::class, 'index'])->name('tenant.suspended');
 
-    // Route::get('/suspended', [SuspendController::class, 'index'])->name('tenant.suspended');
 
 });
 
