@@ -180,6 +180,8 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 
 });
 
+// ###################### HALAMAN UTAMA TOKO ONLINE TENANT ########################################
+
 Route::domain('{subdomain}.tokosancaka.com')
     ->middleware(['web', 'tenant'])
     ->group(function () {
