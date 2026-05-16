@@ -784,14 +784,15 @@ Route::get('/payment/doku-return', [\App\Http\Controllers\TenantPaymentControlle
 
 
 Route::domain('{subdomain}.tokosancaka.com')->middleware('tenant')->group(function () {
+
+    Route::get('/account-suspended', [SuspendController::class, 'index'])->name('tenant.suspended');
     
-    Route::get('/suspended', function () {
-        return view('tenant.suspended'); 
-    })->name('tenant.suspended');
+    //Route::get('/suspended', function () {
+    //    return view('tenant.suspended'); 
+    // })->name('tenant.suspended');
 
 });
 
 Route::post('/tenant/generate-payment', [TenantPaymentController::class, 'generateUrl']);
 Route::get('/tenant/check-status', [TenantPaymentController::class, 'checkStatus']);
 
-Route::get('/account-suspended', [SuspendController::class, 'index'])->name('tenant.suspended');
