@@ -176,9 +176,16 @@ Route::domain('{subdomain}.tokosancaka.com')
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->name('dashboard');
 
-    Route::get('/', function () {
+});
+
+Route::domain('{subdomain}.tokosancaka.com')
+    ->middleware(['web', 'tenant']) // <--- Pastikan license.check ada di sini!
+    ->group(function () {
+
+     Route::get('/', function () {
     return view('welcome');
     });
+
 
 });
 
