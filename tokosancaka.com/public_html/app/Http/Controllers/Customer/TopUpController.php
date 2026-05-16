@@ -752,12 +752,18 @@ class TopUpController extends Controller
     }
 
     private function generateSignature($stringToSign) {
+        \Illuminate\Support\Facades\Log::debug('=== [DANA DEBUG LOG] START GENERATE SIGNATURE ===');
+        \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 1. String To Sign (Mentah):', ['string' => $stringToSign]);
+
         // 1. Ambil Key dari Config (hasil dinamisasi)
         $rawKey = config('services.dana.private_key');
-
+        
         if (empty($rawKey)) {
+            \Illuminate\Support\Facades\Log::error('[DANA DEBUG LOG] ERROR: Private Key dari config KOSONG!');
             throw new \Exception("Private Key kosong. Pastikan DANA_PRIVATE_KEY di .env atau Pengaturan Database sudah terisi.");
         }
+
+        \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 2. Raw Key Berhasil Diambil', ['panjang_karakter' => strlen($rawKey)]);
 
         // 2. Bersihkan Key dari header/footer/spasi/newline/tanda kutip yang berantakan
         $cleanKey = str_replace(
@@ -765,6 +771,7 @@ class TopUpController extends Controller
             "",
             $rawKey
         );
+        \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 3. Clean Key Berhasil Dibuat', ['panjang_karakter' => strlen($cleanKey)]);
 
         // 3. Format ulang menjadi PEM standar (64 karakter per baris)
         $formattedKey = "-----BEGIN PRIVATE KEY-----\n" .
@@ -774,16 +781,32 @@ class TopUpController extends Controller
         // 4. Validasi Key ke OpenSSL Resource
         $privateKeyResource = openssl_pkey_get_private($formattedKey);
         if (!$privateKeyResource) {
+            \Illuminate\Support\Facades\Log::error('[DANA DEBUG LOG] ERROR: Gagal load OpenSSL Resource!', [
+                'preview_key' => substr($formattedKey, 0, 50) . '...' // Hanya log sebagian agar tidak bocor full di log
+            ]);
             throw new \Exception("Format Private Key salah atau korup. Tidak dapat diproses oleh OpenSSL.");
         }
 
+        \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 4. OpenSSL Resource Valid. Memulai proses SHA256...');
+
         // 5. Sign Data (SHA256)
         $binarySignature = "";
-        if (!openssl_sign($stringToSign, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256)) {
-            throw new \Exception("OpenSSL Sign Failed.");
+        $isSignSuccess = openssl_sign($stringToSign, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256);
+
+        if (!$isSignSuccess) {
+            $sslError = openssl_error_string();
+            \Illuminate\Support\Facades\Log::error('[DANA DEBUG LOG] ERROR: OpenSSL Sign Failed.', ['ssl_error' => $sslError]);
+            throw new \Exception("OpenSSL Sign Failed. Detail: " . $sslError);
         }
 
-        return base64_encode($binarySignature);
+        $finalBase64Signature = base64_encode($binarySignature);
+        
+        \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 5. Signature Berhasil Dibuat!', [
+            'signature_result' => $finalBase64Signature
+        ]);
+        \Illuminate\Support\Facades\Log::debug('=== [DANA DEBUG LOG] END GENERATE SIGNATURE ===');
+
+        return $finalBase64Signature;
     }
 
     public function topupSaldo(Request $request)
@@ -1535,8 +1558,8 @@ class TopUpController extends Controller
 
     public function consultPaymentMethods(Request $request)
     {
-        Log::info('================ [GAPURA CONSULT START] ================');
-        Log::info('[GAPURA] 1. Request Masuk dari User', [
+        \Illuminate\Support\Facades\Log::debug('================ [GAPURA DEBUG LOG] CONSULT START ================');
+        \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 1. Request Masuk dari User', [
             'user_id' => Auth::id(),
             'ip'      => $request->ip(),
             'amount'  => $request->amount
@@ -1591,13 +1614,17 @@ class TopUpController extends Controller
                 ]
             ];
 
-            Log::info('[GAPURA] 2. Body Payload Prepared', $body);
+            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 2. Body Payload Array:', $body);
 
             $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
-            $hashedBody   = strtolower(hash('sha256', $jsonBody));
-            $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 2a. Body Payload JSON (Mentah untuk di-Hash):', ['json' => $jsonBody]);
 
-            Log::debug('[GAPURA] 3. Signature Source String', ['str' => $stringToSign]);
+            $hashedBody   = strtolower(hash('sha256', $jsonBody));
+            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 2b. Hashed Body (SHA-256):', ['hash' => $hashedBody]);
+
+            $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 3. String to Sign GAPURA:', ['str' => $stringToSign]);
+            
             $signature = $this->generateSignature($stringToSign);
 
             $headers = [
@@ -1610,10 +1637,8 @@ class TopUpController extends Controller
                 'ORIGIN'        => config('app.url'),
             ];
 
-            Log::info('[GAPURA] 4. Sending Request...', [
-                'url' => config('services.dana.base_url') . $path,
-                'headers' => $headers
-            ]);
+            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 4. Headers Request Disiapkan:', $headers);
+            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 4a. Target URL:', ['url' => config('services.dana.base_url') . $path]);
 
             // URL Dinamis
             $response = Http::withHeaders($headers)
@@ -1623,9 +1648,10 @@ class TopUpController extends Controller
             $result = $response->json();
             $httpStatus = $response->status();
 
-            Log::info('[GAPURA] 5. Response Received', [
+            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 5. Response Diterima!', [
                 'http_status' => $httpStatus,
-                'body' => $result
+                'raw_body' => $response->body(),
+                'parsed_json' => $result
             ]);
 
             $resCode = $result['responseCode'] ?? 'UNKNOWN';
@@ -1633,7 +1659,7 @@ class TopUpController extends Controller
 
             if (in_array($resCode, $successCodes)) {
                 $paymentMethods = $result['paymentInfos'] ?? [];
-                Log::info('[GAPURA] 6. SUCCESS. Methods found: ' . count($paymentMethods));
+                \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 6. SUCCESS. Total Methods found: ' . count($paymentMethods));
 
                 $availableMethods = collect($paymentMethods)->map(function($item) {
                     return [
@@ -1650,8 +1676,9 @@ class TopUpController extends Controller
                 ]);
             }
 
-            Log::warning('[GAPURA] 7. FAILED RESPONSE CODE: ' . $resCode, [
-                'message' => $result['responseMessage'] ?? 'No Message'
+            \Illuminate\Support\Facades\Log::error('[GAPURA DEBUG LOG] 7. FAILED RESPONSE CODE: ' . $resCode, [
+                'message' => $result['responseMessage'] ?? 'No Message',
+                'full_result' => $result
             ]);
 
             return response()->json([
@@ -1661,7 +1688,7 @@ class TopUpController extends Controller
             ], 400);
 
         } catch (\Exception $e) {
-            Log::error('[GAPURA] 8. CRITICAL EXCEPTION', [
+            \Illuminate\Support\Facades\Log::critical('[GAPURA DEBUG LOG] 8. CRITICAL EXCEPTION!', [
                 'msg'  => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
