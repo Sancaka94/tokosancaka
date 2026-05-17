@@ -1269,4 +1269,68 @@ class PpobIakController extends Controller
         }
     }
 
+    // --- FUNGSI BARU: SINKRONISASI PRICELIST PRABAYAR ---
+    public function syncPricelistPrepaid($type = '', $operator = '')
+    {
+        // 1. Setup Path Endpoint Sesuai Dokumentasi
+        // Jika type dan operator diisi, url menjadi /api/pricelist/pulsa/telkomsel dst.
+        // Jika kosong, url menjadi /api/pricelist (menarik semua produk)
+        $path = '/api/pricelist';
+        if (!empty($type)) {
+            $path .= '/' . $type;
+            if (!empty($operator)) {
+                $path .= '/' . $operator;
+            }
+        }
+
+        // 2. Setup Signature: md5(username + api_key + 'pl')
+        $sign = md5($this->username . $this->apiKey . 'pl');
+
+        Log::info('LOG LOG - Sync Pricelist Prepaid Request initiated.', ['path' => $path]); // LOG LOG
+
+        try {
+            // 3. Hit API IAK Prabayar
+            $response = Http::post($this->prepaidBaseUrl . $path, [
+                'username' => $this->username,
+                'sign'     => $sign,
+                'status'   => 'all'
+            ]);
+
+            $result = $response->json();
+
+            // 4. Proses Response
+            if ($response->successful() && isset($result['data']['pricelist'])) {
+                Log::info('LOG LOG - Sync Pricelist Prepaid Success. Memasukkan data ke DB...'); // LOG LOG
+                
+                $inserted = 0;
+                foreach ($result['data']['pricelist'] as $item) {
+                    // Update atau buat baru data berdasarkan product_code
+                    IakPricelistPrepaid::updateOrCreate(
+                        ['code' => $item['product_code']], 
+                        [
+                            'name'     => $item['product_description'],
+                            'price'    => $item['product_price'], // Harga modal dari IAK
+                            'type'     => $item['product_type'],
+                            'operator' => $item['product_description'], // Atau field lain jika ada
+                            'status'   => $item['status'] === 'active' ? 'Active' : 'Inactive',
+                            // Sesuaikan nama kolom di bawah ini jika berbeda dengan struktur tabel Anda
+                            // 'nominal'  => $item['product_nominal'],
+                            // 'details'  => $item['product_details'],
+                        ]
+                    );
+                    $inserted++;
+                }
+
+                return back()->with('success', "Pricelist Prabayar berhasil diperbarui dari server IAK. Total: {$inserted} produk.");
+            }
+
+            Log::error('LOG LOG - Sync Pricelist Prepaid Failed Response', ['response' => $result]); // LOG LOG
+            return back()->with('error', 'Gagal sinkronisasi: ' . ($result['data']['message'] ?? 'Unknown Error'));
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG - Sync Pricelist Prepaid Exception', ['error' => $e->getMessage()]); // LOG LOG
+            return back()->with('error', 'Koneksi error: ' . $e->getMessage());
+        }
+    }
+
 }
