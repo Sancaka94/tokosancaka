@@ -282,24 +282,31 @@ class PpobMobileController extends Controller
                 }
             }
 
-            // ========================================================
+           // ========================================================
             // SISA KODE DI BAWAH HANYA JALAN JIKA PAKAI SALDO / CASH
             // ========================================================
             
-            // PENGAMANAN BARU: Jika pilih CASH, pastikan itu Admin
-            if (strtoupper($paymentMethod) === 'CASH' && !$isAdmin4) {
+            $admin = User::find(4);
+            if (!$admin) {
+                return response()->json(['success' => false, 'message' => 'Sistem Error: Admin utama tidak ditemukan.']);
+            }
+
+            $isCash = (strtoupper($paymentMethod) === 'CASH');
+
+            // 1. PENGAMANAN: Jika pilih CASH, pastikan itu Admin
+            if ($isCash && !$isAdmin4) {
                 return response()->json(['success' => false, 'message' => 'Metode Pembayaran CASH hanya khusus untuk Admin. Silakan gunakan metode bayar Gateway atau Saldo.']);
             }
 
-            Log::info('LOG LOG - Debug Saldo Sebelum Potong:', [
-                'id_user' => $user->id_pengguna,
-                'saldo_user' => $user->balance_iak,
-                'harga_produk' => $product->price,
-                'metode_bayar_diterima' => $paymentMethod
-            ]);
-
-            if ($user->balance_iak < $product->price) {
+            // 2. CEK SALDO LOKAL: Jika Potong Saldo (bukan CASH), pastikan saldo user cukup
+            if (!$isCash && $user->saldo < $product->price) {
                 return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi.']);
+            }
+
+            // 3. CEK SALDO PUSAT: Pastikan balance_iak Admin cukup untuk nembak API IAK
+            if ($admin->balance_iak < $product->price) {
+                Log::error('LOG LOG - Transaksi Gagal: Saldo IAK Pusat (ID 4) tidak cukup!');
+                return response()->json(['success' => false, 'message' => 'Maaf, transaksi gagal diproses saat ini (Gangguan Pusat).']);
             }
 
             $sign = md5($this->username . $this->apiKey . $refId);
@@ -346,8 +353,17 @@ class PpobMobileController extends Controller
                 }
 
                 if (in_array($finalStatus, ['PROCESS', 'SUCCESS'])) {
-                    $user->balance_iak -= $product->price;
-                    $user->save();
+                    // POTONG SALDO LOKAL: Jika bukan CASH
+                    if (!$isCash) {
+                        $user->saldo -= $product->price;
+                        $user->save();
+                    }
+
+                    // POTONG SALDO PUSAT: Selalu potong balance_iak karena dipakai tembak API
+                    $admin->balance_iak -= $product->price;
+                    $admin->save();
+                    
+                    Log::info('LOG LOG - Saldo Berhasil Dipotong (Prabayar). Saldo Lokal User: ' . (!$isCash ? 'Ya' : 'Tidak (CASH)') . ' | Saldo Pusat IAK: Ya');
                 }
 
                 return response()->json(['success' => true, 'message' => 'Transaksi berhasil diproses.', 'data' => $transaction]);
