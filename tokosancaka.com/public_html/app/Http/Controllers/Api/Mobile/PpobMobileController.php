@@ -49,8 +49,8 @@ class PpobMobileController extends Controller
             $opUpper = strtoupper($operator);
             if ($opUpper === 'SMARTFREN') {
                 $operator = 'Smart';
-            } elseif ($opUpper === 'THREE' || $opUpper === 'TRI') { // Ditambahkan toleransi keyword 'TRI'
-                $operator = 'Three'; // Ubah ke 'Three' agar pencarian LIKE '%three%' cocok dengan database
+            } elseif ($opUpper === 'THREE' || $opUpper === 'TRI') {
+                $operator = 'Three';
             } elseif ($opUpper === 'TELKOMSEL') {
                 $operator = 'Telkomsel';
             }
@@ -182,8 +182,6 @@ class PpobMobileController extends Controller
                 ]);
 
                 $amount = (int) $product->price;
-
-                // Bersihkan string dari spasi dan tanda #
                 $cleanPaymentMethod = strtoupper(trim(str_replace('#', '', $paymentMethod)));
 
                 // -------------------------------------------------
@@ -267,8 +265,7 @@ class PpobMobileController extends Controller
                     $resTripay = $responseTripay->json();
 
                     if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
-
-                    $transaction->update(['payment_url' => $paymentUrl]);
+                        $transaction->update(['payment_url' => $resTripay['data']['checkout_url']]);
 
                         return response()->json([
                             'success' => true,
@@ -286,10 +283,12 @@ class PpobMobileController extends Controller
             }
 
             // ========================================================
-            // SISA KODE DI BAWAH HANYA JALAN JIKA PAKAI SALDO / CASH (KHUSUS ADMIN)
+            // SISA KODE DI BAWAH HANYA JALAN JIKA PAKAI SALDO / CASH
             // ========================================================
-            if (!$isAdmin4) {
-                return response()->json(['success' => false, 'message' => 'Metode Pembayaran Saldo/Cash hanya khusus untuk Admin. Silakan gunakan metode bayar Gateway (DOKU/DANA).']);
+            
+            // PENGAMANAN BARU: Jika pilih CASH, pastikan itu Admin
+            if (strtoupper($paymentMethod) === 'CASH' && !$isAdmin4) {
+                return response()->json(['success' => false, 'message' => 'Metode Pembayaran CASH hanya khusus untuk Admin. Silakan gunakan metode bayar Gateway atau Saldo.']);
             }
 
             if ($user->balance_iak < $product->price) {
@@ -727,10 +726,12 @@ class PpobMobileController extends Controller
         }
 
         // ========================================================
-        // SISA KODE DI BAWAH HANYA JALAN JIKA PAKAI SALDO / CASH (KHUSUS ADMIN)
+        // SISA KODE DI BAWAH HANYA JALAN JIKA PAKAI SALDO / CASH
         // ========================================================
-        if (!$isAdmin4) {
-            return response()->json(['success' => false, 'message' => 'Metode Pembayaran Saldo/Cash hanya khusus untuk Admin. Silakan gunakan metode bayar Gateway (DOKU/DANA).']);
+        
+        // PENGAMANAN BARU: Jika pilih CASH, pastikan itu Admin
+        if (strtoupper($paymentMethod) === 'CASH' && !$isAdmin4) {
+            return response()->json(['success' => false, 'message' => 'Metode Pembayaran CASH hanya khusus untuk Admin. Silakan gunakan metode bayar Gateway atau Saldo.']);
         }
 
         if ($user->balance_iak < $transaction->price) {
