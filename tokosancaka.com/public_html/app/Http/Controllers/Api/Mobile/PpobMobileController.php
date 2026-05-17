@@ -568,7 +568,7 @@ class PpobMobileController extends Controller
                     $item = $trx->toArray();
                     $item['icon_url'] = ($item['type'] == 'prabayar') ? ($icons[$item['product_code']] ?? null) : null;
                     if ($isAdmin) {
-                        $namaUser = $item['user_id'] ? ($usersData[$item['user_id']] ?? 'User ID ' . $item['user_id']) : 'Guest / Web';
+                        $namaUser = $item['user_id'] ? ($usersData[$item['user_id']] ?? 'User ID ' . $item['user_id']) : 'Website';
                         $item['nama_pembeli'] = $namaUser;
                     }
                     $mappedItems[] = $item;

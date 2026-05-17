@@ -100,7 +100,7 @@ class PpobIakController extends Controller
             return $this->inquiryPostpaid($request);
         }
 
-        $lockKey = 'topup_' . (auth()->id() ?? 'guest') . '_' . $request->product_code . '_' . $request->customer_id;
+        $lockKey = 'topup_' . (auth()->id() ?? 'Website') . '_' . $request->product_code . '_' . $request->customer_id;
         $lock = Cache::lock($lockKey, 10);
         if (!$lock->get()) {
             return back()->with('error', 'Transaksi sedang diproses, mohon jangan klik berkali-kali.');
