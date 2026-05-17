@@ -180,11 +180,7 @@
                                     <div class="row g-3" id="product-list"></div>
                                 </div>
 
-                                <div id="alert-saldo-kurang" class="alert alert-danger mt-3 mb-4 text-center border-0 shadow-sm d-none" role="alert">
-                                    <i class="bi bi-exclamation-triangle-fill me-2"></i> Maaf, saldo Anda tidak mencukupi untuk membeli produk ini menggunakan potong saldo.
-                                </div>
-
-                               {{-- GRUP DETAIL PEMBAYARAN --}}
+                                {{-- GRUP DETAIL PEMBAYARAN PRABAYAR --}}
                                 <div class="card bg-light border-0 p-3 mb-3 rounded-3 mt-4">
                                     <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Detail Pembayaran</h6>
 
@@ -198,15 +194,16 @@
 
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold small">Metode Pembayaran</label>
-                                        <select class="form-select" name="payment_method" class="payment_method_selector" required>
+                                        <select class="form-select payment_method_selector" name="payment_method" id="payment_method_pra" required>
                                             <option value="">-- Pilih Metode Bayar --</option>
                                             <option value="SALDO">Potong Saldo (Verifikasi WA & PIN)</option>
+                                            <option value="DANA">Bayar Pakai DANA</option>
                                             <option value="TRIPAY">Payment Gateway (QRIS, VA, E-Wallet)</option>
                                             <option value="DOKU">DOKU Jokul</option>
                                         </select>
                                     </div>
 
-                                    {{-- BLOK VERIFIKASI SALDO --}}
+                                    {{-- BLOK VERIFIKASI SALDO (PRABAYAR) --}}
                                     <div class="saldo_payment_section d-none border border-primary p-3 rounded bg-white">
                                         <h6 class="fw-bold text-primary mb-3"><i class="bi bi-shield-lock me-1"></i> Verifikasi Akun Sancaka</h6>
                                         <div class="mb-2">
@@ -237,7 +234,7 @@
                         {{-- TAB PASCABAYAR (TAGIHAN) --}}
                         {{-- ===================================== --}}
                         <div class="tab-pane fade" id="pills-pascabayar" role="tabpanel" aria-labelledby="pills-pascabayar-tab" tabindex="0">
-                            <form action="{{ route('ppob.iak.store') }}" method="POST">
+                            <form action="{{ route('ppob.iak.store') }}" method="POST" id="form-pascabayar">
                                 @csrf
                                 <input type="hidden" name="type" value="pascabayar">
 
@@ -303,37 +300,48 @@
 
                                     {{-- NOMOR WA (Pre-fill) --}}
                                     <div class="mb-3">
-                                        <label class="form-label fw-semibold small">Nomor WhatsApp</label>
+                                        <label class="form-label fw-semibold small">Nomor WhatsApp Struk</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-white"><i class="bi bi-whatsapp text-success"></i></span>
                                             <input type="text" class="form-control wa-formatter" name="whatsapp_number" value="{{ auth()->user()->no_wa ?? '' }}" placeholder="08xxxx (Untuk kirim struk)" required>
                                         </div>
-                                        <div class="form-text text-muted" style="font-size: 12px;">Struk lunas akan dikirim ke WA ini.</div>
                                     </div>
 
                                     {{-- METODE PEMBAYARAN --}}
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold small">Metode Pembayaran</label>
-                                        <select class="form-select" name="payment_method" id="payment_method_pasca" required>
+                                        <select class="form-select payment_method_selector" name="payment_method" id="payment_method_pasca" required>
                                             <option value="">-- Pilih Metode Bayar --</option>
-                                            <option value="SALDO">Potong Saldo (Sisa: Rp {{ number_format(auth()->user()->saldo ?? 0, 0, ',', '.') }})</option>
+                                            <option value="SALDO">Potong Saldo (Verifikasi WA & PIN)</option>
+                                            <option value="DANA">Bayar Pakai DANA</option>
                                             <option value="TRIPAY">Payment Gateway (QRIS, VA, E-Wallet)</option>
                                             <option value="DOKU">DOKU Jokul</option>
                                         </select>
                                     </div>
 
-                                    {{-- INPUT PIN --}}
-                                    <div class="mb-2 d-none" id="pin_container_pasca">
-                                        <label class="form-label fw-semibold small text-danger">PIN Keamanan</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-white"><i class="bi bi-shield-lock text-danger"></i></span>
-                                            <input type="password" class="form-control" name="pin" id="pin_pasca" placeholder="******" maxlength="6" autocomplete="off">
+                                    {{-- BLOK VERIFIKASI SALDO (PASCABAYAR) --}}
+                                    <div class="saldo_payment_section d-none border border-primary p-3 rounded bg-white">
+                                        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-shield-lock me-1"></i> Verifikasi Akun Sancaka</h6>
+                                        <div class="mb-2">
+                                            <label class="form-label small fw-semibold">No WhatsApp Akun Sancaka</label>
+                                            <input type="text" class="form-control wa-formatter wa_pembayaran_input" name="wa_pembayaran" value="{{ auth()->user()->no_wa ?? '' }}" placeholder="08xxxx">
                                         </div>
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-semibold text-danger">PIN Keamanan</label>
+                                            <input type="password" class="form-control pin_pembayaran_input" name="pin_pembayaran" placeholder="******" maxlength="6">
+                                        </div>
+                                        <button type="button" class="btn btn-outline-primary w-100 btn-sm btn_cek_saldo_ajax">Cek & Verifikasi Saldo</button>
+
+                                        <div class="info_saldo_box alert alert-success d-none p-2 small mb-0 mt-3">
+                                            <i class="bi bi-person-check-fill"></i> <span class="nama_akun_teks fw-bold"></span><br>
+                                            <i class="bi bi-wallet2"></i> Sisa Saldo: Rp <span class="nominal_saldo_teks fw-bold"></span>
+                                        </div>
+                                        <div class="error_saldo_box alert alert-danger d-none p-2 small mb-0 mt-3"></div>
                                     </div>
                                 </div>
 
-                                <button type="submit" class="btn btn-success w-100 py-3 fw-bold rounded-3 mt-2">
-                                    <i class="bi bi-search me-1"></i> Cek Tagihan Pascabayar
+                                <button type="submit" class="btn btn-success w-100 py-3 fw-bold rounded-3 mt-2" id="btn-submit-pasca" disabled>
+                                    <i class="bi bi-search me-1"></i> Lanjut Cek Tagihan
                                 </button>
                             </form>
                         </div>
@@ -359,25 +367,19 @@
             allowClear: true
         });
 
-        // Bridge: Karena Select2 menimpa event bawaan, kita harus trigger event 'change'
-        // manual agar Vanilla JS kamu di bawah tetap berjalan saat opsi dipilih
         $('#pasca_product_code').on('select2:select select2:clear', function (e) {
             this.dispatchEvent(new Event('change'));
         });
     });
 
     document.addEventListener('DOMContentLoaded', function() {
-        // PERBAIKAN: Mengambil data dari auth()->user()->saldo sesuai database utama
-        let currentBalance = parseFloat("{{ auth()->user()->saldo ?? 0 }}") || 0;
-        let selectedProductPrice = 0; // Tambahan variabel untuk menyimpan harga produk
+        let selectedProductPrice = 0;
 
         // Elements Prabayar
         const formPra = document.getElementById('form-prabayar');
         const finalCustomerId = document.getElementById('final_customer_id');
         const btnSubmitPra = document.getElementById('btn-submit-pra');
-        const alertSaldo = document.getElementById('alert-saldo-kurang');
         const productCodeInput = document.getElementById('product_code_pra');
-        const paymentMethodPra = document.getElementById('payment_method_pra');
 
         // Product List Elements
         const productContainer = document.getElementById('product-list-container');
@@ -391,55 +393,7 @@
         let typingTimer;
 
         // ==========================================
-        // 1. LOGIKA METODE PEMBAYARAN & PIN
-        // ==========================================
-        function setupPaymentLogic(selectId, containerId, inputId) {
-            const paymentSelect = document.getElementById(selectId);
-            const pinContainer = document.getElementById(containerId);
-            const pinInput = document.getElementById(inputId);
-
-            if (paymentSelect && pinContainer && pinInput) {
-                paymentSelect.addEventListener('change', function() {
-                    if (this.value === 'SALDO') {
-                        pinContainer.classList.remove('d-none');
-                        pinInput.setAttribute('required', 'required');
-                    } else {
-                        pinContainer.classList.add('d-none');
-                        pinInput.removeAttribute('required');
-                        pinInput.value = ''; // Kosongkan PIN jika bukan saldo
-                    }
-
-                    // Khusus form prabayar, cek kembali kelayakan saldo
-                    if (selectId === 'payment_method_pra') {
-                        checkPaymentFeasibility();
-                    }
-                });
-            }
-        }
-        setupPaymentLogic('payment_method_pra', 'pin_container_pra', 'pin_pra');
-        setupPaymentLogic('payment_method_pasca', 'pin_container_pasca', 'pin_pasca');
-
-        function checkPaymentFeasibility() {
-            if (!productCodeInput.value) return; // Belum pilih produk
-
-            let method = paymentMethodPra.value;
-            btnSubmitPra.disabled = false; // Enable secara default
-
-            if (method === 'SALDO') {
-                if (currentBalance < selectedProductPrice) {
-                    btnSubmitPra.disabled = true; // Disable hanya jika milih SALDO dan uang kurang
-                    alertSaldo.classList.remove('d-none');
-                } else {
-                    alertSaldo.classList.add('d-none');
-                }
-            } else {
-                // Jika pilih Tripay/Doku, uang kurang tidak masalah
-                alertSaldo.classList.add('d-none');
-            }
-        }
-
-        // ==========================================
-        // 2. LOGIK SWICTH LAYANAN PRABAYAR
+        // 1. LOGIK SWICTH LAYANAN PRABAYAR
         // ==========================================
         document.getElementById('kategori_layanan').addEventListener('change', function(e) {
             let cat = e.target.value;
@@ -450,7 +404,7 @@
         });
 
         // ==========================================
-        // 3. LOGIK PULSA & DATA
+        // 2. LOGIK PULSA & DATA
         // ==========================================
         const phoneInput = document.getElementById('customer_id_pulsa');
         const categorySelectPulsa = document.getElementById('product_category_pulsa');
@@ -532,7 +486,7 @@
         }
 
         // ==========================================
-        // 4. LOGIK PLN
+        // 3. LOGIK PLN
         // ==========================================
         const btnCekPln = document.getElementById('btn-cek-pln');
         if(btnCekPln) {
@@ -569,7 +523,7 @@
         }
 
         // ==========================================
-        // 5. LOGIK OVO
+        // 4. LOGIK OVO
         // ==========================================
         const btnCekOvo = document.getElementById('btn-cek-ovo');
         if(btnCekOvo) {
@@ -605,11 +559,11 @@
         }
 
         // ==========================================
-        // 6. LOGIK GAME
+        // 5. LOGIK GAME
         // ==========================================
         function loadGameList() {
             let gameSel = document.getElementById('game_selector');
-            if(gameSel.options.length > 1) return; // Udah diload
+            if(gameSel.options.length > 1) return;
 
             fetch("{{ route('ppob.iak.gamelist') }}", {
                 method: "POST",
@@ -641,7 +595,6 @@
 
                 if(!gameCode) return;
 
-                // Get Format
                 fetch("{{ route('ppob.iak.inquiry_game_format') }}", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": "{{ csrf_token() }}" },
@@ -650,7 +603,6 @@
                     if(d.success) document.getElementById('game_format_help').innerText = 'Format Input: ' + d.data.formatGameId;
                 });
 
-                // Get Server
                 fetch("{{ route('ppob.iak.inquiry_game_server') }}", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": "{{ csrf_token() }}" },
@@ -664,13 +616,12 @@
                     }
                 });
 
-                // Load Products
                 fetchProducts(gameName, '', '');
             });
         }
 
         // ==========================================
-        // 7. CORE FUNGSI FETCH PRODUK & PEMILIHAN
+        // 6. CORE FUNGSI FETCH PRODUK
         // ==========================================
         if(nominalInput) {
             nominalInput.addEventListener('keyup', function () {
@@ -689,8 +640,7 @@
             productList.innerHTML = '';
             productCodeInput.value = '';
             selectedProductPrice = 0;
-            if (btnSubmitPra) btnSubmitPra.disabled = true;
-            if (alertSaldo) alertSaldo.classList.add('d-none');
+            updateBtnSubmit('prabayar');
         }
 
         function fetchProducts(operator, type, nominal) {
@@ -702,8 +652,7 @@
 
             productCodeInput.value = '';
             selectedProductPrice = 0;
-            if (btnSubmitPra) btnSubmitPra.disabled = true;
-            if (alertSaldo) alertSaldo.classList.add('d-none');
+            updateBtnSubmit('prabayar');
 
             fetch(`{{ route('ppob.get_products') }}?operator=${operator}&type=${type}&nominal=${nominal}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
@@ -718,7 +667,6 @@
                     }
                     data.data.forEach(item => {
                     let rpPrice = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price);
-
                     let iconHtml = (item.icon_url && item.icon_url !== '-')
                         ? `<img src="${item.icon_url}" class="img-fluid mb-2" style="height: 40px; object-fit: contain;" alt="icon">`
                         : `<div class="mb-2 text-primary"><i class="bi bi-box" style="font-size: 24px;"></i></div>`;
@@ -746,16 +694,13 @@
         window.selectProduct = function(code, price, element) {
             document.querySelectorAll('.product-card').forEach(el => el.classList.remove('selected'));
             element.classList.add('selected');
-
             productCodeInput.value = code;
-            selectedProductPrice = price; // Simpan harga produk
-
-            // Lakukan pengecekan tombol Submit (bisa bayar atau tidak)
-            checkPaymentFeasibility();
+            selectedProductPrice = price;
+            updateBtnSubmit('prabayar');
         }
 
         // ==========================================
-        // 8. HANDLE SUBMIT FORM PRABAYAR (GABUNG CUSTOMER ID)
+        // 7. HANDLE SUBMIT FORM PRABAYAR
         // ==========================================
         if(formPra) {
             formPra.addEventListener('submit', function(e) {
@@ -785,18 +730,15 @@
         }
 
         // ==========================================
-        // 9. LOGIK KHUSUS PASCABAYAR (DINAMIS FORM INPUT)
+        // 8. LOGIK KHUSUS PASCABAYAR (DINAMIS FORM INPUT)
         // ==========================================
         const pascaProductSelect = document.getElementById('pasca_product_code');
         const containerBpjsMonth = document.getElementById('container-month-bpjs');
         const inputMonth = document.getElementById('input_month');
-
         const containerAmountCustom = document.getElementById('container-amount-custom');
         const inputAmount = document.getElementById('input_amount');
-
         const containerEsamsat = document.getElementById('container-esamsat');
         const inputIdentitas = document.getElementById('input_identitas');
-
         const containerPbbYear = document.getElementById('container-pbb-year');
         const inputYear = document.getElementById('input_year');
 
@@ -804,7 +746,7 @@
             pascaProductSelect.addEventListener('change', function() {
                 let val = this.value.toUpperCase();
 
-                // 1. Logika BPJS (Bulan)
+                // 1. BPJS (Bulan)
                 if (val.includes('BPJS')) {
                     containerBpjsMonth.classList.remove('d-none');
                     inputMonth.setAttribute('required', 'required');
@@ -813,7 +755,7 @@
                     inputMonth.removeAttribute('required');
                 }
 
-                // 2. Logika Custom Denom
+                // 2. Custom Denom
                 if (val.includes('MEMBER') || val.includes('PAY') || val === 'DANA' || val === 'OVO' || val === 'GOPAY' || val === 'LINKAJA') {
                     containerAmountCustom.classList.remove('d-none');
                     inputAmount.setAttribute('required', 'required');
@@ -822,7 +764,7 @@
                     inputAmount.removeAttribute('required');
                 }
 
-                // 3. Logika E-Samsat (NIK KTP)
+                // 3. E-Samsat (NIK KTP)
                 if (val.startsWith('ESAMSAT')) {
                     containerEsamsat.classList.remove('d-none');
                     inputIdentitas.setAttribute('required', 'required');
@@ -831,7 +773,7 @@
                     inputIdentitas.removeAttribute('required');
                 }
 
-                // 4. Logika PBB (Tahun Pajak)
+                // 4. PBB (Tahun Pajak)
                 if (val.startsWith('PBB')) {
                     containerPbbYear.classList.remove('d-none');
                     inputYear.setAttribute('required', 'required');
@@ -842,124 +784,168 @@
             });
         }
 
-    });
+        // ==========================================
+        // 9. LOGIKA METODE PEMBAYARAN & AJAX CEK SALDO
+        // ==========================================
+        let globalFetchedSaldo = {
+            'prabayar': 0,
+            'pascabayar': 0
+        };
 
-    // ==========================================
-    // AUTO FORMATTER NOMOR WHATSAPP
-    // ==========================================
-    document.querySelectorAll('.wa-formatter').forEach(function(input) {
-        input.addEventListener('input', function(e) {
-            let val = this.value.replace(/[^0-9]/g, '');
-            if (val.startsWith('62')) {
-                val = '0' + val.substring(2);
-            }
-            else if (val.startsWith('8')) {
-                val = '0' + val;
-            }
-            this.value = val;
-        });
-    });
+        // Fungsi Helper untuk mengaktifkan/mematikan tombol Submit
+        function updateBtnSubmit(type) {
+            let container = document.getElementById(`form-${type}`);
+            let btnSubmit = container.querySelector('button[type="submit"]');
+            let methodSelect = container.querySelector('.payment_method_selector');
+            let method = methodSelect ? methodSelect.value : '';
+            let productCode = (type === 'prabayar') ? document.getElementById('product_code_pra').value : container.querySelector('[name="product_code"]').value;
 
-    // ==========================================
-// LOGIKA METODE PEMBAYARAN & AJAX CEK SALDO
-// ==========================================
-document.addEventListener('DOMContentLoaded', function() {
-    let globalFetchedSaldo = 0;
-
-    // Tangkap semua selector (karena ada di prabayar dan pascabayar)
-    document.querySelectorAll('select[name="payment_method"]').forEach(function(select) {
-        select.addEventListener('change', function() {
-            let container = this.closest('form').querySelector('.saldo_payment_section');
-            let waInput = container.querySelector('.wa_pembayaran_input');
-            let pinInput = container.querySelector('.pin_pembayaran_input');
-            let btnSubmit = this.closest('form').querySelector('button[type="submit"]');
-
-            if (this.value === 'SALDO') {
-                container.classList.remove('d-none');
-                waInput.setAttribute('required', 'required');
-                pinInput.setAttribute('required', 'required');
-
-                // Wajib klik cek saldo dulu, matikan tombol submit utama
+            // Jika form prabayar tapi belum pilih produk, selalu matikan tombol
+            if (type === 'prabayar' && !productCode) {
                 if(btnSubmit) btnSubmit.disabled = true;
-            } else {
-                container.classList.add('d-none');
-                waInput.removeAttribute('required');
-                pinInput.removeAttribute('required');
-                pinInput.value = '';
-
-                // Bebaskan tombol submit (Gateway tak perlu cek uang)
-                if(btnSubmit && document.getElementById('product_code_pra').value) {
-                    btnSubmit.disabled = false;
-                }
-            }
-        });
-    });
-
-    // Aksi Klik Tombol "Cek Saldo"
-    document.querySelectorAll('.btn_cek_saldo_ajax').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            let container = this.closest('.saldo_payment_section');
-            let noWa = container.querySelector('.wa_pembayaran_input').value;
-            let pin = container.querySelector('.pin_pembayaran_input').value;
-            let infoBox = container.querySelector('.info_saldo_box');
-            let errBox = container.querySelector('.error_saldo_box');
-            let btnSubmit = this.closest('form').querySelector('button[type="submit"]');
-
-            // Variabel Harga (Jika di prabayar ambil dari variable js, jika pascabayar anggap bisa dilanjut)
-            let neededPrice = (typeof selectedProductPrice !== 'undefined') ? selectedProductPrice : 0;
-
-            if(!noWa || !pin) {
-                errBox.innerHTML = "Harap isi Nomor WA dan PIN!";
-                errBox.classList.remove('d-none');
-                infoBox.classList.add('d-none');
                 return;
             }
 
-            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Cek...';
-            this.disabled = true;
-            errBox.classList.add('d-none');
-            infoBox.classList.add('d-none');
+            // Jika form pascabayar dan sudah pilih layanan, anggap harga bisa bayar dulu (di handle pas checkout)
+            // Namun pastikan dia pilih metode payment apa
+            if (method === '') {
+                 if(btnSubmit) btnSubmit.disabled = true;
+                 return;
+            }
 
-            fetch("{{ route('ppob.verify_saldo') }}", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": "{{ csrf_token() }}" },
-                body: JSON.stringify({ no_wa: noWa, pin: pin })
-            })
-            .then(res => res.json())
-            .then(data => {
-                this.innerHTML = 'Cek & Verifikasi Saldo';
-                this.disabled = false;
+            if (method === 'SALDO') {
+                // Kalo prabayar, kita tau harganya
+                if(type === 'prabayar') {
+                     if (globalFetchedSaldo[type] < selectedProductPrice || globalFetchedSaldo[type] === 0) {
+                         if(btnSubmit) btnSubmit.disabled = true;
+                     } else {
+                         if(btnSubmit) btnSubmit.disabled = false;
+                     }
+                } else {
+                     // Kalo pascabayar, kita gatau harganya sampai di inquiry, jadi kalo verifikasi sukses, buka aja
+                     if (globalFetchedSaldo[type] > 0) {
+                          if(btnSubmit) btnSubmit.disabled = false;
+                     } else {
+                          if(btnSubmit) btnSubmit.disabled = true;
+                     }
+                }
+            } else {
+                // Kalo pake Doku/Tripay/Dana buka aja (khusus prabayar asalkan udh pilih produk)
+                if(btnSubmit) btnSubmit.disabled = false;
+            }
+        }
 
-                if (data.success) {
-                    globalFetchedSaldo = data.saldo;
-                    container.querySelector('.nama_akun_teks').innerText = data.nama;
-                    container.querySelector('.nominal_saldo_teks').innerText = data.saldo_format;
-                    infoBox.classList.remove('d-none');
+        // Tangkap semua event ganti metode pembayaran
+        document.querySelectorAll('.payment_method_selector').forEach(function(select) {
+            select.addEventListener('change', function() {
+                let formType = this.id === 'payment_method_pra' ? 'prabayar' : 'pascabayar';
+                let container = this.closest('form').querySelector('.saldo_payment_section');
+                let waInput = container.querySelector('.wa_pembayaran_input');
+                let pinInput = container.querySelector('.pin_pembayaran_input');
+                let infoBox = container.querySelector('.info_saldo_box');
 
-                    // Validasi apakah saldo cukup untuk produk yang dipilih
-                    if (neededPrice > 0 && globalFetchedSaldo < neededPrice) {
-                        errBox.innerHTML = `Maaf, saldo Anda (Rp ${data.saldo_format}) kurang. Harga: Rp ${neededPrice.toLocaleString('id-ID')}`;
-                        errBox.classList.remove('d-none');
-                        if(btnSubmit) btnSubmit.disabled = true;
-                    } else {
-                        // Saldo cukup, buka gembok submit
-                        if(btnSubmit) btnSubmit.disabled = false;
+                if (this.value === 'SALDO') {
+                    container.classList.remove('d-none');
+                    waInput.setAttribute('required', 'required');
+                    pinInput.setAttribute('required', 'required');
+
+                    // Kalo blm klik verifikasi (saldo msh 0 atau info box hiden), matikan tombol
+                    if(infoBox.classList.contains('d-none')) {
+                         globalFetchedSaldo[formType] = 0;
                     }
                 } else {
-                    errBox.innerHTML = data.message;
-                    errBox.classList.remove('d-none');
-                    if(btnSubmit) btnSubmit.disabled = true;
+                    container.classList.add('d-none');
+                    waInput.removeAttribute('required');
+                    pinInput.removeAttribute('required');
+                    pinInput.value = '';
                 }
-            }).catch(err => {
-                this.innerHTML = 'Cek & Verifikasi Saldo';
-                this.disabled = false;
-                errBox.innerHTML = "Gagal terhubung ke server.";
-                errBox.classList.remove('d-none');
+
+                updateBtnSubmit(formType);
             });
         });
-    });
-});
 
+        // Aksi Klik Tombol "Cek Saldo"
+        document.querySelectorAll('.btn_cek_saldo_ajax').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                let container = this.closest('.saldo_payment_section');
+                let formType = container.closest('form').id.replace('form-', '');
+                let noWa = container.querySelector('.wa_pembayaran_input').value;
+                let pin = container.querySelector('.pin_pembayaran_input').value;
+                let infoBox = container.querySelector('.info_saldo_box');
+                let errBox = container.querySelector('.error_saldo_box');
+                let btnSubmit = this.closest('form').querySelector('button[type="submit"]');
+
+                if(!noWa || !pin) {
+                    errBox.innerHTML = "Harap isi Nomor WA dan PIN!";
+                    errBox.classList.remove('d-none');
+                    infoBox.classList.add('d-none');
+                    return;
+                }
+
+                this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Cek...';
+                this.disabled = true;
+                errBox.classList.add('d-none');
+                infoBox.classList.add('d-none');
+
+                fetch("{{ route('ppob.verify_saldo') }}", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": "{{ csrf_token() }}" },
+                    body: JSON.stringify({ no_wa: noWa, pin: pin })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    this.innerHTML = 'Cek & Verifikasi Saldo';
+                    this.disabled = false;
+
+                    if (data.success) {
+                        globalFetchedSaldo[formType] = data.saldo;
+                        container.querySelector('.nama_akun_teks').innerText = data.nama;
+                        container.querySelector('.nominal_saldo_teks').innerText = data.saldo_format;
+                        infoBox.classList.remove('d-none');
+
+                        // Cek khusus untuk Prabayar (karena harga sudah diketahui)
+                        if (formType === 'prabayar') {
+                            if (selectedProductPrice > 0 && data.saldo < selectedProductPrice) {
+                                errBox.innerHTML = `Maaf, saldo kurang. Harga: Rp ${selectedProductPrice.toLocaleString('id-ID')}`;
+                                errBox.classList.remove('d-none');
+                            }
+                        }
+
+                        // Perbarui status tombol
+                        updateBtnSubmit(formType);
+
+                    } else {
+                        globalFetchedSaldo[formType] = 0;
+                        errBox.innerHTML = data.message;
+                        errBox.classList.remove('d-none');
+                        updateBtnSubmit(formType);
+                    }
+                }).catch(err => {
+                    this.innerHTML = 'Cek & Verifikasi Saldo';
+                    this.disabled = false;
+                    errBox.innerHTML = "Gagal terhubung ke server.";
+                    errBox.classList.remove('d-none');
+                });
+            });
+        });
+
+        // ==========================================
+        // 10. AUTO FORMATTER NOMOR WHATSAPP
+        // ==========================================
+        document.querySelectorAll('.wa-formatter').forEach(function(input) {
+            input.addEventListener('input', function(e) {
+                let val = this.value.replace(/[^0-9]/g, '');
+                if (val.startsWith('62')) {
+                    val = '0' + val.substring(2);
+                }
+                else if (val.startsWith('8')) {
+                    val = '0' + val;
+                }
+                this.value = val;
+            });
+        });
+
+    });
 </script>
 @endpush
 
