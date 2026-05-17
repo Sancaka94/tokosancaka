@@ -166,7 +166,7 @@
                                     </div>
                                 </div>
 
-                                {{-- PRODUK LIST CONTAINER (Global untuk Semua Layanan Prabayar) --}}
+                                {{-- PRODUK LIST CONTAINER --}}
                                 <div class="mb-3 d-none" id="nominal-container">
                                     <div class="input-group input-group-sm mb-2 w-50">
                                         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
@@ -180,20 +180,46 @@
                                     <div class="row g-3" id="product-list"></div>
                                 </div>
 
-                                <div id="alert-saldo-kurang" class="alert alert-danger mt-3 mb-0 text-center border-0 shadow-sm d-none" role="alert">
-                                    <i class="bi bi-exclamation-triangle-fill me-2"></i> Maaf, saldo Anda tidak mencukupi untuk membeli produk ini.
+                                <div id="alert-saldo-kurang" class="alert alert-danger mt-3 mb-4 text-center border-0 shadow-sm d-none" role="alert">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i> Maaf, saldo Anda tidak mencukupi untuk membeli produk ini menggunakan potong saldo.
                                 </div>
 
-                                <div class="mb-4 mt-3">
-                                    <label class="form-label fw-semibold">Nomor WhatsApp (Opsional)</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white"><i class="bi bi-whatsapp text-success"></i></span>
-                                        <input type="text" class="form-control form-control-lg wa-formatter" name="whatsapp_number" placeholder="08xxxx (Untuk kirim struk)">
+                                {{-- GRUP DETAIL PEMBAYARAN PRABAYAR --}}
+                                <div class="card bg-light border-0 p-3 mb-3 rounded-3">
+                                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Detail Pembayaran</h6>
+
+                                    {{-- NOMOR WA (Pre-fill) --}}
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold small">Nomor WhatsApp</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white"><i class="bi bi-whatsapp text-success"></i></span>
+                                            <input type="text" class="form-control wa-formatter" name="whatsapp_number" value="{{ auth()->user()->no_wa ?? '' }}" placeholder="08xxxx (Untuk struk)" required>
+                                        </div>
+                                        <div class="form-text text-muted" style="font-size: 12px;">Struk / Token akan dikirim ke WA ini.</div>
                                     </div>
-                                    <div class="form-text text-muted" style="font-size: 12px;">Struk / Token akan dikirim otomatis ke WA ini.</div>
+
+                                    {{-- METODE PEMBAYARAN --}}
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold small">Metode Pembayaran</label>
+                                        <select class="form-select" name="payment_method" id="payment_method_pra" required>
+                                            <option value="">-- Pilih Metode Bayar --</option>
+                                            <option value="SALDO">Potong Saldo (Sisa: Rp {{ number_format(auth()->user()->saldo ?? 0, 0, ',', '.') }})</option>
+                                            <option value="TRIPAY">Payment Gateway (QRIS, VA, E-Wallet)</option>
+                                            <option value="DOKU">DOKU Jokul</option>
+                                        </select>
+                                    </div>
+
+                                    {{-- INPUT PIN --}}
+                                    <div class="mb-2 d-none" id="pin_container_pra">
+                                        <label class="form-label fw-semibold small text-danger">PIN Keamanan</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white"><i class="bi bi-shield-lock text-danger"></i></span>
+                                            <input type="password" class="form-control" name="pin" id="pin_pra" placeholder="******" maxlength="6" autocomplete="off">
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-3 mt-3" id="btn-submit-pra" disabled>
+                                <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-3 mt-2" id="btn-submit-pra" disabled>
                                     <i class="bi bi-cart-check me-1"></i> Beli Sekarang
                                 </button>
                             </form>
@@ -263,13 +289,39 @@
                                     <div class="form-text text-muted">Masukkan nominal yang ingin dibayarkan secara manual.</div>
                                 </div>
 
-                                <div class="mb-4 mt-3">
-                                    <label class="form-label fw-semibold">Nomor WhatsApp (Opsional)</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white"><i class="bi bi-whatsapp text-success"></i></span>
-                                        <input type="text" class="form-control form-control-lg wa-formatter" name="whatsapp_number" placeholder="08xxxx (Untuk kirim struk)">
+                                {{-- GRUP DETAIL PEMBAYARAN PASCABAYAR --}}
+                                <div class="card bg-light border-0 p-3 mb-3 rounded-3 mt-4">
+                                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Detail Pembayaran</h6>
+
+                                    {{-- NOMOR WA (Pre-fill) --}}
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold small">Nomor WhatsApp</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white"><i class="bi bi-whatsapp text-success"></i></span>
+                                            <input type="text" class="form-control wa-formatter" name="whatsapp_number" value="{{ auth()->user()->no_wa ?? '' }}" placeholder="08xxxx (Untuk kirim struk)" required>
+                                        </div>
+                                        <div class="form-text text-muted" style="font-size: 12px;">Struk lunas akan dikirim ke WA ini.</div>
                                     </div>
-                                    <div class="form-text text-muted" style="font-size: 12px;">Struk lunas akan dikirim otomatis ke WA ini.</div>
+
+                                    {{-- METODE PEMBAYARAN --}}
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold small">Metode Pembayaran</label>
+                                        <select class="form-select" name="payment_method" id="payment_method_pasca" required>
+                                            <option value="">-- Pilih Metode Bayar --</option>
+                                            <option value="SALDO">Potong Saldo (Sisa: Rp {{ number_format(auth()->user()->saldo ?? 0, 0, ',', '.') }})</option>
+                                            <option value="TRIPAY">Payment Gateway (QRIS, VA, E-Wallet)</option>
+                                            <option value="DOKU">DOKU Jokul</option>
+                                        </select>
+                                    </div>
+
+                                    {{-- INPUT PIN --}}
+                                    <div class="mb-2 d-none" id="pin_container_pasca">
+                                        <label class="form-label fw-semibold small text-danger">PIN Keamanan</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white"><i class="bi bi-shield-lock text-danger"></i></span>
+                                            <input type="password" class="form-control" name="pin" id="pin_pasca" placeholder="******" maxlength="6" autocomplete="off">
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <button type="submit" class="btn btn-success w-100 py-3 fw-bold rounded-3 mt-2">
@@ -307,8 +359,9 @@
     });
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Saldo User
-        let currentBalance = parseFloat("{{ auth()->user()->balance_iak ?? 0 }}") || 0;
+        // PERBAIKAN: Mengambil data dari auth()->user()->saldo sesuai database utama
+        let currentBalance = parseFloat("{{ auth()->user()->saldo ?? 0 }}") || 0;
+        let selectedProductPrice = 0; // Tambahan variabel untuk menyimpan harga produk
 
         // Elements Prabayar
         const formPra = document.getElementById('form-prabayar');
@@ -316,6 +369,7 @@
         const btnSubmitPra = document.getElementById('btn-submit-pra');
         const alertSaldo = document.getElementById('alert-saldo-kurang');
         const productCodeInput = document.getElementById('product_code_pra');
+        const paymentMethodPra = document.getElementById('payment_method_pra');
 
         // Product List Elements
         const productContainer = document.getElementById('product-list-container');
@@ -329,24 +383,66 @@
         let typingTimer;
 
         // ==========================================
-        // 1. LOGIK SWICTH LAYANAN PRABAYAR
+        // 1. LOGIKA METODE PEMBAYARAN & PIN
+        // ==========================================
+        function setupPaymentLogic(selectId, containerId, inputId) {
+            const paymentSelect = document.getElementById(selectId);
+            const pinContainer = document.getElementById(containerId);
+            const pinInput = document.getElementById(inputId);
+
+            if (paymentSelect && pinContainer && pinInput) {
+                paymentSelect.addEventListener('change', function() {
+                    if (this.value === 'SALDO') {
+                        pinContainer.classList.remove('d-none');
+                        pinInput.setAttribute('required', 'required');
+                    } else {
+                        pinContainer.classList.add('d-none');
+                        pinInput.removeAttribute('required');
+                        pinInput.value = ''; // Kosongkan PIN jika bukan saldo
+                    }
+
+                    // Khusus form prabayar, cek kembali kelayakan saldo
+                    if (selectId === 'payment_method_pra') {
+                        checkPaymentFeasibility();
+                    }
+                });
+            }
+        }
+        setupPaymentLogic('payment_method_pra', 'pin_container_pra', 'pin_pra');
+        setupPaymentLogic('payment_method_pasca', 'pin_container_pasca', 'pin_pasca');
+
+        function checkPaymentFeasibility() {
+            if (!productCodeInput.value) return; // Belum pilih produk
+
+            let method = paymentMethodPra.value;
+            btnSubmitPra.disabled = false; // Enable secara default
+
+            if (method === 'SALDO') {
+                if (currentBalance < selectedProductPrice) {
+                    btnSubmitPra.disabled = true; // Disable hanya jika milih SALDO dan uang kurang
+                    alertSaldo.classList.remove('d-none');
+                } else {
+                    alertSaldo.classList.add('d-none');
+                }
+            } else {
+                // Jika pilih Tripay/Doku, uang kurang tidak masalah
+                alertSaldo.classList.add('d-none');
+            }
+        }
+
+        // ==========================================
+        // 2. LOGIK SWICTH LAYANAN PRABAYAR
         // ==========================================
         document.getElementById('kategori_layanan').addEventListener('change', function(e) {
             let cat = e.target.value;
-            // Hide all sections
             document.querySelectorAll('.section-pra').forEach(el => el.classList.add('d-none'));
-            // Show selected section
             document.getElementById('section-' + cat).classList.remove('d-none');
-
             resetProductView();
-
-            if (cat === 'game') {
-                loadGameList();
-            }
+            if (cat === 'game') loadGameList();
         });
 
         // ==========================================
-        // 2. LOGIK PULSA & DATA
+        // 3. LOGIK PULSA & DATA
         // ==========================================
         const phoneInput = document.getElementById('customer_id_pulsa');
         const categorySelectPulsa = document.getElementById('product_category_pulsa');
@@ -428,7 +524,7 @@
         }
 
         // ==========================================
-        // 3. LOGIK PLN
+        // 4. LOGIK PLN
         // ==========================================
         const btnCekPln = document.getElementById('btn-cek-pln');
         if(btnCekPln) {
@@ -465,7 +561,7 @@
         }
 
         // ==========================================
-        // 4. LOGIK OVO
+        // 5. LOGIK OVO
         // ==========================================
         const btnCekOvo = document.getElementById('btn-cek-ovo');
         if(btnCekOvo) {
@@ -501,7 +597,7 @@
         }
 
         // ==========================================
-        // 5. LOGIK GAME
+        // 6. LOGIK GAME
         // ==========================================
         function loadGameList() {
             let gameSel = document.getElementById('game_selector');
@@ -566,7 +662,7 @@
         }
 
         // ==========================================
-        // 6. CORE FUNGSI FETCH PRODUK
+        // 7. CORE FUNGSI FETCH PRODUK & PEMILIHAN
         // ==========================================
         if(nominalInput) {
             nominalInput.addEventListener('keyup', function () {
@@ -584,6 +680,7 @@
             nominalContainer.classList.add('d-none');
             productList.innerHTML = '';
             productCodeInput.value = '';
+            selectedProductPrice = 0;
             if (btnSubmitPra) btnSubmitPra.disabled = true;
             if (alertSaldo) alertSaldo.classList.add('d-none');
         }
@@ -596,6 +693,7 @@
             productList.innerHTML = `<div class="col-12 text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div><span class="ms-2 text-muted">Mencari produk...</span></div>`;
 
             productCodeInput.value = '';
+            selectedProductPrice = 0;
             if (btnSubmitPra) btnSubmitPra.disabled = true;
             if (alertSaldo) alertSaldo.classList.add('d-none');
 
@@ -613,7 +711,6 @@
                     data.data.forEach(item => {
                     let rpPrice = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price);
 
-                    // Logika untuk menampilkan icon atau placeholder jika icon kosong
                     let iconHtml = (item.icon_url && item.icon_url !== '-')
                         ? `<img src="${item.icon_url}" class="img-fluid mb-2" style="height: 40px; object-fit: contain;" alt="icon">`
                         : `<div class="mb-2 text-primary"><i class="bi bi-box" style="font-size: 24px;"></i></div>`;
@@ -641,19 +738,16 @@
         window.selectProduct = function(code, price, element) {
             document.querySelectorAll('.product-card').forEach(el => el.classList.remove('selected'));
             element.classList.add('selected');
-            productCodeInput.value = code;
 
-            if (currentBalance >= price) {
-                if (btnSubmitPra) btnSubmitPra.disabled = false;
-                if (alertSaldo) alertSaldo.classList.add('d-none');
-            } else {
-                if (btnSubmitPra) btnSubmitPra.disabled = true;
-                if (alertSaldo) alertSaldo.classList.remove('d-none');
-            }
+            productCodeInput.value = code;
+            selectedProductPrice = price; // Simpan harga produk
+
+            // Lakukan pengecekan tombol Submit (bisa bayar atau tidak)
+            checkPaymentFeasibility();
         }
 
         // ==========================================
-        // 7. HANDLE SUBMIT FORM PRABAYAR (GABUNG CUSTOMER ID)
+        // 8. HANDLE SUBMIT FORM PRABAYAR (GABUNG CUSTOMER ID)
         // ==========================================
         if(formPra) {
             formPra.addEventListener('submit', function(e) {
@@ -670,7 +764,7 @@
                     let pId = document.getElementById('game_player_id').value;
                     let sContainer = document.getElementById('game_server_container');
                     let sId = !sContainer.classList.contains('d-none') ? document.getElementById('game_server_id').value : '';
-                    finalId = sId ? pId + sId : pId; // Format IAK biasanya gabung ID dan Zone tanpa spasi
+                    finalId = sId ? pId + sId : pId;
                 }
 
                 finalCustomerId.value = finalId;
@@ -683,7 +777,7 @@
         }
 
         // ==========================================
-        // 8. LOGIK KHUSUS PASCABAYAR (DINAMIS FORM INPUT)
+        // 9. LOGIK KHUSUS PASCABAYAR (DINAMIS FORM INPUT)
         // ==========================================
         const pascaProductSelect = document.getElementById('pasca_product_code');
         const containerBpjsMonth = document.getElementById('container-month-bpjs');
@@ -711,7 +805,7 @@
                     inputMonth.removeAttribute('required');
                 }
 
-                // 2. Logika Custom Denom / Church Offerings (Nominal)
+                // 2. Logika Custom Denom
                 if (val.includes('MEMBER') || val.includes('PAY') || val === 'DANA' || val === 'OVO' || val === 'GOPAY' || val === 'LINKAJA') {
                     containerAmountCustom.classList.remove('d-none');
                     inputAmount.setAttribute('required', 'required');
@@ -743,26 +837,20 @@
     });
 
     // ==========================================
-        // AUTO FORMATTER NOMOR WHATSAPP
-        // ==========================================
-        document.querySelectorAll('.wa-formatter').forEach(function(input) {
-            input.addEventListener('input', function(e) {
-                // 1. Hapus semua karakter selain angka (spasi, strip, huruf, tanda plus)
-                let val = this.value.replace(/[^0-9]/g, '');
-
-                // 2. Jika nomor dimulai dengan '62', ubah menjadi '0'
-                if (val.startsWith('62')) {
-                    val = '0' + val.substring(2);
-                }
-                // 3. Jika nomor dimulai dengan '8' (lupa ketik 0), tambahkan '0' di depannya
-                else if (val.startsWith('8')) {
-                    val = '0' + val;
-                }
-
-                // 4. Kembalikan nilai yang sudah bersih ke dalam kotak input
-                this.value = val;
-            });
+    // AUTO FORMATTER NOMOR WHATSAPP
+    // ==========================================
+    document.querySelectorAll('.wa-formatter').forEach(function(input) {
+        input.addEventListener('input', function(e) {
+            let val = this.value.replace(/[^0-9]/g, '');
+            if (val.startsWith('62')) {
+                val = '0' + val.substring(2);
+            }
+            else if (val.startsWith('8')) {
+                val = '0' + val;
+            }
+            this.value = val;
         });
+    });
 
 </script>
 @endpush

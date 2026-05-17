@@ -15,6 +15,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Cache; // --- TAMBAHAN IDEMPOTENCY ---
 use App\Services\FonnteService;
 use App\Services\DokuJokulService;
+use Illuminate\Support\Facades\Hash;
 
 
 class PpobIakController extends Controller
