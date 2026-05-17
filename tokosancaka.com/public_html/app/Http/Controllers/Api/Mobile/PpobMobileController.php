@@ -521,7 +521,7 @@ class PpobMobileController extends Controller
         } catch (\Exception $e) { return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()]); }
     }
 
-    // ========================================================
+   // ========================================================
     // --- FUNGSI BARU: RIWAYAT TRANSAKSI & FILTER (ADMIN/USER) ---
     // ========================================================
     public function history(Request $request)
@@ -582,17 +582,38 @@ class PpobMobileController extends Controller
                 if ($isAdmin) {
                     $userIds = $transactions->pluck('user_id')->filter()->unique()->toArray();
                     if (!empty($userIds)) {
+                        // Mengubah pengambilan data agar mencakup nama_lengkap dan store_name
                         $usersData = \Illuminate\Support\Facades\DB::table('Pengguna')
-                                        ->whereIn('id_pengguna', $userIds)->pluck('nama_lengkap', 'id_pengguna');
+                                        ->whereIn('id_pengguna', $userIds)
+                                        ->get(['id_pengguna', 'nama_lengkap', 'store_name'])
+                                        ->keyBy('id_pengguna');
                     }
                 }
 
                 foreach ($transactions->items() as $trx) {
                     $item = $trx->toArray();
                     $item['icon_url'] = ($item['type'] == 'prabayar') ? ($icons[$item['product_code']] ?? null) : null;
+                    
                     if ($isAdmin) {
-                        $namaUser = $item['user_id'] ? ($usersData[$item['user_id']] ?? 'User ID ' . $item['user_id']) : 'Website';
-                        $item['nama_pembeli'] = $namaUser;
+                        if (!empty($item['user_id'])) {
+                            $userData = $usersData[$item['user_id']] ?? null;
+                            
+                            $item['sumber_order'] = 'Aplikasi / User';
+                            $item['pemesan_id']   = $item['user_id'];
+                            $item['pemesan_nama'] = $userData->nama_lengkap ?? 'User Tidak Diketahui';
+                            $item['pemesan_toko'] = $userData->store_name ?? '-';
+                            
+                            // Tetap dipertahankan untuk backward compatibility (jika frontend lama masih membaca field ini)
+                            $item['nama_pembeli'] = $item['pemesan_nama']; 
+                        } else {
+                            $item['sumber_order'] = 'Website / Guest';
+                            $item['pemesan_id']   = null;
+                            $item['pemesan_nama'] = 'Guest';
+                            $item['pemesan_toko'] = '-';
+                            
+                            // Tetap dipertahankan untuk backward compatibility
+                            $item['nama_pembeli'] = 'Website / Guest';
+                        }
                     }
                     $mappedItems[] = $item;
                 }
@@ -827,7 +848,7 @@ class PpobMobileController extends Controller
 
             $transaction->update(['status' => 'FAILED', 'message' => 'Invalid API Response dari Pusat']);
             return response()->json(['success' => false, 'message' => 'Gagal memproses pembayaran ke server pusat.']);
-            
+
         } catch (\Exception $e) {
             Log::error('LOG LOG - [API Mobile] Timeout / Error Pay Pasca: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Koneksi lambat. Pembayaran sedang diproses di latar belakang. Cek riwayat berkala.']);
