@@ -49,8 +49,8 @@ class PpobMobileController extends Controller
             $opUpper = strtoupper($operator);
             if ($opUpper === 'SMARTFREN') {
                 $operator = 'Smart';
-            } elseif ($opUpper === 'THREE') {
-                $operator = 'Tri';
+            } elseif ($opUpper === 'THREE' || $opUpper === 'TRI') { // Ditambahkan toleransi keyword 'TRI'
+                $operator = 'Three'; // Ubah ke 'Three' agar pencarian LIKE '%three%' cocok dengan database
             } elseif ($opUpper === 'TELKOMSEL') {
                 $operator = 'Telkomsel';
             }
