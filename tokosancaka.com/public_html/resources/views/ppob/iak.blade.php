@@ -207,7 +207,7 @@
                                         <input type="hidden" name="payment_method" class="payment_method_hidden" id="payment_method_pra" required>
                                         <div class="form-control form-control-lg d-flex justify-content-between align-items-center cursor-pointer btn-payment-trigger" data-target="prabayar" style="background-color: #fff;">
                                             <div class="d-flex align-items-center">
-                                                <img src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" class="payment-logo me-3" style="width: 28px; height: 28px; object-fit: contain;">
+                                                <img src="https://tokosancaka.com/public/assets/doku.png" class="payment-logo me-3" style="width: 28px; height: 28px; object-fit: contain;">
                                                 <span class="payment-name fw-semibold text-dark fs-6">Pilih Metode Bayar...</span>
                                             </div>
                                             <i class="bi bi-chevron-down text-muted"></i>
@@ -383,12 +383,12 @@
                             <div class="text-muted small">Verifikasi via WA & PIN Keamanan</div>
                         </div>
                     </button>
-                    <button type="button" class="list-group-item list-group-item-action p-3 d-flex align-items-center payment-option" data-value="DANA" data-label="Bayar Pakai DANA" data-img="https://cdn-icons-png.flaticon.com/512/2489/2489756.png">
-                        <img src="https://cdn-icons-png.flaticon.com/512/2489/2489756.png" class="me-3" style="width:32px; height:32px;">
+                    <button type="button" class="list-group-item list-group-item-action p-3 d-flex align-items-center payment-option" data-value="DANA" data-label="Bayar Pakai DANA" data-img="https://tokosancaka.com/public/assets/dana.png">
+                        <img src="https://tokosancaka.com/public/assets/dana.png" class="me-3" style="width:32px; height:32px;">
                         <div class="fw-bold text-dark">DANA</div>
                     </button>
-                    <button type="button" class="list-group-item list-group-item-action p-3 d-flex align-items-center payment-option" data-value="DOKU" data-label="DOKU Jokul" data-img="https://cdn-icons-png.flaticon.com/512/2331/2331941.png">
-                        <img src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" class="me-3" style="width:32px; height:32px;">
+                    <button type="button" class="list-group-item list-group-item-action p-3 d-flex align-items-center payment-option" data-value="DOKU" data-label="DOKU Jokul" data-img="https://tokosancaka.com/public/assets/doku.png">
+                        <img src="https://tokosancaka.com/public/assets/doku.png" class="me-3" style="width:32px; height:32px;">
                         <div class="fw-bold text-dark">DOKU Jokul</div>
                     </button>
 
