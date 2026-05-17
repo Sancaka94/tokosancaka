@@ -190,14 +190,14 @@
                                 </div>
 
                                 {{-- GRUP DETAIL PEMBAYARAN PRABAYAR --}}
-                                <div class="card bg-light border-0 p-3 mb-3 rounded-3 mt-4">
+                                <div class="card bg-light border-0 p-3 mb-3 rounded-3 mt-4" id="area-pembayaran-pra">
                                     <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Detail Pembayaran</h6>
 
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold small">Nomor WhatsApp Struk</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-white"><i class="bi bi-whatsapp text-success"></i></span>
-                                            <input type="text" class="form-control wa-formatter" name="whatsapp_number" value="{{ auth()->user()->no_wa ?? '' }}" placeholder="08xxxx" required>
+                                            <input type="text" class="form-control wa-formatter" name="whatsapp_number" value="{{ auth()->user()->no_wa ?? '' }}" placeholder="08xxxx (Opsional)">
                                         </div>
                                     </div>
 
@@ -314,7 +314,7 @@
                                         <label class="form-label fw-semibold small">Nomor WhatsApp Struk</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-white"><i class="bi bi-whatsapp text-success"></i></span>
-                                            <input type="text" class="form-control wa-formatter" name="whatsapp_number" value="{{ auth()->user()->no_wa ?? '' }}" placeholder="08xxxx (Untuk kirim struk)" required>
+                                            <input type="text" class="form-control wa-formatter" name="whatsapp_number" value="{{ auth()->user()->no_wa ?? '' }}" placeholder="08xxxx (Opsional untuk struk)">
                                         </div>
                                     </div>
 
@@ -750,7 +750,17 @@
             productCodeInput.value = code;
             selectedProductPrice = price;
             updateBtnSubmit('prabayar');
-        }
+
+            // 🔥 KODE BARU: Auto scroll ke area pembayaran
+                const paymentArea = document.getElementById('area-pembayaran-pra');
+                if(paymentArea) {
+                    paymentArea.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    });
+                }
+            }
+        
 
         // ==========================================
         // 7. HANDLE SUBMIT FORM PRABAYAR
