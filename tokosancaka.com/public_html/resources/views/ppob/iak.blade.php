@@ -216,9 +216,9 @@
 
                                     {{-- BLOK VERIFIKASI SALDO (PRABAYAR) --}}
                                     <div class="saldo_payment_section d-none border border-primary p-3 rounded bg-white">
-                                        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-shield-lock me-1"></i> Verifikasi Akun Sancaka</h6>
+                                        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-shield-lock me-1"></i> Verifikasi Akun</h6>
                                         <div class="mb-2">
-                                            <label class="form-label small fw-semibold">No WhatsApp Akun Sancaka</label>
+                                            <label class="form-label small fw-semibold">No WhatsApp Akun ANDA</label>
                                             <input type="text" class="form-control wa-formatter wa_pembayaran_input" name="wa_pembayaran" value="{{ auth()->user()->no_wa ?? '' }}" placeholder="08xxxx">
                                         </div>
                                         <div class="mb-3">
