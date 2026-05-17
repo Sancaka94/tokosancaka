@@ -1295,5 +1295,3 @@ Route::get('/customer/dana/bind', [TopUpController::class, 'startBinding'])->nam
 
 // Route untuk menangkap kembalian (Callback) dari DANA setelah user setuju
 Route::get('/customer/dana/callback', [TopUpController::class, 'handleCallback'])->name('customer.dana.callback');
-
-Route::post('/ppob/iak/sync-prepaid', [PpobIakController::class, 'syncPricelistPrepaid'])->name('ppob.iak.sync.prepaid');

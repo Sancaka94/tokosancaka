@@ -163,6 +163,7 @@ class AdminPricelistController extends Controller
 
     /**
      * Menarik data Pricelist dari API IAK dan langsung update ke Database (API Versi 2 Final)
+     * Menggunakan metode Truncate & Bulk Insert (Chunk) untuk sinkronisasi 100%.
      */
     public function syncPricelistApi()
     {
@@ -202,7 +203,9 @@ class AdminPricelistController extends Controller
             // PERUBAHAN UTAMA V2: Array produk ada di dalam index 'pricelist'
             if ($response->successful() && isset($responseData['data']['pricelist']) && is_array($responseData['data']['pricelist'])) {
                 $products = $responseData['data']['pricelist'];
-                $count = 0;
+                
+                $insertData = [];
+                $now = now(); // Waktu saat ini untuk created_at & updated_at
 
                 foreach ($products as $item) {
                     $code = $item['product_code'] ?? null;
@@ -221,23 +224,35 @@ class AdminPricelistController extends Controller
 
                     $status = (strtolower($item['status'] ?? '') === 'active') ? 'Active' : 'Offline';
 
-                    // Insert atau Update ke database
-                    IakPricelistPrepaid::updateOrCreate(
-                        ['code' => $code],
-                        [
-                            'operator'    => $operator,
-                            'description' => $description,
-                            'price'       => $price,
-                            'type'        => $type,
-                            'status'      => $status,
-                            'icon_url'    => $item['icon_url'] ?? null // <--- TAMBAHAN UNTUK ICON
-                        ]
-                    );
-                    $count++;
+                    // Siapkan array data alih-alih langsung di-insert
+                    $insertData[] = [
+                        'code'        => $code,
+                        'operator'    => $operator,
+                        'description' => $description,
+                        'price'       => $price,
+                        'type'        => $type,
+                        'status'      => $status,
+                        'icon_url'    => $item['icon_url'] ?? null,
+                        'created_at'  => $now, // Insert massal tidak otomatis mengisi timestamp
+                        'updated_at'  => $now  
+                    ];
                 }
 
-                Log::info("LOG LOG - Sinkron API IAK Versi 2 Berhasil: $count produk.");
-                return back()->with('success', "Sinkronisasi sukses! $count produk berhasil ditarik dan diperbarui dari IAK API v2.");
+                // 1. HAPUS SEMUA DATA LOKAL SEPENUHNYA
+                IakPricelistPrepaid::truncate();
+
+                // 2. PECAH DATA (CHUNK) AGAR DATABASE TIDAK KELEBIHAN BEBAN
+                // Memasukkan data per 500 baris ke dalam database
+                $chunks = array_chunk($insertData, 500); 
+                
+                foreach ($chunks as $chunk) {
+                    IakPricelistPrepaid::insert($chunk);
+                }
+
+                $count = count($insertData);
+
+                Log::info("LOG LOG - Sinkron API IAK Versi 2 Berhasil: $count produk tersimpan via Truncate & Chunk.");
+                return back()->with('success', "Sinkronisasi absolut sukses! $count produk berhasil disinkronkan ulang dari IAK API v2.");
             }
 
             Log::error('LOG LOG - IAK Pricelist Unreadable: ' . $response->body());
