@@ -20,6 +20,14 @@
     }
 </style>
 
+{{-- 🔥 TAMBAHAN KODE PENGAMAN (IDEMPOTENCY) 🔥 --}}
+@php
+    // Membuat kunci unik untuk mencegah dobel input saat user submit form berkali-kali
+    if (!isset($idempotencyKey)) {
+        $idempotencyKey = (string) \Illuminate\Support\Str::uuid();
+    }
+@endphp
+
 <div class="container mt-4 mb-5">
 
     @if(session('success'))
@@ -91,6 +99,7 @@
                                 <input type="hidden" name="type" value="prabayar">
                                 <input type="hidden" name="customer_id" id="final_customer_id">
                                 <input type="hidden" name="product_code" id="product_code_pra" required>
+                                <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
 
                                 {{-- SECTION: PULSA & DATA --}}
                                 <div id="section-pulsa" class="section-pra">
@@ -192,15 +201,17 @@
                                         </div>
                                     </div>
 
+                                    {{-- METODE PEMBAYARAN PRABAYAR (DIUBAH MENJADI MODAL TRIGGER) --}}
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold small">Metode Pembayaran</label>
-                                        <select class="form-select payment_method_selector" name="payment_method" id="payment_method_pra" required>
-                                            <option value="">-- Pilih Metode Bayar --</option>
-                                            <option value="SALDO">Potong Saldo (Verifikasi WA & PIN)</option>
-                                            <option value="DANA">Bayar Pakai DANA</option>
-                                            <option value="TRIPAY">Payment Gateway (QRIS, VA, E-Wallet)</option>
-                                            <option value="DOKU">DOKU Jokul</option>
-                                        </select>
+                                        <input type="hidden" name="payment_method" class="payment_method_hidden" id="payment_method_pra" required>
+                                        <div class="form-control form-control-lg d-flex justify-content-between align-items-center cursor-pointer btn-payment-trigger" data-target="prabayar" style="background-color: #fff;">
+                                            <div class="d-flex align-items-center">
+                                                <img src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" class="payment-logo me-3" style="width: 28px; height: 28px; object-fit: contain;">
+                                                <span class="payment-name fw-semibold text-dark fs-6">Pilih Metode Bayar...</span>
+                                            </div>
+                                            <i class="bi bi-chevron-down text-muted"></i>
+                                        </div>
                                     </div>
 
                                     {{-- BLOK VERIFIKASI SALDO (PRABAYAR) --}}
@@ -237,6 +248,7 @@
                             <form action="{{ route('ppob.iak.store') }}" method="POST" id="form-pascabayar">
                                 @csrf
                                 <input type="hidden" name="type" value="pascabayar">
+                                <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
 
                                 <div class="mb-4">
                                     <label class="form-label fw-semibold">Pilih Layanan Tagihan</label>
@@ -298,7 +310,6 @@
                                 <div class="card bg-light border-0 p-3 mb-3 rounded-3 mt-4">
                                     <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Detail Pembayaran</h6>
 
-                                    {{-- NOMOR WA (Pre-fill) --}}
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold small">Nomor WhatsApp Struk</label>
                                         <div class="input-group">
@@ -307,16 +318,17 @@
                                         </div>
                                     </div>
 
-                                    {{-- METODE PEMBAYARAN --}}
+                                    {{-- METODE PEMBAYARAN PASCABAYAR (DIUBAH MENJADI MODAL TRIGGER) --}}
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold small">Metode Pembayaran</label>
-                                        <select class="form-select payment_method_selector" name="payment_method" id="payment_method_pasca" required>
-                                            <option value="">-- Pilih Metode Bayar --</option>
-                                            <option value="SALDO">Potong Saldo (Verifikasi WA & PIN)</option>
-                                            <option value="DANA">Bayar Pakai DANA</option>
-                                            <option value="TRIPAY">Payment Gateway (QRIS, VA, E-Wallet)</option>
-                                            <option value="DOKU">DOKU Jokul</option>
-                                        </select>
+                                        <input type="hidden" name="payment_method" class="payment_method_hidden" id="payment_method_pasca" required>
+                                        <div class="form-control form-control-lg d-flex justify-content-between align-items-center cursor-pointer btn-payment-trigger" data-target="pascabayar" style="background-color: #fff;">
+                                            <div class="d-flex align-items-center">
+                                                <img src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" class="payment-logo me-3" style="width: 28px; height: 28px; object-fit: contain;">
+                                                <span class="payment-name fw-semibold text-dark fs-6">Pilih Metode Bayar...</span>
+                                            </div>
+                                            <i class="bi bi-chevron-down text-muted"></i>
+                                        </div>
                                     </div>
 
                                     {{-- BLOK VERIFIKASI SALDO (PASCABAYAR) --}}
@@ -346,6 +358,47 @@
                             </form>
                         </div>
 
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PEMBAYARAN BOOTSTRAP 5 -->
+<div class="modal fade" id="paymentMethodModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header border-bottom-0 pb-2">
+                <h5 class="modal-title fw-bold"><i class="bi bi-credit-card text-primary me-2"></i>Pilih Metode Pembayaran</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="list-group list-group-flush rounded-0" id="paymentOptionsList">
+                    <!-- Manual -->
+                    <button type="button" class="list-group-item list-group-item-action p-3 d-flex align-items-center payment-option" data-value="SALDO" data-label="Potong Saldo (Verifikasi WA & PIN)" data-img="https://cdn-icons-png.flaticon.com/512/1086/1086060.png">
+                        <img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="me-3" style="width:32px; height:32px;">
+                        <div class="text-start">
+                            <div class="fw-bold text-dark">Potong Saldo</div>
+                            <div class="text-muted small">Verifikasi via WA & PIN Keamanan</div>
+                        </div>
+                    </button>
+                    <button type="button" class="list-group-item list-group-item-action p-3 d-flex align-items-center payment-option" data-value="DANA" data-label="Bayar Pakai DANA" data-img="https://cdn-icons-png.flaticon.com/512/2489/2489756.png">
+                        <img src="https://cdn-icons-png.flaticon.com/512/2489/2489756.png" class="me-3" style="width:32px; height:32px;">
+                        <div class="fw-bold text-dark">DANA</div>
+                    </button>
+                    <button type="button" class="list-group-item list-group-item-action p-3 d-flex align-items-center payment-option" data-value="DOKU" data-label="DOKU Jokul" data-img="https://cdn-icons-png.flaticon.com/512/2331/2331941.png">
+                        <img src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" class="me-3" style="width:32px; height:32px;">
+                        <div class="fw-bold text-dark">DOKU Jokul</div>
+                    </button>
+
+                    <div class="bg-light p-2 text-muted small fw-bold text-uppercase border-top border-bottom">Transfer Bank & E-Wallet (Otomatis)</div>
+
+                    <!-- Wadah API Tripay -->
+                    <div id="tripayChannelsContainer">
+                        <div class="p-4 text-center text-muted small">
+                            <div class="spinner-border spinner-border-sm me-2"></div>Memuat saluran pembayaran...
+                        </div>
                     </div>
                 </div>
             </div>
@@ -785,7 +838,7 @@
         }
 
         // ==========================================
-        // 9. LOGIKA METODE PEMBAYARAN & AJAX CEK SALDO
+        // 9. LOGIKA METODE PEMBAYARAN & AJAX CEK SALDO (UI BARU / MODAL)
         // ==========================================
         let globalFetchedSaldo = {
             'prabayar': 0,
@@ -796,8 +849,11 @@
         function updateBtnSubmit(type) {
             let container = document.getElementById(`form-${type}`);
             let btnSubmit = container.querySelector('button[type="submit"]');
-            let methodSelect = container.querySelector('.payment_method_selector');
-            let method = methodSelect ? methodSelect.value : '';
+
+            // Ambil dari input hidden sekarang
+            let methodHidden = container.querySelector('.payment_method_hidden');
+            let method = methodHidden ? methodHidden.value : '';
+
             let productCode = (type === 'prabayar') ? document.getElementById('product_code_pra').value : container.querySelector('[name="product_code"]').value;
 
             // Jika form prabayar tapi belum pilih produk, selalu matikan tombol
@@ -835,34 +891,113 @@
             }
         }
 
-        // Tangkap semua event ganti metode pembayaran
-        document.querySelectorAll('.payment_method_selector').forEach(function(select) {
-            select.addEventListener('change', function() {
-                let formType = this.id === 'payment_method_pra' ? 'prabayar' : 'pascabayar';
-                let container = this.closest('form').querySelector('.saldo_payment_section');
-                let waInput = container.querySelector('.wa_pembayaran_input');
-                let pinInput = container.querySelector('.pin_pembayaran_input');
-                let infoBox = container.querySelector('.info_saldo_box');
+        // === START: INTEGRASI TRIPAY CHANNEL MODAL ===
+        let activePaymentTarget = 'prabayar';
+        let paymentModalInstance = null;
+        let tripayLoaded = false;
 
-                if (this.value === 'SALDO') {
-                    container.classList.remove('d-none');
-                    waInput.setAttribute('required', 'required');
-                    pinInput.setAttribute('required', 'required');
+        paymentModalInstance = new bootstrap.Modal(document.getElementById('paymentMethodModal'));
 
-                    // Kalo blm klik verifikasi (saldo msh 0 atau info box hiden), matikan tombol
-                    if(infoBox.classList.contains('d-none')) {
-                         globalFetchedSaldo[formType] = 0;
-                    }
-                } else {
-                    container.classList.add('d-none');
-                    waInput.removeAttribute('required');
-                    pinInput.removeAttribute('required');
-                    pinInput.value = '';
-                }
-
-                updateBtnSubmit(formType);
+        document.querySelectorAll('.btn-payment-trigger').forEach(btn => {
+            btn.addEventListener('click', function() {
+                activePaymentTarget = this.dataset.target; // 'prabayar' atau 'pascabayar'
+                paymentModalInstance.show();
+                loadTripayChannels();
             });
         });
+
+        async function loadTripayChannels() {
+            if (tripayLoaded) return;
+            const container = document.getElementById('tripayChannelsContainer');
+            try {
+                // Sesuaikan route jika Anda memakai nama route yang berbeda untuk pemanggilan channel
+                const response = await fetch("{{ route('admin.pesanan.get_channels') }}");
+                const res = await response.json();
+
+                if (res.success && res.data.length > 0) {
+                    container.innerHTML = '';
+                    res.data.forEach(channel => {
+                        if (channel.active) {
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.className = 'list-group-item list-group-item-action p-3 d-flex align-items-center payment-option';
+                            btn.dataset.value = channel.code;
+                            btn.dataset.label = channel.name;
+                            btn.dataset.img = channel.icon_url;
+
+                            btn.innerHTML = `
+                                <img src="${channel.icon_url}" class="me-3 border rounded p-1" style="width:40px; height:40px; object-fit:contain; background:#fff;" onerror="this.src='https://placehold.co/40'">
+                                <div class="text-start">
+                                    <div class="fw-bold text-dark">${channel.name}</div>
+                                    <div class="text-muted small">${channel.group_name || channel.group || ''}</div>
+                                </div>
+                            `;
+                            btn.addEventListener('click', () => selectPayment(btn));
+                            container.appendChild(btn);
+                        }
+                    });
+                    tripayLoaded = true;
+                } else {
+                    container.innerHTML = '<div class="p-4 text-center text-danger small">Gagal memuat saluran pembayaran.</div>';
+                }
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = '<div class="p-4 text-center text-danger small">Gagal terhubung ke API Channel Pembayaran.</div>';
+            }
+        }
+
+        function selectPayment(element) {
+            const val = element.dataset.value;
+            const label = element.dataset.label;
+            const img = element.dataset.img || element.querySelector('img').src;
+
+            // Targetkan Form yang benar
+            const isPra = (activePaymentTarget === 'prabayar');
+            const formId = isPra ? 'form-prabayar' : 'form-pascabayar';
+            const formEl = document.getElementById(formId);
+
+            // Update Input Hidden
+            const hiddenInput = isPra ? document.getElementById('payment_method_pra') : document.getElementById('payment_method_pasca');
+            hiddenInput.value = val;
+
+            // Update UI Tombol Pemicu
+            const triggerBtn = document.querySelector(`.btn-payment-trigger[data-target="${activePaymentTarget}"]`);
+            triggerBtn.querySelector('.payment-name').textContent = label;
+            triggerBtn.querySelector('.payment-logo').src = img;
+
+            // Styling Modal Option yang dipilih
+            document.querySelectorAll('#paymentOptionsList .payment-option').forEach(opt => opt.classList.remove('bg-primary-subtle'));
+            element.classList.add('bg-primary-subtle');
+
+            // Logika Unik untuk "Potong Saldo"
+            const saldoContainer = formEl.querySelector('.saldo_payment_section');
+            const waInput = saldoContainer.querySelector('.wa_pembayaran_input');
+            const pinInput = saldoContainer.querySelector('.pin_pembayaran_input');
+            const infoBox = saldoContainer.querySelector('.info_saldo_box');
+
+            if (val === 'SALDO') {
+                saldoContainer.classList.remove('d-none');
+                waInput.setAttribute('required', 'required');
+                pinInput.setAttribute('required', 'required');
+                if(infoBox.classList.contains('d-none')) {
+                     globalFetchedSaldo[activePaymentTarget] = 0;
+                }
+            } else {
+                saldoContainer.classList.add('d-none');
+                waInput.removeAttribute('required');
+                pinInput.removeAttribute('required');
+                pinInput.value = '';
+            }
+
+            paymentModalInstance.hide();
+            updateBtnSubmit(activePaymentTarget);
+        }
+
+        // Daftarkan listener klik untuk opsi manual (Dana, Doku, Saldo) yang ter-render statis di modal
+        document.querySelectorAll('#paymentOptionsList .payment-option').forEach(btn => {
+            btn.addEventListener('click', () => selectPayment(btn));
+        });
+        // === END: INTEGRASI TRIPAY CHANNEL MODAL ===
 
         // Aksi Klik Tombol "Cek Saldo"
         document.querySelectorAll('.btn_cek_saldo_ajax').forEach(function(btn) {
