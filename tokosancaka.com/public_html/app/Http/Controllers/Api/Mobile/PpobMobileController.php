@@ -606,13 +606,13 @@ class PpobMobileController extends Controller
                             // Tetap dipertahankan untuk backward compatibility (jika frontend lama masih membaca field ini)
                             $item['nama_pembeli'] = $item['pemesan_nama']; 
                         } else {
-                            $item['sumber_order'] = 'Website / Guest';
+                            $item['sumber_order'] = 'Website';
                             $item['pemesan_id']   = null;
-                            $item['pemesan_nama'] = 'Guest';
+                            $item['pemesan_nama'] = 'Website';
                             $item['pemesan_toko'] = '-';
                             
                             // Tetap dipertahankan untuk backward compatibility
-                            $item['nama_pembeli'] = 'Website / Guest';
+                            $item['nama_pembeli'] = 'Website';
                         }
                     }
                     $mappedItems[] = $item;
