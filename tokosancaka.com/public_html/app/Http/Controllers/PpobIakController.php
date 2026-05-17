@@ -1269,28 +1269,17 @@ class PpobIakController extends Controller
         }
     }
 
-    // --- FUNGSI BARU: SINKRONISASI PRICELIST PRABAYAR ---
-    public function syncPricelistPrepaid($type = '', $operator = '')
+   // --- FUNGSI BARU: SINKRONISASI PRICELIST PRABAYAR (WIPE & FRESH BULK INSERT) ---
+    public function syncPricelistPrepaid()
     {
-        // 1. Setup Path Endpoint Sesuai Dokumentasi
-        // Jika type dan operator diisi, url menjadi /api/pricelist/pulsa/telkomsel dst.
-        // Jika kosong, url menjadi /api/pricelist (menarik semua produk)
-        $path = '/api/pricelist';
-        if (!empty($type)) {
-            $path .= '/' . $type;
-            if (!empty($operator)) {
-                $path .= '/' . $operator;
-            }
-        }
-
-        // 2. Setup Signature: md5(username + api_key + 'pl')
+        // Setup Signature: md5(username + api_key + 'pl')
         $sign = md5($this->username . $this->apiKey . 'pl');
 
-        Log::info('LOG LOG - Sync Pricelist Prepaid Request initiated.', ['path' => $path]); // LOG LOG
+        Log::info('LOG LOG - Sync Pricelist Prepaid Request initiated.'); // LOG LOG
 
         try {
-            // 3. Hit API IAK Prabayar
-            $response = Http::post($this->prepaidBaseUrl . $path, [
+            // Hit API IAK Prabayar untuk menarik semua katalog produk
+            $response = Http::post($this->prepaidBaseUrl . '/api/pricelist', [
                 'username' => $this->username,
                 'sign'     => $sign,
                 'status'   => 'all'
@@ -1298,30 +1287,38 @@ class PpobIakController extends Controller
 
             $result = $response->json();
 
-            // 4. Proses Response
             if ($response->successful() && isset($result['data']['pricelist'])) {
-                Log::info('LOG LOG - Sync Pricelist Prepaid Success. Memasukkan data ke DB...'); // LOG LOG
+                Log::info('LOG LOG - Sync Pricelist Prepaid Success. Mengosongkan DB lokal dan mempersiapkan data fresh...'); // LOG LOG
                 
-                $inserted = 0;
+                // 1. HAPUS SEMUA DATABASE LOKAL TERLEBIH DAHULU
+                IakPricelistPrepaid::truncate();
+
+                $now = now();
+                $insertData = [];
+
+                // 2. MAPPING DATA SESUAI STRUKTUR TABEL DATABASE SANCAKA
                 foreach ($result['data']['pricelist'] as $item) {
-                    // Update atau buat baru data berdasarkan product_code
-                    IakPricelistPrepaid::updateOrCreate(
-                        ['code' => $item['product_code']], 
-                        [
-                            'name'     => $item['product_description'],
-                            'price'    => $item['product_price'], // Harga modal dari IAK
-                            'type'     => $item['product_type'],
-                            'operator' => $item['product_description'], // Atau field lain jika ada
-                            'status'   => $item['status'] === 'active' ? 'Active' : 'Inactive',
-                            // Sesuaikan nama kolom di bawah ini jika berbeda dengan struktur tabel Anda
-                            // 'nominal'  => $item['product_nominal'],
-                            // 'details'  => $item['product_details'],
-                        ]
-                    );
-                    $inserted++;
+                    $insertData[] = [
+                        'operator'    => $item['product_description'] ?? '-',
+                        'code'        => $item['product_code'],
+                        'description' => $item['product_nominal'] ?? '-',
+                        'price'       => $item['product_price'] ?? 0,
+                        'status'      => (isset($item['status']) && $item['status'] === 'active') ? 'Active' : 'Inactive',
+                        'type'        => $item['product_type'] ?? 'umum',
+                        'icon_url'    => $item['icon_url'] ?? '-',
+                        'created_at'  => $now,
+                        'updated_at'  => $now,
+                    ];
                 }
 
-                return back()->with('success', "Pricelist Prabayar berhasil diperbarui dari server IAK. Total: {$inserted} produk.");
+                // 3. INPUT BARU SECARA MASSAL (Bagi per 500 baris agar tidak overload)
+                foreach (array_chunk($insertData, 500) as $chunk) {
+                    IakPricelistPrepaid::insert($chunk);
+                }
+
+                Log::info('LOG LOG - Sync Pricelist Prepaid Fresh Insert Completed.', ['total' => count($insertData)]); // LOG LOG
+
+                return back()->with('success', "Database dikosongkan! Berhasil memasukkan " . count($insertData) . " data produk prabayar terbaru dari IAK.");
             }
 
             Log::error('LOG LOG - Sync Pricelist Prepaid Failed Response', ['response' => $result]); // LOG LOG
