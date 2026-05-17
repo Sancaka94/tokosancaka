@@ -291,6 +291,13 @@ class PpobMobileController extends Controller
                 return response()->json(['success' => false, 'message' => 'Metode Pembayaran CASH hanya khusus untuk Admin. Silakan gunakan metode bayar Gateway atau Saldo.']);
             }
 
+            Log::info('LOG LOG - Debug Saldo Sebelum Potong:', [
+                'id_user' => $user->id_pengguna,
+                'saldo_user' => $user->balance_iak,
+                'harga_produk' => $product->price,
+                'metode_bayar_diterima' => $paymentMethod
+            ]);
+
             if ($user->balance_iak < $product->price) {
                 return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi.']);
             }
