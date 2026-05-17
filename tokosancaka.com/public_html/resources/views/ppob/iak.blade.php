@@ -184,38 +184,46 @@
                                     <i class="bi bi-exclamation-triangle-fill me-2"></i> Maaf, saldo Anda tidak mencukupi untuk membeli produk ini menggunakan potong saldo.
                                 </div>
 
-                                {{-- GRUP DETAIL PEMBAYARAN PRABAYAR --}}
-                                <div class="card bg-light border-0 p-3 mb-3 rounded-3">
+                               {{-- GRUP DETAIL PEMBAYARAN --}}
+                                <div class="card bg-light border-0 p-3 mb-3 rounded-3 mt-4">
                                     <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Detail Pembayaran</h6>
 
-                                    {{-- NOMOR WA (Pre-fill) --}}
                                     <div class="mb-3">
-                                        <label class="form-label fw-semibold small">Nomor WhatsApp</label>
+                                        <label class="form-label fw-semibold small">Nomor WhatsApp Struk</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-white"><i class="bi bi-whatsapp text-success"></i></span>
-                                            <input type="text" class="form-control wa-formatter" name="whatsapp_number" value="{{ auth()->user()->no_wa ?? '' }}" placeholder="08xxxx (Untuk struk)" required>
+                                            <input type="text" class="form-control wa-formatter" name="whatsapp_number" value="{{ auth()->user()->no_wa ?? '' }}" placeholder="08xxxx" required>
                                         </div>
-                                        <div class="form-text text-muted" style="font-size: 12px;">Struk / Token akan dikirim ke WA ini.</div>
                                     </div>
 
-                                    {{-- METODE PEMBAYARAN --}}
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold small">Metode Pembayaran</label>
-                                        <select class="form-select" name="payment_method" id="payment_method_pra" required>
+                                        <select class="form-select" name="payment_method" class="payment_method_selector" required>
                                             <option value="">-- Pilih Metode Bayar --</option>
-                                            <option value="SALDO">Potong Saldo (Sisa: Rp {{ number_format(auth()->user()->saldo ?? 0, 0, ',', '.') }})</option>
+                                            <option value="SALDO">Potong Saldo (Verifikasi WA & PIN)</option>
                                             <option value="TRIPAY">Payment Gateway (QRIS, VA, E-Wallet)</option>
                                             <option value="DOKU">DOKU Jokul</option>
                                         </select>
                                     </div>
 
-                                    {{-- INPUT PIN --}}
-                                    <div class="mb-2 d-none" id="pin_container_pra">
-                                        <label class="form-label fw-semibold small text-danger">PIN Keamanan</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-white"><i class="bi bi-shield-lock text-danger"></i></span>
-                                            <input type="password" class="form-control" name="pin" id="pin_pra" placeholder="******" maxlength="6" autocomplete="off">
+                                    {{-- BLOK VERIFIKASI SALDO --}}
+                                    <div class="saldo_payment_section d-none border border-primary p-3 rounded bg-white">
+                                        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-shield-lock me-1"></i> Verifikasi Akun Sancaka</h6>
+                                        <div class="mb-2">
+                                            <label class="form-label small fw-semibold">No WhatsApp Akun Sancaka</label>
+                                            <input type="text" class="form-control wa-formatter wa_pembayaran_input" name="wa_pembayaran" value="{{ auth()->user()->no_wa ?? '' }}" placeholder="08xxxx">
                                         </div>
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-semibold text-danger">PIN Keamanan</label>
+                                            <input type="password" class="form-control pin_pembayaran_input" name="pin_pembayaran" placeholder="******" maxlength="6">
+                                        </div>
+                                        <button type="button" class="btn btn-outline-primary w-100 btn-sm btn_cek_saldo_ajax">Cek & Verifikasi Saldo</button>
+
+                                        <div class="info_saldo_box alert alert-success d-none p-2 small mb-0 mt-3">
+                                            <i class="bi bi-person-check-fill"></i> <span class="nama_akun_teks fw-bold"></span><br>
+                                            <i class="bi bi-wallet2"></i> Sisa Saldo: Rp <span class="nominal_saldo_teks fw-bold"></span>
+                                        </div>
+                                        <div class="error_saldo_box alert alert-danger d-none p-2 small mb-0 mt-3"></div>
                                     </div>
                                 </div>
 
@@ -851,6 +859,106 @@
             this.value = val;
         });
     });
+
+    // ==========================================
+// LOGIKA METODE PEMBAYARAN & AJAX CEK SALDO
+// ==========================================
+document.addEventListener('DOMContentLoaded', function() {
+    let globalFetchedSaldo = 0;
+
+    // Tangkap semua selector (karena ada di prabayar dan pascabayar)
+    document.querySelectorAll('select[name="payment_method"]').forEach(function(select) {
+        select.addEventListener('change', function() {
+            let container = this.closest('form').querySelector('.saldo_payment_section');
+            let waInput = container.querySelector('.wa_pembayaran_input');
+            let pinInput = container.querySelector('.pin_pembayaran_input');
+            let btnSubmit = this.closest('form').querySelector('button[type="submit"]');
+
+            if (this.value === 'SALDO') {
+                container.classList.remove('d-none');
+                waInput.setAttribute('required', 'required');
+                pinInput.setAttribute('required', 'required');
+
+                // Wajib klik cek saldo dulu, matikan tombol submit utama
+                if(btnSubmit) btnSubmit.disabled = true;
+            } else {
+                container.classList.add('d-none');
+                waInput.removeAttribute('required');
+                pinInput.removeAttribute('required');
+                pinInput.value = '';
+
+                // Bebaskan tombol submit (Gateway tak perlu cek uang)
+                if(btnSubmit && document.getElementById('product_code_pra').value) {
+                    btnSubmit.disabled = false;
+                }
+            }
+        });
+    });
+
+    // Aksi Klik Tombol "Cek Saldo"
+    document.querySelectorAll('.btn_cek_saldo_ajax').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            let container = this.closest('.saldo_payment_section');
+            let noWa = container.querySelector('.wa_pembayaran_input').value;
+            let pin = container.querySelector('.pin_pembayaran_input').value;
+            let infoBox = container.querySelector('.info_saldo_box');
+            let errBox = container.querySelector('.error_saldo_box');
+            let btnSubmit = this.closest('form').querySelector('button[type="submit"]');
+
+            // Variabel Harga (Jika di prabayar ambil dari variable js, jika pascabayar anggap bisa dilanjut)
+            let neededPrice = (typeof selectedProductPrice !== 'undefined') ? selectedProductPrice : 0;
+
+            if(!noWa || !pin) {
+                errBox.innerHTML = "Harap isi Nomor WA dan PIN!";
+                errBox.classList.remove('d-none');
+                infoBox.classList.add('d-none');
+                return;
+            }
+
+            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Cek...';
+            this.disabled = true;
+            errBox.classList.add('d-none');
+            infoBox.classList.add('d-none');
+
+            fetch("{{ route('ppob.verify_saldo') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": "{{ csrf_token() }}" },
+                body: JSON.stringify({ no_wa: noWa, pin: pin })
+            })
+            .then(res => res.json())
+            .then(data => {
+                this.innerHTML = 'Cek & Verifikasi Saldo';
+                this.disabled = false;
+
+                if (data.success) {
+                    globalFetchedSaldo = data.saldo;
+                    container.querySelector('.nama_akun_teks').innerText = data.nama;
+                    container.querySelector('.nominal_saldo_teks').innerText = data.saldo_format;
+                    infoBox.classList.remove('d-none');
+
+                    // Validasi apakah saldo cukup untuk produk yang dipilih
+                    if (neededPrice > 0 && globalFetchedSaldo < neededPrice) {
+                        errBox.innerHTML = `Maaf, saldo Anda (Rp ${data.saldo_format}) kurang. Harga: Rp ${neededPrice.toLocaleString('id-ID')}`;
+                        errBox.classList.remove('d-none');
+                        if(btnSubmit) btnSubmit.disabled = true;
+                    } else {
+                        // Saldo cukup, buka gembok submit
+                        if(btnSubmit) btnSubmit.disabled = false;
+                    }
+                } else {
+                    errBox.innerHTML = data.message;
+                    errBox.classList.remove('d-none');
+                    if(btnSubmit) btnSubmit.disabled = true;
+                }
+            }).catch(err => {
+                this.innerHTML = 'Cek & Verifikasi Saldo';
+                this.disabled = false;
+                errBox.innerHTML = "Gagal terhubung ke server.";
+                errBox.classList.remove('d-none');
+            });
+        });
+    });
+});
 
 </script>
 @endpush
