@@ -11,5 +11,10 @@ class IakPricelistPrepaid extends Model
     protected $fillable = [
         'operator', 'code', 'description', 'price', 'status', 'type', 'icon_url'
     ];
-    // LOG LOG
+    
+    // Fungsi untuk menambahkan +50 ke setiap harga
+    public function getPriceAttribute($value)
+    {
+        return $value + 50;
+    }
 }
