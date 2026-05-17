@@ -1110,4 +1110,74 @@ class PpobIakController extends Controller
         }
     }
 
+    // ========================================================
+    // --- FUNGSI BARU: CHECK STATUS PRABAYAR (REFRESH STATUS) ---
+    // ========================================================
+    public function checkStatusPrepaid($ref_id)
+    {
+        $transaction = TransactionPpobIak::where('ref_id', $ref_id)->firstOrFail();
+
+        // Format signature prabayar check status sesuai dokumentasi IAK: md5(username + api_key + ref_id)
+        $sign = md5($this->username . $this->apiKey . $transaction->ref_id);
+
+        Log::info('LOG LOG - Check Status Prepaid Request initiated.', ['ref_id' => $refId ?? $ref_id]);
+
+        try {
+            $response = Http::post($this->prepaidBaseUrl . '/api/check-status', [
+                'username' => $this->username,
+                'ref_id'   => $transaction->ref_id,
+                'sign'     => $sign
+            ]);
+
+            $result = $response->json();
+
+            if ($response->successful() && isset($result['data'])) {
+                $apiCode = $result['data']['rc'] ?? null;
+                $codeInfo = IakPrepaidResponseCode::where('code', $apiCode)->first();
+
+                $statusMap = [0 => 'PROCESS', 1 => 'SUCCESS', 2 => 'FAILED'];
+                $apiStatus = $result['data']['status'] ?? 0;
+
+                $finalStatus = $codeInfo ? strtoupper($codeInfo->status) : ($statusMap[$apiStatus] ?? 'PROCESS');
+                $finalMessage = $codeInfo ? $codeInfo->description : ($result['data']['message'] ?? 'Status terupdate');
+
+                // --- LOGIKA REFUND JIKA BERUBAH JADI FAILED VIA REFRESH STATUS ---
+                if (in_array($transaction->status, ['PROCESS', 'PENDING']) && $finalStatus === 'FAILED') {
+                    if ($transaction->user_id) {
+                        $userRefund = User::find($transaction->user_id);
+                        if ($userRefund) {
+                            $userRefund->increment('saldo', $transaction->price); // Kembalikan saldo pengguna
+                            Log::info('LOG LOG - Saldo Prepaid Refunded via Check Status', ['ref_id' => $transaction->ref_id, 'amount' => $transaction->price]);
+                        }
+                    }
+                }
+
+                // Update data transaksi di database lokal
+                $transaction->update([
+                    'status'  => $finalStatus,
+                    'sn'      => $result['data']['sn'] ?? $transaction->sn,
+                    'price'   => $result['data']['price'] ?? $transaction->price,
+                    'tr_id'   => $result['data']['tr_id'] ?? $transaction->tr_id,
+                    'message' => $finalMessage
+                ]);
+
+                // Tembak Notifikasi ke Mobile App (Expo) jika sukses
+                if ($finalStatus === 'SUCCESS' && !empty($result['data']['sn'])) {
+                    $this->_sendExpoPushNotification($transaction, $result['data']['sn']);
+                }
+
+                Log::info('LOG LOG - Check Status Prepaid Success Result updated.', ['ref_id' => $transaction->ref_id, 'status' => $finalStatus]);
+
+                return redirect()->back()->with('success', 'Status transaksi prabayar berhasil diperbarui: ' . $finalMessage);
+            }
+
+            Log::error('LOG LOG - Check Status Prepaid Failed Response received', ['response' => $result]);
+            return redirect()->back()->with('error', 'Gagal memperbarui status. Respon dari provider tidak valid.');
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG - Check Status Prepaid Exception occurred', ['error' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'Koneksi error saat mencoba memperbarui status ke API IAK.');
+        }
+    }
+
 }
