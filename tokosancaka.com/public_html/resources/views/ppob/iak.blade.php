@@ -376,8 +376,8 @@
             <div class="modal-body p-0">
                 <div class="list-group list-group-flush rounded-0" id="paymentOptionsList">
                     <!-- Manual -->
-                    <button type="button" class="list-group-item list-group-item-action p-3 d-flex align-items-center payment-option" data-value="SALDO" data-label="Potong Saldo (Verifikasi WA & PIN)" data-img="https://cdn-icons-png.flaticon.com/512/1086/1086060.png">
-                        <img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="me-3" style="width:32px; height:32px;">
+                    <button type="button" class="list-group-item list-group-item-action p-3 d-flex align-items-center payment-option" data-value="SALDO" data-label="Potong Saldo (Verifikasi WA & PIN)" data-img="https://cdn-icons-png.flaticon.com/512/10149/10149443.png">
+                        <img src="https://cdn-icons-png.flaticon.com/512/10149/10149443.png" class="me-3" style="width:32px; height:32px;">
                         <div class="text-start">
                             <div class="fw-bold text-dark">Potong Saldo</div>
                             <div class="text-muted small">Verifikasi via WA & PIN Keamanan</div>
