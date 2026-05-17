@@ -748,17 +748,31 @@ class PpobMobileController extends Controller
             }
         }
 
-        // ========================================================
+       // ========================================================
         // SISA KODE DI BAWAH HANYA JALAN JIKA PAKAI SALDO / CASH
         // ========================================================
         
-        // PENGAMANAN BARU: Jika pilih CASH, pastikan itu Admin
-        if (strtoupper($paymentMethod) === 'CASH' && !$isAdmin4) {
+        $admin = User::find(4);
+        if (!$admin) {
+            return response()->json(['success' => false, 'message' => 'Sistem Error: Admin utama tidak ditemukan.']);
+        }
+
+        $isCash = (strtoupper($paymentMethod) === 'CASH');
+
+        // 1. PENGAMANAN: Jika pilih CASH, pastikan itu Admin
+        if ($isCash && !$isAdmin4) {
             return response()->json(['success' => false, 'message' => 'Metode Pembayaran CASH hanya khusus untuk Admin. Silakan gunakan metode bayar Gateway atau Saldo.']);
         }
 
-        if ($user->balance_iak < $transaction->price) {
+        // 2. CEK SALDO LOKAL: Jika Potong Saldo (bukan CASH), pastikan saldo user cukup
+        if (!$isCash && $user->saldo < $transaction->price) {
             return response()->json(['success' => false, 'message' => 'Saldo Anda tidak mencukupi untuk membayar tagihan ini.']);
+        }
+
+        // 3. CEK SALDO PUSAT: Pastikan balance_iak Admin cukup untuk nembak API IAK
+        if ($admin->balance_iak < $transaction->price) {
+            Log::error('LOG LOG - Transaksi Gagal: Saldo IAK Pusat (ID 4) tidak cukup untuk Pascabayar!');
+            return response()->json(['success' => false, 'message' => 'Maaf, transaksi gagal diproses saat ini (Gangguan Pusat).']);
         }
 
         $lock = Cache::lock('pay_pasca_' . $transaction->tr_id, 10);
@@ -785,9 +799,17 @@ class PpobMobileController extends Controller
                 $status = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
 
                 if (in_array($status, ['PROCESS', 'SUCCESS'])) {
-                    $user->balance_iak -= $transaction->price;
-                    $user->save();
-                    Log::info('LOG LOG - Saldo Berhasil Dipotong: Rp ' . $transaction->price);
+                    // POTONG SALDO LOKAL: Jika bukan CASH
+                    if (!$isCash) {
+                        $user->saldo -= $transaction->price;
+                        $user->save();
+                    }
+
+                    // POTONG SALDO PUSAT: Selalu potong balance_iak karena dipakai tembak API
+                    $admin->balance_iak -= $transaction->price;
+                    $admin->save();
+                    
+                    Log::info('LOG LOG - Saldo Berhasil Dipotong (Pascabayar). Saldo Lokal User: ' . (!$isCash ? 'Ya' : 'Tidak (CASH)') . ' | Saldo Pusat IAK: Ya');
                 }
 
                 $transaction->update([
@@ -805,7 +827,7 @@ class PpobMobileController extends Controller
 
             $transaction->update(['status' => 'FAILED', 'message' => 'Invalid API Response dari Pusat']);
             return response()->json(['success' => false, 'message' => 'Gagal memproses pembayaran ke server pusat.']);
-
+            
         } catch (\Exception $e) {
             Log::error('LOG LOG - [API Mobile] Timeout / Error Pay Pasca: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Koneksi lambat. Pembayaran sedang diproses di latar belakang. Cek riwayat berkala.']);
