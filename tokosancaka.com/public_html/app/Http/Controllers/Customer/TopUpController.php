@@ -1970,144 +1970,154 @@ class TopUpController extends Controller
 
     public function createTopUpPaymentDANA(Transaction $transaction)
     {
-        $trxId = $transaction->reference_id;
+        // ====================================================================
+        // 1. CONFIGURATION (SYNC ID)
+        // ====================================================================
+        // Menggunakan ID Valid (2166...) untuk Header & Body agar sinkron
+        $validId = "216620080014040009735";
+        $merchantIdConf = $validId;
+        $partnerIdConf  = "2025081520100641466855"; // Partner ID yang sinkron dengan Merchant ID di atas
 
-        // 1. Sanitasi ID agar aman untuk API DANA (hilangkan strip/karakter aneh)
-        $cleanTrxId = preg_replace('/[^a-zA-Z0-9]/', '', $trxId);
-
-        Log::info('DANA START for Transaction Table (Payment-Gateway): ' . $trxId);
-
+        // ====================================================================
+        // 2. DATA PREPARATION
+        // ====================================================================
         $user = Auth::user();
-        $returnUrl = route('dana.return');
+        $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $transaction->reference_id);
+        $timestamp    = Carbon::now('Asia/Jakarta')->toIso8601String();
+        // $expiryTime   = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+        $expiryTime   = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+        $amountValue  = number_format((float)$transaction->amount, 2, '.', '');
 
-        // Gunakan toIso8601String() agar format waktu valid dan diterima DANA
-        $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
-        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->toIso8601String();
-
-        // Menggunakan config() sesuai kodemu sebelumnya
-        $merchantId = isset($merchantId) ? $merchantId : config('services.dana.merchant_id');
-        $finalAmount = isset($testAmount) ? $testAmount : number_format((float)$transaction->amount, 2, '.', '');
-
+        // ====================================================================
+        // 3. BODY REQUEST
+        // ====================================================================
         $bodyArray = [
-            "partnerReferenceNo" => $cleanTrxId,
-            "merchantId" => $merchantId,
-            "amount" => [
-                "value" => $finalAmount,
+            "partnerReferenceNo" => $cleanInvoice,
+            "merchantId"         => $merchantIdConf,
+            "amount"             => [
+                "value"    => $amountValue,
                 "currency" => "IDR"
             ],
-            "validUpTo" => $expiryTime,
-            "urlParams" => [
+            "validUpTo"          => $expiryTime,
+            "urlParams"          => [
+                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+            ],
+            // Opsi Pembayaran (Wajib BALANCE/Saldo agar aman tanpa Token)
+            "payOptionDetails"   => [
                 [
-                    "url" => $returnUrl,
-                    "type" => "PAY_RETURN",
-                    "isDeeplink" => "Y" // Diubah jadi Y agar support mobile web/app DANA
-                ],
-                [
-                    "url" => route('dana.notify'),
-                    "type" => "NOTIFICATION",
-                    "isDeeplink" => "Y"
+                    "payMethod"   => "BALANCE",
+                    "payOption"   => "BALANCE",
+                    "transAmount" => ["value" => $amountValue, "currency" => "IDR"],
+                    "feeAmount"   => ["value" => "0.00", "currency" => "IDR"]
                 ]
             ],
-            // 💡 FIX: payOptionDetails harus diisi lengkap. payOption tidak boleh "" (string kosong)
-            "payOptionDetails" => [
-                [
-                    "payMethod" => "BALANCE",
-                    "payOption" => "BALANCE", // <-- FIX
-                    "transAmount" => [
-                        "value" => $finalAmount,
-                        "currency" => "IDR"
-                    ],
-                    "feeAmount" => [      // <-- DITAMBAHKAN
-                        "value" => "0.00",
-                        "currency" => "IDR"
-                    ]
-                ]
-            ],
-            "additionalInfo" => [
-                "mcc" => "5732",
-                "order" => [
-                    "orderTitle" => substr("Top Up " . $cleanTrxId, 0, 40),
+            "additionalInfo"     => [
+                "productCode" => "51051000100000000001",
+                "mcc"         => "5732",
+                "order"       => [
+                    "orderTitle"        => substr("Top Up " . $cleanInvoice, 0, 40),
                     "merchantTransType" => "01",
-                    "scenario" => "REDIRECT",
-                    "buyer" => [
-                        "externalUserId" => (string) ($user->id_pengguna ?? 'GUEST'.rand(100,999)),
+                    "orderMemo"         => substr("Inv " . $cleanInvoice, 0, 40),
+                    "createdTime"       => $timestamp,
+                    "buyer"             => [
+                        "externalUserId"   => (string) ($user->id_pengguna ?? 'GUEST'.rand(100,999)),
                         "externalUserType" => "MERCHANT_USER",
-                        "nickname" => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap ?? 'Guest'), 0, 20),
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap ?? 'Guest'), 0, 20),
                     ],
-                    // 💡 FIX: Ditambahkan object 'goods' karena sering jadi required field di DANA
+                    // Goods Wajib Ada
                     "goods" => [
                         [
-                            "name" => "Saldo Top Up",
-                            "merchantGoodsId" => substr("TOPUP" . $cleanTrxId, 0, 40),
-                            "description" => "Top Up Saldo Akun",
-                            "category" => "DIGITAL_GOODS",
-                            "price" => ["value" => $finalAmount, "currency" => "IDR"],
-                            "unit" => "pcs",
-                            "quantity" => "1"
+                            "name"            => "Saldo Top Up",
+                            "merchantGoodsId" => substr("TOPUP" . $cleanInvoice, 0, 40),
+                            "description"     => "Top Up Saldo Akun",
+                            "category"        => "DIGITAL_GOODS",
+                            "price"           => ["value" => $amountValue, "currency" => "IDR"],
+                            "unit"            => "pcs",
+                            "quantity"        => "1"
                         ]
                     ]
                 ],
                 "envInfo" => [
-                    "sourcePlatform" => "IPG",
-                    "terminalType" => "SYSTEM",
+                    "sourcePlatform"    => "IPG",
+                    "terminalType"      => "SYSTEM",
                     "orderTerminalType" => "WEB",
                 ]
             ]
         ];
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
         try {
+            // ====================================================================
+            // 4. SIGNATURE & HEADERS
+            // ====================================================================
             $accessToken = $this->danaSignature->getAccessToken();
-            $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; // <-- PATH DIPERTAHANKAN
-
-            $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
-
-            $baseUrl = config('services.dana.base_url');
+            $signature   = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
 
             $headers = [
-                'Authorization' => 'Bearer ' . $accessToken,
-                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
-                'X-EXTERNAL-ID' => Str::random(32),
-                'X-TIMESTAMP' => $timestamp,
-                'X-SIGNATURE' => $signature,
-                'Content-Type' => 'application/json',
-                'CHANNEL-ID' => '95221',
-                'ORIGIN' => config('services.dana.origin'),
+                'Authorization'  => 'Bearer ' . $accessToken,
+                'X-PARTNER-ID'   => $partnerIdConf, // ID Sinkron dengan Body
+                'X-EXTERNAL-ID'  => Str::random(32),
+                'X-TIMESTAMP'    => $timestamp,
+                'X-SIGNATURE'    => $signature,
+                'Content-Type'   => 'application/json',
+                'CHANNEL-ID'     => '95221',
+                'ORIGIN'         => config('services.dana.origin'),
             ];
 
-            // Tambahan Log Request untuk inspeksi jika terjadi error
-            Log::info('DANA_REQ_TOPUP', [
-                'url' => $baseUrl . $path,
-                'headers' => $headers,
-                'body' => $bodyArray
+            // ====================================================================
+            // 5. LOGGING REQUEST (SEBELUM KIRIM)
+            // ====================================================================
+            Log::info('DANA_REQ_START_TOPUP', [
+                'Invoice' => $cleanInvoice,
+                'URL'     => config('services.dana.base_url') . $relativePath,
+                'Headers' => $headers,
+                'Body'    => $bodyArray
             ]);
 
+            // ====================================================================
+            // 6. SEND REQUEST
+            // ====================================================================
             $response = Http::withHeaders($headers)
-              ->withBody($jsonBody, 'application/json')
-              ->post($baseUrl . $path);
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $relativePath);
 
             $result = $response->json();
 
-            Log::info('DANA Create Payment Result (TopUp):', $result);
+            // ====================================================================
+            // 7. LOGGING RESPONSE (SETELAH TERIMA)
+            // ====================================================================
+            Log::info('DANA_RES_END_TOPUP', [
+                'Invoice'     => $cleanInvoice,
+                'Status_Code' => $response->status(),
+                'Result'      => $result
+            ]);
 
+            // ====================================================================
+            // 8. HANDLE SUCCESS / REDIRECT
+            // ====================================================================
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
-                $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'] ?? null;
-                if ($redirectUrl) {
-                    // Potong URL jika terlalu panjang agar tidak error DB
+                $redirectUrl = $result['webRedirectUrl'] ?? null;
+                if($redirectUrl) {
+                    // Potong URL yang masuk ke DB jadi 255 karakter saja agar MySQL tidak crash
                     $transaction->payment_url = substr($redirectUrl, 0, 255);
                     $transaction->save();
+
+                    // USER TETAP DIALIKHAN PAKAI URL ASLI (Halaman DANA aman 100%)
                     return redirect()->away($redirectUrl);
                 }
             }
 
-            Log::error('DANA Gagal (TopUp):', $result);
-            $errorCode = $result['responseCode'] ?? 'N/A';
-            return back()->with('error', 'Gagal dari DANA: ' . ($result['responseMessage'] ?? 'Unknown') . ' (Code: ' . $errorCode . ')');
+            // Jika Gagal DANA, Log Error dan Kembalikan User
+            Log::error('DANA_FAIL_TOPUP', ['Result' => $result]);
+            return back()->with('error', 'Gagal memproses DANA: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 
         } catch (\Exception $e) {
-            Log::error('DANA Error (TopUp): ' . $e->getMessage());
-            return back()->with('error', 'Koneksi DANA Error.');
+            // Tangkap Error Koneksi / Koding
+            Log::error('DANA_EXCEPTION_TOPUP', ['Error' => $e->getMessage()]);
+            return back()->with('error', 'Terjadi kesalahan koneksi ke DANA.');
         }
     }
 
