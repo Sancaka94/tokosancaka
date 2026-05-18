@@ -757,7 +757,7 @@ class CheckoutController extends Controller
         // ====================================================================
         $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $order->invoice_number);
         $timestamp    = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        $expiryTime   = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+        $expiryTime   = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
         $amountValue  = number_format((float)$order->total_amount, 2, '.', '');
 
         // ====================================================================
