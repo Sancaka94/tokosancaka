@@ -1541,7 +1541,7 @@ class TopUpController extends Controller
                 // KUNCI PERBAIKAN: Paksa buat ID Referensi Baru di sini agar tidak Inconsistent
                 $bodyTest['partnerReferenceNo']       = "TRF_INSUF_" . time() . rand(1000, 9999);
 
-                $bodyTest['beneficiaryAccountNumber'] = "2460888509";
+                $bodyTest['beneficiaryAccountNumber'] = "81298055129";
                 $bodyTest['beneficiaryBankCode']      = "014";
                 $bodyTest['amount']['value']          = "50000000000.00"; // 50 Miliar IDR
 
