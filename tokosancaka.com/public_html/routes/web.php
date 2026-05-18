@@ -1300,3 +1300,6 @@ Route::post('/ppob/verify-saldo', [\App\Http\Controllers\PpobIakController::clas
 
 
 Route::get('/debug/dana-status/{orderId}', [TopUpController::class, 'debugDanaStatus']);
+
+Route::post('/dana/bank-inquiry', [TopUpController::class, 'bankAccountInquiry'])->name('customer.dana.bank_inquiry');
+Route::post('/dana/transfer-bank', [TopUpController::class, 'transferToBank'])->name('customer.dana.transfer_bank');
