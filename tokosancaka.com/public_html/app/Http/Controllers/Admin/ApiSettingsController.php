@@ -112,12 +112,14 @@ class ApiSettingsController extends Controller
                 'client_id'     => Api::getValue('dana_sandbox_client_id', 'sandbox'),
                 'client_secret' => Api::getValue('dana_sandbox_client_secret', 'sandbox'),
                 'private_key'   => Api::getValue('dana_sandbox_private_key', 'sandbox'),
+                'public_key'    => Api::getValue('dana_sandbox_public_key', 'sandbox'), // <-- TAMBAHKAN BARIS INI
             ],
             'production' => [
                 'merchant_id'   => Api::getValue('dana_prod_merchant_id', 'production'),
                 'client_id'     => Api::getValue('dana_prod_client_id', 'production'),
                 'client_secret' => Api::getValue('dana_prod_client_secret', 'production'),
                 'private_key'   => Api::getValue('dana_prod_private_key', 'production'),
+                'public_key'    => Api::getValue('dana_prod_public_key', 'production'), // <-- TAMBAHKAN BARIS INI
             ]
         ];
 
@@ -222,11 +224,13 @@ class ApiSettingsController extends Controller
                     Api::setValue('dana_prod_client_id', $request->dana_client_id, 'dana', 'production');
                     Api::setValue('dana_prod_client_secret', $request->dana_client_secret, 'dana', 'production');
                     Api::setValue('dana_prod_private_key', $request->dana_private_key, 'dana', 'production');
+                    Api::setValue('dana_prod_public_key', $request->dana_public_key, 'dana', 'production'); // <-- TAMBAHKAN BARIS INI
                 } else {
                     Api::setValue('dana_sandbox_merchant_id', $request->dana_merchant_id, 'dana', 'sandbox');
                     Api::setValue('dana_sandbox_client_id', $request->dana_client_id, 'dana', 'sandbox');
                     Api::setValue('dana_sandbox_client_secret', $request->dana_client_secret, 'dana', 'sandbox');
                     Api::setValue('dana_sandbox_private_key', $request->dana_private_key, 'dana', 'sandbox');
+                    Api::setValue('dana_sandbox_public_key', $request->dana_public_key, 'dana', 'sandbox'); // <-- TAMBAHKAN BARIS INI
                 }
             }
 

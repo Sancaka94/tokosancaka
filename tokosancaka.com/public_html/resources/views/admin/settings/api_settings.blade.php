@@ -625,6 +625,12 @@
                                     <label class="block text-sm font-medium text-gray-700">Private Key</label>
                                     <textarea name="dana_private_key" x-model="danaData[danaData.mode].private_key" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 font-mono text-xs"></textarea>
                                 </div>
+
+                                <div class="mb-4 mt-4">
+                                    <label class="block text-sm font-medium text-gray-700">Public Key</label>
+                                    <textarea name="dana_public_key" x-model="danaData[danaData.mode].public_key" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 font-mono text-xs"></textarea>
+                                </div>
+                                
                             </div>
                         </div>
                     </div>
