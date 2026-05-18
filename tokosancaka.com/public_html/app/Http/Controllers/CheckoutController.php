@@ -798,7 +798,7 @@ class CheckoutController extends Controller
                     ],
                     "goods" => [
                         [
-                            "name"            => "Test good",
+                            "name"            => "Pemabayaran Order ",
                             "merchantGoodsId" => substr("ITEM" . $cleanInvoice, 0, 64),
                             "description"     => "Pembayaran Order",
                             "category"        => "DIGITAL_GOODS",
