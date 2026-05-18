@@ -759,7 +759,7 @@ class CheckoutController extends Controller
         $timestamp    = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
 
         // 🚨 BATAS MAKSIMAL SANDBOX: 30 Menit. Kita set 25 menit agar aman.
-        $expiryTime   = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(25)->format('Y-m-d\TH:i:sP');
+        $expiryTime   = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
 
         $amountValue  = number_format((float)$order->total_amount, 2, '.', '');
 
