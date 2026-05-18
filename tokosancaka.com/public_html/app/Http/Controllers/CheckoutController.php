@@ -437,32 +437,46 @@ class CheckoutController extends Controller
             }
 
             // --- 4. Buat Order & Order Items ---
+
+            // Pindahkan logika KiriminAja ke sini agar variabel ID kecamatan/kelurahan tersedia
+            $storeSearch = $store->village . ', ' . $store->regency . ', ' . $store->province;
+            $userSearch = $user->village . ', ' . $user->regency . ', ' . $user->province;
+            $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
+            $userAddrRes = $kiriminAja->searchAddress($userSearch);
+
+            $storeAddr = $storeAddrRes['data'][0] ?? null;
+            $userAddr = $userAddrRes['data'][0] ?? null;
+
+            $storeDistrictId = $storeAddr['district_id'] ?? null;
+            $storeSubdistrictId = $storeAddr['subdistrict_id'] ?? null;
+            $userDistrictId = $userAddr['district_id'] ?? null;
+            $userSubdistrictId = $userAddr['subdistrict_id'] ?? null;
+
+            // Generate Invoice
             do {
-                 $invoiceNumber = 'SCK-ORD-' . strtoupper(Str::random(8)); // Ini sudah benar
+                 $invoiceNumber = 'SCK-ORD-' . strtoupper(Str::random(8));
             } while (Order::where('invoice_number', $invoiceNumber)->exists() || Pesanan::where('nomor_invoice', $invoiceNumber)->exists());
 
+            // Pembuatan Order sekarang tidak akan error karena variabel sudah dideklarasikan
             $order = new Order([
-                 'store_id'      => $store->id,
-                 'user_id'         => $user->id_pengguna,
-                 'invoice_number'  => $invoiceNumber,
-                 'subtotal'        => $subtotal,
-                 'shipping_cost'   => $shipping_cost,
-                 'insurance_cost'  => $applied_insurance_cost,
-                 'cod_fee'         => $cod_add_cost,
-                 'total_amount'    => $grand_total,
-                 'shipping_method' => $request->shipping_method,
-                 'payment_method'  => $request->payment_method,
-                 'status'          => (in_array($request->payment_method, ['cod', 'cash', 'CODBARANG'])) ? 'processing' : 'pending',
-                 'shipping_address'=> $user->address_detail ?? 'Alamat tidak diatur',
-                 // DITAMBAHKAN: Menyimpan data GPS dari request ke database
-                 'customer_latitude' => $request->latitude ?? null,
-                 'customer_longitude' => $request->longitude ?? null,
-                 'receiver_district_id'    => $userDistrictId,
-                 'receiver_subdistrict_id' => $userSubdistrictId,
-                 'sender_district_id'      => $storeDistrictId,
-                 'sender_subdistrict_id'   => $storeSubdistrictId,
-
-
+                 'store_id'                => $store->id,
+                 'user_id'                 => $user->id_pengguna,
+                 'invoice_number'          => $invoiceNumber,
+                 'subtotal'                => $subtotal,
+                 'shipping_cost'           => $shipping_cost,
+                 'insurance_cost'          => $applied_insurance_cost,
+                 'cod_fee'                 => $cod_add_cost,
+                 'total_amount'            => $grand_total,
+                 'shipping_method'         => $request->shipping_method,
+                 'payment_method'          => $request->payment_method,
+                 'status'                  => (in_array($request->payment_method, ['cod', 'cash', 'CODBARANG'])) ? 'processing' : 'pending',
+                 'shipping_address'        => $user->address_detail ?? 'Alamat tidak diatur',
+                 'customer_latitude'       => $request->latitude ?? null,
+                 'customer_longitude'      => $request->longitude ?? null,
+                 'receiver_district_id'    => $userDistrictId,        // <-- SUDAH AMAN
+                 'receiver_subdistrict_id' => $userSubdistrictId,     // <-- SUDAH AMAN
+                 'sender_district_id'      => $storeDistrictId,       // <-- SUDAH AMAN
+                 'sender_subdistrict_id'   => $storeSubdistrictId,    // <-- SUDAH AMAN
             ]);
             $order->save();
 
