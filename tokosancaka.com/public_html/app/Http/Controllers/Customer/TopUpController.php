@@ -1761,7 +1761,7 @@ class TopUpController extends Controller
         // ==============================================================================
 
         // 👉 SKENARIO 1: "Merchant does not exist or status abnormal"
-        $merchantId = "216110000000000000000";
+        // $merchantId = "216110000000000000000";
 
         // 👉 SKENARIO 2: "Inconsistent Request"
         // Jalankan transaksi pertama dengan $testAmount = "15000.00".
