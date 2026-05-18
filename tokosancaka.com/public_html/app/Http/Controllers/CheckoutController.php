@@ -779,7 +779,7 @@ class CheckoutController extends Controller
             "payOptionDetails"   => [
                 [
                     "payMethod"   => "BALANCE",
-                    "payOption"   => "",
+                    "payOption"   => "BALANCE",
                     "transAmount" => ["value" => $amountValue, "currency" => "IDR"]
                 ]
             ],
