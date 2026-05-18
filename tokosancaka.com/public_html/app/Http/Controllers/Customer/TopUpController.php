@@ -1537,6 +1537,10 @@ class TopUpController extends Controller
             if ($request->amount == 88888) {
                 // Modifikasi payload khusus untuk memaksa error Insufficient Fund
                 $bodyTest = $body;
+
+                // KUNCI PERBAIKAN: Paksa buat ID Referensi Baru di sini agar tidak Inconsistent
+                $bodyTest['partnerReferenceNo']       = "TRF_INSUF_" . time() . rand(1000, 9999);
+
                 $bodyTest['beneficiaryAccountNumber'] = "2460888509";
                 $bodyTest['beneficiaryBankCode']      = "014";
                 $bodyTest['amount']['value']          = "50000000000.00"; // 50 Miliar IDR
