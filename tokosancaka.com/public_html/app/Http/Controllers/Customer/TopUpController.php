@@ -2357,29 +2357,16 @@ class TopUpController extends Controller
         // ==============================================================================
 
         $merchantId = config('services.dana.merchant_id');
-        $finalAmount = isset($testAmount) ? $testAmount : number_format($transaction->amount, 2, '.', '');
+        $finalAmount = number_format($transaction->amount, 2, '.', '');
 
-        // PAYLOAD "PELURU PENUH" UNTUK MENGHINDARI 4005402
+        // PAYLOAD STRIPPED-DOWN (Sesuai persis dengan Request Sample DANA Cashier Pay)
         $bodyArray = [
             "partnerReferenceNo" => $trxId,
             "merchantId" => $merchantId,
-            // 1. SOLUSI: Masukkan subMerchantId (Sering wajib di Sandbox)
-            "subMerchantId" => $merchantId,
             "validUpTo" => $expiryTime,
             "amount" => [
                 "value" => $finalAmount,
                 "currency" => "IDR"
-            ],
-            // 2. SOLUSI: Masukkan payOptionDetails agar validasi DANA terpuaskan
-            "payOptionDetails" => [
-                [
-                    "payMethod" => "BALANCE",
-                    "payOption" => "BALANCE",
-                    "transAmount" => [
-                        "value" => $finalAmount,
-                        "currency" => "IDR"
-                    ]
-                ]
             ],
             "urlParams" => [
                 [
@@ -2388,28 +2375,19 @@ class TopUpController extends Controller
                     "isDeeplink" => "Y"
                 ],
                 [
-                    "url" => $notifyUrl,
+                    "url" => route('dana.notify'),
                     "type" => "NOTIFICATION",
                     "isDeeplink" => "N"
                 ]
             ],
             "additionalInfo" => [
                 "order" => [
-                    "orderTitle" => "Top Up " . $trxId,
-                    "merchantTransType" => "01",
-                    "scenario" => "REDIRECT",
-                    // 3. SOLUSI: Masukkan data Buyer
-                    "buyer" => [
-                        "externalUserId" => (string) ($user ? $user->id_pengguna : 'GUEST_' . time()),
-                        "externalUserType" => "MERCHANT_USER",
-                        "nickname" => \Illuminate\Support\Str::limit($user->nama_lengkap ?? 'Customer', 40, ''),
-                    ]
+                    "orderTitle" => "Top Up " . $trxId
                 ],
-                "mcc" => "5732", // Kategori Toko (Bisa diganti 5399 jika 5732 ditolak)
+                "mcc" => "5732",
                 "envInfo" => [
                     "sourcePlatform" => "IPG",
-                    "terminalType" => "WEB",
-                    "orderTerminalType" => "WEB"
+                    "terminalType" => "SYSTEM"
                 ],
                 "productCode" => "51051000100000000001",
                 "supportDeepLinkCheckoutUrl" => "true"
@@ -2418,7 +2396,6 @@ class TopUpController extends Controller
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        // Log payload mentah untuk mempermudah debugging jika ada error lanjutan
         Log::debug('DANA REQUEST PAYLOAD:', $bodyArray);
 
         try {
