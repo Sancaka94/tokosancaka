@@ -1744,14 +1744,14 @@ class TopUpController extends Controller
         }
     }
 
-    public function createPaymentDANA(Transaction $transaction)
+   public function createPaymentDANA(Transaction $transaction)
     {
         $trxId = $transaction->reference_id;
         Log::info('DANA START for Transaction Table: ' . $trxId);
 
         $user = Auth::user();
-        $returnUrl  = route('dana.return');
-        $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
+        $returnUrl = route('dana.return');
+        $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
         $bodyArray = [
@@ -1797,117 +1797,30 @@ class TopUpController extends Controller
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         try {
-             $accessToken = $this->danaSignature->getAccessToken();
-             $signature = $this->danaSignature->generateSignature('POST', '/payment-gateway/v1.0/debit/payment-host-to-host.htm', $jsonBody, $timestamp);
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature = $this->danaSignature->generateSignature('POST', '/payment-gateway/v1.0/debit/payment-host-to-host.htm', $jsonBody, $timestamp);
 
-             $baseUrl = config('services.dana.base_url');
+            $baseUrl = config('services.dana.base_url');
 
-             $response = Http::withHeaders([
-                'Authorization'  => 'Bearer ' . $accessToken,
-                'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-                'X-EXTERNAL-ID'  => Str::random(32),
-                'X-TIMESTAMP'    => $timestamp,
-                'X-SIGNATURE'    => $signature,
-                'Content-Type'   => 'application/json',
-                'CHANNEL-ID'     => '95221',
-                'ORIGIN'         => config('services.dana.origin'),
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $accessToken,
+                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => Str::random(32),
+                'X-TIMESTAMP' => $timestamp,
+                'X-SIGNATURE' => $signature,
+                'Content-Type' => 'application/json',
+                'CHANNEL-ID' => '95221',
+                'ORIGIN' => config('services.dana.origin'),
             ])->withBody($jsonBody, 'application/json')
               ->post($baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm');
 
             $result = $response->json();
 
-            // =====================================================================
-            // [GAPURA CUSTOM CHECKOUT - SC 54] BLOK UJI COBA OTOMATIS
-            // =====================================================================
-
-           // =====================================================================
-            // [CASHIER PAY] SCENARIO 1: GENERAL ERROR (Pemicu: Rp 77.777)
-            // =====================================================================
-            if ($transaction->amount == 77777) {
-                // 1. KUNCI UTAMA: Ubah path URL ke rute yang diminta DANA Sandbox
-                $pathTest = '/rest/redirection/v1.0/debit/payment-host-to-host';
-
-                $bodyTest = $bodyArray;
-                // 2. KUNCI KEDUA: Rusak field currency agar memicu General Error 5005400
-                $bodyTest['amount']['currency'] = "INVALID_CUR";
-
-                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
-
-                // Hitung signature baru berdasarkan pintu rute yang benar
-                $signatureTest = $this->danaSignature->generateSignature('POST', $pathTest, $jsonBodyTest, $timestamp);
-
-                // Eksekusi langsung ke DANA Sandbox dengan rute yang sesuai instruksi
-                $resTest = Http::withHeaders([
-                    'Authorization'  => 'Bearer ' . $accessToken,
-                    'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-                    'X-EXTERNAL-ID'  => Str::random(32),
-                    'X-TIMESTAMP'    => $timestamp,
-                    'X-SIGNATURE'    => $signatureTest,
-                    'Content-Type'   => 'application/json',
-                    'CHANNEL-ID'     => '95221',
-                    'ORIGIN'         => config('services.dana.origin'),
-                ])->withBody($jsonBodyTest, 'application/json')
-                  ->post($baseUrl . $pathTest);
-
-                return back()->with('error', "TES GENERAL ERROR SELESAI!\nResponse DANA Sandbox: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
-            }
-            // =====================================================================
-
-            // Skenario 2: Merchant Does Not Exist (Pemicu: Rp 44.444) -> Target Code 4045408
-            if ($transaction->amount == 44444) {
-                $bodyTest = $bodyArray;
-                $bodyTest['merchantId'] = "999999999999999999"; // Menggunakan ID Merchant palsu
-                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
-
-                $signatureTest = $this->danaSignature->generateSignature('POST', '/payment-gateway/v1.0/debit/payment-host-to-host.htm', $jsonBodyTest, $timestamp);
-
-                $resTest = Http::withHeaders([
-                    'Authorization'  => 'Bearer ' . $accessToken,
-                    'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-                    'X-EXTERNAL-ID'  => Str::random(32),
-                    'X-TIMESTAMP'    => $timestamp,
-                    'X-SIGNATURE'    => $signatureTest,
-                    'Content-Type'   => 'application/json',
-                    'CHANNEL-ID'     => '95221',
-                    'ORIGIN'         => config('services.dana.origin'),
-                ])->withBody($jsonBodyTest, 'application/json')
-                  ->post($baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm');
-
-                return back()->with('error', "TES MERCHANT NOT EXIST SELESAI! Response: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
-            }
-
-            // Skenario 3: Inconsistent Request (Pemicu: Rp 55.555) -> Target Code 4045418
-            if ($transaction->amount == 55555) {
-                // Hit pertama sukses diproses (menghasilkan url redirect di dalam variabel $result)
-
-                // Hit kedua langsung ditembak ulang menggunakan partnerReferenceNo yang SAMA tapi nilai amount diubah
-                $bodyTest = $bodyArray;
-                $bodyTest['amount']['value'] = "66666.00"; // Ubah nominal dari 55555 menjadi 66666
-                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
-
-                $signatureTest = $this->danaSignature->generateSignature('POST', '/payment-gateway/v1.0/debit/payment-host-to-host.htm', $jsonBodyTest, $timestamp);
-
-                $resTest = Http::withHeaders([
-                    'Authorization'  => 'Bearer ' . $accessToken,
-                    'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-                    'X-EXTERNAL-ID'  => Str::random(32),
-                    'X-TIMESTAMP'    => $timestamp,
-                    'X-SIGNATURE'    => $signatureTest,
-                    'Content-Type'   => 'application/json',
-                    'CHANNEL-ID'     => '95221',
-                    'ORIGIN'         => config('services.dana.origin'),
-                ])->withBody($jsonBodyTest, 'application/json')
-                  ->post($baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm');
-
-                return back()->with('error', "TES INCONSISTENT REQUEST SELESAI!\nHit 1: [" . ($result['responseCode'] ?? '') . "]\nHit 2: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
-            }
-            // =====================================================================
-
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'] ?? null;
-                if($redirectUrl) {
-                     $transaction->payment_url = $redirectUrl;
-                     $transaction->save();
+                if ($redirectUrl) {
+                    $transaction->payment_url = $redirectUrl;
+                    $transaction->save();
                     return redirect()->away($redirectUrl);
                 }
             }
@@ -2068,18 +1981,14 @@ class TopUpController extends Controller
         }
     }
 
-    /**
-     * EKSEKUSI POTONG SALDO DANA (AUTO DEBIT / DIRECT DEBIT)
-     */
     public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
     {
         $trxId = $transaction->reference_id;
         Log::info('[DANA BINDING] Memulai Auto-Debit untuk Top Up: ' . $trxId);
 
-        $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
-        $path = '/v1.0/debit/payment.htm'; // Endpoint khusus direct debit
+        $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
+        $path = '/v1.0/debit/payment.htm';
 
-        // Payload Direct Debit
         $body = [
             "partnerReferenceNo" => $trxId,
             "merchantId" => config('services.dana.merchant_id'),
@@ -2087,7 +1996,7 @@ class TopUpController extends Controller
                 "value" => number_format($transaction->amount, 2, '.', ''),
                 "currency" => "IDR"
             ],
-            "chargeToken" => "", // Dikosongkan karena pakai Authorization-Customer (Token OAuth)
+            "chargeToken" => "",
             "additionalInfo" => (object)[]
         ];
 
@@ -2098,133 +2007,46 @@ class TopUpController extends Controller
             $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
             $baseUrl = config('services.dana.base_url');
 
-            // PERBAIKAN: Simpan headers ke dalam variabel agar bisa dipakai ulang di blok AUTO-TEST
             $headers = [
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
                 'Authorization' => 'Bearer ' . $accessTokenB2B,
                 'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token,
-                'X-TIMESTAMP'   => $timestamp,
-                'X-SIGNATURE'   => $signature,
-                'ORIGIN'        => config('services.dana.origin'),
-                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-TIMESTAMP' => $timestamp,
+                'X-SIGNATURE' => $signature,
+                'ORIGIN' => config('services.dana.origin'),
+                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
                 'X-EXTERNAL-ID' => (string) time() . Str::random(6),
-                'X-DEVICE-ID'   => 'SANCAKA-WEB-POS',
-                'CHANNEL-ID'    => '95221'
+                'X-DEVICE-ID' => 'SANCAKA-WEB-POS',
+                'CHANNEL-ID' => '95221'
             ];
 
-            // Eksekusi Potong Saldo API
             $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post($baseUrl . $path);
 
             $result = $response->json();
-            Log::info('[DANA BINDING] Respon Potong Saldo: ', $result);
-
-            // =====================================================================
-            // [CASHIER PAY] AUTO-TEST SCRIPTS
-            // =====================================================================
-
-            // =====================================================================
-            // [CASHIER PAY] SCENARIO 1: GENERAL ERROR (Pemicu: Rp 77.777)
-            // =====================================================================
-            if ($transaction->amount == 77777) {
-                $pathTest = '/rest/redirection/v1.0/debit/payment-host-to-host';
-
-                // Susun ulang payload Cashier Pay minimalis agar tidak ditolak validasi skema
-                $bodyTest = [
-                    "partnerReferenceNo" => $trxId,
-                    "merchantId"         => config('services.dana.merchant_id'),
-                    "amount" => [
-                        "value"    => "77777.00",
-                        "currency" => "INVALID_CUR" // Kunci pemicu General Error 5005400
-                    ],
-                    "validUpTo" => $expiryTime,
-                    "additionalInfo" => (object)[]
-                ];
-
-                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
-                $hashedBodyTest = strtolower(hash('sha256', $jsonBodyTest));
-
-                // KOMPONEN WAJIB: Gunakan Symmetric Signature (B2B Token + Body)
-                $stringToSignTest = "POST:" . $pathTest . ":" . $accessToken . ":" . $hashedBodyTest . ":" . $timestamp;
-
-                // Gunakan client_secret/client_key internal Anda untuk enkripsi hmac sha256
-                $secretKey = config('services.dana.client_secret');
-                $signatureTest = base64_encode(hash_hmac('sha256', $stringToSignTest, $secretKey, true));
-
-                $resTest = Http::withHeaders([
-                    'Content-Type'  => 'application/json',
-                    'Authorization' => 'Bearer ' . $accessToken,
-                    'X-TIMESTAMP'   => $timestamp,
-                    'X-SIGNATURE'   => $signatureTest,
-                    'ORIGIN'        => config('services.dana.origin'),
-                    'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-                    'X-EXTERNAL-ID' => (string) time() . Str::random(6),
-                    'CHANNEL-ID'    => '95221'
-                ])->withBody($jsonBodyTest, 'application/json')
-                  ->post($baseUrl . $pathTest);
-
-                return back()->with('error', "TES GENERAL ERROR SELESAI!\nResponse Sandbox: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
-            }
-            // =====================================================================
-
-            // Skenario 2: Merchant Does Not Exist (PERBAIKAN: Pemicu diubah dari 44.444 jadi 44444)
-            if ($transaction->amount == 44444) {
-                $bodyTest = $body;
-                $bodyTest['merchantId'] = "999999999999999999"; // Mengisi merchant ID fiktif
-                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
-
-                $resTest = Http::withHeaders($headers)
-                    ->withBody($jsonBodyTest, 'application/json')
-                    ->post($baseUrl . $path);
-
-                return back()->with('error', "TES MERCHANT NOT EXIST SELESAI! Response: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
-            }
-
-            // Skenario 3: Inconsistent Request (Pemicu Input Nominal: Rp 55.555)
-            if ($transaction->amount == 55555) {
-                // Hit kedua langsung ditembak dengan partnerReferenceNo yang SAMA tapi nominal diubah
-                $bodyTest = $body;
-                $bodyTest['amount']['value'] = "66666.00"; // Ubah nominal dari 55555 ke 66666
-                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
-
-                $resTest = Http::withHeaders($headers)
-                    ->withBody($jsonBodyTest, 'application/json')
-                    ->post($baseUrl . $path);
-
-                return back()->with('error', "TES INCONSISTENT REQUEST SELESAI!\nHit 1: [" . ($result['responseCode'] ?? '') . "]\nHit 2: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
-            }
-            // =====================================================================
 
             Log::info('[DANA BINDING] Respon Potong Saldo (Normal Flow): ', $result);
 
-            // Cek Jika Potong Saldo BERHASIL (Kode 2000000)
             if (isset($result['responseCode']) && $result['responseCode'] == '2000000') {
 
-                // 1. Update Transaksi Sancaka
                 $transaction->update([
                     'status' => 'success',
                     'payment_status' => 'paid',
                     'note' => "[AUTO-DEBIT] Saldo DANA berhasil dipotong otomatis."
                 ]);
 
-                // 2. Tambah Saldo Utama User
                 $userAccount->increment('saldo', $transaction->amount);
 
-                // 3. Notifikasi
                 event(new SaldoUpdated($userAccount, $transaction->amount, $userAccount->saldo, 'Top up Saldo DANA Anda berhasil.'));
 
                 return redirect()->route('customer.topup.index')
-                    ->with('success', '🎉 Pembayaran Berhasil! Saldo DANA Anda telah terpotong secara otomatis.');
+                    ->with('success', 'Pembayaran Berhasil! Saldo DANA Anda telah terpotong secara otomatis.');
             }
-
-            // Cek Jika butuh verifikasi tambahan/OTP dari DANA (Kode 2005400)
             elseif (isset($result['responseCode']) && $result['responseCode'] == '2005400' && !empty($result['webRedirectUrl'])) {
                 $transaction->update(['payment_url' => $result['webRedirectUrl']]);
                 return redirect()->away($result['webRedirectUrl']);
             }
-
-            // Jika Gagal (Misal: Saldo DANA kurang)
             else {
                 $transaction->update(['status' => 'failed']);
                 $pesanGagal = $result['responseMessage'] ?? 'Saldo DANA tidak mencukupi atau Token Kadaluarsa.';
