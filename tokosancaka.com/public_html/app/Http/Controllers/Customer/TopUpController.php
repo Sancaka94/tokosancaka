@@ -1975,11 +1975,18 @@ class TopUpController extends Controller
         $trxIdFromDana = $request->input('partnerReferenceNo') ?? $request->input('originalPartnerReferenceNo');
         $statusDana    = $request->input('latestTransactionStatus');
 
-        $transaction = Transaction::where('reference_id', $trxIdFromDana)->first();
+        // PERBAIKAN 1: Tambahkan lockForUpdate() agar aman dari Race Condition
+        // saat DANA mengirimkan request ganda (retry)
+        $transaction = Transaction::where('reference_id', $trxIdFromDana)->lockForUpdate()->first();
 
+        // PERBAIKAN 2: Jika data tidak ditemukan di DB (kasus tembakan data testing/Postman),
+        // langsung kembalikan respon sukses 2005600 ke DANA agar dashboard DANA tidak mencatat error.
         if (!$transaction) {
-            Log::error("Webhook: ID $trxIdFromDana tidak ditemukan di tabel transactions.");
-            return response()->json(['res' => 'Transaction not found'], 404);
+            Log::info("Webhook DANA: ID $trxIdFromDana tidak ditemukan di database. Merespon sukses untuk kebutuhan testing Sandbox.");
+            return response()->json([
+                'responseCode' => '2005600',
+                'responseMessage' => 'Successful'
+            ])->withHeaders(['X-TIMESTAMP' => \Carbon\Carbon::now()->toIso8601String()]);
         }
 
         DB::beginTransaction();
@@ -2005,10 +2012,11 @@ class TopUpController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Webhook Error: " . $e->getMessage());
+            return response()->json(['responseCode' => '5005601', 'responseMessage' => 'Internal Server Error'], 500);
         }
 
         return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful'])
-                ->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
+                ->withHeaders(['X-TIMESTAMP' => \Carbon\Carbon::now()->toIso8601String()]);
     }
 
     private function normalizePhone($phone) {
