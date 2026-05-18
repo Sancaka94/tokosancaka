@@ -2012,11 +2012,10 @@ class TopUpController extends Controller
             $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
             $baseUrl = config('services.dana.base_url');
 
-            // Eksekusi Potong Saldo API
-            $response = Http::withHeaders([
+            // PERBAIKAN: Simpan headers ke dalam variabel agar bisa dipakai ulang di blok AUTO-TEST
+            $headers = [
                 'Content-Type'  => 'application/json',
-                'Authorization' => 'Bearer ' . $accessTokenB2B, // Token B2B Sancaka
-                // PENTING: Ambil token dari user account (Tabel Pengguna)
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
                 'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token,
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
@@ -2025,12 +2024,62 @@ class TopUpController extends Controller
                 'X-EXTERNAL-ID' => (string) time() . Str::random(6),
                 'X-DEVICE-ID'   => 'SANCAKA-WEB-POS',
                 'CHANNEL-ID'    => '95221'
-            ])
-            ->withBody($jsonBody, 'application/json')
-            ->post($baseUrl . $path);
+            ];
+
+            // Eksekusi Potong Saldo API
+            $response = Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post($baseUrl . $path);
 
             $result = $response->json();
             Log::info('[DANA BINDING] Respon Potong Saldo: ', $result);
+
+            // =====================================================================
+            // [CASHIER PAY] AUTO-TEST SCRIPTS
+            // =====================================================================
+
+            // Skenario 1: General Error (Pemicu Input Nominal: Rp 77.777)
+            if ($transaction->amount == 77777) {
+                $bodyTest = $body;
+                $bodyTest['amount']['currency'] = "INVALID_CUR"; // Merusak field currency
+                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
+
+                $resTest = Http::withHeaders($headers)
+                    ->withBody($jsonBodyTest, 'application/json')
+                    ->post($baseUrl . $path);
+
+                return back()->with('error', "TES GENERAL ERROR SELESAI! Response: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
+            }
+
+            // Skenario 2: Merchant Does Not Exist (PERBAIKAN: Pemicu diubah dari 44.444 jadi 44444)
+            if ($transaction->amount == 44444) {
+                $bodyTest = $body;
+                $bodyTest['merchantId'] = "999999999999999999"; // Mengisi merchant ID fiktif
+                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
+
+                $resTest = Http::withHeaders($headers)
+                    ->withBody($jsonBodyTest, 'application/json')
+                    ->post($baseUrl . $path);
+
+                return back()->with('error', "TES MERCHANT NOT EXIST SELESAI! Response: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
+            }
+
+            // Skenario 3: Inconsistent Request (Pemicu Input Nominal: Rp 55.555)
+            if ($transaction->amount == 55555) {
+                // Hit kedua langsung ditembak dengan partnerReferenceNo yang SAMA tapi nominal diubah
+                $bodyTest = $body;
+                $bodyTest['amount']['value'] = "66666.00"; // Ubah nominal dari 55555 ke 66666
+                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
+
+                $resTest = Http::withHeaders($headers)
+                    ->withBody($jsonBodyTest, 'application/json')
+                    ->post($baseUrl . $path);
+
+                return back()->with('error', "TES INCONSISTENT REQUEST SELESAI!\nHit 1: [" . ($result['responseCode'] ?? '') . "]\nHit 2: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
+            }
+            // =====================================================================
+
+            Log::info('[DANA BINDING] Respon Potong Saldo (Normal Flow): ', $result);
 
             // Cek Jika Potong Saldo BERHASIL (Kode 2000000)
             if (isset($result['responseCode']) && $result['responseCode'] == '2000000') {
