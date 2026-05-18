@@ -59,13 +59,18 @@ class DanaWebhookController extends Controller
             $isDanaSuccess = ($latestStatus === '00');
 
             // ====================================================================
-            // 🛠️ FIX STRIP MISMATCH: Normalisasi format SCKORD menjadi SCK-ORD-
+            // 🛠️ FIX STRIP MISMATCH: Normalisasi format SCKORD dan TOPUP
             // ====================================================================
             if (Str::startsWith($refNo, 'SCKORD') && !str_contains($refNo, '-')) {
-                // Potong string 'SCKORD' dan ubah menjadi 'SCK-ORD-XXXX' agar match dengan database SQL
                 $restOfInvoice = substr($refNo, 6);
                 $refNo = 'SCK-ORD-' . $restOfInvoice;
                 Log::info("[DANA-WEBHOOK] Format invoice dinormalisasi untuk database: " . $refNo);
+            }
+            // 🔥 TAMBAHAN UNTUK TOPUP 🔥
+            elseif (Str::startsWith($refNo, 'TOPUP') && !str_contains($refNo, '-')) {
+                $restOfInvoice = substr($refNo, 5); // Potong 5 huruf "TOPUP"
+                $refNo = 'TOPUP-' . $restOfInvoice;
+                Log::info("[DANA-WEBHOOK] Format invoice TOPUP dinormalisasi untuk database: " . $refNo);
             }
             // ====================================================================
 
@@ -91,8 +96,8 @@ class DanaWebhookController extends Controller
 
                 $internalStatus = $isDanaSuccess ? 'PAID' : 'FAILED';
 
-                $topUpCtrl = app(TopUpController::class);
-                $topUpCtrl->processTopUpCallback($refNo, $internalStatus, $amountVal, $data);
+                // Menggunakan static call karena fungsi processTopUpCallback berbentuk static
+                TopUpController::processTopUpCallback($refNo, $internalStatus, $amountVal);
 
                 return $this->respondSuccessDANA();
             }
@@ -129,16 +134,19 @@ class DanaWebhookController extends Controller
 
         Log::info('[DANA RETURN PAGE] User kembali dari DANA Portal.', ['raw_ref' => $refNo]);
 
-        // Jika invoice tanpa strip (SCKORD...), normalisasikan ke format asli DB (SCK-ORD-)
+        // ====================================================================
+        // 🔥 NORMALISASI ID JUGA DITERAPKAN DI HALAMAN RETURN 🔥
+        // ====================================================================
         if (Str::startsWith($refNo, 'SCKORD') && !str_contains($refNo, '-')) {
             $refNo = 'SCK-ORD-' . substr($refNo, 6);
+        } elseif (Str::startsWith($refNo, 'TOPUP') && !str_contains($refNo, '-')) {
+            $refNo = 'TOPUP-' . substr($refNo, 5);
         }
 
         // 1. Jika ini Transaksi Belanja Toko Marketplace (SCK-ORD-)
         if (Str::startsWith($refNo, 'SCK-ORD-') || str_contains($refNo, 'ORD')) {
             Log::info("[DANA RETURN] Redirecting user ke halaman Riwayat Belanja: " . $refNo);
 
-            // 🚨 DIUBAH: Langsung arahkan ke halaman riwayat belanja sesuai request Bapak
             return redirect()->to('https://tokosancaka.com/customer/pesanan/riwayat-belanja')
                 ->with('success', 'Pembayaran DANA Anda berhasil diproses! Silakan cek status dan nomor resi pengiriman Anda di bawah ini.');
         }
@@ -147,7 +155,7 @@ class DanaWebhookController extends Controller
         if (Str::startsWith($refNo, 'TOPUP-')) {
             Log::info("[DANA RETURN] Redirecting user ke halaman Detail Top Up: " . $refNo);
             return redirect()->route('customer.topup.show', ['topup' => $refNo])
-                ->with('success', 'Top Up DANA Anda sedang diproses. Saldo akan bertambah otomatis dalam beberapa saat.');
+                ->with('success', 'Top Up DANA Anda berhasil dan saldo akan masuk secara otomatis.');
         }
 
         // 3. Default Fallback (Jika ID tidak jelas / transaksi anonim)
