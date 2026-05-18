@@ -2124,18 +2124,38 @@ class TopUpController extends Controller
             // [CASHIER PAY] AUTO-TEST SCRIPTS
             // =====================================================================
 
-            // Skenario 1: General Error (Pemicu Input Nominal: Rp 77.777)
+            // =====================================================================
+            // [CASHIER PAY] SCENARIO 1: GENERAL ERROR (Pemicu: Rp 77.777)
+            // =====================================================================
             if ($transaction->amount == 77777) {
-                $bodyTest = $body;
-                $bodyTest['amount']['currency'] = "INVALID_CUR"; // Merusak field currency
+                // 1. KUNCI UTAMA: Ubah path URL ke rute yang diminta DANA Sandbox
+                $pathTest = '/rest/redirection/v1.0/debit/payment-host-to-host';
+
+                $bodyTest = $bodyArray;
+                // 2. KUNCI KEDUA: Rusak field currency agar memicu General Error 5005400
+                $bodyTest['amount']['currency'] = "INVALID_CUR";
+
                 $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
 
-                $resTest = Http::withHeaders($headers)
-                    ->withBody($jsonBodyTest, 'application/json')
-                    ->post($baseUrl . $path);
+                // Hitung signature baru berdasarkan pintu rute yang benar
+                $signatureTest = $this->danaSignature->generateSignature('POST', $pathTest, $jsonBodyTest, $timestamp);
 
-                return back()->with('error', "TES GENERAL ERROR SELESAI! Response: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
+                // Eksekusi langsung ke DANA Sandbox dengan rute yang sesuai instruksi
+                $resTest = Http::withHeaders([
+                    'Authorization'  => 'Bearer ' . $accessToken,
+                    'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+                    'X-EXTERNAL-ID'  => Str::random(32),
+                    'X-TIMESTAMP'    => $timestamp,
+                    'X-SIGNATURE'    => $signatureTest,
+                    'Content-Type'   => 'application/json',
+                    'CHANNEL-ID'     => '95221',
+                    'ORIGIN'         => config('services.dana.origin'),
+                ])->withBody($jsonBodyTest, 'application/json')
+                  ->post($baseUrl . $pathTest);
+
+                return back()->with('error', "TES GENERAL ERROR SELESAI!\nResponse DANA Sandbox: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
             }
+            // =====================================================================
 
             // Skenario 2: Merchant Does Not Exist (PERBAIKAN: Pemicu diubah dari 44.444 jadi 44444)
             if ($transaction->amount == 44444) {
