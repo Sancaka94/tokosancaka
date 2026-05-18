@@ -17,7 +17,7 @@ use App\Models\Pesanan;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Store;
-use App\Models\Affiliate; // Untuk kelengkapan komisi
+use App\Models\Affiliate;
 use App\Services\KiriminAjaService;
 use App\Services\DokuJokulService;
 use App\Services\FonnteService;
@@ -37,7 +37,7 @@ class DanaWebhookController extends Controller
      */
     public function handleNotify(Request $request)
     {
-        // 1. Log Payload Masuk (Persis format log Anda)
+        // Log Payload Masuk murni untuk debugging
         Log::info("[DANA-WEBHOOK] Hit Masuk:", [
             'ip' => $request->ip(),
             'payload' => $request->all()
@@ -48,61 +48,78 @@ class DanaWebhookController extends Controller
             $refNo = $data['originalPartnerReferenceNo'] ?? $data['partnerReferenceNo'] ?? null;
             $statusRaw = $data['transactionStatusDesc'] ?? $data['orderStatus'] ?? 'UNKNOWN';
 
-            // Nominal
-            $amountVal = $data['amount']['value'] ?? 0;
-            $paidAmount = (float) $amountVal;
+            // Ambil nominal string asli dari DANA (Mencegah bug desimal floating point)
+            $amountVal = $data['amount']['value'] ?? '0.00';
 
             if (empty($refNo)) {
                 return response()->json(['res' => 'NO_REF'], 400);
             }
 
-            // Mapping status dari DANA ke internal proyek Anda
-            $internalStatus = in_array($statusRaw, ['SUCCESS', 'FINISHED', '00', 'PAID']) ? 'PAID' : 'FAILED';
+            // Apakah transaksi ini sukses dari DANA?
+            $isDanasuccess = in_array($statusRaw, ['SUCCESS', 'FINISHED', '00', 'PAID']);
 
             // =============================================================
             // ROUTING LOGIC: Tentukan Tipe Transaksi Berdasarkan Prefix RefNo
             // =============================================================
 
-            // 1. CEK TRANSAKSI ORDER BARANG BARU (Prefix: SCK-ORD- atau SCKORD)
-            if (Str::startsWith($refNo, 'SCK-ORD-') || Str::startsWith($refNo, 'ORD-') || Str::startsWith($refNo, 'SCKORD')) {
+            // 1. SKENARIO BELANJA BARANG (Prefix: SCK-ORD-, ORD-, SCKORD)
+            if (Str::startsWith($refNo, 'SCK-ORD-') || Str::startsWith($refNo, 'ORD-') || Str::startsWith($refNo, 'SCKORD') || str_contains($refNo, 'SCKORD')) {
                 Log::info('Routing DANA callback to processOrderCallback (Marketplace)', ['ref' => $refNo]);
 
-                // Gunakan class CheckoutController untuk memproses order agar resi KiriminAja otomatis keluar
+                $internalStatus = $isDanasuccess ? 'PAID' : 'FAILED';
+
                 $checkoutCtrl = app(\App\Http\Controllers\Toko\CheckoutController::class);
                 $checkoutCtrl->processOrderCallback($refNo, $internalStatus, $data);
 
-                return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful'])
-                        ->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
+                return $this->respondSuccessDANA();
             }
 
-            // 2. CEK TRANSAKSI ORDER LAMA / LEGACY (Prefix: SCK-)
+            // 2. SKENARIO TOPUP SALDO CUSTOMER / MEMBER / TENANT (Prefix: TOPUP- atau DEP-)
+            elseif (Str::startsWith($refNo, 'TOPUP-') || Str::startsWith($refNo, 'DEP-') || str_contains($refNo, 'TOPUP')) {
+                Log::info('Routing DANA callback to TopUpController', ['ref' => $refNo, 'amount' => $amountVal]);
+
+                // PERBAIKAN: Kirim status 'SUCCESS' agar sinkron dengan pembaca status topup di database Anda
+                $internalStatus = $isDanasuccess ? 'SUCCESS' : 'FAILED';
+
+                // Panggil TopUpController bawaan proyek Anda untuk mengubah status PENDING -> SUCCESS & menambah saldo
+                $topUpCtrl = app(TopUpController::class);
+                $topUpCtrl->processTopUpCallback($refNo, $internalStatus, $amountVal, $data);
+
+                return $this->respondSuccessDANA();
+            }
+
+            // 3. SKENARIO DATA PESANAN BARANG LAMA / LEGACY (Prefix: SCK-)
             elseif (Str::startsWith($refNo, 'SCK-')) {
                 Log::info('Routing DANA callback to AdminPesananController (Legacy)', ['ref' => $refNo]);
+
+                $internalStatus = $isDanasuccess ? 'PAID' : 'FAILED';
                 AdminPesananController::processPesananCallback($refNo, $internalStatus, $data);
 
-                return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful'])
-                        ->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
-            }
-
-            // 3. CEK TOPUP (Prefix: TOPUP- atau DEP-)
-            elseif (Str::startsWith($refNo, 'TOPUP-') || Str::startsWith($refNo, 'DEP-')) {
-                Log::info('Routing DANA callback to TopUpController', ['ref' => $refNo]);
-                TopUpController::processTopUpCallback($refNo, $internalStatus, $paidAmount, $data);
-
-                return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful'])
-                        ->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
+                return $this->respondSuccessDANA();
             }
 
             // =============================================================
-            // FALLBACK UNTUK PENGUJIAN DASHBOARD MANDIRI DANA SANDBOX
+            // FALLBACK UNTUK UJI COBA MANDIRI DASHBOARD DANA SANDBOX
             // =============================================================
-            Log::info("[DANA-WEBHOOK] ID Uji Coba Mandiri DANA Sandbox: $refNo. Merespon sukses bypass.");
-            return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful'])
-                    ->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
+            Log::info("[DANA-WEBHOOK] ID Uji Coba Mandiri DANA Sandbox tidak terdaftar di DB: $refNo. Auto bypass.");
+            return $this->respondSuccessDANA();
 
         } catch (Exception $e) {
-            Log::error("[DANA-WEBHOOK] Fatal Error: " . $e->getMessage());
+            Log::error("[DANA-WEBHOOK] Fatal Error: " . $e->getMessage() . " | Line: " . $e->getLine());
             return response()->json(['responseCode' => '5005601', 'message' => 'Internal Error'], 500);
         }
+    }
+
+    /**
+     * Helper Respon Standard SNAP DANA
+     */
+    private function respondSuccessDANA()
+    {
+        return response()->json([
+            'responseCode' => '2005600',
+            'responseMessage' => 'Successful'
+        ])->withHeaders([
+            'X-TIMESTAMP' => Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP')
+        ]);
     }
 }
