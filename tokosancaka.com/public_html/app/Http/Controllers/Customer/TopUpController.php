@@ -1394,11 +1394,16 @@ class TopUpController extends Controller
 
             $resCode = $result['responseCode'] ?? '500';
 
+            // Tambahkan array pembantu nama bank sebelum insert
+            $bankMapping = ['014' => 'BCA', '009' => 'BNI', '002' => 'BRI', '008' => 'MANDIRI', '022' => 'CIMB', '011' => 'PERMATA', '451' => 'BSI'];
+            $readableBank = $bankMapping[$request->bank_code] ?? $request->bank_code;
+
             DB::table('dana_transactions')->insert([
-                'affiliate_id' => $aff->id_pengguna, // PERBAIKAN: id_pengguna
+                'affiliate_id' => $aff->id_pengguna,
                 'type' => 'BANK_INQUIRY',
                 'reference_no' => $refNo,
-                'phone' => $request->account_no . " (" . $request->bank_code . ")",
+                // Kolom phone akan mencatat nama bank secara rapi: "12345678 (BCA)"
+                'phone' => $request->account_no . " (" . $readableBank . ")",
                 'amount' => $request->amount,
                 'status' => ($resCode == '2004200') ? 'SUCCESS' : 'FAILED',
                 'response_payload' => json_encode($result),
@@ -1551,13 +1556,17 @@ class TopUpController extends Controller
                 // PERBAIKAN: Kembalikan 'saldo'
                 DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
 
+               $bankMapping = ['014' => 'BCA', '009' => 'BNI', '002' => 'BRI', '008' => 'MANDIRI', '022' => 'CIMB', '011' => 'PERMATA', '451' => 'BSI'];
+            $readableBank = $bankMapping[$request->bank_code] ?? $request->bank_code;
+
+            if ($resCode == '2004300') {
                 DB::table('dana_transactions')->insert([
-                    'affiliate_id' => $aff->id_pengguna, // PERBAIKAN
+                    'affiliate_id' => $aff->id_pengguna,
                     'type' => 'TRANSFER_BANK',
                     'reference_no' => $partnerRef,
-                    'phone' => $request->account_no,
+                    'phone' => $request->account_no . " (" . $readableBank . ")",
                     'amount' => $request->amount,
-                    'status' => 'FAILED',
+                    'status' => 'SUCCESS',
                     'response_payload' => json_encode($result),
                     'created_at' => now()
                 ]);
