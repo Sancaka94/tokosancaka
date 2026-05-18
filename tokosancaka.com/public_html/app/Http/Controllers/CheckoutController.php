@@ -757,63 +757,81 @@ class CheckoutController extends Controller
         // ====================================================================
         $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $order->invoice_number);
         $timestamp    = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        $expiryTime   = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+
+        // 🚨 BATAS MAKSIMAL SANDBOX: 30 Menit. Kita set 25 menit agar aman.
+        $expiryTime   = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(25)->format('Y-m-d\TH:i:sP');
+
         $amountValue  = number_format((float)$order->total_amount, 2, '.', '');
 
         // ====================================================================
-        // 3. BODY REQUEST
+        // 3. BODY REQUEST (Disamakan persis dengan format JSON dari Bapak)
         // ====================================================================
         $bodyArray = [
+            "payOptionDetails" => [
+                [
+                    "payMethod"   => "BALANCE",
+                    "payOption"   => "",
+                    "transAmount" => [
+                        "value"    => $amountValue,
+                        "currency" => "IDR"
+                    ],
+                    "feeAmount"   => [
+                        "value"    => "0.00",
+                        "currency" => "IDR"
+                    ]
+                ]
+            ],
+            "additionalInfo" => [
+                "mcc" => "5732",
+                "envInfo" => [
+                    "sourcePlatform"    => "IPG",
+                    "terminalType"      => "SYSTEM",
+                    "orderTerminalType" => "WEB"
+                ],
+                "order" => [
+                    "orderTitle"        => substr("Pay " . $cleanInvoice, 0, 64),
+                    "merchantTransType" => "01",
+                    "buyer"             => [
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $order->user->nama_lengkap ?? 'Guest'), 0, 64),
+                        "externalUserId"   => (string) ($order->user_id ?? '8')
+                    ],
+                    "goods" => [
+                        [
+                            "name"            => "Test good",
+                            "merchantGoodsId" => substr("ITEM" . $cleanInvoice, 0, 64),
+                            "description"     => "Pembayaran Order",
+                            "category"        => "DIGITAL_GOODS",
+                            "price"           => [
+                                "value"    => $amountValue,
+                                "currency" => "IDR"
+                            ],
+                            "unit"            => "pcs",
+                            "quantity"        => "1"
+                        ]
+                    ],
+                    "createdTime" => $timestamp,
+                    "orderMemo"   => substr("Inv " . $cleanInvoice, 0, 64)
+                ]
+            ],
+            // Untuk testing General Error, ganti $cleanInvoice di bawah ini dengan string statis/MOCK jika diperlukan
             "partnerReferenceNo" => $cleanInvoice,
             "merchantId"         => $merchantIdConf,
             "amount"             => [
                 "value"    => $amountValue,
                 "currency" => "IDR"
             ],
-            "validUpTo"          => $expiryTime,
-            "urlParams"          => [
-                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
-            ],
-            // Perbaikan 1: Kembalikan payOptionDetails dengan payOption string kosong
-            "payOptionDetails"   => [
+            "validUpTo" => $expiryTime,
+            "urlParams" => [
                 [
-                    "payMethod"   => "BALANCE",
-                    "payOption"   => "BALANCE",
-                    "transAmount" => ["value" => $amountValue, "currency" => "IDR"]
-                ]
-            ],
-            "additionalInfo"     => [
-                "supportDeepLinkCheckoutUrl" => "true",
-                "productCode" => "51051000100000000001",
-                "mcc"         => "5732",
-                "order"       => [
-                    "orderTitle"        => substr("Pay " . $cleanInvoice, 0, 40),
-                    "merchantTransType" => "01",
-                    "orderMemo"         => substr("Inv " . $cleanInvoice, 0, 40),
-                    "createdTime"       => $timestamp,
-                    "buyer"             => [
-                        "externalUserId"   => (string) ($order->user_id ?? 'GUEST'.rand(100,999)),
-                        "externalUserType" => "MERCHANT_USER",
-                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $order->user->nama_lengkap ?? 'Guest'), 0, 20),
-                    ],
-                    "goods" => [
-                        [
-                            // Perbaikan 2: Tambahkan parameter "name" yang wajib ada
-                            "name"            => "Pembayaran Order",
-                            "merchantGoodsId" => substr("ITEM" . $cleanInvoice, 0, 40),
-                            "description"     => "Pembayaran Order",
-                            "category"        => "DIGITAL_GOODS",
-                            "price"           => ["value" => $amountValue, "currency" => "IDR"],
-                            "unit"            => "pcs",
-                            "quantity"        => "1"
-                        ]
-                    ]
+                    "url"        => route('dana.return'),
+                    "type"       => "PAY_RETURN",
+                    "isDeeplink" => "Y"
                 ],
-                "envInfo" => [
-                    "sourcePlatform" => "IPG",
-                    "terminalType" => "SYSTEM",
-                    "orderTerminalType" => "WEB",
+                [
+                    "url"        => route('dana.notify'),
+                    "type"       => "NOTIFICATION",
+                    "isDeeplink" => "Y" // Disesuaikan dengan payload dari Bapak
                 ]
             ]
         ];
