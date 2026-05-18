@@ -1303,3 +1303,5 @@ Route::get('/debug/dana-status/{orderId}', [TopUpController::class, 'debugDanaSt
 
 Route::post('/dana/bank-inquiry', [TopUpController::class, 'bankAccountInquiry'])->name('customer.dana.bank_inquiry');
 Route::post('/dana/transfer-bank', [TopUpController::class, 'transferToBank'])->name('customer.dana.transfer_bank');
+// Menampilkan halaman UI Transfer ke Bank
+Route::get('/dana/transfer-bank', [TopUpController::class, 'transferBankPage'])->name('customer.dana.transfer_bank_page');

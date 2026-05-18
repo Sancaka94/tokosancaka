@@ -2161,4 +2161,13 @@ class TopUpController extends Controller
         }
     }
 
+    /**
+     * Menampilkan halaman UI Transfer ke Bank (Disbursement)
+     */
+    public function transferBankPage()
+    {
+        // Sesuaikan dengan struktur folder tempat kamu menyimpan file blade tadi
+        return view('customer.dana.transfer-bank');
+    }
+
 }
