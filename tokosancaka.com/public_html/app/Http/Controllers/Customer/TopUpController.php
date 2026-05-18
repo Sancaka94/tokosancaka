@@ -1459,43 +1459,49 @@ class TopUpController extends Controller
     {
         Log::info('[DANA TRANSFER BANK] Start', [
             'affiliate_id' => $request->affiliate_id,
-            'bank_code' => $request->bank_code,
-            'account_no' => $request->account_no,
-            'amount' => $request->amount
+            'bank_code'    => $request->bank_code,
+            'account_no'   => $request->account_no,
+            'amount'       => $request->amount
         ]);
 
         // PERBAIKAN: Gunakan tabel Pengguna dan id_pengguna
         $aff = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
         if (!$aff) return back()->with('error', 'Pengguna tidak ditemukan.');
 
-        // PERBAIKAN: Cek menggunakan kolom saldo, bukan balance
+        // PERBAIKAN: Cek menggunakan kolom saldo
         if ($aff->saldo < $request->amount) {
             return back()->with('error', 'Saldo Anda tidak mencukupi.');
         }
 
-        // PERBAIKAN: Ganti whatsapp menjadi no_wa
+        // PERBAIKAN: Format No WA untuk parameter DANA
         $customerNumber = preg_replace('/[^0-9]/', '', $aff->no_wa);
         if (substr($customerNumber, 0, 1) === '0') $customerNumber = '62' . substr($customerNumber, 1);
 
-        // PERBAIKAN: Potong 'saldo' berdasarkan 'id_pengguna'
+        // POTONG SALDO DIAWAL SEBELUM HIT API
         DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->decrement('saldo', $request->amount);
 
-        $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        $path = '/v1.0/emoney/transfer-bank.htm';
+        $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $path       = '/v1.0/emoney/transfer-bank.htm';
         $partnerRef = "TRF" . time() . Str::random(6);
 
+        // AMBIL DATA BANK DARI DATABASE
+        $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
+        $readableBank = $cekBank ? $cekBank->bank_name : $request->bank_code;
+
+        // PAYLOAD SESUAI DOKUMENTASI DANA TRANSFER TO BANK
         $body = [
-            "partnerReferenceNo" => $partnerRef,
-            "customerNumber"     => $customerNumber,
-            "beneficiaryAccountNumber" => $request->account_no,
-            "beneficiaryBankCode"      => $request->bank_code,
+            "partnerReferenceNo"       => $partnerRef,
+            "customerNumber"           => $customerNumber,
+            "beneficiaryAccountNumber" => (string) $request->account_no,
+            // DI TRANSFER API, BENEFICIARY BANK CODE ADA DI ROOT, BUKAN DI ADDITIONAL INFO
+            "beneficiaryBankCode"      => (string) $request->bank_code,
             "amount" => [
                 "value"    => number_format((float)$request->amount, 2, '.', ''),
                 "currency" => "IDR"
             ],
             "additionalInfo" => [
-                "fundType"     => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-                "beneficiaryAccountName" => $request->account_name
+                "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
+                "beneficiaryAccountName" => (string) $request->account_name
             ]
         ];
 
@@ -1520,7 +1526,7 @@ class TopUpController extends Controller
 
             Log::info('[DANA TRANSFER BANK] Mengirim Request...', ['body' => $body]);
 
-            // URL Dinamis
+            // EKSEKUSI API
             $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post(config('services.dana.base_url') . $path);
@@ -1528,70 +1534,69 @@ class TopUpController extends Controller
             $result = $response->json();
             $resCode = $result['responseCode'] ?? '500';
 
+            // KONDISI 1: SUCCESS BERHASIL INSTAN
             if ($resCode == '2004300') {
                 DB::table('dana_transactions')->insert([
-                    'affiliate_id' => $aff->id_pengguna, // PERBAIKAN
-                    'type' => 'TRANSFER_BANK',
-                    'reference_no' => $partnerRef,
-                    'phone' => $request->account_no . " (" . $request->bank_code . ")",
-                    'amount' => $request->amount,
-                    'status' => 'SUCCESS',
+                    'affiliate_id'     => $aff->id_pengguna,
+                    'type'             => 'TRANSFER_BANK',
+                    'reference_no'     => $partnerRef,
+                    'phone'            => $request->account_no . " (" . $readableBank . ")",
+                    'amount'           => $request->amount,
+                    'status'           => 'SUCCESS',
                     'response_payload' => json_encode($result),
-                    'created_at' => now()
+                    'created_at'       => now()
                 ]);
 
-                $msg = "Transfer Berhasil!\nRef: $partnerRef\nNominal: Rp " . number_format($request->amount);
+                $msg = "Transfer Berhasil!\nRef: $partnerRef\nNominal: Rp " . number_format($request->amount, 0, ',', '.');
                 return back()->with('success', $msg);
 
+            // KONDISI 2: TRANSAKSI PENDING (DELAY DARI BANK / LIMIT REQUEST)
             } elseif (in_array($resCode, ['2024300', '4294300', '5004301'])) {
                 DB::table('dana_transactions')->insert([
-                    'affiliate_id' => $aff->id_pengguna, // PERBAIKAN
-                    'type' => 'TRANSFER_BANK',
-                    'reference_no' => $partnerRef,
-                    'phone' => $request->account_no,
-                    'amount' => $request->amount,
-                    'status' => 'PENDING',
+                    'affiliate_id'     => $aff->id_pengguna,
+                    'type'             => 'TRANSFER_BANK',
+                    'reference_no'     => $partnerRef,
+                    'phone'            => $request->account_no . " (" . $readableBank . ")",
+                    'amount'           => $request->amount,
+                    'status'           => 'PENDING',
                     'response_payload' => json_encode($result),
-                    'created_at' => now()
+                    'created_at'       => now()
                 ]);
 
-                return back()->with('warning', "⏳ Transaksi Sedang Diproses (Pending).\nMohon cek status secara berkala.");
+                return back()->with('warning', "⏳ Transaksi Sedang Diproses (Pending).\nMohon cek riwayat saldo secara berkala.");
 
+            // KONDISI 3: TRANSAKSI GAGAL
             } else {
-                // PERBAIKAN: Kembalikan 'saldo'
+                // REFUND SALDO JIKA TRANSFER GAGAL
                 DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
 
-               $bankMapping = ['014' => 'BCA', '009' => 'BNI', '002' => 'BRI', '008' => 'MANDIRI', '022' => 'CIMB', '011' => 'PERMATA', '451' => 'BSI'];
-            $readableBank = $bankMapping[$request->bank_code] ?? $request->bank_code;
-
-            if ($resCode == '2004300') {
                 DB::table('dana_transactions')->insert([
-                    'affiliate_id' => $aff->id_pengguna,
-                    'type' => 'TRANSFER_BANK',
-                    'reference_no' => $partnerRef,
-                    'phone' => $request->account_no . " (" . $readableBank . ")",
-                    'amount' => $request->amount,
-                    'status' => 'SUCCESS',
+                    'affiliate_id'     => $aff->id_pengguna,
+                    'type'             => 'TRANSFER_BANK',
+                    'reference_no'     => $partnerRef,
+                    'phone'            => $request->account_no . " (" . $readableBank . ")",
+                    'amount'           => $request->amount,
+                    'status'           => 'FAILED',
                     'response_payload' => json_encode($result),
-                    'created_at' => now()
+                    'created_at'       => now()
                 ]);
 
                 $errorMsg = $result['responseMessage'] ?? 'Transaksi Gagal';
-                if ($resCode == '4034314') $errorMsg = "Saldo Merchant DANA Tidak Cukup.";
+                if ($resCode == '4034314') $errorMsg = "Saldo Merchant DANA Pusat Tidak Mencukupi.";
                 if ($resCode == '4044311') $errorMsg = "Rekening Salah atau Tidak Valid.";
                 if ($resCode == '4034318') $errorMsg = "Akun Merchant Tidak Aktif/Salah Konfigurasi.";
+                if ($resCode == '4004301') $errorMsg = "Format/Data Pengiriman Tidak Sesuai Standar DANA.";
 
                 Log::error('[DANA TRANSFER BANK] Gagal & Refund', ['res' => $result]);
-                return back()->with('error', "Gagal: $errorMsg\n(Saldo telah dikembalikan).");
-            }
-
+                return back()->with('error', "Gagal: $errorMsg\n(Saldo Rp ".number_format($request->amount, 0, ',', '.')." telah dikembalikan).");
             }
 
         } catch (\Exception $e) {
-            // PERBAIKAN: Kembalikan 'saldo'
+            // REFUND SALDO JIKA SISTEM/KONEKSI ERROR
             DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
+
             Log::error('[DANA TRANSFER BANK] Exception', ['msg' => $e->getMessage()]);
-            return back()->with('error', 'System Error: ' . $e->getMessage());
+            return back()->with('error', 'Sistem Error saat eksekusi: ' . $e->getMessage() . "\n(Saldo telah dikembalikan).");
         }
     }
 
