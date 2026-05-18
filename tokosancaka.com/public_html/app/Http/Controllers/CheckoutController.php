@@ -772,8 +772,8 @@ class CheckoutController extends Controller
             ],
             "validUpTo"          => $expiryTime,
             "urlParams"          => [
-                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "N"],
-                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "N"]
+                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
             ],
             // Perbaikan 1: Kembalikan payOptionDetails dengan payOption string kosong
             "payOptionDetails"   => [
