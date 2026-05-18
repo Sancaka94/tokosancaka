@@ -33,11 +33,11 @@ use App\Http\Controllers\Customer\TopUpController;
 class DanaWebhookController extends Controller
 {
     /**
-     * MAIN HANDLER - GERBANG UTAMA WEBHOOK DANA
+     * MAIN HANDLER - GERBANG UTAMA WEBHOOK DANA (FINISH NOTIFY v1.0)
      */
     public function handleNotify(Request $request)
     {
-        // Log Payload Masuk murni untuk debugging
+        // 1. Log Payload Masuk murni untuk monitoring debugging
         Log::info("[DANA-WEBHOOK] Hit Masuk:", [
             'ip' => $request->ip(),
             'payload' => $request->all()
@@ -45,28 +45,39 @@ class DanaWebhookController extends Controller
 
         try {
             $data = $request->all();
-            $refNo = $data['originalPartnerReferenceNo'] ?? $data['partnerReferenceNo'] ?? null;
-            $statusRaw = $data['transactionStatusDesc'] ?? $data['orderStatus'] ?? 'UNKNOWN';
 
-            // Ambil nominal string asli dari DANA (Mencegah bug desimal floating point)
+            // Ambil RefNo berdasarkan Dokumentasi Finish Notify DANA SNAP
+            $refNo = $data['originalPartnerReferenceNo'] ?? $data['partnerReferenceNo'] ?? null;
+            $latestStatus = $data['latestTransactionStatus'] ?? null;
             $amountVal = $data['amount']['value'] ?? '0.00';
 
             if (empty($refNo)) {
                 return response()->json(['res' => 'NO_REF'], 400);
             }
 
-            // Apakah transaksi ini sukses dari DANA?
-            $isDanasuccess = in_array($statusRaw, ['SUCCESS', 'FINISHED', '00', 'PAID']);
+            // Status sukses murni dua digit dari DANA ("00")
+            $isDanaSuccess = ($latestStatus === '00');
+
+            // ====================================================================
+            // 🛠️ FIX STRIP MISMATCH: Normalisasi format SCKORD menjadi SCK-ORD-
+            // ====================================================================
+            if (Str::startsWith($refNo, 'SCKORD') && !str_contains($refNo, '-')) {
+                // Potong string 'SCKORD' dan ubah menjadi 'SCK-ORD-XXXX' agar match dengan database SQL
+                $restOfInvoice = substr($refNo, 6);
+                $refNo = 'SCK-ORD-' . $restOfInvoice;
+                Log::info("[DANA-WEBHOOK] Format invoice dinormalisasi untuk database: " . $refNo);
+            }
+            // ====================================================================
 
             // =============================================================
-            // ROUTING LOGIC: Tentukan Tipe Transaksi Berdasarkan Prefix RefNo
+            // ROUTING LOGIC: Tentukan Tipe Transaksi Berdasarkan Pola Invoice
             // =============================================================
 
-            // 1. SKENARIO BELANJA BARANG (Prefix: SCK-ORD-, ORD-, SCKORD)
-            if (Str::startsWith($refNo, 'SCK-ORD-') || Str::startsWith($refNo, 'ORD-') || Str::startsWith($refNo, 'SCKORD') || str_contains($refNo, 'SCKORD')) {
+            // Skenario 1: SKENARIO BELANJA BARANG MARKETPLACE (SCK-ORD- atau ORD-)
+            if (Str::startsWith($refNo, 'SCK-ORD-') || Str::startsWith($refNo, 'ORD-')) {
                 Log::info('Routing DANA callback to processOrderCallback (Marketplace)', ['ref' => $refNo]);
 
-                $internalStatus = $isDanasuccess ? 'PAID' : 'FAILED';
+                $internalStatus = $isDanaSuccess ? 'PAID' : 'FAILED';
 
                 $checkoutCtrl = app(\App\Http\Controllers\CheckoutController::class);
                 $checkoutCtrl->processOrderCallback($refNo, $internalStatus, $data);
@@ -74,34 +85,32 @@ class DanaWebhookController extends Controller
                 return $this->respondSuccessDANA();
             }
 
-            // 2. SKENARIO TOPUP SALDO CUSTOMER / MEMBER / TENANT (Prefix: TOPUP- atau DEP-)
+            // Skenario 2: SKENARIO TOPUP SALDO CUSTOMER / MEMBER (TOPUP-)
             elseif (Str::startsWith($refNo, 'TOPUP-') || Str::startsWith($refNo, 'DEP-') || str_contains($refNo, 'TOPUP')) {
                 Log::info('Routing DANA callback to TopUpController', ['ref' => $refNo, 'amount' => $amountVal]);
 
-                // PERBAIKAN: Kirim status 'SUCCESS' agar sinkron dengan pembaca status topup di database Anda
-                $internalStatus = $isDanasuccess ? 'SUCCESS' : 'FAILED';
+                $internalStatus = $isDanaSuccess ? 'PAID' : 'FAILED';
 
-                // Panggil TopUpController bawaan proyek Anda untuk mengubah status PENDING -> SUCCESS & menambah saldo
                 $topUpCtrl = app(TopUpController::class);
                 $topUpCtrl->processTopUpCallback($refNo, $internalStatus, $amountVal, $data);
 
                 return $this->respondSuccessDANA();
             }
 
-            // 3. SKENARIO DATA PESANAN BARANG LAMA / LEGACY (Prefix: SCK-)
+            // Skenario 3: DATA PESANAN BARANG LAMA / LEGACY (Prefix: SCK- murni)
             elseif (Str::startsWith($refNo, 'SCK-')) {
                 Log::info('Routing DANA callback to AdminPesananController (Legacy)', ['ref' => $refNo]);
 
-                $internalStatus = $isDanasuccess ? 'PAID' : 'FAILED';
+                $internalStatus = $isDanaSuccess ? 'PAID' : 'FAILED';
                 AdminPesananController::processPesananCallback($refNo, $internalStatus, $data);
 
                 return $this->respondSuccessDANA();
             }
 
             // =============================================================
-            // FALLBACK UNTUK UJI COBA MANDIRI DASHBOARD DANA SANDBOX
+            // FALLBACK SAFETY NET (UNTUK BYPASS TRANSAKSI MANDIRI TESTING)
             // =============================================================
-            Log::info("[DANA-WEBHOOK] ID Uji Coba Mandiri DANA Sandbox tidak terdaftar di DB: $refNo. Auto bypass.");
+            Log::info("[DANA-WEBHOOK] ID Uji Coba Mandiri DANA Sandbox tidak dikenali: $refNo. Auto bypass.");
             return $this->respondSuccessDANA();
 
         } catch (Exception $e) {
@@ -119,7 +128,8 @@ class DanaWebhookController extends Controller
             'responseCode' => '2005600',
             'responseMessage' => 'Successful'
         ])->withHeaders([
-            'X-TIMESTAMP' => Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP')
+            'Content-Type' => 'application/json',
+            'X-TIMESTAMP'  => Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP')
         ]);
     }
 }
