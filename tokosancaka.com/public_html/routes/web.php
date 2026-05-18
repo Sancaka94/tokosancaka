@@ -1301,7 +1301,13 @@ Route::post('/ppob/verify-saldo', [\App\Http\Controllers\PpobIakController::clas
 
 Route::get('/debug/dana-status/{orderId}', [TopUpController::class, 'debugDanaStatus']);
 
-Route::post('/dana/bank-inquiry', [TopUpController::class, 'bankAccountInquiry'])->name('customer.dana.bank_inquiry');
-Route::post('/dana/transfer-bank', [TopUpController::class, 'transferToBank'])->name('customer.dana.transfer_bank');
-// Menampilkan halaman UI Transfer ke Bank
-Route::get('/dana/transfer-bank', [TopUpController::class, 'transferBankPage'])->name('customer.dana.transfer_bank_page');
+Route::prefix('customer')->middleware(['auth'])->group(function () {
+    
+    // Pastikan ditaruh di dalam sini
+    Route::get('/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferBankPage'])->name('customer.dana.transfer_bank_page');
+    
+    // Route POST yang sudah ada sebelumnya
+    Route::post('/dana/bank-inquiry', [App\Http\Controllers\Customer\TopUpController::class, 'bankAccountInquiry'])->name('customer.dana.bank_inquiry');
+    Route::post('/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferToBank'])->name('customer.dana.transfer_bank');
+
+});
