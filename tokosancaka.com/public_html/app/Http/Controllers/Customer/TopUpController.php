@@ -1425,11 +1425,12 @@ class TopUpController extends Controller
                 )->withInput();
             }
 
-            // =====================================================================
+          // =====================================================================
             // [BANK INQUIRY] SCENARIO 2: UNAUTHORIZED INVALID SIGNATURE (Pemicu: Rp 22.222)
             // =====================================================================
             if ($request->amount == 22222) {
                 $headersTest = $headers;
+                // Di sini kita sengaja merusak signature asli agar DANA menolaknya
                 $headersTest['X-SIGNATURE']   = $signature . "CONTOH_SIGNATURE_PALSU_A1B2C3";
                 $headersTest['X-EXTERNAL-ID'] = (string) time() . Str::random(6);
 
@@ -1441,6 +1442,7 @@ class TopUpController extends Controller
                     "Response API: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? '')
                 )->withInput();
             }
+            // =====================================================================
 
             // =====================================================================
             // [BANK INQUIRY] SCENARIO 3: INVALID ACCOUNT / NOT FOUND (Pemicu: Rp 33.333)
