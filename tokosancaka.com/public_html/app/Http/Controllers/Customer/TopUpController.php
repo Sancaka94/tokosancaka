@@ -1344,7 +1344,7 @@ class TopUpController extends Controller
         $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
         $readableBank = $cekBank ? $cekBank->bank_name : $request->bank_code;
 
-        // PAYLOAD NORMAL
+        // PAYLOAD
         $body = [
             "partnerReferenceNo" => $refNo,
             "customerNumber"     => $customerNumber,
@@ -1370,9 +1370,7 @@ class TopUpController extends Controller
 
             Log::info('[BANK INQUIRY] Sending Request to DANA', ['body' => $body]);
 
-            // =====================================================================
-            // PERBAIKAN STRATEGIS: Buat Base Headers di atas sebelum blok IF TEST berjalan
-            // =====================================================================
+            // Siapkan headers standar
             $headers = [
                 'Content-Type'  => 'application/json',
                 'Authorization' => 'Bearer ' . $accessTokenB2B,
@@ -1386,105 +1384,12 @@ class TopUpController extends Controller
                 'CHANNEL-ID'    => '95221'
             ];
 
+            // HANYA MASUKKAN Authorization-Customer JIKA TOKENNYA ADA/TIDAK KOSONG
             if (!empty($aff->dana_access_token)) {
                 $headers['Authorization-Customer'] = 'Bearer ' . $aff->dana_access_token;
             }
 
-            // =====================================================================
-            // [BANK INQUIRY] SCENARIO 1: INSUFFICIENT FUND (Pemicu: Rp 11.111)
-            // =====================================================================
-            if ($request->amount == 11111) {
-                $bodyTest = [
-                    "partnerReferenceNo"       => "BNK_INSUF_" . time() . rand(1000, 9999),
-                    "customerNumber"           => $customerNumber,
-                    "beneficiaryAccountNumber" => "2460888509",
-                    "amount" => [
-                        "value"    => "50000000000.00", // 50 Miliar
-                        "currency" => "IDR"
-                    ],
-                    "additionalInfo" => [
-                        "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-                        "beneficiaryBankCode"    => "014",
-                        "beneficiaryAccountName" => ""
-                    ]
-                ];
-
-                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
-                $stringToSignTest = "POST:" . $path . ":" . strtolower(hash('sha256', $jsonBodyTest)) . ":" . $timestamp;
-
-                $headersTest = $headers;
-                $headersTest['X-SIGNATURE']   = $this->generateSignature($stringToSignTest);
-                $headersTest['X-EXTERNAL-ID'] = (string) time() . Str::random(6);
-
-                $resTest = Http::withHeaders($headersTest)->withBody($jsonBodyTest, 'application/json')
-                            ->post(config('services.dana.base_url') . $path);
-
-                return back()->with('error',
-                    "TES INSUFFICIENT FUND SELESAI!\n" .
-                    "Response API: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? '')
-                )->withInput();
-            }
-
-          // =====================================================================
-            // [BANK INQUIRY] SCENARIO 2: UNAUTHORIZED INVALID SIGNATURE (Pemicu: Rp 22.222)
-            // =====================================================================
-            if ($request->amount == 22222) {
-                $headersTest = $headers;
-
-                // KUNCI PERBAIKAN: Ganti total dengan string acak pendek agar kalkulasi SHA256 DANA mutlak gagal
-                $headersTest['X-SIGNATURE']   = "SALAH_TOTAL_123";
-                $headersTest['X-EXTERNAL-ID'] = (string) time() . Str::random(6);
-
-                $resTest = Http::withHeaders($headersTest)->withBody($jsonBody, 'application/json')
-                            ->post(config('services.dana.base_url') . $path);
-
-                return back()->with('error',
-                    "TES INVALID SIGNATURE SELESAI!\n" .
-                    "Response API: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? '')
-                )->withInput();
-            }
-            // =====================================================================
-
-            // =====================================================================
-            // [BANK INQUIRY] SCENARIO 3: INVALID ACCOUNT / NOT FOUND (Pemicu: Rp 33.333)
-            // =====================================================================
-            if ($request->amount == 33333) {
-                $bodyTest = [
-                    "partnerReferenceNo"       => "BNK_INV_ACC_" . time() . rand(1000, 9999),
-                    "customerNumber"           => $customerNumber,
-                    // KUNCI PERBAIKAN: Gunakan nomor rekening spesifik dari instruksi DANA Sandbox
-                    "beneficiaryAccountNumber" => "815919191",
-                    "amount" => [
-                        "value"    => "50000.00",
-                        "currency" => "IDR"
-                    ],
-                    "additionalInfo" => [
-                        "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-                        "beneficiaryBankCode"    => "014", // BCA
-                        "beneficiaryAccountName" => ""
-                    ]
-                ];
-
-                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
-                $stringToSignTest = "POST:" . $path . ":" . strtolower(hash('sha256', $jsonBodyTest)) . ":" . $timestamp;
-
-                $headersTest = $headers;
-                $headersTest['X-SIGNATURE']   = $this->generateSignature($stringToSignTest);
-                $headersTest['X-EXTERNAL-ID'] = (string) time() . Str::random(6);
-
-                $resTest = Http::withHeaders($headersTest)->withBody($jsonBodyTest, 'application/json')
-                            ->post(config('services.dana.base_url') . $path);
-
-                return back()->with('error',
-                    "TES INVALID ACCOUNT SELESAI!\n" .
-                    "Response API: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? '')
-                )->withInput();
-            }
-            // =====================================================================
-
-            // =====================================================================
-            // JALUR PROSES NORMAL (Selain Nominal 11111, 22222, 33333)
-            // =====================================================================
+            // URL Dinamis
             $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post(config('services.dana.base_url') . $path);
@@ -1498,6 +1403,7 @@ class TopUpController extends Controller
                 'affiliate_id' => $aff->id_pengguna,
                 'type' => 'BANK_INQUIRY',
                 'reference_no' => $refNo,
+                // Kolom phone akan mencatat nama bank secara rapi: "12345678 (Bank BCA)"
                 'phone' => $request->account_no . " (" . $readableBank . ")",
                 'amount' => $request->amount,
                 'status' => ($resCode == '2004200') ? 'SUCCESS' : 'FAILED',
@@ -1519,7 +1425,7 @@ class TopUpController extends Controller
                 return back()->with('success', "Rekening Valid: $accName ($bankName)")
                              ->with('dana_report', $report)
                              ->with('valid_account_name', $accName)
-                             ->with('valid_bank_name', $bankName)
+                             ->with('valid_bank_name', $bankName) // Melempar session untuk UI Transfer
                              ->withInput();
             }
 
@@ -1538,7 +1444,7 @@ class TopUpController extends Controller
 
         } catch (\Exception $e) {
             Log::error('[BANK INQUIRY ERROR]', ['msg' => $e->getMessage()]);
-            return back()->with('error', 'Sistem Error saat cek rekening: ' . $e->getMessage())->withInput();
+            return back()->with('error', 'Sistem Error saat cek rekening.')->withInput();
         }
     }
 
