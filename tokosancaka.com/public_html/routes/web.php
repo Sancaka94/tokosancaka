@@ -920,7 +920,7 @@ Route::get('/dana/return', [TopUpController::class, 'returnPage'])->name('dana.r
 Route::get('/dana/status/{orderId}', [TopUpController::class, 'checkDanaGatewayStatus'])->name('dana.status');
 
 // Route Webhook (PENTING: Jangan lupa exclude dari CSRF di VerifyCsrfToken/app.php)
-Route::post('/dana/notify', [TopUpController::class, 'handleNotify'])->name('dana.notify');
+Route::post('/dana/notify', [App\Http\Controllers\DanaWebhookController::class, 'handleNotify'])->name('dana.notify');
 
 // Route untuk cek manual (misal oleh Admin)
 Route::get('/dana/check-gateway/{orderId}', [TopUpController::class, 'checkDanaGatewayStatus'])
@@ -1302,10 +1302,10 @@ Route::post('/ppob/verify-saldo', [\App\Http\Controllers\PpobIakController::clas
 Route::get('/debug/dana-status/{orderId}', [TopUpController::class, 'debugDanaStatus']);
 
 Route::prefix('customer')->middleware(['auth'])->group(function () {
-    
+
     // Pastikan ditaruh di dalam sini
     Route::get('/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferBankPage'])->name('customer.dana.transfer_bank_page');
-    
+
     // Route POST yang sudah ada sebelumnya
     Route::post('/dana/bank-inquiry', [App\Http\Controllers\Customer\TopUpController::class, 'bankAccountInquiry'])->name('customer.dana.bank_inquiry');
     Route::post('/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferToBank'])->name('customer.dana.transfer_bank');
