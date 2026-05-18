@@ -1340,18 +1340,24 @@ class TopUpController extends Controller
         $path = '/v1.0/emoney/bank-account-inquiry.htm';
         $refNo = "BNK" . time() . Str::random(4);
 
+        // AMBIL DATA BANK DARI DATABASE UNTUK DISPLAY NAMA BANK
+        $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
+        $readableBank = $cekBank ? $cekBank->bank_name : $request->bank_code;
+
+        // PAYLOAD
         $body = [
             "partnerReferenceNo" => $refNo,
             "customerNumber"     => $customerNumber,
             "beneficiaryAccountNumber" => $request->account_no,
-            "beneficiaryBankCode"      => $request->bank_code, // <-- PINDAHKAN KE SINI (Root Level)
             "amount" => [
                 "value"    => number_format((float)$request->amount, 2, '.', ''),
                 "currency" => "IDR"
             ],
             "additionalInfo" => [
                 "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-                // "beneficiaryBankCode" => $request->bank_code, <-- HAPUS DARI SINI
+                // DANA API Inquiry wajib meletakkan bank code di sini.
+                // Cast ke (string) sangat penting agar tidak dibaca sebagai Integer (yang menyebabkan Invalid Field Format).
+                "beneficiaryBankCode"    => (string) $request->bank_code,
                 "beneficiaryAccountName" => ""
             ]
         ];
@@ -1395,15 +1401,11 @@ class TopUpController extends Controller
 
             $resCode = $result['responseCode'] ?? '500';
 
-            // Tambahkan array pembantu nama bank sebelum insert
-            $bankMapping = ['014' => 'BCA', '009' => 'BNI', '002' => 'BRI', '008' => 'MANDIRI', '022' => 'CIMB', '011' => 'PERMATA', '451' => 'BSI'];
-            $readableBank = $bankMapping[$request->bank_code] ?? $request->bank_code;
-
             DB::table('dana_transactions')->insert([
                 'affiliate_id' => $aff->id_pengguna,
                 'type' => 'BANK_INQUIRY',
                 'reference_no' => $refNo,
-                // Kolom phone akan mencatat nama bank secara rapi: "12345678 (BCA)"
+                // Kolom phone akan mencatat nama bank secara rapi: "12345678 (Bank BCA)"
                 'phone' => $request->account_no . " (" . $readableBank . ")",
                 'amount' => $request->amount,
                 'status' => ($resCode == '2004200') ? 'SUCCESS' : 'FAILED',
@@ -1412,7 +1414,7 @@ class TopUpController extends Controller
             ]);
 
             if ($resCode == '2004200') {
-                $bankName = $result['beneficiaryBankShortName'] ?? $result['beneficiaryBankName'];
+                $bankName = $result['beneficiaryBankShortName'] ?? $result['beneficiaryBankName'] ?? $readableBank;
                 $accName  = $result['beneficiaryAccountName'];
                 $accNo    = $result['beneficiaryAccountNumber'];
 
@@ -1430,12 +1432,14 @@ class TopUpController extends Controller
                 return back()->with('success', "Rekening Valid: $accName ($bankName)")
                              ->with('dana_report', $report)
                              ->with('valid_account_name', $accName)
+                             ->with('valid_bank_name', $bankName) // Melempar session untuk UI Transfer
                              ->withInput();
             }
 
             $errMsg = $result['responseMessage'] ?? 'Unknown Error';
             if ($resCode == '4034218') $errMsg = "Akun Merchant Inactive (Hubungi Admin DANA)";
             if ($resCode == '4044201') $errMsg = "Rekening Tidak Ditemukan/Salah Bank";
+            if ($resCode == '4004201') $errMsg = "Format Kode Bank Tidak Valid (".$request->bank_code.")";
 
             $report = (object) [
                 'is_success' => false,
@@ -1443,11 +1447,11 @@ class TopUpController extends Controller
                 'description' => $errMsg
             ];
 
-            return back()->with('error', $errMsg)->with('dana_report', $report);
+            return back()->with('error', $errMsg)->with('dana_report', $report)->withInput();
 
         } catch (\Exception $e) {
             Log::error('[BANK INQUIRY ERROR]', ['msg' => $e->getMessage()]);
-            return back()->with('error', 'Sistem Error saat cek rekening.');
+            return back()->with('error', 'Sistem Error saat cek rekening.')->withInput();
         }
     }
 
