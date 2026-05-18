@@ -1446,6 +1446,7 @@ class TopUpController extends Controller
             Log::error('[BANK INQUIRY ERROR]', ['msg' => $e->getMessage()]);
             return back()->with('error', 'Sistem Error saat cek rekening.')->withInput();
         }
+
     }
 
     public function transferToBank(Request $request)
