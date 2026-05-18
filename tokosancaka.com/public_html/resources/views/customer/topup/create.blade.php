@@ -44,6 +44,26 @@
                         </div>
                         <p class="mt-2 text-sm text-gray-500">*Minimal top up adalah Rp 10.000.</p>
 
+                        <div class="mt-3 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                            <span class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                <i class="fas fa-flask mr-1"></i> Sandbox Testing (Cashier Pay)
+                            </span>
+                            <div class="flex flex-col gap-2">
+                                <button type="button" onclick="setSandboxNominal(77777)" class="w-full text-left bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-3 py-2 rounded text-xs font-medium transition flex justify-between items-center">
+                                    <span>Pemicu: <b>General Error</b></span>
+                                    <span class="bg-amber-200 px-1.5 py-0.5 rounded font-bold">Rp 77.777</span>
+                                </button>
+                                <button type="button" onclick="setSandboxNominal(44444)" class="w-full text-left bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300 px-3 py-2 rounded text-xs font-medium transition flex justify-between items-center">
+                                    <span>Pemicu: <b>Merchant Not Exist</b></span>
+                                    <span class="bg-orange-200 px-1.5 py-0.5 rounded font-bold">Rp 44.444</span>
+                                </button>
+                                <button type="button" onclick="setSandboxNominal(55555)" class="w-full text-left bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-300 px-3 py-2 rounded text-xs font-medium transition flex justify-between items-center">
+                                    <span>Pemicu: <b>Inconsistent Request</b></span>
+                                    <span class="bg-purple-200 px-1.5 py-0.5 rounded font-bold">Rp 55.555</span>
+                                </button>
+                            </div>
+                        </div>
+
                         {{-- Area Preview Consult Pay DANA (AJAX) - JANGAN UBAH --}}
                         <div id="payment-methods-preview" class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100 hidden">
                             <div class="flex items-center mb-3">
@@ -388,5 +408,17 @@
             });
 
     </script>
+
+    <script>
+    function setSandboxNominal(nilai) {
+        // Cari input nominal berdasarkan attribute name atau id.
+        // Sesuaikan id 'amount_input' dengan id asli input nominal di file create.blade.php Anda
+        var inputNominal = document.getElementById('amount') || document.getElementsByName('amount')[0];
+        if (inputNominal) {
+            inputNominal.value = nilai;
+        }
+    }
+</script>
+
     @endpush
 @endsection
