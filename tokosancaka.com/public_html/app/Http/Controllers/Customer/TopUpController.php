@@ -1820,14 +1820,23 @@ class TopUpController extends Controller
             // [GAPURA CUSTOM CHECKOUT - SC 54] BLOK UJI COBA OTOMATIS
             // =====================================================================
 
-            // Skenario 1: General Error (Pemicu: Rp 77.777) -> Target Code 5005400 / 4005400
+           // =====================================================================
+            // [CASHIER PAY] SCENARIO 1: GENERAL ERROR (Pemicu: Rp 77.777)
+            // =====================================================================
             if ($transaction->amount == 77777) {
+                // 1. KUNCI UTAMA: Ubah path URL ke rute yang diminta DANA Sandbox
+                $pathTest = '/rest/redirection/v1.0/debit/payment-host-to-host';
+
                 $bodyTest = $bodyArray;
-                $bodyTest['amount']['currency'] = "INVALID_CUR"; // Merusak standard currency ISO
+                // 2. KUNCI KEDUA: Rusak field currency agar memicu General Error 5005400
+                $bodyTest['amount']['currency'] = "INVALID_CUR";
+
                 $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
 
-                $signatureTest = $this->danaSignature->generateSignature('POST', '/payment-gateway/v1.0/debit/payment-host-to-host.htm', $jsonBodyTest, $timestamp);
+                // Hitung signature baru berdasarkan pintu rute yang benar
+                $signatureTest = $this->danaSignature->generateSignature('POST', $pathTest, $jsonBodyTest, $timestamp);
 
+                // Eksekusi langsung ke DANA Sandbox dengan rute yang sesuai instruksi
                 $resTest = Http::withHeaders([
                     'Authorization'  => 'Bearer ' . $accessToken,
                     'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
@@ -1838,10 +1847,11 @@ class TopUpController extends Controller
                     'CHANNEL-ID'     => '95221',
                     'ORIGIN'         => config('services.dana.origin'),
                 ])->withBody($jsonBodyTest, 'application/json')
-                  ->post($baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm');
+                  ->post($baseUrl . $pathTest);
 
-                return back()->with('error', "TES GENERAL ERROR SELESAI! Response: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
+                return back()->with('error', "TES GENERAL ERROR SELESAI!\nResponse DANA Sandbox: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
             }
+            // =====================================================================
 
             // Skenario 2: Merchant Does Not Exist (Pemicu: Rp 44.444) -> Target Code 4045408
             if ($transaction->amount == 44444) {
