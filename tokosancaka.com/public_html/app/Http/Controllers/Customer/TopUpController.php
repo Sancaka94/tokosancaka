@@ -2196,13 +2196,12 @@ class TopUpController extends Controller
         }
     }
 
-    /**
-     * Menampilkan halaman UI Transfer ke Bank (Disbursement)
-     */
     public function transferBankPage()
     {
-        // Sesuaikan dengan struktur folder tempat kamu menyimpan file blade tadi
-        return view('customer.dana.transfer-bank');
+        // Ambil data bank dari database dan urutkan berdasarkan abjad
+        $banks = DB::table('dana_bank_codes')->orderBy('bank_name', 'asc')->get();
+
+        return view('customer.dana.transfer-bank', compact('banks'));
     }
 
 }

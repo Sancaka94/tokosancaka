@@ -2,6 +2,25 @@
 
 @section('title', 'Pencairan Saldo ke Bank')
 
+{{-- Tambahkan CSS Select2 di bagian atas (bisa juga dilempar via stack/push jika ada) --}}
+@push('styles')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        /* Penyesuaian tema Select2 dengan Tailwind */
+        .select2-container .select2-selection--single {
+            height: 3rem; /* Setara py-3 */
+            border-color: #d1d5db;
+            border-radius: 0.5rem;
+            background-color: #f9fafb;
+            display: flex;
+            align-items: center;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 100%;
+        }
+    </style>
+@endpush
+
 @section('content')
     <h3 class="text-3xl font-semibold text-gray-700">Tarik Saldo ke Rekening Bank</h3>
     <p class="text-gray-500 mt-1">Cairkan saldo komisi/profit Anda langsung ke rekening bank tujuan (DANA Disbursement).</p>
@@ -48,21 +67,19 @@
                     {{-- ALUR 1: CEK REKENING (INQUIRY) --}}
                     <form id="inquiry-form" action="{{ route('customer.dana.bank_inquiry') }}" method="POST">
                         @csrf
-                        {{-- Sesuaikan value ini dengan logic auth/affiliate Anda --}}
                         <input type="hidden" name="affiliate_id" value="{{ auth()->user()->id_pengguna ?? '' }}">
 
                         <div class="space-y-6">
                             <div>
                                 <label for="bank_code" class="block text-sm font-bold text-gray-700 mb-2">Pilih Bank Tujuan</label>
-                                <select name="bank_code" id="bank_code" required class="focus:ring-blue-500 focus:border-blue-500 block w-full p-3 border-gray-300 rounded-lg bg-gray-50">
-                                    <option value="">-- Pilih Bank --</option>
-                                    <option value="014" {{ old('bank_code') == '014' ? 'selected' : '' }}>BCA - Bank Central Asia</option>
-                                    <option value="009" {{ old('bank_code') == '009' ? 'selected' : '' }}>BNI - Bank Negara Indonesia</option>
-                                    <option value="002" {{ old('bank_code') == '002' ? 'selected' : '' }}>BRI - Bank Rakyat Indonesia</option>
-                                    <option value="008" {{ old('bank_code') == '008' ? 'selected' : '' }}>Mandiri</option>
-                                    <option value="022" {{ old('bank_code') == '022' ? 'selected' : '' }}>CIMB Niaga</option>
-                                    <option value="011" {{ old('bank_code') == '011' ? 'selected' : '' }}>Permata Bank</option>
-                                    <option value="451" {{ old('bank_code') == '451' ? 'selected' : '' }}>BSI (Bank Syariah Indonesia)</option>
+                                {{-- GANTI HARDCODE DENGAN DATABASE --}}
+                                <select name="bank_code" id="bank_code" required class="select2-dropdown w-full">
+                                    <option value="">-- Cari & Pilih Bank --</option>
+                                    @foreach($banks as $bank)
+                                        <option value="{{ $bank->bank_code }}" {{ old('bank_code') == $bank->bank_code ? 'selected' : '' }}>
+                                            {{ $bank->bank_code }} - {{ $bank->bank_name }}
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
 
@@ -112,17 +129,9 @@
                         <div class="space-y-4 bg-gray-50 p-6 rounded-lg border border-gray-200">
                             <div class="flex justify-between border-b pb-2">
                                 <span class="text-gray-500 font-medium">Bank Tujuan</span>
+                                {{-- Mengambil nama bank yang sudah disimpan ke session dari Controller --}}
                                 <span class="font-bold text-gray-800">
-                                    @switch(old('bank_code'))
-                                        @case('014') BCA @break
-                                        @case('009') BNI @break
-                                        @case('002') BRI @break
-                                        @case('008') Mandiri @break
-                                        @case('022') CIMB Niaga @break
-                                        @case('011') Permata @break
-                                        @case('451') BSI @break
-                                        @default {{ old('bank_code') }}
-                                    @endswitch
+                                    {{ session('valid_bank_name') ?? old('bank_code') }}
                                 </span>
                             </div>
                             <div class="flex justify-between border-b pb-2">
@@ -155,9 +164,22 @@
     </div>
 
     @push('scripts')
+    <!-- jQuery dan Select2 JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
     <script>
-        // Fitur loading untuk mencegah Double Submit
         document.addEventListener("DOMContentLoaded", function() {
+            // Inisialisasi Fitur Pencarian Select2
+            if ($('.select2-dropdown').length) {
+                $('.select2-dropdown').select2({
+                    placeholder: "-- Cari & Pilih Bank --",
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+
+            // Fitur loading untuk mencegah Double Submit
             const inquiryForm = document.getElementById('inquiry-form');
             if(inquiryForm) {
                 inquiryForm.addEventListener('submit', function() {
