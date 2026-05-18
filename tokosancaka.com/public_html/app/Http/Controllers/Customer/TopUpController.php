@@ -1800,7 +1800,6 @@ class TopUpController extends Controller
              $accessToken = $this->danaSignature->getAccessToken();
              $signature = $this->danaSignature->generateSignature('POST', '/payment-gateway/v1.0/debit/payment-host-to-host.htm', $jsonBody, $timestamp);
 
-             // URL Dinamis
              $baseUrl = config('services.dana.base_url');
 
              $response = Http::withHeaders([
@@ -1816,6 +1815,83 @@ class TopUpController extends Controller
               ->post($baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm');
 
             $result = $response->json();
+
+            // =====================================================================
+            // [GAPURA CUSTOM CHECKOUT - SC 54] BLOK UJI COBA OTOMATIS
+            // =====================================================================
+
+            // Skenario 1: General Error (Pemicu: Rp 77.777) -> Target Code 5005400 / 4005400
+            if ($transaction->amount == 77777) {
+                $bodyTest = $bodyArray;
+                $bodyTest['amount']['currency'] = "INVALID_CUR"; // Merusak standard currency ISO
+                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
+
+                $signatureTest = $this->danaSignature->generateSignature('POST', '/payment-gateway/v1.0/debit/payment-host-to-host.htm', $jsonBodyTest, $timestamp);
+
+                $resTest = Http::withHeaders([
+                    'Authorization'  => 'Bearer ' . $accessToken,
+                    'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+                    'X-EXTERNAL-ID'  => Str::random(32),
+                    'X-TIMESTAMP'    => $timestamp,
+                    'X-SIGNATURE'    => $signatureTest,
+                    'Content-Type'   => 'application/json',
+                    'CHANNEL-ID'     => '95221',
+                    'ORIGIN'         => config('services.dana.origin'),
+                ])->withBody($jsonBodyTest, 'application/json')
+                  ->post($baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm');
+
+                return back()->with('error', "TES GENERAL ERROR SELESAI! Response: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
+            }
+
+            // Skenario 2: Merchant Does Not Exist (Pemicu: Rp 44.444) -> Target Code 4045408
+            if ($transaction->amount == 44444) {
+                $bodyTest = $bodyArray;
+                $bodyTest['merchantId'] = "999999999999999999"; // Menggunakan ID Merchant palsu
+                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
+
+                $signatureTest = $this->danaSignature->generateSignature('POST', '/payment-gateway/v1.0/debit/payment-host-to-host.htm', $jsonBodyTest, $timestamp);
+
+                $resTest = Http::withHeaders([
+                    'Authorization'  => 'Bearer ' . $accessToken,
+                    'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+                    'X-EXTERNAL-ID'  => Str::random(32),
+                    'X-TIMESTAMP'    => $timestamp,
+                    'X-SIGNATURE'    => $signatureTest,
+                    'Content-Type'   => 'application/json',
+                    'CHANNEL-ID'     => '95221',
+                    'ORIGIN'         => config('services.dana.origin'),
+                ])->withBody($jsonBodyTest, 'application/json')
+                  ->post($baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm');
+
+                return back()->with('error', "TES MERCHANT NOT EXIST SELESAI! Response: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
+            }
+
+            // Skenario 3: Inconsistent Request (Pemicu: Rp 55.555) -> Target Code 4045418
+            if ($transaction->amount == 55555) {
+                // Hit pertama sukses diproses (menghasilkan url redirect di dalam variabel $result)
+
+                // Hit kedua langsung ditembak ulang menggunakan partnerReferenceNo yang SAMA tapi nilai amount diubah
+                $bodyTest = $bodyArray;
+                $bodyTest['amount']['value'] = "66666.00"; // Ubah nominal dari 55555 menjadi 66666
+                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
+
+                $signatureTest = $this->danaSignature->generateSignature('POST', '/payment-gateway/v1.0/debit/payment-host-to-host.htm', $jsonBodyTest, $timestamp);
+
+                $resTest = Http::withHeaders([
+                    'Authorization'  => 'Bearer ' . $accessToken,
+                    'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+                    'X-EXTERNAL-ID'  => Str::random(32),
+                    'X-TIMESTAMP'    => $timestamp,
+                    'X-SIGNATURE'    => $signatureTest,
+                    'Content-Type'   => 'application/json',
+                    'CHANNEL-ID'     => '95221',
+                    'ORIGIN'         => config('services.dana.origin'),
+                ])->withBody($jsonBodyTest, 'application/json')
+                  ->post($baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm');
+
+                return back()->with('error', "TES INCONSISTENT REQUEST SELESAI!\nHit 1: [" . ($result['responseCode'] ?? '') . "]\nHit 2: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
+            }
+            // =====================================================================
 
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'] ?? null;
