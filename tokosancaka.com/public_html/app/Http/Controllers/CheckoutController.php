@@ -872,18 +872,17 @@ class CheckoutController extends Controller
             // ====================================================================
             // 8. HANDLE SUCCESS / REDIRECT
             // ====================================================================
-            // Cek Kode Sukses DANA (2005400)
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
                 if($redirectUrl) {
-                    // Simpan URL Pembayaran
-                    $order->payment_url = $redirectUrl;
+                    // AKAL-AKALAN TANPA MIGRATE:
+                    // Potong URL yang masuk ke DB jadi 255 karakter saja agar MySQL tidak crash
+                    $order->payment_url = substr($redirectUrl, 0, 255);
                     $order->save();
 
-                    // Kosongkan Keranjang
                     session()->forget('cart');
 
-                    // REDIRECT USER KE DANA
+                    // USER TETAP DIALIKHAN PAKAI URL ASLI (Halaman DANA aman 100%)
                     return redirect()->away($redirectUrl);
                 }
             }
