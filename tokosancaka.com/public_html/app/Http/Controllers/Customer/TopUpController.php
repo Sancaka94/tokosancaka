@@ -946,7 +946,6 @@ class TopUpController extends Controller
             ],
             "transactionDate" => $timestamp,
             "additionalInfo"  => [
-                "publicKey"          => config('services.dana.public_key'),
                 "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE",
                 "externalDivisionId" => "",
                 "chargeTarget"       => "MERCHANT",
@@ -1175,7 +1174,6 @@ class TopUpController extends Controller
             'X-SIGNATURE'   => $signature,
             'ORIGIN'        => config('services.dana.origin'),
             'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-            'X-PUBLIC-KEY'   => config('services.dana.public_key'),
             'X-EXTERNAL-ID' => (string) time() . Str::random(6),
             'X-IP-ADDRESS'  => $request->ip(),
             'X-DEVICE-ID'   => 'SANCAKA-DANA-01',
@@ -1285,7 +1283,6 @@ class TopUpController extends Controller
             'Authorization'  => 'Bearer ' . $aff->dana_access_token,
             'X-TIMESTAMP'    => $timestamp,
             'X-SIGNATURE'    => $signature,
-            'X-PUBLIC-KEY'   => config('services.dana.public_key'),
             'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
             'X-EXTERNAL-ID'  => (string) time() . Str::random(6),
             'CHANNEL-ID'     => '95221'
@@ -1485,7 +1482,6 @@ class TopUpController extends Controller
                 'ORIGIN'        => config('services.dana.origin'),
                 'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
                 'X-EXTERNAL-ID' => (string) time() . Str::random(6),
-                'X-PUBLIC-KEY'   => config('services.dana.public_key'),
                 'X-IP-ADDRESS'  => $request->ip(),
                 'X-DEVICE-ID'   => 'SANCAKA-DANA-01',
                 'CHANNEL-ID'    => '95221'
@@ -1637,7 +1633,6 @@ class TopUpController extends Controller
                 'X-SIGNATURE'   => $signature,
                 'X-PARTNER-ID'  => $clientId,
                 'X-EXTERNAL-ID' => $externalId,
-                'X-PUBLIC-KEY'   => config('services.dana.public_key'),
                 'CHANNEL-ID'    => '95221',
                 'ORIGIN'        => config('app.url'),
             ];
@@ -1768,7 +1763,6 @@ class TopUpController extends Controller
              $response = Http::withHeaders([
                 'Authorization'  => 'Bearer ' . $accessToken,
                 'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-                'X-PUBLIC-KEY'   => config('services.dana.public_key'),
                 'X-EXTERNAL-ID'  => Str::random(32),
                 'X-TIMESTAMP'    => $timestamp,
                 'X-SIGNATURE'    => $signature,
