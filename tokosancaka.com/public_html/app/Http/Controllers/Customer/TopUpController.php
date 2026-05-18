@@ -946,6 +946,7 @@ class TopUpController extends Controller
             ],
             "transactionDate" => $timestamp,
             "additionalInfo"  => [
+                "publicKey"          => config('services.dana.public_key'),
                 "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE",
                 "externalDivisionId" => "",
                 "chargeTarget"       => "MERCHANT",
@@ -1283,6 +1284,7 @@ class TopUpController extends Controller
             'Authorization'  => 'Bearer ' . $aff->dana_access_token,
             'X-TIMESTAMP'    => $timestamp,
             'X-SIGNATURE'    => $signature,
+            'X-PUBLIC-KEY'   => config('services.dana.public_key'),
             'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
             'X-EXTERNAL-ID'  => (string) time() . Str::random(6),
             'CHANNEL-ID'     => '95221'
@@ -1763,6 +1765,7 @@ class TopUpController extends Controller
              $response = Http::withHeaders([
                 'Authorization'  => 'Bearer ' . $accessToken,
                 'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+                'X-PUBLIC-KEY'   => config('services.dana.public_key'),
                 'X-EXTERNAL-ID'  => Str::random(32),
                 'X-TIMESTAMP'    => $timestamp,
                 'X-SIGNATURE'    => $signature,
@@ -1921,6 +1924,7 @@ class TopUpController extends Controller
                 'services.dana.client_id'     => Api::getValue('dana_prod_client_id', 'production', env('DANA_PROD_CLIENT_ID')),
                 'services.dana.x_partner_id'  => Api::getValue('dana_prod_client_id', 'production', env('DANA_PROD_CLIENT_ID')),
                 'services.dana.private_key'   => Api::getValue('dana_prod_private_key', 'production', env('DANA_PROD_PRIVATE_KEY')),
+                'services.dana.public_key'    => Api::getValue('dana_prod_public_key', 'production'), // <-- TAMBAHKAN BARIS INI
                 'services.dana.client_secret' => Api::getValue('dana_prod_client_secret', 'production', env('DANA_PROD_CLIENT_SECRET')),
             ]);
         } else {
@@ -1932,6 +1936,7 @@ class TopUpController extends Controller
                 'services.dana.client_id'     => Api::getValue('dana_sandbox_client_id', 'sandbox', env('DANA_X_PARTNER_ID')),
                 'services.dana.x_partner_id'  => Api::getValue('dana_sandbox_client_id', 'sandbox', env('DANA_X_PARTNER_ID')),
                 'services.dana.private_key'   => Api::getValue('dana_sandbox_private_key', 'sandbox', env('DANA_PRIVATE_KEY')),
+                'services.dana.public_key'    => Api::getValue('dana_sandbox_public_key', 'sandbox'), // <-- TAMBAHKAN BARIS INI
                 'services.dana.client_secret' => Api::getValue('dana_sandbox_client_secret', 'sandbox', env('DANA_CLIENT_SECRET')),
             ]);
         }
