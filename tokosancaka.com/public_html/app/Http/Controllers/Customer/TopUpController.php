@@ -1532,18 +1532,16 @@ class TopUpController extends Controller
             Log::info('[DANA TRANSFER BANK] Mengirim Request...', ['body' => $body]);
 
             // =====================================================================
-            // BLOK TES OTOMATIS: INSUFFICIENT FUND (Hanya jalan jika input Rp 88.888)
+            // BLOK TES OTOMATIS: MISSING MANDATORY FIELD (Hanya jalan jika input Rp 44.444)
             // =====================================================================
-            if ($request->amount == 88888) {
-                // Modifikasi payload khusus untuk memaksa error Insufficient Fund
+            if ($request->amount == 44444) {
                 $bodyTest = $body;
 
-                // KUNCI PERBAIKAN: Paksa buat ID Referensi Baru di sini agar tidak Inconsistent
-                $bodyTest['partnerReferenceNo']       = "TRF_INSUF_" . time() . rand(1000, 9999);
+                // Buat ID Referensi Baru agar tidak terkena error Inconsistent Request
+                $bodyTest['partnerReferenceNo'] = "TRF_MISS_" . time() . rand(1000, 9999);
 
-                $bodyTest['beneficiaryAccountNumber'] = "81298055129";
-                $bodyTest['beneficiaryBankCode']      = "014";
-                $bodyTest['amount']['value']          = "50000000000.00"; // 50 Miliar IDR
+                // KUNCI TES INI: Hapus salah satu field wajib (mandatory)
+                unset($bodyTest['beneficiaryBankCode']);
 
                 $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
                 $stringToSignTest = "POST:" . $path . ":" . strtolower(hash('sha256', $jsonBodyTest)) . ":" . $timestamp;
@@ -1552,15 +1550,15 @@ class TopUpController extends Controller
                 $headersTest['X-SIGNATURE'] = $this->generateSignature($stringToSignTest);
                 $headersTest['X-EXTERNAL-ID'] = (string) time() . Str::random(6);
 
-                // Eksekusi API dengan Payload 50 Miliar
+                // Eksekusi API dengan Payload yang tidak lengkap
                 $resTest = Http::withHeaders($headersTest)->withBody($jsonBodyTest, 'application/json')
                             ->post(config('services.dana.base_url') . $path);
 
-                // Refund saldo lokal (karena sebelumnya di atas sempat dikurangi 88.888)
+                // Refund saldo lokal (karena sebelumnya di atas sempat dikurangi 44.444)
                 DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
 
                 return back()->with('error',
-                    "TES INSUFFICIENT FUND SELESAI!\n" .
+                    "TES MISSING MANDATORY FIELD SELESAI!\n" .
                     "Response API: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? '') . "\n" .
                     "Silakan cek Dashboard Sandbox DANA Anda!"
                 );
