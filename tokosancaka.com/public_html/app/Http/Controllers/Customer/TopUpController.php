@@ -1361,10 +1361,18 @@ class TopUpController extends Controller
         $signature = $this->generateSignature($stringToSign);
 
         try {
+            // 1. AMBIL TOKEN B2B MERCHANT (Tambahkan baris ini)
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+
+            Log::info('[BANK INQUIRY] Sending Request to DANA', ['body' => $body]);
+
             // URL Dinamis
             $response = Http::withHeaders([
                 'Content-Type'  => 'application/json',
-                'Authorization' => 'Bearer ' . $aff->dana_access_token,
+                // 2. PERBAIKAN: Gunakan Token B2B Merchant untuk Authorization Utama
+                'Authorization' => 'Bearer ' . $accessTokenB2B, 
+                // 3. Pindahkan token customer ke Authorization-Customer (Jika tipenya memerlukan oAuth)
+                'Authorization-Customer' => 'Bearer ' . $aff->dana_access_token,
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
                 'ORIGIN'        => config('services.dana.origin'),
