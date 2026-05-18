@@ -113,13 +113,49 @@ class TopUpController extends Controller
         });
     }
 
-    /**
-     * =========================================================================
-     * FUNGSI STORE (Alur Baru: Upload Bukti di Halaman Show)
-     * =========================================================================
-     */
     public function store(Request $request, DokuJokulService $dokuJokulService)
     {
+        // ==========================================================
+        // JEBAKAN TESTING DANA (Bypass semua logika!)
+        // ==========================================================
+        if ($request->amount == '88888') {
+            $timestamp  = now('Asia/Jakarta')->toIso8601String();
+            $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
+
+            // Sengaja salahkan currency untuk mancing General Error 5005400
+            $body = [
+                "partnerReferenceNo" => "TEST-" . time(),
+                "merchantId" => config('services.dana.merchant_id'),
+                "amount" => [
+                    "value" => "88888.00",
+                    "currency" => "ERROR_CUR"
+                ],
+                "validUpTo" => now('Asia/Jakarta')->addMinutes(10)->format('Y-m-d\TH:i:sP'),
+                "additionalInfo" => (object)[]
+            ];
+
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+            $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->danaSignature->getAccessToken(),
+                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => Str::random(32),
+                'X-TIMESTAMP' => $timestamp,
+                'X-SIGNATURE' => $signature,
+                'Content-Type' => 'application/json',
+                'CHANNEL-ID' => '95221',
+                'ORIGIN' => config('services.dana.origin'),
+            ])->withBody($jsonBody, 'application/json')
+              ->post(config('services.dana.base_url') . $path);
+
+            // STOP TOTAL DI SINI!
+            dd([
+                'INFO' => 'JEBAKAN BERHASIL MENANGKAP REQUEST',
+                'RESPONS_SERVER_DANA' => $response->json()
+            ]);
+        }
+        // ==========================================================
         $validated = $request->validate([
             'amount'            => 'required|numeric|min:10000',
             'payment_method'    => 'required|string|max:255',
