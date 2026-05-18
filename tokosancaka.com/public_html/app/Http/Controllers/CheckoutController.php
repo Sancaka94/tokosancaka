@@ -778,7 +778,7 @@ class CheckoutController extends Controller
             // Perbaikan 1: Kembalikan payOptionDetails dengan payOption string kosong
             "payOptionDetails"   => [
                 [
-                    "payMethod"   => "",
+                    "payMethod"   => "BALANCE",
                     "payOption"   => "",
                     "transAmount" => ["value" => $amountValue, "currency" => "IDR"]
                 ]
