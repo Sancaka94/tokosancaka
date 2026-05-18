@@ -2342,39 +2342,44 @@ class TopUpController extends Controller
 
         $user = Auth::user();
         $returnUrl = route('dana.return');
-        // Format waktu ISO8601 GMT+7 (YYYY-MM-DDTHH:mm:ss+07:00)
+        $notifyUrl = route('dana.notify');
+
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $expiryTime = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
         // ==============================================================================
         // 🧪 BLOK TESTING SANDBOX DANA
-        // Buka komentar (uncomment) salah satu skenario di bawah ini untuk testing.
-        // Jika sudah hijau semua di dashboard, HAPUS atau COMMENT kembali blok ini.
+        // Buka salah satu $testAmount di bawah ini jika ingin force error skenario.
         // ==============================================================================
 
-        // 👉 SKENARIO 1: "Merchant does not exist or status abnormal"
-        // $testMerchantId = "216110000000000000000";
-
-        // 👉 SKENARIO 2: "Inconsistent Request"
-        // $trxId = "TEST-INCONSISTENT-777";
-        // $testAmount = "10000.00";
-
-        // 👉 SKENARIO 3: "General Error" (5005400)
-        // $testAmount = "5005400.00";
+        // $testAmount = "5005400.00"; // Untuk skenario "General Error"
 
         // ==============================================================================
 
-        $merchantId = isset($testMerchantId) ? $testMerchantId : config('services.dana.merchant_id');
+        $merchantId = config('services.dana.merchant_id');
         $finalAmount = isset($testAmount) ? $testAmount : number_format($transaction->amount, 2, '.', '');
 
-        // PAYLOAD SESUAI DOKUMENTASI DIRECT DEBIT PAYMENT (/rest/redirection/...)
+        // PAYLOAD "PELURU PENUH" UNTUK MENGHINDARI 4005402
         $bodyArray = [
             "partnerReferenceNo" => $trxId,
             "merchantId" => $merchantId,
+            // 1. SOLUSI: Masukkan subMerchantId (Sering wajib di Sandbox)
+            "subMerchantId" => $merchantId,
             "validUpTo" => $expiryTime,
             "amount" => [
                 "value" => $finalAmount,
                 "currency" => "IDR"
+            ],
+            // 2. SOLUSI: Masukkan payOptionDetails agar validasi DANA terpuaskan
+            "payOptionDetails" => [
+                [
+                    "payMethod" => "BALANCE",
+                    "payOption" => "BALANCE",
+                    "transAmount" => [
+                        "value" => $finalAmount,
+                        "currency" => "IDR"
+                    ]
+                ]
             ],
             "urlParams" => [
                 [
@@ -2383,19 +2388,28 @@ class TopUpController extends Controller
                     "isDeeplink" => "Y"
                 ],
                 [
-                    "url" => route('dana.notify'),
+                    "url" => $notifyUrl,
                     "type" => "NOTIFICATION",
                     "isDeeplink" => "N"
                 ]
             ],
             "additionalInfo" => [
                 "order" => [
-                    "orderTitle" => "Top Up " . $trxId
+                    "orderTitle" => "Top Up " . $trxId,
+                    "merchantTransType" => "01",
+                    "scenario" => "REDIRECT",
+                    // 3. SOLUSI: Masukkan data Buyer
+                    "buyer" => [
+                        "externalUserId" => (string) ($user ? $user->id_pengguna : 'GUEST_' . time()),
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname" => \Illuminate\Support\Str::limit($user->nama_lengkap ?? 'Customer', 40, ''),
+                    ]
                 ],
-                "mcc" => "5732",
+                "mcc" => "5732", // Kategori Toko (Bisa diganti 5399 jika 5732 ditolak)
                 "envInfo" => [
                     "sourcePlatform" => "IPG",
-                    "terminalType" => "SYSTEM"
+                    "terminalType" => "WEB",
+                    "orderTerminalType" => "WEB"
                 ],
                 "productCode" => "51051000100000000001",
                 "supportDeepLinkCheckoutUrl" => "true"
@@ -2404,10 +2418,12 @@ class TopUpController extends Controller
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
+        // Log payload mentah untuk mempermudah debugging jika ada error lanjutan
+        Log::debug('DANA REQUEST PAYLOAD:', $bodyArray);
+
         try {
             $apiPath = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
-            // Signature Generation
             $accessToken = $this->danaSignature->getAccessToken();
             $signature = $this->danaSignature->generateSignature('POST', $apiPath, $jsonBody, $timestamp);
 
@@ -2444,7 +2460,7 @@ class TopUpController extends Controller
 
         } catch (\Exception $e) {
             Log::error('DANA Error: ' . $e->getMessage());
-            return back()->with('error', 'Koneksi DANA Error.');
+            return back()->with('error', 'Koneksi DANA Error: ' . $e->getMessage());
         }
     }
 
