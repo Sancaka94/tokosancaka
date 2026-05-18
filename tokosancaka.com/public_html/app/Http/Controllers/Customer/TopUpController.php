@@ -1481,8 +1481,8 @@ class TopUpController extends Controller
 
         $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path       = '/v1.0/emoney/transfer-bank.htm';
-        // $partnerRef = "TRF" . time() . Str::random(6);
-        $partnerRef = "TEST_INCONSISTENT_999";
+        $partnerRef = "TRF" . time() . Str::random(6);
+        // $partnerRef = "TEST_INCONSISTENT_999";
 
         // AMBIL DATA BANK DARI DATABASE
         $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
@@ -1493,7 +1493,6 @@ class TopUpController extends Controller
             "partnerReferenceNo"       => $partnerRef,
             "customerNumber"           => $customerNumber,
             "beneficiaryAccountNumber" => (string) $request->account_no,
-            // DI TRANSFER API, BENEFICIARY BANK CODE ADA DI ROOT, BUKAN DI ADDITIONAL INFO
             "beneficiaryBankCode"      => (string) $request->bank_code,
             "amount" => [
                 "value"    => number_format((float)$request->amount, 2, '.', ''),
@@ -1502,8 +1501,7 @@ class TopUpController extends Controller
             "additionalInfo" => [
                 "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
                 "beneficiaryAccountName" => (string) $request->account_name,
-                // "needNotify"             => true
-            ]
+                "notes"                  => "Transfer ke Bank " . $readableBank]
         ];
 
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
@@ -1530,40 +1528,6 @@ class TopUpController extends Controller
             ];
 
             Log::info('[DANA TRANSFER BANK] Mengirim Request...', ['body' => $body]);
-
-            // =====================================================================
-            // BLOK TES OTOMATIS: MISSING MANDATORY FIELD (Hanya jalan jika input Rp 44.444)
-            // =====================================================================
-            if ($request->amount == 44444) {
-                $bodyTest = $body;
-
-                // Buat ID Referensi Baru agar tidak terkena error Inconsistent Request
-                $bodyTest['partnerReferenceNo'] = "TRF_MISS_" . time() . rand(1000, 9999);
-
-                // KUNCI TES INI: Hapus salah satu field wajib (mandatory)
-                unset($bodyTest['beneficiaryBankCode']);
-
-                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
-                $stringToSignTest = "POST:" . $path . ":" . strtolower(hash('sha256', $jsonBodyTest)) . ":" . $timestamp;
-
-                $headersTest = $headers;
-                $headersTest['X-SIGNATURE'] = $this->generateSignature($stringToSignTest);
-                $headersTest['X-EXTERNAL-ID'] = (string) time() . Str::random(6);
-
-                // Eksekusi API dengan Payload yang tidak lengkap
-                $resTest = Http::withHeaders($headersTest)->withBody($jsonBodyTest, 'application/json')
-                            ->post(config('services.dana.base_url') . $path);
-
-                // Refund saldo lokal (karena sebelumnya di atas sempat dikurangi 44.444)
-                DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
-
-                return back()->with('error',
-                    "TES MISSING MANDATORY FIELD SELESAI!\n" .
-                    "Response API: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? '') . "\n" .
-                    "Silakan cek Dashboard Sandbox DANA Anda!"
-                );
-            }
-            // =====================================================================
 
             // EKSEKUSI API NORMAL
             $response = Http::withHeaders($headers)
