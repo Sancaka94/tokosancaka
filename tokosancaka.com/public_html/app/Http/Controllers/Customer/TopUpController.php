@@ -218,7 +218,7 @@ class TopUpController extends Controller
                 DB::commit();
 
                 // Arahkan ke fungsi baru
-                return $this->createPaymentDanaDirectDebit($transaction);
+                return $this->createTopUpPaymentDANA($transaction);
             }
 
             // 3. Logika DOKU & TRIPAY
