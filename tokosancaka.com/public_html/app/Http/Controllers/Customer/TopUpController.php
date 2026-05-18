@@ -1767,7 +1767,7 @@ class TopUpController extends Controller
         // Jalankan transaksi pertama dengan $testAmount = "15000.00".
         // Setelah berhasil, ubah $testAmount menjadi "20000.00" lalu jalankan transaksi lagi.
         $trxId = "TEST-INCONSISTENT-999";
-        $testAmount = "15000.00";
+        $testAmount = "20000.00";
 
         // 👉 SKENARIO 3: "General Error" (Internal Server Error)
         // $testAmount = "5005400.00";
