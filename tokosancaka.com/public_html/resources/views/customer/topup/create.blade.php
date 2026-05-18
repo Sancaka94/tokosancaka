@@ -100,6 +100,21 @@
                             <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 pl-1 border-l-4 border-gray-400">Transfer & E-Wallet</h5>
                             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 
+                                {{-- DANA DIRECT DEBIT (Fitur Baru API Direct Debit) --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="DANA_DIRECT_DEBIT" class="peer sr-only">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-500 peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all flex flex-col items-center text-center">
+                                        <img src="{{ asset('assets/dana.webp') }}" class="h-10 w-10 object-contain mb-2 rounded-md" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                                        <span class="text-sm font-bold text-gray-700">DANA Direct</span>
+                                        <span class="text-[10px] text-gray-400">Checkout Instan</span>
+
+                                        {{-- Centang --}}
+                                        <div class="absolute top-2 right-2 text-blue-600 opacity-0 peer-checked:opacity-100">
+                                            <i class="fas fa-check-circle"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
                                 {{-- DANA DIRECT --}}
                                 <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="DANA" class="peer sr-only">

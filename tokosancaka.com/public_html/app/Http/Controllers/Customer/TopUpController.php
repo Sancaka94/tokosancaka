@@ -199,6 +199,28 @@ class TopUpController extends Controller
                 DB::commit();
                 return $this->createPaymentDANA($transaction);
             }
+
+            // LOGIKA DANA DIRECT DEBIT (Fitur Baru)
+            elseif ($validated['payment_method'] === 'DANA_DIRECT_DEBIT') {
+
+                Log::info('Memulai Top Up DANA Direct Debit untuk ' . $invoiceNumber); // LOG LOG
+
+                $transaction = Transaction::create([
+                    'user_id'        => $user->id_pengguna,
+                    'reference_id'   => $invoiceNumber,
+                    'amount'         => $amount,
+                    'type'           => 'topup',
+                    'status'         => 'pending',
+                    'payment_method' => 'DANA_DIRECT_DEBIT',
+                    'description'    => 'Top up saldo via DANA Direct Debit',
+                ]);
+
+                DB::commit();
+
+                // Arahkan ke fungsi baru
+                return $this->createPaymentDanaDirectDebit($transaction);
+            }
+
             // 3. Logika DOKU & TRIPAY
             else {
 
@@ -1754,26 +1776,6 @@ class TopUpController extends Controller
         $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // ==============================================================================
-        // 🧪 BLOK TESTING SANDBOX DANA
-        // Buka komentar (uncomment) salah satu skenario di bawah ini untuk testing.
-        // PENTING: Jika sudah hijau semua, HAPUS atau COMMENT kembali blok ini.
-        // ==============================================================================
-
-        // 👉 SKENARIO 1: "Merchant does not exist or status abnormal"
-        // $merchantId = "216110000000000000000";
-
-        // 👉 SKENARIO 2: "Inconsistent Request"
-        // Jalankan transaksi pertama dengan $testAmount = "15000.00".
-        // Setelah berhasil, ubah $testAmount menjadi "20000.00" lalu jalankan transaksi lagi.
-        // $trxId = "TEST-INCONSISTENT-999";
-        // $testAmount = "20000.00";
-
-        // 👉 SKENARIO 3: "General Error" (Internal Server Error)
-        $testAmount = "5005400.00";
-
-        // ==============================================================================
-
         // Fallback ke nilai asli jika tidak sedang mengaktifkan variabel testing di atas
         $merchantId = isset($merchantId) ? $merchantId : config('services.dana.merchant_id');
         $finalAmount = isset($testAmount) ? $testAmount : number_format($transaction->amount, 2, '.', '');
@@ -2331,6 +2333,119 @@ class TopUpController extends Controller
         $banks = DB::table('dana_bank_codes')->orderBy('bank_name', 'asc')->get();
 
         return view('customer.dana.transfer-bank', compact('banks'));
+    }
+
+    public function createPaymentDanaDirectDebit(Transaction $transaction)
+    {
+        $trxId = $transaction->reference_id;
+        Log::info('DANA START for Transaction Table: ' . $trxId); // LOG LOG
+
+        $user = Auth::user();
+        $returnUrl = route('dana.return');
+        // Format waktu ISO8601 GMT+7 (YYYY-MM-DDTHH:mm:ss+07:00)
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $expiryTime = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+
+        // ==============================================================================
+        // 🧪 BLOK TESTING SANDBOX DANA
+        // Buka komentar (uncomment) salah satu skenario di bawah ini untuk testing.
+        // Jika sudah hijau semua di dashboard, HAPUS atau COMMENT kembali blok ini.
+        // ==============================================================================
+
+        // 👉 SKENARIO 1: "Merchant does not exist or status abnormal"
+        // $testMerchantId = "216110000000000000000";
+
+        // 👉 SKENARIO 2: "Inconsistent Request"
+        // $trxId = "TEST-INCONSISTENT-777";
+        // $testAmount = "10000.00";
+
+        // 👉 SKENARIO 3: "General Error" (5005400)
+        // $testAmount = "5005400.00";
+
+        // ==============================================================================
+
+        $merchantId = isset($testMerchantId) ? $testMerchantId : config('services.dana.merchant_id');
+        $finalAmount = isset($testAmount) ? $testAmount : number_format($transaction->amount, 2, '.', '');
+
+        // PAYLOAD SESUAI DOKUMENTASI DIRECT DEBIT PAYMENT (/rest/redirection/...)
+        $bodyArray = [
+            "partnerReferenceNo" => $trxId,
+            "merchantId" => $merchantId,
+            "validUpTo" => $expiryTime,
+            "amount" => [
+                "value" => $finalAmount,
+                "currency" => "IDR"
+            ],
+            "urlParams" => [
+                [
+                    "url" => $returnUrl,
+                    "type" => "PAY_RETURN",
+                    "isDeeplink" => "Y"
+                ],
+                [
+                    "url" => route('dana.notify'),
+                    "type" => "NOTIFICATION",
+                    "isDeeplink" => "N"
+                ]
+            ],
+            "additionalInfo" => [
+                "order" => [
+                    "orderTitle" => "Top Up " . $trxId
+                ],
+                "mcc" => "5732",
+                "envInfo" => [
+                    "sourcePlatform" => "IPG",
+                    "terminalType" => "SYSTEM"
+                ],
+                "productCode" => "51051000100000000001",
+                "supportDeepLinkCheckoutUrl" => "true"
+            ]
+        ];
+
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        try {
+            $apiPath = '/rest/redirection/v1.0/debit/payment-host-to-host';
+
+            // Signature Generation
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature = $this->danaSignature->generateSignature('POST', $apiPath, $jsonBody, $timestamp);
+
+            $baseUrl = config('services.dana.base_url');
+
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+                'X-TIMESTAMP' => $timestamp,
+                'X-SIGNATURE' => $signature,
+                'ORIGIN' => config('services.dana.origin', config('app.url')),
+                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) \Illuminate\Support\Str::uuid(),
+                'CHANNEL-ID' => '95221'
+            ])->withBody($jsonBody, 'application/json')
+              ->post($baseUrl . $apiPath);
+
+            $result = $response->json();
+
+            Log::info('DANA Create Payment Result:', $result);
+
+            if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
+                $redirectUrl = $result['webRedirectUrl'] ?? null;
+                if ($redirectUrl) {
+                    $transaction->payment_url = $redirectUrl;
+                    $transaction->save();
+                    return redirect()->away($redirectUrl);
+                }
+            }
+
+            Log::error('DANA Gagal:', $result);
+
+            $errorCode = $result['responseCode'] ?? 'N/A';
+            return back()->with('error', 'Gagal dari DANA: ' . ($result['responseMessage'] ?? 'Unknown') . ' (Code: ' . $errorCode . ')');
+
+        } catch (\Exception $e) {
+            Log::error('DANA Error: ' . $e->getMessage());
+            return back()->with('error', 'Koneksi DANA Error.');
+        }
     }
 
 }
