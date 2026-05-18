@@ -61,6 +61,7 @@ return [
         'client_secret'       => env('DANA_CLIENT_SECRET'),
         'redirect_url_oauth'  => env('DANA_REDIRECT_URL_OAUTH'),
         'external_shop_id'    => env('DANA_EXTERNAL_SHOP_ID'),
+        'origin'              => env('ORIGIN', 'https://tokosancaka.com'),
         
         'dana_env'            => env('DANA_ENV', 'SANDBOX'),
         
