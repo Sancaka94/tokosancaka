@@ -914,13 +914,14 @@ Route::post('/topup/consult-methods', [TopUpController::class, 'consultPaymentMe
     ->middleware('auth'); // Pastikan user login
 
 // Route untuk Halaman Return DANA
-Route::get('/dana/return', [TopUpController::class, 'returnPage'])->name('dana.return');
+//Route::get('/dana/return', [TopUpController::class, 'returnPage'])->name('dana.return');
 
 // Route untuk Cek Status Manual (Fix Error 'Route not defined')
 Route::get('/dana/status/{orderId}', [TopUpController::class, 'checkDanaGatewayStatus'])->name('dana.status');
 
 // Route Webhook (PENTING: Jangan lupa exclude dari CSRF di VerifyCsrfToken/app.php)
 Route::post('/dana/notify', [App\Http\Controllers\DanaWebhookController::class, 'handleNotify'])->name('dana.notify');
+Route::get('/dana/return', [App\Http\Controllers\DanaWebhookController::class, 'returnPage'])->name('dana.return');
 
 // Route untuk cek manual (misal oleh Admin)
 Route::get('/dana/check-gateway/{orderId}', [TopUpController::class, 'checkDanaGatewayStatus'])

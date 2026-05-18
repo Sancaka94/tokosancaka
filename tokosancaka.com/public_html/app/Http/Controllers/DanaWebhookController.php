@@ -120,6 +120,42 @@ class DanaWebhookController extends Controller
     }
 
     /**
+     * 👑 NEW FUNCTION: INTELLIGENT REDIRECT RETURN PAGE
+     */
+    public function returnPage(Request $request)
+    {
+        // Ambil referensi order yang dikirim DANA saat redirect balik ke web
+        $refNo = $request->input('partnerReferenceNo') ?? $request->input('id') ?? '';
+
+        Log::info('[DANA RETURN PAGE] User kembali dari DANA Portal.', ['raw_ref' => $refNo]);
+
+        // Jika invoice tanpa strip (SCKORD...), normalisasikan ke format asli DB (SCK-ORD-)
+        if (Str::startsWith($refNo, 'SCKORD') && !str_contains($refNo, '-')) {
+            $refNo = 'SCK-ORD-' . substr($refNo, 6);
+        }
+
+        // 1. Jika ini Transaksi Belanja Toko Marketplace (SCK-ORD-)
+        if (Str::startsWith($refNo, 'SCK-ORD-') || str_contains($refNo, 'ORD')) {
+            Log::info("[DANA RETURN] Redirecting user ke halaman Riwayat Belanja: " . $refNo);
+
+            // 🚨 DIUBAH: Langsung arahkan ke halaman riwayat belanja sesuai request Bapak
+            return redirect()->to('https://tokosancaka.com/customer/pesanan/riwayat-belanja')
+                ->with('success', 'Pembayaran DANA Anda berhasil diproses! Silakan cek status dan nomor resi pengiriman Anda di bawah ini.');
+        }
+
+        // 2. Jika ini Transaksi Top Up Saldo Akun (TOPUP-)
+        if (Str::startsWith($refNo, 'TOPUP-')) {
+            Log::info("[DANA RETURN] Redirecting user ke halaman Detail Top Up: " . $refNo);
+            return redirect()->route('customer.topup.show', ['topup' => $refNo])
+                ->with('success', 'Top Up DANA Anda sedang diproses. Saldo akan bertambah otomatis dalam beberapa saat.');
+        }
+
+        // 3. Default Fallback (Jika ID tidak jelas / transaksi anonim)
+        return redirect()->to('https://tokosancaka.com/customer/pesanan/riwayat-belanja')
+            ->with('success', 'Transaksi DANA berhasil diselesaikan.');
+    }
+
+    /**
      * Helper Respon Standard SNAP DANA
      */
     private function respondSuccessDANA()
