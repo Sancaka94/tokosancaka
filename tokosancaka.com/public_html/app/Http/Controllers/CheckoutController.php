@@ -455,8 +455,14 @@ class CheckoutController extends Controller
                  'status'          => (in_array($request->payment_method, ['cod', 'cash', 'CODBARANG'])) ? 'processing' : 'pending',
                  'shipping_address'=> $user->address_detail ?? 'Alamat tidak diatur',
                  // DITAMBAHKAN: Menyimpan data GPS dari request ke database
-                'customer_latitude' => $request->latitude ?? null,
-                'customer_longitude' => $request->longitude ?? null,
+                 'customer_latitude' => $request->latitude ?? null,
+                 'customer_longitude' => $request->longitude ?? null,
+                 'receiver_district_id'    => $userDistrictId,
+                 'receiver_subdistrict_id' => $userSubdistrictId,
+                 'sender_district_id'      => $storeDistrictId,
+                 'sender_subdistrict_id'   => $storeSubdistrictId,
+
+
             ]);
             $order->save();
 
