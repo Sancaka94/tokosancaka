@@ -2335,34 +2335,36 @@ class TopUpController extends Controller
         return view('customer.dana.transfer-bank', compact('banks'));
     }
 
-    public function createPaymentDanaDirectDebit(Transaction $transaction)
+   public function createPaymentDanaDirectDebit(Transaction $transaction)
     {
         $trxId = $transaction->reference_id;
         Log::info('DANA START for Transaction Table: ' . $trxId); // LOG LOG
 
         $user = Auth::user();
         $returnUrl = route('dana.return');
-        $notifyUrl = route('dana.notify');
-
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $expiryTime = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // ==============================================================================
-        // 🧪 BLOK TESTING SANDBOX DANA
-        // Buka salah satu $testAmount di bawah ini jika ingin force error skenario.
-        // ==============================================================================
-
-        // $testAmount = "5005400.00"; // Untuk skenario "General Error"
-
-        // ==============================================================================
-
         $merchantId = config('services.dana.merchant_id');
-        $finalAmount = number_format($transaction->amount, 2, '.', '');
 
-        // PAYLOAD STRIPPED-DOWN (Sesuai persis dengan Request Sample DANA Cashier Pay)
+        // ==============================================================================
+        // 🧪 TESTING GENERAL ERROR (5005400)
+        // Jika payload ini sudah berhasil dan tidak error 4005402 lagi,
+        // BUKA komentar $testAmount di bawah ini untuk memicu centang hijau General Error.
+        // ==============================================================================
+
+        // $testAmount = "5005400.00";
+
+        // ==============================================================================
+
+        $finalAmount = isset($testAmount) ? $testAmount : number_format($transaction->amount, 2, '.', '');
+
+        // PAYLOAD PELURU TAJAM (Mencegah 4005402 Invalid Mandatory Field)
         $bodyArray = [
             "partnerReferenceNo" => $trxId,
             "merchantId" => $merchantId,
+            // 1. WAJIB di Sandbox karena default akun adalah Aggregator
+            "subMerchantId" => $merchantId,
             "validUpTo" => $expiryTime,
             "amount" => [
                 "value" => $finalAmount,
@@ -2382,9 +2384,15 @@ class TopUpController extends Controller
             ],
             "additionalInfo" => [
                 "order" => [
-                    "orderTitle" => "Top Up " . $trxId
+                    "orderTitle" => "Top Up " . $trxId,
+                    // 2. WAJIB di beberapa konfigurasi Sandbox
+                    "buyer" => [
+                        "externalUserId" => (string) ($user ? $user->id_pengguna : "GUEST"),
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname" => "Customer Sancaka"
+                    ]
                 ],
-                "mcc" => "5732",
+                "mcc" => "5399", // Sesuai Request Sample
                 "envInfo" => [
                     "sourcePlatform" => "IPG",
                     "terminalType" => "SYSTEM"
@@ -2396,24 +2404,25 @@ class TopUpController extends Controller
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        Log::debug('DANA REQUEST PAYLOAD:', $bodyArray);
-
         try {
             $apiPath = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
+            // Generate Access Token (B2B) & Signature
             $accessToken = $this->danaSignature->getAccessToken();
             $signature = $this->danaSignature->generateSignature('POST', $apiPath, $jsonBody, $timestamp);
 
             $baseUrl = config('services.dana.base_url');
 
             $response = Http::withHeaders([
-                'Content-Type' => 'application/json',
-                'X-TIMESTAMP' => $timestamp,
-                'X-SIGNATURE' => $signature,
-                'ORIGIN' => config('services.dana.origin', config('app.url')),
-                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+                'Content-Type'  => 'application/json',
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin', config('app.url')),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
                 'X-EXTERNAL-ID' => (string) \Illuminate\Support\Str::uuid(),
-                'CHANNEL-ID' => '95221'
+                'CHANNEL-ID'    => '95221',
+                // 3. WAJIB menyertakan Authorization B2B di header
+                'Authorization' => 'Bearer ' . $accessToken
             ])->withBody($jsonBody, 'application/json')
               ->post($baseUrl . $apiPath);
 
@@ -2437,7 +2446,7 @@ class TopUpController extends Controller
 
         } catch (\Exception $e) {
             Log::error('DANA Error: ' . $e->getMessage());
-            return back()->with('error', 'Koneksi DANA Error: ' . $e->getMessage());
+            return back()->with('error', 'Koneksi DANA Error.');
         }
     }
 
