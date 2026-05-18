@@ -748,6 +748,155 @@ class CheckoutController extends Controller
         // ====================================================================
         // 1. CONFIGURATION (SYNC ID)
         // ====================================================================
+        $validId = "216620080014040009735";
+        $merchantIdConf = $validId;
+        $partnerIdConf  = "2025081520100641466855";
+
+        // ====================================================================
+        // 2. DATA PREPARATION
+        // ====================================================================
+        $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $order->invoice_number);
+        $timestamp    = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $expiryTime   = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+        $amountValue  = number_format((float)$order->total_amount, 2, '.', '');
+
+        // ====================================================================
+        // 3. BODY REQUEST
+        // ====================================================================
+        $bodyArray = [
+            "partnerReferenceNo" => $cleanInvoice,
+            "merchantId"         => $merchantIdConf,
+            "amount"             => [
+                "value"    => $amountValue,
+                "currency" => "IDR"
+            ],
+            "validUpTo"          => $expiryTime,
+            "urlParams"          => [
+                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+                // PERBAIKAN 1: NOTIFICATION harus "N"
+                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "N"]
+            ],
+            "payOptionDetails"   => [
+                [
+                    "payMethod"   => "BALANCE",
+                    // PERBAIKAN 2 & 3: payOption harus kosong dan feeAmount dihapus
+                    "payOption"   => "",
+                    "transAmount" => ["value" => $amountValue, "currency" => "IDR"]
+                ]
+            ],
+            "additionalInfo"     => [
+                // PERBAIKAN 4: Tambahkan field Mandatory ini
+                "supportDeepLinkCheckoutUrl" => "true",
+                "productCode" => "51051000100000000001",
+                "mcc"         => "5732",
+                "order"       => [
+                    "orderTitle"        => substr("Pay " . $cleanInvoice, 0, 40),
+                    "merchantTransType" => "01",
+                    "orderMemo"         => substr("Inv " . $cleanInvoice, 0, 40),
+                    "createdTime"       => $timestamp,
+                    "buyer"             => [
+                        "externalUserId"   => (string) ($order->user_id ?? 'GUEST'.rand(100,999)),
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $order->user->nama_lengkap ?? 'Guest'), 0, 20),
+                    ],
+                    "goods" => [
+                        [
+                            "merchantGoodsId" => substr("ITEM" . $cleanInvoice, 0, 40),
+                            "description"     => "Pembayaran Order",
+                            "category"        => "DIGITAL_GOODS",
+                            "price"           => ["value" => $amountValue, "currency" => "IDR"],
+                            "unit"            => "pcs",
+                            "quantity"        => "1"
+                        ]
+                    ]
+                ],
+                "envInfo" => [
+                    "sourcePlatform" => "IPG",
+                    "terminalType" => "SYSTEM",
+                    "orderTerminalType" => "WEB",
+                ]
+            ]
+        ];
+
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host';
+
+        try {
+            // ====================================================================
+            // 4. SIGNATURE & HEADERS
+            // ====================================================================
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature   = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
+
+            $headers = [
+                'Authorization'  => 'Bearer ' . $accessToken,
+                'X-PARTNER-ID'   => $partnerIdConf,
+                'X-EXTERNAL-ID'  => \Illuminate\Support\Str::random(32),
+                'X-TIMESTAMP'    => $timestamp,
+                'X-SIGNATURE'    => $signature,
+                'Content-Type'   => 'application/json',
+                'Accept'         => 'application/json', // Ditambahkan untuk kepatuhan header format
+                'CHANNEL-ID'     => '95221',
+                'ORIGIN'         => config('services.dana.origin'),
+            ];
+
+            // ====================================================================
+            // 5. LOGGING REQUEST
+            // ====================================================================
+            Log::info('DANA_REQ_START', [
+                'Invoice' => $cleanInvoice,
+                'URL'     => config('services.dana.base_url') . $relativePath,
+                'Headers' => $headers,
+                'Body'    => $bodyArray
+            ]);
+
+            // ====================================================================
+            // 6. SEND REQUEST
+            // ====================================================================
+            $response = Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $relativePath);
+
+            $result = $response->json();
+
+            // ====================================================================
+            // 7. LOGGING RESPONSE
+            // ====================================================================
+            Log::info('DANA_RES_END', [
+                'Invoice'     => $cleanInvoice,
+                'Status_Code' => $response->status(),
+                'Result'      => $result
+            ]);
+
+            // ====================================================================
+            // 8. HANDLE SUCCESS / REDIRECT
+            // ====================================================================
+            if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
+                $redirectUrl = $result['webRedirectUrl'] ?? null;
+                if($redirectUrl) {
+                    $order->payment_url = $redirectUrl;
+                    $order->save();
+
+                    session()->forget('cart');
+
+                    return redirect()->away($redirectUrl);
+                }
+            }
+
+            Log::error('DANA_FAIL', ['Result' => $result]);
+            return redirect()->route('checkout.index')->with('error', 'Gagal memproses pembayaran DANA: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+
+        } catch (\Exception $e) {
+            Log::error('DANA_EXCEPTION', ['Error' => $e->getMessage()]);
+            return redirect()->route('checkout.index')->with('error', 'Terjadi kesalahan koneksi ke DANA.');
+        }
+    }
+
+    /*public function createPaymentDANA(Order $order)
+    {
+        // ====================================================================
+        // 1. CONFIGURATION (SYNC ID)
+        // ====================================================================
         // Menggunakan ID Valid (2166...) untuk Header & Body agar sinkron
         $validId = "216620080014040009735";
         $merchantIdConf = $validId;
@@ -895,7 +1044,7 @@ class CheckoutController extends Controller
             Log::error('DANA_EXCEPTION', ['Error' => $e->getMessage()]);
             return redirect()->route('checkout.index')->with('error', 'Terjadi kesalahan koneksi ke DANA.');
         }
-    }
+    } */
 
 
     public function invoice($invoice)
