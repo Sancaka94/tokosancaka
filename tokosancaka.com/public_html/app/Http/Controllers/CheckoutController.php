@@ -769,7 +769,7 @@ class CheckoutController extends Controller
         $bodyArray = [
             "payOptionDetails" => [
                 [
-                    "payMethod"   => "BALANCE",
+                    "payMethod"   => "",
                     "payOption"   => "",
                     "transAmount" => [
                         "value"    => $amountValue,
