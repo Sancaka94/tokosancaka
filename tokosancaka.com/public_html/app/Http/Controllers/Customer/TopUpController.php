@@ -1481,7 +1481,8 @@ class TopUpController extends Controller
 
         $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path       = '/v1.0/emoney/transfer-bank.htm';
-        $partnerRef = "TRF" . time() . Str::random(6);
+        // $partnerRef = "TRF" . time() . Str::random(6);
+        $partnerRef = "TEST_INCONSISTENT_999";
 
         // AMBIL DATA BANK DARI DATABASE
         $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
@@ -1501,7 +1502,7 @@ class TopUpController extends Controller
             "additionalInfo" => [
                 "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
                 "beneficiaryAccountName" => (string) $request->account_name,
-                "needNotify"             => true
+                // "needNotify"             => true
             ]
         ];
 
@@ -1590,6 +1591,7 @@ class TopUpController extends Controller
                 if ($resCode == '4044311') $errorMsg = "Rekening Salah atau Tidak Valid.";
                 if ($resCode == '4034318') $errorMsg = "Akun Merchant Tidak Aktif/Salah Konfigurasi.";
                 if ($resCode == '4004301') $errorMsg = "Format/Data Pengiriman Tidak Sesuai Standar DANA.";
+                if ($resCode == '4044318') $errorMsg = "Inconsistent Request: Referensi transaksi duplikat dengan nominal berbeda.";
 
                 Log::error('[DANA TRANSFER BANK] Gagal & Refund', ['res' => $result]);
                 return back()->with('error', "Gagal: $errorMsg\n(Saldo Rp ".number_format($request->amount, 0, ',', '.')." telah dikembalikan).");
