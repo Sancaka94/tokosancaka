@@ -56,13 +56,13 @@
                                 <label for="bank_code" class="block text-sm font-bold text-gray-700 mb-2">Pilih Bank Tujuan</label>
                                 <select name="bank_code" id="bank_code" required class="focus:ring-blue-500 focus:border-blue-500 block w-full p-3 border-gray-300 rounded-lg bg-gray-50">
                                     <option value="">-- Pilih Bank --</option>
-                                    <option value="BCA" {{ old('bank_code') == 'BCA' ? 'selected' : '' }}>BCA - Bank Central Asia</option>
-                                    <option value="BNI" {{ old('bank_code') == 'BNI' ? 'selected' : '' }}>BNI - Bank Negara Indonesia</option>
-                                    <option value="BRI" {{ old('bank_code') == 'BRI' ? 'selected' : '' }}>BRI - Bank Rakyat Indonesia</option>
-                                    <option value="MANDIRI" {{ old('bank_code') == 'MANDIRI' ? 'selected' : '' }}>MANDIRI</option>
-                                    <option value="CIMB" {{ old('bank_code') == 'CIMB' ? 'selected' : '' }}>CIMB NIAGA</option>
-                                    <option value="PERMATA" {{ old('bank_code') == 'PERMATA' ? 'selected' : '' }}>PERMATA BANK</option>
-                                    <option value="BSI" {{ old('bank_code') == 'BSI' ? 'selected' : '' }}>BSI - Bank Syariah Indonesia</option>
+                                    <option value="014" {{ old('bank_code') == '014' ? 'selected' : '' }}>BCA - Bank Central Asia</option>
+                                    <option value="009" {{ old('bank_code') == '009' ? 'selected' : '' }}>BNI - Bank Negara Indonesia</option>
+                                    <option value="002" {{ old('bank_code') == '002' ? 'selected' : '' }}>BRI - Bank Rakyat Indonesia</option>
+                                    <option value="008" {{ old('bank_code') == '008' ? 'selected' : '' }}>Mandiri</option>
+                                    <option value="022" {{ old('bank_code') == '022' ? 'selected' : '' }}>CIMB Niaga</option>
+                                    <option value="011" {{ old('bank_code') == '011' ? 'selected' : '' }}>Permata Bank</option>
+                                    <option value="451" {{ old('bank_code') == '451' ? 'selected' : '' }}>BSI (Bank Syariah Indonesia)</option>
                                 </select>
                             </div>
 
@@ -112,7 +112,18 @@
                         <div class="space-y-4 bg-gray-50 p-6 rounded-lg border border-gray-200">
                             <div class="flex justify-between border-b pb-2">
                                 <span class="text-gray-500 font-medium">Bank Tujuan</span>
-                                <span class="font-bold text-gray-800">{{ old('bank_code') }}</span>
+                                <span class="font-bold text-gray-800">
+                                    @switch(old('bank_code'))
+                                        @case('014') BCA @break
+                                        @case('009') BNI @break
+                                        @case('002') BRI @break
+                                        @case('008') Mandiri @break
+                                        @case('022') CIMB Niaga @break
+                                        @case('011') Permata @break
+                                        @case('451') BSI @break
+                                        @default {{ old('bank_code') }}
+                                    @endswitch
+                                </span>
                             </div>
                             <div class="flex justify-between border-b pb-2">
                                 <span class="text-gray-500 font-medium">No. Rekening</span>
