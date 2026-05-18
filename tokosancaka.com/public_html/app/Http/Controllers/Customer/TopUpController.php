@@ -1744,7 +1744,138 @@ class TopUpController extends Controller
         }
     }
 
-   public function createPaymentDANA(Transaction $transaction)
+    public function createPaymentDANA(Transaction $transaction)
+    {
+        $trxId = $transaction->reference_id;
+        Log::info('DANA START for Transaction Table: ' . $trxId); // LOG LOG dipertahankan
+
+        $user = Auth::user();
+        $returnUrl = route('dana.return');
+        $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+
+        // ==============================================================================
+        // 🧪 BLOK TESTING SANDBOX DANA
+        // Buka komentar (uncomment) salah satu skenario di bawah ini untuk testing.
+        // PENTING: Jika sudah hijau semua, HAPUS atau COMMENT kembali blok ini.
+        // ==============================================================================
+
+        // 👉 SKENARIO 1: "Merchant does not exist or status abnormal"
+        $merchantId = "216110000000000000000";
+
+        // 👉 SKENARIO 2: "Inconsistent Request"
+        // Jalankan transaksi pertama dengan $testAmount = "15000.00".
+        // Setelah berhasil, ubah $testAmount menjadi "20000.00" lalu jalankan transaksi lagi.
+        // $trxId = "TEST-INCONSISTENT-999";
+        // $testAmount = "15000.00";
+
+        // 👉 SKENARIO 3: "General Error" (Internal Server Error)
+        // $testAmount = "5005400.00";
+
+        // ==============================================================================
+
+        // Fallback ke nilai asli jika tidak sedang mengaktifkan variabel testing di atas
+        $merchantId = isset($merchantId) ? $merchantId : config('services.dana.merchant_id');
+        $finalAmount = isset($testAmount) ? $testAmount : number_format($transaction->amount, 2, '.', '');
+
+        $bodyArray = [
+            "partnerReferenceNo" => $trxId,
+            "merchantId" => $merchantId,
+            "amount" => [
+                "value" => $finalAmount,
+                "currency" => "IDR"
+            ],
+            "validUpTo" => $expiryTime,
+            "urlParams" => [
+                [
+                    "url" => $returnUrl,
+                    "type" => "PAY_RETURN",
+                    "isDeeplink" => "N"
+                ],
+                [
+                    "url" => route('dana.notify'),
+                    "type" => "NOTIFICATION",
+                    "isDeeplink" => "N"
+                ]
+            ],
+            // 💡 DITAMBAHKAN: payOptionDetails (Wajib ada agar lolos validasi format)
+            "payOptionDetails" => [
+                [
+                    "payMethod" => "BALANCE",
+                    "payOption" => "",
+                    "transAmount" => [
+                        "value" => $finalAmount,
+                        "currency" => "IDR"
+                    ]
+                ]
+            ],
+            "additionalInfo" => [
+                "mcc" => "5732",
+                "order" => [
+                    "orderTitle" => "Top Up " . $trxId,
+                    "merchantTransType" => "01",
+                    "scenario" => "REDIRECT",
+                    "buyer" => [
+                        "externalUserId" => (string) $user->id_pengguna,
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname" => Str::limit($user->nama_lengkap ?? 'Guest', 40),
+                    ]
+                ],
+                "envInfo" => [
+                    "sourcePlatform" => "IPG",
+                    "terminalType" => "SYSTEM",
+                    "orderTerminalType" => "WEB",
+                ]
+            ]
+        ];
+
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        try {
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature = $this->danaSignature->generateSignature('POST', '/payment-gateway/v1.0/debit/payment-host-to-host.htm', $jsonBody, $timestamp);
+
+            $baseUrl = config('services.dana.base_url');
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $accessToken,
+                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => Str::random(32),
+                'X-TIMESTAMP' => $timestamp,
+                'X-SIGNATURE' => $signature,
+                'Content-Type' => 'application/json',
+                'CHANNEL-ID' => '95221',
+                'ORIGIN' => config('services.dana.origin'),
+            ])->withBody($jsonBody, 'application/json')
+              ->post($baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm');
+
+            $result = $response->json();
+
+            // Tambahan Log untuk memonitor hasil testing
+            Log::info('DANA Create Payment Result:', $result);
+
+            if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
+                $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'] ?? null;
+                if ($redirectUrl) {
+                    $transaction->payment_url = $redirectUrl;
+                    $transaction->save();
+                    return redirect()->away($redirectUrl);
+                }
+            }
+
+            Log::error('DANA Gagal:', $result);
+
+            // Output error code ke UI agar Anda tahu skenario mana yang sedang ter-trigger
+            $errorCode = $result['responseCode'] ?? 'N/A';
+            return back()->with('error', 'Gagal dari DANA: ' . ($result['responseMessage'] ?? 'Unknown') . ' (Code: ' . $errorCode . ')');
+
+        } catch (\Exception $e) {
+            Log::error('DANA Error: ' . $e->getMessage());
+            return back()->with('error', 'Koneksi DANA Error.');
+        }
+    }
+
+   /* public function createPaymentDANA(Transaction $transaction)
     {
         $trxId = $transaction->reference_id;
         Log::info('DANA START for Transaction Table: ' . $trxId);
@@ -1833,7 +1964,7 @@ class TopUpController extends Controller
             Log::error('DANA Error: ' . $e->getMessage());
             return back()->with('error', 'Koneksi DANA Error.');
         }
-    }
+    }*/
 
     public function handleNotify(Request $request)
     {
