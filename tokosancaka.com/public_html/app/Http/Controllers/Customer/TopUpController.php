@@ -2128,32 +2128,43 @@ class TopUpController extends Controller
             // [CASHIER PAY] SCENARIO 1: GENERAL ERROR (Pemicu: Rp 77.777)
             // =====================================================================
             if ($transaction->amount == 77777) {
-                // 1. KUNCI UTAMA: Ubah path URL ke rute yang diminta DANA Sandbox
                 $pathTest = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
-                $bodyTest = $bodyArray;
-                // 2. KUNCI KEDUA: Rusak field currency agar memicu General Error 5005400
-                $bodyTest['amount']['currency'] = "INVALID_CUR";
+                // Susun ulang payload Cashier Pay minimalis agar tidak ditolak validasi skema
+                $bodyTest = [
+                    "partnerReferenceNo" => $trxId,
+                    "merchantId"         => config('services.dana.merchant_id'),
+                    "amount" => [
+                        "value"    => "77777.00",
+                        "currency" => "INVALID_CUR" // Kunci pemicu General Error 5005400
+                    ],
+                    "validUpTo" => $expiryTime,
+                    "additionalInfo" => (object)[]
+                ];
 
                 $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
+                $hashedBodyTest = strtolower(hash('sha256', $jsonBodyTest));
 
-                // Hitung signature baru berdasarkan pintu rute yang benar
-                $signatureTest = $this->danaSignature->generateSignature('POST', $pathTest, $jsonBodyTest, $timestamp);
+                // KOMPONEN WAJIB: Gunakan Symmetric Signature (B2B Token + Body)
+                $stringToSignTest = "POST:" . $pathTest . ":" . $accessToken . ":" . $hashedBodyTest . ":" . $timestamp;
 
-                // Eksekusi langsung ke DANA Sandbox dengan rute yang sesuai instruksi
+                // Gunakan client_secret/client_key internal Anda untuk enkripsi hmac sha256
+                $secretKey = config('services.dana.client_secret');
+                $signatureTest = base64_encode(hash_hmac('sha256', $stringToSignTest, $secretKey, true));
+
                 $resTest = Http::withHeaders([
-                    'Authorization'  => 'Bearer ' . $accessToken,
-                    'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-                    'X-EXTERNAL-ID'  => Str::random(32),
-                    'X-TIMESTAMP'    => $timestamp,
-                    'X-SIGNATURE'    => $signatureTest,
-                    'Content-Type'   => 'application/json',
-                    'CHANNEL-ID'     => '95221',
-                    'ORIGIN'         => config('services.dana.origin'),
+                    'Content-Type'  => 'application/json',
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'X-TIMESTAMP'   => $timestamp,
+                    'X-SIGNATURE'   => $signatureTest,
+                    'ORIGIN'        => config('services.dana.origin'),
+                    'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                    'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                    'CHANNEL-ID'    => '95221'
                 ])->withBody($jsonBodyTest, 'application/json')
                   ->post($baseUrl . $pathTest);
 
-                return back()->with('error', "TES GENERAL ERROR SELESAI!\nResponse DANA Sandbox: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
+                return back()->with('error', "TES GENERAL ERROR SELESAI!\nResponse Sandbox: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? ''));
             }
             // =====================================================================
 
