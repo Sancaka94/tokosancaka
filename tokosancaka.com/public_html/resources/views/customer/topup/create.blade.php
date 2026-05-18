@@ -282,13 +282,18 @@
             const $iconArea = $('#payment-icons');
 
             // ====================================================================
-            // 🛠️ AUTOMATIC SMOOTH SCROLL TO SUBMIT BUTTON ON METHOD CLICK
+            // 🛠️ FIX AUTO SCROLL: Menggunakan Native Window Scroll (Anti-Konflik CSS)
             // ====================================================================
             $(document).on('change', 'input[name="payment_method"]', function() {
                 if ($(this).is(':checked')) {
-                    $('html, body').animate({
-                        scrollTop: $('#submit-section').offset().top - 80
-                    }, 600); // Durasi scroll 600ms
+                    // Ambil posisi pixel dari element tombol submit
+                    const targetPosition = $('#submit-section').offset().top - 120;
+
+                    // Eksekusi smooth scroll native browser
+                    window.scrollTo({
+                        top: targetPosition,
+                        behavior: 'smooth'
+                    });
                 }
             });
 
