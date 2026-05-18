@@ -116,28 +116,51 @@ class TopUpController extends Controller
     public function store(Request $request, DokuJokulService $dokuJokulService)
     {
         // ==========================================================
-        // JEBAKAN TESTING DANA (Bypass semua logika!)
+        // ALAT TEMPUR TESTING DANA SANDBOX (3-in-1)
         // ==========================================================
-        if ($request->amount == '88888') {
+        if (in_array($request->amount, ['88881', '88882', '88883'])) {
             $timestamp  = now('Asia/Jakarta')->toIso8601String();
             $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
+            $refNo = "TEST-" . time();
 
-            // Sengaja salahkan currency untuk mancing General Error 5005400
+            // Payload Standar
             $body = [
-                "partnerReferenceNo" => "TEST-" . time(),
+                "partnerReferenceNo" => $refNo,
                 "merchantId" => config('services.dana.merchant_id'),
-                "amount" => [
-                    "value" => "88888.00",
-                    "currency" => "ERROR_CUR"
-                ],
+                "amount" => ["value" => "10000.00", "currency" => "IDR"],
                 "validUpTo" => now('Asia/Jakarta')->addMinutes(10)->format('Y-m-d\TH:i:sP'),
-                "additionalInfo" => (object)[]
+                "additionalInfo" => [
+                    "envInfo" => [
+                        "sourcePlatform" => "IPG",
+                        "terminalType" => "SYSTEM",
+                        "orderTerminalType" => "WEB"
+                    ]
+                ]
             ];
+
+            // ------------------------------------------------------
+            // TES 1: MERCHANT DOES NOT EXIST (Target: 4045408)
+            // ------------------------------------------------------
+            if ($request->amount == '88881') {
+                $body["merchantId"] = "2166200000999999999"; // Sengaja dikasih ID ngawur
+            }
+
+            // ------------------------------------------------------
+            // TES 2: GENERAL ERROR (Target: 5005400)
+            // ------------------------------------------------------
+            if ($request->amount == '88883') {
+                // Kita coba pancing error dengan MCC aneh & orderTitle super panjang
+                $body["additionalInfo"]["mcc"] = "9999";
+                $body["additionalInfo"]["order"] = [
+                    "orderTitle" => str_repeat("ERROR_BIAR_GENERAL", 100),
+                    "merchantTransType" => "99"
+                ];
+            }
 
             $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
             $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
-            $response = Http::withHeaders([
+            $headers = [
                 'Authorization' => 'Bearer ' . $this->danaSignature->getAccessToken(),
                 'X-PARTNER-ID' => config('services.dana.x_partner_id'),
                 'X-EXTERNAL-ID' => Str::random(32),
@@ -146,13 +169,42 @@ class TopUpController extends Controller
                 'Content-Type' => 'application/json',
                 'CHANNEL-ID' => '95221',
                 'ORIGIN' => config('services.dana.origin'),
-            ])->withBody($jsonBody, 'application/json')
-              ->post(config('services.dana.base_url') . $path);
+            ];
 
-            // STOP TOTAL DI SINI!
+            // HIT PERTAMA
+            $response1 = Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+            $result1 = $response1->json();
+
+            // ------------------------------------------------------
+            // TES 3: INCONSISTENT REQUEST (Target: 4045418)
+            // ------------------------------------------------------
+            if ($request->amount == '88882') {
+                // Kita tembak ulang (HIT KEDUA) dengan partnerReferenceNo yang SAMA persis
+                // TAPI nominal amount-nya kita bedakan jadi 20000
+                $body["amount"]["value"] = "20000.00";
+                $jsonBody2 = json_encode($body, JSON_UNESCAPED_SLASHES);
+                $signature2 = $this->danaSignature->generateSignature('POST', $path, $jsonBody2, $timestamp);
+
+                $headers['X-SIGNATURE'] = $signature2; // Update signature baru
+
+                $response2 = Http::withHeaders($headers)
+                    ->withBody($jsonBody2, 'application/json')
+                    ->post(config('services.dana.base_url') . $path);
+
+                dd([
+                    'INFO' => 'TES INCONSISTENT REQUEST SELESAI',
+                    'RESPONS_HIT_1_NORMAL' => $result1,
+                    'RESPONS_HIT_2_BEDA_NOMINAL' => $response2->json() // Seharusnya 4045418 di sini
+                ]);
+            }
+
+            // Tampilkan layar hitam untuk Tes 1 & 2
             dd([
-                'INFO' => 'JEBAKAN BERHASIL MENANGKAP REQUEST',
-                'RESPONS_SERVER_DANA' => $response->json()
+                'INFO' => 'JEBAKAN BERHASIL (Nominal ' . $request->amount . ')',
+                'TARGET_ERROR_TERCAPAI?' => $result1['responseCode'] ?? 'TIDAK ADA KODE',
+                'RESPONS_SERVER_DANA' => $result1
             ]);
         }
         // ==========================================================
