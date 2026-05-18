@@ -1361,18 +1361,14 @@ class TopUpController extends Controller
         $signature = $this->generateSignature($stringToSign);
 
         try {
-            // 1. AMBIL TOKEN B2B MERCHANT (Tambahkan baris ini)
             $accessTokenB2B = $this->danaSignature->getAccessToken();
 
             Log::info('[BANK INQUIRY] Sending Request to DANA', ['body' => $body]);
 
-            // URL Dinamis
-            $response = Http::withHeaders([
+            // Siapkan headers standar
+            $headers = [
                 'Content-Type'  => 'application/json',
-                // 2. PERBAIKAN: Gunakan Token B2B Merchant untuk Authorization Utama
                 'Authorization' => 'Bearer ' . $accessTokenB2B, 
-                // 3. Pindahkan token customer ke Authorization-Customer (Jika tipenya memerlukan oAuth)
-                'Authorization-Customer' => 'Bearer ' . $aff->dana_access_token,
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
                 'ORIGIN'        => config('services.dana.origin'),
@@ -1381,7 +1377,17 @@ class TopUpController extends Controller
                 'X-IP-ADDRESS'  => $request->ip(),
                 'X-DEVICE-ID'   => 'SANCAKA-DANA-01',
                 'CHANNEL-ID'    => '95221'
-            ])->withBody($jsonBody, 'application/json')->post(config('services.dana.base_url') . $path);
+            ];
+
+            // HANYA MASUKKAN Authorization-Customer JIKA TOKENNYA ADA/TIDAK KOSONG
+            if (!empty($aff->dana_access_token)) {
+                $headers['Authorization-Customer'] = 'Bearer ' . $aff->dana_access_token;
+            }
+
+            // URL Dinamis
+            $response = Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
             Log::info('[BANK INQUIRY]', ['res' => $result]);
