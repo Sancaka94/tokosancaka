@@ -757,7 +757,7 @@ class TopUpController extends Controller
 
         // 1. Ambil Key dari Config (hasil dinamisasi)
         $rawKey = config('services.dana.private_key');
-        
+
         if (empty($rawKey)) {
             \Illuminate\Support\Facades\Log::error('[DANA DEBUG LOG] ERROR: Private Key dari config KOSONG!');
             throw new \Exception("Private Key kosong. Pastikan DANA_PRIVATE_KEY di .env atau Pengaturan Database sudah terisi.");
@@ -800,7 +800,7 @@ class TopUpController extends Controller
         }
 
         $finalBase64Signature = base64_encode($binarySignature);
-        
+
         \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 5. Signature Berhasil Dibuat!', [
             'signature_result' => $finalBase64Signature
         ]);
@@ -1344,13 +1344,14 @@ class TopUpController extends Controller
             "partnerReferenceNo" => $refNo,
             "customerNumber"     => $customerNumber,
             "beneficiaryAccountNumber" => $request->account_no,
+            "beneficiaryBankCode"      => $request->bank_code, // <-- PINDAHKAN KE SINI (Root Level)
             "amount" => [
                 "value"    => number_format((float)$request->amount, 2, '.', ''),
                 "currency" => "IDR"
             ],
             "additionalInfo" => [
-                "fundType"            => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-                "beneficiaryBankCode" => $request->bank_code,
+                "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
+                // "beneficiaryBankCode" => $request->bank_code, <-- HAPUS DARI SINI
                 "beneficiaryAccountName" => ""
             ]
         ];
@@ -1368,7 +1369,7 @@ class TopUpController extends Controller
             // Siapkan headers standar
             $headers = [
                 'Content-Type'  => 'application/json',
-                'Authorization' => 'Bearer ' . $accessTokenB2B, 
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
                 'ORIGIN'        => config('services.dana.origin'),
@@ -1462,7 +1463,7 @@ class TopUpController extends Controller
         // PERBAIKAN: Gunakan tabel Pengguna dan id_pengguna
         $aff = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
         if (!$aff) return back()->with('error', 'Pengguna tidak ditemukan.');
-        
+
         // PERBAIKAN: Cek menggunakan kolom saldo, bukan balance
         if ($aff->saldo < $request->amount) {
             return back()->with('error', 'Saldo Anda tidak mencukupi.');
@@ -1656,7 +1657,7 @@ class TopUpController extends Controller
 
             $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
             \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 3. String to Sign GAPURA:', ['str' => $stringToSign]);
-            
+
             $signature = $this->generateSignature($stringToSign);
 
             $headers = [
@@ -2159,7 +2160,7 @@ class TopUpController extends Controller
         ];
 
         $method = 'POST';
-        $relativePath = '/rest/v1.1/debit/status'; 
+        $relativePath = '/rest/v1.1/debit/status';
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
 
         try {
