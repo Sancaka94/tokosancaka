@@ -1452,14 +1452,15 @@ class TopUpController extends Controller
                 $bodyTest = [
                     "partnerReferenceNo"       => "BNK_INV_ACC_" . time() . rand(1000, 9999),
                     "customerNumber"           => $customerNumber,
-                    "beneficiaryAccountNumber" => "9999999999999999", // Akun fiktif
+                    // KUNCI PERBAIKAN: Gunakan nomor rekening spesifik dari instruksi DANA Sandbox
+                    "beneficiaryAccountNumber" => "815919191",
                     "amount" => [
                         "value"    => "50000.00",
                         "currency" => "IDR"
                     ],
                     "additionalInfo" => [
                         "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-                        "beneficiaryBankCode"    => "014",
+                        "beneficiaryBankCode"    => "014", // BCA
                         "beneficiaryAccountName" => ""
                     ]
                 ];
@@ -1479,6 +1480,7 @@ class TopUpController extends Controller
                     "Response API: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? '')
                 )->withInput();
             }
+            // =====================================================================
 
             // =====================================================================
             // JALUR PROSES NORMAL (Selain Nominal 11111, 22222, 33333)
