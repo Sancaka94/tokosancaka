@@ -1510,10 +1510,14 @@ class TopUpController extends Controller
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
         $signature = $this->generateSignature($stringToSign);
 
+
         try {
+
+        $accessTokenB2B = $this->danaSignature->getAccessToken();
+
             $headers = [
                 'Content-Type'  => 'application/json',
-                'Authorization' => 'Bearer ' . $aff->dana_access_token,
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
                 'ORIGIN'        => config('services.dana.origin'),
