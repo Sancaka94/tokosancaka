@@ -773,19 +773,17 @@ class CheckoutController extends Controller
             "validUpTo"          => $expiryTime,
             "urlParams"          => [
                 ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-                // PERBAIKAN 1: NOTIFICATION harus "N"
                 ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "N"]
             ],
+            // Perbaikan 1: Kembalikan payOptionDetails dengan payOption string kosong
             "payOptionDetails"   => [
                 [
-                    "payMethod"   => "BALANCE",
-                    // PERBAIKAN 2 & 3: payOption harus kosong dan feeAmount dihapus
+                    "payMethod"   => "",
                     "payOption"   => "",
                     "transAmount" => ["value" => $amountValue, "currency" => "IDR"]
                 ]
             ],
             "additionalInfo"     => [
-                // PERBAIKAN 4: Tambahkan field Mandatory ini
                 "supportDeepLinkCheckoutUrl" => "true",
                 "productCode" => "51051000100000000001",
                 "mcc"         => "5732",
@@ -801,6 +799,8 @@ class CheckoutController extends Controller
                     ],
                     "goods" => [
                         [
+                            // Perbaikan 2: Tambahkan parameter "name" yang wajib ada
+                            "name"            => "Pembayaran Order",
                             "merchantGoodsId" => substr("ITEM" . $cleanInvoice, 0, 40),
                             "description"     => "Pembayaran Order",
                             "category"        => "DIGITAL_GOODS",
@@ -835,7 +835,7 @@ class CheckoutController extends Controller
                 'X-TIMESTAMP'    => $timestamp,
                 'X-SIGNATURE'    => $signature,
                 'Content-Type'   => 'application/json',
-                'Accept'         => 'application/json', // Ditambahkan untuk kepatuhan header format
+                'Accept'         => 'application/json',
                 'CHANNEL-ID'     => '95221',
                 'ORIGIN'         => config('services.dana.origin'),
             ];
