@@ -1581,6 +1581,8 @@ class TopUpController extends Controller
                 return back()->with('error', "Gagal: $errorMsg\n(Saldo telah dikembalikan).");
             }
 
+            }
+
         } catch (\Exception $e) {
             // PERBAIKAN: Kembalikan 'saldo'
             DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
