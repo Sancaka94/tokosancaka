@@ -1328,10 +1328,12 @@ class TopUpController extends Controller
 
     public function bankAccountInquiry(Request $request)
     {
-        $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
-        if (!$aff) return back()->with('error', 'Affiliate tidak ditemukan.');
+        // PERBAIKAN: Gunakan tabel Pengguna dan id_pengguna
+        $aff = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
+        if (!$aff) return back()->with('error', 'Pengguna tidak ditemukan.');
 
-        $customerNumber = preg_replace('/[^0-9]/', '', $aff->whatsapp);
+        // PERBAIKAN: Ganti whatsapp menjadi no_wa
+        $customerNumber = preg_replace('/[^0-9]/', '', $aff->no_wa);
         if (substr($customerNumber, 0, 1) === '0') $customerNumber = '62' . substr($customerNumber, 1);
 
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
@@ -1379,7 +1381,7 @@ class TopUpController extends Controller
             $resCode = $result['responseCode'] ?? '500';
 
             DB::table('dana_transactions')->insert([
-                'affiliate_id' => $aff->id,
+                'affiliate_id' => $aff->id_pengguna, // PERBAIKAN: id_pengguna
                 'type' => 'BANK_INQUIRY',
                 'reference_no' => $refNo,
                 'phone' => $request->account_no . " (" . $request->bank_code . ")",
@@ -1438,16 +1440,21 @@ class TopUpController extends Controller
             'amount' => $request->amount
         ]);
 
-        $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
-        if (!$aff) return back()->with('error', 'Affiliate tidak ditemukan.');
-        if ($aff->balance < $request->amount) {
-            return back()->with('error', 'Saldo komisi Anda tidak mencukupi.');
+        // PERBAIKAN: Gunakan tabel Pengguna dan id_pengguna
+        $aff = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
+        if (!$aff) return back()->with('error', 'Pengguna tidak ditemukan.');
+        
+        // PERBAIKAN: Cek menggunakan kolom saldo, bukan balance
+        if ($aff->saldo < $request->amount) {
+            return back()->with('error', 'Saldo Anda tidak mencukupi.');
         }
 
-        $customerNumber = preg_replace('/[^0-9]/', '', $aff->whatsapp);
+        // PERBAIKAN: Ganti whatsapp menjadi no_wa
+        $customerNumber = preg_replace('/[^0-9]/', '', $aff->no_wa);
         if (substr($customerNumber, 0, 1) === '0') $customerNumber = '62' . substr($customerNumber, 1);
 
-        DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
+        // PERBAIKAN: Potong 'saldo' berdasarkan 'id_pengguna'
+        DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->decrement('saldo', $request->amount);
 
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path = '/v1.0/emoney/transfer-bank.htm';
@@ -1499,7 +1506,7 @@ class TopUpController extends Controller
 
             if ($resCode == '2004300') {
                 DB::table('dana_transactions')->insert([
-                    'affiliate_id' => $aff->id,
+                    'affiliate_id' => $aff->id_pengguna, // PERBAIKAN
                     'type' => 'TRANSFER_BANK',
                     'reference_no' => $partnerRef,
                     'phone' => $request->account_no . " (" . $request->bank_code . ")",
@@ -1514,7 +1521,7 @@ class TopUpController extends Controller
 
             } elseif (in_array($resCode, ['2024300', '4294300', '5004301'])) {
                 DB::table('dana_transactions')->insert([
-                    'affiliate_id' => $aff->id,
+                    'affiliate_id' => $aff->id_pengguna, // PERBAIKAN
                     'type' => 'TRANSFER_BANK',
                     'reference_no' => $partnerRef,
                     'phone' => $request->account_no,
@@ -1527,10 +1534,11 @@ class TopUpController extends Controller
                 return back()->with('warning', "⏳ Transaksi Sedang Diproses (Pending).\nMohon cek status secara berkala.");
 
             } else {
-                DB::table('affiliates')->where('id', $aff->id)->increment('balance', $request->amount);
+                // PERBAIKAN: Kembalikan 'saldo'
+                DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
 
                 DB::table('dana_transactions')->insert([
-                    'affiliate_id' => $aff->id,
+                    'affiliate_id' => $aff->id_pengguna, // PERBAIKAN
                     'type' => 'TRANSFER_BANK',
                     'reference_no' => $partnerRef,
                     'phone' => $request->account_no,
@@ -1550,7 +1558,8 @@ class TopUpController extends Controller
             }
 
         } catch (\Exception $e) {
-            DB::table('affiliates')->where('id', $aff->id)->increment('balance', $request->amount);
+            // PERBAIKAN: Kembalikan 'saldo'
+            DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
             Log::error('[DANA TRANSFER BANK] Exception', ['msg' => $e->getMessage()]);
             return back()->with('error', 'System Error: ' . $e->getMessage());
         }
