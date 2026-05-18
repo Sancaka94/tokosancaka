@@ -68,7 +68,7 @@ class DanaWebhookController extends Controller
 
                 $internalStatus = $isDanasuccess ? 'PAID' : 'FAILED';
 
-                $checkoutCtrl = app(\App\Http\Controllers\Toko\CheckoutController::class);
+                $checkoutCtrl = app(\App\Http\Controllers\CheckoutController::class);
                 $checkoutCtrl->processOrderCallback($refNo, $internalStatus, $data);
 
                 return $this->respondSuccessDANA();
