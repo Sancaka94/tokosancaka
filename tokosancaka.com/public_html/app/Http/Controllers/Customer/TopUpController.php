@@ -1371,6 +1371,38 @@ class TopUpController extends Controller
 
             Log::info('[BANK INQUIRY] Sending Request to DANA', ['body' => $body]);
 
+            // =====================================================================
+            // [BANK INQUIRY] SCENARIO: INSUFFICIENT FUND (Pemicu: Rp 11.111)
+            // =====================================================================
+            if ($request->amount == 11111) {
+                $bodyTest = $body;
+
+                // Buat ID unik baru agar tidak terkena error Inconsistent/Duplicate
+                $bodyTest['partnerReferenceNo'] = "BNK_INSUF_" . time() . rand(1000, 9999);
+
+                // Parameter WAJIB sesuai instruksi DANA Sandbox untuk trigger Insufficient Fund
+                $bodyTest['beneficiaryAccountNumber'] = "2460888509";
+                $bodyTest['amount']['value']          = "50000000000.00"; // 50 Miliar
+                $bodyTest['additionalInfo']['beneficiaryBankCode'] = "014"; // BCA
+
+                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
+                $stringToSignTest = "POST:" . $path . ":" . strtolower(hash('sha256', $jsonBodyTest)) . ":" . $timestamp;
+
+                $headersTest = $headers;
+                $headersTest['X-SIGNATURE']   = $this->generateSignature($stringToSignTest);
+                $headersTest['X-EXTERNAL-ID'] = (string) time() . Str::random(6);
+
+                // Eksekusi ke DANA Sandbox
+                $resTest = Http::withHeaders($headersTest)->withBody($jsonBodyTest, 'application/json')
+                            ->post(config('services.dana.base_url') . $path);
+
+                return back()->with('error',
+                    "TES INSUFFICIENT FUND SELESAI!\n" .
+                    "Response API: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? '')
+                )->withInput();
+            }
+            // =====================================================================
+
             // Siapkan headers standar
             $headers = [
                 'Content-Type'  => 'application/json',
