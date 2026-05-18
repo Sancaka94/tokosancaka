@@ -1355,10 +1355,9 @@ class TopUpController extends Controller
             ],
             "additionalInfo" => [
                 "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-                // DANA API Inquiry wajib meletakkan bank code di sini.
-                // Cast ke (string) sangat penting agar tidak dibaca sebagai Integer (yang menyebabkan Invalid Field Format).
                 "beneficiaryBankCode"    => (string) $request->bank_code,
-                "beneficiaryAccountName" => ""
+                "beneficiaryAccountName" => "",
+
             ]
         ];
 
@@ -1501,7 +1500,8 @@ class TopUpController extends Controller
             ],
             "additionalInfo" => [
                 "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-                "beneficiaryAccountName" => (string) $request->account_name
+                "beneficiaryAccountName" => (string) $request->account_name,
+                "needNotify"             => true
             ]
         ];
 
