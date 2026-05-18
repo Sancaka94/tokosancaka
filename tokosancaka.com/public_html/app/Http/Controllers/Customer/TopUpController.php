@@ -2002,6 +2002,36 @@ class TopUpController extends Controller
 
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
+        // =====================================================================
+        // BLOK TESTING SEMENTARA UNTUK DANA DASHBOARD
+        // Hapus kode ini jika semua testing di dashboard DANA sudah hijau!
+        // =====================================================================
+
+        // 1. Test: General Error (5005400) - Pemicu: Nominal Top Up Rp 77.777
+        if ($transaction->amount == 77777) {
+            $testPath = '/rest/redirection/v1.0/debit/payment-host-to-host'; // URL khusus tes ini
+            $testBody = $bodyArray;
+            $testBody['amount']['currency'] = 'INVALID_CUR'; // Sengaja disalahkan biar error
+
+            $testJsonBody = json_encode($testBody, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $testSignature = $this->danaSignature->generateSignature('POST', $testPath, $testJsonBody, $timestamp);
+
+            $testResponse = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->danaSignature->getAccessToken(),
+                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => Str::random(32),
+                'X-TIMESTAMP' => $timestamp,
+                'X-SIGNATURE' => $testSignature,
+                'Content-Type' => 'application/json',
+                'CHANNEL-ID' => '95221',
+                'ORIGIN' => config('services.dana.origin'),
+            ])->withBody($testJsonBody, 'application/json')
+              ->post(config('services.dana.base_url') . $testPath);
+
+            return back()->with('error', "TES GENERAL ERROR DIKIRIM!\nRespons DANA: " . $testResponse->json()['responseMessage']);
+        }
+        // =====================================================================
+
         try {
             $accessTokenB2B = $this->danaSignature->getAccessToken();
             $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
