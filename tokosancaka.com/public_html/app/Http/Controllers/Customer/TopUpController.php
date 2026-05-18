@@ -1531,40 +1531,39 @@ class TopUpController extends Controller
 
             Log::info('[DANA TRANSFER BANK] Mengirim Request...', ['body' => $body]);
 
-            Log::info('[DANA TRANSFER BANK] Mengirim Request...', ['body' => $body]);
+            // =====================================================================
+            // BLOK TES OTOMATIS: INSUFFICIENT FUND (Hanya jalan jika input Rp 88.888)
+            // =====================================================================
+            if ($request->amount == 88888) {
+                // Modifikasi payload khusus untuk memaksa error Insufficient Fund
+                $bodyTest = $body;
+                $bodyTest['beneficiaryAccountNumber'] = "2460888509";
+                $bodyTest['beneficiaryBankCode']      = "014";
+                $bodyTest['amount']['value']          = "50000000000.00"; // 50 Miliar IDR
 
-            // =====================================================================
-            // BLOK TES OTOMATIS: INCONSISTENT REQUEST (Hanya jalan jika input Rp 55.555)
-            // =====================================================================
-            if ($request->amount == 55555) {
-                // HIT 1 (Data Valid, Nominal Rp 55.555)
-                $res1 = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')
+                $jsonBodyTest = json_encode($bodyTest, JSON_UNESCAPED_SLASHES);
+                $stringToSignTest = "POST:" . $path . ":" . strtolower(hash('sha256', $jsonBodyTest)) . ":" . $timestamp;
+
+                $headersTest = $headers;
+                $headersTest['X-SIGNATURE'] = $this->generateSignature($stringToSignTest);
+                $headersTest['X-EXTERNAL-ID'] = (string) time() . Str::random(6);
+
+                // Eksekusi API dengan Payload 50 Miliar
+                $resTest = Http::withHeaders($headersTest)->withBody($jsonBodyTest, 'application/json')
                             ->post(config('services.dana.base_url') . $path);
 
-                // HIT 2 (Ubah Nominal jadi Rp 66.666, dengan partnerReferenceNo yang SAMA)
-                $body2 = $body;
-                $body2['amount']['value'] = "66666.00";
-
-                $jsonBody2 = json_encode($body2, JSON_UNESCAPED_SLASHES);
-                $stringToSign2 = "POST:" . $path . ":" . strtolower(hash('sha256', $jsonBody2)) . ":" . $timestamp;
-
-                $headers2 = $headers;
-                $headers2['X-SIGNATURE'] = $this->generateSignature($stringToSign2);
-                $headers2['X-EXTERNAL-ID'] = (string) time() . Str::random(6); // DANA butuh ID unik per hit
-
-                $res2 = Http::withHeaders($headers2)->withBody($jsonBody2, 'application/json')
-                            ->post(config('services.dana.base_url') . $path);
+                // Refund saldo lokal (karena sebelumnya di atas sempat dikurangi 88.888)
+                DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
 
                 return back()->with('error',
-                    "TES INCONSISTENT SELESAI!\n" .
-                    "Hit 1: [" . ($res1->json()['responseCode'] ?? 'Error') . "] " . ($res1->json()['responseMessage'] ?? '') . "\n" .
-                    "Hit 2: [" . ($res2->json()['responseCode'] ?? 'Error') . "] " . ($res2->json()['responseMessage'] ?? '') . "\n" .
+                    "TES INSUFFICIENT FUND SELESAI!\n" .
+                    "Response API: [" . ($resTest->json()['responseCode'] ?? 'Error') . "] " . ($resTest->json()['responseMessage'] ?? '') . "\n" .
                     "Silakan cek Dashboard Sandbox DANA Anda!"
                 );
             }
             // =====================================================================
 
-            // EKSEKUSI API NORMAL (Untuk transaksi selain 55.555)
+            // EKSEKUSI API NORMAL
             $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post(config('services.dana.base_url') . $path);
