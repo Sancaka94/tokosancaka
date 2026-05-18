@@ -2116,4 +2116,55 @@ class TopUpController extends Controller
         }
     }
 
+    /**
+     * =========================================================================
+     * DEBUGGING: Cek Status DANA via URL Browser
+     * =========================================================================
+     */
+    public function debugDanaStatus($orderId)
+    {
+        // 1. Pastikan config dinamis (Sandbox/Prod) otomatis ter-load
+        $this->applyDynamicConfig();
+
+        // 2. Siapkan Payload (Sesuai dengan fungsi checkDanaGatewayStatus Anda)
+        $body = [
+            "partnerReferenceNo" => $orderId,
+            "merchantId" => config('services.dana.merchant_id')
+        ];
+
+        $method = 'POST';
+        $relativePath = '/rest/v1.1/debit/status'; 
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+
+        try {
+            // 3. Generate Signature
+            $signature = $this->danaSignature->generateSignature($method, $relativePath, $body, $timestamp);
+
+            // 4. Hit API DANA
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time(),
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'Content-Type'  => 'application/json',
+                'CHANNEL-ID'    => 'MOBILE_WEB',
+            ])->post(config('services.dana.base_url') . $relativePath, $body);
+
+            // 5. Cetak respons langsung ke layar browser dengan rapi
+            return response()->json([
+                'INFO_SISTEM' => [
+                    'MODE_AKTIF' => config('services.dana.dana_env'),
+                    'TARGET_URL' => config('services.dana.base_url') . $relativePath,
+                    'ORDER_ID'   => $orderId,
+                ],
+                'RESPONS_DARI_DANA' => $response->json()
+            ], 200, [], JSON_PRETTY_PRINT);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'ERROR_SISTEM' => $e->getMessage()
+            ], 500, [], JSON_PRETTY_PRINT);
+        }
+    }
+
 }

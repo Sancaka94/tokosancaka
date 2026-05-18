@@ -1297,3 +1297,6 @@ Route::get('/customer/dana/bind', [TopUpController::class, 'startBinding'])->nam
 Route::get('/customer/dana/callback', [TopUpController::class, 'handleCallback'])->name('customer.dana.callback');
 
 Route::post('/ppob/verify-saldo', [\App\Http\Controllers\PpobIakController::class, 'verifyPinAndBalance'])->name('ppob.verify_saldo');
+
+
+Route::get('/debug/dana-status/{orderId}', [TopUpController::class, 'debugDanaStatus']);
