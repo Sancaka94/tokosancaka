@@ -1430,8 +1430,9 @@ class TopUpController extends Controller
             // =====================================================================
             if ($request->amount == 22222) {
                 $headersTest = $headers;
-                // Di sini kita sengaja merusak signature asli agar DANA menolaknya
-                $headersTest['X-SIGNATURE']   = $signature . "CONTOH_SIGNATURE_PALSU_A1B2C3";
+
+                // KUNCI PERBAIKAN: Ganti total dengan string acak pendek agar kalkulasi SHA256 DANA mutlak gagal
+                $headersTest['X-SIGNATURE']   = "SALAH_TOTAL_123";
                 $headersTest['X-EXTERNAL-ID'] = (string) time() . Str::random(6);
 
                 $resTest = Http::withHeaders($headersTest)->withBody($jsonBody, 'application/json')
