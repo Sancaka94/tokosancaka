@@ -362,7 +362,7 @@
                     <p class="text-muted mb-4" style="font-size: 14px;">
                         Download aplikasi Android kami untuk pengalaman scan resi, cek status, dan kelola paket yang lebih cepat dan praktis!
                     </p>
-                    <a href="https://tokosancaka.com/public/assets/app/SancakaExpress.apk"
+                    <a href="https://play.google.com/store/apps/details?id=com.sancaka.express.app"
                        class="btn btn-orange btn-lg w-100 fw-bold rounded-pill"
                        target="_blank"
                        onclick="tutupModalApk()">

@@ -550,7 +550,7 @@
                 {{-- TAMBAHAN TOMBOL DOWNLOAD --}}
                 <li><hr class="dropdown-divider"></li>
                 <li>
-                    <a class="dropdown-item text-success fw-bold" href="https://tokosancaka.com/public/assets/app/SancakaExpress.apk" target="_blank">
+                    <a class="dropdown-item text-success fw-bold" href="https://play.google.com/store/apps/details?id=com.sancaka.express.app" target="_blank">
                         <i class="fab fa-android me-2"></i> Download App Android
                     </a>
                 </li>
@@ -748,7 +748,7 @@
                     <button type="button" class="btn btn-danger rounded-pill px-4 shadow-sm" data-bs-dismiss="modal">
                         Saya Mengerti
                     </button>
-                    <a href="https://tokosancaka.com/public/assets/app/SancakaExpress.apk" target="_blank" class="btn btn-outline-success rounded-pill px-4 shadow-sm" onclick="document.getElementById('tutorialModal').querySelector('.btn-close').click();">
+                    <a href="https://play.google.com/store/apps/details?id=com.sancaka.express.app" target="_blank" class="btn btn-outline-success rounded-pill px-4 shadow-sm" onclick="document.getElementById('tutorialModal').querySelector('.btn-close').click();">
                         <i class="fas fa-download me-1"></i> Download App
                     </a>
                 </div>

@@ -25,7 +25,7 @@
 
                     {{-- Tombol Download APK (Baru) --}}
                     <li class="nav-item">
-                        <a class="btn btn-danger ms-lg-2 mt-2 mt-lg-0" href="https://tokosancaka.com/public/assets/app/SancakaExpress.apk" target="_blank">
+                        <a class="btn btn-danger ms-lg-2 mt-2 mt-lg-0" href="https://play.google.com/store/apps/details?id=com.sancaka.express.app" target="_blank">
                             <i class="fab fa-android me-1"></i> Download App
                         </a>
                     </li>
