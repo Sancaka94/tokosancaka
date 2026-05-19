@@ -142,6 +142,7 @@
                             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 
                                 {{-- DANA DIRECT DEBIT --}}
+                                {{--
                                 <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="DANA_DIRECT_DEBIT" class="peer sr-only">
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
@@ -153,6 +154,7 @@
                                         </div>
                                     </div>
                                 </label>
+                                --}}
 
                                 {{-- DANA DIRECT --}}
                                 <label class="relative cursor-pointer group">
