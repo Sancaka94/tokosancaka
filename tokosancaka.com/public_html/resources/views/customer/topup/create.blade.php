@@ -156,6 +156,8 @@
                                 </label>
                                 --}}
 
+
+
                                 {{-- DANA DIRECT --}}
                                 <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="DANA" class="peer sr-only">
@@ -213,6 +215,20 @@
                                         </div>
                                     </div>
                                 </label>
+
+                                {{-- MIDTRANS --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="MIDTRANS" class="peer sr-only">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <img src="https://tokosancaka.com/public/storage/logo/midtrans.png" class="h-12 object-contain mb-3 rounded-lg shadow-sm p-1" onerror="this.src='https://midtrans.com/assets/img/midtrans-dark.svg'">
+                                        <span class="text-sm font-bold text-gray-800">Midtrans</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Payment Gateway</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+                                
                             </div>
                         </div>
 
