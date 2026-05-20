@@ -232,6 +232,76 @@
                             </div>
                         </div>
 
+                        {{-- GROUP BARU: VIRTUAL ACCOUNT MIDTRANS (BI-SNAP) --}}
+                        <div class="mt-8">
+                            <h5 class="text-sm font-extrabold text-gray-400 uppercase tracking-wider mb-4 pl-3 border-l-4 border-indigo-500">
+                                Virtual Account (Otomatis Midtrans)
+                            </h5>
+                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
+                                {{-- MIDTRANS BCA VA --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="MIDTRANS_VA_BCA" class="peer sr-only" required>
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <div class="h-12 flex items-center justify-center mb-3">
+                                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/5c/Bank_Central_Asia.svg" class="max-h-full max-w-full object-contain p-1" alt="BCA">
+                                        </div>
+                                        <span class="text-sm font-bold text-gray-800">BCA Virtual Account</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Verifikasi Instan</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                {{-- MIDTRANS BNI VA --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="MIDTRANS_VA_BNI" class="peer sr-only" required>
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <div class="h-12 flex items-center justify-center mb-3">
+                                            <img src="https://upload.wikimedia.org/wikipedia/commons/3/38/BNI_logo.svg" class="max-h-full max-w-full object-contain p-1" alt="BNI">
+                                        </div>
+                                        <span class="text-sm font-bold text-gray-800">BNI Virtual Account</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Verifikasi Instan</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                {{-- MIDTRANS BRI VA --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="MIDTRANS_VA_BRI" class="peer sr-only" required>
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <div class="h-12 flex items-center justify-center mb-3">
+                                            <img src="https://upload.wikimedia.org/wikipedia/commons/2/2e/BRI_Logo.svg" class="max-h-full max-w-full object-contain p-1" alt="BRI">
+                                        </div>
+                                        <span class="text-sm font-bold text-gray-800">BRI Virtual Account</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Verifikasi Instan</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                {{-- MIDTRANS MANDIRI VA --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="MIDTRANS_VA_MANDIRI" class="peer sr-only" required>
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <div class="h-12 flex items-center justify-center mb-3">
+                                            <img src="https://upload.wikimedia.org/wikipedia/commons/a/ad/Bank_Mandiri_logo_2016.svg" class="max-h-full max-w-full object-contain p-1" alt="Mandiri">
+                                        </div>
+                                        <span class="text-sm font-bold text-gray-800">Mandiri Bill Payment</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Verifikasi Instan</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+                            </div>
+                        </div>
+
                         {{-- GROUP 2: TRIPAY OTOMATIS (Looping Data API) --}}
                         @if(isset($groupedChannels) && count($groupedChannels) > 0)
                             @foreach($groupedChannels as $groupName => $channels)
