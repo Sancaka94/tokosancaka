@@ -2624,14 +2624,25 @@ class TopUpController extends Controller
         Log::info('LOG LOG: MIDTRANS VA START for Transaction Table: ' . $trxId . ' Bank: ' . strtoupper($bankCode));
 
         try {
-            // Paksa bersihkan cache token lama biar gak nyangkut token kosong/error 404
+            // 1. Paksa Reset & Bersihkan cache token Midtrans lama yang berpotensi corrupt/404
+            $midtransMode = \App\Models\Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
             \Illuminate\Support\Facades\Cache::forget('midtrans_b2b_token_sandbox');
             \Illuminate\Support\Facades\Cache::forget('midtrans_b2b_token_production');
+            \Illuminate\Support\Facades\Cache::forget('midtrans_b2b_token_' . $midtransMode);
 
+            // 2. Override config runtime khusus Midtrans agar terbebas dari efek samping applyDynamicConfig() DANA
+            config([
+                'services.midtrans.mode' => $midtransMode,
+                'services.midtrans.snap_client_id' => \App\Models\Api::getValue('MIDTRANS_SNAP_CLIENT_ID', $midtransMode),
+                'services.midtrans.snap_client_secret' => \App\Models\Api::getValue('MIDTRANS_SNAP_CLIENT_SECRET', $midtransMode),
+                'services.midtrans.merchant_id' => \App\Models\Api::getValue('MIDTRANS_MERCHANT_ID', $midtransMode),
+            ]);
+
+            // 3. Panggil Service Midtrans
             $midtransService = app(\App\Services\MidtransSnapService::class);
             $user = Auth::user();
 
-            // Panggil Service Midtrans VA
+            // 4. Eksekusi pembuatan Virtual Account
             $response = $midtransService->createVirtualAccount(
                 $trxId, 
                 $transaction->amount, 
@@ -2641,7 +2652,7 @@ class TopUpController extends Controller
                 $user->email ?? null
             );
 
-            // Jika Midtrans mengembalikan response data VA
+            // 5. Cek Response Sukses BI-SNAP VA (Code: 2002700)
             if (isset($response['virtualAccountData']['virtualAccountNo'])) {
                 $vaNumber = $response['virtualAccountData']['virtualAccountNo'];
                 
@@ -2651,14 +2662,16 @@ class TopUpController extends Controller
                 Log::info('LOG LOG: Berhasil Generate VA Midtrans', ['VA' => $vaNumber]);
 
                 return redirect()->route('customer.topup.show', ['topup' => $transaction->reference_id])
-                                 ->with('success', 'Virtual Account berhasil dibuat! Silakan bayar menggunakan nomor VA berikut.');
+                                 ->with('success', 'Virtual Account berhasil dibuat! Silakan bayar menggunakan nomor VA.');
             }
 
-            // Jika gagal tapi response dari server Midtrans ada isinya
-            $errorMsg = $response['responseMessage'] ?? json_encode($response);
+            // 6. Tangkap Error Spesifik dari API Midtrans jika gagal tembus
+            $responseCode = $response['responseCode'] ?? 'UNKNOWN';
+            $responseMsg  = $response['responseMessage'] ?? json_encode($response);
+            
             Log::error('LOG LOG: Gagal mendapatkan VA dari Midtrans', ['response' => $response]);
             
-            return back()->with('error', 'Gagal memproses VA Midtrans: ' . $errorMsg);
+            return back()->with('error', "Gagal memproses VA Midtrans. [Code: {$responseCode}] - {$responseMsg}");
 
         } catch (\Exception $e) {
             Log::error('LOG LOG: MIDTRANS VA System Error: ' . $e->getMessage());
