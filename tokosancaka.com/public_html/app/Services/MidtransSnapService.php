@@ -29,11 +29,11 @@ class MidtransSnapService
         $this->snapClientSecret = Api::getValue('MIDTRANS_SNAP_CLIENT_SECRET', $this->mode);
         $this->merchantId = Api::getValue('MIDTRANS_MERCHANT_ID', $this->mode);
         
-        // Sesuai dokumentasi ASPI, Partner ID biasanya menggunakan Client ID / Merchant ID
         $this->partnerId = $this->merchantId; 
 
         $this->privateKeyPath = storage_path('app/keys/private_key_pkcs8.pem');
 
+        // PERBAIKAN: Menghapus /v1.0 dari base URL agar tidak duplikat saat pemanggilan endpoint
         $this->baseUrl = $this->isProduction 
             ? 'https://api.midtrans.com' 
             : 'https://api.sandbox.midtrans.com';
@@ -64,7 +64,7 @@ class MidtransSnapService
         return base64_encode($signature);
     }
 
-    /**
+   /**
      * 2. Mendapatkan Request B2B Access Token dari Midtrans (Cached).
      */
     public function getAccessToken()
@@ -75,6 +75,7 @@ class MidtransSnapService
             $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'); 
             $signature = $this->generateB2bSignature($this->snapClientId, $timestamp);
             
+            // PERBAIKAN: Menyesuaikan full path endpoint sesuai dokumentasi resmi BI-SNAP
             $endpoint = $this->baseUrl . '/v1.0/access-token/b2b';
 
             $headers = [
@@ -84,8 +85,9 @@ class MidtransSnapService
                 'X-SIGNATURE'  => $signature
             ];
             
+            // PERBAIKAN: Mengubah dari 'grant_type' menjadi 'grantType' (camelCase) sesuai dokumen ASPI
             $payload = [
-                'grant_type' => 'client_credentials'
+                'grantType' => 'client_credentials'
             ];
 
             try {
