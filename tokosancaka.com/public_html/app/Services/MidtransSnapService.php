@@ -7,38 +7,40 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class MidtransSnapService
 {
     protected $isProduction;
     protected $mode;
     protected $snapClientId;
+    protected $snapClientSecret; 
+    protected $partnerId;        
     protected $privateKeyPath;
     protected $baseUrl;
 
     public function __construct()
     {
-        // Mengambil konfigurasi dinamis yang sudah kita set di DB sebelumnya
         $this->mode = Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
         $this->isProduction = ($this->mode === 'production');
         
         $this->snapClientId = Api::getValue('MIDTRANS_SNAP_CLIENT_ID', $this->mode);
+        $this->snapClientSecret = Api::getValue('MIDTRANS_SNAP_CLIENT_SECRET', $this->mode);
         
-        // Path absolut menuju file kunci privat di storage
+        $this->partnerId = 'SANCAKA'; 
+
         $this->privateKeyPath = storage_path('app/keys/private_key_pkcs8.pem');
 
-        // Base URL sesuai Environment BI-SNAP Midtrans
         $this->baseUrl = $this->isProduction 
-            ? 'https://api.midtrans.com/v1.0' 
-            : 'https://api.sandbox.midtrans.com/v1.0';
+            ? 'https://api.midtrans.com' 
+            : 'https://api.sandbox.midtrans.com';
     }
 
     /**
-     * Menghasilkan Asymmetric Signature (SHA256withRSA) untuk Access Token.
+     * 1. Menghasilkan Asymmetric Signature (SHA256withRSA) untuk Access Token.
      */
     private function generateB2bSignature($clientId, $timestamp)
     {
-        // Format standar BI-SNAP untuk Access Token: ClientId|Timestamp
         $stringToSign = $clientId . '|' . $timestamp;
         
         if (!file_exists($this->privateKeyPath)) {
@@ -60,22 +62,17 @@ class MidtransSnapService
     }
 
     /**
-     * Melakukan Request B2B Access Token ke Midtrans.
-     * Menggunakan sistem Cache agar tidak request berulang-ulang tiap transaksi.
+     * 2. Mendapatkan Request B2B Access Token dari Midtrans (Cached).
      */
     public function getAccessToken()
     {
-        // Token BI-SNAP biasanya berlaku 15 menit (900 detik). 
-        // Kita cache selama 13 menit (780 detik) untuk batas aman sebelum expired.
         $cacheKey = 'midtrans_b2b_token_' . $this->mode;
 
         return Cache::remember($cacheKey, 780, function () {
-            // Waktu saat ini dengan format ISO8601 (Zona Waktu Jakarta)
             $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'); 
-            
             $signature = $this->generateB2bSignature($this->snapClientId, $timestamp);
             
-            $endpoint = $this->baseUrl . '/access-token/b2b';
+            $endpoint = $this->baseUrl . '/v1.0/access-token/b2b';
 
             $headers = [
                 'Content-Type' => 'application/json',
@@ -91,11 +88,9 @@ class MidtransSnapService
             try {
                 $response = Http::withHeaders($headers)->post($endpoint, $payload);
 
-                // Mengikuti Aturan Anda: Mencatat semua aktivitas secara rinci ke LOG LOG
                 Log::info('LOG LOG: Eksekusi Request Midtrans B2B Access Token', [
                     'endpoint'     => $endpoint,
                     'request_time' => $timestamp,
-                    'x_client_key' => $this->snapClientId,
                     'status_code'  => $response->status(),
                     'response'     => $response->json(),
                 ]);
@@ -113,5 +108,74 @@ class MidtransSnapService
                 throw $e;
             }
         });
+    }
+
+    /**
+     * 3. Menghasilkan Symmetric Signature (HMAC_SHA512) untuk Transactional API.
+     */
+    private function generateTransactionalSignature($httpMethod, $relativeUrl, $accessToken, $requestBody, $timestamp)
+    {
+        $minifiedBody = is_array($requestBody) || is_object($requestBody) 
+            ? json_encode($requestBody, JSON_UNESCAPED_SLASHES) 
+            : (string) $requestBody;
+            
+        if (empty($minifiedBody)) {
+            $minifiedBody = '';
+        }
+
+        $hashedBody = strtolower(hash('sha256', $minifiedBody));
+        $stringToSign = strtoupper($httpMethod) . ':' . $relativeUrl . ':' . $accessToken . ':' . $hashedBody . ':' . $timestamp;
+        $signature = hash_hmac('sha512', $stringToSign, $this->snapClientSecret, true);
+
+        return base64_encode($signature);
+    }
+
+    /**
+     * 4. Mengeksekusi Transactional API (Pembayaran, Refund, Cek Status, dll)
+     */
+    public function executeTransaction($method, $relativeUrl, $payload = [])
+    {
+        try {
+            $accessToken = $this->getAccessToken();
+            $timestamp   = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'); 
+            $externalId  = (string) Str::uuid(); 
+            $signature   = $this->generateTransactionalSignature($method, $relativeUrl, $accessToken, $payload, $timestamp);
+
+            $endpoint = $this->baseUrl . $relativeUrl;
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessToken,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => $this->partnerId,
+                'X-EXTERNAL-ID' => $externalId,
+                'CHANNEL-ID'    => '12345', 
+                'X-DEVICE-ID'   => request()->header('User-Agent') ?? 'Sancaka-Server/1.0',
+            ];
+
+            $http = Http::withHeaders($headers);
+            $response = strtolower($method) === 'post' 
+                ? $http->post($endpoint, $payload)
+                : $http->get($endpoint, $payload);
+
+            Log::info('LOG LOG: Eksekusi Transactional API Midtrans BI-SNAP', [
+                'method'        => $method,
+                'endpoint'      => $endpoint,
+                'x_external_id' => $externalId,
+                'status_code'   => $response->status(),
+                'response'      => $response->json(),
+            ]);
+
+            return $response->json();
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: Kegagalan Sistem pada Transactional API Midtrans', [
+                'endpoint' => $relativeUrl ?? 'unknown',
+                'error'    => $e->getMessage()
+            ]);
+            
+            throw $e;
+        }
     }
 }
