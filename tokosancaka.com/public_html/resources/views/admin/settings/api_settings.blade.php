@@ -78,6 +78,11 @@
                     <i class="fas fa-wallet mr-2"></i> DANA
                 </button>
 
+                {{-- TAMBAHAN TAB MIDTRANS --}}
+                <button @click="activeTab = 'midtrans'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'midtrans', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'midtrans' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    <i class="fas fa-credit-card mr-2"></i> Midtrans
+                </button>
+
             </div>
         </div>
 
@@ -86,6 +91,7 @@
 
             {{-- 1. TAB KIRIMINAJA --}}
             <div x-show="activeTab === 'kiriminaja'" x-transition.opacity>
+                <!-- ... (Kode KiriminAja Anda tetap tidak diubah) ... -->
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900">KiriminAja Configuration</h3>
@@ -164,6 +170,7 @@
 
             {{-- 2. TAB TRIPAY --}}
             <div x-show="activeTab === 'tripay'" style="display: none;">
+                <!-- ... (Kode Tripay Anda tetap tidak diubah) ... -->
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900">Tripay Payment</h3>
@@ -234,6 +241,7 @@
 
             {{-- 3. TAB DOKU --}}
             <div x-show="activeTab === 'doku'" style="display: none;">
+                 <!-- ... (Kode DOKU Anda tetap tidak diubah) ... -->
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900">DOKU Payment</h3>
@@ -343,6 +351,7 @@
 
             {{-- 4. TAB IAK (PPOB) --}}
             <div x-show="activeTab === 'iak'" style="display: none;">
+                 <!-- ... (Kode IAK Anda tetap tidak diubah) ... -->
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900">IAK PPOB Configuration</h3>
@@ -429,6 +438,7 @@
 
             {{-- 5. TAB DARMAWISATA (BARU) --}}
             <div x-show="activeTab === 'dharmawisata'" style="display: none;">
+                 <!-- ... (Kode Darmawisata Anda tetap tidak diubah) ... -->
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900">Darmawisata H2H (Tiket Pesawat)</h3>
@@ -496,7 +506,6 @@
                                 <p class="text-xs text-gray-500 mt-1">URL standar: https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/</p>
                             </div>
 
-                            {{-- TAMBAHAN: Kolom Auto-Reconnect --}}
                             <div class="border-t border-gray-100 pt-5 mt-2">
                                 <h4 class="text-sm font-bold text-gray-800 mb-4"><i class="fas fa-sync-alt text-indigo-500 mr-2"></i>Kredensial Auto-Reconnect</h4>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -506,7 +515,6 @@
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700">Password / Security Code</label>
-                                        {{-- Menggunakan type text agar mudah dicek saat diketik (misal: Darmaj4y4) --}}
                                         <input type="text" name="dharmawisata_password" x-model="dwData[dwData.mode].password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Contoh: Darmaj4y4">
                                     </div>
                                 </div>
@@ -525,6 +533,7 @@
 
             {{-- 6. TAB FONNTE --}}
             <div x-show="activeTab === 'fonnte'" style="display: none;">
+                 <!-- ... (Kode Fonnte Anda tetap tidak diubah) ... -->
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900">Fonnte (WhatsApp Gateway)</h3>
@@ -558,6 +567,7 @@
 
             {{-- 7. TAB DANA (BARU) --}}
             <div x-show="activeTab === 'dana'" style="display: none;">
+                 <!-- ... (Kode DANA Anda tetap tidak diubah) ... -->
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900">DANA Payment Gateway</h3>
@@ -643,6 +653,110 @@
                 </form>
             </div>
 
+            {{-- 8. TAB MIDTRANS (BARU) --}}
+            <div x-show="activeTab === 'midtrans'" style="display: none;">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Midtrans BI-SNAP</h3>
+                        <p class="text-xs text-gray-500 mt-1">Status Aktif:
+                            <span class="px-2 py-0.5 rounded text-xs font-bold transition-colors duration-300"
+                                  :class="midtransData.mode === 'production' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'"
+                                  x-text="midtransData.mode === 'production' ? 'PRODUCTION (LIVE)' : 'SANDBOX (TEST)'">
+                            </span>
+                        </p>
+                    </div>
+
+                    {{-- Toggle Switch Midtrans --}}
+                    <div class="flex items-center">
+                        <span class="mr-3 text-sm font-medium" :class="midtransData.mode === 'sandbox' ? 'text-indigo-600 font-bold' : 'text-gray-500'">SANDBOX</span>
+
+                        <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" id="midtrans_toggle"
+                                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
+                                   :class="{'translate-x-full border-red-500': midtransData.mode === 'production', 'border-indigo-500': midtransData.mode === 'sandbox'}"
+                                   @click="midtransData.mode = (midtransData.mode === 'production' ? 'sandbox' : 'production')"
+                                   :checked="midtransData.mode === 'production'"/>
+                            <label for="midtrans_toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
+                                   :class="{'bg-red-500': midtransData.mode === 'production', 'bg-indigo-500': midtransData.mode === 'sandbox'}"></label>
+                        </div>
+
+                        <span class="ml-1 text-sm font-medium" :class="midtransData.mode === 'production' ? 'text-red-600 font-bold' : 'text-gray-500'">PRODUCTION</span>
+                    </div>
+                </div>
+
+                <form action="{{ route('admin.settings.api.update') }}" method="POST">
+                    @csrf @method('PUT')
+                    <input type="hidden" name="type" value="midtrans">
+                    <input type="hidden" name="midtrans_mode" x-model="midtransData.mode">
+
+                    <div class="space-y-6">
+                        {{-- Visual Warning --}}
+                        <div class="p-4 rounded-lg border flex items-start"
+                             :class="midtransData.mode === 'production' ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'">
+                            <div class="flex-shrink-0 mt-0.5">
+                                <i class="fas" :class="midtransData.mode === 'production' ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle text-indigo-500'"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium" :class="midtransData.mode === 'production' ? 'text-red-800' : 'text-indigo-800'" x-text="midtransData.mode === 'production' ? 'Mode Produksi Aktif' : 'Mode Sandbox Aktif'"></h3>
+                            </div>
+                        </div>
+
+                        <div x-show="midtransData.mode" x-transition.opacity>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Merchant ID</label>
+                                    <input type="text" name="midtrans_merchant_id" x-model="midtransData[midtransData.mode].merchant_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Contoh: G850780499">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4 border-t border-gray-100 pt-4">
+                                <div class="col-span-2"><h4 class="text-sm font-bold text-gray-800">Kredensial Core API Lama (Opsional/Legacy)</h4></div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Client Key</label>
+                                    <input type="text" name="midtrans_client_key" x-model="midtransData[midtransData.mode].client_key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Mid-client-...">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Server Key</label>
+                                    <input type="text" name="midtrans_server_key" x-model="midtransData[midtransData.mode].server_key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Mid-server-...">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4 border-t border-gray-100 pt-4">
+                                <div class="col-span-2"><h4 class="text-sm font-bold text-gray-800">Kredensial BI-SNAP (Wajib)</h4></div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">SNAP Client ID</label>
+                                    <input type="text" name="midtrans_snap_client_id" x-model="midtransData[midtransData.mode].snap_client_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Contoh: hDiYCXyc-G850780499-SNAP">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">SNAP Client Secret</label>
+                                    <input type="text" name="midtrans_snap_client_secret" x-model="midtransData[midtransData.mode].snap_client_secret" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
+                                </div>
+                            </div>
+                            
+                            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4 mt-4 rounded-r-lg">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-info-circle text-blue-500"></i>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm text-blue-700">
+                                            <b>Catatan PKCS8:</b> Kunci Asimetris (Private Key `.pem` milik Anda dan Public Key milik Midtrans) wajib diletakkan secara fisik di dalam folder <code>storage/app/keys/</code> demi keamanan format multi-baris.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors">
+                            Simpan Midtrans
+                        </button>
+                    </div>
+                </form>
+            </div>
+
         </div>
     </div>
 </div>
@@ -663,6 +777,9 @@
             iakData: @json($iak),
             dwData: @json($dharmawisata),
             danaData: @json($dana),
+            
+            // --- TAMBAHAN DATA MIDTRANS ---
+            midtransData: @json($midtrans),
         }))
     })
 </script>

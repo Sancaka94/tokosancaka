@@ -50,6 +50,34 @@ use App\Http\Controllers\TelegramPpobController;
 use App\Http\Controllers\Api\ScraperController;
 use App\Http\Controllers\PpobIakController;
 use App\Http\Controllers\Admin\ApiSettingsController;
+use App\Http\Controllers\API\MidtransNotificationController;
+use App\Http\Controllers\PaymentRedirectController;
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Midtrans BI-SNAP Notification Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('midtrans')->group(function () {
+    // 1. URL Notifikasi Pembayaran (Sukses, Gagal, dll)
+    Route::post('/notification', [MidtransNotificationController::class, 'handlePaymentNotification'])
+         ->name('midtrans.notification.payment');
+
+    // 2. URL Notifikasi Pembayaran Berulang (Recurring / Subscription)
+    Route::post('/recurring-notification', [MidtransNotificationController::class, 'handleRecurringNotification'])
+         ->name('midtrans.notification.recurring');
+
+    // 3. URL Notifikasi Menghubungkan Akun (GoPay Tokenization / Account Linking)
+    Route::post('/account-linking-notification', [MidtransNotificationController::class, 'handleAccountLinkingNotification'])
+         ->name('midtrans.notification.account_linking');
+});
+
+// Halaman yang dilihat pelanggan setelah pembayaran berhasil selesai
+Route::get('/payment/finish', [PaymentRedirectController::class, 'finish'])
+     ->name('payment.finish');
 
 
 Route::post('/ppob/webhook', [PpobIakController::class, 'webhook']);
