@@ -226,7 +226,7 @@ class TopUpController extends Controller
            // ==========================================================
             // --- TAMBAHAN UNTUK MIDTRANS BI-SNAP (VIRTUAL ACCOUNT) ---
             // ==========================================================
-            elseif (\Illuminate\Support\Str::startsWith($validated['payment_method'], 'MIDTRANS_VA_')) {
+            /* elseif (\Illuminate\Support\Str::startsWith($validated['payment_method'], 'MIDTRANS_VA_')) {
                 
                 // Ekstrak kode bank dari string (Contoh: "MIDTRANS_VA_BCA" menjadi "bca")
                 $bankCode = strtolower(str_replace('MIDTRANS_VA_', '', $validated['payment_method']));
@@ -247,6 +247,30 @@ class TopUpController extends Controller
 
                 // Arahkan ke fungsi eksekutor Midtrans VA (dibuat di langkah 2)
                 return $this->createPaymentMidtransVA($transaction, $bankCode);
+            } */
+            // ==========================================================
+
+            // ==========================================================
+            // --- LOGIKA MIDTRANS SNAP (TAMPILAN ASLI MIDTRANS) ---
+            // ==========================================================
+            elseif (\Illuminate\Support\Str::startsWith($validated['payment_method'], 'MIDTRANS')) {
+                
+                Log::info('LOG LOG: Memulai Top Up Midtrans Snap untuk ' . $invoiceNumber);
+
+                $transaction = Transaction::create([
+                    'user_id'        => $user->id_pengguna,
+                    'reference_id'   => $invoiceNumber,
+                    'amount'         => $amount,
+                    'type'           => 'topup',
+                    'status'         => 'pending',
+                    'payment_method' => 'MIDTRANS', // Cukup simpan sebagai MIDTRANS
+                    'description'    => 'Top up saldo via Midtrans',
+                ]);
+
+                DB::commit();
+
+                // Arahkan ke fungsi eksekutor Midtrans Snap
+                return $this->createPaymentMidtransSnap($transaction);
             }
             // ==========================================================
 
@@ -2656,6 +2680,67 @@ class TopUpController extends Controller
         } catch (\Exception $e) {
             Log::error('LOG LOG: [SNAP] Controller Exception Error: ' . $e->getMessage());
             return back()->with('error', 'Gagal terhubung ke Midtrans: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * =========================================================================
+     * EKSEKUTOR PEMBAYARAN MIDTRANS SNAP (TAMPILAN BAWAAN MIDTRANS)
+     * =========================================================================
+     */
+    public function createPaymentMidtransSnap(Transaction $transaction)
+    {
+        Log::info('LOG LOG: Generate Snap Token Midtrans untuk ' . $transaction->reference_id);
+        $user = Auth::user();
+
+        try {
+            // Ambil konfigurasi Midtrans dari database (sesuai gaya kode Anda)
+            $mode = \App\Models\Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
+            $serverKey = \App\Models\Api::getValue('MIDTRANS_SERVER_KEY', $mode);
+            $isProduction = ($mode === 'production');
+
+            // Tentukan URL berdasarkan mode
+            $baseUrl = $isProduction 
+                ? 'https://app.midtrans.com/snap/v1/transactions' 
+                : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+
+            // Payload standar Snap Midtrans
+            $payload = [
+                'transaction_details' => [
+                    'order_id'     => $transaction->reference_id,
+                    'gross_amount' => (int) $transaction->amount, // Wajib diubah ke integer
+                ],
+                'customer_details' => [
+                    'first_name' => $user->nama_lengkap ?? 'Customer',
+                    'email'      => $user->email ?? 'email@kosong.com',
+                    'phone'      => $user->no_wa ?? '',
+                ]
+            ];
+
+            // Tembak API menggunakan fitur bawaan Laravel HTTP Client
+            $response = Http::withBasicAuth($serverKey, '')
+                            ->post($baseUrl, $payload);
+
+            $result = $response->json();
+
+            // Jika Midtrans mengembalikan URL pembayaran
+            if (isset($result['redirect_url'])) {
+                
+                // 1. Simpan URL tersebut ke database (agar user bisa klik "Lanjut Bayar" nanti jika keluar)
+                $transaction->payment_url = $result['redirect_url'];
+                $transaction->save();
+                
+                // 2. Alihkan layar pelanggan ke halaman pembayaran resmi Midtrans
+                return redirect()->away($result['redirect_url']);
+            }
+
+            // Jika gagal mendapatkan token/url
+            Log::error('LOG LOG: Midtrans Snap Error', $result);
+            return back()->with('error', 'Gagal memproses pembayaran dengan Midtrans. Pesan: ' . ($result['error_messages'][0] ?? 'Kesalahan tidak diketahui.'));
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: Exception Midtrans Snap: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem saat menghubungi Midtrans.');
         }
     }
 
