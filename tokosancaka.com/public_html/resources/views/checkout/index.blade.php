@@ -396,6 +396,23 @@
                     <span class="text-sm font-medium text-gray-900">Rekomendasi Sancaka (Kartu Kredit, E-Wallet, dll)</span>
                 </li>
 
+                {{-- OPSI MIDTRANS --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
+                    data-value="MIDTRANS"
+                    data-label="Midtrans"
+                    data-img="https://tokosancaka.com/public/assets/midtrans.png">
+                    
+                    <img src="https://tokosancaka.com/public/assets/midtrans.png"
+                         alt="Midtrans"
+                         class="h-8 w-8 object-contain mr-4"
+                         onerror="this.src='https://midtrans.com/assets/img/midtrans-dark.svg'">
+                         
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">Midtrans</span>
+                        <span class="text-xs text-gray-500">Virtual Account, QRIS, E-Wallet (Otomatis)</span>
+                    </div>
+                </li>
+
                 {{-- OPSI DANA (DIRECT DEBIT) --}}
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
                     data-value="DANA"

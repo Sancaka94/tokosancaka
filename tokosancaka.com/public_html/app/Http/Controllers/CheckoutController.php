@@ -625,14 +625,32 @@ class CheckoutController extends Controller
             }
             else
             {
-                // --- 6. Logika Pembayaran Online (Tripay ATAU Doku) ---
+                // --- 6. Logika Pembayaran Online (Midtrans, Tripay, ATAU Doku) ---
 
-                $paymentGateway = 'tripay';
-                if (strtoupper($request->payment_method) === 'DOKU_JOKUL') {
+                $paymentGateway = 'tripay'; // Default
+                $paymentMethodRaw = strtoupper($request->payment_method);
+
+                if ($paymentMethodRaw === 'DOKU_JOKUL') {
                     $paymentGateway = 'doku';
+                } elseif ($paymentMethodRaw === 'MIDTRANS') {
+                    $paymentGateway = 'midtrans';
                 }
 
-                if ($paymentGateway === 'doku') {
+                // ==========================================================
+                // PROSES VIA MIDTRANS
+                // ==========================================================
+                if ($paymentGateway === 'midtrans') {
+                    Log::info('Memulai proses MIDTRANS Marketplace untuk ' . $order->invoice_number);
+                    
+                    // Panggil fungsi eksekutor Midtrans yang baru saja dibuat
+                    $paymentUrl = $this->createPaymentMidtransSnap($order);
+                    $order->payment_url = $paymentUrl;
+                }
+                
+                // ==========================================================
+                // PROSES VIA DOKU
+                // ==========================================================
+                elseif ($paymentGateway === 'doku') {
                     Log::info('Memulai proses DOKU (Jokul) Marketplace untuk ' . $order->invoice_number);
 
                     // ==============================================================
@@ -722,7 +740,12 @@ class CheckoutController extends Controller
             DB::commit();
             session()->forget('cart');
 
-            // --- A. JIKA METODE DANA (AUTO REDIRECT KE PAYMENT GATEWAY) ---
+            // --- A1. JIKA METODE MIDTRANS (AUTO REDIRECT KE PAYMENT GATEWAY) ---
+            if (isset($paymentGateway) && $paymentGateway === 'midtrans' && !empty($order->payment_url)) {
+                return redirect()->away($order->payment_url);
+            }
+
+            // --- A2. JIKA METODE DANA (AUTO REDIRECT KE PAYMENT GATEWAY) ---
             if ($request->payment_method === 'DANA') {
                 return $this->createPaymentDANA($order);
             }
@@ -1750,6 +1773,58 @@ TEXT;
             }
         } catch (\Exception $e) {
             Log::error("❌ [EXPO PUSH] Gagal kirim notifikasi: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * =========================================================================
+     * EKSEKUTOR PEMBAYARAN MIDTRANS SNAP UNTUK MARKETPLACE
+     * =========================================================================
+     */
+    private function createPaymentMidtransSnap(Order $order)
+    {
+        Log::info('LOG LOG: Generate Snap Token Midtrans Marketplace untuk ' . $order->invoice_number);
+        $user = Auth::user();
+
+        try {
+            $mode = \App\Models\Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
+            $serverKey = \App\Models\Api::getValue('MIDTRANS_SERVER_KEY', $mode);
+            $isProduction = ($mode === 'production');
+
+            $baseUrl = $isProduction 
+                ? 'https://app.midtrans.com/snap/v1/transactions' 
+                : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+
+            $customerEmail = $user->email ?? 'customer@tokosancaka.com';
+
+            $payload = [
+                'transaction_details' => [
+                    'order_id'     => $order->invoice_number, 
+                    'gross_amount' => (int) $order->total_amount, // Nominal dari Marketplace
+                ],
+                'customer_details' => [
+                    'first_name' => $user->nama_lengkap ?? 'Customer',
+                    'email'      => $customerEmail,
+                    'phone'      => $user->no_wa ?? '',
+                ],
+                // KEMBALI KE RIWAYAT BELANJA MARKETPLACE
+                'callbacks' => [
+                    'finish' => url('/customer/pesanan/riwayat-belanja') 
+                ]
+            ];
+
+            $response = Http::withBasicAuth($serverKey, '')->post($baseUrl, $payload);
+            $result = $response->json();
+
+            if (isset($result['redirect_url'])) {
+                return $result['redirect_url']; // Hanya mengembalikan URL
+            }
+
+            Log::error('Midtrans Snap Error (Marketplace)', $result);
+            throw new \Exception('Gagal mendapatkan link pembayaran Midtrans: ' . ($result['error_messages'][0] ?? 'Kesalahan dari server.'));
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: Exception Midtrans Snap (Marketplace): ' . $e->getMessage());
+            throw new \Exception('Terjadi kesalahan sistem saat menghubungi Midtrans.');
         }
     }
 
