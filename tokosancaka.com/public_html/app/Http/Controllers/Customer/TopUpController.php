@@ -223,6 +223,25 @@ class TopUpController extends Controller
             }
 
 
+            // PASTIKAN BLOK KODE INI ADA
+            elseif ($validated['payment_method'] === 'MIDTRANS') {
+                Log::info('LOG LOG: Memulai Top Up Midtrans untuk ' . $invoiceNumber);
+
+                $transaction = Transaction::create([
+                    'user_id'        => $user->id_pengguna,
+                    'reference_id'   => $invoiceNumber,
+                    'amount'         => $amount,
+                    'type'           => 'topup',
+                    'status'         => 'pending',
+                    'payment_method' => 'MIDTRANS',
+                    'description'    => 'Top up saldo via Midtrans',
+                ]);
+
+                DB::commit();
+
+                // Arahkan ke fungsi eksekutor Midtrans
+                return $this->createPaymentMidtrans($transaction);
+            }
 
             // 3. Logika DOKU & TRIPAY
             else {
