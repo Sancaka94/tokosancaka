@@ -2714,7 +2714,12 @@ class TopUpController extends Controller
                     'first_name' => $user->nama_lengkap ?? 'Customer',
                     'email'      => $user->email ?? 'email@kosong.com',
                     'phone'      => $user->no_wa ?? '',
+                ],
+
+                'callbacks' => [
+                    'finish' => url('/customer/topup') 
                 ]
+
             ];
 
             // Tembak API menggunakan fitur bawaan Laravel HTTP Client
