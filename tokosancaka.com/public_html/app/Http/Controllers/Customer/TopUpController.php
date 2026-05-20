@@ -2613,4 +2613,51 @@ class TopUpController extends Controller
         }
     }
 
+    /**
+     * =========================================================================
+     * EKSEKUTOR PEMBAYARAN MIDTRANS VIRTUAL ACCOUNT (BI-SNAP)
+     * =========================================================================
+     */
+    public function createPaymentMidtransVA(Transaction $transaction, $bankCode)
+    {
+        $trxId = $transaction->reference_id;
+        Log::info('LOG LOG: MIDTRANS VA START for Transaction Table: ' . $trxId . ' Bank: ' . strtoupper($bankCode));
+
+        try {
+            $midtransService = app(\App\Services\MidtransSnapService::class);
+            $user = Auth::user();
+
+            // Panggil Service Midtrans VA yang sudah kita siapkan
+            $response = $midtransService->createVirtualAccount(
+                $trxId, 
+                $transaction->amount, 
+                $bankCode, 
+                $user->nama_lengkap ?? 'Customer Sancaka', 
+                $user->no_wa ?? null, 
+                $user->email ?? null
+            );
+
+            // Sesuai dokumen BI-SNAP, kode sukses create VA adalah 2002700
+            if (isset($response['responseCode']) && $response['responseCode'] === '2002700') {
+                $vaNumber = $response['virtualAccountData']['virtualAccountNo'];
+                
+                // Simpan Nomor VA ke dalam kolom payment_url agar mudah ditampilkan di halaman invoice
+                $transaction->payment_url = $vaNumber;
+                $transaction->save();
+                
+                Log::info('LOG LOG: Berhasil Generate VA Midtrans', ['VA' => $vaNumber]);
+
+                return redirect()->route('customer.topup.show', ['topup' => $transaction->reference_id])
+                                 ->with('success', 'Virtual Account berhasil dibuat! Silakan bayar menggunakan nomor VA berikut.');
+            }
+
+            Log::error('LOG LOG: Gagal mendapatkan VA dari Midtrans', $response);
+            return back()->with('error', 'Gagal memproses VA Midtrans: ' . ($response['responseMessage'] ?? 'Unknown Error'));
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: MIDTRANS VA System Error: ' . $e->getMessage());
+            return back()->with('error', 'Koneksi ke Midtrans terputus: ' . $e->getMessage());
+        }
+    }
+
 }
