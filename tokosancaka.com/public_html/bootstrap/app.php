@@ -33,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'dana/notify', // URL Webhook DANA dibebaskan dari CSRF
             'doku/*',
             'ppob/webhook',
+            'api/midtrans/*', // Mengecualikan semua route di dalam prefix midtrans
         ]);
 
         // --- TAMBAHKAN BAGIAN INI ---

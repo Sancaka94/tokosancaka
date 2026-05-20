@@ -56,6 +56,8 @@ class VerifyCsrfToken extends Middleware
 
             'ppob/webhook',
 
+            'api/midtrans/*',
+
         ];
 
 }
