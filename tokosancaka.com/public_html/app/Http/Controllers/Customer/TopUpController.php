@@ -2615,35 +2615,21 @@ class TopUpController extends Controller
 
    /**
      * =========================================================================
-     * EKSEKUTOR PEMBAYARAN MIDTRANS VIRTUAL ACCOUNT (BI-SNAP)
+     * EKSEKUTOR PEMBAYARAN MIDTRANS VIRTUAL ACCOUNT (SNAP FLOW)
      * =========================================================================
      */
     public function createPaymentMidtransVA(Transaction $transaction, $bankCode)
     {
         $trxId = $transaction->reference_id;
-        Log::info('LOG LOG: MIDTRANS VA START for Transaction Table: ' . $trxId . ' Bank: ' . strtoupper($bankCode));
+        Log::info('LOG LOG: MIDTRANS SNAP VA START for Transaction Table: ' . $trxId . ' Bank: ' . strtoupper($bankCode));
 
         try {
-            // 1. Paksa Reset & Bersihkan cache token Midtrans lama yang berpotensi corrupt/404
-            $midtransMode = \App\Models\Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
-            \Illuminate\Support\Facades\Cache::forget('midtrans_b2b_token_sandbox');
-            \Illuminate\Support\Facades\Cache::forget('midtrans_b2b_token_production');
-            \Illuminate\Support\Facades\Cache::forget('midtrans_b2b_token_' . $midtransMode);
-
-            // 2. Override config runtime khusus Midtrans agar terbebas dari efek samping applyDynamicConfig() DANA
-            config([
-                'services.midtrans.mode' => $midtransMode,
-                'services.midtrans.snap_client_id' => \App\Models\Api::getValue('MIDTRANS_SNAP_CLIENT_ID', $midtransMode),
-                'services.midtrans.snap_client_secret' => \App\Models\Api::getValue('MIDTRANS_SNAP_CLIENT_SECRET', $midtransMode),
-                'services.midtrans.merchant_id' => \App\Models\Api::getValue('MIDTRANS_MERCHANT_ID', $midtransMode),
-            ]);
-
-            // 3. Panggil Service Midtrans
+            // Panggil Service SNAP sing wis diperbaiki
             $midtransService = app(\App\Services\MidtransSnapService::class);
             $user = Auth::user();
 
-            // 4. Eksekusi pembuatan Virtual Account
-            $response = $midtransService->createVirtualAccount(
+            // Eksekusi nggolek Token SNAP & Redirect URL soko Midtrans
+            $response = $midtransService->createSnapTransaction(
                 $trxId, 
                 $transaction->amount, 
                 $bankCode, 
@@ -2652,30 +2638,26 @@ class TopUpController extends Controller
                 $user->email ?? null
             );
 
-            // 5. Cek Response Sukses BI-SNAP VA (Code: 2002700)
-            if (isset($response['virtualAccountData']['virtualAccountNo'])) {
-                $vaNumber = $response['virtualAccountData']['virtualAccountNo'];
+            // Respon sukses soko SNAP API ngetokno 'token' lan 'redirect_url'
+            if (isset($response['redirect_url'])) {
+                $redirectUrl = $response['redirect_url'];
                 
-                $transaction->payment_url = $vaNumber;
+                // Simpan URL transaksinya ke DB biar bisa diakses pelanggan sewaktu-waktu
+                $transaction->payment_url = $redirectUrl;
                 $transaction->save();
                 
-                Log::info('LOG LOG: Berhasil Generate VA Midtrans', ['VA' => $vaNumber]);
+                Log::info('LOG LOG: [SNAP] Berhasil Ambil Redirect URL Midtrans', ['url' => $redirectUrl]);
 
-                return redirect()->route('customer.topup.show', ['topup' => $transaction->reference_id])
-                                 ->with('success', 'Virtual Account berhasil dibuat! Silakan bayar menggunakan nomor VA.');
+                // Alihkan murni browser user nang halaman pembayaran SNAP Midtrans sing aman!
+                return redirect()->away($redirectUrl);
             }
 
-            // 6. Tangkap Error Spesifik dari API Midtrans jika gagal tembus
-            $responseCode = $response['responseCode'] ?? 'UNKNOWN';
-            $responseMsg  = $response['responseMessage'] ?? json_encode($response);
-            
-            Log::error('LOG LOG: Gagal mendapatkan VA dari Midtrans', ['response' => $response]);
-            
-            return back()->with('error', "Gagal memproses VA Midtrans. [Code: {$responseCode}] - {$responseMsg}");
+            Log::error('LOG LOG: [SNAP] Gagal membedah respon token', ['response' => $response]);
+            return back()->with('error', 'Gagal memproses SNAP Midtrans: Respon tidak valid.');
 
         } catch (\Exception $e) {
-            Log::error('LOG LOG: MIDTRANS VA System Error: ' . $e->getMessage());
-            return back()->with('error', 'Koneksi/Sistem Midtrans Error: ' . $e->getMessage());
+            Log::error('LOG LOG: [SNAP] Controller Exception Error: ' . $e->getMessage());
+            return back()->with('error', 'Gagal terhubung ke Midtrans: ' . $e->getMessage());
         }
     }
 
