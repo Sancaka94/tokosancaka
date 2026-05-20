@@ -20,6 +20,10 @@ class ApiSettingsController extends Controller
         $dharmawisataMode = Api::getValue('DHARMAWISATA_MODE', 'global', 'development'); // Tambahan Darmawisata
         $danaProductionMode = Api::getValue('dana_production_mode', 'global', '0');
         $danaMode = $danaProductionMode == '1' ? 'production' : 'sandbox';
+        
+        // --- TAMBAHAN MIDTRANS ---
+        $midtransMode     = Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
+
         // 2. Siapkan Struktur Data Lengkap (Active Mode + Data per Environment)
 
         $kiriminaja = [
@@ -123,8 +127,27 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        // Tambahkan variabel $dana ke compact
-        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana'));
+        // --- TAMBAHAN ARRAY MIDTRANS ---
+        $midtrans = [
+            'mode' => $midtransMode,
+            'sandbox' => [
+                'merchant_id'        => Api::getValue('MIDTRANS_MERCHANT_ID', 'sandbox'),
+                'client_key'         => Api::getValue('MIDTRANS_CLIENT_KEY', 'sandbox'),
+                'server_key'         => Api::getValue('MIDTRANS_SERVER_KEY', 'sandbox'),
+                'snap_client_id'     => Api::getValue('MIDTRANS_SNAP_CLIENT_ID', 'sandbox'),
+                'snap_client_secret' => Api::getValue('MIDTRANS_SNAP_CLIENT_SECRET', 'sandbox'),
+            ],
+            'production' => [
+                'merchant_id'        => Api::getValue('MIDTRANS_MERCHANT_ID', 'production'),
+                'client_key'         => Api::getValue('MIDTRANS_CLIENT_KEY', 'production'),
+                'server_key'         => Api::getValue('MIDTRANS_SERVER_KEY', 'production'),
+                'snap_client_id'     => Api::getValue('MIDTRANS_SNAP_CLIENT_ID', 'production'),
+                'snap_client_secret' => Api::getValue('MIDTRANS_SNAP_CLIENT_SECRET', 'production'),
+            ]
+        ];
+
+        // Tambahkan variabel $dana dan $midtrans ke compact
+        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans'));
     }
 
     public function update(Request $request)
@@ -232,6 +255,18 @@ class ApiSettingsController extends Controller
                     Api::setValue('dana_sandbox_private_key', $request->dana_private_key, 'dana', 'sandbox');
                     Api::setValue('dana_sandbox_public_key', $request->dana_public_key, 'dana', 'sandbox'); // <-- TAMBAHKAN BARIS INI
                 }
+
+            // --- TAMBAHAN UPDATE MIDTRANS ---
+            } elseif ($type === 'midtrans') {
+                $env = $request->midtrans_mode; // 'sandbox' atau 'production'
+
+                Api::setValue('MIDTRANS_MODE', $env, 'midtrans', 'global');
+
+                Api::setValue('MIDTRANS_MERCHANT_ID', $request->midtrans_merchant_id, 'midtrans', $env);
+                Api::setValue('MIDTRANS_CLIENT_KEY', $request->midtrans_client_key, 'midtrans', $env);
+                Api::setValue('MIDTRANS_SERVER_KEY', $request->midtrans_server_key, 'midtrans', $env);
+                Api::setValue('MIDTRANS_SNAP_CLIENT_ID', $request->midtrans_snap_client_id, 'midtrans', $env);
+                Api::setValue('MIDTRANS_SNAP_CLIENT_SECRET', $request->midtrans_snap_client_secret, 'midtrans', $env);
             }
 
             return back()->with('success', 'Konfigurasi ' . strtoupper($type) . ' berhasil diperbarui untuk mode ' . strtoupper($request->input("{$type}_mode") ?? 'GLOBAL') . '.');
@@ -253,6 +288,7 @@ class ApiSettingsController extends Controller
                 $targetIAK          = 'development';
                 $targetDharmawisata = 'development';
                 $targetDana         = '0'; // 0 = Sandbox DANA
+                $targetMidtrans     = 'sandbox'; // --- TAMBAHAN MIDTRANS ---
                 $label              = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
                 $targetKA           = 'production';
@@ -261,6 +297,7 @@ class ApiSettingsController extends Controller
                 $targetIAK          = 'production';
                 $targetDharmawisata = 'production';
                 $targetDana         = '1'; // 1 = Production DANA
+                $targetMidtrans     = 'production'; // --- TAMBAHAN MIDTRANS ---
                 $label              = 'PRODUCTION (LIVE)';
             }
 
@@ -272,6 +309,9 @@ class ApiSettingsController extends Controller
             
             // --- TAMBAHAN TOGGLE DANA ---
             Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
+
+            // --- TAMBAHAN TOGGLE MIDTRANS ---
+            Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
 
             event(new SystemModeUpdated($targetKA));
 
@@ -294,6 +334,7 @@ class ApiSettingsController extends Controller
                 $targetIAK          = 'production';
                 $targetDharmawisata = 'production';
                 $targetDana         = '1'; // Production DANA
+                $targetMidtrans     = 'production'; // --- TAMBAHAN MIDTRANS ---
                 $label              = 'PRODUCTION (LIVE)';
             } else {
                 $targetKA           = 'staging';
@@ -302,6 +343,7 @@ class ApiSettingsController extends Controller
                 $targetIAK          = 'development';
                 $targetDharmawisata = 'development';
                 $targetDana         = '0'; // Sandbox DANA
+                $targetMidtrans     = 'sandbox'; // --- TAMBAHAN MIDTRANS ---
                 $label              = 'SANDBOX / MAINTENANCE';
             }
 
@@ -313,6 +355,9 @@ class ApiSettingsController extends Controller
             
             // --- TAMBAHAN TOGGLE API DANA ---
             Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
+
+            // --- TAMBAHAN TOGGLE API MIDTRANS ---
+            Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
 
             event(new SystemModeUpdated($targetKA));
 
