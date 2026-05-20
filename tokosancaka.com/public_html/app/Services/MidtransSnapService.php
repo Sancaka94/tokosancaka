@@ -5,234 +5,105 @@ namespace App\Services;
 use App\Models\Api;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-use Carbon\Carbon;
-use Illuminate\Support\Str;
 
 class MidtransSnapService
 {
-    protected $isProduction;
     protected $mode;
-    protected $snapClientId;
-    protected $snapClientSecret; 
-    protected $merchantId;       
-    protected $partnerId;        
-    protected $privateKeyPath;
+    protected $isProduction;
+    protected $serverKey;
     protected $baseUrl;
 
     public function __construct()
     {
-        // Moco murni soko database setting admin sing wis mbok gawe
+        // Moco config murni soko database setting admin sing wis mbok input mau
         $this->mode = Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
         $this->isProduction = ($this->mode === 'production');
         
-        $this->snapClientId = Api::getValue('MIDTRANS_SNAP_CLIENT_ID', $this->mode);
-        $this->snapClientSecret = Api::getValue('MIDTRANS_SNAP_CLIENT_SECRET', $this->mode);
-        $this->merchantId = Api::getValue('MIDTRANS_MERCHANT_ID', $this->mode);
-        
-        $this->partnerId = $this->merchantId; 
+        // Ambil Server Key soko database (Mid-server-...)
+        $this->serverKey = Api::getValue('MIDTRANS_SERVER_KEY', $this->mode);
 
-        $this->privateKeyPath = storage_path('app/keys/private_key_pkcs8.pem');
-
-        // ====================================================================
-        // FIX BASE URL: Aturan BI-SNAP Open API Midtrans Sandbox & Production
-        // ====================================================================
+        // Base URL murni nggae rute SNAP API
         $this->baseUrl = $this->isProduction 
-            ? 'https://api.midtrans.com' 
-            : 'https://api.sandbox.midtrans.com'; 
+            ? 'https://app.midtrans.com/snap/v1/transactions' 
+            : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
     }
 
     /**
-     * 1. Menghasilkan Asymmetric Signature (SHA256withRSA) untuk Access Token.
+     * FUNGSI UTAMA: Njaluk SNAP Token soko Midtrans kanggo ngetokno halaman bayar (Popup / Redirect)
      */
-    private function generateB2bSignature($clientId, $timestamp)
+    public function createSnapTransaction($orderId, $amount, $bankCode, $customerName, $customerPhone = null, $customerEmail = null)
     {
-        $stringToSign = $clientId . '|' . $timestamp;
-        
-        if (!file_exists($this->privateKeyPath)) {
-            Log::error('LOG LOG: File Private Key Midtrans tidak ditemukan di ' . $this->privateKeyPath);
-            throw new \Exception('Private key file is missing.');
-        }
+        // Bersihkan karakter aneh soko Invoice sesuai aturan Midtrans
+        $cleanOrderId = preg_replace('/[^a-zA-Z0-9\-_]/', '', $orderId);
 
-        $privateKey = file_get_contents($this->privateKeyPath);
-        
-        $signature = '';
-        $signSuccess = openssl_sign($stringToSign, $signature, $privateKey, OPENSSL_ALGO_SHA256);
-        
-        if (!$signSuccess) {
-            Log::error('LOG LOG: Gagal men-generate Asymmetric Signature Midtrans.');
-            throw new \Exception('Failed to generate B2B signature.');
-        }
-        
-        return base64_encode($signature);
-    }
+        // Payload Body standar sesuai dokumentasi SNAP murni
+        $payload = [
+            'transaction_details' => [
+                'order_id'     => $cleanOrderId,
+                'gross_amount' => (int) $amount, // Kudu Integer, gak oleh desimal malih eror
+            ],
+            'customer_details' => [
+                'first_name' => substr($customerName, 0, 40),
+                'email'      => $customerEmail ?? 'customer@tokosancaka.com',
+                'phone'      => $customerPhone ?? '081234567890',
+            ],
+            // Batasi payment method-e sesuai bank sing diklik nang frontend mau
+            'enabled_payments' => [
+                $this->mapBankToSnapMethod($bankCode)
+            ],
+            'credit_card' => [
+                'secure' => true
+            ]
+        ];
 
-    /**
-     * 2. Mendapatkan Request B2B Access Token dari Midtrans (Cached).
-     */
-    public function getAccessToken()
-    {
-        $cacheKey = 'midtrans_b2b_token_' . $this->mode;
-
-        return Cache::remember($cacheKey, 780, function () {
-            $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'); 
-            $signature = $this->generateB2bSignature($this->snapClientId, $timestamp);
-            
-            // Path mutlak sesuai spek dokumen: /{version}/access-token/b2b
-            $endpoint = $this->baseUrl . '/v1.0/access-token/b2b';
-
-            $headers = [
-                'Content-Type' => 'application/json',
-                'X-TIMESTAMP'  => $timestamp,
-                'X-CLIENT-KEY' => $this->snapClientId,
-                'X-SIGNATURE'  => $signature
-            ];
-            
-            $payload = [
-                'grantType' => 'client_credentials'
-            ];
-
-            try {
-                // Sesuai standarisasi BI-SNAP, panggah nggae POST
-                $response = Http::withHeaders($headers)->post($endpoint, $payload);
-
-                Log::info('LOG LOG: Eksekusi Request Midtrans B2B Access Token', [
-                    'endpoint'     => $endpoint,
-                    'request_time' => $timestamp,
-                    'status_code'  => $response->status(),
-                    'response'     => $response->json(),
-                ]);
-
-                if ($response->successful() && isset($response['accessToken'])) {
-                    return $response['accessToken'];
-                }
-                
-                throw new \Exception('Response gagal atau token tidak ditemukan: ' . $response->body());
-
-            } catch (\Exception $e) {
-                Log::error('LOG LOG: Terjadi Kesalahan Request Midtrans B2B Token', [
-                    'message' => $e->getMessage()
-                ]);
-                throw $e;
-            }
-        });
-    }
-
-    /**
-     * 3. Menghasilkan Symmetric Signature (HMAC_SHA512) untuk Transactional API.
-     */
-    private function generateTransactionalSignature($httpMethod, $relativeUrl, $accessToken, $requestBody, $timestamp)
-    {
-        $minifiedBody = is_array($requestBody) || is_object($requestBody) 
-            ? json_encode($requestBody, JSON_UNESCAPED_SLASHES) 
-            : (string) $requestBody;
-            
-        if (empty($minifiedBody)) {
-            $minifiedBody = '';
-        }
-
-        $hashedBody = strtolower(hash('sha256', $minifiedBody));
-        $stringToSign = strtoupper($httpMethod) . ':' . $relativeUrl . ':' . $accessToken . ':' . $hashedBody . ':' . $timestamp;
-        $signature = hash_hmac('sha512', $stringToSign, $this->snapClientSecret, true);
-
-        return base64_encode($signature);
-    }
-
-    /**
-     * 4. Mengeksekusi Transactional API (Pembayaran, VA, dll)
-     */
-    public function executeTransaction($method, $relativeUrl, $payload = [], $customExternalId = null)
-    {
         try {
-            $accessToken = $this->getAccessToken();
-            $timestamp   = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'); 
-            $externalId  = $customExternalId ?? (string) Str::uuid(); 
-            $signature   = $this->generateTransactionalSignature($method, $relativeUrl, $accessToken, $payload, $timestamp);
-
-            $endpoint = $this->baseUrl . $relativeUrl;
-
-            $headers = [
-                'Content-Type'  => 'application/json',
-                'Authorization' => 'Bearer ' . $accessToken,
-                'X-TIMESTAMP'   => $timestamp,
-                'X-SIGNATURE'   => $signature,
-                'X-PARTNER-ID'  => $this->partnerId,
-                'X-EXTERNAL-ID' => $externalId,
-                'CHANNEL-ID'    => '12345', 
-            ];
-
-            $http = Http::withHeaders($headers);
-            $response = strtolower($method) === 'post' 
-                ? $http->post($endpoint, $payload)
-                : $http->get($endpoint, $payload);
-
-            Log::info('LOG LOG: Eksekusi Transactional API Midtrans BI-SNAP', [
-                'method'        => $method,
-                'endpoint'      => $endpoint,
-                'x_external_id' => $externalId,
-                'status_code'   => $response->status(),
-                'response'      => $response->json(),
+            Log::info('LOG LOG: [SNAP] Mengirim Request Transaksi ke Midtrans...', [
+                'order_id' => $cleanOrderId,
+                'amount'   => $amount,
+                'method'   => $payload['enabled_payments'][0]
             ]);
 
-            return $response->json();
+            // Hit API nggae Basic Auth (Username = Server Key, Password = Kosong)
+            $response = Http::withBasicAuth($this->serverKey, '')
+                ->withHeaders([
+                    'Accept'       => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])
+                ->post($this->baseUrl, $payload);
+
+            Log::info('LOG LOG: [SNAP] Respon dari Midtrans Diterima', [
+                'status_code' => $response->status(),
+                'body'        => $response->json()
+            ]);
+
+            if ($response->successful()) {
+                return $response->json(); // Ngetokno token lan redirect_url soko Midtrans
+            }
+
+            throw new \Exception('Midtrans Reject: ' . ($response->json()['error_messages'][0] ?? 'Unknown Error'));
 
         } catch (\Exception $e) {
-            Log::error('LOG LOG: Kegagalan Sistem pada Transactional API Midtrans', [
-                'endpoint' => $relativeUrl ?? 'unknown',
-                'error'    => $e->getMessage()
+            Log::error('LOG LOG: [SNAP] Fatal Error saat create transaksi', [
+                'error' => $e->getMessage()
             ]);
-            
             throw $e;
         }
     }
 
     /**
-     * 5. MEMBUAT VIRTUAL ACCOUNT (BANK TRANSFER)
+     * Helper: Nyocokno kode internal Sancaka dadi kode enabled_payments soko Midtrans SNAP
      */
-    public function createVirtualAccount($trxId, $amount, $bankCode, $customerName, $customerPhone = null, $customerEmail = null)
+    private function mapBankToSnapMethod($bankCode)
     {
-        $bankCode = strtolower($bankCode);
-        $phone = preg_replace('/[^0-9]/', '', $customerPhone ?? '081234567890');
-        if (substr($phone, 0, 1) === '0') {
-            $phone = '62' . substr($phone, 1);
-        }
-
-        $partnerServiceId = str_pad(" ", 8, " ", STR_PAD_LEFT); 
-        $customerNo = "0000000000"; 
-        $virtualAccountNo = $partnerServiceId . $customerNo;
-
-        $payload = [
-            'partnerServiceId'    => $partnerServiceId,
-            'customerNo'          => $customerNo,
-            'virtualAccountNo'    => $virtualAccountNo,
-            'virtualAccountName'  => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $customerName), 0, 255),
-            'virtualAccountEmail' => $customerEmail ?? 'customer@tokosancaka.com',
-            'virtualAccountPhone' => $phone,
-            'trxId'               => $trxId, 
-            'totalAmount' => [
-                'value'    => number_format((float)$amount, 2, '.', ''),
-                'currency' => 'IDR'
-            ],
-            'bottomType'     => '1', // Skenario Single Use VA
-            'additionalInfo' => [
-                'merchantId' => $this->merchantId,
-                'bank'       => $bankCode,
-                'flags'      => [
-                    'shouldRandomizeVaNumber' => true 
-                ]
-            ]
+        $bank = strtolower($bankCode);
+        $mapping = [
+            'bca'     => 'bca_va',
+            'bni'     => 'bni_va',
+            'bri'     => 'bri_va',
+            'mandiri' => 'echannel', // Khusus Mandiri di SNAP nggae echannel / Bill Payment
+            'permata' => 'permata_va'
         ];
 
-        if ($bankCode === 'mandiri') {
-            $payload['additionalInfo']['mandiri'] = [
-                'billInfo1' => 'Sancaka',
-                'billInfo2' => 'TopUp',
-                'billInfo3' => 'Invoice:',
-                'billInfo4' => substr($trxId, 0, 30)
-            ];
-        }
-
-        // Endpoint relative-ne kudu diawali karo /v1.0
-        return $this->executeTransaction('POST', '/v1.0/transfer-va/create-va', $payload, $trxId);
+        return $mapping[$bank] ?? 'bca_va';
     }
 }
