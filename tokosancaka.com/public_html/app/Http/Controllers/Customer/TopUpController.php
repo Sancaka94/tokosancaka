@@ -37,6 +37,7 @@ use App\Notifications\NotifikasiUmum; // <-- DITAMBAHKAN
 
 use Carbon\Carbon;
 use App\Services\DanaSignatureService;
+use App\Services\MidtransSnapService;
 
 class TopUpController extends Controller
 {
@@ -220,6 +221,8 @@ class TopUpController extends Controller
                 // Arahkan ke fungsi baru
                 return $this->createTopUpPaymentDANA($transaction);
             }
+
+
 
             // 3. Logika DOKU & TRIPAY
             else {
@@ -2496,6 +2499,92 @@ class TopUpController extends Controller
         return view('customer.dana.transfer-bank', compact('banks'));
     }
 
+    /**
+     * =========================================================================
+     * EKSEKUTOR PEMBAYARAN MIDTRANS BI-SNAP
+     * =========================================================================
+     */
+    public function createPaymentMidtrans(Transaction $transaction)
+    {
+        $trxId = $transaction->reference_id;
+        Log::info('LOG LOG: MIDTRANS START for Transaction Table: ' . $trxId);
 
+        try {
+            $midtransService = app(\App\Services\MidtransSnapService::class);
+            $user = Auth::user();
+
+            // Sesuai standar Payload BI-SNAP untuk generate link pembayaran (Host-to-Host)
+            $payload = [
+                'partnerReferenceNo' => $trxId,
+                'amount' => [
+                    'value' => number_format($transaction->amount, 2, '.', ''),
+                    'currency' => 'IDR'
+                ],
+                'additionalInfo' => [
+                    'orderTitle' => 'Top Up Saldo - ' . $trxId,
+                    'buyer' => [
+                        'externalUserId' => (string) $user->id_pengguna,
+                        'nickname'       => $user->nama_lengkap ?? 'Customer Sancaka'
+                    ]
+                ]
+            ];
+
+            // Panggil Service Midtrans yang mengeksekusi HMAC_SHA512 Signature
+            // Endpoint ini menyesuaikan dengan dokumentasi metode pembayaran Midtrans yang ingin Anda tembak
+            $response = $midtransService->executeTransaction('POST', '/v1.0/debit/payment-host-to-host', $payload);
+
+            if (isset($response['webRedirectUrl'])) {
+                $transaction->payment_url = $response['webRedirectUrl'];
+                $transaction->save();
+                
+                return redirect()->away($response['webRedirectUrl']);
+            }
+
+            Log::error('LOG LOG: Gagal mendapatkan URL Redirect dari Midtrans', $response);
+            return back()->with('error', 'Gagal memproses pembayaran Midtrans. Coba metode lain.');
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: MIDTRANS System Error: ' . $e->getMessage());
+            return back()->with('error', 'Koneksi ke Midtrans terputus.');
+        }
+    }
+
+    /**
+     * =========================================================================
+     * HANDLER WEBHOOK MIDTRANS
+     * =========================================================================
+     */
+    public function midtransNotify(Request $request)
+    {
+        Log::info('LOG LOG: MIDTRANS NOTIFICATION HIT:', $request->all());
+
+        try {
+            $notification = $request->all();
+            
+            // Midtrans mengirimkan order_id dan transaction_status di root payload
+            $merchantRef = $notification['order_id'] ?? null;
+            $transactionStatus = $notification['transaction_status'] ?? null;
+            $grossAmount = $notification['gross_amount'] ?? 0;
+
+            if (!$merchantRef) {
+                return response()->json(['message' => 'Invalid Request Data'], 400);
+            }
+
+            // Mapping Status Midtrans ke Internal Status Sancaka (PAID / FAILED)
+            $internalStatus = 'PENDING';
+            if (in_array($transactionStatus, ['capture', 'settlement'])) {
+                $internalStatus = 'PAID';
+            } elseif (in_array($transactionStatus, ['deny', 'cancel', 'expire', 'failure'])) {
+                $internalStatus = 'FAILED';
+            }
+
+            // Arahkan ke prosesor pusat yang sama seperti DOKU & Tripay
+            return self::processTopUp($merchantRef, $internalStatus, $grossAmount);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: MIDTRANS NOTIFY ERROR: ' . $e->getMessage());
+            return response()->json(['message' => 'System Error'], 500);
+        }
+    }
 
 }
