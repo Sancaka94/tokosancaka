@@ -223,9 +223,15 @@ class TopUpController extends Controller
             }
 
 
-            // PASTIKAN BLOK KODE INI ADA
-            elseif ($validated['payment_method'] === 'MIDTRANS') {
-                Log::info('LOG LOG: Memulai Top Up Midtrans untuk ' . $invoiceNumber);
+           // ==========================================================
+            // --- TAMBAHAN UNTUK MIDTRANS BI-SNAP (VIRTUAL ACCOUNT) ---
+            // ==========================================================
+            elseif (\Illuminate\Support\Str::startsWith($validated['payment_method'], 'MIDTRANS_VA_')) {
+                
+                // Ekstrak kode bank dari string (Contoh: "MIDTRANS_VA_BCA" menjadi "bca")
+                $bankCode = strtolower(str_replace('MIDTRANS_VA_', '', $validated['payment_method']));
+                
+                Log::info('LOG LOG: Memulai Top Up Midtrans VA ' . strtoupper($bankCode) . ' untuk ' . $invoiceNumber);
 
                 $transaction = Transaction::create([
                     'user_id'        => $user->id_pengguna,
@@ -233,15 +239,16 @@ class TopUpController extends Controller
                     'amount'         => $amount,
                     'type'           => 'topup',
                     'status'         => 'pending',
-                    'payment_method' => 'MIDTRANS',
-                    'description'    => 'Top up saldo via Midtrans',
+                    'payment_method' => $validated['payment_method'],
+                    'description'    => 'Top up saldo via VA ' . strtoupper($bankCode) . ' (Midtrans)',
                 ]);
 
                 DB::commit();
 
-                // Arahkan ke fungsi eksekutor Midtrans
-                return $this->createPaymentMidtrans($transaction);
+                // Arahkan ke fungsi eksekutor Midtrans VA (dibuat di langkah 2)
+                return $this->createPaymentMidtransVA($transaction, $bankCode);
             }
+            // ==========================================================
 
             // 3. Logika DOKU & TRIPAY
             else {
