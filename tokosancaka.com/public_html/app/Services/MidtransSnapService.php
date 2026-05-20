@@ -15,13 +15,14 @@ class MidtransSnapService
     protected $mode;
     protected $snapClientId;
     protected $snapClientSecret; 
-    protected $merchantId;       // Ditambahkan untuk Payload VA
+    protected $merchantId;       
     protected $partnerId;        
     protected $privateKeyPath;
     protected $baseUrl;
 
     public function __construct()
     {
+        // Moco murni soko database setting admin sing wis mbok gawe
         $this->mode = Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
         $this->isProduction = ($this->mode === 'production');
         
@@ -33,10 +34,12 @@ class MidtransSnapService
 
         $this->privateKeyPath = storage_path('app/keys/private_key_pkcs8.pem');
 
-        // PERBAIKAN: Menghapus /v1.0 dari base URL agar tidak duplikat saat pemanggilan endpoint
+        // ====================================================================
+        // FIX BASE URL: Aturan BI-SNAP Open API Midtrans Sandbox & Production
+        // ====================================================================
         $this->baseUrl = $this->isProduction 
             ? 'https://api.midtrans.com' 
-            : 'https://api.sandbox.midtrans.com';
+            : 'https://api.sandbox.midtrans.com'; 
     }
 
     /**
@@ -64,7 +67,7 @@ class MidtransSnapService
         return base64_encode($signature);
     }
 
-   /**
+    /**
      * 2. Mendapatkan Request B2B Access Token dari Midtrans (Cached).
      */
     public function getAccessToken()
@@ -75,7 +78,7 @@ class MidtransSnapService
             $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'); 
             $signature = $this->generateB2bSignature($this->snapClientId, $timestamp);
             
-            // PERBAIKAN: Menyesuaikan full path endpoint sesuai dokumentasi resmi BI-SNAP
+            // Path mutlak sesuai spek dokumen: /{version}/access-token/b2b
             $endpoint = $this->baseUrl . '/v1.0/access-token/b2b';
 
             $headers = [
@@ -85,12 +88,12 @@ class MidtransSnapService
                 'X-SIGNATURE'  => $signature
             ];
             
-            // PERBAIKAN: Mengubah dari 'grant_type' menjadi 'grantType' (camelCase) sesuai dokumen ASPI
             $payload = [
                 'grantType' => 'client_credentials'
             ];
 
             try {
+                // Sesuai standarisasi BI-SNAP, panggah nggae POST
                 $response = Http::withHeaders($headers)->post($endpoint, $payload);
 
                 Log::info('LOG LOG: Eksekusi Request Midtrans B2B Access Token', [
@@ -136,17 +139,14 @@ class MidtransSnapService
     }
 
     /**
-     * 4. Mengeksekusi Transactional API Umum
+     * 4. Mengeksekusi Transactional API (Pembayaran, VA, dll)
      */
     public function executeTransaction($method, $relativeUrl, $payload = [], $customExternalId = null)
     {
         try {
             $accessToken = $this->getAccessToken();
             $timestamp   = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP'); 
-            
-            // X-EXTERNAL-ID harus sama dengan trxId di payload (Aturan BI-SNAP)
             $externalId  = $customExternalId ?? (string) Str::uuid(); 
-            
             $signature   = $this->generateTransactionalSignature($method, $relativeUrl, $accessToken, $payload, $timestamp);
 
             $endpoint = $this->baseUrl . $relativeUrl;
@@ -187,27 +187,18 @@ class MidtransSnapService
     }
 
     /**
-     * 5. ========================================================
-     * FUNGSI KHUSUS: MEMBUAT VIRTUAL ACCOUNT (BANK TRANSFER)
-     * ========================================================
+     * 5. MEMBUAT VIRTUAL ACCOUNT (BANK TRANSFER)
      */
     public function createVirtualAccount($trxId, $amount, $bankCode, $customerName, $customerPhone = null, $customerEmail = null)
     {
-        // Standar Bank Code Midtrans: bca, bni, bri, mandiri, permata, cimb
         $bankCode = strtolower($bankCode);
-        
-        // Clean Phone Number
         $phone = preg_replace('/[^0-9]/', '', $customerPhone ?? '081234567890');
         if (substr($phone, 0, 1) === '0') {
             $phone = '62' . substr($phone, 1);
         }
 
-        // --- Aturan Unik partnerServiceId ---
-        // Sesuai dokumentasi, ini adalah Company Code. Karena sering berubah-ubah di Midtrans, 
-        // pendekatan paling aman untuk Open API (bukan Core API lama) jika belum diberikan fix code adalah 
-        // menggunakan parameter "flags.shouldRandomizeVaNumber" = true agar Midtrans yang mengatur.
-        $partnerServiceId = str_pad(" ", 8, " ", STR_PAD_LEFT); // Default 8 spasi 
-        $customerNo = "0000000000"; // Default 10 nol
+        $partnerServiceId = str_pad(" ", 8, " ", STR_PAD_LEFT); 
+        $customerNo = "0000000000"; 
         $virtualAccountNo = $partnerServiceId . $customerNo;
 
         $payload = [
@@ -217,21 +208,21 @@ class MidtransSnapService
             'virtualAccountName'  => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $customerName), 0, 255),
             'virtualAccountEmail' => $customerEmail ?? 'customer@tokosancaka.com',
             'virtualAccountPhone' => $phone,
-            'trxId'               => $trxId, // Harus sama dengan X-EXTERNAL-ID
+            'trxId'               => $trxId, 
             'totalAmount' => [
                 'value'    => number_format((float)$amount, 2, '.', ''),
                 'currency' => 'IDR'
             ],
+            'bottomType'     => '1', // Skenario Single Use VA
             'additionalInfo' => [
                 'merchantId' => $this->merchantId,
                 'bank'       => $bankCode,
                 'flags'      => [
-                    'shouldRandomizeVaNumber' => true // Midtrans akan merandom VA agar pasti berhasil
+                    'shouldRandomizeVaNumber' => true 
                 ]
             ]
         ];
 
-        // Khusus Mandiri, butuh field "mandiri.billInfoX"
         if ($bankCode === 'mandiri') {
             $payload['additionalInfo']['mandiri'] = [
                 'billInfo1' => 'Sancaka',
@@ -241,7 +232,7 @@ class MidtransSnapService
             ];
         }
 
-        // Eksekusi API. (Param ke-4 adalah X-EXTERNAL-ID, wajib = trxId)
+        // Endpoint relative-ne kudu diawali karo /v1.0
         return $this->executeTransaction('POST', '/v1.0/transfer-va/create-va', $payload, $trxId);
     }
 }
